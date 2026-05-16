@@ -1,0 +1,45 @@
+/* ===================================================== */
+/* RESPONSIVE.CSS – CELL CITY INFORMÁTICA (FINAL)       */
+/* ===================================================== */
+
+@media (max-width: 400px) {
+    .container { padding: 0 10px; }
+    .header { padding: 8px 0 6px; }
+    .header-flex { gap: 6px; }
+    .logo img { width: 110px; }
+    .nav { gap: 8px; }
+    .nav a { font-size: 0.7rem; }
+    .hero { padding: 170px 0 70px; }
+    .footer-bottom p { font-size: 0.75rem; }
+    .whatsapp-float { right: 12px; bottom: 12px; width: 55px; height: 55px; }
+}
+
+@media (min-width: 768px) {
+    .container { padding: 0 20px; }
+    .header { padding: 16px 0 12px; }
+    .logo img { width: 180px; }
+    .nav { gap: 20px; }
+    .nav a { font-size: 0.95rem; }
+
+    .hero-grid { flex-direction: row; text-align: left; justify-content: center; }
+    .hero-image img { max-width: 450px; }
+    .hero-content { max-width: 450px; }
+    .hero-buttons { flex-direction: row; justify-content: flex-start; }
+    .btn { max-width: 220px; }
+
+    .services-grid { grid-template-columns: repeat(3, 1fr); }
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+    .testimonials-grid { grid-template-columns: repeat(3, 1fr); }
+
+    .footer-grid { grid-template-columns: 2fr 1fr 1.5fr; text-align: left; }
+    .footer-map iframe { height: 300px; }
+}
+
+@media (min-width: 1024px) {
+    .hero { padding: 220px 0 100px; }
+    .hero-grid { gap: 60px; }
+    .hero-image img { max-width: 550px; }
+    .hero-content h1 { font-size: 2.4rem; }
+    .hero-content p { font-size: 1.1rem; }
+    .footer-map iframe { height: 350px; }
+}
