@@ -1,0 +1,69 @@
+/* ===================================================== */
+/* MASTER.CSS - CELL CITY - CORRIGIDO */
+/* ===================================================== */
+
+/* FUNDO GLOBAL ESCURO */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #0b0b0f;
+  overflow-x: hidden;
+}
+
+* {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* ===================================================== */
+/* REFINAMENTOS PREMIUM */
+/* ===================================================== */
+
+/* Espaçamento vertical entre seções */
+.services, .stats, .testimonials, .guarantee-section {
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+
+.hero {
+  padding-top: 0;
+}
+
+.footer {
+  padding-top: 60px;
+  padding-bottom: 0;
+}
+
+/* Animações suaves ao rolar (reveal) */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s ease;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===================================================== */
+/* RESPONSIVIDADE */
+/* ===================================================== */
+
+@media (max-width: 768px) {
+  .services, .stats, .testimonials, .guarantee-section {
+    padding-top: 50px;
+    padding-bottom: 50px;
+  }
+}
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}

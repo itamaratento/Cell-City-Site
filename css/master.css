@@ -1,5 +1,5 @@
 /* ===================================================== */
-/* MASTER.CSS – CELL CITY INFORMÁTICA (FASE 9)          */
+/* MASTER.CSS – CELL CITY INFORMÁTICA                   */
 /* ===================================================== */
 
 *,
@@ -433,10 +433,11 @@ a {
     gap: 12px;
 }
 
-.testimonial-card p {
+.testimonial-card blockquote {
     color: #ddd;
     font-size: 1rem;
     line-height: 1.6;
+    margin: 0;
 }
 
 .testimonial-card h3 {
@@ -569,7 +570,7 @@ a {
 }
 
 /* ===================================================== */
-/* ANIMAÇÕES LEVES (FASE 9)                              */
+/* ANIMAÇÕES LEVES                                       */
 /* ===================================================== */
 
 .reveal {
@@ -619,4 +620,77 @@ a {
 
 .whatsapp-float {
     animation: whatsapp-pulse 2s infinite;
+}
+
+/* ========================================== */
+/* GARANTIA (ETAPA 1 - ISOLADA)              */
+/* ========================================== */
+
+.garantia-section {
+    padding: 60px 16px;
+    background: #0a0c12;
+}
+
+.garantia-wrapper {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+}
+
+.garantia-badge img {
+    width: 100%;
+    max-width: 200px;
+    height: auto;
+    border-radius: 16px;
+}
+
+.garantia-content {
+    max-width: 550px;
+}
+
+.garantia-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #ffcc00;
+    margin-bottom: 12px;
+    line-height: 1.2;
+}
+
+.garantia-text {
+    color: #ccc;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+.garantia-icons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.garantia-icons span {
+    background: rgba(255,204,0,0.08);
+    border: 1px solid rgba(255,204,0,0.2);
+    color: #ffcc00;
+    padding: 6px 14px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
 }
