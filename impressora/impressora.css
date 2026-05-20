@@ -654,3 +654,69 @@ p{
     }
 
 }
+
+
+/* ===== OTIMIZAÇÃO HEADER MOBILE ===== */
+@media (max-width: 768px){
+
+    body{
+        padding-top:120px !important;
+    }
+
+    .topo{
+        padding:10px 12px !important;
+    }
+
+    .logo{
+        width:120px !important;
+        margin-bottom:8px !important;
+    }
+
+    nav{
+        gap:12px !important;
+    }
+
+    nav a{
+        font-size:13px !important;
+    }
+
+    footer{
+        white-space:normal !important;
+        line-height:1.5 !important;
+        font-size:12px !important;
+        padding:20px 14px 35px 14px !important;
+        text-align:center !important;
+    }
+
+}
+
+/* ===== MOBILE EXTRA ===== */
+@media (max-width: 480px){
+
+    body{
+        padding-top:105px !important;
+    }
+
+    .topo{
+        padding:8px 10px !important;
+    }
+
+    .logo{
+        width:105px !important;
+        margin-bottom:6px !important;
+    }
+
+    nav{
+        gap:8px !important;
+    }
+
+    nav a{
+        font-size:12px !important;
+    }
+
+    footer{
+        font-size:11px !important;
+        padding-bottom:30px !important;
+    }
+
+}
