@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Cell City Informática</title>
+  <link rel="stylesheet" href="./os.css">
+</head>
+<body>
+
+  <!-- HEADER FIXO -->
+  <header class="header" id="mainHeader">
+    <button class="header-back" id="backBtn" onclick="goBack()">←</button>
+    <div class="header-logo" onclick="showScreen('home')">
+      <img src="../../assets/logo.png" alt="Cell City" class="header-logo-img">
+    </div>
+  </header>
+
+  <main id="app">
+    <!-- HOME -->
+    <section id="screen-home" class="screen active">
+      <div class="home-hero">
+        <img src="../../assets/logo-large.png" alt="Cell City" class="home-logo-official">
+        <p class="hero-subtitle">Sistema de Assistência Técnica</p>
+      </div>
+      <div class="home-top-search">
+        <div class="premium-search" onclick="openGlobalSearch()">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Pesquisar O.S., cliente ou modelo..." readonly>
+        </div>
+      </div>
+      <div id="statsBar" class="premium-stats"></div>
+      <div class="premium-cards">
+        <div class="home-card card-nova-os" onclick="showScreen('category')">
+          <span class="badge" id="badge-andamento">0</span>
+          <span class="icon">🔧</span><span class="label">Nova O.S.</span>
+        </div>
+        <div class="home-card card-andamento" onclick="showList('em_andamento')">
+          <span class="icon">📦</span><span class="label">Em Andamento</span>
+        </div>
+        <div class="home-card card-finalizados" onclick="showList('finalizados')">
+          <span class="badge" id="badge-finalizados">0</span>
+          <span class="icon">✅</span><span class="label">Finalizados</span>
+        </div>
+        <div class="home-card card-clientes" onclick="showScreen('clientes')">
+          <span class="icon">👥</span><span class="label">Clientes</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CATEGORY -->
+    <section id="screen-category" class="screen">
+      <div class="form-section-title" id="headerTitle">Selecione a categoria</div>
+      <div class="category-grid">
+        <div class="category-card" onclick="startOS('celular')"><div class="cat-icon">📱</div><div class="cat-info"><h3>Celular</h3><p>Smartphones e tablets</p></div></div>
+        <div class="category-card" onclick="startOS('notebook')"><div class="cat-icon">💻</div><div class="cat-info"><h3>Notebook</h3><p>Laptops e ultrabooks</p></div></div>
+        <div class="category-card" onclick="startOS('impressora')"><div class="cat-icon">🖨️</div><div class="cat-info"><h3>Impressora</h3><p>Inkjet, laser e jato de tinta</p></div></div>
+      </div>
+    </section>
+
+    <!-- FORM -->
+    <section id="screen-form" class="screen">
+      <div class="form-section-title">Dados do Cliente</div>
+      <div class="form-group"><label for="f-nome">Nome *</label><input type="text" id="f-nome" required autocomplete="off"></div>
+      <div class="form-group"><label for="f-telefone">Telefone *</label><input type="tel" id="f-telefone" required autocomplete="off"></div>
+      <div class="form-section-title">Dados do Aparelho</div>
+      <div class="form-group"><label for="f-modelo">Modelo *</label><input type="text" id="f-modelo" required autocomplete="off"></div>
+      <div class="form-group"><label for="f-defeito">Defeito relatado *</label><textarea id="f-defeito" required></textarea></div>
+      <div class="form-row">
+        <div class="form-group"><label for="f-senha">Senha <span class="optional">(opcional)</span></label><input type="text" id="f-senha" autocomplete="off"></div>
+        <div class="form-group"><label for="lock-type">Tipo de bloqueio</label><select id="lock-type"><option>Numerica</option><option>Padrão</option><option>Face ID</option><option>Digital</option><option>Sem senha</option></select></div>
+      </div>
+      <div class="form-section-title">📷 Foto da senha/padrão</div>
+      <div class="lock-photo-container">
+        <label class="lock-photo-btn">📁 Escolher Arquivo<input type="file" id="lock-photo" accept="image/*" onchange="handleLockPhoto(event)"></label>
+        <label class="lock-photo-btn lock-photo-btn-camera">📷 Tirar Foto Agora<input type="file" id="lock-photo-camera" accept="image/*" capture="environment" onchange="handleLockPhoto(event)"></label>
+      </div>
+      <div id="lock-photo-preview" class="photo-preview"></div>
+      <div class="form-section-title">Observações</div>
+      <div class="form-group"><textarea id="f-obs" placeholder="Observações adicionais..."></textarea></div>
+      <div class="form-section-title">Checklist de Entrada</div>
+      <div id="entry-checklist" class="premium-checklist"></div>
+      <div class="form-section-title">Fotos do Aparelho</div>
+      <div class="photo-upload premium-upload" onclick="document.getElementById('device-photos').click()">
+        <div class="icon">📷</div><p>Toque para adicionar fotos do aparelho</p>
+      </div>
+      <input type="file" id="device-photos" accept="image/*" multiple onchange="handlePhotos(event)" style="display:none">
+      <div id="photo-preview" class="photo-preview"></div>
+      <button class="btn btn-primary premium-btn" onclick="saveOS()">⚡ Criar Ordem de Serviço</button>
+    </section>
+
+    <!-- LIST -->
+    <section id="screen-list" class="screen">
+      <div class="premium-search"><span class="search-icon">🔍</span><input type="text" id="list-search" placeholder="Filtrar por nome, O.S. ou modelo..." oninput="filterList()"></div>
+      <div id="os-list" class="premium-list"></div>
+    </section>
+
+    <!-- DETAIL -->
+    <section id="screen-detail" class="screen"><div id="detail-content"></div></section>
+    <!-- CLIENTS -->
+    <section id="screen-clientes" class="screen">
+      <div class="premium-search"><span class="search-icon">🔍</span><input type="text" id="client-search" placeholder="Buscar cliente..." oninput="searchClients()"></div>
+      <div id="client-list" class="premium-list"></div>
+    </section>
+    <!-- CLIENT DETAIL -->
+    <section id="screen-client-detail" class="screen"><div id="client-detail-content"></div></section>
+    <!-- SEARCH -->
+    <section id="screen-pesquisar" class="screen">
+      <div class="premium-search"><span class="search-icon">🔍</span><input type="text" id="global-search" placeholder="Buscar em todo o sistema..." oninput="globalSearch()"></div>
+      <div id="search-results"></div>
+    </section>
+  </main>
+
+  <!-- MODAL & TOAST -->
+  <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)"><div class="premium-modal" id="modal-content"></div></div>
+  <div class="premium-toast" id="toast"></div>
+
+  <script src="./os.js" defer></script>
+</body>
+</html>
