@@ -28,7 +28,7 @@ const firebaseConfig = {
 
 // Inicializa
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+ const db = getFirestore(app);
 
 // ===== ADAPTADOR: Firestore + Cache Local =====
 export const FirestoreDB = {

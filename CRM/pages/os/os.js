@@ -1,13 +1,85 @@
-// ===== DATA LAYER (Preparado para futuro DB/API) =====
+import { db, collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from "./firebase.js";
+// IMPORTANTE: Se o seu arquivo firebase.js estiver dentro da pasta scripts, altere a linha acima para:
+// import { db, collection, getDocs, doc, setDoc, deleteDoc, updateDoc } from "./firebase.js";
+
+
+
+// ===== EXPOSIÇÃO GLOBAL (Impede o erro "is not defined" no HTML) =====
+window.handleLockPhoto = handleLockPhoto;
+window.removeLockPhoto = removeLockPhoto;
+window.showScreen = showScreen;
+window.goBack = goBack;
+window.updateChecklistItem = updateChecklistItem;
+window.handlePhotos = handlePhotos;
+window.removePhoto = removePhoto;
+window.viewPhoto = viewPhoto;
+window.startOS = startOS;
+window.saveOS = saveOS;
+window.showList = showList;
+window.filterList = filterList;
+window.openDetail = openDetail;
+window.changeStatus = changeStatus;
+window.addObservation = addObservation;
+window.addPhotoToOS = addPhotoToOS;
+window.markDelivered = markDelivered;
+window.openClientFromOS = openClientFromOS;
+window.deleteOS = deleteOS;
+window.shareWhatsApp = shareWhatsApp;
+window.printOS = printOS;
+window.searchClients = searchClients;
+window.showClientDetail = showClientDetail;
+window.startOSForClient = startOSForClient;
+window.globalSearch = globalSearch;
+window.closeModal = closeModal;
+window.openGlobalSearch = openGlobalSearch;
+
+// ===== DATA LAYER (Integrado ao Firestore) =====
+let localOS = [];
+let localClients = [];
+let localCounter = 0;
+
 const DB = {
-  get(key) { try { return JSON.parse(localStorage.getItem('cc_' + key)) || []; } catch { return []; } },
-  set(key, val) { localStorage.setItem('cc_' + key, JSON.stringify(val)); },
-  getOS() { return this.get('orders'); },
-  setOS(data) { this.set('orders', data); },
-  getClients() { return this.get('clients'); },
-  setClients(data) { this.set('clients', data); },
-  getCounter() { return parseInt(localStorage.getItem('cc_counter') || '0'); },
-  incCounter() { const n = this.getCounter() + 1; localStorage.setItem('cc_counter', n); return n; }
+  getOS() { return localOS; },
+  async addOS(osData) {
+    localOS.unshift(osData);
+    await setDoc(doc(db, "os", osData.id), osData);
+  },
+  async updateOS(osData) {
+    const idx = localOS.findIndex(o => o.id === osData.id);
+    if (idx >= 0) localOS[idx] = osData;
+    await updateDoc(doc(db, "os", osData.id), osData);
+  },
+  async deleteOS(id) {
+    localOS = localOS.filter(o => o.id !== id);
+    await deleteDoc(doc(db, "os", id));
+  },
+  getClients() { return localClients; },
+  async saveClient(clientData) {
+    const idx = localClients.findIndex(c => c.phone === clientData.phone);
+    if (idx >= 0) localClients[idx] = clientData;
+    else localClients.push(clientData);
+    await setDoc(doc(db, "clientes", clientData.phone), clientData);
+  },
+  getCounter() { return localCounter; },
+  async incCounter() {
+    localCounter++;
+    await setDoc(doc(db, "metadata", "counter"), { value: localCounter });
+    return localCounter;
+  },
+  async loadFromFirestore() {
+    try {
+      const osSnap = await getDocs(collection(db, "os"));
+      localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      const clientSnap = await getDocs(collection(db, "clientes"));
+      localClients = clientSnap.docs.map(d => d.data());
+
+      const counterSnap = await getDocs(collection(db, "metadata"));
+      counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });
+    } catch (e) {
+      console.error("Erro ao carregar do Firestore:", e);
+    }
+  }
 };
 
 // ===== STATE =====
@@ -132,13 +204,13 @@ function renderChecklist(containerId, items, key, checked = []) {
   ).join('');
 }
 
-function updateChecklistItem(type, index, value) {
+async function updateChecklistItem(type, index, value) {
   if (!currentOS) return;
   const key = type === 'entry' ? 'entryChecklist' : 'exitChecklist';
   if (!currentOS[key]) currentOS[key] = [];
   if (value) { if (!currentOS[key].includes(index)) currentOS[key].push(index); } 
   else { currentOS[key] = currentOS[key].filter(i => i !== index); }
-  saveCurrentOS();
+  await saveCurrentOS();
 }
 
 // ===== PHOTOS =====
@@ -190,30 +262,35 @@ function startOS(category) {
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
 
-function saveOS() {
+async function saveOS() {
   const getVal = id => document.getElementById(id)?.value.trim() || '';
   const [nome, telefone, modelo, defeito, senha, obs, lockType] = ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs','lock-type'].map(getVal);
   if (!nome || !telefone || !modelo || !defeito) return showToast('⚠️ Preencha todos os campos obrigatórios');
   
   const entryItems = getChecklistTemplate(currentCategory);
   const entryChecked = entryItems.map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
-  const num = DB.incCounter();
+  const num = await DB.incCounter();
   const osId = `OS-${String(num).padStart(4, '0')}`;
   
   const os = { id: osId, category: currentCategory, clientName: nome, phone: telefone, model: modelo, defect: defeito, observations: obs, password: senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'em_analise', timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   
-  const orders = DB.getOS(); orders.unshift(os); DB.setOS(orders);
-  updateClientHistory(telefone, nome, osId);
+  await DB.addOS(os);
+  await updateClientHistory(telefone, nome, osId);
+  
   showToast(`✅ ${osId} criada com sucesso!`);
   showScreen('home');
 }
 
-function updateClientHistory(phone, name, osId) {
+async function updateClientHistory(phone, name, osId) {
   let clients = DB.getClients();
   let client = clients.find(c => c.phone === phone);
-  if (client) { if (!client.history.includes(osId)) client.history.push(osId); client.name = name; }
-  else clients.push({ name, phone, history: [osId] });
-  DB.setClients(clients);
+  if (client) { 
+    if (!client.history.includes(osId)) client.history.push(osId); 
+    client.name = name; 
+  } else {
+    client = { name, phone, history: [osId] };
+  }
+  await DB.saveClient(client);
 }
 
 // ===== LISTS =====
@@ -261,31 +338,74 @@ function renderDetail() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-function changeStatus(newStatus) {
+async function changeStatus(newStatus) {
   if (!currentOS) return;
   const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString();
   currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
-  saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`);
+  await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`);
 }
 
-function addObservation() {
+async function addObservation() {
   const input = document.getElementById('obs-input'); const text = input?.value.trim();
   if (!text || !currentOS) return;
   currentOS.timeline.push({ date: new Date().toISOString(), text: `Nota: ${text}` }); currentOS.updatedAt = new Date().toISOString();
-  saveCurrentOS(); renderDetail(); showToast('📝 Adicionada'); input.value = '';
+  await saveCurrentOS(); renderDetail(); showToast('📝 Adicionada'); input.value = '';
 }
 
-function addPhotoToOS() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = function(e) {
-  for (let f of e.target.files) {
-    const reader = new FileReader(); reader.onload = function(ev) {
-      const img = new Image(); img.onload = function() {
-        const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; if(w>max||h>max){w>h?(h=h*max/w,w=max):(w=w*max/h,h=max);} c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); currentOS.photos.push(c.toDataURL('image/jpeg',0.7)); saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); }; img.src = ev.target.result; }; reader.readAsDataURL(f);
-    } }; input.click(); }
+function addPhotoToOS() { 
+  const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; 
+  input.onchange = function(e) {
+    for (let f of e.target.files) {
+      const reader = new FileReader(); 
+      reader.onload = function(ev) {
+        const img = new Image(); 
+        img.onload = async function() {
+          const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; 
+          if(w>max||h>max){w>h?(h=h*max/w,w=max):(w=w*max/h,h=max);} 
+          c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); 
+          currentOS.photos.push(c.toDataURL('image/jpeg',0.7)); 
+          await saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); 
+        }; 
+        img.src = ev.target.result; 
+      }; 
+      reader.readAsDataURL(f);
+    } 
+  }; 
+  input.click(); 
+}
 
-function markDelivered() { if(!currentOS) return; currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); }
+async function markDelivered() { 
+  if(!currentOS) return; 
+  currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); 
+  currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); 
+  await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); 
+}
+
 function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone; showClientDetail(currentOS.phone); } }
-function saveCurrentOS() { const orders=DB.getOS(); const idx=orders.findIndex(o=>o.id===currentOS?.id); if(idx>=0){orders[idx]=currentOS;DB.setOS(orders);} }
-function deleteOS() { if(!currentOS||!confirm('Excluir esta O.S.?')) return; DB.setOS(DB.getOS().filter(o=>o.id!==currentOS.id)); DB.setClients(DB.getClients().map(c=>({...c,history:c.history.filter(h=>h!==currentOS.id)})).filter(c=>c.history.length>0)); showToast('🗑️ Excluída'); showScreen('home'); }
+
+async function saveCurrentOS() { 
+  if (!currentOS) return;
+  await DB.updateOS(currentOS); 
+}
+
+async function deleteOS() { 
+  if(!currentOS||!confirm('Excluir esta O.S.?')) return; 
+  
+  await DB.deleteOS(currentOS.id);
+  
+  let client = DB.getClients().find(c => c.history.includes(currentOS.id));
+  if (client) {
+    client.history = client.history.filter(h => h !== currentOS.id);
+    if (client.history.length > 0) {
+      await DB.saveClient(client);
+    } else {
+      await DB.saveClient(client); 
+    }
+  }
+  
+  showToast('🗑️ Excluída'); showScreen('home'); 
+}
+
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${os.phone.replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
 function printOS() { if(!currentOS) return; const os=currentOS; const w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`); w.document.close(); w.print(); }
 
@@ -328,25 +448,25 @@ function closeModal(event) { if (event.target === document.getElementById('modal
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
 function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document.getElementById('global-search')?.focus(), 150); }
 
-// ===== INITIALIZATION (SEGURA & ÚNICA) =====
-function init() {
-  if (appInitialized) return; // 🔒 Impede execução dupla no F5 ou hot-reload
+// ===== INITIALIZATION (SEGURA, ÚNICA & ASSÍNCRONA) =====
+async function init() {
+  if (appInitialized) return; 
   appInitialized = true;
 
-  // 🔍 Segurança extra: remove headers duplicados se houver
   const headers = document.querySelectorAll('.header');
   if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
 
-  // 📱 Formato de telefone (event listener único)
   const phoneInput = document.getElementById('f-telefone');
   if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
 
+  // Carrega os dados do Firestore antes de renderizar a interface
+  await DB.loadFromFirestore();
+
   updateStats();
   showScreen('home');
-  console.log('✅ Cell City OS inicializado. Versão Estável.');
+  console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
 }
 
-// 🚀 Inicialização segura (suporta carregamento assíncrono/síncrono)
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
