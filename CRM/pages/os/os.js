@@ -21,7 +21,7 @@ window.addPhotoToOS = addPhotoToOS;
 window.markDelivered = markDelivered;
 window.openClientFromOS = openClientFromOS;
 window.deleteOS = deleteOS;
-window.deleteClient = deleteClient;
+window.deleteClient = deleteClient;          // ✅ NOVO
 window.editClient = editClient;
 window.saveClientEdit = saveClientEdit;
 window.toggleOSEdit = toggleOSEdit;
@@ -170,7 +170,17 @@ function renderList() {
     if (s) filtered = filtered.filter(o => (o.clientName||'').toLowerCase().includes(s) || (o.phone||'').includes(s) || (o.id||'').toLowerCase().includes(s) || (o.model||'').toLowerCase().includes(s));
     const c = document.getElementById('os-list'); if (!c) return;
     if (filtered.length === 0) { c.innerHTML = `<div class="empty-state"><div class="icon">${isFinal ? '✅' : '🔧'}</div><p>${s ? 'Nenhum resultado encontrado' : 'Nenhuma O.S. nesta categoria'}</p></div>`; return; }
-    c.innerHTML = filtered.map(os => { const d = os.defect || ''; return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span><button onclick="event.stopPropagation(); deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div></div>`; }).join('');
+    c.innerHTML = filtered.map(os => {
+        const d = os.defect || '';
+        const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
+        return `<div class="os-card" onclick="openDetail('${os.id||''}')">
+            <div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div>
+            <div class="os-card-name">${os.clientName||''}</div>
+            <div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div>
+            ${entregaInfo}
+            <div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span><button onclick="event.stopPropagation(); deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div>
+        </div>`;
+    }).join('');
 }
 function filterList() { renderList(); }
 
@@ -241,7 +251,6 @@ function renderClients() {
     const c = document.getElementById('client-list'); if (!c) return;
     if (f.length === 0) { c.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>${s ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}</p></div>`; return; }
     
-    // ✅ BOTÃO EXCLUIR AO LADO DO EDITAR
     c.innerHTML = f.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"> 
         <div class="client-card-name">${cl.name||''}</div> 
         <div class="client-card-phone">📞 ${cl.phone||''}</div> 
@@ -274,36 +283,36 @@ function editClient(phone) {
 }
 async function saveClientEdit(oldPhone) { const n = document.getElementById('edit-name').value.trim(); const p = document.getElementById('edit-phone').value.trim(); if (!n || !p) return alert("Preencha os campos."); try { await updateDoc(doc(db, "clientes", oldPhone), { name: n, phone: p }); showToast("✅ Cliente atualizado."); window.markSaved(); showClientDetail(p); } catch(e) { console.error(e); alert("Erro ao atualizar."); } }
 
-// ✅ EXCLUSÃO DE CLIENTES (CORRIGIDA E VALIDADA)
+// ✅ EXCLUSÃO DE CLIENTES (VALIDADA)
 async function deleteClient(phone) {
     const confirmCode = prompt("Digite 77 para confirmar a exclusão do cliente");
     if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
 
-    // Garante correspondência exata com o ID salvo no Firestore
     const docId = phone.trim();
     if (!docId) { alert("ID do cliente inválido."); return; }
 
     try {
         console.log(`🗑️ Tentando excluir documento: clientes/${docId}`);
         await deleteDoc(doc(db, "clientes", docId));
-
-        // Remoção local e atualização imediata da UI
         localClients = localClients.filter(c => c.phone !== docId);
         renderClients();
         showToast("🗑️ Cliente excluído com sucesso.");
-        console.log("✅ Cliente removido do Firestore e da UI.");
     } catch (e) {
         console.error("❌ Erro ao excluir do Firestore:", e);
-        if (e.code === 'not-found') {
-            alert("Cliente não encontrado no banco. Ele pode já ter sido removido.");
-        } else {
-            alert("Erro ao excluir do Firestore. Verifique a conexão e as regras de segurança.");
-        }
+        if (e.code === 'not-found') { alert("Cliente não encontrado no banco."); } else { alert("Erro ao excluir do Firestore."); }
     }
 }
 
 // ===== GLOBAL SEARCH =====
-function globalSearch() { const t = (document.getElementById('global-search')?.value || '').trim().toLowerCase(); const c = document.getElementById('search-results'); if (!c) return; if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`; if (orders.length > 0) h += `<div class="form-section"><div class="form-section-title">Ordens</div><div class="premium-list">${orders.map(os => `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''}</div></div>`).join('')}</div></div>`; c.innerHTML = h || `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado</p></div>`; }
+function globalSearch() { const t = (document.getElementById('global-search')?.value || '').trim().toLowerCase(); const c = document.getElementById('search-results'); if (!c) return; if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`; 
+if (orders.length > 0) {
+    const orderCards = orders.map(os => {
+        const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
+        return `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''}</div>${entregaInfo}</div>`;
+    }).join('');
+    h += `<div class="form-section"><div class="form-section-title">Ordens</div><div class="premium-list">${orderCards}</div></div>`;
+} 
+c.innerHTML = h || `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado</p></div>`; }
 
 // ===== MODAL & TOAST =====
 function openModal(content) { document.getElementById('modal-content').innerHTML = content; document.getElementById('modal-overlay').classList.add('active'); }
