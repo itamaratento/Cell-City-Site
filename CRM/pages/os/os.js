@@ -20,6 +20,7 @@ window.addPhotoToOS = addPhotoToOS;
 window.markDelivered = markDelivered;
 window.openClientFromOS = openClientFromOS;
 window.deleteOS = deleteOS;
+window.deleteClient = deleteClient; // ✅ NOVA EXPOSIÇÃO
 window.shareWhatsApp = shareWhatsApp;
 window.printOS = printOS;
 window.searchClients = searchClients;
@@ -29,7 +30,7 @@ window.globalSearch = globalSearch;
 window.closeModal = closeModal;
 window.openGlobalSearch = openGlobalSearch;
 
-// ===== DATA LAYER (Integrado ao Firestore) =====
+// ===== DATA LAYER =====
 let localOS = [];
 let localClients = [];
 let localCounter = 0;
@@ -63,11 +64,9 @@ const DB = {
     return localCounter;
   },
   async loadFromFirestore() {
-    // 🔒 RESET GLOBAL DE ESTADO
     localOS = [];
     localClients = [];
     localCounter = 0;
-
     try {
       console.log("Coleção utilizada:", "os");
       const osSnap = await getDocs(collection(db, "os"));
@@ -79,7 +78,6 @@ const DB = {
       const counterSnap = await getDocs(collection(db, "metadata"));
       counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });
 
-      // 📊 LOGS OBRIGATÓRIOS
       console.log("OS carregadas:", localOS);
       console.log("Quantidade:", localOS.length);
     } catch (e) {
@@ -109,7 +107,7 @@ function handleLockPhoto(event) {
       const canvas = document.createElement('canvas');
       const max = 450;
       let w = img.width, h = img.height;
-      if (w > max || h > max) { w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); }
+      if (w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max);
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       currentLockPhoto = canvas.toDataURL('image/jpeg', 0.75);
@@ -136,12 +134,10 @@ async function showScreen(id) {
   target.classList.add('active');
   const backBtn = document.getElementById('backBtn');
   const mainHeader = document.getElementById('mainHeader');
-
   if (id === 'home') {
     screenHistory = [];
     backBtn.classList.remove('visible');
     if (mainHeader) mainHeader.style.display = 'none';
-    // 🔁 SINCRONIZAÇÃO OBRIGATÓRIA NA HOME
     await DB.loadFromFirestore();
     updateStats();
   } else {
@@ -149,7 +145,6 @@ async function showScreen(id) {
     backBtn.classList.add('visible');
     if (mainHeader) mainHeader.style.display = 'flex';
   }
-
   const titleEl = document.getElementById('headerTitle');
   const titles = { category: 'Nova O.S.', form: 'Criar O.S.', clientes: 'Clientes', pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
   if (titleEl) { titleEl.textContent = titles[id] || ''; if (id === 'clientes') renderClients(); }
@@ -221,7 +216,7 @@ function handlePhotos(event) {
       img.onload = function() {
         const canvas = document.createElement('canvas');
         const max = 800; let w = img.width, h = img.height;
-        if (w > max || h > max) { w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); }
+        if (w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max);
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
         tempPhotos.push(canvas.toDataURL('image/jpeg', 0.7));
@@ -287,16 +282,7 @@ function renderList() {
   if (filtered.length === 0) { container.innerHTML = `<div class="empty-state"><div class="icon">${isFinal ? '✅' : '🔧'}</div><p>${searchTerm ? 'Nenhum resultado encontrado' : 'Nenhuma O.S. nesta categoria'}</p></div>`; return; }
   container.innerHTML = filtered.map(os => {
     const defect = os.defect || '';
-    return `<div class="os-card" onclick="openDetail('${os.id||''}')">
-      <div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div>
-      <div class="os-card-name">${os.clientName||''}</div>
-      <div class="os-card-info">${os.model||''} — ${defect.substring(0, 45)}${defect.length > 45 ? '...' : ''}</div>
-      <div class="os-card-footer">
-        <span class="os-card-date">${formatDate(os.createdAt)}</span>
-        <span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span>
-        <button onclick="deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button>
-      </div>
-    </div>`;
+    return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${defect.substring(0, 45)}${defect.length > 45 ? '...' : ''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span><button onclick="event.stopPropagation(); deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div></div>`;
   }).join('');
 }
 function filterList() { renderList(); }
@@ -366,13 +352,42 @@ async function saveCurrentOS() { if (!currentOS) return; await DB.updateOS(curre
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${(os.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
 function printOS() { if(!currentOS) return; const os=currentOS; const w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`); w.document.close(); w.print(); }
 
+// ===== EXCLUSÃO SEGURA (OS) =====
+async function deleteOS(id) {
+  const confirmCode = prompt("Digite 77 para confirmar a exclusão");
+  if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
+  try {
+    await deleteDoc(doc(db, "os", id));
+    localOS = localOS.filter(o => o.id !== id);
+    updateStats(); renderList();
+    showToast("🗑️ OS excluída com sucesso.");
+  } catch (e) { console.error("Erro ao excluir OS:", e); alert("Erro ao excluir."); }
+}
+
+// ===== EXCLUSÃO SEGURA (CLIENTES) =====
+async function deleteClient(phone) {
+  const confirmCode = prompt("Digite 77 para confirmar a exclusão do cliente");
+  if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
+  try {
+    await deleteDoc(doc(db, "clientes", phone));
+    localClients = localClients.filter(c => c.phone !== phone);
+    renderClients();
+    updateStats();
+    console.log("Cliente removido:", phone);
+    showToast("🗑️ Cliente excluído com sucesso.");
+  } catch (e) {
+    console.error("Erro ao excluir cliente:", e);
+    alert("Erro ao excluir cliente.");
+  }
+}
+
 // ===== CLIENTS =====
 function renderClients() {
   const clients = DB.getClients(); const searchTerm = (document.getElementById('client-search')?.value || '').toLowerCase();
   const filtered = searchTerm ? clients.filter(c => (c.name||'').toLowerCase().includes(searchTerm) || (c.phone||'').includes(searchTerm)) : clients;
   const container = document.getElementById('client-list'); if (!container) return;
   if (filtered.length === 0) { container.innerHTML = `<div class="empty-state"><div class="icon">👥</div><p>${searchTerm ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}</p></div>`; return; }
-  container.innerHTML = filtered.map(c => `<div class="client-card" onclick="showClientDetail('${c.phone}')"><div class="client-card-name">${c.name||''}</div><div class="client-card-phone">📞 ${c.phone||''}</div><div class="client-card-count">${(c.history||[]).length} O.S.</div></div>`).join('');
+  container.innerHTML = filtered.map(c => `<div class="client-card" onclick="showClientDetail('${c.phone}')"><div class="client-card-name">${c.name||''}</div><div class="client-card-phone">📞 ${c.phone||''}</div><div class="client-card-count">${(c.history||[]).length} O.S.</div><button onclick="event.stopPropagation(); deleteClient('${c.phone}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div>`).join('');
 }
 function searchClients() { renderClients(); }
 function showClientDetail(phone) {
@@ -403,27 +418,6 @@ function openModal(content) { document.getElementById('modal-content').innerHTML
 function closeModal(event) { if (event.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('active'); }
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
 function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document.getElementById('global-search')?.focus(), 150); }
-
-// ===== EXCLUSÃO SEGURA (CONFIRMAÇÃO VIA CÓDIGO 77) =====
-async function deleteOS(id) {
-  const confirmCode = prompt("Digite 77 para confirmar a exclusão");
-  if (confirmCode !== "77") {
-    alert("Exclusão cancelada.");
-    return;
-  }
-
-  try {
-    await deleteDoc(doc(db, "os", id));
-    localOS = localOS.filter(o => o.id !== id);
-    updateStats();
-    renderList();
-    showToast("🗑️ OS excluída com sucesso.");
-    console.log("OS removida:", id);
-  } catch (e) {
-    console.error("Erro ao excluir OS:", e);
-    alert("Erro ao excluir. Verifique o console.");
-  }
-}
 
 // ===== INITIALIZATION =====
 async function init() {
