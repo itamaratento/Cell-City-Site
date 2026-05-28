@@ -2,124 +2,235 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Caixa - Cell City</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Caixa - Cell City CRM</title>
     <link rel="stylesheet" href="caixa.css">
 </head>
 <body>
-    <header class="caixa-header">
-        <div class="brand">💰 CAIXA CELL CITY</div>
-        <div id="connection-status" class="status-badge">⏳ Conectando...</div>
+    <!-- HEADER -->
+    <header class="header">
+        <button class="header-back" onclick="window.location.href='/CRM/index.html'">←</button>
+        <div class="header-logo">
+            <span class="header-title">💰 Caixa Operacional</span>
+        </div>
     </header>
 
-    <main class="caixa-main">
-        <!-- 1️⃣ PESQUISA (Isolada no topo) -->
-        <section class="search-section">
-            <div class="search-wrapper">
+    <!-- MAIN SCREEN -->
+    <div class="screen active" id="screen-main">
+        
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 1: PESQUISA (TOPO - SOZINHA) -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-pesquisa">
+            <div class="premium-search">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" class="search-input" placeholder="Pesquisar lançamentos, valores, categorias...">
+                <input type="text" id="searchInput" placeholder="Pesquisar lançamentos..." oninput="pesquisarLancamentos()">
             </div>
         </section>
 
-        <!-- 2️⃣ FORMULÁRIO -->
-        <section class="section-form">
-            <h3>➕ Novo Lançamento</h3>
-            <form id="tx-form" autocomplete="off">
-                <div class="grid-line">
-                    <div class="form-group">
-                        <label>Tipo</label>
-                        <select id="tx-type" required>
-                            <option value="entrada">🟢 Entrada</option>
-                            <option value="saida">🔴 Saída</option>
-                        </select>
+        <!-- ═══════════════════════════════════════ -->
+        <!-- RESULTADOS DA PESQUISA (aparece apenas quando há termo) -->
+        <!-- ═══════════════════════════════════════ -->
+        <section id="resultados-pesquisa" class="secao-resultados-pesquisa" style="display:none;">
+            <div class="form-section">
+                <div class="form-section-title">
+                    🔍 Resultados da Pesquisa
+                    <span id="contador-resultados" class="contador">0</span>
+                </div>
+                
+                <!-- Totais da Pesquisa -->
+                <div class="totais-pesquisa">
+                    <div class="total-pesquisa-item">
+                        <span class="total-label">Entradas:</span>
+                        <span class="total-valor entradas" id="total-pesquisa-entradas">R$ 0,00</span>
                     </div>
-                    <div class="form-group grow">
-                        <label>Categoria</label>
-                        <div class="cat-wrapper">
-                            <select id="tx-category" required></select>
-                            <button type="button" id="btn-add-cat" class="icon-btn" title="Nova categoria">+</button>
-                        </div>
-                        <div id="cat-inline-form" class="cat-inline-container">
-                            <input type="text" id="new-cat-input" placeholder="Nome da categoria..." autocomplete="off">
-                            <button type="button" id="btn-save-cat" class="btn-inline-save">✓</button>
-                            <button type="button" id="btn-cancel-cat" class="btn-inline-cancel">✕</button>
-                        </div>
+                    <div class="total-pesquisa-item">
+                        <span class="total-label">Saídas:</span>
+                        <span class="total-valor saidas" id="total-pesquisa-saidas">R$ 0,00</span>
+                    </div>
+                    <div class="total-pesquisa-item">
+                        <span class="total-label">Saldo:</span>
+                        <span class="total-valor saldo" id="total-pesquisa-saldo">R$ 0,00</span>
                     </div>
                 </div>
-                <div class="grid-line single">
-                    <div class="form-group">
-                        <label>Descrição</label>
-                        <input type="text" id="tx-desc" placeholder="Ex: Troca de tela iPhone 13" required autocomplete="off">
+                
+                <!-- Lista de Resultados -->
+                <div id="lista-resultados-pesquisa" class="lista-movimentacoes">
+                    <div class="empty-state">
+                        <div class="icon">🔍</div>
+                        <p>Nenhum resultado encontrado</p>
                     </div>
                 </div>
-                <div class="grid-line">
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 2: NOVO LANÇAMENTO (esconde na pesquisa) -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-lancamento secao-normal">
+            <div class="form-section">
+                <div class="form-section-title">➕ Novo Lançamento</div>
+                
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <div class="tipo-selector">
+                        <button class="tipo-btn tipo-entrada" data-tipo="entrada" onclick="selecionarTipo('entrada')">🟢 Entrada</button>
+                        <button class="tipo-btn tipo-saida" data-tipo="saida" onclick="selecionarTipo('saida')">🔴 Saída</button>
+                        <button class="tipo-btn tipo-servico" data-tipo="servico" onclick="selecionarTipo('servico')">🔵 Serviço</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição *</label>
+                    <input type="text" id="descricao" placeholder="Ex: Venda de celular Samsung" oninput="calcularLucro()">
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="categoria">
+                        <option value="">Selecione...</option>
+                    </select>
+                    <button class="btn-adicionar-categoria" onclick="adicionarNovaCategoria()">+ Nova Categoria</button>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
-                        <label>Valor Recebido (R$)</label>
-                        <input type="number" id="tx-recebido" step="0.01" min="0" placeholder="0.00" required>
+                        <label>Valor (R$) *</label>
+                        <input type="number" id="valor" placeholder="0,00" step="0.01" oninput="calcularLucro()">
                     </div>
                     <div class="form-group">
                         <label>Custo (R$)</label>
-                        <input type="number" id="tx-custo" step="0.01" min="0" placeholder="0.00">
+                        <input type="number" id="custo" placeholder="0,00" step="0.01" oninput="calcularLucro()">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Lucro (Auto) 🤖</label>
+                    <input type="text" id="lucroAuto" class="input-lucro-auto" readonly placeholder="Calculado automaticamente">
+                </div>
+
+                <div id="alertaPrejuizo" class="alerta-prejuizo" style="display:none;">
+                    ⚠️ Prejuízo nesta operação! Custo maior que valor.
+                </div>
+
+                <button class="btn-salvar" onclick="salvarLancamento()">💾 Salvar Lançamento</button>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 3: VISÃO FINANCEIRA (esconde na pesquisa) -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-visao-financeira secao-normal">
+            <div class="visao-financeira-header">
+                <h2>📊 VISÃO FINANCEIRA</h2>
+            </div>
+
+            <!-- Filtros AGORA dentro da Visão Financeira -->
+            <div class="filtros-financeiros">
+                <button class="filtro-btn active" data-periodo="todos" onclick="filtrarPorPeriodo('todos')">Todos</button>
+                <button class="filtro-btn" data-periodo="hoje" onclick="filtrarPorPeriodo('hoje')">Hoje</button>
+                <button class="filtro-btn" data-periodo="semana" onclick="filtrarPorPeriodo('semana')">Semana</button>
+                <button class="filtro-btn" data-periodo="mes" onclick="filtrarPorPeriodo('mes')">Mês</button>
+            </div>
+
+            <!-- Cards Financeiros -->
+            <div class="cards-financeiros">
+                <div class="card-financeiro card-saldo">
+                    <div class="card-label">Saldo Geral</div>
+                    <div class="card-valor" id="saldoGeral">R$ 0,00</div>
+                </div>
+                <div class="card-financeiro card-entradas">
+                    <div class="card-label">🟢 Entradas</div>
+                    <div class="card-valor" id="totalEntradas">R$ 0,00</div>
+                </div>
+                <div class="card-financeiro card-saidas">
+                    <div class="card-label">🔴 Saídas</div>
+                    <div class="card-valor" id="totalSaidas">R$ 0,00</div>
+                </div>
+                <div class="card-financeiro card-lucro">
+                    <div class="card-label">💎 Lucro</div>
+                    <div class="card-valor" id="totalLucro">R$ 0,00</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 4: MOVIMENTAÇÕES (esconde na pesquisa) -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-movimentacoes secao-normal">
+            <div class="form-section">
+                <div class="form-section-title">📋 MOVIMENTAÇÕES <span id="contadorLancamentos" class="contador">0</span></div>
+                <div id="listaMovimentacoes" class="lista-movimentacoes">
+                    <div class="empty-state">
+                        <div class="icon">📊</div>
+                        <p>Nenhum lançamento encontrado</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL DE EDIÇÃO -->
+    <div id="modalEdicao" class="modal-edicao">
+        <div class="modal-edicao-content">
+            <div class="modal-edicao-header">
+                <h3>✏️ Editar Lançamento</h3>
+                <button class="modal-close" onclick="fecharModalEdicao()">✕</button>
+            </div>
+            
+            <div class="modal-edicao-body">
+                <input type="hidden" id="editId">
+                
+                <div class="form-group">
+                    <label>Tipo *</label>
+                    <div class="tipo-selector">
+                        <button class="tipo-btn tipo-entrada" data-tipo="entrada" onclick="selecionarTipoEdicao('entrada')">🟢 Entrada</button>
+                        <button class="tipo-btn tipo-saida" data-tipo="saida" onclick="selecionarTipoEdicao('saida')">🔴 Saída</button>
+                        <button class="tipo-btn tipo-servico" data-tipo="servico" onclick="selecionarTipoEdicao('servico')">🔵 Serviço</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição *</label>
+                    <input type="text" id="editDescricao" placeholder="Descrição">
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="editCategoria">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Valor (R$) *</label>
+                        <input type="number" id="editValor" placeholder="0,00" step="0.01">
                     </div>
                     <div class="form-group">
-                        <label>Lucro (Auto)</label>
-                        <input type="text" id="tx-lucro" readonly class="readonly-field" value="R$ 0,00">
+                        <label>Custo (R$)</label>
+                        <input type="number" id="editCusto" placeholder="0,00" step="0.01">
                     </div>
                 </div>
-                <button type="submit" id="save-btn" class="btn-save">💾 SALVAR LANÇAMENTO</button>
-            </form>
-        </section>
 
-        <!-- 3️⃣ FILTROS DE PERÍODO + CARDS FINANCEIROS (Agrupados) -->
-        <section class="financial-section">
-            <div class="financial-header">
-                <span class="financial-label">📅 Visão Financeira</span>
-                <div class="filter-row">
-                    <button class="filter-btn active" data-period="today">Hoje</button>
-                    <button class="filter-btn" data-period="week">Semana</button>
-                    <button class="filter-btn" data-period="month">Mês</button>
-                    <button class="filter-btn" data-period="custom">Personalizado</button>
+                <div class="form-group">
+                    <label>Lucro (Auto) 🤖</label>
+                    <input type="text" id="editLucroAuto" class="input-lucro-auto" readonly>
                 </div>
-            </div>
-            <div id="custom-dates-wrapper" class="custom-dates">
-                <input type="date" id="date-start">
-                <span class="separator">até</span>
-                <input type="date" id="date-end">
+
+                <div id="editHistorico" class="edit-historico"></div>
             </div>
 
-            <div class="caixa-summary">
-                <div class="summary-card">
-                    <span class="label">🟢 ENTRADAS</span>
-                    <span id="total-entradas" class="value positive">R$ 0,00</span>
-                </div>
-                <div class="summary-card">
-                    <span class="label">🔴 SAÍDAS</span>
-                    <span id="total-saidas" class="value negative">R$ 0,00</span>
-                </div>
-                <div class="summary-card">
-                    <span class="label">🔵 LUCRO</span>
-                    <span id="total-lucro" class="value profit">R$ 0,00</span>
-                </div>
-                <div class="summary-card highlight">
-                    <span class="label">💰 SALDO GERAL</span>
-                    <span id="saldo-geral" class="value balance">R$ 0,00</span>
-                </div>
+            <div class="modal-edicao-footer">
+                <button class="btn-cancelar" onclick="fecharModalEdicao()">Cancelar</button>
+                <button class="btn-salvar-edicao" onclick="salvarEdicao()">💾 Salvar Alterações</button>
             </div>
-        </section>
+        </div>
+    </div>
 
-        <!-- 4️⃣ LISTA -->
-        <section class="section-list">
-            <div class="list-header">
-                <h3>📜 MOVIMENTAÇÕES</h3>
-                <span id="tx-count" class="list-badge">0 itens</span>
-            </div>
-            <div id="tx-list" class="tx-list">
-                <div class="empty-state">Aguardando dados...</div>
-            </div>
-        </section>
-    </main>
+    <!-- TOAST -->
+    <div id="toast" class="premium-toast"></div>
 
-    <div id="toast" class="toast"></div>
     <script type="module" src="caixa.js"></script>
 </body>
 </html>
