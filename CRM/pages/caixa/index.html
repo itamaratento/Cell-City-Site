@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Caixa - Cell City</title>
+    <link rel="stylesheet" href="caixa.css">
+</head>
+<body>
+    <header class="caixa-header">
+        <div class="brand">💰 CAIXA CELL CITY</div>
+        <div id="connection-status" class="status-badge">⏳ Conectando...</div>
+    </header>
+
+    <main class="caixa-main">
+        <!-- 1️⃣ CENTRAL DE CONSULTA (TOPO) -->
+        <section class="consultation-section">
+            <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="search-input" class="search-input" placeholder="Pesquisar lançamentos, valores, datas...">
+            </div>
+            
+            <div class="filter-row">
+                <button class="filter-btn active" data-period="today">Hoje</button>
+                <button class="filter-btn" data-period="week">Semana</button>
+                <button class="filter-btn" data-period="month">Mês</button>
+                <button class="filter-btn" data-period="custom">Personalizado</button>
+            </div>
+
+            <div id="custom-dates-wrapper" class="custom-dates">
+                <input type="date" id="date-start">
+                <span class="separator">até</span>
+                <input type="date" id="date-end">
+            </div>
+        </section>
+
+        <!-- 2️⃣ NOVO LANÇAMENTO -->
+        <section class="section-form">
+            <h3>➕ Novo Lançamento</h3>
+            <form id="tx-form" autocomplete="off">
+                <div class="grid-line">
+                    <div class="form-group">
+                        <label>Tipo</label>
+                        <select id="tx-type" required>
+                            <option value="entrada">🟢 Entrada</option>
+                            <option value="saida">🔴 Saída</option>
+                        </select>
+                    </div>
+                    <div class="form-group grow">
+                        <label>Categoria</label>
+                        <div class="cat-wrapper">
+                            <select id="tx-category" required></select>
+                            <button type="button" id="btn-add-cat" class="icon-btn" title="Nova categoria">+</button>
+                        </div>
+                        <div id="cat-inline-form" class="cat-inline-container">
+                            <input type="text" id="new-cat-input" placeholder="Nome da categoria..." autocomplete="off">
+                            <button type="button" id="btn-save-cat" class="btn-inline-save">✓</button>
+                            <button type="button" id="btn-cancel-cat" class="btn-inline-cancel">✕</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid-line single">
+                    <div class="form-group">
+                        <label>Descrição</label>
+                        <input type="text" id="tx-desc" placeholder="Ex: Troca de tela iPhone 13" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="grid-line">
+                    <div class="form-group">
+                        <label>Valor Recebido (R$)</label>
+                        <input type="number" id="tx-recebido" step="0.01" min="0" placeholder="0.00" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Custo (R$)</label>
+                        <input type="number" id="tx-custo" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Lucro (Auto)</label>
+                        <input type="text" id="tx-lucro" readonly class="readonly-field" value="R$ 0,00">
+                    </div>
+                </div>
+                <button type="submit" id="save-btn" class="btn-save">💾 SALVAR LANÇAMENTO</button>
+            </form>
+        </section>
+
+        <!-- 3️⃣ CARDS DINÂMICOS -->
+        <section class="caixa-summary">
+            <div class="summary-card">
+                <span class="label">🟢 ENTRADAS</span>
+                <span id="total-entradas" class="value positive">R$ 0,00</span>
+            </div>
+            <div class="summary-card">
+                <span class="label">🔴 SAÍDAS</span>
+                <span id="total-saidas" class="value negative">R$ 0,00</span>
+            </div>
+            <div class="summary-card">
+                <span class="label">🔵 LUCRO</span>
+                <span id="total-lucro" class="value profit">R$ 0,00</span>
+            </div>
+            <div class="summary-card highlight">
+                <span class="label">💰 SALDO GERAL</span>
+                <span id="saldo-geral" class="value balance">R$ 0,00</span>
+            </div>
+        </section>
+
+        <!-- 4️⃣ LISTAGEM -->
+        <section class="section-list">
+            <div class="list-header">
+                <h3>📜 RESULTADOS DA CONSULTA</h3>
+                <span id="tx-count" class="list-badge">0 itens</span>
+            </div>
+            <div id="tx-list" class="tx-list">
+                <div class="empty-state">Aguardando dados...</div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast"></div>
+    <script type="module" src="caixa.js"></script>
+</body>
+</html>
