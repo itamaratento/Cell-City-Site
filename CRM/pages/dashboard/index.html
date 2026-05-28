@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cell City — CRM Operacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+<!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
+<header class="top-bar">
+  <div class="top-meta-left">
+    <!-- LOGO INSTITUCIONAL RESTAURADA -->
+    <div class="brand-header" id="brand-header" title="Cell City Informática">
+      <div class="brand-header-text">
+        <div class="brand-header-title">Cell City Informática</div>
+        <div class="brand-header-divider"></div>
+        <div class="brand-header-subtitle">CRM Operacional</div>
+      </div>
+    </div>
+    <button class="meta-date" id="date-display" title="Abrir calendário">
+      <span id="date-text">--/--/----</span>
+    </button>
+  </div>
+
+  <div class="global-search-wrapper">
+    <div class="global-search" id="global-search">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="global-search-input" placeholder="Buscar OS, clientes, produtos, módulos..." autocomplete="off">
+      <kbd class="search-kbd">⌘K</kbd>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+
+  <div class="top-meta-right">
+    <span class="meta-clock" id="clock-display">🕒 --:--</span>
+    <span class="status-pill online">Online</span>
+  </div>
+</header>
+
+<!-- ========== MINI CALENDÁRIO POPUP ========== -->
+<div class="calendar-popup" id="calendar-popup">
+  <div class="calendar-header">
+    <button class="cal-nav" id="cal-prev">‹</button>
+    <div class="cal-title" id="cal-title">Mês Ano</div>
+    <button class="cal-nav" id="cal-next">›</button>
+  </div>
+  <div class="cal-weekdays">
+    <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+  <div class="cal-note-area" id="cal-note-area" style="display:none;">
+    <div class="cal-note-label">Nota para <span id="cal-note-date">--/--</span>:</div>
+    <textarea id="cal-note-input" rows="2" placeholder="Escreva uma anotação..."></textarea>
+  </div>
+</div>
+
+<!-- ========== WORKSPACE PRINCIPAL ========== -->
+<main class="workspace">
+
+  <!-- ========== GRID 3x3 APROVADO ========== -->
+  <section class="ops-block">
+
+    <!-- LINHA 1 -->
+    <div class="module-card" data-module="os">
+      <div class="module-icon">📦</div>
+      <div class="module-info">
+        <h3>Ordem de Serviço</h3>
+        <p class="module-sub">Gestão técnica</p>
+      </div>
+      <div class="module-indicator live"></div>
+    </div>
+
+    <!-- PAINEL DE ALERTAS OPERACIONAIS -->
+    <div class="module-card alerts-card">
+      <div class="alerts-header">
+        <div class="alerts-icon">⚠️</div>
+        <div class="alerts-info">
+          <h3>Alertas Operacionais</h3>
+          <p class="module-sub">OS • Pós-venda • Clientes</p>
+        </div>
+      </div>
+      <div class="alerts-carousel">
+        <span class="alert-dot"></span>
+        <span class="alert-text" id="alert-text">Carregando alertas...</span>
+      </div>
+    </div>
+
+    <div class="module-card meta-card">
+      <div class="meta-top">
+        <span class="meta-label">📈 Meta Semanal</span>
+        <span class="meta-percent" id="meta-percent">0%</span>
+      </div>
+      <div class="meta-value-row">
+        <span class="meta-current" id="meta-current">R$ 0</span>
+        <span class="meta-divider">/</span>
+        <span class="meta-goal" id="meta-goal">R$ 0</span>
+      </div>
+      <div class="meta-progress-track">
+        <div class="meta-progress-fill" id="meta-progress" style="width: 0%"></div>
+      </div>
+      <div class="meta-footer">
+        ⚠ Faltam <span class="meta-remaining" id="meta-remaining">R$ 0</span>
+      </div>
+    </div>
+
+    <!-- LINHA 2 -->
+    <div class="module-card" data-module="caixa">
+      <div class="module-icon">💰</div>
+      <div class="module-info">
+        <h3>Caixa</h3>
+        <p class="module-sub">Fluxo financeiro</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="estoque">
+      <div class="module-icon">📱</div>
+      <div class="module-info">
+        <h3>Estoque</h3>
+        <p class="module-sub">Peças e produtos</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="pos-venda">
+      <div class="module-icon">📦</div>
+      <div class="module-info">
+        <h3>Pós-venda</h3>
+        <p class="module-sub">Fidelização & Garantia</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <!-- LINHA 3 -->
+    <div class="module-card" data-module="clientes">
+      <div class="module-icon">👥</div>
+      <div class="module-info">
+        <h3>Clientes</h3>
+        <p class="module-sub">Base de contato</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="analise">
+      <div class="module-icon">📊</div>
+      <div class="module-info">
+        <h3>Análise</h3>
+        <p class="module-sub">Desempenho operacional</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="campanhas">
+      <div class="module-icon">📣</div>
+      <div class="module-info">
+        <h3>Campanhas</h3>
+        <p class="module-sub">Automação & Robôs</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+  </section>
+
+  <!-- ========== ASSISTENTE IA ========== -->
+  <section class="ai-panel" id="ai-panel">
+    <div class="ai-header" id="ai-header">
+      <div class="ai-title-group">
+        <span class="ai-dot"></span>
+        <span class="ai-title">Assistente Cell City</span>
+        <span class="ai-subtitle">IA Operacional</span>
+      </div>
+      <div class="ai-header-actions">
+        <button class="ai-action-btn" id="ai-clear" title="Limpar conversa">🗑️</button>
+        <button class="ai-action-btn" id="ai-config" title="Configurações">⚙️</button>
+        <button class="ai-toggle" id="ai-toggle" title="Minimizar">⌄</button>
+      </div>
+    </div>
+    <div class="ai-body">
+      <div class="ai-messages" id="ai-messages">
+        <div class="ai-empty-state">
+          <div class="ai-empty-icon">✨</div>
+          <h4>Como posso ajudar hoje?</h4>
+          <p>Analiso OS, clientes, estratégias e dados operacionais da Cell City.</p>
+        </div>
+      </div>
+      <div class="ai-input-area">
+        <input type="text" id="ai-input" placeholder="Pergunte algo sobre sua operação...">
+        <button class="ai-send-btn" id="ai-send" title="Enviar">➤</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ========== DOCK LATERAL DIREITA (COM FERRAMENTAS) ========== -->
+<aside class="dock">
+  <a href="https://web.whatsapp.com" class="dock-item" target="_blank" data-tooltip="WhatsApp">
+    <span class="dock-icon">💬</span>
+  </a>
+  <a href="https://mail.google.com" class="dock-item" target="_blank" data-tooltip="Gmail">
+    <span class="dock-icon">📧</span>
+  </a>
+  <a href="https://drive.google.com" class="dock-item" target="_blank" data-tooltip="Drive">
+    <span class="dock-icon">☁️</span>
+  </a>
+  <a href="https://keep.google.com" class="dock-item" target="_blank" data-tooltip="Keep">
+    <span class="dock-icon">📝</span>
+  </a>
+  <a href="https://calendar.google.com" class="dock-item" target="_blank" data-tooltip="Agenda">
+    <span class="dock-icon">📅</span>
+  </a>
+  <a href="https://chat.openai.com" class="dock-item" target="_blank" data-tooltip="ChatGPT">
+    <span class="dock-icon">🤖</span>
+  </a>
+  <!-- FERRAMENTAS RESTAURADO NA DOCK -->
+  <a href="#" class="dock-item dock-item-tools" id="dock-ferramentas" data-tooltip="Ferramentas">
+    <span class="dock-icon">⚙️</span>
+  </a>
+</aside>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
