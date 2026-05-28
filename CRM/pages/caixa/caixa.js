@@ -3,8 +3,8 @@ import { db, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, ser
 // ===== CONFIG & STATE =====
 const COLLECTION_TX = "caixa_lancamentos";
 const COLLECTION_CAT = "categorias_caixa";
-let allTx = []; // Master list from Firestore
-let currentPeriod = 'week'; // Default filter
+let allTx = []; // Cache local para filtros rápidos
+let currentPeriod = 'week';
 let customStart = null, customEnd = null;
 let unsubscribeTx = null, unsubscribeCat = null;
 
@@ -20,8 +20,6 @@ const DEFAULT_CATS = {
     saida: ["Fornecedor", "Compra de peças", "Aluguel", "Água", "Luz", "Internet", "Telefone", "Gasolina", "Mercado", "Despesa geral", "Outros"]
 };
 
-const MONTH_NAMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-
 // ===== UTILS =====
 const fmt = (v) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 const safeDate = (ts) => new Date(ts?.toDate?.() || ts || Date.now());
@@ -36,6 +34,7 @@ function updateStatus(connected) {
     el.textContent = connected ? "✅ ONLINE" : "⏳ CONECTANDO...";
     el.classList.toggle("connected", connected);
 }
+function debounce(fn, ms) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); }; }
 
 // ===== CATEGORIAS =====
 function loadCategories() {
@@ -46,7 +45,6 @@ function loadCategories() {
         handleTypeChange(cats);
     });
 }
-
 function handleTypeChange(cats = null) {
     const typeEl = document.getElementById("tx-type");
     const catEl = document.getElementById("tx-category");
@@ -57,12 +55,11 @@ function handleTypeChange(cats = null) {
     (activeCats[typeEl.value] || []).forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c; catEl.appendChild(o); });
     if ([...catEl.options].some(o => o.value === currentCat)) catEl.value = currentCat;
     
-    // Auto-type set
     const autoType = CAT_TYPE_MAP[catEl.value];
     if (autoType) { typeEl.value = autoType; handleTypeChange(null); }
 }
 
-// Inline Category Form Logic
+// Inline Category Form
 const btnAdd = document.getElementById("btn-add-cat");
 const inlineForm = document.getElementById("cat-inline-form");
 const newCatInput = document.getElementById("new-cat-input");
@@ -79,32 +76,16 @@ if (btnAdd) {
     });
 }
 
-// ===== PESQUISA & FILTROS INTELIGENTES =====
-function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+// ===== PESQUISA (Independente) =====
+document.getElementById("search-input").addEventListener("input", debounce(applyFilters, 150));
 
-document.getElementById("search-input").addEventListener("input", debounce(applyFilters, 200));
-
+// ===== FILTROS DE PERÍODO (Ligados aos Cards) =====
 document.querySelectorAll(".filter-btn").forEach(btn => {
     btn.addEventListener("click", () => {
         document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         currentPeriod = btn.dataset.period;
-        
-        // Toggle custom date picker
-        const customWrap = document.getElementById("custom-dates-wrapper");
-        if (currentPeriod === 'custom') {
-            customWrap.classList.add("visible");
-            // Default to current month if empty
-            if(!customStart) {
-                const today = new Date();
-                const d = today.toISOString().split('T')[0];
-                customStart = d; customEnd = d;
-                document.getElementById("date-start").value = d;
-                document.getElementById("date-end").value = d;
-            }
-        } else {
-            customWrap.classList.remove("visible");
-        }
+        document.getElementById("custom-dates-wrapper").classList.toggle("visible", currentPeriod === "custom");
         applyFilters();
     });
 });
@@ -114,10 +95,9 @@ document.getElementById("date-end").addEventListener("change", (e) => { customEn
 
 function applyFilters() {
     let result = [...allTx];
-
-    // 1. Filter by Period (Date)
-    const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
+    // 1. Aplicar filtro de período aos dados
+    const now = new Date(); const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     result = result.filter(tx => {
         const txDate = safeDate(tx.timestamp);
         if (currentPeriod === 'today') return txDate >= todayStart;
@@ -136,28 +116,20 @@ function applyFilters() {
         return true;
     });
 
-    // 2. Filter by Search (Text/Number)
+    // 2. Aplicar busca textual (independente do período)
     const q = document.getElementById("search-input").value.toLowerCase().trim();
     if (q) {
         result = result.filter(tx => {
-            // Search Text (Description, Category)
-            if ((tx.description||'').toLowerCase().includes(q)) return true;
-            if ((tx.category||'').toLowerCase().includes(q)) return true;
-            if ((tx.type||'').toLowerCase().includes(q)) return true;
-            
-            // Search Value (Convert number to string)
-            if (tx.recebido && String(tx.recebido).replace('.',',').includes(q)) return true;
-            if (tx.lucro && String(tx.lucro).replace('.',',').includes(q)) return true;
-            
-            // Search Month Name
-            const m = MONTH_NAMES[safeDate(tx.timestamp).getMonth()].toLowerCase();
-            if (m.includes(q)) return true;
-            
-            return false;
+            return (tx.description||'').toLowerCase().includes(q) || 
+                   (tx.category||'').toLowerCase().includes(q) || 
+                   (tx.type||'').toLowerCase().includes(q) ||
+                   String(tx.recebido || 0).replace('.',',').includes(q) ||
+                   String(tx.lucro || 0).replace('.',',').includes(q);
         });
     }
 
-    renderList(result); updateTotals(result);
+    renderList(result);
+    updateTotals(result); // Cards atualizam com base no período + busca
 }
 
 // ===== RENDERIZAÇÃO =====
@@ -166,7 +138,7 @@ function loadTransactions() {
     const q = query(collection(db, COLLECTION_TX), orderBy("serverTimestamp", "desc"));
     unsubscribeTx = onSnapshot(q, (snap) => {
         allTx = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        updateStatus(true); applyFilters(); // Re-apply current filters/sort on new data
+        updateStatus(true); applyFilters();
     }, () => updateStatus(false));
 }
 
@@ -229,7 +201,7 @@ async function saveTransaction(e) {
         });
         showToast("✅ Lançamento salvo com sucesso");
         document.getElementById("tx-form").reset(); document.getElementById("tx-lucro").value = "R$ 0,00";
-        handleTypeChange(); // Reset category select based on type
+        handleTypeChange();
     } catch(err) { showToast("❌ Falha ao salvar", "error"); }
     finally { btn.disabled = false; btn.textContent = "💾 SALVAR LANÇAMENTO"; }
 }
@@ -248,5 +220,5 @@ document.addEventListener("DOMContentLoaded", () => {
     ["tx-recebido", "tx-custo"].forEach(id => document.getElementById(id).addEventListener("input", calcLucro));
     
     loadCategories(); loadTransactions();
-    console.log("✅ Caixa V4 Inicializado. Consulta e Pesquisa Inteligentes Ativas.");
+    console.log("✅ Caixa V5 Inicializado. Separação UX Pesquisa/Filtros concluída.");
 });

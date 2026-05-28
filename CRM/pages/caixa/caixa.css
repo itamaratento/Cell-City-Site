@@ -35,39 +35,19 @@ body {
 
 .caixa-main { padding: 16px; display: flex; flex-direction: column; gap: 16px; max-width: 800px; margin: 0 auto; }
 
-/* 1️⃣ CONSULTA SECTION (NOVA PRIORIDADE) */
-.consultation-section { 
-    background: var(--surface); border: 1px solid var(--border); 
-    border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; 
-    transition: border-color 0.3s;
-}
-.consultation-section:focus-within { border-color: var(--blue); box-shadow: 0 4px 16px rgba(59,130,246,0.1); }
-
+/* 1️⃣ PESQUISA ISOLADA */
+.search-section { padding: 2px; }
 .search-wrapper { position: relative; }
-.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.5; }
+.search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.5; pointer-events: none; }
 .search-input { 
-    width: 100%; padding: 12px 12px 12px 38px; background: var(--bg); 
-    border: 1px solid var(--border); border-radius: 8px; color: var(--text); 
-    font-size: 15px; font-weight: 500; transition: all 0.2s;
+    width: 100%; padding: 12px 12px 12px 40px; background: var(--surface); 
+    border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); 
+    font-size: 14px; font-weight: 500; transition: all 0.2s;
 }
-.search-input:focus { background: #0f1218; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
-.search-input::placeholder { color: var(--text-muted); font-weight: 400; font-size: 14px; }
+.search-input:focus { background: #12151c; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+.search-input::placeholder { color: var(--text-muted); font-weight: 400; }
 
-.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
-.filter-btn { 
-    flex: 1; padding: 8px 10px; background: var(--surface-hover); border: 1px solid var(--border); 
-    border-radius: 6px; color: var(--text-muted); font-size: 11px; font-weight: 600; 
-    cursor: pointer; transition: 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
-}
-.filter-btn:hover { border-color: var(--text-muted); color: var(--text); }
-.filter-btn.active { background: var(--blue); color: #000; border-color: var(--blue); box-shadow: 0 2px 6px rgba(59,130,246,0.25); }
-
-.custom-dates { display: flex; gap: 8px; align-items: center; max-height: 0; opacity: 0; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.custom-dates.visible { max-height: 40px; opacity: 1; padding-top: 4px; }
-.custom-dates input[type="date"] { padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 12px; color-scheme: dark; flex: 1; }
-.custom-dates .separator { color: var(--text-muted); font-size: 11px; }
-
-/* FORMULÁRIO */
+/* 2️⃣ FORMULÁRIO */
 .section-form { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
 .section-form h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 14px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .grid-line { display: grid; grid-template-columns: 1fr 1.5fr 1.5fr; gap: 12px; margin-bottom: 12px; }
@@ -91,20 +71,42 @@ body {
 .btn-save:hover { filter: brightness(1.05); transform: translateY(-1px); }
 .btn-save:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-/* CARDS & LISTA */
-.caixa-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+/* 3️⃣ SEÇÃO FINANCEIRA (Filtros + Cards) */
+.financial-section { 
+    background: var(--surface); border: 1px solid var(--border); 
+    border-radius: var(--radius); padding: 14px; display: flex; flex-direction: column; gap: 12px; 
+}
+.financial-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.financial-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter-btn { 
+    padding: 7px 10px; background: var(--surface-hover); border: 1px solid var(--border); 
+    border-radius: 5px; color: var(--text-muted); font-size: 11px; font-weight: 600; 
+    cursor: pointer; transition: 0.15s; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.filter-btn:hover { border-color: var(--text-muted); color: var(--text); }
+.filter-btn.active { background: var(--blue); color: #000; border-color: var(--blue); box-shadow: 0 2px 6px rgba(59,130,246,0.25); }
+.custom-dates { display: flex; gap: 8px; align-items: center; max-height: 0; opacity: 0; overflow: hidden; transition: 0.3s; padding-top: 0; }
+.custom-dates.visible { max-height: 40px; opacity: 1; padding-top: 8px; }
+.custom-dates input[type="date"] { padding: 6px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 5px; color: var(--text); font-size: 12px; color-scheme: dark; flex: 1; }
+.custom-dates .separator { color: var(--text-muted); font-size: 11px; }
+
+.caixa-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 4px; }
+.summary-card { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; transition: 0.2s; }
+.summary-card:hover { border-color: #3a404c; }
 .summary-card .label { font-size: 9px; color: var(--text-muted); letter-spacing: 0.5px; font-weight: 600; }
 .summary-card .value { font-size: 16px; font-weight: 700; font-family: var(--font-tech); }
 .positive { color: var(--green); } .negative { color: var(--red); } .profit { color: var(--blue); }
 .summary-card.highlight { background: linear-gradient(135deg, #1a202c, #151a24); border: 1px solid var(--blue); padding: 14px; }
+.summary-card.highlight .label { color: #93c5fd; }
 .summary-card.highlight .value { font-size: 20px; color: var(--blue); }
 
+/* 4️⃣ LISTA */
 .section-list { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; flex: 1; }
 .list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 0 2px; }
 .list-header h3 { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 .list-badge { font-size: 10px; background: var(--surface-hover); padding: 2px 8px; border-radius: 4px; color: var(--text-muted); font-family: var(--font-tech); }
-.tx-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; scrollbar-width: thin; }
+.tx-list { display: flex; flex-direction: column; gap: 6px; max-height: 300px; overflow-y: auto; scrollbar-width: thin; }
 .tx-list::-webkit-scrollbar { width: 4px; }
 .tx-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .tx-card { background: var(--bg); padding: 10px 12px; border-radius: 6px; border-left: 3px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: 0.15s; }
@@ -134,5 +136,6 @@ body {
     .grid-line { grid-template-columns: 1fr; }
     .caixa-summary { grid-template-columns: repeat(2, 1fr); }
     .summary-card.highlight { grid-column: span 2; }
-    .filter-btn { min-width: 60px; }
+    .financial-header { flex-direction: column; align-items: flex-start; }
+    .filter-btn { flex: 1; min-width: 60px; }
 }

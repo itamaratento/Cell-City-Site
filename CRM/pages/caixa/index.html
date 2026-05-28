@@ -13,28 +13,15 @@
     </header>
 
     <main class="caixa-main">
-        <!-- 1️⃣ CENTRAL DE CONSULTA (TOPO) -->
-        <section class="consultation-section">
+        <!-- 1️⃣ PESQUISA (Isolada no topo) -->
+        <section class="search-section">
             <div class="search-wrapper">
                 <span class="search-icon">🔍</span>
-                <input type="text" id="search-input" class="search-input" placeholder="Pesquisar lançamentos, valores, datas...">
-            </div>
-            
-            <div class="filter-row">
-                <button class="filter-btn active" data-period="today">Hoje</button>
-                <button class="filter-btn" data-period="week">Semana</button>
-                <button class="filter-btn" data-period="month">Mês</button>
-                <button class="filter-btn" data-period="custom">Personalizado</button>
-            </div>
-
-            <div id="custom-dates-wrapper" class="custom-dates">
-                <input type="date" id="date-start">
-                <span class="separator">até</span>
-                <input type="date" id="date-end">
+                <input type="text" id="search-input" class="search-input" placeholder="Pesquisar lançamentos, valores, categorias...">
             </div>
         </section>
 
-        <!-- 2️⃣ NOVO LANÇAMENTO -->
+        <!-- 2️⃣ FORMULÁRIO -->
         <section class="section-form">
             <h3>➕ Novo Lançamento</h3>
             <form id="tx-form" autocomplete="off">
@@ -83,30 +70,47 @@
             </form>
         </section>
 
-        <!-- 3️⃣ CARDS DINÂMICOS -->
-        <section class="caixa-summary">
-            <div class="summary-card">
-                <span class="label">🟢 ENTRADAS</span>
-                <span id="total-entradas" class="value positive">R$ 0,00</span>
+        <!-- 3️⃣ FILTROS DE PERÍODO + CARDS FINANCEIROS (Agrupados) -->
+        <section class="financial-section">
+            <div class="financial-header">
+                <span class="financial-label">📅 Visão Financeira</span>
+                <div class="filter-row">
+                    <button class="filter-btn active" data-period="today">Hoje</button>
+                    <button class="filter-btn" data-period="week">Semana</button>
+                    <button class="filter-btn" data-period="month">Mês</button>
+                    <button class="filter-btn" data-period="custom">Personalizado</button>
+                </div>
             </div>
-            <div class="summary-card">
-                <span class="label">🔴 SAÍDAS</span>
-                <span id="total-saidas" class="value negative">R$ 0,00</span>
+            <div id="custom-dates-wrapper" class="custom-dates">
+                <input type="date" id="date-start">
+                <span class="separator">até</span>
+                <input type="date" id="date-end">
             </div>
-            <div class="summary-card">
-                <span class="label">🔵 LUCRO</span>
-                <span id="total-lucro" class="value profit">R$ 0,00</span>
-            </div>
-            <div class="summary-card highlight">
-                <span class="label">💰 SALDO GERAL</span>
-                <span id="saldo-geral" class="value balance">R$ 0,00</span>
+
+            <div class="caixa-summary">
+                <div class="summary-card">
+                    <span class="label">🟢 ENTRADAS</span>
+                    <span id="total-entradas" class="value positive">R$ 0,00</span>
+                </div>
+                <div class="summary-card">
+                    <span class="label">🔴 SAÍDAS</span>
+                    <span id="total-saidas" class="value negative">R$ 0,00</span>
+                </div>
+                <div class="summary-card">
+                    <span class="label">🔵 LUCRO</span>
+                    <span id="total-lucro" class="value profit">R$ 0,00</span>
+                </div>
+                <div class="summary-card highlight">
+                    <span class="label">💰 SALDO GERAL</span>
+                    <span id="saldo-geral" class="value balance">R$ 0,00</span>
+                </div>
             </div>
         </section>
 
-        <!-- 4️⃣ LISTAGEM -->
+        <!-- 4️⃣ LISTA -->
         <section class="section-list">
             <div class="list-header">
-                <h3>📜 RESULTADOS DA CONSULTA</h3>
+                <h3>📜 MOVIMENTAÇÕES</h3>
                 <span id="tx-count" class="list-badge">0 itens</span>
             </div>
             <div id="tx-list" class="tx-list">
