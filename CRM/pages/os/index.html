@@ -8,22 +8,18 @@
     <script type="module" src="os.js"></script>
 </head>
 <body>
-    <!-- HEADER -->
     <header class="header" id="mainHeader" style="display:none;">
         <button class="header-back" id="backBtn" onclick="goBack()">←</button>
-        <!-- ALTERAÇÃO: onclick adicionado para retornar ao dashboard -->
         <div class="header-logo" onclick="showScreen('home')">
             <img src="../../assets/logo.png" alt="Cell City" class="header-logo-img">
         </div>
     </header>
 
-    <!-- HOME -->
     <div class="screen active" id="screen-home">
         <div class="home-hero">
             <img src="../../assets/logo-large.png" alt="Cell City" class="home-logo-official">
             <div class="hero-subtitle">Sistema de Assistência Técnica</div>
         </div>
-
         <div class="home-top-search">
             <div class="premium-search" onclick="openGlobalSearch()">
                 <span class="search-icon">🔍</span>
@@ -31,7 +27,6 @@
             </div>
             <div class="premium-stats" id="statsBar"></div>
         </div>
-
         <div class="premium-cards">
             <div class="home-card card-nova-os" onclick="showScreen('category')">
                 <div class="icon">🔧</div>
@@ -54,60 +49,36 @@
         </div>
     </div>
 
-    <!-- CATEGORY -->
     <div class="screen" id="screen-category">
         <div class="form-section">
             <div class="form-section-title">📱 Selecione a categoria</div>
             <div class="category-grid">
                 <div class="category-card" onclick="startOS('celular')">
                     <div class="cat-icon">📱</div>
-                    <div class="cat-info">
-                        <h3>Celular</h3>
-                        <p>Smartphones e tablets</p>
-                    </div>
+                    <div class="cat-info"><h3>Celular</h3><p>Smartphones e tablets</p></div>
                 </div>
                 <div class="category-card" onclick="startOS('notebook')">
                     <div class="cat-icon">💻</div>
-                    <div class="cat-info">
-                        <h3>Notebook</h3>
-                        <p>Laptops e ultrabooks</p>
-                    </div>
+                    <div class="cat-info"><h3>Notebook</h3><p>Laptops e ultrabooks</p></div>
                 </div>
                 <div class="category-card" onclick="startOS('impressora')">
                     <div class="cat-icon">🖨️</div>
-                    <div class="cat-info">
-                        <h3>Impressora</h3>
-                        <p>Inkjet, laser e jato de tinta</p>
-                    </div>
+                    <div class="cat-info"><h3>Impressora</h3><p>Inkjet, laser e jato de tinta</p></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- FORM -->
     <div class="screen" id="screen-form">
         <div class="form-section">
             <div class="form-section-title">👤 Dados do Cliente</div>
-            <div class="form-group">
-                <label>Nome <span class="optional">*</span></label>
-                <input type="text" id="f-nome" required>
-            </div>
-            <div class="form-group">
-                <label>Telefone <span class="optional">*</span></label>
-                <input type="tel" id="f-telefone" required>
-            </div>
+            <div class="form-group"><label>Nome <span class="optional">*</span></label><input type="text" id="f-nome" required></div>
+            <div class="form-group"><label>Telefone <span class="optional">*</span></label><input type="tel" id="f-telefone" required></div>
         </div>
-
         <div class="form-section">
             <div class="form-section-title">📱 Dados do Aparelho</div>
-            <div class="form-group">
-                <label>Modelo <span class="optional">*</span></label>
-                <input type="text" id="f-modelo" required>
-            </div>
-            <div class="form-group">
-                <label>Defeito relatado <span class="optional">*</span></label>
-                <textarea id="f-defeito" rows="3" required></textarea>
-            </div>
+            <div class="form-group"><label>Modelo <span class="optional">*</span></label><input type="text" id="f-modelo" required></div>
+            <div class="form-group"><label>Defeito relatado <span class="optional">*</span></label><textarea id="f-defeito" rows="3" required></textarea></div>
         </div>
 
         <div class="form-section">
@@ -122,6 +93,8 @@
                     <option value="Numerica">Numérica</option>
                     <option value="Padrao">Padrão</option>
                     <option value="Biometria">Biometria</option>
+                    <option value="Face ID">Face ID</option>
+                    <option value="Digital">Digital</option>
                     <option value="Sem senha">Sem senha</option>
                 </select>
             </div>
@@ -149,14 +122,8 @@
                 <div class="form-group">
                     <label>📷 Foto da senha/padrão <span class="optional">(opcional)</span></label>
                     <div class="lock-photo-container">
-                        <label class="lock-photo-btn">
-                            <span>📁</span> Escolher Arquivo
-                            <input type="file" accept="image/*" id="lock-photo" onchange="handleLockPhoto(event)">
-                        </label>
-                        <label class="lock-photo-btn lock-photo-btn-camera">
-                            <span>📷</span> Tirar Foto
-                            <input type="file" accept="image/*" capture="environment" id="lock-photo-camera" onchange="handleLockPhoto(event)">
-                        </label>
+                        <label class="lock-photo-btn"><span>📁</span> Escolher Arquivo<input type="file" accept="image/*" id="lock-photo" onchange="handleLockPhoto(event)"></label>
+                        <label class="lock-photo-btn lock-photo-btn-camera"><span>📷</span> Tirar Foto<input type="file" accept="image/*" capture="environment" id="lock-photo-camera" onchange="handleLockPhoto(event)"></label>
                     </div>
                     <div id="lock-photo-preview" style="margin-top:10px;"></div>
                 </div>
@@ -165,9 +132,7 @@
 
         <div class="form-section">
             <div class="form-section-title">📝 Observações</div>
-            <div class="form-group">
-                <textarea id="f-obs" rows="3" placeholder="Informações adicionais..."></textarea>
-            </div>
+            <div class="form-group"><textarea id="f-obs" rows="3" placeholder="Informações adicionais..."></textarea></div>
         </div>
 
         <div class="form-section">
@@ -188,7 +153,6 @@
         <button class="premium-btn" onclick="saveOS()" style="width:100%;">⚡ Criar Ordem de Serviço</button>
     </div>
 
-    <!-- LIST -->
     <div class="screen" id="screen-list">
         <div class="home-top-search">
             <div class="premium-search">
@@ -199,12 +163,7 @@
         <div class="premium-list" id="os-list"></div>
     </div>
 
-    <!-- DETAIL -->
-    <div class="screen" id="screen-detail">
-        <div id="detail-content"></div>
-    </div>
-
-    <!-- CLIENTS -->
+    <div class="screen" id="screen-detail"><div id="detail-content"></div></div>
     <div class="screen" id="screen-clientes">
         <div class="home-top-search">
             <div class="premium-search">
@@ -214,13 +173,7 @@
         </div>
         <div class="premium-list" id="client-list"></div>
     </div>
-
-    <!-- CLIENT DETAIL -->
-    <div class="screen" id="screen-client-detail">
-        <div id="client-detail-content"></div>
-    </div>
-
-    <!-- SEARCH -->
+    <div class="screen" id="screen-client-detail"><div id="client-detail-content"></div></div>
     <div class="screen" id="screen-pesquisar">
         <div class="home-top-search">
             <div class="premium-search">
@@ -231,21 +184,15 @@
         <div id="search-results"></div>
     </div>
 
-    <!-- MODAL -->
     <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
         <div class="premium-modal" id="modal-content"></div>
     </div>
 
-    <!-- PATTERN MODAL -->
     <div class="modal-overlay" id="pattern-overlay" onclick="closePatternModal(event)" style="display:none;">
         <div class="premium-modal" id="pattern-modal-content" style="max-width:420px;">
             <div class="modal-handle"></div>
-            <h3 style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text); text-align:center;">
-                📱 Registrar Padrão Android
-            </h3>
-            <p style="font-size:12px; color:var(--text3); text-align:center; margin-bottom:20px;">
-                Arraste para conectar os pontos na ordem desejada
-            </p>
+            <h3 style="font-size:16px; font-weight:700; margin-bottom:16px; color:var(--text); text-align:center;">📱 Registrar Padrão Android</h3>
+            <p style="font-size:12px; color:var(--text3); text-align:center; margin-bottom:20px;">Arraste para conectar os pontos na ordem desejada</p>
             
             <div id="pattern-canvas-container" style="position:relative; background:var(--surface2); border-radius:var(--radius); padding:20px; margin-bottom:20px;">
                 <canvas id="pattern-canvas" width="300" height="300" style="width:100%; max-width:300px; height:auto; display:block; margin:0 auto; touch-action:none;"></canvas>
@@ -263,7 +210,6 @@
         </div>
     </div>
 
-    <!-- TOAST -->
     <div class="premium-toast" id="toast"></div>
 </body>
 </html>
