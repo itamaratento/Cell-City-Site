@@ -36,7 +36,8 @@ window.globalSearch = globalSearch;
 window.closeModal = closeModal;
 window.openGlobalSearch = openGlobalSearch;
 
-// ===== EXPOSIÇÃO GLOBAL - PATTERN LOCK =====
+// ✅ NOVO: Exposição global do Banco de Fotos
+window.openPhotoBank = openPhotoBank;
 window.toggleLockType = toggleLockType;
 window.openPatternModal = openPatternModal;
 window.closePatternModal = closePatternModal;
@@ -47,6 +48,16 @@ window.showPatternSequence = showPatternSequence;
 window.clearPattern = clearPattern;
 window.showOSPatternDrawing = showOSPatternDrawing;
 window.showOSPatternSequence = showOSPatternSequence;
+
+// ===== BANCO DE FOTOS EXTERNO (GOOGLE DRIVE) =====
+// URL centralizada - trocar aqui quando migrar para Google Fotos/Drive/outro
+const PHOTO_BANK_URL = 'https://drive.google.com/drive/my-drive';
+
+function openPhotoBank(context) {
+    window.open(PHOTO_BANK_URL, '_blank', 'noopener,noreferrer');
+    const labels = { 'senha': 'da senha/padrão', 'aparelho': 'do aparelho', 'andamento': 'de andamento' };
+    showToast(`📸 Banco de Fotos aberto — ${labels[context] || ''}`);
+}
 
 // ===== STATE & AUTO-SAVE FLAG =====
 let currentOS = null, currentCategory = '', tempPhotos = [], currentLockPhoto = null;
@@ -68,10 +79,8 @@ function updateSaveUI() {
 window.markUnsaved = () => { hasUnsavedChanges = true; updateSaveUI(); };
 window.markSaved = () => { hasUnsavedChanges = false; updateSaveUI(); };
 
-// Proteção ao fechar/recarregar página
 window.addEventListener('beforeunload', e => { if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
 
-// Proteção de navegação interna
 function guardNavigation(callback) {
     if (hasUnsavedChanges && !confirm('Existem alterações não salvas. Deseja sair mesmo assim?')) return false;
     callback(); return true;
@@ -329,7 +338,7 @@ async function showScreen(id) {
             screenHistory = [];
             backBtn.classList.remove('visible');
             if (mainHeader) mainHeader.style.display = 'none';
-            window.markSaved(); // ✅ CORREÇÃO: Reseta flag ao voltar ao dashboard (corrige alerta falso)
+            window.markSaved();
             window.tempPatternSequence = null;
             await DB.loadFromFirestore();
             updateStats();
@@ -440,27 +449,27 @@ function startOS(cat) {
     currentCategory = cat;
     tempPhotos = [];
     currentLockPhoto = null;
-    window.tempPatternSequence = null; // ✅ RESET DO PADRÃO
-    ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs'].forEach(id => {
+    window.tempPatternSequence = null;
+    ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs','f-photo-bank-link'].forEach(id => {
         const el = document.getElementById(id); if(el) el.value = '';
     });
     const lock = document.getElementById('lock-type');
-    if(lock) { lock.value = 'Numerica'; toggleLockType(); } // ✅ CORRIGIDO: Chama toggleLockType
+    if(lock) { lock.value = 'Numerica'; toggleLockType(); }
     ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = '';
     const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = '';
     const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none';
     renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []);
-    window.markSaved(); // ✅ RESET DE ALTERAÇÕES
+    window.markSaved();
     showScreen('form');
 }
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
-    const [nome, telefone, modelo, defeito, senha, obs, lockType] = ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs','lock-type'].map(getVal);
+    // ✅ NOVO: Captura photoBankLink
+    const [nome, telefone, modelo, defeito, senha, obs, lockType, photoBankLink] = ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs','lock-type','f-photo-bank-link'].map(getVal);
     if (!nome || !telefone || !modelo || !defeito) return showToast('⚠️ Preencha todos os campos obrigatórios');
     
-    // ✅ VALIDAÇÃO DO PADRÃO
     if (lockType === 'Padrao' && (!window.tempPatternSequence || window.tempPatternSequence.length < 4)) {
         return showToast('⚠️ Registre um padrão com pelo menos 4 pontos');
     }
@@ -474,12 +483,13 @@ async function saveOS() {
         model: modelo, defect: defeito, observations: obs, technicalObservation: "",
         password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto,
         photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [],
+        // ✅ NOVO: Salva photoBankLink
+        photoBankLink: photoBankLink || '',
         status: 'em_analise',
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }],
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
     
-    // ✅ SALVA O PADRÃO NO BANCO
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
         os.patternSequence = window.tempPatternSequence;
     }
@@ -546,9 +556,16 @@ function renderDetail() {
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     html += `<div class="detail-header" style="position:relative;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div><div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${os.model}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div></div>`;
     
-    // ✅ BLOCO DA SENHA PADRÃO ANDROID NA TELA DE DETALHES
+    // ✅ BLOCO DA SENHA PADRÃO ANDROID
     if (os.patternSequence && os.patternSequence.length > 0) {
         html += `<div class="form-section"><div class="form-section-title">📱 Senha Padrão Android</div><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div>`;
+    }
+    
+    // ✅ NOVO: SEÇÃO BANCO DE FOTOS EXTERNO (Google Drive)
+    if (os.photoBankLink) {
+        html += `<div class="form-section"><div class="form-section-title">📸 Banco de Fotos</div><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:8px;">🔗 Link da pasta:</div><a href="${os.photoBankLink}" target="_blank" rel="noopener noreferrer" style="display:block;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--green-light);font-size:12px;word-break:break-all;text-decoration:none;font-family:var(--font-mono);">${os.photoBankLink}</a><div style="display:flex;gap:6px;margin-top:10px;"><button onclick="window.open('${os.photoBankLink}','_blank','noopener')" style="flex:1;padding:8px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:#000;font-weight:700;">📂 Abrir Banco</button><button onclick="openPhotoBank('andamento')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">➕ Adicionar mais</button></div></div></div>`;
+    } else {
+        html += `<div class="form-section"><div class="form-section-title">📸 Banco de Fotos</div><div style="background:var(--surface2);padding:14px;border:1px dashed var(--border);border-radius:var(--radius);text-align:center;"><p style="font-size:12px;color:var(--text3);margin-bottom:10px;">Nenhum link registrado</p><button onclick="openPhotoBank('andamento')" style="padding:10px 16px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:#000;font-weight:700;">📸 Abrir Banco de Fotos</button></div></div>`;
     }
     
     html += `<div class="form-section"><div class="form-section-title">Alterar Status</div><div class="status-selector">${statuses.map(s => `<div class="status-option ${os.status === s.key ? 'selected' : ''}" onclick="changeStatus('${s.key}')"><span class="dot" style="background:${s.color}"></span>${s.label}</div>`).join('')}</div></div>`;
@@ -578,7 +595,6 @@ function renderDetail() {
     updateSaveUI();
 }
 
-// ✅ EDIÇÃO DA OS
 function toggleOSEdit() {
     if (!currentOS) return;
     const os = currentOS;
@@ -717,7 +733,7 @@ function printOS() {
     if(!currentOS) return;
     const os = currentOS;
     const w = window.open('','_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType ? `<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>` : ''}${os.password ? `<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>` : ''}${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i+1).join('→')}</span></div>` : ''}${os.observations ? `<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>` : ''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i+1).join('→')}</span></div>` : ''}${os.photoBankLink?`<div class="row"><span class="label">Banco:</span><span style="word-break:break-all;">${os.photoBankLink}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`);
     w.document.close(); w.print();
 }
 
@@ -779,13 +795,11 @@ async function saveClientEdit(oldPhone) {
     } catch(e) { console.error(e); alert("Erro ao atualizar."); }
 }
 
-// ✅ EXCLUSÃO DE CLIENTES (VALIDADA)
 async function deleteClient(phone) {
     const confirmCode = prompt("Digite 77 para confirmar a exclusão do cliente");
     if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
     const docId = phone.trim();
     if (!docId) { alert("ID do cliente inválido."); return; }
-
     try {
         console.log(`🗑️ Tentando excluir documento: clientes/${docId}`);
         await deleteDoc(doc(db, "clientes", docId));
@@ -855,7 +869,7 @@ async function init() {
     const phoneInput = document.getElementById('f-telefone');
     if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
     
-    // ✅ LISTENER NA LOGO (REDUNDÂNCIA DE SEGURANÇA)
+    // ✅ Listener na logo (redundância de segurança)
     const logoEl = document.querySelector('.header-logo');
     if (logoEl && !logoEl.dataset.logoHandler) {
         logoEl.addEventListener('click', () => showScreen('home'));
