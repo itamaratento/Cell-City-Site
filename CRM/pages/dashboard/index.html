@@ -11,10 +11,10 @@
 </head>
 <body>
 
-<!-- ========== BARRA SUPERIOR OPERACIONAL (POLIDA v4.3) ========== -->
+<!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
 <header class="top-bar">
   <div class="top-meta-left">
-    <!-- LOGO INSTITUCIONAL (POLIDA - PROTEGIDA) -->
+    <!-- LOGO INSTITUCIONAL (RESTAURADA) -->
     <div class="brand-header" id="brand-header" title="Cell City Informática">
       <div class="brand-header-text">
         <div class="brand-header-title">Cell City Informática</div>
@@ -23,16 +23,16 @@
       </div>
     </div>
 
-    <!-- DATA COMPLETA (POLIDA - CONTRASTE MELHORADO) -->
+    <!-- DATA COMPLETA -->
     <button class="meta-date" id="date-display" title="Abrir calendário">
       <span id="date-text">--/--/----</span>
     </button>
 
-    <!-- RELÓGIO (REPOSICIONADO - ENTRE DATA E BUSCA) -->
+    <!-- RELÓGIO (REPOSICIONADO - entre data e busca) -->
     <span class="meta-clock" id="clock-display">--:--</span>
   </div>
 
-  <!-- BUSCA GLOBAL (PROTEGIDA - INTACTA) -->
+  <!-- BUSCA GLOBAL -->
   <div class="global-search-wrapper">
     <div class="global-search" id="global-search">
       <span class="search-icon">🔍</span>
@@ -42,13 +42,13 @@
     </div>
   </div>
 
-  <!-- STATUS ONLINE (PROTEGIDO - INTACTO) -->
+  <!-- STATUS ONLINE (isolado no canto direito) -->
   <div class="top-meta-right">
     <span class="status-pill online">Online</span>
   </div>
 </header>
 
-<!-- ========== MINI CALENDÁRIO POPUP (PROTEGIDO) ========== -->
+<!-- ========== MINI CALENDÁRIO POPUP ========== -->
 <div class="calendar-popup" id="calendar-popup">
   <div class="calendar-header">
     <button class="cal-nav" id="cal-prev">‹</button>
@@ -68,7 +68,7 @@
 <!-- ========== WORKSPACE PRINCIPAL ========== -->
 <main class="workspace">
 
-  <!-- ========== GRID 3x3 APROVADO (PROTEGIDO) ========== -->
+  <!-- ========== GRID 3x3 APROVADO ========== -->
   <section class="ops-block">
 
     <!-- LINHA 1 -->
@@ -81,22 +81,21 @@
       <div class="module-indicator live"></div>
     </div>
 
-    <!-- PAINEL DE ALERTAS OPERACIONAIS (PROTEGIDO) -->
-    <div class="module-card alerts-card">
+    <!-- PAINEL DE ALERTAS (MODO SEGURANÇA - sem dados fictícios) -->
+    <div class="module-card alerts-card" id="alerts-card">
       <div class="alerts-header">
-        <div class="alerts-icon">⚠️</div>
-        <div class="alerts-info">
-          <h3>Alertas Operacionais</h3>
-          <p class="module-sub">OS • Pós-venda • Clientes</p>
-        </div>
+        <span class="alerts-header-icon">⚠️</span>
+        <h3 class="alerts-header-title">Alertas Operacionais</h3>
       </div>
-      <div class="alerts-carousel">
-        <span class="alert-dot"></span>
-        <span class="alert-text" id="alert-text">Carregando alertas...</span>
+      <div class="alerts-main" id="alerts-main">
+        <div class="alert-icon">✅</div>
+        <div class="alert-title">SISTEMA OPERANDO NORMALMENTE</div>
+        <div class="alert-subtitle">Aguardando integração com dados reais</div>
+        <div class="alert-detail">Nenhum alerta operacional pendente</div>
       </div>
     </div>
 
-    <!-- META SEMANAL (PROTEGIDA) -->
+    <!-- META SEMANAL -->
     <div class="module-card meta-card">
       <div class="meta-top">
         <span class="meta-label">📈 Meta Semanal</span>
@@ -173,7 +172,7 @@
 
   </section>
 
-  <!-- ========== ASSISTENTE IA (PROTEGIDO) ========== -->
+  <!-- ========== ASSISTENTE IA ========== -->
   <section class="ai-panel" id="ai-panel">
     <div class="ai-header" id="ai-header">
       <div class="ai-title-group">
@@ -204,7 +203,7 @@
 
 </main>
 
-<!-- ========== DOCK LATERAL DIREITA (PROTEGIDA - COM FERRAMENTAS) ========== -->
+<!-- ========== DOCK LATERAL DIREITA ========== -->
 <aside class="dock">
   <a href="https://web.whatsapp.com" class="dock-item" target="_blank" data-tooltip="WhatsApp">
     <span class="dock-icon">💬</span>
@@ -224,7 +223,6 @@
   <a href="https://chat.openai.com" class="dock-item" target="_blank" data-tooltip="ChatGPT">
     <span class="dock-icon">🤖</span>
   </a>
-  <!-- FERRAMENTAS NA DOCK (PROTEGIDO) -->
   <a href="#" class="dock-item dock-item-tools" id="dock-ferramentas" data-tooltip="Ferramentas">
     <span class="dock-icon">⚙️</span>
   </a>

@@ -1,9 +1,7 @@
 /* ============================================
 CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
-✅ Polimento Visual do Topo
-✅ Data completa (Sexta-feira, 29 de maio de 2026)
-✅ Hora separada (17:50)
-✅ Grid 3x3 + Alertas + Ferramentas na Dock
+✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
+✅ AGUARDANDO ETAPA 2: análise de os.js e caixa.js
 ============================================ */
 class Dashboard {
   constructor() {
@@ -14,22 +12,6 @@ class Dashboard {
         open: false,
         viewDate: new Date(),
         selectedDate: null
-      },
-      alerts: {
-        messages: [
-          'Cliente aguardando retorno há 2 dias',
-          'Pós-venda pendente: OS-2842',
-          'OS parada há 3 dias na assistência',
-          'Garantia próxima do vencimento',
-          'Cliente sem resposta — follow-up',
-          'Entrega atrasada — verificar status',
-          'Cobrança pendente há 7 dias',
-          'Orçamento sem aprovação há 48h',
-          'Peça em falta no estoque crítico',
-          'Agendamento para hoje: 14h30'
-        ],
-        current: 0,
-        interval: null
       },
       searchData: {
         os: [
@@ -74,17 +56,17 @@ class Dashboard {
     this.setupDockTools();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
-    console.log('✅ Dashboard Cell City v4.3 — Polimento Visual Aplicado');
+    console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
-  // ===== RELÓGIO & DATA (ATUALIZADO - DATA COMPLETA + HORA SEPARADA) =====
+  // ===== RELÓGIO & DATA COMPLETA =====
   setupClock() {
     const clockEl = document.getElementById('clock-display');
     const dateText = document.getElementById('date-text');
-    
+
     const update = () => {
       const now = new Date();
-      
+
       // DATA COMPLETA — Ex: "Sexta-feira, 29 de maio de 2026"
       const dateOptions = {
         weekday: 'long',
@@ -93,24 +75,24 @@ class Dashboard {
         year: 'numeric'
       };
       let dateFull = now.toLocaleDateString('pt-BR', dateOptions);
-      // Capitaliza a primeira letra (ex: "sexta-feira" -> "Sexta-feira")
+      // Capitaliza a primeira letra
       dateFull = dateFull.charAt(0).toUpperCase() + dateFull.slice(1);
-      
+
       // HORA APENAS — Ex: "17:50"
       const timeStr = now.toLocaleTimeString('pt-BR', {
         hour: '2-digit',
         minute: '2-digit'
       });
-      
+
       if (dateText) dateText.textContent = dateFull;
       if (clockEl) clockEl.textContent = timeStr;
     };
-    
+
     update();
     setInterval(update, 1000);
   }
 
-  // ===== META SEMANAL (PROTEGIDA) =====
+  // ===== META SEMANAL =====
   setupMetaSemanal() {
     this.updateMeta(this.state.meta.current, this.state.meta.goal);
   }
@@ -135,29 +117,24 @@ class Dashboard {
     }
   }
 
-  // ===== PAINEL DE ALERTAS ROTATIVO (PROTEGIDO) =====
+  // ===== ALERTAS (MODO SEGURANÇA - sem dados fictícios) =====
+  // AGUARDANDO ETAPA 2: análise de os.js e caixa.js para integração real
   setupAlerts() {
-    const alertText = document.getElementById('alert-text');
-    if (!alertText) return;
+    const iconEl = document.getElementById('alert-icon');
+    const titleEl = document.getElementById('alert-title');
+    const subtitleEl = document.getElementById('alert-subtitle');
+    const detailEl = document.getElementById('alert-detail');
 
-    const { messages } = this.state.alerts;
-    let current = 0;
+    if (!iconEl || !titleEl || !subtitleEl || !detailEl) return;
 
-    alertText.textContent = messages[0];
-
-    this.state.alerts.interval = setInterval(() => {
-      alertText.classList.add('fading');
-
-      setTimeout(() => {
-        current = (current + 1) % messages.length;
-        alertText.textContent = messages[current];
-        alertText.classList.remove('fading');
-      }, 450);
-
-    }, 4500);
+    // Estado seguro — sem dados fictícios
+    iconEl.textContent = '✅';
+    titleEl.textContent = 'SISTEMA OPERANDO NORMALMENTE';
+    subtitleEl.textContent = 'Aguardando integração com dados reais';
+    detailEl.textContent = 'Nenhum alerta operacional pendente';
   }
 
-  // ===== MINI CALENDÁRIO (PROTEGIDO) =====
+  // ===== MINI CALENDÁRIO =====
   setupCalendar() {
     const dateBtn = document.getElementById('date-display');
     const popup = document.getElementById('calendar-popup');
@@ -269,7 +246,7 @@ class Dashboard {
     this.renderCalendar();
   }
 
-  // ===== BUSCA GLOBAL INTELIGENTE (PROTEGIDA) =====
+  // ===== BUSCA GLOBAL INTELIGENTE =====
   setupGlobalSearch() {
     const input = document.getElementById('global-search-input');
     const resultsBox = document.getElementById('search-results');
@@ -344,7 +321,7 @@ class Dashboard {
     resultsBox.classList.add('visible');
   }
 
-  // ===== ASSISTENTE IA (PROTEGIDO) =====
+  // ===== ASSISTENTE IA =====
   setupAI() {
     const panel = document.getElementById('ai-panel');
     const header = document.getElementById('ai-header');
@@ -438,7 +415,7 @@ class Dashboard {
     return div.innerHTML;
   }
 
-  // ===== MÓDULOS (PROTEGIDOS) =====
+  // ===== MÓDULOS =====
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
       card.addEventListener('click', () => {
@@ -448,7 +425,7 @@ class Dashboard {
     });
   }
 
-  // ===== FERRAMENTAS NA DOCK LATERAL (PROTEGIDO) =====
+  // ===== FERRAMENTAS NA DOCK LATERAL =====
   setupDockTools() {
     const toolsItem = document.getElementById('dock-ferramentas');
     if (toolsItem) {

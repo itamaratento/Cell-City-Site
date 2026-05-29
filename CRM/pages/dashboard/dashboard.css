@@ -1,9 +1,7 @@
 /* ============================================
 CELL CITY CRM — DESIGN SYSTEM PREMIUM v4.3 FINAL
-🎨 Polimento Visual do Topo Aprovado
-✅ Verde Bandeira #00c853 | Glow Premium
-✅ Grid 3x3 + Alertas + Ferramentas na Dock
-✅ Header refinado: Logo + Data + Relógio + Busca + Online
+✅ ETAPA 1: Data completa + Relógio reposicionado + Logo restaurada
+✅ Alertas em modo "Sistema operando normalmente"
 ============================================ */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -74,7 +72,7 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-/* ============ TOPO OPERACIONAL (POLIDO v4.3) ============ */
+/* ============ TOPO OPERACIONAL ========== */
 .top-bar {
   position: sticky;
   top: 0;
@@ -94,7 +92,7 @@ body {
 .top-meta-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
 .top-meta-right {
@@ -127,7 +125,6 @@ body {
 .meta-date:hover {
   background: var(--bg-hover);
   border-color: var(--border-subtle);
-  color: var(--text-primary);
 }
 
 .meta-date.active {
@@ -170,9 +167,7 @@ body {
   animation: pulse 2s ease-in-out infinite;
 }
 
-/* ============================================================
-   LOGO INSTITUCIONAL — VERDE BANDEIRA VIVO (POLIDA)
-============================================================ */
+/* ============ LOGO INSTITUCIONAL RESTAURADA ============ */
 .brand-header {
   display: flex;
   align-items: center;
@@ -253,12 +248,9 @@ body {
   text-transform: uppercase;
 }
 
-/* ============================================================
-   RELÓGIO PREMIUM — VERDE BANDEIRA FORTE (REPOSICIONADO)
-   Agora entre a Data e a Busca, com separador visual
-============================================================ */
+/* ============ RELÓGIO PREMIUM (REPOSICIONADO) ============ */
 .meta-clock {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--cell-green-light);
   font-variant-numeric: tabular-nums;
@@ -288,7 +280,7 @@ body {
     inset 0 1px 0 rgba(0, 230, 118, 0.15);
 }
 
-/* ============ BUSCA GLOBAL INTELIGENTE (PROTEGIDA) ============ */
+/* ============ BUSCA GLOBAL INTELIGENTE ============ */
 .global-search-wrapper { display: flex; justify-content: center; position: relative; }
 
 .global-search {
@@ -415,7 +407,7 @@ body {
   font-size: 12px;
 }
 
-/* ============ MINI CALENDÁRIO (PROTEGIDO) ============ */
+/* ============ MINI CALENDÁRIO ============ */
 .calendar-popup {
   position: fixed;
   top: 58px;
@@ -588,7 +580,7 @@ body {
   gap: 18px;
 }
 
-/* ============ GRID 3x3 APROVADO (PROTEGIDO) ============ */
+/* ============ GRID 3x3 APROVADO ============ */
 .ops-block {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -597,7 +589,7 @@ body {
   align-items: stretch;
 }
 
-/* ============ CARDS DE MÓDULOS (PROTEGIDOS) ============ */
+/* ============ CARDS DE MÓDULOS ============ */
 .module-card {
   position: relative;
   display: flex;
@@ -688,107 +680,110 @@ body {
   50% { opacity: 0.6; transform: scale(0.9); }
 }
 
-/* ============ PAINEL DE ALERTAS OPERACIONAIS (PROTEGIDO) ============ */
+/* ============ PAINEL DE ALERTAS (MODO SEGURANÇA) ============ */
 .module-card.alerts-card {
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  gap: 14px;
+  justify-content: flex-start;
+  gap: 0;
+  padding: 14px 16px;
   cursor: default;
-  background: linear-gradient(135deg, var(--bg-surface) 0%, rgba(245, 158, 11, 0.05) 100%);
-  border-color: rgba(245, 158, 11, 0.2);
-  padding: 18px;
-}
-
-.module-card.alerts-card::before {
-  background: linear-gradient(135deg, transparent 60%, rgba(245, 158, 11, 0.08));
+  background: var(--bg-surface);
+  border: 1.5px solid rgba(0, 200, 83, 0.3);
+  overflow: hidden;
+  position: relative;
+  transition: border-color 600ms ease, box-shadow 600ms ease, background 600ms ease;
+  box-shadow:
+    0 0 20px rgba(0, 200, 83, 0.15),
+    inset 0 1px 0 rgba(0, 230, 118, 0.08);
+  animation: borderGlowGreen 3s ease-in-out infinite;
 }
 
 .module-card.alerts-card:hover {
   transform: none;
-  border-color: rgba(245, 158, 11, 0.35);
-  box-shadow: 0 4px 20px rgba(245, 158, 11, 0.08);
-  background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(245, 158, 11, 0.07) 100%);
+  background: var(--bg-elevated);
 }
 
 .alerts-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
 }
 
-.alerts-icon {
-  font-size: 16px;
-  width: 38px;
-  height: 38px;
+.alerts-header-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.alerts-header-title {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.alerts-main {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: var(--radius-sm);
-  flex-shrink: 0;
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  text-align: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 4px 0;
 }
 
-.alerts-info {
-  flex: 1;
-  min-width: 0;
+.alert-icon {
+  font-size: 44px;
+  line-height: 1;
+  margin-bottom: 4px;
+  animation: pulseSoft 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(0, 200, 83, 0.3));
 }
 
-.alerts-info h3 {
+.alert-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--cell-green-light);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  text-shadow: 0 0 14px rgba(0, 200, 83, 0.5);
+}
+
+.alert-subtitle {
   font-size: 13.5px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 2px;
-  letter-spacing: -0.01em;
-}
-
-.alerts-info .module-sub {
-  font-size: 10.5px;
-  color: var(--text-tertiary);
-  font-weight: 500;
-}
-
-.alerts-carousel {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  min-height: 32px;
-}
-
-.alert-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent-amber);
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
-  flex-shrink: 0;
-  animation: pulse 2.5s ease-in-out infinite;
-}
-
-.alert-text {
-  flex: 1;
-  font-size: 12.5px;
   font-weight: 500;
   color: var(--text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: opacity 500ms ease, transform 500ms ease;
-  opacity: 1;
-  transform: translateY(0);
+  line-height: 1.3;
+  margin-top: 2px;
 }
 
-.alert-text.fading {
-  opacity: 0;
-  transform: translateY(-4px);
+.alert-detail {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-top: 2px;
 }
 
-/* ============ META SEMANAL (PROTEGIDA) ============ */
+@keyframes pulseSoft {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes borderGlowGreen {
+  0%, 100% { box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.08); }
+  50% { box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.12); }
+}
+
+/* ============ META SEMANAL ============ */
 .module-card.meta-card {
   flex-direction: column;
   align-items: stretch;
@@ -909,7 +904,7 @@ body {
   text-shadow: 0 0 8px rgba(255, 204, 0, 0.3);
 }
 
-/* ============ ASSISTENTE IA (PROTEGIDO) ============ */
+/* ============ ASSISTENTE IA ============ */
 .ai-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -1173,7 +1168,7 @@ body {
 
 .ai-send-btn:active { transform: translateY(0); }
 
-/* ============ DOCK LATERAL (PROTEGIDA) ============ */
+/* ============ DOCK LATERAL ============ */
 .dock {
   position: fixed;
   right: 20px;
@@ -1264,6 +1259,8 @@ body {
   .ops-block {
     grid-template-columns: repeat(2, 1fr);
   }
+  .alert-title { font-size: 15px; }
+  .alert-icon { font-size: 38px; }
 }
 
 @media (max-width: 900px) {
@@ -1287,6 +1284,9 @@ body {
   .ops-block { grid-template-columns: 1fr; }
   .module-card { padding: 14px; }
   .module-icon { width: 40px; height: 40px; font-size: 18px; }
+  .alerts-card { min-height: 220px; }
+  .alert-title { font-size: 17px; }
+  .alert-icon { font-size: 44px; }
   .dock {
     top: auto;
     bottom: 16px;
@@ -1316,4 +1316,7 @@ body {
   .brand-header-title { font-size: 13px; }
   #date-text { font-size: 12px; }
   .meta-clock { font-size: 13.5px; }
+  .alert-title { font-size: 15px; }
+  .alert-subtitle { font-size: 12px; }
+  .alert-detail { font-size: 11px; }
 }
