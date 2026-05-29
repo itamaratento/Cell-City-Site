@@ -1,6 +1,8 @@
 /* ============================================
-CELL CITY CRM — DASHBOARD CONTROLLER v4.2 FINAL
-✅ Identidade Cell City Restaurada
+CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
+✅ Polimento Visual do Topo
+✅ Data completa (Sexta-feira, 29 de maio de 2026)
+✅ Hora separada (17:50)
 ✅ Grid 3x3 + Alertas + Ferramentas na Dock
 ============================================ */
 class Dashboard {
@@ -72,23 +74,43 @@ class Dashboard {
     this.setupDockTools();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
-    console.log('✅ Dashboard Cell City v4.2 — Identidade Restaurada');
+    console.log('✅ Dashboard Cell City v4.3 — Polimento Visual Aplicado');
   }
 
-  // ===== RELÓGIO & DATA =====
+  // ===== RELÓGIO & DATA (ATUALIZADO - DATA COMPLETA + HORA SEPARADA) =====
   setupClock() {
     const clockEl = document.getElementById('clock-display');
     const dateText = document.getElementById('date-text');
+    
     const update = () => {
       const now = new Date();
-      clockEl.textContent = `🕒 ${now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
-      dateText.textContent = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      
+      // DATA COMPLETA — Ex: "Sexta-feira, 29 de maio de 2026"
+      const dateOptions = {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+      };
+      let dateFull = now.toLocaleDateString('pt-BR', dateOptions);
+      // Capitaliza a primeira letra (ex: "sexta-feira" -> "Sexta-feira")
+      dateFull = dateFull.charAt(0).toUpperCase() + dateFull.slice(1);
+      
+      // HORA APENAS — Ex: "17:50"
+      const timeStr = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      if (dateText) dateText.textContent = dateFull;
+      if (clockEl) clockEl.textContent = timeStr;
     };
+    
     update();
     setInterval(update, 1000);
   }
 
-  // ===== META SEMANAL =====
+  // ===== META SEMANAL (PROTEGIDA) =====
   setupMetaSemanal() {
     this.updateMeta(this.state.meta.current, this.state.meta.goal);
   }
@@ -113,7 +135,7 @@ class Dashboard {
     }
   }
 
-  // ===== PAINEL DE ALERTAS ROTATIVO =====
+  // ===== PAINEL DE ALERTAS ROTATIVO (PROTEGIDO) =====
   setupAlerts() {
     const alertText = document.getElementById('alert-text');
     if (!alertText) return;
@@ -135,7 +157,7 @@ class Dashboard {
     }, 4500);
   }
 
-  // ===== MINI CALENDÁRIO =====
+  // ===== MINI CALENDÁRIO (PROTEGIDO) =====
   setupCalendar() {
     const dateBtn = document.getElementById('date-display');
     const popup = document.getElementById('calendar-popup');
@@ -247,7 +269,7 @@ class Dashboard {
     this.renderCalendar();
   }
 
-  // ===== BUSCA GLOBAL INTELIGENTE =====
+  // ===== BUSCA GLOBAL INTELIGENTE (PROTEGIDA) =====
   setupGlobalSearch() {
     const input = document.getElementById('global-search-input');
     const resultsBox = document.getElementById('search-results');
@@ -322,7 +344,7 @@ class Dashboard {
     resultsBox.classList.add('visible');
   }
 
-  // ===== ASSISTENTE IA =====
+  // ===== ASSISTENTE IA (PROTEGIDO) =====
   setupAI() {
     const panel = document.getElementById('ai-panel');
     const header = document.getElementById('ai-header');
@@ -416,7 +438,7 @@ class Dashboard {
     return div.innerHTML;
   }
 
-  // ===== MÓDULOS =====
+  // ===== MÓDULOS (PROTEGIDOS) =====
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
       card.addEventListener('click', () => {
@@ -426,7 +448,7 @@ class Dashboard {
     });
   }
 
-  // ===== FERRAMENTAS NA DOCK LATERAL =====
+  // ===== FERRAMENTAS NA DOCK LATERAL (PROTEGIDO) =====
   setupDockTools() {
     const toolsItem = document.getElementById('dock-ferramentas');
     if (toolsItem) {

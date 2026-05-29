@@ -1,8 +1,9 @@
 /* ============================================
-CELL CITY CRM — DESIGN SYSTEM PREMIUM v4.2 FINAL
-🎨 Identidade Cell City Restaurada
+CELL CITY CRM — DESIGN SYSTEM PREMIUM v4.3 FINAL
+🎨 Polimento Visual do Topo Aprovado
 ✅ Verde Bandeira #00c853 | Glow Premium
 ✅ Grid 3x3 + Alertas + Ferramentas na Dock
+✅ Header refinado: Logo + Data + Relógio + Busca + Online
 ============================================ */
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -73,14 +74,15 @@ body {
 ::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
-/* ============ TOPO OPERACIONAL ============ */
+/* ============ TOPO OPERACIONAL (POLIDO v4.3) ============ */
 .top-bar {
   position: sticky;
   top: 0;
   z-index: 100;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
+  gap: 20px;
   padding: 12px 24px;
   background: rgba(10, 11, 13, 0.88);
   backdrop-filter: blur(20px) saturate(180%);
@@ -89,13 +91,18 @@ body {
   box-shadow: 0 1px 0 rgba(0, 200, 83, 0.05);
 }
 
-.top-meta-left, .top-meta-right {
+.top-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.top-meta-right {
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
 }
-
-.top-meta-right { justify-content: flex-end; }
 
 .meta-item {
   font-size: 13px;
@@ -104,14 +111,17 @@ body {
   font-weight: 500;
 }
 
+/* ============ DATA COMPLETA (POLIDA - CONTRASTE PREMIUM) ============ */
 .meta-date {
   background: transparent;
   border: 1px solid transparent;
-  padding: 4px 10px;
+  padding: 6px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: inherit;
   transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
 }
 
 .meta-date:hover {
@@ -125,6 +135,16 @@ body {
   border-color: var(--cell-green);
   color: var(--cell-green);
   box-shadow: var(--glow-green);
+}
+
+#date-text {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .status-pill {
@@ -151,8 +171,7 @@ body {
 }
 
 /* ============================================================
-   LOGO INSTITUCIONAL RESTAURADA — VERDE BANDEIRA VIVO
-   Brilho, glow e destaque premium no topo esquerdo
+   LOGO INSTITUCIONAL — VERDE BANDEIRA VIVO (POLIDA)
 ============================================================ */
 .brand-header {
   display: flex;
@@ -193,7 +212,7 @@ body {
 .brand-header-text {
   display: flex;
   flex-direction: column;
-  line-height: 1.1;
+  line-height: 1.15;
   min-width: 0;
   position: relative;
   z-index: 1;
@@ -235,18 +254,20 @@ body {
 }
 
 /* ============================================================
-   RELÓGIO PREMIUM — VERDE BANDEIRA FORTE
+   RELÓGIO PREMIUM — VERDE BANDEIRA FORTE (REPOSICIONADO)
+   Agora entre a Data e a Busca, com separador visual
 ============================================================ */
 .meta-clock {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--cell-green-light);
   font-variant-numeric: tabular-nums;
-  padding: 8px 14px;
-  background: rgba(0, 200, 83, 0.10);
-  border: 1px solid rgba(0, 200, 83, 0.30);
+  padding: 7px 14px 7px 18px;
+  background: rgba(0, 200, 83, 0.08);
+  border: 1px solid rgba(0, 200, 83, 0.28);
+  border-left: 2px solid rgba(0, 200, 83, 0.5);
   border-radius: var(--radius-sm);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   text-shadow:
     0 0 12px rgba(0, 200, 83, 0.6),
@@ -259,14 +280,15 @@ body {
 }
 
 .meta-clock:hover {
-  background: rgba(0, 200, 83, 0.15);
-  border-color: rgba(0, 200, 83, 0.50);
+  background: rgba(0, 200, 83, 0.13);
+  border-color: rgba(0, 200, 83, 0.45);
+  border-left-color: rgba(0, 200, 83, 0.7);
   box-shadow:
-    0 0 24px rgba(0, 200, 83, 0.25),
+    0 0 22px rgba(0, 200, 83, 0.22),
     inset 0 1px 0 rgba(0, 230, 118, 0.15);
 }
 
-/* ============ BUSCA GLOBAL INTELIGENTE ============ */
+/* ============ BUSCA GLOBAL INTELIGENTE (PROTEGIDA) ============ */
 .global-search-wrapper { display: flex; justify-content: center; position: relative; }
 
 .global-search {
@@ -393,7 +415,7 @@ body {
   font-size: 12px;
 }
 
-/* ============ MINI CALENDÁRIO ============ */
+/* ============ MINI CALENDÁRIO (PROTEGIDO) ============ */
 .calendar-popup {
   position: fixed;
   top: 58px;
@@ -566,7 +588,7 @@ body {
   gap: 18px;
 }
 
-/* ============ GRID 3x3 APROVADO ============ */
+/* ============ GRID 3x3 APROVADO (PROTEGIDO) ============ */
 .ops-block {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -575,7 +597,7 @@ body {
   align-items: stretch;
 }
 
-/* ============ CARDS DE MÓDULOS ============ */
+/* ============ CARDS DE MÓDULOS (PROTEGIDOS) ============ */
 .module-card {
   position: relative;
   display: flex;
@@ -666,7 +688,7 @@ body {
   50% { opacity: 0.6; transform: scale(0.9); }
 }
 
-/* ============ PAINEL DE ALERTAS OPERACIONAIS ============ */
+/* ============ PAINEL DE ALERTAS OPERACIONAIS (PROTEGIDO) ============ */
 .module-card.alerts-card {
   flex-direction: column;
   align-items: stretch;
@@ -766,7 +788,7 @@ body {
   transform: translateY(-4px);
 }
 
-/* ============ META SEMANAL ============ */
+/* ============ META SEMANAL (PROTEGIDA) ============ */
 .module-card.meta-card {
   flex-direction: column;
   align-items: stretch;
@@ -887,7 +909,7 @@ body {
   text-shadow: 0 0 8px rgba(255, 204, 0, 0.3);
 }
 
-/* ============ ASSISTENTE IA ============ */
+/* ============ ASSISTENTE IA (PROTEGIDO) ============ */
 .ai-panel {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -1151,9 +1173,7 @@ body {
 
 .ai-send-btn:active { transform: translateY(0); }
 
-/* ============================================================
-   DOCK LATERAL (COM FERRAMENTAS RESTAURADO)
-============================================================ */
+/* ============ DOCK LATERAL (PROTEGIDA) ============ */
 .dock {
   position: fixed;
   right: 20px;
@@ -1225,7 +1245,6 @@ body {
   transform: translateY(-50%) translateX(0);
 }
 
-/* Ferramentas — mesmo padrão visual dos demais, com separador sutil */
 .dock-item-tools {
   margin-top: 6px;
   border-top: 1px solid var(--border-subtle);
@@ -1234,6 +1253,14 @@ body {
 
 /* ============ RESPONSIVIDADE ============ */
 @media (max-width: 1100px) {
+  .top-bar {
+    grid-template-columns: auto 1fr auto;
+    gap: 14px;
+  }
+  .top-meta-left { gap: 10px; }
+  #date-text { font-size: 13px; }
+  .meta-clock { font-size: 14.5px; padding: 6px 12px 6px 14px; }
+  .global-search { max-width: 380px; }
   .ops-block {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1245,7 +1272,12 @@ body {
     gap: 10px;
     padding: 12px 16px;
   }
-  .top-meta-left, .top-meta-right { justify-content: center; }
+  .top-meta-left {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .top-meta-right { justify-content: center; }
   .global-search-wrapper { width: 100%; }
   .global-search { max-width: 100%; }
   .search-kbd { display: none; }
@@ -1282,4 +1314,6 @@ body {
   .ai-title { font-size: 12.5px; }
   .ai-subtitle { display: none; }
   .brand-header-title { font-size: 13px; }
+  #date-text { font-size: 12px; }
+  .meta-clock { font-size: 13.5px; }
 }
