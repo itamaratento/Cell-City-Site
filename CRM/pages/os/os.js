@@ -46,7 +46,18 @@ window.showPatternSequence = showPatternSequence;
 window.clearPattern = clearPattern;
 window.showOSPatternDrawing = showOSPatternDrawing;
 window.showOSPatternSequence = showOSPatternSequence;
-window.saveInternalObservation = saveInternalObservation; // 📋 NOVO
+window.saveInternalObservation = saveInternalObservation;
+window.toggleClientManagement = toggleClientManagement;
+window.saveFullClient = saveFullClient;
+window.setClientRating = setClientRating;
+window.addClientTag = addClientTag;
+window.removeClientTag = removeClientTag;
+window.toggleClientPassword = toggleClientPassword;
+window.fetchCEP = fetchCEP;
+window.openWhatsApp = openWhatsApp;
+window.editClientFromDetail = editClientFromDetail;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.copyPasswordToClipboard = copyPasswordToClipboard;
 
 // ===== BANCO DE FOTOS EXTERNO =====
 const DRIVE_FOLDER_ID = ''; 
@@ -342,9 +353,14 @@ async function showScreen(id) {
         const backBtn = document.getElementById('backBtn'); const mainHeader = document.getElementById('mainHeader');
         if (id === 'home') { screenHistory = []; backBtn.classList.remove('visible'); if (mainHeader) mainHeader.style.display = 'none'; window.markSaved(); window.tempPatternSequence = null; await DB.loadFromFirestore(); updateStats(); }
         else { if (!screenHistory.includes(id)) screenHistory.push(id); backBtn.classList.add('visible'); if (mainHeader) mainHeader.style.display = 'flex'; }
+        
+        // ✅ AJUSTE FINAL 1: REMOÇÃO DOS TÍTULOS "NOVA O.S." E "CLIENTES"
         const titleEl = document.getElementById('headerTitle');
-        const titles = { category: 'Nova O.S.', form: 'Criar O.S.', clientes: 'Clientes', pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
-        if (titleEl) { titleEl.textContent = titles[id] || ''; if (id === 'clientes') renderClients(); }
+        const titles = { pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
+        if (titleEl) { 
+            titleEl.textContent = titles[id] || ''; 
+            if (id === 'clientes') renderClients(); 
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 }
@@ -393,8 +409,7 @@ async function saveOS() {
     const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
     const os = { 
         id: osId, category: currentCategory, clientName: nome, phone: telefone, model: modelo, defect: defeito, observations: obs, technicalObservation: "", 
-        internalObservation: "", // 📋 NOVO CAMPO
-        password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'em_analise', 
+        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'em_analise', 
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() 
     };
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
@@ -403,7 +418,7 @@ async function saveOS() {
     await DB.addOS(os); await updateClientHistory(telefone, nome, osId); showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
 }
 
-async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId] }; } await DB.saveClient(c); }
+async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
 // ===== LISTS =====
 function showList(filter) { currentListFilter = filter; renderList(); showScreen('list'); }
@@ -435,17 +450,7 @@ function renderDetail() {
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     html += `<div class="detail-header" style="position:relative;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div><div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${os.model}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div></div>`;
     
-    // 📋 NOVA FUNCIONALIDADE: OBSERVAÇÃO INTERNA
-    html += `
-    <div class="form-section">
-        <div class="internal-observation-box">
-            <div class="internal-observation-title">📋 Observação Interna</div>
-            <textarea id="internal-observation" rows="4" placeholder="Digite observações internas da assistência técnica...">${os.internalObservation || ''}</textarea>
-            <div class="detail-actions" style="margin-top:10px;">
-                <button class="btn btn-secondary" onclick="saveInternalObservation()">💾 Salvar Observação</button>
-            </div>
-        </div>
-    </div>`;
+    html += `<div class="form-section"><div class="form-section-title">📋 Observação Interna</div><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.internalObservation || ''}</textarea></div><div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div></div>`;
 
     if (os.patternSequence && os.patternSequence.length > 0) {
         html += `<div class="form-section"><div class="form-section-title">📱 Senha Padrão Android</div><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div>`;
@@ -506,7 +511,6 @@ async function saveObservation() { const t = document.getElementById('os-observa
 
 async function saveTechObservation() { const t = document.getElementById('os-tech-obs').value; if (!currentOS) return; currentOS.technicalObservation = t; await updateDoc(doc(db, "os", currentOS.id), { technicalObservation: t, updatedAt: new Date().toISOString() }); showToast("🛠️ Nota técnica salva."); window.markSaved(); }
 
-// 📋 NOVA FUNÇÃO: SALVAR OBSERVAÇÃO INTERNA
 async function saveInternalObservation() {
     const observation = document.getElementById('internal-observation')?.value?.trim() || '';
     if (!currentOS) return;
@@ -540,7 +544,13 @@ function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text
 
 function printOS() { if(!currentOS) return; const os=currentOS; const w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i+1).join('→')}</span></div>`: ''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`); w.document.close(); w.print(); }
 
-// ===== CLIENTS =====
+// ===== CLIENTS (MÓDULO COMPLETO) =====
+const AVAILABLE_TAGS = ['Igreja', 'Amigo', 'Família', 'Empresa', 'Parceiro', 'VIP', 'Goiânia', 'Região Metropolitana', 'Interior de Goiás', 'Outro Estado', 'Indica Clientes', 'Compra Acessórios', 'Cliente Antigo', 'Cliente Recorrente'];
+let isClientFormOpen = false;
+let currentEditingClient = null;
+let currentClientTags = [];
+let currentClientRating = 0;
+
 function renderClients() {
     const clients = DB.getClients(); const s = (document.getElementById('client-search')?.value || '').toLowerCase();
     const f = s ? clients.filter(c => (c.name||'').toLowerCase().includes(s) || (c.phone||'').includes(s)) : clients;
@@ -553,25 +563,99 @@ function searchClients() { renderClients(); }
 
 function showClientDetail(phone) {
     guardNavigation(() => {
-        const client = DB.getClients().find(c => c.phone === phone); if (!client) return; currentClientPhone = phone;
-        const orders = DB.getOS(); const c = document.getElementById('client-detail-content');
-        const clientOrders = (client.history||[]).map(id => orders.find(o => o.id === id)).filter(Boolean).reverse();
-        let html = `<div class="detail-header"><div class="detail-client" style="font-size:18px;">${client.name||''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${client.phone||''}</div><div style="margin-top:6px;font-size:12px;color:var(--accent2);">${(client.history||[]).length} O.S.</div><div style="margin-top:12px;"><button onclick="editClient('${client.phone}')" style="padding:8px 12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);">✏️ Editar Cliente</button></div></div>`;
+        const client = DB.getClients().find(c => c.phone === phone); 
+        if (!client) return; 
+        currentClientPhone = phone;
+        
+        const orders = DB.getOS(); 
+        const clientOrders = orders.filter(o => o.phone === phone).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        const c = document.getElementById('client-detail-content');
+        
+        const totalOS = clientOrders.length;
+        const totalSpent = clientOrders.reduce((sum, o) => sum + (parseFloat(o.totalValue) || 0), 0);
+        const lastAttendance = clientOrders.length > 0 ? formatDateShort(clientOrders[0].createdAt) : 'Nunca';
+        const activeWarranties = clientOrders.filter(o => {
+            if (o.status === 'entregue' && o.updatedAt) {
+                const diff = (new Date() - new Date(o.updatedAt)) / (1000 * 60 * 60 * 24);
+                return diff <= 90;
+            }
+            return false;
+        }).length;
+
+        const devices = [...new Set(clientOrders.map(o => o.model).filter(Boolean))];
+        
+        let html = `<div class="detail-header" style="position:relative;">
+            <button onclick="editClientFromDetail('${phone}')" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar Ficha</button>
+            <div class="detail-header-top" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                <div class="detail-client" style="font-size:18px;">${client.name || ''}</div>
+                <div class="client-rating-display">${renderStarsHTML(client.rating || 0)}</div>
+            </div>
+            <div style="font-size:13px;color:var(--text2);margin-top:8px;">📞 ${client.phone || ''} ${client.phone2 ? `<span style="margin-left:10px;">📱 ${client.phone2}</span>` : ''}</div>
+            ${client.email ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">📧 ${client.email}</div>` : ''}
+            ${client.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🆔 CPF: ${client.cpf}</div>` : ''}
+            ${client.birthDate ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🎂 ${client.birthDate}</div>` : ''}
+        </div>`;
+
+        if (client.tags && client.tags.length > 0) {
+            html += `<div class="client-tags-container" style="margin-bottom:16px;">${client.tags.map(t => `<span class="client-tag">🏷️ ${t}</span>`).join('')}</div>`;
+        }
+
+        html += `<div class="client-stats-grid">
+            <div class="client-stat-card"><div class="stat-num">${totalOS}</div><div class="stat-lbl">Total OS</div></div>
+            <div class="client-stat-card"><div class="stat-num">R$ ${totalSpent.toFixed(2)}</div><div class="stat-lbl">Total Gasto</div></div>
+            <div class="client-stat-card"><div class="stat-num">${lastAttendance}</div><div class="stat-lbl">Último Atendimento</div></div>
+            <div class="client-stat-card"><div class="stat-num">${activeWarranties}</div><div class="stat-lbl">Garantias Ativas</div></div>
+        </div>`;
+
+        if (devices.length > 0) {
+            html += `<div class="form-section"><div class="form-section-title">📱 Aparelhos Vinculados</div><div class="client-devices-list">${devices.map(d => `<span class="device-chip">${d}</span>`).join('')}</div></div>`;
+        }
+
+        if (client.google1 || client.appleId || client.google2) {
+            html += `<div class="form-section"><div class="form-section-title">🔐 Credenciais</div><div class="credentials-box">`;
+            if (client.google1) html += `<div class="cred-row"><span>Google 1: ${client.google1}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g1', this)">👁️</button></div><div class="cred-pass" id="cred-g1" style="display:none;">${client.google1Pass || '***'}</div>`;
+            if (client.google2) html += `<div class="cred-row"><span>Google 2: ${client.google2}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g2', this)">👁️</button></div><div class="cred-pass" id="cred-g2" style="display:none;">${client.google2Pass || '***'}</div>`;
+            if (client.appleId) html += `<div class="cred-row"><span>Apple ID: ${client.appleId}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-apple', this)">👁️</button></div><div class="cred-pass" id="cred-apple" style="display:none;">${client.appleIdPass || '***'}</div>`;
+            html += `</div></div>`;
+        }
+
+        if (client.cep || client.city || client.street) {
+            html += `<div class="form-section"><div class="form-section-title">📍 Endereço</div><div style="font-size:13px;color:var(--text2);">${client.street || ''} ${client.number || ''} ${client.complement || ''}<br>${client.neighborhood || ''} - ${client.city || ''}/${client.state || ''}<br>CEP: ${client.cep || ''}</div></div>`;
+        }
+
+        if (client.freeObservations) {
+            html += `<div class="form-section"><div class="form-section-title">📝 Observações</div><div style="font-size:13px;color:var(--text2);white-space:pre-wrap;">${client.freeObservations}</div></div>`;
+        }
+
+        html += `<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:20px;">Cliente desde: ${client.createdAt ? formatDateShort(client.createdAt) : 'Data não registrada'}</div>`;
+
         html += `<div class="premium-list" style="margin-top:16px;">${clientOrders.map(os => `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.model||''}</div><div class="os-card-info">${(os.defect||'').substring(0, 50)}${(os.defect||'').length >50?'...':''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)}</span></div></div>`).join('')}</div>`;
+
         html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient('${client.phone||''}','${client.name||''}')">➕ Nova O.S. para este cliente</button></div>`;
-        c.innerHTML = html; showScreen('client-detail');
+        
+        c.innerHTML = html; 
+        showScreen('client-detail');
     });
 }
 
 function startOSForClient(phone, name) { startOS(DB.getOS().filter(o => o.phone===phone)[0]?.category||'celular'); document.getElementById('f-nome').value=name||''; document.getElementById('f-telefone').value=phone||''; }
 
-function editClient(phone) {
-    guardNavigation(() => {
-        const client = DB.getClients().find(c => c.phone === phone); if (!client) return;
-        document.getElementById('client-detail-content').innerHTML = `<div class="form-section"><div class="form-section-title">✏️ Editar Cliente</div><label style="font-size:12px;color:var(--text2);margin:8px 0 4px;display:block;">Nome</label><input id="edit-name" oninput="window.markUnsaved()" value="${client.name||''}" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);"><label style="font-size:12px;color:var(--text2);margin:8px 0 4px;display:block;">Telefone</label><input id="edit-phone" oninput="window.markUnsaved()" value="${client.phone||''}" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);"><div style="display:flex;gap:10px;margin-top:14px;"><button onclick="saveClientEdit('${phone}')" style="flex:1;padding:12px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button><button onclick="showClientDetail('${phone}')" style="padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;">Cancelar</button></div></div>`;
-        window.markSaved();
-    });
+function editClientFromDetail(phone) {
+    showScreen('clientes');
+    setTimeout(() => {
+        const area = document.getElementById('client-management-area');
+        if (area) {
+            area.style.display = 'block';
+            isClientFormOpen = true;
+            const client = DB.getClients().find(c => c.phone === phone);
+            renderClientForm(client);
+            area.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, 100);
 }
+
+function editClient(phone) { editClientFromDetail(phone); }
 
 async function saveClientEdit(oldPhone) { const n = document.getElementById('edit-name').value.trim(); const p = document.getElementById('edit-phone').value.trim(); if (!n || !p) return alert("Preencha os campos."); try { await updateDoc(doc(db, "clientes", oldPhone), { name: n, phone: p }); showToast("✅ Cliente atualizado."); window.markSaved(); showClientDetail(p); } catch(e) { console.error(e); alert("Erro ao atualizar."); } }
 
@@ -581,7 +665,6 @@ async function deleteClient(phone) {
     const docId = phone.trim();
     if (!docId) { alert("ID do cliente inválido."); return; }
     try {
-        console.log(`🗑️ Tentando excluir documento: clientes/${docId}`);
         await deleteDoc(doc(db, "clientes", docId));
         localClients = localClients.filter(c => c.phone !== docId);
         renderClients();
@@ -590,6 +673,302 @@ async function deleteClient(phone) {
         console.error("❌ Erro ao excluir do Firestore:", e);
         if (e.code === 'not-found') { alert("Cliente não encontrado no banco."); } else { alert("Erro ao excluir do Firestore."); }
     }
+}
+
+function toggleClientManagement() {
+    const area = document.getElementById('client-management-area');
+    if (!area) return;
+    if (isClientFormOpen) {
+        area.style.display = 'none';
+        isClientFormOpen = false;
+        currentEditingClient = null;
+    } else {
+        area.style.display = 'block';
+        isClientFormOpen = true;
+        renderClientForm(null);
+    }
+}
+
+function renderClientForm(client) {
+    currentEditingClient = client;
+    currentClientTags = client ? [...(client.tags || [])] : [];
+    currentClientRating = client ? (client.rating || 0) : 0;
+    
+    const area = document.getElementById('client-management-area');
+    if (!area) return;
+
+    const c = client || {};
+    
+    let html = `<div class="client-form-container">
+        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+            <span>${client ? '✏️ Editando Ficha Completa' : '➕ Novo Cadastro Completo'}</span>
+            <button onclick="toggleClientManagement()" style="background:var(--surface3);border:1px solid var(--border);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text2);">✕ Fechar</button>
+        </div>
+
+        <div class="client-form-header">
+            <div class="form-group" style="flex:1;">
+                <label>Nome Completo *</label>
+                <input type="text" id="cf-name" value="${c.name || ''}" placeholder="Nome do cliente">
+            </div>
+            <div class="client-rating-selector" id="cf-rating">
+                ${[1,2,3,4,5].map(i => `<span class="star-btn ${i <= currentClientRating ? 'active' : ''}" onclick="setClientRating(${i})">⭐</span>`).join('')}
+            </div>
+        </div>
+
+        <div class="form-section-title">👤 Dados Pessoais</div>
+        <div class="form-row">
+            <div class="form-group"><label>Data de Nascimento</label><input type="date" id="cf-birth" value="${c.birthDate || ''}"></div>
+            <div class="form-group"><label>CPF</label><input type="text" id="cf-cpf" value="${c.cpf || ''}" placeholder="000.000.000-00"></div>
+        </div>
+
+        <div class="form-section-title">📞 Contatos</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Telefone Principal *</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="tel" id="cf-phone1" value="${c.phone || ''}" placeholder="(00) 00000-0000" style="flex:1;" ${client ? 'readonly' : ''}>
+                    <button type="button" class="icon-btn" onclick="openWhatsApp(document.getElementById('cf-phone1').value)">💬</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Telefone Secundário</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="tel" id="cf-phone2" value="${c.phone2 || ''}" placeholder="(00) 00000-0000" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="openWhatsApp(document.getElementById('cf-phone2').value)">💬</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>E-mail Principal</label><input type="email" id="cf-email1" value="${c.email || ''}" placeholder="email@exemplo.com"></div>
+            <div class="form-group"><label>E-mail Secundário</label><input type="email" id="cf-email2" value="${c.email2 || ''}" placeholder="email2@exemplo.com"></div>
+        </div>
+
+        <div class="form-section-title">📍 Endereço</div>
+        <div class="form-row">
+            <div class="form-group" style="max-width:120px;">
+                <label>CEP</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="text" id="cf-cep" value="${c.cep || ''}" placeholder="00000-000" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="fetchCEP()">🔍</button>
+                </div>
+            </div>
+            <div class="form-group"><label>Rua</label><input type="text" id="cf-street" value="${c.street || ''}"></div>
+            <div class="form-group" style="max-width:80px;"><label>Número</label><input type="text" id="cf-number" value="${c.number || ''}"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Complemento</label><input type="text" id="cf-complement" value="${c.complement || ''}"></div>
+            <div class="form-group"><label>Bairro</label><input type="text" id="cf-neighborhood" value="${c.neighborhood || ''}"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Cidade</label><input type="text" id="cf-city" value="${c.city || ''}"></div>
+            <div class="form-group" style="max-width:80px;"><label>Estado</label><input type="text" id="cf-state" value="${c.state || ''}"></div>
+        </div>
+
+        <div class="form-section-title">🏷️ Etiquetas</div>
+        <div class="client-tags-container" id="cf-tags-display">
+            ${currentClientTags.map(t => `<span class="client-tag">${t} <span onclick="removeClientTag('${t}')" style="cursor:pointer;margin-left:4px;">✕</span></span>`).join('')}
+        </div>
+        <select id="cf-tag-select" onchange="addClientTag(this.value)" style="margin-top:8px;">
+            <option value="">+ Adicionar Etiqueta</option>
+            ${AVAILABLE_TAGS.map(t => `<option value="${t}">${t}</option>`).join('')}
+        </select>
+
+        <div class="form-section-title">🔐 Credenciais</div>
+        <div class="form-row">
+            <div class="form-group"><label>Conta Google 1</label><input type="text" id="cf-google1" value="${c.google1 || ''}"></div>
+            <!-- ✅ AJUSTE FINAL 2: BOTÕES MOSTRAR/OCULTAR E COPIAR -->
+            <div class="form-group"><label>Senha Google 1</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="password" id="cf-google1Pass" value="${c.google1Pass || ''}" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="togglePasswordVisibility('cf-google1Pass', this)">👁</button>
+                    <button type="button" class="icon-btn" onclick="copyPasswordToClipboard('cf-google1Pass')">📋</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Conta Google 2</label><input type="text" id="cf-google2" value="${c.google2 || ''}"></div>
+            <div class="form-group"><label>Senha Google 2</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="password" id="cf-google2Pass" value="${c.google2Pass || ''}" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="togglePasswordVisibility('cf-google2Pass', this)">👁</button>
+                    <button type="button" class="icon-btn" onclick="copyPasswordToClipboard('cf-google2Pass')">📋</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Apple ID</label><input type="text" id="cf-appleId" value="${c.appleId || ''}"></div>
+            <div class="form-group"><label>Senha Apple ID</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="password" id="cf-appleIdPass" value="${c.appleIdPass || ''}" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="togglePasswordVisibility('cf-appleIdPass', this)">👁</button>
+                    <button type="button" class="icon-btn" onclick="copyPasswordToClipboard('cf-appleIdPass')">📋</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-section-title">📝 Observações Livres</div>
+        <div class="form-group">
+            <textarea id="cf-observations" rows="4" placeholder="Prefere contato por WhatsApp. Filho busca os aparelhos...">${c.freeObservations || ''}</textarea>
+        </div>
+
+        <button class="premium-btn" style="width:100%; margin-top:16px;" onclick="saveFullClient()">💾 Salvar Ficha Completa</button>
+    </div>`;
+
+    area.innerHTML = html;
+}
+
+function setClientRating(r) {
+    currentClientRating = (currentClientRating === r) ? 0 : r;
+    document.querySelectorAll('#cf-rating .star-btn').forEach((el, i) => {
+        el.classList.toggle('active', i < currentClientRating);
+    });
+}
+
+function addClientTag(tag) {
+    if (!tag) return;
+    if (!currentClientTags.includes(tag)) {
+        currentClientTags.push(tag);
+        updateTagsDisplay();
+    }
+    document.getElementById('cf-tag-select').value = '';
+}
+
+function removeClientTag(tag) {
+    currentClientTags = currentClientTags.filter(t => t !== tag);
+    updateTagsDisplay();
+}
+
+function updateTagsDisplay() {
+    const container = document.getElementById('cf-tags-display');
+    if (container) {
+        container.innerHTML = currentClientTags.map(t => `<span class="client-tag">${t} <span onclick="removeClientTag('${t}')" style="cursor:pointer;margin-left:4px;">✕</span></span>`).join('');
+    }
+}
+
+function toggleClientPassword(id, btn) {
+    const el = document.getElementById(id);
+    if (el) {
+        if (el.style.display === 'none') {
+            el.style.display = 'block';
+            btn.textContent = '🙈';
+        } else {
+            el.style.display = 'none';
+            btn.textContent = '👁️';
+        }
+    }
+}
+
+// ✅ NOVAS FUNÇÕES PARA SENHAS DO CLIENTE
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+function copyPasswordToClipboard(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input || !input.value) return showToast('⚠️ Senha vazia');
+    
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            showToast('🔐 Senha copiada!');
+        }).catch(() => {
+            fallbackCopy(input);
+        });
+    } else {
+        fallbackCopy(input);
+    }
+}
+
+function fallbackCopy(input) {
+    input.type = 'text';
+    input.select();
+    document.execCommand('copy');
+    input.type = 'password';
+    showToast('🔐 Senha copiada!');
+}
+
+async function fetchCEP() {
+    const cep = document.getElementById('cf-cep').value.replace(/\D/g, '');
+    if (cep.length !== 8) return showToast('⚠️ CEP inválido');
+    try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (data.erro) return showToast('⚠️ CEP não encontrado');
+        document.getElementById('cf-street').value = data.logradouro || '';
+        document.getElementById('cf-neighborhood').value = data.bairro || '';
+        document.getElementById('cf-city').value = data.localidade || '';
+        document.getElementById('cf-state').value = data.uf || '';
+        showToast('✅ Endereço preenchido');
+    } catch (e) {
+        showToast('❌ Erro ao buscar CEP');
+    }
+}
+
+function openWhatsApp(phone) {
+    if (!phone) return;
+    const clean = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/55${clean}`, '_blank');
+}
+
+async function saveFullClient() {
+    const phone1 = document.getElementById('cf-phone1').value.trim();
+    const name = document.getElementById('cf-name').value.trim();
+    if (!phone1 || !name) return showToast('⚠️ Nome e Telefone Principal são obrigatórios');
+
+    const clientData = {
+        phone: phone1,
+        name: name,
+        birthDate: document.getElementById('cf-birth').value,
+        cpf: document.getElementById('cf-cpf').value,
+        phone2: document.getElementById('cf-phone2').value,
+        email: document.getElementById('cf-email1').value,
+        email2: document.getElementById('cf-email2').value,
+        cep: document.getElementById('cf-cep').value,
+        street: document.getElementById('cf-street').value,
+        number: document.getElementById('cf-number').value,
+        complement: document.getElementById('cf-complement').value,
+        neighborhood: document.getElementById('cf-neighborhood').value,
+        city: document.getElementById('cf-city').value,
+        state: document.getElementById('cf-state').value,
+        tags: currentClientTags,
+        rating: currentClientRating,
+        google1: document.getElementById('cf-google1').value,
+        google1Pass: document.getElementById('cf-google1Pass').value,
+        google2: document.getElementById('cf-google2').value,
+        google2Pass: document.getElementById('cf-google2Pass').value,
+        appleId: document.getElementById('cf-appleId').value,
+        appleIdPass: document.getElementById('cf-appleIdPass').value,
+        freeObservations: document.getElementById('cf-observations').value,
+        history: currentEditingClient ? (currentEditingClient.history || []) : [],
+        createdAt: currentEditingClient ? (currentEditingClient.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    try {
+        await DB.saveClient(clientData);
+        showToast('✅ Ficha do cliente salva!');
+        toggleClientManagement();
+        renderClients();
+        window.markSaved();
+    } catch (e) {
+        console.error(e);
+        showToast('❌ Erro ao salvar');
+    }
+}
+
+function renderStarsHTML(rating) {
+    let stars = '';
+    for (let i = 1; i <= 5; i++) {
+        stars += `<span style="color:${i <= rating ? '#F59E0B' : 'var(--text3)'};font-size:16px;">⭐</span>`;
+    }
+    return stars;
 }
 
 // ===== GLOBAL SEARCH =====

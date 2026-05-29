@@ -128,7 +128,9 @@
             </div>
             <div class="form-section">
                 <div class="form-section-title">📝 Observações</div>
-                <textarea id="f-obs" rows="3" placeholder="Anotações gerais..."></textarea>
+                <div class="form-group">
+                    <textarea id="f-obs" rows="4" placeholder="Anotações gerais..."></textarea>
+                </div>
             </div>
             <div class="form-section">
                 <div class="form-section-title">📋 Checklist de Entrada</div>
@@ -166,6 +168,8 @@
                 <span class="search-icon">🔍</span>
                 <input type="text" id="client-search" placeholder="Buscar cliente..." oninput="searchClients()">
             </div>
+            <button class="premium-btn" style="width:100%; margin-bottom:16px;" onclick="toggleClientManagement()">➕ Cadastrar / Gerenciar Cliente</button>
+            <div id="client-management-area"></div>
             <div id="client-list" class="premium-list"></div>
         </div>
 
