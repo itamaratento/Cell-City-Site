@@ -46,6 +46,12 @@
                 <div class="icon">👥</div>
                 <div class="label">Clientes</div>
             </div>
+            <!-- ✅ NOVO CARD: BANCO DE FOTOS EXTERNO -->
+            <div class="home-card card-fotos" onclick="openPhotoBank()">
+                <div class="icon">📸</div>
+                <div class="label">Fotos</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:4px;font-weight:500;">Banco externo</div>
+            </div>
         </div>
     </div>
 
@@ -121,10 +127,6 @@
             <div id="lock-photo-section">
                 <div class="form-group">
                     <label>📷 Foto da senha/padrão <span class="optional">(opcional)</span></label>
-                    <!-- ✅ NOVO: Botão Banco de Fotos (externo) -->
-                    <button type="button" class="lock-photo-btn" onclick="openPhotoBank('senha')" style="margin-bottom:8px;background:rgba(33,150,243,0.08);border-color:rgba(33,150,243,0.3);color:#60a5fa;width:100%;">
-                        <span>📸</span> Banco de Fotos (externo)
-                    </button>
                     <div class="lock-photo-container">
                         <label class="lock-photo-btn"><span>📁</span> Escolher Arquivo<input type="file" accept="image/*" id="lock-photo" onchange="handleLockPhoto(event)"></label>
                         <label class="lock-photo-btn lock-photo-btn-camera"><span>📷</span> Tirar Foto<input type="file" accept="image/*" capture="environment" id="lock-photo-camera" onchange="handleLockPhoto(event)"></label>
@@ -137,11 +139,6 @@
         <div class="form-section">
             <div class="form-section-title">📝 Observações</div>
             <div class="form-group"><textarea id="f-obs" rows="3" placeholder="Informações adicionais..."></textarea></div>
-            <!-- ✅ NOVO: Campo Link do Banco de Fotos -->
-            <div class="form-group">
-                <label>🔗 Link do Banco de Fotos <span class="optional">(opcional)</span></label>
-                <input type="url" id="f-photo-bank-link" placeholder="Cole aqui o link da pasta do Google Drive">
-            </div>
         </div>
 
         <div class="form-section">
@@ -151,10 +148,6 @@
 
         <div class="form-section">
             <div class="form-section-title">📷 Fotos do Aparelho</div>
-            <!-- ✅ NOVO: Botão Banco de Fotos (externo) -->
-            <button type="button" class="lock-photo-btn" onclick="openPhotoBank('aparelho')" style="margin-bottom:10px;background:rgba(33,150,243,0.08);border-color:rgba(33,150,243,0.3);color:#60a5fa;width:100%;">
-                <span>📸</span> Banco de Fotos (externo)
-            </button>
             <div class="premium-upload" onclick="document.getElementById('photos-input').click()">
                 <div class="icon">📷</div>
                 <p>Toque para adicionar fotos do aparelho</p>
