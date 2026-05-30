@@ -82,17 +82,18 @@
       <div class="module-indicator live"></div>
     </div>
 
-    <!-- PAINEL DE ALERTAS (MODO SEGURANÇA - sem dados fictícios) -->
+    <!-- PAINEL DE ALERTAS -->
     <div class="module-card alerts-card" id="alerts-card">
-      <div class="alerts-header">
-        <span class="alerts-header-icon">⚠️</span>
-        <h3 class="alerts-header-title">Alertas Operacionais</h3>
-      </div>
       <div class="alerts-main" id="alerts-main">
-        <div class="alert-icon">✅</div>
-        <div class="alert-title">SISTEMA OPERANDO NORMALMENTE</div>
+        <div class="alert-header-row">
+          <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
+          <div class="alert-title" id="alert-title-el">DICA DO CRM</div>
+        </div>
         <div class="alert-subtitle">Aguardando integração com dados reais</div>
         <div class="alert-detail">Nenhum alerta operacional pendente</div>
+      </div>
+      <div class="alert-progress-track">
+        <div class="alert-progress-bar" id="alert-progress-bar"></div>
       </div>
     </div>
 
@@ -145,10 +146,10 @@
 
     <!-- LINHA 3 -->
     <div class="module-card" data-module="clientes">
-      <div class="module-icon">👥</div>
+      <div class="module-icon">🖨️</div>
       <div class="module-info">
-        <h3>Clientes</h3>
-        <p class="module-sub">Base de contato</p>
+        <h3>Impressora</h3>
+        <p class="module-sub">Config. de impressão</p>
       </div>
       <div class="module-indicator"></div>
     </div>

@@ -117,21 +117,75 @@ class Dashboard {
     }
   }
 
-  // ===== ALERTAS (MODO SEGURANÇA - sem dados fictícios) =====
-  // AGUARDANDO ETAPA 2: análise de os.js e caixa.js para integração real
+  // ===== ALERTAS + DICAS ROTATIVAS =====
   setupAlerts() {
-    const iconEl = document.getElementById('alert-icon');
-    const titleEl = document.getElementById('alert-title');
-    const subtitleEl = document.getElementById('alert-subtitle');
-    const detailEl = document.getElementById('alert-detail');
+    const titleEl    = document.querySelector('.alert-title');
+    const subtitleEl = document.querySelector('.alert-subtitle');
+    const detailEl   = document.querySelector('.alert-detail');
+    const iconEl     = document.getElementById('alert-cat-icon');
+    const progressEl = document.getElementById('alert-progress-bar');
+    if (!titleEl || !subtitleEl || !detailEl) return;
 
-    if (!iconEl || !titleEl || !subtitleEl || !detailEl) return;
+    const DICAS = [
+      { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Cadastre seus clientes',         detail: 'Registre o histórico de cada atendimento para fidelizar melhor.' },
+      { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Ordens de Serviço',              detail: 'Use as OS para nunca perder o controle de um reparo em andamento.' },
+      { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Controle financeiro',            detail: 'Registre todas as entradas e saídas no Caixa para ter visão real do seu financeiro.' },
+      { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Estoque atualizado',             detail: 'Mantenha o Estoque em dia para evitar surpresas na hora do reparo.' },
+      { icon: '📈', cat: 'vendas',       title: 'DICA DE VENDAS',   sub: 'Hora certa de vender mais',      detail: 'Cliente buscando o aparelho é a melhor hora para oferecer capinha, película ou acessório.' },
+      { icon: '📈', cat: 'vendas',       title: 'DICA DE VENDAS',   sub: 'Pós-venda ativo',                detail: 'Ligue ou mande mensagem 7 dias após a entrega. Isso fideliza e gera indicações.' },
+      { icon: '📈', cat: 'vendas',       title: 'DICA DE VENDAS',   sub: 'Ofereça garantia no serviço',   detail: 'Transmite confiança e diferencia a Cell City da concorrência.' },
+      { icon: '💪', cat: 'motivacional', title: 'MOTIVACIONAL',     sub: 'Cada OS é um passo',             detail: 'Cada OS concluída é um cliente satisfeito e um passo rumo à meta semanal.' },
+      { icon: '💪', cat: 'motivacional', title: 'MOTIVACIONAL',     sub: 'Consistência vence',             detail: 'Consistência bate talento. Atenda bem todos os dias.' },
+      { icon: '💪', cat: 'motivacional', title: 'MOTIVACIONAL',     sub: 'Cell City crescendo 💪',         detail: 'Um reparo de cada vez. Foco, qualidade e atendimento fazem a diferença.' }
+    ];
 
-    // Estado seguro — sem dados fictícios
-    iconEl.textContent = '✅';
-    titleEl.textContent = 'SISTEMA OPERANDO NORMALMENTE';
-    subtitleEl.textContent = 'Aguardando integração com dados reais';
-    detailEl.textContent = 'Nenhum alerta operacional pendente';
+    let idx = 0;
+
+    const CAT_CLASS = { crm: 'cat-crm', vendas: 'cat-vendas', motivacional: 'cat-motivacional' };
+    const BAR_CLASS = { crm: 'cat-crm-bar', vendas: 'cat-vendas-bar', motivacional: 'cat-motivacional-bar' };
+    const DURATION  = 180000;
+
+    const aplicarCategoria = (dica) => {
+      const cls = CAT_CLASS[dica.cat] || 'cat-crm';
+      titleEl.className = 'alert-title ' + cls;
+      if (iconEl) iconEl.textContent = dica.icon;
+      if (progressEl) {
+        progressEl.className = 'alert-progress-bar ' + (BAR_CLASS[dica.cat] || 'cat-crm-bar');
+        progressEl.style.animation = 'none';
+        progressEl.getBoundingClientRect();
+        progressEl.style.animation = `progressFill ${DURATION}ms linear forwards`;
+      }
+    };
+
+    const mostrar = (dica, animacao) => {
+      if (animacao) {
+        [titleEl, subtitleEl, detailEl].forEach(el => {
+          el.style.transition = 'opacity 0.4s ease';
+          el.style.opacity = '0';
+        });
+        if (iconEl) { iconEl.style.transition = 'opacity 0.4s ease'; iconEl.style.opacity = '0'; }
+        setTimeout(() => {
+          titleEl.textContent    = dica.title;
+          subtitleEl.textContent = dica.sub;
+          detailEl.textContent   = dica.detail;
+          aplicarCategoria(dica);
+          [titleEl, subtitleEl, detailEl].forEach(el => el.style.opacity = '1');
+          if (iconEl) iconEl.style.opacity = '1';
+        }, 400);
+      } else {
+        titleEl.textContent    = dica.title;
+        subtitleEl.textContent = dica.sub;
+        detailEl.textContent   = dica.detail;
+        aplicarCategoria(dica);
+      }
+    };
+
+    mostrar(DICAS[0], false);
+
+    setInterval(() => {
+      idx = (idx + 1) % DICAS.length;
+      mostrar(DICAS[idx], true);
+    }, 180000); // 3 minutos
   }
 
   // ===== MINI CALENDÁRIO =====
