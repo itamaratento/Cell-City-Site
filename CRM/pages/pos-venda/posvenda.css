@@ -398,18 +398,24 @@ body {
 }
 .pv-toast.show { transform: translateX(-50%) translateY(0); }
 
-/* Título "Pós-venda" centralizado em relação à largura total do header */
-#crm-brand-bar {
-    position: relative;
-}
+/* Título: fluxo normal no celular, centralizado no desktop */
 #crm-brand-bar .crm-page-title {
-    position: absolute !important;
-    left: 0 !important;
-    right: 120px !important;
+    flex: 1 !important;
+    position: static !important;
     text-align: center !important;
     pointer-events: none;
-    font-size: 22px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
+}
+
+@media (min-width: 769px) {
+    #crm-brand-bar { position: relative; }
+    #crm-brand-bar .crm-page-title {
+        position: absolute !important;
+        left: 0 !important;
+        right: 120px !important;
+        font-size: 22px !important;
+    }
 }
 
 ::-webkit-scrollbar { width: 5px; }

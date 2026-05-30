@@ -819,15 +819,23 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 
-/* Título centralizado no header alinhado com o conteúdo */
-#crm-brand-bar { position: relative; }
+/* Título: fluxo normal no celular, centralizado no desktop */
 #crm-brand-bar .crm-page-title {
-    position: absolute !important;
-    left: 0 !important;
-    right: 120px !important;
+    flex: 1 !important;
+    position: static !important;
     text-align: center !important;
-    pointer-events: none;
-    font-size: 22px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
+    pointer-events: none;
+}
+
+@media (min-width: 769px) {
+    #crm-brand-bar { position: relative; }
+    #crm-brand-bar .crm-page-title {
+        position: absolute !important;
+        left: 0 !important;
+        right: 120px !important;
+        font-size: 22px !important;
+    }
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
