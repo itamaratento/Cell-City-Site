@@ -73,5 +73,18 @@
 
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="clientes.js"></script>
+    <script>
+    window.addEventListener('load', function() {
+        if (window.innerWidth <= 768) {
+            var bar = document.getElementById('crm-brand-bar');
+            var title = bar && bar.querySelector('.crm-page-title');
+            if (bar && title) {
+                bar.style.flexWrap = 'wrap';
+                bar.style.paddingBottom = '10px';
+                title.style.cssText = 'position:static !important; flex:1 1 100% !important; text-align:center !important; font-size:16px !important; font-weight:800 !important; margin-top:4px !important; left:auto !important; right:auto !important;';
+            }
+        }
+    });
+    </script>
 </body>
 </html>
