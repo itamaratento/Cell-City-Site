@@ -1,0 +1,318 @@
+import {
+    db, collection, getDocs, doc, setDoc, query, orderBy, serverTimestamp
+} from "../../scripts/firebase.js";
+
+// ===== GLOBAL EXPOSURE =====
+window.showTab = showTab;
+window.filterHistorico = filterHistorico;
+
+// ===== STATE =====
+let pendentes = { 5: [], 15: [], 30: [] };
+let historico = [];
+let contatosFeitos = new Set();
+
+// ===== INIT =====
+async function init() {
+    try {
+        await loadData();
+    } catch (err) {
+        console.error('❌ Pós-venda: erro ao carregar dados', err);
+        document.getElementById('pendentes-container').innerHTML =
+            `<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar. Verifique a conexão.</p></div>`;
+        return;
+    }
+    renderPendentes();
+    renderHistorico();
+    setupEventDelegation();
+}
+
+// ===== CARREGAR DADOS =====
+async function loadData() {
+    const [ordersSnap, contatosSnap] = await Promise.all([
+        getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"))),
+        getDocs(collection(db, "posvenda_contatos"))
+    ]);
+
+    const contatos = [];
+    contatosSnap.forEach(d => contatos.push({ id: d.id, ...d.data() }));
+    contatosFeitos = new Set(contatos.map(c => `${c.osId}_${c.prazo}`));
+
+    const now = new Date();
+    pendentes = { 5: [], 15: [], 30: [] };
+
+    ordersSnap.forEach(d => {
+        const os = { firestoreId: d.id, ...d.data() };
+        if (os.status !== 'entregue') return;
+
+        const deliveryDate = getDeliveryDate(os);
+        if (!deliveryDate) return;
+
+        const dias = calcDias(deliveryDate, now);
+
+        [5, 15, 30].forEach(prazo => {
+            const osId = os.id || os.firestoreId;
+            if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+            if (dias < prazo || dias > prazo + 2) return;
+
+            const urgencia = dias === prazo ? 'ok' : dias === prazo + 1 ? 'atencao' : 'urgente';
+            pendentes[prazo].push({ ...os, osId, dias, urgencia, prazo });
+        });
+    });
+
+    historico = contatos.sort((a, b) => {
+        const dateA = a.dataContato ? new Date(a.dataContato) : 0;
+        const dateB = b.dataContato ? new Date(b.dataContato) : 0;
+        return dateB - dateA;
+    });
+}
+
+function getDeliveryDate(os) {
+    if (Array.isArray(os.timeline)) {
+        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
+        if (entry?.date) return entry.date;
+    }
+    const ua = os.updatedAt;
+    if (!ua) return null;
+    if (typeof ua === 'string') return ua;
+    if (ua.toDate) return ua.toDate().toISOString();
+    return null;
+}
+
+function calcDias(dateStr, now) {
+    try {
+        return Math.floor((now - new Date(dateStr)) / 86400000);
+    } catch { return 0; }
+}
+
+// ===== RENDERIZAR PENDENTES =====
+function renderPendentes() {
+    const total = Object.values(pendentes).flat().length;
+
+    [5, 15, 30].forEach(p => {
+        const count = pendentes[p].length;
+        const el = document.getElementById(`count-${p}`);
+        const item = document.getElementById(`sum-${p}`);
+        if (el) el.textContent = count;
+        if (item) item.classList.toggle('has-pending', count > 0);
+    });
+
+    const badge = document.getElementById('tab-badge');
+    if (badge) {
+        badge.textContent = total;
+        badge.style.display = total > 0 ? 'inline-flex' : 'none';
+    }
+
+    const container = document.getElementById('pendentes-container');
+
+    if (total === 0) {
+        container.innerHTML = `<div class="empty-state">
+            <div class="icon">🎉</div>
+            <p>Nenhum contato pendente!</p>
+            <p>Todos os clientes foram atendidos.</p>
+        </div>`;
+        saveBadge(0);
+        return;
+    }
+
+    const GRUPO_INFO = {
+        5:  { emoji: '👋', desc: '5 dias — Satisfação do serviço' },
+        15: { emoji: '🔍', desc: '15 dias — Acompanhamento' },
+        30: { emoji: '⭐', desc: '30 dias — Fidelização' }
+    };
+
+    let html = '';
+    [5, 15, 30].forEach(prazo => {
+        const grupo = pendentes[prazo];
+        if (!grupo.length) return;
+        const info = GRUPO_INFO[prazo];
+        html += `
+        <div class="pv-grupo">
+            <div class="pv-grupo-header">
+                <span>${info.emoji} ${info.desc}</span>
+                <span class="pv-grupo-badge">${grupo.length}</span>
+            </div>
+            ${grupo.map(os => buildCard(os)).join('')}
+        </div>`;
+    });
+
+    container.innerHTML = html;
+    saveBadge(total);
+}
+
+function buildCard(os) {
+    const URGENCIA = {
+        ok:      { cls: 'urg-ok',      label: '' },
+        atencao: { cls: 'urg-atencao', label: '<div class="pv-urg-label">🟡 1 dia em atraso</div>' },
+        urgente: { cls: 'urg-urgente', label: '<div class="pv-urg-label">🔴 Contato urgente</div>' }
+    };
+    const u = URGENCIA[os.urgencia] || URGENCIA.ok;
+
+    return `
+    <div class="pv-card ${u.cls}" data-osid="${esc(os.osId)}" data-prazo="${os.prazo}">
+        <div class="pv-card-top">
+            <div class="pv-card-info">
+                <div class="pv-card-id">${esc(os.osId)}</div>
+                <div class="pv-card-name">${esc(os.clientName)}</div>
+                <div class="pv-card-model">${esc(os.model)}</div>
+            </div>
+            <div class="pv-card-days">
+                <span class="days-num">${os.dias}</span>
+                <span class="days-lbl">dias</span>
+            </div>
+        </div>
+        ${u.label}
+        <button class="pv-whatsapp-btn">📱 Enviar WhatsApp</button>
+        <div class="pv-emoji-row">
+            <button class="emoji-btn" data-emoji="😄" data-label="Muito satisfeito" title="Muito satisfeito">😄</button>
+            <button class="emoji-btn" data-emoji="🙂" data-label="Satisfeito" title="Satisfeito">🙂</button>
+            <button class="emoji-btn" data-emoji="😐" data-label="Neutro" title="Neutro">😐</button>
+            <button class="emoji-btn" data-emoji="😟" data-label="Voltou com problema" title="Voltou com problema">😟</button>
+            <button class="emoji-btn" data-emoji="📵" data-label="Não atendeu" title="Não atendeu">📵</button>
+        </div>
+    </div>`;
+}
+
+// ===== RENDERIZAR HISTÓRICO =====
+function renderHistorico(list) {
+    const data = list !== undefined ? list : historico;
+    const container = document.getElementById('historico-container');
+    if (!data.length) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Nenhum contato registrado ainda</p></div>`;
+        return;
+    }
+    container.innerHTML = data.map(buildHistCard).join('');
+}
+
+function buildHistCard(c) {
+    const prazoLabel = { 5: '5 dias', 15: '15 dias', 30: '30 dias' }[c.prazo] || `${c.prazo} dias`;
+    const data = c.dataContato
+        ? new Date(c.dataContato).toLocaleDateString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        })
+        : '';
+    return `
+    <div class="pv-hist-card">
+        <div class="pv-hist-top">
+            <div>
+                <div class="pv-card-name">${esc(c.clientName)}</div>
+                <div class="pv-card-model">${esc(c.model)} · ${prazoLabel}</div>
+                <div class="pv-card-id">${esc(c.osId)}</div>
+            </div>
+            <div class="pv-hist-emoji">${c.emoji || ''}</div>
+        </div>
+        <div class="pv-hist-footer">
+            <span class="pv-hist-result">${esc(c.resultado)}</span>
+            <span class="pv-hist-date">${data}</span>
+        </div>
+    </div>`;
+}
+
+// ===== EVENT DELEGATION =====
+function setupEventDelegation() {
+    const container = document.getElementById('pendentes-container');
+    container.addEventListener('click', async (e) => {
+        const card = e.target.closest('.pv-card');
+        if (!card) return;
+
+        const osId = card.dataset.osid;
+        const prazo = parseInt(card.dataset.prazo);
+        const os = pendentes[prazo]?.find(o => o.osId === osId);
+        if (!os) return;
+
+        if (e.target.closest('.pv-whatsapp-btn')) {
+            openWhatsApp(os.phone, os.clientName, os.model, prazo);
+            return;
+        }
+
+        const emojiBtn = e.target.closest('.emoji-btn');
+        if (emojiBtn) {
+            await registrarResultado(osId, os, prazo, emojiBtn.dataset.emoji, emojiBtn.dataset.label);
+        }
+    });
+}
+
+// ===== WHATSAPP =====
+function openWhatsApp(phone, name, model, prazo) {
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!cleanPhone) { showToast('⚠️ Telefone não cadastrado'); return; }
+    const msgs = {
+        5:  `Olá ${name}! Tudo bem com seu ${model}? Passando para saber se ficou tudo certo com o serviço. Cell City 😊`,
+        15: `Olá ${name}! Tudo bem? Alguma dúvida ou problema com seu ${model}? Estamos à disposição. Cell City`,
+        30: `Olá ${name}! Já faz um mês do serviço do seu ${model}. Que tal uma revisão gratuita? Agende com a gente! Cell City`
+    };
+    const msg = msgs[prazo] || msgs[5];
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ===== REGISTRAR RESULTADO =====
+async function registrarResultado(osId, os, prazo, emoji, resultado) {
+    const key = `${osId}_${prazo}`;
+    if (contatosFeitos.has(key)) return;
+
+    const data = {
+        osId,
+        clientName: os.clientName || '',
+        phone: os.phone || '',
+        model: os.model || '',
+        prazo,
+        emoji,
+        resultado,
+        dataContato: new Date().toISOString(),
+        createdAt: serverTimestamp()
+    };
+
+    try {
+        await setDoc(doc(db, "posvenda_contatos", key), data);
+        contatosFeitos.add(key);
+        pendentes[prazo] = pendentes[prazo].filter(o => o.osId !== osId);
+        historico.unshift({ ...data, id: key });
+        showToast(`${emoji} ${resultado} — registrado!`);
+        renderPendentes();
+    } catch (err) {
+        console.error('❌ Erro ao registrar resultado:', err);
+        showToast('❌ Erro ao salvar. Tente novamente.');
+    }
+}
+
+// ===== TABS =====
+function showTab(tab) {
+    document.querySelectorAll('.pv-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pv-screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.getElementById(`screen-${tab}`).classList.add('active');
+    if (tab === 'historico') renderHistorico();
+}
+
+function filterHistorico() {
+    const term = (document.getElementById('hist-search')?.value || '').toLowerCase();
+    const filtered = term
+        ? historico.filter(c =>
+            (c.clientName || '').toLowerCase().includes(term) ||
+            (c.osId || '').toLowerCase().includes(term) ||
+            (c.model || '').toLowerCase().includes(term))
+        : historico;
+    renderHistorico(filtered);
+}
+
+// ===== UTILS =====
+function saveBadge(count) {
+    localStorage.setItem('pv_pending_count', count);
+}
+
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== START =====
+document.addEventListener('DOMContentLoaded', init);

@@ -818,4 +818,16 @@ body {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+/* Título centralizado no header alinhado com o conteúdo */
+#crm-brand-bar { position: relative; }
+#crm-brand-bar .crm-page-title {
+    position: absolute !important;
+    left: 0 !important;
+    right: 120px !important;
+    text-align: center !important;
+    pointer-events: none;
+    font-size: 22px !important;
+    font-weight: 800 !important;
+}
 ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
