@@ -1083,3 +1083,157 @@ document.getElementById('modalEdicao')?.addEventListener('click', (e) => { if(e.
 // ═══════════════════════════════════════════
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 window.addEventListener('beforeunload', () => { if(listenerLancamentos) listenerLancamentos(); if(listenerCategorias) listenerCategorias(); });
+
+// ═══════════════════════════════════════════
+// ⚠️ LEMBRETES DE PAGAMENTO
+// ═══════════════════════════════════════════
+window.toggleLembretes    = toggleLembretes;
+window.toggleFormLembrete = toggleFormLembrete;
+window.salvarLembrete     = salvarLembrete;
+window.removerLembrete    = removerLembrete;
+window.pagarLembrete      = pagarLembrete;
+
+const COLL_LEMBRETES = 'lembretes_pagamento';
+let lembretes = [];
+let lembretesPanelAberto = false;
+let lembreteFormAberto = false;
+
+function toggleLembretes() {
+    lembretesPanelAberto = !lembretesPanelAberto;
+    const panel   = document.getElementById('lembretes-panel');
+    const chevron = document.getElementById('lembretes-chevron');
+    if (panel)   panel.style.display   = lembretesPanelAberto ? 'block' : 'none';
+    if (chevron) chevron.textContent   = lembretesPanelAberto ? '▲' : '▼';
+    if (lembretesPanelAberto) carregarLembretes();
+}
+
+function toggleFormLembrete(show) {
+    lembreteFormAberto = show;
+    const form = document.getElementById('lembretes-form');
+    const btn  = document.getElementById('btn-novo-lem');
+    if (form) form.style.display = show ? 'block' : 'none';
+    if (btn)  btn.style.display  = show ? 'none'  : 'block';
+    if (!show) limparFormLembrete();
+}
+
+function limparFormLembrete() {
+    ['lem-fornecedor','lem-descricao','lem-quantidade','lem-valor','lem-vencimento','lem-observacao']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+}
+
+async function carregarLembretes() {
+    try {
+        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), orderBy('createdAt', 'asc')));
+        lembretes = [];
+        snap.forEach(d => lembretes.push({ id: d.id, ...d.data() }));
+    } catch {
+        lembretes = JSON.parse(localStorage.getItem('cc_lembretes') || '[]');
+    }
+    renderLembretes();
+}
+
+async function salvarLembrete() {
+    const fornecedor = document.getElementById('lem-fornecedor')?.value.trim();
+    const descricao  = document.getElementById('lem-descricao')?.value.trim();
+    const valor      = parseFloat(document.getElementById('lem-valor')?.value || 0);
+    const quantidade = parseInt(document.getElementById('lem-quantidade')?.value || 1);
+    if (!fornecedor || !descricao || !valor) return showToast('⚠️ Preencha Fornecedor, Descrição e Valor');
+    const dados = {
+        fornecedor, descricao, valor, quantidade,
+        vencimento:  document.getElementById('lem-vencimento')?.value  || '',
+        observacao:  document.getElementById('lem-observacao')?.value.trim()  || '',
+        createdAt: serverTimestamp(),
+        createdAtISO: new Date().toISOString()
+    };
+    try {
+        const ref = doc(collection(db, COLL_LEMBRETES));
+        await setDoc(ref, { ...dados, id: ref.id });
+        showToast('✅ Lembrete salvo!');
+    } catch {
+        dados.id = Date.now().toString();
+        lembretes.push(dados);
+        localStorage.setItem('cc_lembretes', JSON.stringify(lembretes));
+        showToast('✅ Lembrete salvo localmente');
+    }
+    toggleFormLembrete(false);
+    await carregarLembretes();
+}
+
+async function removerLembrete(id) {
+    if (!confirm('Remover este lembrete sem pagar?')) return;
+    try {
+        await deleteDoc(doc(db, COLL_LEMBRETES, id));
+    } catch {
+        lembretes = lembretes.filter(l => l.id !== id);
+        localStorage.setItem('cc_lembretes', JSON.stringify(lembretes));
+    }
+    await carregarLembretes();
+    showToast('🗑️ Lembrete removido');
+}
+
+async function pagarLembrete(id, fornecedor, descricao, valor) {
+    if (!confirm(`Confirmar pagamento de ${formatarMoeda(valor)} para ${fornecedor}?\n\nIsso vai registrar uma SAÍDA no caixa.`)) return;
+    const t = criarEstruturaTemporal();
+    const dados = {
+        tipo: 'saida',
+        descricao: `${fornecedor} — ${descricao}`,
+        categoria: 'Fornecedor',
+        valor, custo: 0, lucro: -valor,
+        status: 'ativo',
+        source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
+        createdAt: serverTimestamp(), createdAtISO: t.dataISO,
+        updatedAt: serverTimestamp(), updatedAtISO: t.dataISO,
+        dataISO: t.dataISO, dia: t.dia, mes: t.mes, ano: t.ano,
+        semana: t.semana, horario: t.horario,
+        diaSemana: t.diaSemana, diaMes: t.diaMes, mesNumero: t.mesNumero,
+        timezone: t.timezone, editHistory: [], editCount: 0
+    };
+    try {
+        const ref = doc(collection(db, COLLECTION_LANCAMENTOS));
+        await setDoc(ref, { ...dados, id: ref.id });
+        await deleteDoc(doc(db, COLL_LEMBRETES, id));
+        showToast('✅ Pagamento registrado no caixa!');
+        await carregarLembretes();
+    } catch (err) {
+        console.error('❌ Erro ao pagar lembrete:', err);
+        showToast('❌ Erro ao registrar. Tente novamente.');
+    }
+}
+
+function renderLembretes() {
+    const lista = document.getElementById('lembretes-lista');
+    const badge = document.getElementById('lembretes-badge');
+    if (!lista) return;
+    if (badge) {
+        badge.textContent    = lembretes.length;
+        badge.style.display  = lembretes.length > 0 ? 'inline-flex' : 'none';
+    }
+    if (!lembretes.length) {
+        lista.innerHTML = `<div class="lem-empty">Nenhum lembrete pendente</div>`;
+        return;
+    }
+    lista.innerHTML = lembretes.map(l => {
+        const qtd   = l.quantidade && l.quantidade > 1 ? l.quantidade : 1;
+        const total = l.valor * qtd;
+        const venc  = l.vencimento ? `<span class="lem-venc">📅 ${new Date(l.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span>` : '';
+        const obs   = l.observacao ? `<div class="lem-obs">${l.observacao}</div>` : '';
+        const qtdLabel = qtd > 1 ? `<span class="lem-qtd">${qtd}x ${formatarMoeda(l.valor)}</span>` : '';
+        return `
+        <div class="lem-card">
+            <div class="lem-card-top">
+                <div class="lem-card-info">
+                    <div class="lem-fornecedor">${l.fornecedor}</div>
+                    <div class="lem-descricao">${l.descricao}</div>
+                    ${qtdLabel}${venc}${obs}
+                </div>
+                <div class="lem-valor">${formatarMoeda(total)}</div>
+            </div>
+            <div class="lem-card-actions">
+                <button class="lem-btn-pagar" onclick="pagarLembrete('${l.id}','${l.fornecedor.replace(/'/g,"\\'")}','${l.descricao.replace(/'/g,"\\'")}',${total})">
+                    💸 Pagar
+                </button>
+                <button class="lem-btn-remover" onclick="removerLembrete('${l.id}')">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
