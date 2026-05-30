@@ -399,10 +399,24 @@ body {
     .stat-chip .num { font-size: 20px; }
 }
 
-/* Brand bar + header não se sobrepõem no celular */
-#crm-brand-bar ~ .header,
-#crm-brand-bar + .header {
-    top: 56px;
+/* Corrige sobreposição no celular */
+/* Corrige sobreposição no celular */
+@media (max-width: 600px) {
+    #crm-brand-bar {
+        flex-wrap: wrap !important;
+        gap: 10px !important;
+        padding: 10px 16px 14px !important;
+        min-height: auto !important;
+    }
+    #crm-brand-bar .btn-os-home {
+        position: static !important;
+        transform: none !important;
+        left: auto !important;
+        width: 100% !important;
+        justify-content: center !important;
+        margin: 4px 0 0 0 !important;
+        padding: 10px 16px !important;
+    }
 }
 
 ::-webkit-scrollbar { width: 5px; }
