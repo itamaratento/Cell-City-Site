@@ -1,7 +1,6 @@
 :root {
     --bg: #050505;
     --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
-    --surface-solid: #111312;
     --surface2: rgba(25, 28, 27, 0.8);
     --surface3: #1c1f1d;
     --border: rgba(255, 255, 255, 0.08);
@@ -16,7 +15,6 @@
     --radius-sm: 10px;
     --radius: 14px;
     --radius-lg: 18px;
-    --shadow: 0 8px 24px rgba(0,0,0,0.5);
     --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
     --duration: 0.25s;
@@ -31,241 +29,128 @@ body {
     color: var(--text);
     min-height: 100vh;
     min-height: 100dvh;
-    overflow-x: clip;
-    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     -webkit-font-smoothing: antialiased;
 }
 
-.header {
-    position: sticky; top: 0; z-index: 100;
-    background: rgba(10, 12, 11, 0.92);
-    border-bottom: 1px solid var(--border);
-    padding: 10px 16px;
-    display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(16px);
-    min-height: 54px;
-}
-.header::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;
-}
-
-/* Título centralizado */
-#crm-brand-bar { position: relative; }
-#crm-brand-bar .crm-page-title {
-    position: absolute !important;
-    left: 0 !important;
-    right: 120px !important;
-    text-align: center !important;
-    pointer-events: none;
-    font-size: 22px !important;
-    font-weight: 800 !important;
-}
-
-.cfg-content {
-    padding: 20px;
-    padding-bottom: 100px;
-    max-width: 860px;
-    margin: 0 auto;
-}
-
-/* ===== SEÇÕES ===== */
-.cfg-section {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 18px;
-    margin-bottom: 20px;
-}
-.cfg-section-title {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--green-light);
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-}
-.cfg-hint {
-    font-size: 12px;
-    color: var(--text3);
-    margin-top: 8px;
-}
-
-/* ===== DADOS DA LOJA ===== */
-.cfg-form-group { margin-bottom: 14px; }
-.cfg-form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.cfg-form-group input {
+.pin-wrapper {
     width: 100%;
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    color: var(--text);
-    font-size: 14px;
-    font-family: var(--font-main);
-    outline: none;
-    transition: border-color var(--duration) var(--ease);
+    max-width: 340px;
+    padding: 32px 24px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
 }
-.cfg-form-group input:focus { border-color: var(--green-primary); }
 
 /* ===== LOGO ===== */
-.cfg-logo-area { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.cfg-logo-preview {
-    width: 100%;
-    max-width: 280px;
-    height: 120px;
-    background: var(--surface3);
-    border: 2px dashed rgba(255,255,255,0.12);
-    border-radius: var(--radius);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
+.pin-logo { text-align: center; }
+.pin-logo-icon { font-size: 48px; margin-bottom: 10px; filter: drop-shadow(0 0 16px rgba(0,200,83,0.4)); }
+.pin-logo-title {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
 }
-.cfg-logo-preview img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-}
-.cfg-logo-placeholder { font-size: 13px; color: var(--text3); }
-.cfg-logo-actions { display: flex; gap: 10px; }
-.cfg-btn-upload {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 18px;
-    background: rgba(0, 200, 83, 0.08);
-    border: 1px solid rgba(0, 200, 83, 0.3);
-    border-radius: var(--radius-sm);
-    color: var(--green-light);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all var(--duration) var(--ease);
-}
-.cfg-btn-upload:hover { background: rgba(0, 200, 83, 0.15); border-color: var(--green-primary); }
-.cfg-btn-upload input { display: none; }
-.cfg-btn-remove {
-    padding: 10px 16px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: var(--radius-sm);
-    color: var(--red);
-    font-size: 13px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all var(--duration) var(--ease);
-    font-family: var(--font-main);
-}
-.cfg-btn-remove:hover { background: rgba(239, 68, 68, 0.15); }
+.pin-logo-sub { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
 
-/* ===== GARANTIAS ===== */
-.cfg-garantia {
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px;
-    margin-bottom: 12px;
-    transition: border-color var(--duration) var(--ease);
-}
-.cfg-garantia:focus-within { border-color: rgba(0, 200, 83, 0.4); }
-.cfg-garantia-header {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 10px;
-}
-.cfg-gar-nome {
-    flex: 1;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px;
-    color: var(--text);
-    font-size: 14px;
-    font-weight: 700;
-    font-family: var(--font-main);
-    outline: none;
-    transition: border-color var(--duration) var(--ease);
-}
-.cfg-gar-nome:focus { border-color: var(--green-primary); }
-.cfg-toggle-padrao {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    flex-shrink: 0;
-}
-.cfg-toggle-padrao input { width: 16px; height: 16px; accent-color: var(--green-primary); cursor: pointer; }
-.cfg-toggle-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-.cfg-toggle-padrao:has(input:checked) .cfg-toggle-label { color: var(--green-light); }
+/* ===== SCREENS ===== */
+.pin-screen { display: none; width: 100%; flex-direction: column; align-items: center; gap: 20px; }
+.pin-screen.active { display: flex; animation: fadeIn 0.3s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.cfg-btn-del {
-    width: 36px;
-    height: 36px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    border-radius: var(--radius-sm);
-    color: var(--red);
-    font-size: 15px;
-    cursor: pointer;
-    transition: all var(--duration) var(--ease);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-family: var(--font-main);
-}
-.cfg-btn-del:hover { background: rgba(239, 68, 68, 0.18); }
-.cfg-gar-texto {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    color: var(--text2);
-    font-size: 13px;
-    font-family: var(--font-main);
-    line-height: 1.5;
-    resize: vertical;
-    min-height: 80px;
-    outline: none;
-    transition: border-color var(--duration) var(--ease);
-}
-.cfg-gar-texto:focus { border-color: var(--green-primary); }
+/* ===== LABEL ===== */
+.pin-label { font-size: 16px; font-weight: 700; color: var(--text2); text-align: center; }
 
-.cfg-btn-add {
-    width: 100%;
-    padding: 12px;
+/* ===== DOTS ===== */
+.pin-dots { display: flex; gap: 14px; }
+.pin-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
     background: transparent;
-    border: 1px dashed rgba(255,255,255,0.15);
+    transition: all 0.15s var(--ease);
+}
+.pin-dot.filled {
+    background: var(--green-primary);
+    border-color: var(--green-primary);
+    box-shadow: 0 0 10px var(--green-glow);
+}
+.pin-dot.error {
+    border-color: var(--red);
+    background: var(--red);
+    animation: shake 0.4s ease;
+}
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* ===== ERROR ===== */
+.pin-error { font-size: 13px; color: var(--red); font-weight: 600; min-height: 18px; text-align: center; }
+
+/* ===== PAD ===== */
+.pin-pad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+}
+.pin-btn {
+    height: 64px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
     border-radius: var(--radius);
-    color: var(--text3);
-    font-size: 14px;
+    color: var(--text);
+    font-size: 22px;
     font-weight: 700;
     font-family: var(--font-main);
     cursor: pointer;
-    transition: all var(--duration) var(--ease);
-    margin-top: 4px;
+    transition: all 0.15s var(--ease);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-.cfg-btn-add:hover {
-    border-color: var(--green-primary);
-    color: var(--green-light);
-    background: rgba(0, 200, 83, 0.04);
-}
+.pin-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+.pin-btn:active { transform: scale(0.93); background: rgba(0,200,83,0.12); border-color: var(--green-primary); }
+.pin-btn-empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+.pin-btn-empty:hover { background: transparent; border-color: transparent; }
+.pin-btn-del { font-size: 20px; color: var(--text3); }
+.pin-btn-del:active { color: var(--red); border-color: var(--red); }
 
-/* ===== SALVAR ===== */
-.cfg-btn-save {
+/* ===== LINKS ===== */
+.pin-link {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: color var(--duration) var(--ease);
+    padding: 4px;
+}
+.pin-link:hover { color: var(--green-light); }
+.pin-link-sair:hover { color: var(--red); }
+
+/* ===== SUCESSO ===== */
+.pin-success {
+    font-size: 56px;
+    animation: popIn 0.4s var(--ease);
+}
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.pin-btn-entrar {
+    display: block;
     width: 100%;
     padding: 16px;
     background: linear-gradient(135deg, var(--green-primary), var(--green-dark));
@@ -275,35 +160,11 @@ body {
     font-size: 16px;
     font-weight: 700;
     font-family: var(--font-main);
+    text-align: center;
+    text-decoration: none;
     cursor: pointer;
     box-shadow: 0 6px 20px var(--green-glow);
     transition: all var(--duration) var(--ease);
+    margin-top: 8px;
 }
-.cfg-btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,83,0.4); }
-.cfg-btn-save:active { transform: scale(0.98); }
-.cfg-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-/* ===== TOAST ===== */
-.cfg-toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: rgba(15, 17, 16, 0.95);
-    color: var(--text);
-    padding: 12px 24px;
-    border-radius: 100px;
-    font-size: 13px;
-    font-weight: 600;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    z-index: 999;
-    transition: transform 0.3s var(--ease);
-    border: 1px solid var(--green-primary);
-    pointer-events: none;
-    white-space: nowrap;
-}
-.cfg-toast.show { transform: translateX(-50%) translateY(0); }
-
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+.pin-btn-entrar:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,83,0.4); }
