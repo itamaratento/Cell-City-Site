@@ -542,7 +542,56 @@ async function deleteOS(id) { const c = prompt("Digite 77 para confirmar a exclu
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${(os.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
 
-function printOS() { if(!currentOS) return; const os=currentOS; const w=window.open('','_blank'); w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}h1{text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}</style></head><body><h1>Cell City Informática</h1><div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i+1).join('→')}</span></div>`: ''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div><div class="footer"><p>Cell City Informática</p><p>__________________________</p><p>Assinatura</p></div></body></html>`); w.document.close(); w.print(); }
+function printOS() {
+    if (!currentOS) return;
+    let cfg = { logo: '', garantias: [] };
+    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    const checksHtml = garantias.length ? `
+        <div style="margin-bottom:16px">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00E676;margin-bottom:10px">Termos de Garantia</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                ${garantias.map(g => `
+                <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#1c1f1d;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
+                    <input type="checkbox" class="print-gar-chk" data-id="${g.id}" ${g.padrao ? 'checked' : ''} style="width:18px;height:18px;accent-color:#00C853;cursor:pointer;flex-shrink:0">
+                    <span style="font-size:13px;color:#d1d5db">${g.nome}</span>
+                </label>`).join('')}
+            </div>
+        </div>` : '';
+    document.getElementById('modal-content').innerHTML = `
+        <div onclick="event.stopPropagation()">
+        <div class="modal-handle"></div>
+        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Imprimir OS ${currentOS.id}</h3>
+        ${checksHtml}
+        <button onclick="event.stopPropagation();window._executePrint()" style="width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#009624);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+            🖨️ Imprimir
+        </button>
+        </div>`;
+    document.getElementById('modal-overlay').classList.add('active');
+}
+
+window._executePrint = function() {
+    if (!currentOS) return;
+    const os = currentOS;
+    let cfg = { logo: '', garantias: [] };
+    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    const selectedIds = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => parseInt(c.dataset.id));
+    const selecionadas = garantias.filter(g => selectedIds.includes(g.id));
+    closeModal();
+    const loja = cfg.loja || {};
+    const lojaNome = loja.nome || 'Cell City Informática';
+    const lojaEnd  = loja.endereco || '';
+    const lojaWa   = loja.whatsapp || '';
+    const lojaCnpj = loja.cnpj || '';
+    const logoHtml = cfg.logo ? `<div style="text-align:center;margin-bottom:10px"><img src="${cfg.logo}" style="max-height:80px;max-width:220px;object-fit:contain"></div>` : '';
+    const cabecalhoHtml = `<h1 style="text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px">${lojaNome}</h1>${lojaEnd?`<p style="text-align:center;font-size:10px;margin-bottom:2px">${lojaEnd}</p>`:''}${lojaWa?`<p style="text-align:center;font-size:10px;margin-bottom:2px">WhatsApp: ${lojaWa}</p>`:''}${lojaCnpj?`<p style="text-align:center;font-size:10px;margin-bottom:8px">CNPJ: ${lojaCnpj}</p>`:''}`;
+    const garantiasHtml = selecionadas.length ? `<div style="margin-top:14px;border-top:1px dashed #ccc;padding-top:10px"><div style="font-weight:bold;font-size:11px;margin-bottom:8px;text-transform:uppercase">Termos de Garantia</div>${selecionadas.map(g => `<div style="margin-bottom:10px"><b style="font-size:11px">${g.nome}:</b><br><span style="font-size:10px;line-height:1.5">${g.texto}</span></div>`).join('')}</div>` : '';
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.lockType?`<div class="row"><span class="label">Bloqueio:</span><span>${os.lockType}</span></div>`:''}${os.password?`<div class="row"><span class="label">Senha:</span><span>${os.password}</span></div>`:''}${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section"><div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div></div>${garantiasHtml}<div class="footer"><p>__________________________</p><p>Assinatura</p></div></body></html>`);
+    w.document.close();
+    w.print();
+};
 
 // ===== CLIENTS (MÓDULO COMPLETO) =====
 const AVAILABLE_TAGS = ['Igreja', 'Amigo', 'Família', 'Empresa', 'Parceiro', 'VIP', 'Goiânia', 'Região Metropolitana', 'Interior de Goiás', 'Outro Estado', 'Indica Clientes', 'Compra Acessórios', 'Cliente Antigo', 'Cliente Recorrente'];
