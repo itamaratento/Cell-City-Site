@@ -10,10 +10,13 @@
 </head>
 <body>
 
-    <!-- HEADER: conteúdo migrado para o brand bar por brand-header.js -->
+    <!-- HEADER -->
     <header class="header" id="mainHeader">
-        <h1 id="headerTitle"></h1>
-        <button id="btn-os-home" class="btn-os-home" onclick="showScreen('home')" style="display:none">ORDEM DE SERVIÇO</button>
+        <button class="header-back" id="backBtn" onclick="goBack()">←</button>
+        <div class="header-logo" onclick="showScreen('home')">
+            <img src="../../assets/logo.png" alt="Cell City" class="header-logo-img">
+        </div>
+        <h1 class="header-title" id="headerTitle">Sistema de Assistência Técnica</h1>
     </header>
 
     <main>
@@ -214,7 +217,6 @@
     <!-- TOAST -->
     <div class="premium-toast" id="toast"></div>
 
-    <script src="../../shared/brand-header.js"></script>
     <script type="module" src="os.js"></script>
 </body>
 </html>

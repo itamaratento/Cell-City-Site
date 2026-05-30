@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "../../.."
+		},
+		{
+			"path": "../../../../RoboCellCity"
+		},
+		{
+			"path": "../../../../Robo-Instagram"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "cell-City"
+	}
+}

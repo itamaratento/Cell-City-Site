@@ -7,9 +7,12 @@
     <link rel="stylesheet" href="caixa.css">
 </head>
 <body>
-    <!-- HEADER: título migrado para o brand bar por brand-header.js -->
+    <!-- HEADER -->
     <header class="header">
-        <span class="header-title">💰 Caixa Operacional</span>
+        <button class="header-back" onclick="window.location.href='/CRM/index.html'">←</button>
+        <div class="header-logo">
+            <span class="header-title">💰 Caixa Operacional</span>
+        </div>
     </header>
 
     <!-- MAIN SCREEN -->
@@ -228,7 +231,6 @@
     <!-- TOAST -->
     <div id="toast" class="premium-toast"></div>
 
-    <script src="../../shared/brand-header.js"></script>
     <script type="module" src="caixa.js"></script>
 </body>
 </html>

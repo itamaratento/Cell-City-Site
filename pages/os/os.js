@@ -350,9 +350,9 @@ async function showScreen(id) {
         const target = document.getElementById('screen-' + id);
         if (!target) return console.warn(`Tela ${id} não encontrada`);
         target.classList.add('active');
-        if (id === 'home') { screenHistory = []; window.markSaved(); window.tempPatternSequence = null; await DB.loadFromFirestore(); updateStats(); }
-        else { if (!screenHistory.includes(id)) screenHistory.push(id); }
-        const osBtn = document.getElementById('btn-os-home'); if (osBtn) osBtn.style.display = id === 'home' ? 'none' : 'block';
+        const backBtn = document.getElementById('backBtn'); const mainHeader = document.getElementById('mainHeader');
+        if (id === 'home') { screenHistory = []; backBtn.classList.remove('visible'); if (mainHeader) mainHeader.style.display = 'none'; window.markSaved(); window.tempPatternSequence = null; await DB.loadFromFirestore(); updateStats(); }
+        else { if (!screenHistory.includes(id)) screenHistory.push(id); backBtn.classList.add('visible'); if (mainHeader) mainHeader.style.display = 'flex'; }
         
         // ✅ AJUSTE FINAL 1: REMOÇÃO DOS TÍTULOS "NOVA O.S." E "CLIENTES"
         const titleEl = document.getElementById('headerTitle');
