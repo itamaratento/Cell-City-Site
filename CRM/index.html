@@ -2,8 +2,14 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="refresh" content="0; url=pages/os/index.html">
-<title>Redirecionando...</title>
+<title>Cell City CRM</title>
+<script>
+  if (sessionStorage.getItem('cc_acesso') === 'ok') {
+    window.location.replace('pages/dashboard/index.html');
+  } else {
+    window.location.replace('pages/config/index.html');
+  }
+</script>
 </head>
 <body>
 </body>
