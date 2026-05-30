@@ -13,9 +13,10 @@ const SESSION_KEY = "cc_acesso";
 
 let inputAtual = '';
 let inputNovo  = '';
-let etapaNovo  = 'digitar'; // 'digitar' | 'confirmar'
+let etapaNovo  = 'digitar';
 let pinConfirmBuffer = '';
 let pinSalvo = '';
+let tentativas = 0;
 
 // ===== INIT =====
 async function init() {
@@ -25,7 +26,8 @@ async function init() {
             pinSalvo = snap.data().pin;
             localStorage.setItem(PIN_CACHE, pinSalvo);
         } else {
-            pinSalvo = localStorage.getItem(PIN_CACHE) || '';
+            localStorage.removeItem(PIN_CACHE);
+            pinSalvo = '';
         }
     } catch {
         pinSalvo = localStorage.getItem(PIN_CACHE) || '';
@@ -79,12 +81,18 @@ function pinDelete() {
 
 async function verificarPin() {
     if (inputAtual === pinSalvo) {
+        tentativas = 0;
         sessionStorage.setItem(SESSION_KEY, 'ok');
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
     } else {
-        showError('pin-error', 'PIN incorreto');
+        tentativas++;
+        showError('pin-error', `PIN incorreto${tentativas >= 3 ? ' — use Redefinir PIN abaixo' : ''}`);
         dotError('pin-dots');
+        if (tentativas >= 3) {
+            const btn = document.getElementById('btn-redefinir');
+            if (btn) btn.style.display = 'block';
+        }
         setTimeout(() => {
             inputAtual = '';
             updateDots('pin-dots', 0);
@@ -155,6 +163,15 @@ function sair() {
     showScreen('login');
     document.getElementById('btn-alterar').style.display = 'none';
 }
+
+window.redefinirPin = function() {
+    localStorage.removeItem(PIN_CACHE);
+    pinSalvo = '';
+    tentativas = 0;
+    document.getElementById('btn-redefinir').style.display = 'none';
+    document.getElementById('pin-novo-label').textContent = 'Criar novo PIN';
+    showScreen('alterar');
+};
 
 // ===== UTILS =====
 function updateDots(id, count) {
