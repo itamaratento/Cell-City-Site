@@ -399,6 +399,12 @@ body {
     .stat-chip .num { font-size: 20px; }
 }
 
+/* Brand bar + header não se sobrepõem no celular */
+#crm-brand-bar ~ .header,
+#crm-brand-bar + .header {
+    top: 56px;
+}
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
