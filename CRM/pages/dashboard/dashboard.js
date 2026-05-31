@@ -41,7 +41,10 @@ class Dashboard {
           { id: 'analise', title: 'Análise', sub: 'Módulo' },
           { id: 'pos-venda', title: 'Pós-venda', sub: 'Módulo' },
           { id: 'config', title: 'Configurações', sub: 'Módulo' },
-          { id: 'ferramentas', title: 'Ferramentas', sub: 'Módulo' }
+          { id: 'ferramentas', title: 'Ferramentas', sub: 'Módulo' },
+          { id: 'fornecedor',  title: 'Fornecedor',  sub: 'Módulo' },
+          { id: 'financeiro',  title: 'Financeiro',  sub: 'Módulo' },
+          { id: 'em-breve',    title: 'Em Breve',    sub: 'Módulo' }
         ]
       }
     };
@@ -567,7 +570,10 @@ class Dashboard {
       analise: '../../pages/analise/index.html',
       'pos-venda': '../../pages/pos-venda/index.html',
       config: '../../pages/config/index.html',
-      ferramentas: '../../pages/config/index.html'
+      ferramentas: '../../pages/config/index.html',
+      fornecedor: '../../pages/fornecedor/index.html',
+      financeiro: '../../pages/financeiro/index.html',
+      'em-breve': '../../pages/em-breve/index.html'
     };
     const url = routes[module];
     if (url) {
