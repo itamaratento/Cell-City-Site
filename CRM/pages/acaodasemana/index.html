@@ -10,7 +10,11 @@
 <body>
 
     <header class="header" id="mainHeader">
-        <h1 id="headerTitle">Ação da Semana</h1>
+        <h1 class="as-header-titulo">🎯 Ação da Semana</h1>
+        <div class="as-header-busca">
+            <span class="as-busca-icon">🔍</span>
+            <input type="text" id="as-busca" placeholder="Buscar ação..." autocomplete="off">
+        </div>
     </header>
 
     <main>
@@ -70,21 +74,32 @@
                 </div>
             </div>
 
-            <!-- MINHA SEMANA — ACORDEÃO -->
-            <div class="as-secao-titulo">📅 MINHA SEMANA</div>
-            <div class="as-semana" id="as-semana-acordeao"></div>
-
-            <!-- ANOTAÇÕES RÁPIDAS -->
-            <div class="as-secao-titulo">📝 ANOTAÇÕES RÁPIDAS</div>
-            <div class="as-notas-bloco">
-                <textarea class="as-notas-area" id="as-notas-area" placeholder="Digite suas anotações aqui...&#10;Salva automaticamente."></textarea>
-                <div class="as-notas-status" id="as-notas-status"></div>
-            </div>
-
         </div>
     </main>
 
     <div class="as-toast" id="as-toast"></div>
+
+    <!-- DOCK LATERAL DIREITA -->
+    <aside class="as-dock">
+        <button class="as-dock-item" onclick="history.back()" data-tooltip="Voltar">
+            <span class="as-dock-icon">◀</span>
+        </button>
+        <a href="https://mail.google.com" class="as-dock-item" target="_blank" data-tooltip="Gmail">
+            <span class="as-dock-icon">📧</span>
+        </a>
+        <a href="https://drive.google.com" class="as-dock-item" target="_blank" data-tooltip="Drive">
+            <span class="as-dock-icon">☁️</span>
+        </a>
+        <a href="https://keep.google.com" class="as-dock-item" target="_blank" data-tooltip="Keep">
+            <span class="as-dock-icon">📝</span>
+        </a>
+        <a href="https://calendar.google.com" class="as-dock-item" target="_blank" data-tooltip="Agenda">
+            <span class="as-dock-icon">📅</span>
+        </a>
+        <a href="https://chat.openai.com" class="as-dock-item" target="_blank" data-tooltip="ChatGPT">
+            <span class="as-dock-icon">🤖</span>
+        </a>
+    </aside>
 
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="acaodasemana.js"></script>
