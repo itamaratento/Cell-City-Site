@@ -545,7 +545,14 @@ class Dashboard {
     const clearBtn = document.getElementById('ai-clear');
     const configBtn = document.getElementById('ai-config');
 
-    this._aiHistorico = []; // histórico da conversa
+    this._aiHistorico = [];
+    this._aiUserId = localStorage.getItem('cc_nota_uid') || (() => {
+      const id = 'user_' + Math.random().toString(36).slice(2,10);
+      localStorage.setItem('cc_nota_uid', id);
+      return id;
+    })();
+    this._aiChatRef = doc(db, 'chat_historico', this._aiUserId);
+    this._carregarHistoricoChat();
 
     const togglePanel = () => {
       this.state.aiOpen = !this.state.aiOpen;
@@ -791,6 +798,7 @@ ${contexto}`;
       const data = await resp.json();
       const reply = data.choices?.[0]?.message?.content || 'Erro ao obter resposta.';
       this._aiHistorico.push({ role: 'assistant', content: reply });
+      this._salvarHistoricoChat();
 
       typing.remove();
       this.addMessage(reply, 'assistant');
@@ -818,7 +826,54 @@ ${contexto}`;
     if (empty) empty.remove();
   }
 
+  async _carregarHistoricoChat() {
+    try {
+      const snap = await getDoc(this._aiChatRef);
+      if (!snap.exists()) return;
+      const msgs = snap.data().mensagens || [];
+      if (!msgs.length) return;
+
+      this.hideEmptyState();
+      this._removerAtalhos();
+      // Reconstrói visualmente (últimas 20)
+      msgs.slice(-20).forEach(m => this._renderMsgSalva(m.role, m.content));
+      // Restaura histórico para o contexto do DeepSeek
+      this._aiHistorico = msgs.slice(-10);
+    } catch {}
+  }
+
+  _renderMsgSalva(role, content) {
+    const container = document.getElementById('ai-messages');
+    if (!container) return;
+    const msg = document.createElement('div');
+    msg.className = `ai-msg ai-msg-${role}`;
+    const avatar = role === 'user' ? 'EU' : '🤖';
+    let html = this.escapeHtml(content).replace(/\n/g, '<br>');
+    html = html.replace(/\*\*\*([\s\S]*?)\*\*\*/g, (_, m) => {
+      const raw = m.trim().replace(/<br>/g, '\n');
+      return `<div class="ai-whatsapp-msg">${m.trim()}
+        <button class="ai-copy-btn" onclick="navigator.clipboard.writeText(${JSON.stringify(raw)}).then(()=>{this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📋 Copiar',2000)})">📋 Copiar</button>
+      </div>`;
+    });
+    msg.innerHTML = `<div class="ai-msg-avatar">${avatar}</div><div class="ai-msg-content">${html}</div>`;
+    container.appendChild(msg);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  async _salvarHistoricoChat() {
+    try {
+      // Salva só as últimas 50 mensagens para não pesar
+      const msgs = this._aiHistorico.slice(-50).map(m => ({
+        role: m.role, content: m.content
+      }));
+      await setDoc(this._aiChatRef, { mensagens: msgs, atualizadoEm: serverTimestamp() });
+    } catch {}
+  }
+
   clearChat() {
+    this._aiHistorico = [];
+    // Apaga do Firestore também
+    setDoc(this._aiChatRef, { mensagens: [], atualizadoEm: serverTimestamp() }).catch(()=>{});
     const container = document.getElementById('ai-messages');
     if (!container) return;
     container.innerHTML = `<div class="ai-empty-state">
@@ -826,6 +881,7 @@ ${contexto}`;
       <h4>Como posso ajudar hoje?</h4>
       <p>Analiso OS, clientes, estratégias e dados operacionais da Cell City.</p>
     </div>`;
+    this._renderAtalhos();
   }
 
   addMessage(text, type) {
