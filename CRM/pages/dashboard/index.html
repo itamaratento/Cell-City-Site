@@ -188,13 +188,26 @@
       <div class="module-indicator"></div>
     </div>
 
-    <div class="module-card module-card-wip" data-module="em-breve">
-      <div class="module-icon">🔧</div>
-      <div class="module-info">
-        <h3>Em Breve</h3>
-        <p class="module-sub">Em desenvolvimento</p>
+    <!-- MINHA SEMANA -->
+    <div class="module-card semana-card" id="semana-card">
+      <div class="semana-header">
+        <span class="semana-title">📅 Minha Semana</span>
       </div>
-      <div class="module-indicator"></div>
+      <div class="semana-dias" id="semana-dias"></div>
+      <!-- Formulário de tarefa (oculto por padrão) -->
+      <div class="semana-form" id="semana-form" style="display:none">
+        <div class="semana-form-row">
+          <select id="semana-prioridade">
+            <option value="alta">🔴 Alta</option>
+            <option value="media" selected>🟡 Média</option>
+            <option value="baixa">🟢 Baixa</option>
+          </select>
+          <input type="text" id="semana-descricao" placeholder="Descrição da tarefa..." maxlength="80">
+          <button id="semana-adicionar">＋</button>
+          <button id="semana-cancelar">✕</button>
+        </div>
+      </div>
+      <div class="semana-tarefas" id="semana-tarefas"></div>
     </div>
 
     <div class="module-card" data-module="campanhas">

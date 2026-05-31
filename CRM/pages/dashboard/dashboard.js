@@ -60,6 +60,7 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
+    this.setupMinhaSemana();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
@@ -552,6 +553,137 @@ class Dashboard {
         this.navigateTo('ferramentas');
       });
     }
+  }
+
+  // ===== MINHA SEMANA =====
+  setupMinhaSemana() {
+    const DIAS = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    const PRIO_ICON = { alta: '🔴', media: '🟡', baixa: '🟢' };
+
+    this._semanaUserId = localStorage.getItem('cc_nota_uid') || 'user_default';
+    this._semanaRef    = doc(db, 'tarefas_semana', this._semanaUserId);
+    this._semanaDiaSelecionado = null;
+    this._semanaTarefas = [];
+
+    const diasEl    = document.getElementById('semana-dias');
+    const formEl    = document.getElementById('semana-form');
+    const tarefasEl = document.getElementById('semana-tarefas');
+    const descEl    = document.getElementById('semana-descricao');
+    const prioEl    = document.getElementById('semana-prioridade');
+    const addBtn    = document.getElementById('semana-adicionar');
+    const cancelBtn = document.getElementById('semana-cancelar');
+    if (!diasEl) return;
+
+    // Renderiza botões dos dias
+    DIAS.forEach(dia => {
+      const btn = document.createElement('button');
+      btn.className = 'semana-dia-btn';
+      btn.textContent = dia;
+      btn.dataset.dia = dia;
+      btn.addEventListener('click', () => {
+        diasEl.querySelectorAll('.semana-dia-btn').forEach(b => b.classList.remove('ativo'));
+        btn.classList.add('ativo');
+        this._semanaDiaSelecionado = dia;
+        formEl.style.display = 'flex';
+        descEl.focus();
+        this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+      });
+      diasEl.appendChild(btn);
+    });
+
+    addBtn.addEventListener('click', () => this._adicionarTarefa(descEl, prioEl, tarefasEl, PRIO_ICON, diasEl));
+    descEl.addEventListener('keypress', e => { if (e.key === 'Enter') this._adicionarTarefa(descEl, prioEl, tarefasEl, PRIO_ICON, diasEl); });
+    cancelBtn.addEventListener('click', () => {
+      formEl.style.display = 'none';
+      this._semanaDiaSelecionado = null;
+      diasEl.querySelectorAll('.semana-dia-btn').forEach(b => b.classList.remove('ativo'));
+      this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+    });
+
+    // Carrega do Firestore
+    this._carregarTarefas(tarefasEl, PRIO_ICON, diasEl);
+  }
+
+  async _carregarTarefas(tarefasEl, PRIO_ICON, diasEl) {
+    try {
+      const snap = await getDoc(this._semanaRef);
+      this._semanaTarefas = snap.exists() ? (snap.data().tarefas || []) : [];
+    } catch { this._semanaTarefas = []; }
+    this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+  }
+
+  _renderTarefas(tarefasEl, PRIO_ICON, diasEl) {
+    tarefasEl.innerHTML = '';
+    const diaSel = this._semanaDiaSelecionado;
+    const lista  = diaSel
+      ? this._semanaTarefas.filter(t => t.dia === diaSel)
+      : this._semanaTarefas;
+
+    // Atualiza indicador nos botões
+    diasEl.querySelectorAll('.semana-dia-btn').forEach(btn => {
+      const tem = this._semanaTarefas.some(t => t.dia === btn.dataset.dia);
+      btn.classList.toggle('tem-tarefa', tem);
+    });
+
+    if (diaSel && lista.length > 0) {
+      const lbl = document.createElement('div');
+      lbl.className = 'semana-dia-label';
+      lbl.textContent = diaSel;
+      tarefasEl.appendChild(lbl);
+    }
+
+    lista.forEach(t => {
+      const item = document.createElement('div');
+      item.className = 'semana-tarefa-item' + (t.concluida ? ' concluida' : '');
+
+      const chk = document.createElement('input');
+      chk.type = 'checkbox'; chk.className = 'semana-tarefa-check'; chk.checked = !!t.concluida;
+      chk.addEventListener('change', () => {
+        t.concluida = chk.checked;
+        this._salvarTarefas();
+        this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+      });
+
+      const prio = document.createElement('span');
+      prio.className = 'semana-tarefa-prio';
+      prio.textContent = PRIO_ICON[t.prioridade] || '🟡';
+
+      const txt = document.createElement('span');
+      txt.className = 'semana-tarefa-texto';
+      txt.textContent = t.descricao;
+
+      const del = document.createElement('button');
+      del.className = 'semana-tarefa-del'; del.textContent = '✕';
+      del.addEventListener('click', () => {
+        this._semanaTarefas = this._semanaTarefas.filter(x => x.id !== t.id);
+        this._salvarTarefas();
+        this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+      });
+
+      item.append(chk, prio, txt, del);
+      tarefasEl.appendChild(item);
+    });
+  }
+
+  _adicionarTarefa(descEl, prioEl, tarefasEl, PRIO_ICON, diasEl) {
+    const desc = descEl.value.trim();
+    if (!desc || !this._semanaDiaSelecionado) return;
+    this._semanaTarefas.push({
+      id:        Date.now().toString(),
+      dia:       this._semanaDiaSelecionado,
+      prioridade: prioEl.value,
+      descricao: desc,
+      concluida: false
+    });
+    descEl.value = '';
+    this._salvarTarefas();
+    this._renderTarefas(tarefasEl, PRIO_ICON, diasEl);
+  }
+
+  async _salvarTarefas() {
+    try {
+      await setDoc(this._semanaRef, { tarefas: this._semanaTarefas, atualizadoEm: serverTimestamp() });
+    } catch {}
   }
 
   navigateTo(module) {
