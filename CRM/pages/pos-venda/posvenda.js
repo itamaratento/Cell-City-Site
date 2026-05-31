@@ -28,17 +28,22 @@ async function init() {
 
 // ===== CARREGAR DADOS =====
 async function loadData() {
-    const [ordersSnap, contatosSnap] = await Promise.all([
-        getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"))),
-        getDocs(collection(db, "posvenda_contatos"))
-    ]);
+    // CORREÇÃO: OS são salvas na coleção "os", não "orders"
+    let ordersSnap;
+    try {
+        ordersSnap = await getDocs(query(collection(db, "os"), orderBy("createdAt", "desc")));
+    } catch {
+        // orderBy pode falhar se não houver índice; tenta sem ordenação
+        ordersSnap = await getDocs(collection(db, "os"));
+    }
+    const contatosSnap = await getDocs(collection(db, "posvenda_contatos"));
 
     const contatos = [];
     contatosSnap.forEach(d => contatos.push({ id: d.id, ...d.data() }));
     contatosFeitos = new Set(contatos.map(c => `${c.osId}_${c.prazo}`));
 
     const now = new Date();
-    pendentes = { 5: [], 15: [], 30: [] };
+    pendentes = { futuros: [], 5: [], 15: [], 30: [] };
 
     ordersSnap.forEach(d => {
         const os = { firestoreId: d.id, ...d.data() };
@@ -48,13 +53,22 @@ async function loadData() {
         if (!deliveryDate) return;
 
         const dias = calcDias(deliveryDate, now);
+        const osId = os.id || os.firestoreId;
 
+        // Futuros: entregue mas ainda não chegou em 5 dias
+        if (dias < 5) {
+            pendentes.futuros.push({ ...os, osId, dias, urgencia: 'futuro', prazo: 5 });
+            return;
+        }
+
+        // Pendentes por prazo — mostra mesmo se passou do prazo (overdue)
         [5, 15, 30].forEach(prazo => {
-            const osId = os.id || os.firestoreId;
             if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-            if (dias < prazo || dias > prazo + 2) return;
+            // Janela: de prazo até o próximo prazo - 1
+            const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
+            if (dias < prazo || dias >= proxPrazo) return;
 
-            const urgencia = dias === prazo ? 'ok' : dias === prazo + 1 ? 'atencao' : 'urgente';
+            const urgencia = dias <= prazo + 2 ? 'ok' : dias <= prazo + 5 ? 'atencao' : 'urgente';
             pendentes[prazo].push({ ...os, osId, dias, urgencia, prazo });
         });
     });
@@ -86,7 +100,8 @@ function calcDias(dateStr, now) {
 
 // ===== RENDERIZAR PENDENTES =====
 function renderPendentes() {
-    const total = Object.values(pendentes).flat().length;
+    const totalAtivos = [5, 15, 30].reduce((s, p) => s + pendentes[p].length, 0);
+    const totalFuturos = pendentes.futuros.length;
 
     [5, 15, 30].forEach(p => {
         const count = pendentes[p].length;
@@ -98,13 +113,26 @@ function renderPendentes() {
 
     const badge = document.getElementById('tab-badge');
     if (badge) {
-        badge.textContent = total;
-        badge.style.display = total > 0 ? 'inline-flex' : 'none';
+        badge.textContent = totalAtivos;
+        badge.style.display = totalAtivos > 0 ? 'inline-flex' : 'none';
     }
 
     const container = document.getElementById('pendentes-container');
+    let html = '';
 
-    if (total === 0) {
+    // AGENDAMENTOS FUTUROS (entregues < 5 dias)
+    if (totalFuturos > 0) {
+        html += `
+        <div class="pv-grupo pv-grupo-futuros">
+            <div class="pv-grupo-header">
+                <span>📅 Agendamentos Futuros — Entregues recentemente</span>
+                <span class="pv-grupo-badge">${totalFuturos}</span>
+            </div>
+            ${pendentes.futuros.map(os => buildCardFuturo(os)).join('')}
+        </div>`;
+    }
+
+    if (totalAtivos === 0 && totalFuturos === 0) {
         container.innerHTML = `<div class="empty-state">
             <div class="icon">🎉</div>
             <p>Nenhum contato pendente!</p>
@@ -120,7 +148,6 @@ function renderPendentes() {
         30: { emoji: '⭐', desc: '30 dias — Fidelização' }
     };
 
-    let html = '';
     [5, 15, 30].forEach(prazo => {
         const grupo = pendentes[prazo];
         if (!grupo.length) return;
@@ -136,7 +163,7 @@ function renderPendentes() {
     });
 
     container.innerHTML = html;
-    saveBadge(total);
+    saveBadge(totalAtivos);
 }
 
 function buildCard(os) {
@@ -169,6 +196,25 @@ function buildCard(os) {
             <button class="emoji-btn" data-emoji="😟" data-label="Voltou com problema" title="Voltou com problema">😟</button>
             <button class="emoji-btn" data-emoji="📵" data-label="Não atendeu" title="Não atendeu">📵</button>
         </div>
+    </div>`;
+}
+
+function buildCardFuturo(os) {
+    const faltam = 5 - os.dias;
+    return `
+    <div class="pv-card pv-card-futuro" data-osid="${esc(os.osId)}" data-prazo="5">
+        <div class="pv-card-top">
+            <div class="pv-card-info">
+                <div class="pv-card-id">${esc(os.osId)}</div>
+                <div class="pv-card-name">${esc(os.clientName)}</div>
+                <div class="pv-card-model">${esc(os.model)}</div>
+            </div>
+            <div class="pv-card-days">
+                <span class="days-num">${faltam}</span>
+                <span class="days-lbl">dias p/ contato</span>
+            </div>
+        </div>
+        <div class="pv-urg-label" style="color:#6b7280;">⏳ Entregue há ${os.dias} dia${os.dias !== 1 ? 's' : ''} — aguardando prazo</div>
     </div>`;
 }
 

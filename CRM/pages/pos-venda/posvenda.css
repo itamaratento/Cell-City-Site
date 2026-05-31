@@ -427,3 +427,18 @@ body {
     .pv-sum-num { font-size: 22px; }
     .emoji-btn { font-size: 20px; padding: 8px 4px; }
 }
+
+/* AGENDAMENTOS FUTUROS */
+.pv-grupo-futuros .pv-grupo-header {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.25);
+    color: #a5b4fc;
+}
+.pv-grupo-futuros .pv-grupo-badge {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+}
+.pv-card-futuro {
+    opacity: 0.75;
+    border-left: 3px solid rgba(99, 102, 241, 0.4) !important;
+}

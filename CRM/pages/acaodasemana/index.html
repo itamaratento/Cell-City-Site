@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Ação da Semana</title>
     <link rel="stylesheet" href="acaodasemana.css">
+<link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
 
@@ -63,6 +64,18 @@
                         <option value="outro">📌 Outro</option>
                     </select>
                 </div>
+                <!-- CHECKLIST DIAS DA SEMANA -->
+                <div class="as-form-dias">
+                    <span class="as-form-dias-label">Dias da semana:</span>
+                    <div class="as-dias-checks">
+                        <label><input type="checkbox" name="dia" value="segunda"> Seg</label>
+                        <label><input type="checkbox" name="dia" value="terca">   Ter</label>
+                        <label><input type="checkbox" name="dia" value="quarta">  Qua</label>
+                        <label><input type="checkbox" name="dia" value="quinta">  Qui</label>
+                        <label><input type="checkbox" name="dia" value="sexta">   Sex</label>
+                        <label><input type="checkbox" name="dia" value="sabado">  Sáb</label>
+                    </div>
+                </div>
                 <div class="as-form-btns">
                     <button class="as-btn-salvar" id="as-btn-salvar">Salvar Ação</button>
                     <button class="as-btn-cancelar" id="as-btn-cancelar">Cancelar</button>
@@ -82,42 +95,9 @@
 
     <div class="as-toast" id="as-toast"></div>
 
-    <!-- DOCK LATERAL DIREITA — igual ao dashboard -->
-    <aside class="as-dock">
-        <button class="as-dock-item" id="as-dock-notas" data-tooltip="Bloco de Notas">
-            <span class="as-dock-icon">📋</span>
-        </button>
-        <a href="https://mail.google.com" class="as-dock-item" target="_blank" data-tooltip="Gmail">
-            <span class="as-dock-icon">📧</span>
-        </a>
-        <a href="https://drive.google.com" class="as-dock-item" target="_blank" data-tooltip="Drive">
-            <span class="as-dock-icon">☁️</span>
-        </a>
-        <a href="https://keep.google.com" class="as-dock-item" target="_blank" data-tooltip="Keep">
-            <span class="as-dock-icon">📝</span>
-        </a>
-        <a href="https://calendar.google.com" class="as-dock-item" target="_blank" data-tooltip="Agenda">
-            <span class="as-dock-icon">📅</span>
-        </a>
-        <a href="https://chat.openai.com" class="as-dock-item" target="_blank" data-tooltip="ChatGPT">
-            <span class="as-dock-icon">🤖</span>
-        </a>
-        <a href="#" class="as-dock-item" id="as-dock-ferramentas" data-tooltip="Ferramentas">
-            <span class="as-dock-icon">⚙️</span>
-        </a>
-    </aside>
-
-    <!-- BLOCO DE NOTAS (igual ao dashboard) -->
-    <div class="as-nota-panel" id="as-nota-panel" style="display:none">
-        <div class="as-nota-header">
-            <span class="as-nota-title">📋 Minhas Notas</span>
-            <div class="as-nota-status" id="as-nota-status"></div>
-            <button class="as-nota-close" id="as-nota-close">✕</button>
-        </div>
-        <textarea class="as-nota-textarea" id="as-nota-textarea" placeholder="Digite suas notas aqui...&#10;Salva automaticamente em todos os dispositivos."></textarea>
-    </div>
 
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="acaodasemana.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
 </body>
 </html>
