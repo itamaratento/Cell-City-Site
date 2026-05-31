@@ -559,16 +559,13 @@ body {
   border-style: dashed !important;
 }
 
-/* ── Ícone de notas menor e discreto na dock ── */
+/* ── Ícone de notas discreto na dock ── */
 #dock-notas {
   background: none;
   border: none;
   cursor: pointer;
-  width: 32px;
-  height: 32px;
   opacity: 0.45;
 }
-#dock-notas .dock-icon { font-size: 14px; }
 #dock-notas:hover { opacity: 0.85; }
 
 /* ============ BLOCO DE NOTAS ============ */
