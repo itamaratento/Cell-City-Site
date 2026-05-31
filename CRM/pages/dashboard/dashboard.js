@@ -581,11 +581,14 @@ class Dashboard {
     const container = document.getElementById('ai-messages');
     if (!container) return;
     const atalhos = [
-      { label: '📊 Como foi minha semana?',         msg: 'Como foi minha semana? Me dá um resumo do faturamento e lucro.' },
-      { label: '📱 Mensagem OS pronta para retirar', msg: 'Gera uma mensagem de WhatsApp para avisar o cliente que a OS está pronta para retirar.' },
+      { label: '📊 Resumo da semana',                msg: 'Me dá um resumo completo desta semana: faturamento, lucro, comparação com a meta e com a semana passada.' },
+      { label: '🚀 Como crescer este mês?',          msg: 'Analise meus dados e me dá um plano prático de 3 ações para crescer este mês trabalhando sozinho.' },
+      { label: '📈 Estou batendo a meta?',           msg: 'Estou batendo a meta deste mês? Quanto falta? O que posso fazer para chegar lá?' },
+      { label: '💡 Ideia para hoje',                 msg: 'Me dá uma ideia prática e rápida para aumentar o faturamento hoje na loja.' },
+      { label: '📱 Mensagem OS pronta',              msg: 'Gera uma mensagem de WhatsApp para avisar o cliente que a OS está pronta para retirar.' },
       { label: '💰 Mensagem de orçamento',           msg: 'Gera uma mensagem de WhatsApp para enviar um orçamento de reparo ao cliente.' },
-      { label: '🎯 Estratégia desta semana',         msg: 'Me dá 3 sugestões de estratégia para aumentar o faturamento desta semana.' },
-      { label: '😴 Mensagem cliente inativo',        msg: 'Gera uma mensagem de WhatsApp para reativar um cliente que não aparece há 3 meses.' },
+      { label: '😴 Reativar cliente sumido',         msg: 'Gera uma mensagem de WhatsApp para reativar um cliente que não aparece há mais de 2 meses.' },
+      { label: '🎯 Estratégia semana que vem',       msg: 'Com base nos meus dados, me sugere uma estratégia focada em crescimento para a semana que vem.' },
     ];
     const wrap = document.createElement('div');
     wrap.className = 'ai-atalhos';
@@ -610,43 +613,78 @@ class Dashboard {
   }
 
   async _coletarContexto() {
-    // Busca dados reais do Caixa para contextualizar o DeepSeek
     try {
-      const hoje = new Date();
+      const hoje     = new Date();
       const anoAtual = hoje.getFullYear();
-      const mesAtual = `${anoAtual}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+      const anoAnt   = anoAtual - 1;
+      const mesIdx   = hoje.getMonth() + 1;
+      const mesAtual = `${anoAtual}-${String(mesIdx).padStart(2,'0')}`;
+      const mesAntAno= `${anoAnt}-${String(mesIdx).padStart(2,'0')}`;
 
-      const r = await fetch(
-        `https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300`
-      );
-      const d = await r.json();
-      if (!d.documents) return '';
+      // Pagina todos os lançamentos
+      let docs = [], token = '';
+      do {
+        const r = await fetch(`https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`);
+        const d = await r.json();
+        if (!d.documents) break;
+        docs = docs.concat(d.documents);
+        token = d.nextPageToken || '';
+      } while (token);
 
       const fv = (f,k) => { const x=f[k]; return x?(x.stringValue??Number(x.integerValue??x.doubleValue??0)):null; };
-
-      let lucroSemana=0, lucroMes=0, lucroAno=0, totalLanc=0;
-      const wk = (dt) => { const d=new Date(dt); d.setDate(d.getDate()+4-(d.getDay()||7)); const j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+1)/7); };
+      const wk  = dt  => { const d=new Date(dt); d.setDate(d.getDate()+4-(d.getDay()||7)); const j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+1)/7); };
       const semAtual = wk(hoje);
 
-      for (const doc of d.documents) {
-        const f = doc.fields;
+      let lucroSemana=0, lucroMesAtual=0, lucroAnoAtual=0;
+      let lucroMesAntAno=0, lucroSemAntAno=0, lucroAnoAnt=0;
+
+      for (const doc of docs) {
+        const f    = doc.fields;
         const lucro = Number(fv(f,'lucro')||0);
         const ano   = Number(fv(f,'ano')||0);
         const mes   = String(fv(f,'mes')||'');
         const iso   = String(fv(f,'dataISO')||'');
-        totalLanc++;
-        if (ano === anoAtual) { lucroAno += lucro; }
-        if (mes === mesAtual) { lucroMes += lucro; }
-        if (iso && new Date(iso).getFullYear()===anoAtual && wk(new Date(iso))===semAtual) lucroSemana += lucro;
+
+        if (ano === anoAtual)  lucroAnoAtual += lucro;
+        if (ano === anoAnt)    lucroAnoAnt   += lucro;
+        if (mes === mesAtual)  lucroMesAtual += lucro;
+        if (mes === mesAntAno) lucroMesAntAno += lucro;
+        if (iso) {
+          const dt = new Date(iso);
+          if (dt.getFullYear()===anoAtual && wk(dt)===semAtual) lucroSemana    += lucro;
+          if (dt.getFullYear()===anoAnt   && wk(dt)===semAtual) lucroSemAntAno += lucro;
+        }
       }
 
+      // Meta = mesmo período ano passado + 15%
+      const metaSemana = Math.round(lucroSemAntAno * 1.15);
+      const metaMes    = Math.round(lucroMesAntAno * 1.15);
       const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-      return `\n\n--- DADOS REAIS DO CRM (Cell City Informática - Goiânia/GO) ---
-Data atual: ${hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}
-Lucro esta semana (semana ${semAtual}): ${fmt(lucroSemana)}
-Lucro este mês (${mesAtual}): ${fmt(lucroMes)}
-Lucro este ano (${anoAtual}): ${fmt(lucroAno)}
-Total de lançamentos no banco: ${totalLanc}
+      const pct = (a,b) => b>0 ? `${((a/b-1)*100).toFixed(1)}%` : 'sem base';
+      const diasNoMes  = new Date(anoAtual, mesIdx, 0).getDate();
+      const diaAtual   = hoje.getDate();
+      const projecaoMes = lucroMesAtual > 0 ? Math.round((lucroMesAtual / diaAtual) * diasNoMes) : 0;
+
+      return `\n\n--- DADOS REAIS DO CRM — Cell City Informática ---
+Data: ${hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}
+
+ESTA SEMANA (semana ${semAtual}/${anoAtual}):
+  Lucro atual:        ${fmt(lucroSemana)}
+  Meta (+15% s/ ${anoAnt}): ${fmt(metaSemana)}
+  Vs meta:            ${pct(lucroSemana, metaSemana)}
+  Semana ${semAtual}/${anoAnt}: ${fmt(lucroSemAntAno)}
+
+ESTE MÊS (${mesAtual}):
+  Lucro até hoje:     ${fmt(lucroMesAtual)} (dia ${diaAtual}/${diasNoMes})
+  Meta (+15% s/ ${anoAnt}): ${fmt(metaMes)}
+  Projeção do mês:    ${fmt(projecaoMes)}
+  Vs meta:            ${pct(lucroMesAtual, metaMes)}
+  Mesmo mês ${anoAnt}:    ${fmt(lucroMesAntAno)}
+
+ANO:
+  Lucro ${anoAtual}:        ${fmt(lucroAnoAtual)}
+  Lucro ${anoAnt}:        ${fmt(lucroAnoAnt)}
+  Crescimento:        ${pct(lucroAnoAtual, lucroAnoAnt)}
 ---`;
     } catch { return ''; }
   }
@@ -657,15 +695,22 @@ Total de lançamentos no banco: ${totalLanc}
     try {
       const contexto = await this._coletarContexto();
 
-      const systemPrompt = `Você é o assistente estratégico da Cell City Informática, uma loja de conserto de celulares em Goiânia/GO.
-Você tem acesso aos dados financeiros reais do CRM e ajuda o dono (Itamar) com:
-- Análise de faturamento e lucro
-- Estratégias para aumentar vendas e fidelizar clientes
-- Mensagens prontas para copiar no WhatsApp (orçamentos, avisos de OS pronta, cobranças, reativação de clientes)
-- Dicas operacionais para a loja
+      const systemPrompt = `Você é o estrategista pessoal do Itamar, dono da Cell City Informática em Goiânia/GO.
+Ele trabalha SOZINHO e seu principal objetivo é CRESCIMENTO — aumentar o faturamento todo mês superando o mesmo período do ano anterior em pelo menos 15%.
 
-Quando gerar mensagem de WhatsApp: coloca o texto entre 3 asteriscos (***) para destacar.
-Seja direto, prático e use linguagem simples. Responda sempre em português brasileiro.
+Seu papel:
+1. ANÁLISE — interpretar os dados reais do CRM e dizer claramente se está no caminho certo ou não
+2. ESTRATÉGIA — dar ações práticas e realistas para um autônomo que trabalha sozinho crescer
+3. MENSAGENS WHATSAPP — gerar textos prontos para copiar e colar (orçamento, OS pronta, reativação, cobrança, promoção)
+4. ALERTAS — identificar quando o ritmo está abaixo da meta e sugerir o que fazer
+
+Regras:
+- Sempre use os dados reais do CRM para embasar as respostas
+- Quando mostrar números, compare com a meta e com o ano passado
+- Estratégias devem ser PRÁTICAS para quem trabalha sozinho (sem equipe, sem grande orçamento)
+- Mensagens WhatsApp: coloca o texto entre *** para destacar com botão copiar
+- Seja direto e objetivo. Sem enrolação.
+- Responda sempre em português brasileiro informal
 ${contexto}`;
 
       this._aiHistorico.push({ role: 'user', content: texto });
