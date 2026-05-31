@@ -35,10 +35,9 @@ body {
     background: rgba(10,12,11,0.92);
     border-bottom: 1px solid var(--border);
     backdrop-filter: blur(16px);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 28px;
-    padding: 20px 16px 24px;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 54px;
+    padding: 14px 16px;
 }
 .header::before {
     content:''; position:absolute; top:0; left:0; right:0; height:1px;
@@ -49,7 +48,12 @@ body {
     font-size: 20px; font-weight: 800;
     color: var(--text); text-align: center;
     letter-spacing: -0.02em;
-    width: 100%;
+}
+/* Linha separada para a busca, abaixo do header */
+.as-busca-wrap {
+    display: flex; justify-content: center;
+    padding: 16px 16px 0;
+    background: rgba(10,12,11,0.92);
 }
 .as-header-busca {
     display: flex; align-items: center; gap: 8px;
@@ -59,7 +63,6 @@ body {
     padding: 8px 16px;
     width: 100%; max-width: 420px;
     transition: border-color 150ms var(--ease);
-    margin-top: 48px;
 }
 .as-header-busca:focus-within { border-color: var(--green); }
 .as-busca-icon { font-size: 14px; flex-shrink: 0; color: var(--text3); }
