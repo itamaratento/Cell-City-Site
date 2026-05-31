@@ -48,6 +48,10 @@ body {
     font-size: 20px; font-weight: 800;
     color: var(--text); text-align: center;
     letter-spacing: -0.02em;
+    position: absolute;
+    left: 50%; transform: translateX(-50%);
+    white-space: nowrap;
+    pointer-events: none;
 }
 /* Linha separada para a busca, abaixo do header */
 .as-busca-wrap {
