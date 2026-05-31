@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="importar.css">
 </head>
 <body>
-    <script>if(sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
 
     <header class="header" id="mainHeader">
         <h1 id="headerTitle">Importar Backup</h1>
