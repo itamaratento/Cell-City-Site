@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Ação da Semana</title>
+    <link rel="stylesheet" href="acaodasemana.css">
+</head>
+<body>
+
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle">Ação da Semana</h1>
+    </header>
+
+    <main>
+        <div class="as-content">
+
+            <!-- RESUMO DE STATUS -->
+            <div class="as-resumo" id="as-resumo">
+                <div class="as-resumo-item">
+                    <span class="as-resumo-num" id="as-total">—</span>
+                    <span class="as-resumo-label">Total</span>
+                </div>
+                <div class="as-resumo-divider"></div>
+                <div class="as-resumo-item">
+                    <span class="as-resumo-num as-verde" id="as-concluidas">—</span>
+                    <span class="as-resumo-label">Concluídas</span>
+                </div>
+                <div class="as-resumo-divider"></div>
+                <div class="as-resumo-item">
+                    <span class="as-resumo-num as-amarelo" id="as-pendentes">—</span>
+                    <span class="as-resumo-label">Pendentes</span>
+                </div>
+            </div>
+
+            <!-- BOTÃO NOVA AÇÃO -->
+            <button class="as-btn-nova" id="as-btn-nova">＋ Nova Ação</button>
+
+            <!-- FORMULÁRIO (oculto por padrão) -->
+            <div class="as-form" id="as-form" style="display:none">
+                <div class="as-form-titulo">Nova Ação da Semana</div>
+                <input type="text" id="as-titulo-input" placeholder="Título da ação..." maxlength="100">
+                <textarea id="as-desc-input" placeholder="Descrição (opcional)..." rows="3" maxlength="500"></textarea>
+                <div class="as-form-row">
+                    <select id="as-prio-input">
+                        <option value="alta">🔴 Alta prioridade</option>
+                        <option value="media" selected>🟡 Média prioridade</option>
+                        <option value="baixa">🟢 Baixa prioridade</option>
+                    </select>
+                    <select id="as-categoria-input">
+                        <option value="vendas">📈 Vendas</option>
+                        <option value="operacional">⚙️ Operacional</option>
+                        <option value="marketing">📣 Marketing</option>
+                        <option value="financeiro">💰 Financeiro</option>
+                        <option value="outro">📌 Outro</option>
+                    </select>
+                </div>
+                <div class="as-form-btns">
+                    <button class="as-btn-salvar" id="as-btn-salvar">Salvar Ação</button>
+                    <button class="as-btn-cancelar" id="as-btn-cancelar">Cancelar</button>
+                </div>
+            </div>
+
+            <!-- LISTA DE AÇÕES -->
+            <div class="as-lista" id="as-lista">
+                <div class="as-loading" id="as-loading">
+                    <div class="as-spinner"></div>
+                    <span>Carregando ações...</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="as-toast" id="as-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="acaodasemana.js"></script>
+</body>
+</html>

@@ -738,7 +738,8 @@ class Dashboard {
       fornecedor: '../../pages/fornecedor/index.html',
       financeiro: '../../pages/financeiro/index.html',
       'em-breve': '../../pages/em-breve/index.html',
-      'minha-semana': '../../pages/minha-semana/index.html'
+      'minha-semana':   '../../pages/minha-semana/index.html',
+      'acaodasemana':   '../../pages/acaodasemana/index.html'
     };
     const url = routes[module];
     if (url) {
