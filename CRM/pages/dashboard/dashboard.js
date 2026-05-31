@@ -57,7 +57,6 @@ class Dashboard {
     this.setupClock();
     this.setupMetaSemanal();
     this.setupAlerts();
-    this.setupAI();
     this.setupGlobalSearch();
     this.setupCalendar();
     this.setupModules();
@@ -535,8 +534,8 @@ class Dashboard {
     resultsBox.classList.add('visible');
   }
 
-  // ===== ASSISTENTE IA =====
-  setupAI() {
+  // ===== MÓDULOS =====  // ===== ASSISTENTE IA (REMOVIDO) =====
+  setupAI_REMOVIDO() {
     const panel    = document.getElementById('ai-panel');
     const header   = document.getElementById('ai-header');
     const toggle   = document.getElementById('ai-toggle');
