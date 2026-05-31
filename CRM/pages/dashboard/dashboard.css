@@ -559,6 +559,41 @@ body {
   border-style: dashed !important;
 }
 
+/* ── Atalhos rápidos IA ── */
+.ai-atalhos {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 8px 0;
+}
+.ai-atalho-btn {
+  background: var(--bg-hover); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); color: var(--text-secondary);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 500;
+  padding: 8px 12px; text-align: left; cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.ai-atalho-btn:hover { background: rgba(0,200,83,.1); border-color: rgba(0,200,83,.3); color: var(--text-primary); }
+
+/* ── Typing animation ── */
+.ai-dots span { animation: blink 1.2s infinite; opacity: .3; font-size: 20px; }
+.ai-dots span:nth-child(2) { animation-delay: .2s; }
+.ai-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+/* ── Mensagem WhatsApp destacada ── */
+.ai-whatsapp-msg {
+  background: rgba(37,211,102,.08); border: 1px solid rgba(37,211,102,.25);
+  border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 6px;
+  font-size: 13px; line-height: 1.6; white-space: pre-wrap;
+}
+.ai-copy-btn {
+  display: block; margin-top: 8px;
+  background: rgba(37,211,102,.15); border: 1px solid rgba(37,211,102,.3);
+  border-radius: 6px; color: #25d366; font-size: 11px; font-weight: 700;
+  padding: 4px 10px; cursor: pointer; font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+}
+.ai-copy-btn:hover { background: rgba(37,211,102,.25); }
+
 /* ── Ícone de notas discreto na dock ── */
 #dock-notas {
   background: none;

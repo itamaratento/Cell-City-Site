@@ -537,13 +537,15 @@ class Dashboard {
 
   // ===== ASSISTENTE IA =====
   setupAI() {
-    const panel = document.getElementById('ai-panel');
-    const header = document.getElementById('ai-header');
-    const toggle = document.getElementById('ai-toggle');
-    const input = document.getElementById('ai-input');
-    const sendBtn = document.getElementById('ai-send');
+    const panel    = document.getElementById('ai-panel');
+    const header   = document.getElementById('ai-header');
+    const toggle   = document.getElementById('ai-toggle');
+    const input    = document.getElementById('ai-input');
+    const sendBtn  = document.getElementById('ai-send');
     const clearBtn = document.getElementById('ai-clear');
     const configBtn = document.getElementById('ai-config');
+
+    this._aiHistorico = []; // histórico da conversa
 
     const togglePanel = () => {
       this.state.aiOpen = !this.state.aiOpen;
@@ -554,47 +556,160 @@ class Dashboard {
       if (e.target.closest('.ai-toggle') || e.target.closest('.ai-action-btn')) return;
       togglePanel();
     });
+    toggle.addEventListener('click', (e) => { e.stopPropagation(); togglePanel(); });
+    clearBtn.addEventListener('click', (e) => { e.stopPropagation(); this.clearChat(); });
+    configBtn.addEventListener('click', (e) => { e.stopPropagation(); this.navigateTo('config'); });
 
-    toggle.addEventListener('click', (e) => {
-      e.stopPropagation();
-      togglePanel();
-    });
-
-    clearBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.clearChat();
-    });
-
-    configBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      this.navigateTo('config');
-    });
+    // Atalhos rápidos
+    this._renderAtalhos();
 
     const send = () => {
       const text = input.value.trim();
       if (!text) return;
-
       this.hideEmptyState();
+      this._removerAtalhos();
       this.addMessage(text, 'user');
       input.value = '';
-
-      setTimeout(() => {
-        const responses = [
-          'Entendido. Analisando os dados operacionais...',
-          'Vou verificar isso para você. Um momento.',
-          'Interessante! Posso sugerir ações baseadas no histórico.',
-          'Processando sua solicitação com base nos dados da Cell City.',
-          'Certo. Deixe-me consultar as informações mais recentes.'
-        ];
-        const reply = responses[Math.floor(Math.random() * responses.length)];
-        this.addMessage(reply, 'assistant');
-      }, 600 + Math.random() * 400);
+      this._enviarParaDeepSeek(text);
     };
 
     sendBtn.addEventListener('click', send);
-    input.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') send();
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
+  }
+
+  _renderAtalhos() {
+    const container = document.getElementById('ai-messages');
+    if (!container) return;
+    const atalhos = [
+      { label: '📊 Como foi minha semana?',         msg: 'Como foi minha semana? Me dá um resumo do faturamento e lucro.' },
+      { label: '📱 Mensagem OS pronta para retirar', msg: 'Gera uma mensagem de WhatsApp para avisar o cliente que a OS está pronta para retirar.' },
+      { label: '💰 Mensagem de orçamento',           msg: 'Gera uma mensagem de WhatsApp para enviar um orçamento de reparo ao cliente.' },
+      { label: '🎯 Estratégia desta semana',         msg: 'Me dá 3 sugestões de estratégia para aumentar o faturamento desta semana.' },
+      { label: '😴 Mensagem cliente inativo',        msg: 'Gera uma mensagem de WhatsApp para reativar um cliente que não aparece há 3 meses.' },
+    ];
+    const wrap = document.createElement('div');
+    wrap.className = 'ai-atalhos';
+    wrap.id = 'ai-atalhos';
+    wrap.innerHTML = atalhos.map(a =>
+      `<button class="ai-atalho-btn" data-msg="${this.escapeHtml(a.msg)}">${a.label}</button>`
+    ).join('');
+    container.appendChild(wrap);
+    wrap.querySelectorAll('.ai-atalho-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const msg = btn.getAttribute('data-msg');
+        this.hideEmptyState();
+        this._removerAtalhos();
+        this.addMessage(msg, 'user');
+        this._enviarParaDeepSeek(msg);
+      });
     });
+  }
+
+  _removerAtalhos() {
+    document.getElementById('ai-atalhos')?.remove();
+  }
+
+  async _coletarContexto() {
+    // Busca dados reais do Caixa para contextualizar o DeepSeek
+    try {
+      const hoje = new Date();
+      const anoAtual = hoje.getFullYear();
+      const mesAtual = `${anoAtual}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+
+      const r = await fetch(
+        `https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300`
+      );
+      const d = await r.json();
+      if (!d.documents) return '';
+
+      const fv = (f,k) => { const x=f[k]; return x?(x.stringValue??Number(x.integerValue??x.doubleValue??0)):null; };
+
+      let lucroSemana=0, lucroMes=0, lucroAno=0, totalLanc=0;
+      const wk = (dt) => { const d=new Date(dt); d.setDate(d.getDate()+4-(d.getDay()||7)); const j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+1)/7); };
+      const semAtual = wk(hoje);
+
+      for (const doc of d.documents) {
+        const f = doc.fields;
+        const lucro = Number(fv(f,'lucro')||0);
+        const ano   = Number(fv(f,'ano')||0);
+        const mes   = String(fv(f,'mes')||'');
+        const iso   = String(fv(f,'dataISO')||'');
+        totalLanc++;
+        if (ano === anoAtual) { lucroAno += lucro; }
+        if (mes === mesAtual) { lucroMes += lucro; }
+        if (iso && new Date(iso).getFullYear()===anoAtual && wk(new Date(iso))===semAtual) lucroSemana += lucro;
+      }
+
+      const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+      return `\n\n--- DADOS REAIS DO CRM (Cell City Informática - Goiânia/GO) ---
+Data atual: ${hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}
+Lucro esta semana (semana ${semAtual}): ${fmt(lucroSemana)}
+Lucro este mês (${mesAtual}): ${fmt(lucroMes)}
+Lucro este ano (${anoAtual}): ${fmt(lucroAno)}
+Total de lançamentos no banco: ${totalLanc}
+---`;
+    } catch { return ''; }
+  }
+
+  async _enviarParaDeepSeek(texto) {
+    const typing = this._addTyping();
+
+    try {
+      const contexto = await this._coletarContexto();
+
+      const systemPrompt = `Você é o assistente estratégico da Cell City Informática, uma loja de conserto de celulares em Goiânia/GO.
+Você tem acesso aos dados financeiros reais do CRM e ajuda o dono (Itamar) com:
+- Análise de faturamento e lucro
+- Estratégias para aumentar vendas e fidelizar clientes
+- Mensagens prontas para copiar no WhatsApp (orçamentos, avisos de OS pronta, cobranças, reativação de clientes)
+- Dicas operacionais para a loja
+
+Quando gerar mensagem de WhatsApp: coloca o texto entre 3 asteriscos (***) para destacar.
+Seja direto, prático e use linguagem simples. Responda sempre em português brasileiro.
+${contexto}`;
+
+      this._aiHistorico.push({ role: 'user', content: texto });
+
+      const resp = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer sk-b63030c723df46b99df8b1294f02204a'
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...this._aiHistorico.slice(-10) // últimas 10 mensagens
+          ],
+          temperature: 0.7,
+          max_tokens: 1000
+        })
+      });
+
+      const data = await resp.json();
+      const reply = data.choices?.[0]?.message?.content || 'Erro ao obter resposta.';
+      this._aiHistorico.push({ role: 'assistant', content: reply });
+
+      typing.remove();
+      this.addMessage(reply, 'assistant');
+
+    } catch(e) {
+      typing.remove();
+      this.addMessage('⚠️ Erro ao conectar com o assistente. Verifique sua conexão.', 'assistant');
+      console.error('DeepSeek erro:', e);
+    }
+  }
+
+  _addTyping() {
+    const container = document.getElementById('ai-messages');
+    const el = document.createElement('div');
+    el.className = 'ai-msg ai-msg-assistant ai-typing';
+    el.innerHTML = `<div class="ai-msg-avatar">🤖</div>
+      <div class="ai-msg-content"><span class="ai-dots"><span>.</span><span>.</span><span>.</span></span></div>`;
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+    return el;
   }
 
   hideEmptyState() {
@@ -617,8 +732,18 @@ class Dashboard {
     const msg = document.createElement('div');
     msg.className = `ai-msg ai-msg-${type}`;
     const avatar = type === 'user' ? 'EU' : '🤖';
+
+    // Detecta mensagens WhatsApp entre *** e adiciona botão copiar
+    let html = this.escapeHtml(text).replace(/\n/g, '<br>');
+    html = html.replace(/\*\*\*([\s\S]*?)\*\*\*/g, (_, m) => {
+      const raw = m.trim().replace(/<br>/g, '\n');
+      return `<div class="ai-whatsapp-msg">${m.trim()}
+        <button class="ai-copy-btn" onclick="navigator.clipboard.writeText(${JSON.stringify(raw)}).then(()=>{this.textContent='✅ Copiado!';setTimeout(()=>this.textContent='📋 Copiar',2000)})">📋 Copiar</button>
+      </div>`;
+    });
+
     msg.innerHTML = `<div class="ai-msg-avatar">${avatar}</div>
-      <div class="ai-msg-content">${this.escapeHtml(text)}</div>`;
+      <div class="ai-msg-content">${html}</div>`;
     container.appendChild(msg);
     container.scrollTop = container.scrollHeight;
   }
