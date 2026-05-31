@@ -1,5 +1,5 @@
 // Cell City CRM — Service Worker v1.0
-const CACHE = 'cellcity-crm-v1';
+const CACHE = 'cellcity-crm-v2';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
