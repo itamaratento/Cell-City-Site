@@ -156,3 +156,161 @@ btnSalvar.addEventListener('click', adicionar);
 tituloInp.addEventListener('keypress', e => { if (e.key === 'Enter') adicionar(); });
 
 carregar();
+
+// ══════════════════════════════════════════════════════════════════
+// MINHA SEMANA — ACORDEÃO
+// ══════════════════════════════════════════════════════════════════
+(function iniciarSemana() {
+  const DIAS = [
+    { key: 'segunda', label: 'Segunda' },
+    { key: 'terca',   label: 'Terça'   },
+    { key: 'quarta',  label: 'Quarta'  },
+    { key: 'quinta',  label: 'Quinta'  },
+    { key: 'sexta',   label: 'Sexta'   },
+    { key: 'sabado',  label: 'Sábado'  },
+    { key: 'domingo', label: 'Domingo' },
+  ];
+  const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
+  const JS_DIA = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+  const diaHoje = JS_DIA[new Date().getDay()];
+
+  const semanaRef = doc(db, 'tarefas_semana', userId);
+  let tarefas = {};
+  const container = document.getElementById('as-semana-acordeao');
+  if (!container) return;
+
+  const renderSemana = () => {
+    container.innerHTML = '';
+    DIAS.forEach(({ key, label }) => {
+      const lista  = tarefas[key] || [];
+      const aberto = key === diaHoje;
+
+      const bloco  = document.createElement('div');
+      bloco.className = 'as-dia';
+
+      const titulo = document.createElement('div');
+      titulo.className = 'as-dia-titulo' + (aberto ? ' aberto' : '');
+      const pendentes = lista.filter(t => !t.concluido).length;
+      titulo.innerHTML = `<span>${label}</span>
+        <div class="as-dia-meta">
+          ${pendentes > 0 ? `<span class="as-dia-count">${pendentes}</span>` : ''}
+          <span class="as-dia-arrow">▶</span>
+        </div>`;
+
+      const corpo = document.createElement('div');
+      corpo.className = 'as-dia-corpo' + (aberto ? ' aberto' : '');
+
+      const listaEl = document.createElement('div');
+      listaEl.className = 'as-dia-lista';
+
+      lista.forEach((t, idx) => {
+        const item = document.createElement('div');
+        item.className = 'as-tarefa' + (t.concluido ? ' concluida' : '');
+
+        const chk = document.createElement('input');
+        chk.type = 'checkbox'; chk.className = 'as-tarefa-check'; chk.checked = !!t.concluido;
+        chk.addEventListener('change', () => {
+          tarefas[key][idx].concluido = chk.checked;
+          salvarSemana(); renderSemana();
+        });
+
+        const prio = document.createElement('span');
+        prio.className = 'as-tarefa-prio';
+        prio.textContent = PRIO[t.prioridade] || '🟡';
+
+        const desc = document.createElement('span');
+        desc.className = 'as-tarefa-desc';
+        desc.textContent = t.descricao;
+
+        const del = document.createElement('button');
+        del.className = 'as-tarefa-del'; del.textContent = '✕';
+        del.addEventListener('click', () => {
+          tarefas[key].splice(idx, 1);
+          salvarSemana(); renderSemana();
+        });
+
+        item.append(chk, prio, desc, del);
+        listaEl.appendChild(item);
+      });
+
+      // formulário
+      const form = document.createElement('div');
+      form.className = 'as-add-form';
+      form.innerHTML = `
+        <input type="text" placeholder="Nova tarefa..." maxlength="80">
+        <select>
+          <option value="media">🟡</option>
+          <option value="alta">🔴</option>
+          <option value="baixa">🟢</option>
+        </select>
+        <button class="as-add-btn">＋</button>`;
+
+      const addFn = () => {
+        const inp  = form.querySelector('input');
+        const sel  = form.querySelector('select');
+        const desc = inp.value.trim();
+        if (!desc) return;
+        if (!tarefas[key]) tarefas[key] = [];
+        tarefas[key].push({ descricao: desc, prioridade: sel.value, concluido: false, criadoEm: new Date().toISOString() });
+        inp.value = '';
+        salvarSemana(); renderSemana();
+        toast('✅ Tarefa adicionada!');
+      };
+      form.querySelector('.as-add-btn').addEventListener('click', addFn);
+      form.querySelector('input').addEventListener('keypress', e => { if (e.key === 'Enter') addFn(); });
+
+      corpo.appendChild(listaEl);
+      corpo.appendChild(form);
+
+      titulo.addEventListener('click', () => {
+        const esta = corpo.classList.contains('aberto');
+        corpo.classList.toggle('aberto', !esta);
+        titulo.classList.toggle('aberto', !esta);
+      });
+
+      bloco.appendChild(titulo);
+      bloco.appendChild(corpo);
+      container.appendChild(bloco);
+    });
+  };
+
+  const salvarSemana = async () => {
+    try { await setDoc(semanaRef, { tarefas, atualizadoEm: serverTimestamp() }); } catch {}
+  };
+
+  getDoc(semanaRef).then(snap => {
+    tarefas = snap.exists() ? (snap.data().tarefas || {}) : {};
+    renderSemana();
+  }).catch(() => renderSemana());
+})();
+
+// ══════════════════════════════════════════════════════════════════
+// ANOTAÇÕES RÁPIDAS
+// ══════════════════════════════════════════════════════════════════
+(function iniciarNotas() {
+  const area     = document.getElementById('as-notas-area');
+  const statusEl = document.getElementById('as-notas-status');
+  if (!area) return;
+
+  const notasRef = doc(db, 'notas_usuarios', userId);
+  let saveTimer;
+
+  const setStatus = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  getDoc(notasRef).then(snap => {
+    if (snap.exists()) area.value = snap.data().conteudo || '';
+    setStatus('✓ sincronizado');
+  }).catch(() => setStatus(''));
+
+  area.addEventListener('input', () => {
+    clearTimeout(saveTimer);
+    setStatus('digitando...');
+    saveTimer = setTimeout(async () => {
+      setStatus('salvando...');
+      try {
+        await setDoc(notasRef, { conteudo: area.value, atualizadoEm: serverTimestamp(), userId });
+        setStatus('✓ salvo');
+      } catch { setStatus('⚠ erro'); }
+    }, 1000);
+  });
+})();

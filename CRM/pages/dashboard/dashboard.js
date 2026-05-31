@@ -60,8 +60,6 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
-    this.setupMinhaSemana();
-    this.setupSidebarNotas();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
@@ -556,8 +554,8 @@ class Dashboard {
     }
   }
 
-  // ===== MINHA SEMANA — ACORDEÃO =====
-  setupMinhaSemana() {
+  // ===== MINHA SEMANA — movido para acaodasemana/acaodasemana.js =====
+  setupMinhaSemana_REMOVIDO() {
     const DIAS = [
       { key: 'segunda',  label: 'Segunda' },
       { key: 'terca',    label: 'Terça'   },
@@ -692,8 +690,8 @@ class Dashboard {
     carregar();
   }
 
-  // ===== SIDEBAR ANOTAÇÕES RÁPIDAS =====
-  setupSidebarNotas() {
+  // ===== SIDEBAR ANOTAÇÕES — movido para acaodasemana/acaodasemana.js =====
+  setupSidebarNotas_REMOVIDO() {
     const area     = document.getElementById('sidebar-notas-area');
     const statusEl = document.getElementById('sidebar-notas-status');
     if (!area) return;
