@@ -166,3 +166,47 @@ document.getElementById('as-busca')?.addEventListener('input', e => {
 
 carregar();
 
+// ── BLOCO DE NOTAS ────────────────────────────────────────────────
+(function iniciarNotas() {
+  const btnNotas  = document.getElementById('as-dock-notas');
+  const panel     = document.getElementById('as-nota-panel');
+  const btnClose  = document.getElementById('as-nota-close');
+  const textarea  = document.getElementById('as-nota-textarea');
+  const statusEl  = document.getElementById('as-nota-status');
+  if (!btnNotas || !panel) return;
+
+  const notasUserId = localStorage.getItem('cc_nota_uid') || 'user_default';
+  const notasRef = doc(db, 'notas_usuarios', notasUserId);
+  let saveTimer;
+
+  const setStatus = msg => { if (statusEl) statusEl.textContent = msg; };
+
+  const carregarNota = async () => {
+    try {
+      const snap = await getDoc(notasRef);
+      if (snap.exists()) textarea.value = snap.data().conteudo || '';
+      setStatus('✓ sincronizado');
+    } catch { setStatus(''); }
+  };
+
+  const salvarNota = () => {
+    clearTimeout(saveTimer);
+    setStatus('digitando...');
+    saveTimer = setTimeout(async () => {
+      setStatus('salvando...');
+      try {
+        await setDoc(notasRef, { conteudo: textarea.value, atualizadoEm: serverTimestamp(), userId: notasUserId });
+        setStatus('✓ salvo');
+      } catch { setStatus('⚠ erro'); }
+    }, 1000);
+  };
+
+  btnNotas.addEventListener('click', () => {
+    const aberto = panel.style.display !== 'none';
+    panel.style.display = aberto ? 'none' : 'flex';
+    if (!aberto) { carregarNota(); textarea.focus(); }
+  });
+  btnClose.addEventListener('click', () => { panel.style.display = 'none'; });
+  textarea.addEventListener('input', salvarNota);
+})();
+

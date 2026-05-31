@@ -79,10 +79,10 @@
 
     <div class="as-toast" id="as-toast"></div>
 
-    <!-- DOCK LATERAL DIREITA -->
+    <!-- DOCK LATERAL DIREITA — igual ao dashboard -->
     <aside class="as-dock">
-        <button class="as-dock-item" onclick="history.back()" data-tooltip="Voltar">
-            <span class="as-dock-icon">◀</span>
+        <button class="as-dock-item" id="as-dock-notas" data-tooltip="Bloco de Notas">
+            <span class="as-dock-icon">📋</span>
         </button>
         <a href="https://mail.google.com" class="as-dock-item" target="_blank" data-tooltip="Gmail">
             <span class="as-dock-icon">📧</span>
@@ -99,7 +99,20 @@
         <a href="https://chat.openai.com" class="as-dock-item" target="_blank" data-tooltip="ChatGPT">
             <span class="as-dock-icon">🤖</span>
         </a>
+        <a href="#" class="as-dock-item" id="as-dock-ferramentas" data-tooltip="Ferramentas">
+            <span class="as-dock-icon">⚙️</span>
+        </a>
     </aside>
+
+    <!-- BLOCO DE NOTAS (igual ao dashboard) -->
+    <div class="as-nota-panel" id="as-nota-panel" style="display:none">
+        <div class="as-nota-header">
+            <span class="as-nota-title">📋 Minhas Notas</span>
+            <div class="as-nota-status" id="as-nota-status"></div>
+            <button class="as-nota-close" id="as-nota-close">✕</button>
+        </div>
+        <textarea class="as-nota-textarea" id="as-nota-textarea" placeholder="Digite suas notas aqui...&#10;Salva automaticamente em todos os dispositivos."></textarea>
+    </div>
 
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="acaodasemana.js"></script>
