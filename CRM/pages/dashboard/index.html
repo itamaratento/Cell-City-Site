@@ -239,11 +239,21 @@
 
 </main>
 
+<!-- ========== BLOCO DE NOTAS ========== -->
+<div class="nota-panel" id="nota-panel" style="display:none">
+  <div class="nota-header">
+    <span class="nota-title">📋 Minhas Notas</span>
+    <div class="nota-status" id="nota-status"></div>
+    <button class="nota-close" id="nota-close">✕</button>
+  </div>
+  <textarea class="nota-textarea" id="nota-textarea" placeholder="Digite suas notas aqui...&#10;Salva automaticamente em todos os dispositivos."></textarea>
+</div>
+
 <!-- ========== DOCK LATERAL DIREITA ========== -->
 <aside class="dock">
-  <a href="https://web.whatsapp.com" class="dock-item" target="_blank" data-tooltip="WhatsApp">
-    <span class="dock-icon">💬</span>
-  </a>
+  <button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas">
+    <span class="dock-icon">📋</span>
+  </button>
   <a href="https://mail.google.com" class="dock-item" target="_blank" data-tooltip="Gmail">
     <span class="dock-icon">📧</span>
   </a>

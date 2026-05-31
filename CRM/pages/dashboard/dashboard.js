@@ -3,7 +3,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
-import { db, doc, getDoc } from "../../scripts/firebase.js";
+import { db, doc, getDoc, setDoc, serverTimestamp } from "../../scripts/firebase.js";
 
 
 class Dashboard {
@@ -52,6 +52,7 @@ class Dashboard {
   }
 
   init() {
+    this.setupNotas();
     this.setupClock();
     this.setupMetaSemanal();
     this.setupAlerts();
@@ -96,6 +97,68 @@ class Dashboard {
 
     update();
     setInterval(update, 1000);
+  }
+
+  // ===== BLOCO DE NOTAS =====
+  setupNotas() {
+    const btnNotas  = document.getElementById('dock-notas');
+    const panel     = document.getElementById('nota-panel');
+    const btnClose  = document.getElementById('nota-close');
+    const textarea  = document.getElementById('nota-textarea');
+    const statusEl  = document.getElementById('nota-status');
+    if (!btnNotas || !panel || !textarea) return;
+
+    // ID do dispositivo/usuário — persistente no localStorage
+    let userId = localStorage.getItem('cc_nota_uid');
+    if (!userId) {
+      userId = 'user_' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('cc_nota_uid', userId);
+    }
+
+    const docRef = doc(db, 'notas_usuarios', userId);
+    let saveTimer = null;
+
+    const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
+
+    // Carrega nota do Firestore
+    const carregarNota = async () => {
+      try {
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          textarea.value = snap.data().conteudo || '';
+        }
+        setStatus('✓ sincronizado');
+      } catch { setStatus(''); }
+    };
+
+    // Salva nota no Firestore (debounce 1s)
+    const salvarNota = () => {
+      clearTimeout(saveTimer);
+      setStatus('digitando...');
+      saveTimer = setTimeout(async () => {
+        setStatus('salvando...');
+        try {
+          await setDoc(docRef, {
+            conteudo:    textarea.value,
+            atualizadoEm: serverTimestamp(),
+            userId
+          });
+          setStatus('✓ salvo');
+        } catch { setStatus('⚠ erro ao salvar'); }
+      }, 1000);
+    };
+
+    // Abre/fecha painel
+    btnNotas.addEventListener('click', () => {
+      const aberto = panel.style.display !== 'none';
+      panel.style.display = aberto ? 'none' : 'flex';
+      if (!aberto) { carregarNota(); textarea.focus(); }
+    });
+
+    btnClose.addEventListener('click', () => { panel.style.display = 'none'; });
+
+    // Auto-save ao digitar
+    textarea.addEventListener('input', salvarNota);
   }
 
   // ===== META SEMANAL =====
