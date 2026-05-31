@@ -1,11 +1,13 @@
 import {
-    db, collection, doc, setDoc, getDocs, query, where, serverTimestamp
+    db, collection, doc, setDoc, getDocs, serverTimestamp
 } from "../../scripts/firebase.js";
 
-window.handleFile       = handleFile;
+window.handleFile        = handleFile;
 window.iniciarImportacao = iniciarImportacao;
 
-let dadosParseados = null;
+const TIMEZONE = "America/Sao_Paulo";
+
+let dadosNormalizados = null; // { categorias, clientes, produtos, vendas }
 let erros = [];
 
 // ===== ENCODING FIX =====
@@ -27,6 +29,7 @@ function fixObj(obj) {
     for (const k of Object.keys(obj)) {
         const v = obj[k];
         if (typeof v === 'string') out[k] = fixEncoding(v);
+        else if (Array.isArray(v)) out[k] = v.map(i => typeof i === 'object' ? fixObj(i) : i);
         else if (typeof v === 'object' && v !== null) out[k] = fixObj(v);
         else out[k] = v;
     }
@@ -41,7 +44,40 @@ function tsToISO(ts) {
     return null;
 }
 
+// ===== NORMALIZAR: suporta flat array (Beepstart) e objeto com chaves =====
+function normalizar(raw) {
+    // Formato flat: array com collection_key em cada item
+    if (Array.isArray(raw)) {
+        return {
+            categorias: raw.filter(i => i.collection_key === 'Categoria'),
+            clientes:   raw.filter(i => i.collection_key === 'Cliente'),
+            produtos:   raw.filter(i => i.collection_key === 'Produto'),
+            vendas:     raw.filter(i => i.collection_key === 'Venda'),
+        };
+    }
+    // Formato legado: objeto com chaves
+    return {
+        categorias: raw.categorias || raw.Categoria || [],
+        clientes:   raw.clientes   || raw.Cliente   || [],
+        produtos:   raw.produtos   || raw.Produto   || [],
+        vendas:     raw.vendas     || raw.Venda     || [],
+    };
+}
+
 // ===== LER ARQUIVO =====
+function sanitizar(text) {
+    return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ');
+}
+
+function tentarParse(text) {
+    try {
+        return JSON.parse(sanitizar(text));
+    } catch (e) {
+        console.warn('JSON.parse falhou:', e.message.slice(0, 120));
+        return null;
+    }
+}
+
 function handleFile(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -50,58 +86,62 @@ function handleFile(event) {
     filenameEl.textContent = file.name;
     filenameEl.style.display = 'block';
 
+    // Lê como bytes brutos — mais robusto para encoding misto
     const reader = new FileReader();
     reader.onload = (e) => {
-        let text = e.target.result;
-        try {
-            const raw = JSON.parse(text);
-            dadosParseados = raw;
-            mostrarPreview(raw);
-        } catch {
-            // Tentar latin-1
-            const reader2 = new FileReader();
-            reader2.onload = (e2) => {
-                try {
-                    dadosParseados = JSON.parse(e2.target.result);
-                    mostrarPreview(dadosParseados);
-                } catch (err) {
-                    alert('❌ Arquivo inválido. Verifique se é um JSON válido.\n' + err.message);
-                }
-            };
-            reader2.readAsText(file, 'windows-1252');
+        const buffer = e.target.result;
+
+        let text = new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+        let parsed = tentarParse(text);
+        console.log('UTF-8:', parsed ? '✅ ' + (Array.isArray(parsed) ? parsed.length + ' itens' : 'obj') : '❌');
+
+        if (!parsed) {
+            text   = new TextDecoder('windows-1252', { fatal: false }).decode(buffer);
+            parsed = tentarParse(text);
+            console.log('win-1252:', parsed ? '✅ ' + (Array.isArray(parsed) ? parsed.length + ' itens' : 'obj') : '❌');
+        }
+
+        if (parsed) {
+            dadosNormalizados = normalizar(parsed);
+            console.log('Normalizado:', dadosNormalizados.categorias.length, 'cats |',
+                dadosNormalizados.clientes.length, 'clis |',
+                dadosNormalizados.produtos.length, 'prods |',
+                dadosNormalizados.vendas.length, 'vendas');
+            mostrarPreview(dadosNormalizados);
+        } else {
+            alert('❌ Arquivo inválido. Verifique se é um JSON válido.');
         }
     };
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsArrayBuffer(file);
 }
 
-function mostrarPreview(raw) {
-    const clientes  = (raw.clientes  || []).length;
-    const produtos  = (raw.produtos  || []).filter(p => !p.archived).length;
-    const vendas    = (raw.vendas    || []).filter(v => !v.cancelada).length;
-    const categorias = (raw.categorias || []).length;
+function mostrarPreview({ categorias, clientes, produtos, vendas }) {
+    const prodFiltrados  = produtos.filter(p => !p.archived);
+    const vendasFiltradas = vendas.filter(v => !v.cancelada);
+    const cliFiltrados   = clientes.filter(c => !c.archived);
 
-    const totalProdutos = (raw.produtos || []).length;
-    const totalVendas   = (raw.vendas   || []).length;
-    const ignoradosProd = totalProdutos - produtos;
-    const ignoradosVend = totalVendas   - vendas;
+    document.getElementById('prev-clientes').textContent   = cliFiltrados.length;
+    document.getElementById('prev-produtos').textContent   = prodFiltrados.length;
+    document.getElementById('prev-vendas').textContent     = vendasFiltradas.length;
+    document.getElementById('prev-categorias').textContent = categorias.length;
 
-    document.getElementById('prev-clientes').textContent  = clientes;
-    document.getElementById('prev-produtos').textContent  = produtos;
-    document.getElementById('prev-vendas').textContent    = vendas;
-    document.getElementById('prev-categorias').textContent = categorias;
+    const ignoradosProd = produtos.length - prodFiltrados.length;
+    const ignoradosVend = vendas.length   - vendasFiltradas.length;
+    const ignoradosCli  = clientes.length - cliFiltrados.length;
 
     let filterText = '';
+    if (ignoradosCli  > 0) filterText += `<span>${ignoradosCli} cliente(s) arquivado(s) serão ignorados.</span><br>`;
     if (ignoradosProd > 0) filterText += `<span>${ignoradosProd} produto(s) arquivado(s) serão ignorados.</span><br>`;
     if (ignoradosVend > 0) filterText += `<span>${ignoradosVend} venda(s) cancelada(s) serão ignoradas.</span>`;
     document.getElementById('imp-filter-info').innerHTML = filterText;
 
-    document.getElementById('imp-preview').style.display  = 'block';
+    document.getElementById('imp-preview').style.display   = 'block';
     document.getElementById('imp-btn-start').style.display = 'block';
 }
 
 // ===== IMPORTAÇÃO =====
 async function iniciarImportacao() {
-    if (!dadosParseados) return;
+    if (!dadosNormalizados) return;
 
     erros = [];
     const btn = document.getElementById('imp-btn-start');
@@ -109,8 +149,8 @@ async function iniciarImportacao() {
     btn.textContent = '⏳ Importando...';
 
     document.getElementById('imp-progress-wrap').style.display = 'block';
-    document.getElementById('imp-summary').style.display = 'none';
-    document.getElementById('imp-errors').style.display = 'none';
+    document.getElementById('imp-summary').style.display       = 'none';
+    document.getElementById('imp-errors').style.display        = 'none';
 
     const stats = {
         clientesNovos: 0, clientesAtualizados: 0,
@@ -119,27 +159,23 @@ async function iniciarImportacao() {
     };
 
     try {
-        // 1. Categorias
-        const categorias = dadosParseados.categorias || [];
-        setProgresso(0, 'Importando categorias...', 0);
+        const { categorias, clientes, produtos, vendas } = dadosNormalizados;
+
+        setProgresso(0, 'Importando categorias...');
         const catMap = await importarCategorias(categorias, stats);
 
-        // 2. Clientes
-        const clientes = dadosParseados.clientes || [];
-        setProgresso(10, `Importando ${clientes.length} clientes...`, 10);
-        const clienteMap = await importarClientes(clientes, stats);
+        setProgresso(10, `Importando ${clientes.filter(c=>!c.archived).length} clientes...`);
+        const clienteMap = await importarClientes(clientes.filter(c => !c.archived), stats);
 
-        // 3. Produtos
-        const produtos = (dadosParseados.produtos || []).filter(p => !p.archived);
-        setProgresso(30, `Importando ${produtos.length} produtos...`, 30);
-        const produtoMap = await importarProdutos(produtos, catMap, stats);
+        const prodFiltrados = produtos.filter(p => !p.archived);
+        setProgresso(30, `Importando ${prodFiltrados.length} produtos...`);
+        await importarProdutos(prodFiltrados, catMap, stats);
 
-        // 4. Vendas
-        const vendas = (dadosParseados.vendas || []).filter(v => !v.cancelada);
-        setProgresso(60, `Importando ${vendas.length} vendas...`, 60);
-        await importarVendas(vendas, clienteMap, produtoMap, stats);
+        const vendasFiltradas = vendas.filter(v => !v.cancelada);
+        setProgresso(60, `Importando ${vendasFiltradas.length} vendas...`);
+        await importarVendas(vendasFiltradas, clienteMap, stats);
 
-        setProgresso(100, 'Concluído!', 100);
+        setProgresso(100, 'Concluído!');
         mostrarResumo(stats);
 
     } catch (err) {
@@ -157,13 +193,13 @@ async function importarCategorias(categorias, stats) {
     const catMap = {};
     for (const cat of categorias) {
         const fixed = fixObj(cat);
-        const id    = String(fixed.id || fixed.categoriaID || Date.now());
-        const nome  = fixed.name || fixed.nome || fixed.description || `Categoria ${id}`;
+        const id   = String(fixed.id || Date.now());
+        const nome = fixed.description || fixed.name || fixed.nome || `Categoria ${id}`;
         try {
             await setDoc(doc(db, "categorias_produtos", id), {
                 id, nome, createdAt: serverTimestamp()
             }, { merge: true });
-            catMap[id] = nome;
+            catMap[id] = nome.trim();
             stats.categoriasImportadas++;
         } catch (e) { erros.push(`Categoria ${id}: ${e.message}`); }
     }
@@ -174,7 +210,6 @@ async function importarCategorias(categorias, stats) {
 async function importarClientes(clientes, stats) {
     const clienteMap = {};
 
-    // Carregar existentes por telefone
     const existentes = {};
     try {
         const snap = await getDocs(collection(db, "clients"));
@@ -186,9 +221,9 @@ async function importarClientes(clientes, stats) {
 
     for (const cl of clientes) {
         const fixed = fixObj(cl);
-        const nome  = fixed.name || fixed.nome || '';
+        const nome  = (fixed.name || fixed.nome || '').trim();
         const fone  = (fixed.phone || fixed.telefone || '').replace(/\D/g, '');
-        const idOrig = String(fixed.id || fixed.clienteID || '');
+        const idOrig = String(fixed.id || '');
 
         if (!nome && !fone) continue;
 
@@ -212,8 +247,6 @@ async function importarClientes(clientes, stats) {
 
 // ===== PRODUTOS =====
 async function importarProdutos(produtos, catMap, stats) {
-    const produtoMap = {};
-
     const existentes = {};
     try {
         const snap = await getDocs(collection(db, "produtos"));
@@ -226,10 +259,10 @@ async function importarProdutos(produtos, catMap, stats) {
     let i = 0;
     for (const prod of produtos) {
         i++;
-        if (i % 20 === 0) setProgresso(30 + Math.round((i / produtos.length) * 30), `Produtos: ${i}/${produtos.length}`, 30 + Math.round((i / produtos.length) * 30));
+        if (i % 20 === 0) setProgresso(30 + Math.round((i / produtos.length) * 30), `Produtos: ${i}/${produtos.length}`);
 
         const fixed = fixObj(prod);
-        const desc  = fixed.description || fixed.descricao || fixed.nome || '';
+        const desc  = (fixed.description || fixed.descricao || fixed.nome || '').trim();
         const idOrig = String(fixed.id || '');
         const catId  = String(fixed.categoriaID || fixed.categoria_id || '');
 
@@ -242,63 +275,80 @@ async function importarProdutos(produtos, catMap, stats) {
             await setDoc(doc(db, "produtos", docId), {
                 id: docId,
                 description: desc,
-                custo:    parseFloat(fixed.custo    || fixed.cost  || 0),
-                venda:    parseFloat(fixed.venda    || fixed.price || 0),
-                categoria: catMap[catId] || catId || '',
+                custo:       parseFloat(fixed.custo    || fixed.cost  || 0),
+                venda:       parseFloat(fixed.venda    || fixed.price || 0),
+                categoria:   catMap[catId] || catId || '',
                 categoriaID: catId,
                 importadoDe: 'beepstart',
-                createdAt: serverTimestamp()
+                createdAt:   serverTimestamp()
             }, { merge: true });
 
-            produtoMap[idOrig] = docId;
             if (isNovo) { existentes[desc.toLowerCase()] = docId; stats.produtosNovos++; }
             else stats.produtosAtualizados++;
         } catch (e) { erros.push(`Produto "${desc}": ${e.message}`); }
     }
-    return produtoMap;
 }
 
 // ===== VENDAS =====
-async function importarVendas(vendas, clienteMap, produtoMap, stats) {
+async function importarVendas(vendas, clienteMap, stats) {
     let i = 0;
     for (const venda of vendas) {
         i++;
-        if (i % 20 === 0) setProgresso(60 + Math.round((i / vendas.length) * 38), `Vendas: ${i}/${vendas.length}`, 60 + Math.round((i / vendas.length) * 38));
+        if (i % 20 === 0) setProgresso(60 + Math.round((i / vendas.length) * 38), `Vendas: ${i}/${vendas.length}`);
 
-        const fixed = fixObj(venda);
-        const idOrig   = String(fixed.id || '');
-        const clienteId = clienteMap[String(fixed.clienteID || fixed.cliente_id || '')] || null;
-        const dataISO  = tsToISO(fixed.data || fixed.createdAt || fixed.date);
-
-        const itens = (fixed.itens || fixed.items || []).map(item => ({
-            produtoId:   produtoMap[String(item.produtoID || item.produto_id || '')] || null,
-            descricao:   fixEncoding(item.description || item.descricao || ''),
-            quantidade:  parseFloat(item.quantidade || item.qty || item.quantity || 1),
-            valorUnitario: parseFloat(item.valorUnitario || item.price || item.valor || 0),
-            total:       parseFloat(item.total || item.subtotal || 0)
-        }));
-
-        const total = parseFloat(fixed.total || fixed.valor || fixed.valorTotal ||
-            itens.reduce((s, it) => s + it.total, 0) || 0);
+        const fixed   = fixObj(venda);
+        const idOrig  = String(fixed.id || '');
+        const clienteId = clienteMap[String(fixed.clienteID || fixed.usuarioID || '')] || null;
+        const dataISO = tsToISO(fixed.data || fixed.createdAt || fixed.date);
+        const total   = parseFloat(fixed.total || fixed.valor || fixed.valorTotal || 0);
 
         try {
-            const docId = `beep_${idOrig}`;
-            await setDoc(doc(db, "vendas_importadas", docId), {
-                id: docId, idOriginal: idOrig,
-                clienteId, dataISO,
-                total, itens,
+            // Registro histórico
+            await setDoc(doc(db, "vendas_importadas", `beep_${idOrig}`), {
+                id: `beep_${idOrig}`, idOriginal: idOrig,
+                clienteId, dataISO, total,
                 importadoDe: 'beepstart',
                 createdAt: serverTimestamp()
             }, { merge: true });
+
+            // Lançamento no Caixa (aparece no módulo e na Meta Semanal)
+            if (dataISO && total > 0) {
+                const dt  = new Date(dataISO);
+                const pad = n => String(n).padStart(2, '0');
+                const dia     = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())}`;
+                const mes     = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`;
+                const horario = `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
+
+                await setDoc(doc(db, "caixa_lancamentos", `beep_venda_${idOrig}`), {
+                    tipo: "entrada",
+                    descricao: `Venda #${idOrig}`,
+                    categoria: "Venda Beepstart",
+                    valor: total,
+                    custo: 0,
+                    lucro: total,
+                    dia, mes,
+                    ano:        dt.getFullYear(),
+                    dataISO,
+                    horario,
+                    diaSemana:  dt.getDay(),
+                    diaMes:     dt.getDate(),
+                    mesNumero:  dt.getMonth() + 1,
+                    timezone:   TIMEZONE,
+                    status:     "ativo",
+                    importadoDe: "beepstart",
+                    createdAt:  serverTimestamp()
+                }, { merge: true });
+            }
+
             stats.vendasImportadas++;
         } catch (e) { erros.push(`Venda #${idOrig}: ${e.message}`); }
     }
 }
 
 // ===== UI =====
-function setProgresso(pct, label, raw) {
-    document.getElementById('imp-progress-bar').style.width  = pct + '%';
-    document.getElementById('imp-progress-pct').textContent  = pct + '%';
+function setProgresso(pct, label) {
+    document.getElementById('imp-progress-bar').style.width   = pct + '%';
+    document.getElementById('imp-progress-pct').textContent   = pct + '%';
     document.getElementById('imp-progress-label').textContent = label;
 }
 

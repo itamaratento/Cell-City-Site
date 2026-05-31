@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>if(sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - Estoque</title>
+    <link rel="stylesheet" href="estoque.css">
+</head>
+<body>
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle">Estoque</h1>
+    </header>
+
+    <main>
+        <div class="est-content">
+
+            <!-- BUSCA + CONTADOR -->
+            <div class="est-toolbar">
+                <input type="search" id="est-search" class="est-search" placeholder="🔍 Buscar produto..." oninput="filtrar()">
+                <div class="est-count" id="est-count">—</div>
+            </div>
+
+            <!-- LOADING -->
+            <div class="est-loading" id="est-loading">
+                <div class="est-spinner"></div>
+                <span>Carregando produtos...</span>
+            </div>
+
+            <!-- LISTA -->
+            <div class="est-list" id="est-list" style="display:none"></div>
+
+            <!-- VAZIO -->
+            <div class="est-empty" id="est-empty" style="display:none">
+                <div class="est-empty-icon">📦</div>
+                <div class="est-empty-title">Nenhum produto encontrado</div>
+                <div class="est-empty-sub">Importe um backup Beepstart para popular o estoque.</div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="estoque.js"></script>
+</body>
+</html>

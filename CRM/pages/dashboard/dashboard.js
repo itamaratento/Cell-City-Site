@@ -1,8 +1,11 @@
 /* ============================================
 CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
-✅ AGUARDANDO ETAPA 2: análise de os.js e caixa.js
+✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
+import { db, doc, getDoc } from "../../scripts/firebase.js";
+
+
 class Dashboard {
   constructor() {
     this.state = {
@@ -95,6 +98,70 @@ class Dashboard {
   // ===== META SEMANAL =====
   setupMetaSemanal() {
     this.updateMeta(this.state.meta.current, this.state.meta.goal);
+    this._carregarMetaFirestore();
+  }
+
+  async _carregarMetaFirestore() {
+    try {
+      const CRESCIMENTO = 1.15; // meta = mesma semana do ano anterior + 15%
+
+      // ── Semana ISO da semana atual
+      const _weekNum = (date) => {
+        const d = new Date(date);
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() + 4 - (d.getDay()||7));
+        const jan1 = new Date(d.getFullYear(), 0, 1);
+        return Math.ceil((((d - jan1) / 86400000) + 1) / 7);
+      };
+
+      const now      = new Date();
+      const anoAtual = now.getFullYear();
+      const numSem   = _weekNum(now);
+      const semKey   = `${anoAtual}-W${String(numSem).padStart(2,'0')}`;
+      const semKey25 = `${anoAtual - 1}-W${String(numSem).padStart(2,'0')}`;
+
+      // ── Lucro atual da semana (via caixa_lancamentos direto, pois resumo_live
+      //    só é atualizado quando o módulo Caixa está aberto)
+      let lucroAtual = 0;
+      let lucro2025  = 0;
+      let token = '';
+      do {
+        const r = await fetch(
+          `https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`
+        );
+        const d = await r.json();
+        if (!d.documents) break;
+        for (const docSnap of d.documents) {
+          const f  = docSnap.fields;
+          const fv = k => { const x=f[k]; return x ? (x.stringValue ?? Number(x.integerValue ?? x.doubleValue ?? 0)) : null; };
+          const iso  = String(fv('dataISO') || '');
+          const lucro = Number(fv('lucro') || 0);
+          if (!iso) continue;
+          const itemAno = new Date(iso).getFullYear();
+          const itemSem = _weekNum(new Date(iso));
+          if (itemAno === anoAtual      && itemSem === numSem) lucroAtual += lucro;
+          if (itemAno === anoAtual - 1  && itemSem === numSem) lucro2025  += lucro;
+        }
+        token = d.nextPageToken || '';
+      } while (token);
+
+      // ── Meta = lucro da mesma semana do ano anterior + 15%
+      const metaCalculada = lucro2025 > 0
+        ? Math.round(lucro2025 * CRESCIMENTO)
+        : this.state.meta.goal; // fallback se não houver histórico
+
+      this.updateMeta(lucroAtual, metaCalculada);
+
+      // Mostra referência 2025 no rodapé do card
+      const footer = document.querySelector('.meta-footer');
+      if (footer && lucro2025 > 0) {
+        const fmtBRL = v => `R$ ${Number(v).toLocaleString('pt-BR')}`;
+        footer.innerHTML = `⚠ Faltam <span class="meta-remaining" id="meta-remaining">${fmtBRL(Math.max(metaCalculada - lucroAtual, 0))}</span>
+          <span class="meta-ref"> · base ${anoAtual-1}: ${fmtBRL(Math.round(lucro2025))}</span>`;
+      }
+    } catch (e) {
+      console.warn('Meta Semanal:', e);
+    }
   }
 
   updateMeta(current, goal) {
