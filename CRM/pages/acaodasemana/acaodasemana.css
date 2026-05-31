@@ -37,8 +37,8 @@ body {
     backdrop-filter: blur(16px);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 10px;
-    padding: 14px 16px 16px;
+    gap: 16px;
+    padding: 16px 16px 20px;
 }
 .header::before {
     content:''; position:absolute; top:0; left:0; right:0; height:1px;
