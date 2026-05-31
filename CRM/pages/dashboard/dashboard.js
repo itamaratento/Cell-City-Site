@@ -60,6 +60,8 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
+    this.setupMinhaSemana();
+    this.setupSidebarNotas();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
@@ -552,6 +554,174 @@ class Dashboard {
         this.navigateTo('ferramentas');
       });
     }
+  }
+
+  // ===== MINHA SEMANA — ACORDEÃO =====
+  setupMinhaSemana() {
+    const DIAS = [
+      { key: 'segunda',  label: 'Segunda' },
+      { key: 'terca',    label: 'Terça'   },
+      { key: 'quarta',   label: 'Quarta'  },
+      { key: 'quinta',   label: 'Quinta'  },
+      { key: 'sexta',    label: 'Sexta'   },
+      { key: 'sabado',   label: 'Sábado'  },
+      { key: 'domingo',  label: 'Domingo' },
+    ];
+    const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
+    const JS_DIA = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+    const diaHoje = JS_DIA[new Date().getDay()];
+
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+    const ref = doc(db, 'tarefas_semana', userId);
+    let tarefas = {};
+
+    const container = document.getElementById('semana-acordeao');
+    if (!container) return;
+
+    const render = () => {
+      container.innerHTML = '';
+      DIAS.forEach(({ key, label }) => {
+        const lista = tarefas[key] || [];
+        const aberto = key === diaHoje;
+
+        const bloco = document.createElement('div');
+        bloco.className = 'semana-dia';
+
+        // cabeçalho
+        const titulo = document.createElement('div');
+        titulo.className = 'semana-dia-titulo' + (aberto ? ' aberto' : '');
+        titulo.innerHTML = `<span>${label}</span>
+          <div class="semana-dia-meta">
+            ${lista.filter(t=>!t.concluido).length > 0
+              ? `<span class="semana-dia-count">${lista.filter(t=>!t.concluido).length}</span>`
+              : ''}
+            <span class="semana-dia-arrow">▶</span>
+          </div>`;
+
+        // corpo
+        const corpo = document.createElement('div');
+        corpo.className = 'semana-dia-corpo' + (aberto ? ' aberto' : '');
+
+        // lista de tarefas
+        const listaEl = document.createElement('div');
+        listaEl.className = 'semana-tarefas-lista';
+
+        lista.forEach((t, idx) => {
+          const item = document.createElement('div');
+          item.className = 'semana-tarefa' + (t.concluido ? ' concluida' : '');
+
+          const chk = document.createElement('input');
+          chk.type = 'checkbox'; chk.className = 'semana-tarefa-check'; chk.checked = !!t.concluido;
+          chk.addEventListener('change', () => {
+            tarefas[key][idx].concluido = chk.checked;
+            salvar(); render();
+          });
+
+          const prio = document.createElement('span');
+          prio.className = 'semana-tarefa-prio';
+          prio.textContent = PRIO[t.prioridade] || '🟡';
+
+          const desc = document.createElement('span');
+          desc.className = 'semana-tarefa-desc';
+          desc.textContent = t.descricao;
+
+          const del = document.createElement('button');
+          del.className = 'semana-tarefa-del'; del.textContent = '✕';
+          del.addEventListener('click', () => {
+            tarefas[key].splice(idx, 1);
+            salvar(); render();
+          });
+
+          item.append(chk, prio, desc, del);
+          listaEl.appendChild(item);
+        });
+
+        // formulário
+        const form = document.createElement('div');
+        form.className = 'semana-add-form';
+        form.innerHTML = `
+          <input type="text" placeholder="Nova tarefa..." maxlength="80">
+          <select>
+            <option value="media">🟡</option>
+            <option value="alta">🔴</option>
+            <option value="baixa">🟢</option>
+          </select>
+          <button class="semana-add-btn">＋</button>`;
+
+        const addFn = () => {
+          const inp = form.querySelector('input');
+          const sel = form.querySelector('select');
+          const desc = inp.value.trim();
+          if (!desc) return;
+          if (!tarefas[key]) tarefas[key] = [];
+          tarefas[key].push({ descricao: desc, prioridade: sel.value, concluido: false, criadoEm: new Date().toISOString() });
+          inp.value = '';
+          salvar(); render();
+        };
+        form.querySelector('.semana-add-btn').addEventListener('click', addFn);
+        form.querySelector('input').addEventListener('keypress', e => { if (e.key === 'Enter') addFn(); });
+
+        corpo.appendChild(listaEl);
+        corpo.appendChild(form);
+
+        // acordeão toggle
+        titulo.addEventListener('click', () => {
+          const estaAberto = corpo.classList.contains('aberto');
+          corpo.classList.toggle('aberto', !estaAberto);
+          titulo.classList.toggle('aberto', !estaAberto);
+        });
+
+        bloco.appendChild(titulo);
+        bloco.appendChild(corpo);
+        container.appendChild(bloco);
+      });
+    };
+
+    const salvar = async () => {
+      try { await setDoc(ref, { tarefas, atualizadoEm: serverTimestamp() }); } catch {}
+    };
+
+    const carregar = async () => {
+      try {
+        const snap = await getDoc(ref);
+        tarefas = snap.exists() ? (snap.data().tarefas || {}) : {};
+      } catch { tarefas = {}; }
+      render();
+    };
+
+    carregar();
+  }
+
+  // ===== SIDEBAR ANOTAÇÕES RÁPIDAS =====
+  setupSidebarNotas() {
+    const area     = document.getElementById('sidebar-notas-area');
+    const statusEl = document.getElementById('sidebar-notas-status');
+    if (!area) return;
+
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+    const ref    = doc(db, 'notas_usuarios', userId);
+    let saveTimer = null;
+
+    const setStatus = msg => { if (statusEl) statusEl.textContent = msg; };
+
+    // Carrega
+    getDoc(ref).then(snap => {
+      if (snap.exists()) area.value = snap.data().conteudo || '';
+      setStatus('✓ sincronizado');
+    }).catch(() => setStatus(''));
+
+    // Auto-save com debounce 1s
+    area.addEventListener('input', () => {
+      clearTimeout(saveTimer);
+      setStatus('digitando...');
+      saveTimer = setTimeout(async () => {
+        setStatus('salvando...');
+        try {
+          await setDoc(ref, { conteudo: area.value, atualizadoEm: serverTimestamp(), userId });
+          setStatus('✓ salvo');
+        } catch { setStatus('⚠ erro'); }
+      }, 1000);
+    });
   }
 
   navigateTo(module) {
