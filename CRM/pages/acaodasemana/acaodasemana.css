@@ -522,3 +522,76 @@ body {
     padding: 2px 4px;
 }
 .as-card-edit:hover { opacity: 1; }
+
+/* ========== TOOLBAR DE AÇÕES ========== */
+.as-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 0;
+}
+.as-btn-limpar {
+    padding: 10px 16px;
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    border-radius: 10px;
+    color: #f87171;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 200ms;
+    white-space: nowrap;
+}
+.as-btn-limpar:hover {
+    background: rgba(248, 113, 113, 0.2);
+}
+
+/* ========== DATA E HORÁRIO NO FORMULÁRIO ========== */
+.as-form-datetime {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.as-form-dt-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex: 1;
+    min-width: 130px;
+}
+.as-dt-input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: #f5f7fa;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    color-scheme: dark;
+}
+.as-dt-input:focus { border-color: rgba(0,200,83,0.4); }
+
+/* ========== DATA/HORA NO CARD ========== */
+.as-card-datetime {
+    font-size: 11px;
+    color: #00c853;
+    font-weight: 600;
+    background: rgba(0,200,83,0.08);
+    border: 1px solid rgba(0,200,83,0.2);
+    border-radius: 6px;
+    padding: 2px 8px;
+}
+
+/* ========== BOTÃO COPIAR LEMBRETE ========== */
+.as-card-copy {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    opacity: 0.5;
+    transition: opacity 200ms;
+    padding: 2px 4px;
+}
+.as-card-copy:hover { opacity: 1; }

@@ -3,6 +3,7 @@ import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from
 const COL_PAGAR   = 'financeiro_pagar';
 const COL_FIXAS   = 'financeiro_fixas';
 const COL_RECEBER = 'financeiro_receber';
+const COL_CATS    = 'financeiro_categorias';
 
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -25,15 +26,8 @@ function toast(msg) {
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2500);
 }
 
-// ── tabs ───────────────────────────────────────────────────────────
-document.querySelectorAll('.fin-tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    });
-});
+// ── tabs (delegated via ativarTab definido abaixo) ─────────────────
+// listeners das 3 abas fixas são adicionados após a definição de ativarTab
 
 // ── filtros de status ──────────────────────────────────────────────
 document.querySelectorAll('[data-s]').forEach(btn => {
@@ -469,4 +463,237 @@ document.getElementById('fin-btn-listar').addEventListener('click', () => {
     renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
 });
 
-document.addEventListener('DOMContentLoaded', carregar);
+// ── CATEGORIAS PERSONALIZADAS ──────────────────────────────────────
+let categoriasCustom = []; // [{id, nome}]
+let dadosCustom = {};      // {catId: [{id, descricao, valor, vencimento, status, obs}]}
+
+async function carregarCategorias() {
+    try {
+        const snap = await getDocs(collection(db, COL_CATS));
+        categoriasCustom = [];
+        snap.forEach(d => categoriasCustom.push({ id: d.id, ...d.data() }));
+        categoriasCustom.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+        for (const cat of categoriasCustom) {
+            const s = await getDocs(collection(db, `${COL_CATS}/${cat.id}/itens`));
+            dadosCustom[cat.id] = [];
+            s.forEach(d => dadosCustom[cat.id].push({ id: d.id, ...d.data() }));
+            dadosCustom[cat.id] = dadosCustom[cat.id].map(c => calcStatus(c, 'pago'));
+        }
+    } catch { categoriasCustom = []; }
+    renderTabsCustom();
+    renderPainéisCustom();
+}
+
+function renderTabsCustom() {
+    // Remove abas custom anteriores (mantém as 3 fixas + botão +)
+    document.querySelectorAll('.fin-tab-custom').forEach(el => el.remove());
+    const tabAdd = document.getElementById('fin-tab-add');
+    categoriasCustom.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'fin-tab fin-tab-custom';
+        btn.dataset.tab = 'custom-' + cat.id;
+        btn.textContent = '📁 ' + cat.nome;
+        tabAdd.before(btn);
+        btn.addEventListener('click', () => ativarTab('custom-' + cat.id));
+    });
+}
+
+function renderPainéisCustom() {
+    const container = document.getElementById('fin-custom-panels');
+    container.innerHTML = '';
+    categoriasCustom.forEach(cat => {
+        const itens = dadosCustom[cat.id] || [];
+        const panel = document.createElement('div');
+        panel.className = 'fin-panel';
+        panel.id = 'tab-custom-' + cat.id;
+        panel.innerHTML = `
+            <div class="fin-panel-header-custom">
+                <div class="fin-toolbar">
+                    <button class="fin-btn-nova" data-catid="${cat.id}">＋ Novo Item</button>
+                </div>
+                <button class="fin-custom-del-tab" data-catid="${cat.id}">🗑 Excluir categoria</button>
+            </div>
+            <div class="fin-form" id="form-custom-${cat.id}" style="display:none">
+                <div class="fin-form-titulo">Novo Item — ${escHtml(cat.nome)}</div>
+                <div class="fin-form-grid">
+                    <div class="fin-form-group fin-span2"><label>Descrição</label><input type="text" id="cx-desc-${cat.id}" placeholder="Descrição..." maxlength="120"></div>
+                    <div class="fin-form-group"><label>Vencimento</label><input type="date" id="cx-venc-${cat.id}"></div>
+                    <div class="fin-form-group"><label>Valor (R$)</label><input type="number" id="cx-valor-${cat.id}" min="0" step="0.01" placeholder="0,00"></div>
+                    <div class="fin-form-group"><label>Status</label><select id="cx-status-${cat.id}"><option value="pendente">🟡 Pendente</option><option value="pago">✅ Pago</option></select></div>
+                    <div class="fin-form-group"><label>Observação</label><input type="text" id="cx-obs-${cat.id}" placeholder="Opcional..." maxlength="200"></div>
+                </div>
+                <div class="fin-form-btns">
+                    <button class="fin-btn-salvar" data-save-cat="${cat.id}">Salvar</button>
+                    <button class="fin-btn-cancelar" data-cancel-cat="${cat.id}">Cancelar</button>
+                </div>
+            </div>
+            <div id="custom-lista-${cat.id}"></div>
+            <div class="fin-empty" id="custom-empty-${cat.id}" style="${itens.length ? 'display:none' : 'display:flex'}">
+                <div class="fin-empty-icon">📁</div>
+                <div class="fin-empty-title">Nenhum item em ${escHtml(cat.nome)}</div>
+            </div>`;
+        container.appendChild(panel);
+        renderCustomLista(cat.id, itens);
+
+        // eventos do painel
+        panel.querySelector('[data-catid="' + cat.id + '"].fin-btn-nova').addEventListener('click', () => {
+            panel.querySelector(`#form-custom-${cat.id}`).style.display = 'flex';
+            panel.querySelector(`.fin-btn-nova`).style.display = 'none';
+            panel.querySelector(`#cx-desc-${cat.id}`).focus();
+        });
+        panel.querySelector(`[data-save-cat="${cat.id}"]`).addEventListener('click', () => salvarCustomItem(cat.id, panel));
+        panel.querySelector(`[data-cancel-cat="${cat.id}"]`).addEventListener('click', () => {
+            panel.querySelector(`#form-custom-${cat.id}`).style.display = 'none';
+            panel.querySelector(`.fin-btn-nova`).style.display = '';
+        });
+        panel.querySelector('.fin-custom-del-tab').addEventListener('click', () => excluirCategoria(cat.id, cat.nome));
+    });
+}
+
+function renderCustomLista(catId, itens) {
+    const listaEl = document.getElementById(`custom-lista-${catId}`);
+    const emptyEl = document.getElementById(`custom-empty-${catId}`);
+    const f = itens.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
+    if (!f.length) { if (listaEl) listaEl.innerHTML = ''; if (emptyEl) emptyEl.style.display = 'flex'; return; }
+    if (emptyEl) emptyEl.style.display = 'none';
+    listaEl.innerHTML = f.map(c => `
+        <div class="fin-card${c.status === 'vencido' ? ' fin-card-vencido' : c.status === 'pago' ? ' fin-card-pago' : ''}">
+            <div class="fin-card-left">
+                <span class="fin-cat-icon">📁</span>
+                <div class="fin-card-info">
+                    <div class="fin-card-desc">${escHtml(c.descricao)}</div>
+                    <div class="fin-card-sub">${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}${c.obs ? ` · ${escHtml(c.obs)}` : ''}</div>
+                </div>
+            </div>
+            <div class="fin-card-right">
+                <div class="fin-card-valor">${fmt(c.valor)}</div>
+                ${statusBadge(c.status)}
+                <div class="fin-card-acoes">
+                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-cid="${c.id}" data-catid="${catId}" title="Marcar pago">✓ Pago</button>` : ''}
+                    <button class="fin-card-del-btn" data-cid="${c.id}" data-catid="${catId}" title="Excluir">🗑️</button>
+                </div>
+            </div>
+        </div>`).join('');
+
+    listaEl.querySelectorAll('.fin-btn-marcar').forEach(btn => {
+        btn.addEventListener('click', () => marcarCustom(btn.dataset.catid, btn.dataset.cid, 'pago'));
+    });
+    listaEl.querySelectorAll('.fin-card-del-btn').forEach(btn => {
+        btn.addEventListener('click', () => excluirCustomItem(btn.dataset.catid, btn.dataset.cid));
+    });
+}
+
+async function salvarCustomItem(catId, panel) {
+    const desc  = panel.querySelector(`#cx-desc-${catId}`)?.value.trim();
+    if (!desc) { panel.querySelector(`#cx-desc-${catId}`)?.focus(); return; }
+    const dados = {
+        descricao:   desc,
+        vencimento:  panel.querySelector(`#cx-venc-${catId}`)?.value || '',
+        valor:       Number(panel.querySelector(`#cx-valor-${catId}`)?.value) || 0,
+        status:      panel.querySelector(`#cx-status-${catId}`)?.value || 'pendente',
+        obs:         panel.querySelector(`#cx-obs-${catId}`)?.value.trim() || '',
+        atualizadoEm: serverTimestamp()
+    };
+    const id = `item_${Date.now()}`;
+    try {
+        await setDoc(doc(db, `${COL_CATS}/${catId}/itens`, id), dados);
+        dadosCustom[catId] = dadosCustom[catId] || [];
+        dadosCustom[catId].push({ id, ...dados });
+        dadosCustom[catId] = dadosCustom[catId].map(c => calcStatus(c, 'pago'));
+        renderCustomLista(catId, dadosCustom[catId]);
+        panel.querySelector(`#form-custom-${catId}`).style.display = 'none';
+        panel.querySelector('.fin-btn-nova').style.display = '';
+        ['cx-desc-', 'cx-venc-', 'cx-valor-', 'cx-obs-'].forEach(p => { const el = panel.querySelector(`#${p}${catId}`); if (el) el.value = ''; });
+        toast('✅ Item adicionado!');
+    } catch { toast('⚠ Erro ao salvar.'); }
+}
+
+async function marcarCustom(catId, itemId, novoStatus) {
+    const itens = dadosCustom[catId] || [];
+    const item = itens.find(c => c.id === itemId);
+    if (!item) return;
+    const atualizado = { ...item, status: novoStatus };
+    try {
+        await setDoc(doc(db, `${COL_CATS}/${catId}/itens`, itemId), atualizado);
+        dadosCustom[catId] = itens.map(c => c.id === itemId ? atualizado : c);
+        renderCustomLista(catId, dadosCustom[catId]);
+        toast('✅ Marcado como pago!');
+    } catch { toast('⚠ Erro.'); }
+}
+
+async function excluirCustomItem(catId, itemId) {
+    if (!confirm('Excluir este item?')) return;
+    try {
+        await deleteDoc(doc(db, `${COL_CATS}/${catId}/itens`, itemId));
+        dadosCustom[catId] = (dadosCustom[catId] || []).filter(c => c.id !== itemId);
+        renderCustomLista(catId, dadosCustom[catId]);
+        toast('🗑️ Removido.');
+    } catch { toast('⚠ Erro.'); }
+}
+
+async function excluirCategoria(catId, nome) {
+    if (!confirm(`Excluir a categoria "${nome}" e todos os seus itens?`)) return;
+    try {
+        // deleta itens da subcoleção
+        const snap = await getDocs(collection(db, `${COL_CATS}/${catId}/itens`));
+        for (const d of snap.docs) await deleteDoc(d.ref);
+        await deleteDoc(doc(db, COL_CATS, catId));
+        categoriasCustom = categoriasCustom.filter(c => c.id !== catId);
+        delete dadosCustom[catId];
+        renderTabsCustom();
+        renderPainéisCustom();
+        // volta para aba "pagar"
+        ativarTab('pagar');
+        toast('🗑️ Categoria excluída.');
+    } catch { toast('⚠ Erro ao excluir.'); }
+}
+
+function ativarTab(tabId) {
+    document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
+    const btn = document.querySelector(`[data-tab="${tabId}"]`);
+    const panel = document.getElementById('tab-' + tabId);
+    if (btn)   btn.classList.add('active');
+    if (panel) panel.classList.add('active');
+}
+
+// Botão "+" para nova categoria
+document.getElementById('fin-tab-add').addEventListener('click', () => {
+    document.getElementById('fin-cat-nome').value = '';
+    document.getElementById('fin-modal-cat').style.display = 'flex';
+    setTimeout(() => document.getElementById('fin-cat-nome').focus(), 50);
+});
+document.getElementById('fin-cat-cancelar').addEventListener('click', () => {
+    document.getElementById('fin-modal-cat').style.display = 'none';
+});
+document.getElementById('fin-cat-salvar').addEventListener('click', async () => {
+    const nome = document.getElementById('fin-cat-nome').value.trim();
+    if (!nome) { document.getElementById('fin-cat-nome').focus(); return; }
+    const id = `cat_${Date.now()}`;
+    try {
+        await setDoc(doc(db, COL_CATS, id), { nome, criadoEm: serverTimestamp() });
+        document.getElementById('fin-modal-cat').style.display = 'none';
+        categoriasCustom.push({ id, nome });
+        dadosCustom[id] = [];
+        renderTabsCustom();
+        renderPainéisCustom();
+        ativarTab('custom-' + id);
+        toast(`✅ Categoria "${nome}" criada!`);
+    } catch { toast('⚠ Erro ao criar categoria.'); }
+});
+document.getElementById('fin-cat-nome').addEventListener('keypress', e => {
+    if (e.key === 'Enter') document.getElementById('fin-cat-salvar').click();
+});
+document.getElementById('fin-modal-cat').addEventListener('click', e => {
+    if (e.target === e.currentTarget) document.getElementById('fin-modal-cat').style.display = 'none';
+});
+
+// sobrescreve a função de tabs para incluir custom
+document.querySelectorAll('.fin-tab').forEach(btn => {
+    btn.addEventListener('click', () => ativarTab(btn.dataset.tab));
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregar();
+    await carregarCategorias();
+});

@@ -62,6 +62,7 @@ class Dashboard {
     this.setupDockTools();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
+    this.setupAvisoAcoes();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -753,6 +754,86 @@ class Dashboard {
     } else {
       console.warn(`[Router] Rota não encontrada: ${module}`);
     }
+  }
+
+  // ===== AVISO DE AÇÕES DA SEMANA =====
+  setupAvisoAcoes() {
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+    const acoesRef = doc(db, 'acoes_semana', userId);
+    let alertaAtivo = false; // evita tocar o som repetidamente no mesmo minuto
+
+    const tocarSom = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+      } catch {}
+    };
+
+    const dispararAlerta = (acao, diffMin) => {
+      const card = document.querySelector('.alerts-card');
+      const titleEl    = document.querySelector('.alert-title');
+      const subtitleEl = document.querySelector('.alert-subtitle');
+      const detailEl   = document.querySelector('.alert-detail');
+      const iconEl     = document.getElementById('alert-cat-icon');
+      if (!card || !titleEl) return;
+
+      const horaFmt = acao.hora || '';
+      const label = diffMin === 0 ? 'AGORA!' : `em ${diffMin} min`;
+
+      if (iconEl)     iconEl.textContent     = '⏰';
+      titleEl.textContent    = `AÇÃO DA SEMANA — ${label}`;
+      titleEl.className      = 'alert-title cat-alerta-acao';
+      if (subtitleEl) subtitleEl.textContent = acao.titulo;
+      if (detailEl)   detailEl.textContent   = horaFmt ? `Horário: ${horaFmt}` : '';
+
+      card.classList.add('alert-card-pulsing');
+      tocarSom();
+
+      // Remove o pulso após 10 segundos
+      setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
+    };
+
+    const verificar = async () => {
+      try {
+        const snap = await getDoc(acoesRef);
+        const acoes = snap.exists() ? (snap.data().acoes || []) : [];
+        const agora = new Date();
+        const hojeISO = agora.toISOString().slice(0, 10);
+        const hAtual = agora.getHours();
+        const mAtual = agora.getMinutes();
+
+        for (const acao of acoes) {
+          if (acao.concluida || !acao.data || !acao.hora) continue;
+          if (acao.data !== hojeISO) continue;
+
+          const [hAcao, mAcao] = acao.hora.split(':').map(Number);
+          const diffMin = (hAcao * 60 + mAcao) - (hAtual * 60 + mAtual);
+
+          // Alerta: 0 a 5 minutos antes
+          if (diffMin >= 0 && diffMin <= 5) {
+            const chave = `aviso_${acao.id}_${acao.hora}`;
+            if (!sessionStorage.getItem(chave)) {
+              sessionStorage.setItem(chave, '1');
+              dispararAlerta(acao, diffMin);
+            }
+            break;
+          }
+        }
+      } catch {}
+    };
+
+    verificar();
+    setInterval(verificar, 60000);
   }
 
   // ===== CLIQUES FORA =====

@@ -198,3 +198,77 @@ h1 { font-size:18px; font-weight:800; text-align:center; }
     .fin-card { flex-direction:column; align-items:flex-start; }
     .fin-card-right { width:100%; flex-direction:row; justify-content:space-between; flex-wrap:wrap; }
 }
+
+/* ======== TÍTULO CENTRALIZADO (override brand bar) ======== */
+#crm-brand-bar .crm-page-title {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    flex: none;
+}
+
+/* ======== BOTÃO + DE CATEGORIA ======== */
+.fin-tab-add {
+    padding: 8px 14px;
+    background: rgba(255,255,255,0.05);
+    border: 1px dashed rgba(255,255,255,0.2);
+    border-radius: 100px;
+    color: var(--text3);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 200ms;
+    flex-shrink: 0;
+}
+.fin-tab-add:hover {
+    background: rgba(0,200,83,0.1);
+    border-color: rgba(0,200,83,0.4);
+    color: var(--green-light);
+}
+
+/* ======== PAINEL CUSTOM ======== */
+.fin-panel-header-custom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+.fin-custom-del-tab {
+    background: rgba(248,113,113,0.1);
+    border: 1px solid rgba(248,113,113,0.2);
+    border-radius: 8px;
+    color: #f87171;
+    font-size: 12px;
+    padding: 5px 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 200ms;
+}
+.fin-custom-del-tab:hover { background: rgba(248,113,113,0.2); }
+
+/* ======== MODAL DE NOVA CATEGORIA ======== */
+.fin-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9300;
+}
+.fin-modal {
+    background: #1a1d23;
+    border: 1px solid rgba(0,200,83,0.2);
+    border-radius: var(--radius);
+    padding: 24px; width: 320px;
+    display: flex; flex-direction: column; gap: 14px;
+}
+.fin-modal-titulo { font-size:16px; font-weight:700; color:var(--green-light); }
+.fin-modal input {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--text); font-size:14px; font-family:inherit; outline:none; width:100%;
+}
+.fin-modal input:focus { border-color: rgba(0,200,83,0.4); }
+.fin-modal-btns { display: flex; gap: 10px; }

@@ -42,8 +42,11 @@
                 </div>
             </div>
 
-            <!-- BOTÃO NOVA AÇÃO -->
-            <button class="as-btn-nova" id="as-btn-nova">＋ Nova Ação</button>
+            <!-- BOTÕES DE AÇÃO -->
+            <div class="as-toolbar">
+                <button class="as-btn-nova" id="as-btn-nova">＋ Nova Ação</button>
+                <button class="as-btn-limpar" id="as-btn-limpar">🗑 Limpar Tudo</button>
+            </div>
 
             <!-- FORMULÁRIO (oculto por padrão) -->
             <div class="as-form" id="as-form" style="display:none">
@@ -63,6 +66,17 @@
                         <option value="financeiro">💰 Financeiro</option>
                         <option value="outro">📌 Outro</option>
                     </select>
+                </div>
+                <!-- DATA E HORÁRIO -->
+                <div class="as-form-datetime">
+                    <div class="as-form-dt-group">
+                        <label class="as-form-dias-label">Data:</label>
+                        <input type="date" id="as-data-input" class="as-dt-input">
+                    </div>
+                    <div class="as-form-dt-group">
+                        <label class="as-form-dias-label">Horário:</label>
+                        <input type="time" id="as-hora-input" class="as-dt-input" placeholder="--:--">
+                    </div>
                 </div>
                 <!-- CHECKLIST DIAS DA SEMANA -->
                 <div class="as-form-dias">

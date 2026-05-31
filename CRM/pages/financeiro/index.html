@@ -42,10 +42,12 @@
 <div class="fin-content">
 
     <!-- ABAS -->
-    <div class="fin-tabs">
+    <div class="fin-tabs" id="fin-tabs">
         <button class="fin-tab active" data-tab="pagar">💸 Contas a Pagar</button>
         <button class="fin-tab" data-tab="fixas">📌 Despesas Fixas</button>
         <button class="fin-tab" data-tab="receber">💰 Contas a Receber</button>
+        <!-- abas custom injetadas pelo JS -->
+        <button class="fin-tab-add" id="fin-tab-add" title="Nova categoria">＋</button>
     </div>
 
     <!-- ====== ABA: CONTAS A PAGAR ====== -->
@@ -220,8 +222,23 @@
         </div>
     </div>
 
+    <!-- PAINÉIS CUSTOM (injetados pelo JS) -->
+    <div id="fin-custom-panels"></div>
+
 </div>
 </main>
+
+<!-- MODAL NOVA CATEGORIA -->
+<div class="fin-modal-overlay" id="fin-modal-cat" style="display:none">
+    <div class="fin-modal">
+        <div class="fin-modal-titulo">Nova Categoria</div>
+        <input type="text" id="fin-cat-nome" placeholder="Ex: Seguros, Empréstimo, Investimento..." maxlength="40">
+        <div class="fin-modal-btns">
+            <button class="fin-btn-salvar" id="fin-cat-salvar">Criar</button>
+            <button class="fin-btn-cancelar" id="fin-cat-cancelar">Cancelar</button>
+        </div>
+    </div>
+</div>
 
 <div class="fin-toast" id="fin-toast"></div>
 

@@ -20,6 +20,8 @@ const tituloInp = document.getElementById('as-titulo-input');
 const descInp   = document.getElementById('as-desc-input');
 const prioInp   = document.getElementById('as-prio-input');
 const catInp    = document.getElementById('as-categoria-input');
+const dataInp   = document.getElementById('as-data-input');
+const horaInp   = document.getElementById('as-hora-input');
 const toastEl   = document.getElementById('as-toast');
 const formTitulo = formEl.querySelector('.as-form-titulo');
 
@@ -47,10 +49,12 @@ function setDiasMarcados(dias = []) {
 function abrirForm(acao = null) {
   editandoId = acao ? acao.id : null;
   formTitulo.textContent = acao ? 'Editar Ação' : 'Nova Ação da Semana';
-  tituloInp.value = acao ? acao.titulo    : '';
-  descInp.value   = acao ? acao.descricao : '';
+  tituloInp.value = acao ? acao.titulo     : '';
+  descInp.value   = acao ? acao.descricao  : '';
   prioInp.value   = acao ? acao.prioridade : 'media';
   catInp.value    = acao ? acao.categoria  : 'vendas';
+  dataInp.value   = acao ? (acao.data || '') : '';
+  horaInp.value   = acao ? (acao.hora || '') : '';
   setDiasMarcados(acao ? (acao.diasSemana || []) : []);
   formEl.style.display = 'flex';
   btnNova.style.display = 'none';
@@ -95,9 +99,15 @@ function render() {
     const card = document.createElement('div');
     card.className = 'as-card' + (a.concluida ? ' concluida' : '');
 
-    const data = a.criadoEm ? new Date(a.criadoEm).toLocaleDateString('pt-BR') : '';
     const diasHtml = (a.diasSemana && a.diasSemana.length)
       ? `<div class="as-card-dias">${a.diasSemana.map(d => `<span class="as-dia-tag">${DIAS_LABEL[d] || d}</span>`).join('')}</div>`
+      : '';
+
+    // Data e hora formatadas para exibição
+    const dataFmt = a.data ? (() => { const [y,m,d] = a.data.split('-'); return `${d}/${m}/${y}`; })() : '';
+    const horaFmt = a.hora || '';
+    const datetimeHtml = (dataFmt || horaFmt)
+      ? `<span class="as-card-datetime">📅 ${dataFmt}${horaFmt ? ` às ${horaFmt}` : ''}</span>`
       : '';
 
     card.innerHTML = `
@@ -108,6 +118,7 @@ function render() {
         </div>
         <div class="as-card-dir">
           <span class="as-card-prio">${PRIO_ICON[a.prioridade] || '🟡'}</span>
+          <button class="as-card-copy" title="Copiar lembrete">📋</button>
           <button class="as-card-edit" title="Editar">✏️</button>
           <button class="as-card-del" title="Excluir">✕</button>
         </div>
@@ -116,13 +127,17 @@ function render() {
       ${diasHtml}
       <div class="as-card-rodape">
         <span class="as-card-cat">${CAT_LABEL[a.categoria] || a.categoria}</span>
-        ${data ? `<span class="as-card-data">${data}</span>` : ''}
+        ${datetimeHtml}
       </div>`;
 
     card.querySelector('.as-card-check').addEventListener('change', e => {
       acoes.find(x => x.id === a.id).concluida = e.target.checked;
       salvar(); render();
       toast(e.target.checked ? '✅ Ação concluída!' : 'Ação reaberta.');
+    });
+
+    card.querySelector('.as-card-copy').addEventListener('click', () => {
+      copiarLembrete(a);
     });
 
     card.querySelector('.as-card-edit').addEventListener('click', () => {
@@ -169,6 +184,8 @@ function salvarAcao() {
         prioridade:  prioInp.value,
         categoria:   catInp.value,
         diasSemana:  getDiasMarcados(),
+        data:        dataInp.value || null,
+        hora:        horaInp.value || null,
         editadoEm:   new Date().toISOString()
       };
     }
@@ -182,6 +199,8 @@ function salvarAcao() {
       prioridade:  prioInp.value,
       categoria:   catInp.value,
       diasSemana:  getDiasMarcados(),
+      data:        dataInp.value || null,
+      hora:        horaInp.value || null,
       concluida:   false,
       criadoEm:    new Date().toISOString()
     });
@@ -191,6 +210,32 @@ function salvarAcao() {
   fecharForm();
   salvar();
   render();
+}
+
+// ── copiar lembrete ────────────────────────────────────────────────
+function copiarLembrete(acao) {
+  const dataFmt = acao.data
+    ? (() => { const [y, m, d] = acao.data.split('-'); return `${d}/${m}/${y}`; })()
+    : '';
+  const horaFmt = acao.hora || '';
+  let texto = `[Cell City] ${acao.titulo}`;
+  if (dataFmt) texto += ` - ${dataFmt}`;
+  if (horaFmt) texto += ` às ${horaFmt}`;
+
+  navigator.clipboard.writeText(texto)
+    .then(() => toast('📋 Lembrete copiado!'))
+    .catch(() => {
+      // fallback para ambientes sem permissão de clipboard
+      const el = document.createElement('textarea');
+      el.value = texto;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      el.remove();
+      toast('📋 Lembrete copiado!');
+    });
 }
 
 // ── escape html ────────────────────────────────────────────────────
@@ -205,6 +250,16 @@ btnNova.addEventListener('click', () => abrirForm());
 btnCancel.addEventListener('click', fecharForm);
 btnSalvar.addEventListener('click', salvarAcao);
 tituloInp.addEventListener('keypress', e => { if (e.key === 'Enter') salvarAcao(); });
+
+document.getElementById('as-btn-limpar').addEventListener('click', async () => {
+    if (!acoes.length) { toast('ℹ️ Nenhuma ação para limpar.'); return; }
+    const confirmar = confirm(`Tem certeza que deseja apagar TODAS as ${acoes.length} ação(ões)?\n\nEssa ação não pode ser desfeita.`);
+    if (!confirmar) return;
+    acoes = [];
+    await salvar();
+    render();
+    toast('🗑️ Todas as ações foram apagadas.');
+});
 
 document.getElementById('as-busca')?.addEventListener('input', e => {
   const termo = e.target.value.trim().toLowerCase();
