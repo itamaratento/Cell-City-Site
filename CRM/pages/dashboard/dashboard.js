@@ -835,10 +835,10 @@ ${contexto}`;
 
       this.hideEmptyState();
       this._removerAtalhos();
-      // Reconstrói visualmente (últimas 20)
-      msgs.slice(-20).forEach(m => this._renderMsgSalva(m.role, m.content));
-      // Restaura histórico para o contexto do DeepSeek
-      this._aiHistorico = msgs.slice(-10);
+      // Reconstrói visualmente todas as mensagens
+      msgs.forEach(m => this._renderMsgSalva(m.role, m.content));
+      // Restaura histórico para o contexto do DeepSeek (últimas 20 para não pesar na API)
+      this._aiHistorico = msgs.slice(-20);
     } catch {}
   }
 
@@ -862,8 +862,7 @@ ${contexto}`;
 
   async _salvarHistoricoChat() {
     try {
-      // Salva só as últimas 50 mensagens para não pesar
-      const msgs = this._aiHistorico.slice(-50).map(m => ({
+      const msgs = this._aiHistorico.map(m => ({
         role: m.role, content: m.content
       }));
       await setDoc(this._aiChatRef, { mensagens: msgs, atualizadoEm: serverTimestamp() });
