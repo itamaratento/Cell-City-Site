@@ -788,7 +788,7 @@ ${contexto}`;
           model: 'deepseek-chat',
           messages: [
             { role: 'system', content: systemPrompt },
-            ...this._aiHistorico.slice(-10) // últimas 10 mensagens
+            ...this._aiHistorico.slice(-40) // últimas 40 mensagens
           ],
           temperature: 0.7,
           max_tokens: 1000
@@ -837,8 +837,8 @@ ${contexto}`;
       this._removerAtalhos();
       // Reconstrói visualmente todas as mensagens
       msgs.forEach(m => this._renderMsgSalva(m.role, m.content));
-      // Restaura histórico para o contexto do DeepSeek (últimas 20 para não pesar na API)
-      this._aiHistorico = msgs.slice(-20);
+      // Restaura histórico para o contexto do DeepSeek
+      this._aiHistorico = msgs.slice(-40);
     } catch {}
   }
 
