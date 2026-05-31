@@ -613,6 +613,26 @@ class Dashboard {
   }
 
   async _coletarContexto() {
+    const BASE = 'https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents';
+    const fv   = (f,k) => { const x=f[k]; return x?(x.stringValue??Number(x.integerValue??x.doubleValue??0)):null; };
+    const fmt  = v => `R$ ${Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+    const pct  = (a,b) => b>0?`${((a/b-1)*100).toFixed(1)}%`:'sem base';
+    const wk   = dt => { const d=new Date(dt); d.setDate(d.getDate()+4-(d.getDay()||7)); const j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+1)/7); };
+
+    const fetchCol = async (col, pageSize=300) => {
+      let docs=[], token='';
+      do {
+        try {
+          const r = await fetch(`${BASE}/${col}?pageSize=${pageSize}${token?'&pageToken='+token:''}`);
+          const d = await r.json();
+          if (!d.documents) break;
+          docs = docs.concat(d.documents);
+          token = d.nextPageToken||'';
+        } catch { break; }
+      } while (token);
+      return docs;
+    };
+
     try {
       const hoje     = new Date();
       const anoAtual = hoje.getFullYear();
@@ -620,73 +640,109 @@ class Dashboard {
       const mesIdx   = hoje.getMonth() + 1;
       const mesAtual = `${anoAtual}-${String(mesIdx).padStart(2,'0')}`;
       const mesAntAno= `${anoAnt}-${String(mesIdx).padStart(2,'0')}`;
-
-      // Pagina todos os lançamentos
-      let docs = [], token = '';
-      do {
-        const r = await fetch(`https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`);
-        const d = await r.json();
-        if (!d.documents) break;
-        docs = docs.concat(d.documents);
-        token = d.nextPageToken || '';
-      } while (token);
-
-      const fv = (f,k) => { const x=f[k]; return x?(x.stringValue??Number(x.integerValue??x.doubleValue??0)):null; };
-      const wk  = dt  => { const d=new Date(dt); d.setDate(d.getDate()+4-(d.getDay()||7)); const j=new Date(d.getFullYear(),0,1); return Math.ceil((((d-j)/86400000)+1)/7); };
       const semAtual = wk(hoje);
+      const diaAtual = hoje.getDate();
+      const diasNoMes= new Date(anoAtual, mesIdx, 0).getDate();
 
+      // Busca todas as coleções em paralelo
+      const [lancDocs, clientDocs, prodDocs, osDocs] = await Promise.all([
+        fetchCol('caixa_lancamentos'),
+        fetchCol('clients', 100),
+        fetchCol('produtos', 100),
+        fetchCol('orders',  100),
+      ]);
+
+      // ── FINANCEIRO ────────────────────────────────────────────
       let lucroSemana=0, lucroMesAtual=0, lucroAnoAtual=0;
       let lucroMesAntAno=0, lucroSemAntAno=0, lucroAnoAnt=0;
+      const porCategoria={}, porDiaSemana=[0,0,0,0,0,0,0];
 
-      for (const doc of docs) {
-        const f    = doc.fields;
+      for (const doc of lancDocs) {
+        const f     = doc.fields;
         const lucro = Number(fv(f,'lucro')||0);
         const ano   = Number(fv(f,'ano')||0);
         const mes   = String(fv(f,'mes')||'');
         const iso   = String(fv(f,'dataISO')||'');
+        const cat   = String(fv(f,'categoria')||'Outros');
+        const ds    = Number(fv(f,'diaSemana')||0);
 
-        if (ano === anoAtual)  lucroAnoAtual += lucro;
-        if (ano === anoAnt)    lucroAnoAnt   += lucro;
-        if (mes === mesAtual)  lucroMesAtual += lucro;
-        if (mes === mesAntAno) lucroMesAntAno += lucro;
+        if (ano===anoAtual) lucroAnoAtual += lucro;
+        if (ano===anoAnt)   lucroAnoAnt   += lucro;
+        if (mes===mesAtual) { lucroMesAtual += lucro; porCategoria[cat]=(porCategoria[cat]||0)+lucro; porDiaSemana[ds]+=lucro; }
+        if (mes===mesAntAno) lucroMesAntAno += lucro;
         if (iso) {
-          const dt = new Date(iso);
+          const dt=new Date(iso);
           if (dt.getFullYear()===anoAtual && wk(dt)===semAtual) lucroSemana    += lucro;
           if (dt.getFullYear()===anoAnt   && wk(dt)===semAtual) lucroSemAntAno += lucro;
         }
       }
 
-      // Meta = mesmo período ano passado + 15%
-      const metaSemana = Math.round(lucroSemAntAno * 1.15);
-      const metaMes    = Math.round(lucroMesAntAno * 1.15);
-      const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
-      const pct = (a,b) => b>0 ? `${((a/b-1)*100).toFixed(1)}%` : 'sem base';
-      const diasNoMes  = new Date(anoAtual, mesIdx, 0).getDate();
-      const diaAtual   = hoje.getDate();
-      const projecaoMes = lucroMesAtual > 0 ? Math.round((lucroMesAtual / diaAtual) * diasNoMes) : 0;
+      const metaSemana  = Math.round(lucroSemAntAno * 1.15);
+      const metaMes     = Math.round(lucroMesAntAno * 1.15);
+      const projecaoMes = lucroMesAtual>0 ? Math.round((lucroMesAtual/diaAtual)*diasNoMes) : 0;
 
-      return `\n\n--- DADOS REAIS DO CRM — Cell City Informática ---
+      const topCats = Object.entries(porCategoria)
+        .sort((a,b)=>b[1]-a[1]).slice(0,5)
+        .map(([c,v])=>`${c}: ${fmt(v)}`).join(', ');
+
+      const diasNome = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      const melhorDia = diasNome[porDiaSemana.indexOf(Math.max(...porDiaSemana))];
+
+      // ── CLIENTES ──────────────────────────────────────────────
+      const totalClientes = clientDocs.length;
+      const clientesRecentes = clientDocs.filter(d => {
+        const iso = String(fv(d.fields,'importadoEm')||fv(d.fields,'createdAt')||'');
+        if (!iso) return false;
+        return (new Date()-new Date(iso)) < 30*86400000;
+      }).length;
+
+      // ── ESTOQUE ───────────────────────────────────────────────
+      const totalProdutos = prodDocs.length;
+      const semEstoque    = prodDocs.filter(d => Number(fv(d.fields,'venda')||0) === 0).length;
+      const topProdutos   = prodDocs
+        .sort((a,b) => Number(fv(b.fields,'venda')||0) - Number(fv(a.fields,'venda')||0))
+        .slice(0,5).map(d => `${fv(d.fields,'description')||'?'} (${fmt(fv(d.fields,'venda')||0)})`).join(', ');
+
+      // ── ORDENS DE SERVIÇO ─────────────────────────────────────
+      const osAbertas    = osDocs.filter(d => ['aberta','em_andamento','aguardando'].includes(String(fv(d.fields,'status')||''))).length;
+      const osFechadas   = osDocs.filter(d => String(fv(d.fields,'status')||'')==='concluida').length;
+      const osAtrasadas  = osDocs.filter(d => {
+        const criado = String(fv(d.fields,'createdAt')||fv(d.fields,'createdAtISO')||'');
+        const status = String(fv(d.fields,'status')||'');
+        if (!criado || status==='concluida') return false;
+        return (new Date()-new Date(criado)) > 7*86400000;
+      }).length;
+
+      return `\n\n════ DADOS COMPLETOS DO CRM — Cell City Informática ════
 Data: ${hoje.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'})}
 
-ESTA SEMANA (semana ${semAtual}/${anoAtual}):
-  Lucro atual:        ${fmt(lucroSemana)}
-  Meta (+15% s/ ${anoAnt}): ${fmt(metaSemana)}
-  Vs meta:            ${pct(lucroSemana, metaSemana)}
-  Semana ${semAtual}/${anoAnt}: ${fmt(lucroSemAntAno)}
+📊 FINANCEIRO
+  Semana ${semAtual}/${anoAtual}: ${fmt(lucroSemana)} | Meta: ${fmt(metaSemana)} | Vs meta: ${pct(lucroSemana,metaSemana)}
+  Semana ${semAtual}/${anoAnt}:  ${fmt(lucroSemAntAno)}
+  Mês ${mesAtual}:    ${fmt(lucroMesAtual)} (dia ${diaAtual}/${diasNoMes}) | Meta: ${fmt(metaMes)} | Projeção: ${fmt(projecaoMes)}
+  Mês ${mesAntAno}:   ${fmt(lucroMesAntAno)}
+  Ano ${anoAtual}:    ${fmt(lucroAnoAtual)} | Ano ${anoAnt}: ${fmt(lucroAnoAnt)} | Crescimento: ${pct(lucroAnoAtual,lucroAnoAnt)}
+  Top categorias este mês: ${topCats||'sem dados'}
+  Melhor dia da semana: ${melhorDia}
 
-ESTE MÊS (${mesAtual}):
-  Lucro até hoje:     ${fmt(lucroMesAtual)} (dia ${diaAtual}/${diasNoMes})
-  Meta (+15% s/ ${anoAnt}): ${fmt(metaMes)}
-  Projeção do mês:    ${fmt(projecaoMes)}
-  Vs meta:            ${pct(lucroMesAtual, metaMes)}
-  Mesmo mês ${anoAnt}:    ${fmt(lucroMesAntAno)}
+👥 CLIENTES
+  Total na base: ${totalClientes}
+  Novos (últimos 30 dias): ${clientesRecentes}
 
-ANO:
-  Lucro ${anoAtual}:        ${fmt(lucroAnoAtual)}
-  Lucro ${anoAnt}:        ${fmt(lucroAnoAnt)}
-  Crescimento:        ${pct(lucroAnoAtual, lucroAnoAnt)}
----`;
-    } catch { return ''; }
+📱 ESTOQUE
+  Total de produtos: ${totalProdutos}
+  Produtos sem preço de venda: ${semEstoque}
+  Mais caros: ${topProdutos||'sem dados'}
+
+🔧 ORDENS DE SERVIÇO
+  Abertas/em andamento: ${osAbertas}
+  Concluídas: ${osFechadas}
+  Atrasadas (+7 dias): ${osAtrasadas}
+════════════════════════════════════════════════`;
+    } catch(e) {
+      console.warn('Contexto IA:', e);
+      return '';
+    }
   }
 
   async _enviarParaDeepSeek(texto) {
