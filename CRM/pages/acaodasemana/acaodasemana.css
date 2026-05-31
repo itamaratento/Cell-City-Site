@@ -37,8 +37,8 @@ body {
     backdrop-filter: blur(16px);
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
-    gap: 16px;
-    padding: 16px 16px 20px;
+    gap: 28px;
+    padding: 20px 16px 24px;
 }
 .header::before {
     content:''; position:absolute; top:0; left:0; right:0; height:1px;
@@ -49,6 +49,7 @@ body {
     font-size: 20px; font-weight: 800;
     color: var(--text); text-align: center;
     letter-spacing: -0.02em;
+    width: 100%;
 }
 .as-header-busca {
     display: flex; align-items: center; gap: 8px;
