@@ -52,6 +52,7 @@ class Dashboard {
   }
 
   init() {
+    this._verificarFechamentoCaixa();
     this.setupNotas();
     this.setupClock();
     this.setupMetaSemanal();
@@ -97,6 +98,32 @@ class Dashboard {
 
     update();
     setInterval(update, 1000);
+  }
+
+  // ===== FECHAMENTO AUTOMÁTICO DO CAIXA =====
+  _verificarFechamentoCaixa() {
+    const CACHE_KEY = 'caixa_ultimo_fechamento';
+    const ultimoExec = localStorage.getItem(CACHE_KEY);
+    const hojeKey   = new Date().toISOString().slice(0, 10);
+
+    // Já rodou hoje — não precisa fazer nada
+    if (ultimoExec && ultimoExec.startsWith(hojeKey)) {
+      console.log('✅ [Dashboard] Fechamento do Caixa já executado hoje.');
+      return;
+    }
+
+    // Carrega o Caixa em iframe invisível para disparar o orquestrador
+    console.log('🔄 [Dashboard] Disparando fechamento automático do Caixa em background...');
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'display:none;width:0;height:0;position:absolute;';
+    iframe.src = '/CRM/pages/caixa/index.html';
+    document.body.appendChild(iframe);
+
+    // Remove após 40s (tempo suficiente para o orquestrador concluir)
+    setTimeout(() => {
+      iframe.remove();
+      console.log('✅ [Dashboard] Iframe do Caixa removido.');
+    }, 40000);
   }
 
   // ===== BLOCO DE NOTAS =====
