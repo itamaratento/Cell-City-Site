@@ -1756,16 +1756,13 @@ body {
    MINHA SEMANA — WIDGET ACORDEÃO
    ============================================================ */
 .semana-widget {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  gap: 0 !important;
-  padding: 0 !important;
-  cursor: default !important;
-  height: auto !important;
-  min-height: 124px;
-  overflow: visible !important;
-  grid-row: span 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
 }
 .semana-widget-header {
   padding: 10px 14px 8px;
