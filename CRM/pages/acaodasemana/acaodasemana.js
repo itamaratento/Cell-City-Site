@@ -2,7 +2,7 @@ import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase
 
 const PRIO_ICON = { alta: '🔴', media: '🟡', baixa: '🟢' };
 const CAT_LABEL = { vendas: '📈 Vendas', operacional: '⚙️ Operacional', marketing: '📣 Marketing', financeiro: '💰 Financeiro', outro: '📌 Outro' };
-const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb' };
+const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb', domingo: 'Dom' };
 
 const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
 const ref    = doc(db, 'acoes_semana', userId);

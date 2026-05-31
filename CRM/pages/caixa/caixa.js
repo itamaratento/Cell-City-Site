@@ -87,7 +87,7 @@ let lancamentos = [];
 let categorias = [];
 let tipoSelecionado = '';
 let tipoSelecionadoEdicao = '';
-let periodoFiltro = 'todos';
+let periodoFiltro = 'hoje';
 let termoPesquisa = '';
 let listenerLancamentos = null;
 let listenerCategorias = null;
@@ -100,6 +100,9 @@ let ultimoResumoLiveExecutado = 0;
 // ===== INICIALIZAÇÃO =====
 async function init() {
     console.log('✅ Caixa V19 inicializado.');
+    // Ativa filtro "hoje" por padrão na UI
+    document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector('[data-periodo="hoje"]')?.classList.add('active');
     await carregarCategorias();
     iniciarListenerCategorias();
     iniciarListenerLancamentos();
@@ -1079,6 +1082,107 @@ document.getElementById('editCusto')?.addEventListener('input', calcularLucroEdi
 document.getElementById('modalEdicao')?.addEventListener('click', (e) => { if(e.target.id==='modalEdicao') fecharModalEdicao(); });
 
 // ═══════════════════════════════════════════
+// AUTOCOMPLETE DE ESTOQUE NA DESCRIÇÃO
+// ═══════════════════════════════════════════
+let _cacheProdutos = null;
+let _ultimoItemSelecionado = null; // armazena o item selecionado do estoque
+
+async function _carregarProdutosEstoque() {
+    if (_cacheProdutos) return _cacheProdutos;
+    try {
+        const snap = await getDocs(collection(db, 'estoque_produtos'));
+        _cacheProdutos = [];
+        snap.forEach(d => _cacheProdutos.push({ id: d.id, ...d.data() }));
+    } catch { _cacheProdutos = []; }
+    return _cacheProdutos;
+}
+
+window.buscarSugestoesEstoque = async function(termo) {
+    const dropdown = document.getElementById('desc-dropdown');
+    if (!dropdown) return;
+    if (!termo || termo.length < 2) { dropdown.style.display = 'none'; _ultimoItemSelecionado = null; return; }
+    const produtos = await _carregarProdutosEstoque();
+    const q = termo.toLowerCase();
+    const matches = produtos.filter(p => (p.nome || p.description || '').toLowerCase().includes(q)).slice(0, 6);
+    if (!matches.length) { dropdown.style.display = 'none'; return; }
+    dropdown.innerHTML = matches.map(p => {
+        const nome = p.nome || p.description || '';
+        const preco = p.venda ? ` — R$ ${Number(p.venda).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
+        const qty = p.quantidade !== undefined ? ` · ${p.quantidade} em estoque` : '';
+        return `<div class="autocomplete-item" data-id="${p.id}" data-nome="${_esc(nome)}" data-venda="${p.venda || ''}" data-custo="${p.custo || ''}">${nome}${preco}<span style="color:#6b7280;font-size:11px">${qty}</span></div>`;
+    }).join('');
+    dropdown.style.display = 'block';
+    dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+        item.addEventListener('mousedown', e => {
+            e.preventDefault();
+            _selecionarItemEstoque(item);
+        });
+    });
+};
+
+function _selecionarItemEstoque(item) {
+    const dropdown = document.getElementById('desc-dropdown');
+    const descEl   = document.getElementById('descricao');
+    const valorEl  = document.getElementById('valor');
+    const custoEl  = document.getElementById('custo');
+    if (descEl)  descEl.value  = item.dataset.nome;
+    if (valorEl && item.dataset.venda) valorEl.value = item.dataset.venda;
+    if (custoEl && item.dataset.custo) custoEl.value = item.dataset.custo;
+    _ultimoItemSelecionado = item.dataset.id;
+    if (dropdown) dropdown.style.display = 'none';
+    calcularLucro();
+    descEl?.focus();
+}
+
+function _esc(s) { return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Fecha dropdown ao clicar fora
+document.addEventListener('click', e => {
+    if (!e.target.closest('.autocomplete-wrap')) {
+        const d = document.getElementById('desc-dropdown');
+        if (d) d.style.display = 'none';
+    }
+});
+
+// Hook no salvarLancamento para perguntar sobre estoque
+const _salvarLancamentoOriginal = window.salvarLancamento;
+window.salvarLancamento = async function() {
+    const descricao = document.getElementById('descricao')?.value.trim() || '';
+    await _salvarLancamentoOriginal();
+    // Verifica se após salvar a descrição foi limpada (indica sucesso)
+    const descDepois = document.getElementById('descricao')?.value.trim() || '';
+    if (descDepois !== '' || !descricao) return; // não salvou ou estava vazio
+    // Se não havia item selecionado do estoque, pergunta se quer criar
+    if (!_ultimoItemSelecionado) {
+        const produtos = await _carregarProdutosEstoque();
+        const jaExiste = produtos.some(p => (p.nome || p.description || '').toLowerCase() === descricao.toLowerCase());
+        if (!jaExiste) {
+            const criar = confirm(`"${descricao}" não está no estoque.\nDeseja adicionar ao estoque agora?`);
+            if (criar) {
+                try {
+                    const valor = Number(document.getElementById('valor')?.value) || 0;
+                    await setDoc(doc(db, 'estoque_produtos', `prod_${Date.now()}`), {
+                        nome: descricao, categoria: 'Outro',
+                        quantidade: 0, quantidadeMinima: 1,
+                        venda: valor, custo: 0,
+                        atualizadoEm: serverTimestamp()
+                    });
+                    _cacheProdutos = null; // invalida cache
+                    mostrarToast('✅ Item adicionado ao estoque!');
+                } catch { mostrarToast('⚠ Erro ao criar no estoque.'); }
+            }
+        }
+    }
+    _ultimoItemSelecionado = null;
+};
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast-caixa') || (() => { const el = document.createElement('div'); el.id='toast-caixa'; el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1d23;border:1px solid rgba(0,200,83,.3);border-radius:100px;padding:10px 22px;color:#fff;font-size:14px;opacity:0;transition:all 300ms;pointer-events:none;white-space:nowrap;z-index:9500;'; document.body.appendChild(el); return el; })();
+    t.textContent = msg; t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+    setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 3000);
+}
+
+// ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
@@ -1100,10 +1204,8 @@ let lembreteFormAberto = false;
 
 function toggleLembretes() {
     lembretesPanelAberto = !lembretesPanelAberto;
-    const panel   = document.getElementById('lembretes-panel');
-    const chevron = document.getElementById('lembretes-chevron');
-    if (panel)   panel.style.display   = lembretesPanelAberto ? 'block' : 'none';
-    if (chevron) chevron.textContent   = lembretesPanelAberto ? '▲' : '▼';
+    const overlay = document.getElementById('lembretes-overlay');
+    if (overlay) overlay.style.display = lembretesPanelAberto ? 'flex' : 'none';
     if (lembretesPanelAberto) carregarLembretes();
 }
 

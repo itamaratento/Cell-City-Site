@@ -64,15 +64,21 @@
         </section>
 
         <!-- ═══════════════════════════════════════ -->
-        <!-- SEÇÃO LEMBRETES DE PAGAMENTO -->
+        <!-- SEÇÃO LEMBRETES — botão compacto -->
         <!-- ═══════════════════════════════════════ -->
-        <section class="secao-lembretes">
-            <button class="btn-lembretes-toggle" onclick="toggleLembretes()">
-                <span>⚠️ Lembretes de Pagamento</span>
+        <section class="secao-lembretes-btn">
+            <button class="btn-lembrete-compacto" onclick="toggleLembretes()">
+                🔔 Lembretes
                 <span class="lembretes-badge" id="lembretes-badge" style="display:none">0</span>
-                <span class="lembretes-chevron" id="lembretes-chevron">▼</span>
             </button>
-            <div id="lembretes-panel" style="display:none">
+        </section>
+        <!-- PAINEL LEMBRETES (modal/drawer) -->
+        <div class="lembretes-modal-overlay" id="lembretes-overlay" style="display:none" onclick="if(event.target===this)toggleLembretes()">
+            <div class="lembretes-modal" id="lembretes-panel">
+                <div class="lembretes-modal-header">
+                    <span>🔔 Lembretes de Pagamento</span>
+                    <button class="lembretes-fechar" onclick="toggleLembretes()">✕</button>
+                </div>
                 <div class="lembretes-form" id="lembretes-form" style="display:none">
                     <div class="form-group">
                         <label>Fornecedor *</label>
@@ -108,7 +114,7 @@
                 <div id="lembretes-lista"></div>
                 <button class="btn-novo-lem" id="btn-novo-lem" onclick="toggleFormLembrete(true)">+ Novo Lembrete</button>
             </div>
-        </section>
+        </div>
 
         <!-- ═══════════════════════════════════════ -->
         <!-- SEÇÃO 2: NOVO LANÇAMENTO (esconde na pesquisa) -->
@@ -128,7 +134,10 @@
 
                 <div class="form-group">
                     <label>Descrição *</label>
-                    <input type="text" id="descricao" placeholder="Ex: Venda de celular Samsung" oninput="calcularLucro()">
+                    <div class="autocomplete-wrap" style="position:relative">
+                        <input type="text" id="descricao" placeholder="Ex: Película, Cabo USB-C, Serviço..." oninput="calcularLucro(); buscarSugestoesEstoque(this.value)" autocomplete="off">
+                        <div class="autocomplete-dropdown" id="desc-dropdown" style="display:none"></div>
+                    </div>
                 </div>
 
                 <div class="form-group">

@@ -456,3 +456,5 @@ body {
     transform: translateY(0);
     opacity: 0.85;
 }
+.status-orcamento { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.status-devolvido_orcamento { background: rgba(167,139,250,0.1); color: #c4b5fd; }

@@ -371,13 +371,13 @@ function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(scre
 function formatPhone(v) { v = v.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); return v.length > 6 ? `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}` : v.length > 2 ? `(${v.slice(0,2)}) ${v.slice(2)}` : v.length > 0 ? `(${v}` : v; }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
-function getStatusLabel(status) { return { 'em_analise': 'Em análise', 'aguardando_peca': 'Aguardando peça', 'em_reparo': 'Em reparo', 'pronto': 'Pronto', 'entregue': 'Entregue' }[status] || status; }
+function getStatusLabel(status) { return { 'em_analise': 'Em análise', 'aguardando_peca': 'Aguardando peça', 'em_reparo': 'Em reparo', 'pronto': 'Pronto', 'entregue': 'Entregue', 'orcamento': 'Orçamento', 'devolvido_orcamento': 'Devolvido' }[status] || status; }
 function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; }
 function formatDateShort(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''; }
 
 // ===== STATS =====
 function updateStats() {
-    const orders = DB.getOS(); const andamento = orders.filter(o => !['pronto','entregue'].includes(o.status)).length; const finalizados = orders.filter(o => ['pronto','entregue'].includes(o.status)).length;
+    const orders = DB.getOS(); const andamento = orders.filter(o => !['entregue','devolvido_orcamento'].includes(o.status)).length; const finalizados = orders.filter(o => ['entregue','devolvido_orcamento'].includes(o.status)).length;
     const bar = document.getElementById('statsBar'); if (bar) bar.innerHTML = `<div class="stat-chip"><span class="num">${orders.length}</span><span class="stat-label">Total</span></div><div class="stat-chip"><span class="num">${andamento}</span><span class="stat-label">Em andamento</span></div><div class="stat-chip"><span class="num">${finalizados}</span><span class="stat-label">Finalizados</span></div>`;
     ['andamento', 'finalizados'].forEach(type => { const el = document.getElementById(`badge-${type}`); if (!el) return; el.style.display = (type === 'andamento' ? andamento : finalizados) > 0 ? 'flex' : 'none'; el.textContent = type === 'andamento' ? andamento : finalizados; });
 }
@@ -426,7 +426,7 @@ function showList(filter) { currentListFilter = filter; renderList(); showScreen
 function renderList() {
     const orders = DB.getOS(); const s = (document.getElementById('list-search')?.value || '').toLowerCase();
     const isFinal = currentListFilter === 'finalizados';
-    let filtered = isFinal ? orders.filter(o => ['pronto','entregue'].includes(o.status)) : orders.filter(o => !['pronto','entregue'].includes(o.status));
+    let filtered = isFinal ? orders.filter(o => ['entregue','devolvido_orcamento'].includes(o.status)) : orders.filter(o => !['entregue','devolvido_orcamento'].includes(o.status));
     if (s) filtered = filtered.filter(o => (o.clientName||'').toLowerCase().includes(s) || (o.phone||'').includes(s) || (o.id||'').toLowerCase().includes(s) || (o.model||'').toLowerCase().includes(s));
     const c = document.getElementById('os-list'); if (!c) return;
     if (filtered.length === 0) { c.innerHTML = `<div class="empty-state"><div class="icon">${isFinal ? '✅' : '🔧'}</div><p>${s ? 'Nenhum resultado encontrado' : 'Nenhuma O.S. nesta categoria'}</p></div>`; return; }
@@ -445,7 +445,7 @@ function openDetail(osId) { currentOS = DB.getOS().find(o => o.id === osId); if 
 function renderDetail() {
     const os = currentOS; const c = document.getElementById('detail-content'); if (!os) return;
     hasUnsavedChanges = false;
-    const statuses = [{ key: 'em_analise', label: 'Em análise', color: 'var(--blue)' }, { key: 'aguardando_peca', label: 'Aguardando peça', color: 'var(--yellow)' }, { key: 'em_reparo', label: 'Em reparo', color: 'var(--orange)' }, { key: 'pronto', label: 'Pronto', color: 'var(--green)' }, { key: 'entregue', label: 'Entregue', color: 'var(--text3)' }];
+    const statuses = [{ key: 'em_analise', label: 'Em análise', color: 'var(--blue)' }, { key: 'aguardando_peca', label: 'Aguardando peça', color: 'var(--yellow)' }, { key: 'em_reparo', label: 'Em reparo', color: 'var(--orange)' }, { key: 'pronto', label: 'Pronto', color: 'var(--green)' }, { key: 'orcamento', label: 'Orçamento', color: '#a78bfa' }, { key: 'entregue', label: 'Entregue', color: 'var(--text3)' }];
     const clients = DB.getClients(); const client = clients.find(cl => cl.phone === os.phone);
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     html += `<div class="detail-header" style="position:relative;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div><div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${os.model}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div></div>`;
@@ -475,7 +475,8 @@ function renderDetail() {
         html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;"><div class="form-section-title" style="margin-bottom:8px;">📂 Histórico do Cliente</div>${otherOS.map(hId => { const h = DB.getOS().find(o => o.id === hId); return h ? `<div onclick="openDetail('${h.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div style="font-size:12px;font-weight:800;color:var(--green-light);">${h.id}</div><div style="font-size:11px;color:var(--text3);">${h.model} — ${formatDateShort(h.createdAt)}</div></div><span class="os-card-status status-${(h.status||'').replace(/ /g, '_')}">${getStatusLabel(h.status)}</span></div>` : ''; }).join('')}</div>`;
     }
     
-    html += `<div class="detail-actions">${os.status !== 'entregue' ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : ''}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    const _acaoBtn = os.status === 'orcamento' ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!['entregue','devolvido_orcamento'].includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -533,6 +534,8 @@ function addObservation() { const input = document.getElementById('obs-input'); 
 function addPhotoToOS() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = function(e) { for (let f of e.target.files) { const r = new FileReader(); r.onload = function(ev) { const img = new Image(); img.onload = async function() { const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; if(w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); currentOS.photos.push(c.toDataURL('image/jpeg', 0.7)); await saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); window.markSaved(); }; img.src = ev.target.result; }; r.readAsDataURL(f); } }; input.click(); }
 
 async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); }
+async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
+window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
 function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone; showClientDetail(currentOS.phone); } }
 

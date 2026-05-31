@@ -32,21 +32,33 @@ document.querySelectorAll('.forn-tab').forEach(btn => {
 });
 
 // ── COMPRAS ────────────────────────────────────────────────────────
+let todosItensCompra = []; // cache para busca
+
 async function carregarCompras() {
     document.getElementById('compras-loading').style.display = 'flex';
     try {
         const snap = await getDocs(collection(db, COL_COMPRAS));
-        const itens = [];
-        snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
-        itens.sort((a, b) => {
+        todosItensCompra = [];
+        snap.forEach(d => todosItensCompra.push({ id: d.id, ...d.data() }));
+        todosItensCompra.sort((a, b) => {
             const p = { alta: 0, media: 1, baixa: 2 };
             return (p[a.urgencia] ?? 1) - (p[b.urgencia] ?? 1);
         });
-        renderCompras(itens);
+        renderCompras(todosItensCompra);
     } catch {
+        todosItensCompra = [];
         renderCompras([]);
     }
     document.getElementById('compras-loading').style.display = 'none';
+}
+
+function filtrarCompras() {
+    const q = (document.getElementById('forn-busca-global')?.value || '').trim().toLowerCase();
+    if (!q) { renderCompras(todosItensCompra); return; }
+    renderCompras(todosItensCompra.filter(item =>
+        (item.nome || '').toLowerCase().includes(q) ||
+        (item.obs  || '').toLowerCase().includes(q)
+    ));
 }
 
 function renderCompras(itens) {
@@ -66,13 +78,19 @@ function renderCompras(itens) {
             <div class="forn-card-dir">
                 <span class="forn-urg">${URGENCIA_ICON[item.urgencia] || '🟡'}</span>
                 <button class="forn-card-edit" data-id="${item.id}" title="Editar">✏️</button>
-                <button class="forn-card-del" data-id="${item.id}" title="Remover">✕</button>
+                <button class="forn-card-comprado" data-id="${item.id}" title="Marcar como comprado e remover">✓ Comprado</button>
+                <button class="forn-card-del" data-id="${item.id}" title="Excluir">🗑️ Excluir</button>
             </div>
         </div>
     `).join('');
 
     listaEl.querySelectorAll('.forn-card-edit').forEach(btn => {
-        btn.addEventListener('click', () => abrirFormCompraEdicao(btn.dataset.id, itens));
+        btn.addEventListener('click', () => abrirFormCompraEdicao(btn.dataset.id, todosItensCompra));
+    });
+    listaEl.querySelectorAll('.forn-card-comprado').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            await excluirCompraById(btn.dataset.id, '✅ Compra concluída! Item removido da lista.');
+        });
     });
     listaEl.querySelectorAll('.forn-card-del').forEach(btn => {
         btn.addEventListener('click', () => excluirCompra(btn.dataset.id));
@@ -130,13 +148,17 @@ async function salvarCompra() {
     } catch { toast('⚠ Erro ao salvar.'); }
 }
 
-async function excluirCompra(id) {
-    if (!confirm('Remover este item da lista de compras?')) return;
+async function excluirCompraById(id, mensagem = '🗑️ Item removido.') {
     try {
         await deleteDoc(doc(db, COL_COMPRAS, id));
-        toast('🗑️ Item removido.');
+        toast(mensagem);
         await carregarCompras();
     } catch { toast('⚠ Erro ao excluir.'); }
+}
+
+async function excluirCompra(id) {
+    if (!confirm('Excluir este item da lista de compras?')) return;
+    await excluirCompraById(id);
 }
 
 // ── ESTOQUE BAIXO ──────────────────────────────────────────────────
@@ -260,5 +282,13 @@ document.getElementById('btn-nova-tendencia').addEventListener('click', () => {
 });
 document.getElementById('ft-salvar').addEventListener('click', salvarTendencia);
 document.getElementById('ft-cancelar').addEventListener('click', fecharFormTendencia);
+
+// busca global
+document.getElementById('forn-busca-global')?.addEventListener('input', filtrarCompras);
+document.getElementById('forn-btn-listar')?.addEventListener('click', () => {
+    const inp = document.getElementById('forn-busca-global');
+    if (inp) inp.value = '';
+    renderCompras(todosItensCompra);
+});
 
 document.addEventListener('DOMContentLoaded', carregarCompras);
