@@ -796,7 +796,8 @@ ${contexto}`;
       });
 
       const data = await resp.json();
-      const reply = data.choices?.[0]?.message?.content || 'Erro ao obter resposta.';
+      if (!data.choices?.[0]?.message?.content) console.error('DeepSeek resposta inválida:', JSON.stringify(data));
+      const reply = data.choices?.[0]?.message?.content || `Erro: ${data.error?.message || data.error?.code || 'resposta inválida da API'}`;
       this._aiHistorico.push({ role: 'assistant', content: reply });
       this._salvarHistoricoChat();
 
