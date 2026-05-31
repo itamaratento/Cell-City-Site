@@ -1,11 +1,12 @@
 import { db, doc, getDoc, setDoc, serverTimestamp } from "../../scripts/firebase.js";
 
-window.pinPress     = pinPress;
-window.pinDelete    = pinDelete;
-window.pinNovoPress = pinNovoPress;
-window.pinNovoDelete = pinNovoDelete;
-window.showScreen   = showScreen;
-window.sair         = sair;
+window.pinPress          = pinPress;
+window.pinDelete         = pinDelete;
+window.pinNovoPress      = pinNovoPress;
+window.pinNovoDelete     = pinNovoDelete;
+window.showScreen        = showScreen;
+window.sair              = sair;
+window.entrarComDispositivo = entrarComDispositivo;
 
 const PIN_DOC   = doc(db, "config", "pin");
 const PIN_CACHE = "cc_pin_hash";
@@ -44,6 +45,17 @@ async function init() {
     } else {
         showScreen('login');
         document.getElementById('btn-alterar').style.display = 'none';
+
+        // Mostra botão do dispositivo se WebAuthn disponível
+        if (window.PublicKeyCredential) {
+            const btn = document.getElementById('btn-device');
+            if (btn) btn.style.display = 'flex';
+
+            // Se já tem credencial registrada, autentica direto ao abrir
+            if (localStorage.getItem(WA_CRED_KEY)) {
+                entrarComDispositivo();
+            }
+        }
     }
 }
 
@@ -197,6 +209,107 @@ function showError(id, msg) {
 function clearError(id) {
     const el = document.getElementById(id);
     if (el) el.textContent = '';
+}
+
+// ═══════════════════════════════════════════
+// WEBAUTHN — Senha/Digital/PIN do dispositivo
+// ═══════════════════════════════════════════
+const WA_CRED_KEY = 'cc_wa_credId';
+const WA_USER_ID  = new TextEncoder().encode('cellcity-crm-user');
+
+function _randomBytes(n) {
+    const buf = new Uint8Array(n);
+    crypto.getRandomValues(buf);
+    return buf;
+}
+
+function _b64url(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+}
+
+function _fromB64url(str) {
+    const b64 = str.replace(/-/g,'+').replace(/_/g,'/');
+    return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+}
+
+async function registrarWebAuthn() {
+    const cred = await navigator.credentials.create({
+        publicKey: {
+            challenge:  _randomBytes(32),
+            rp:         { name: 'Cell City CRM', id: location.hostname },
+            user:       { id: WA_USER_ID, name: 'celicity', displayName: 'Cell City' },
+            pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+            authenticatorSelection: {
+                authenticatorAttachment: 'platform',
+                userVerification: 'required',
+                residentKey: 'preferred',
+            },
+            timeout: 60000,
+        }
+    });
+    localStorage.setItem(WA_CRED_KEY, _b64url(cred.rawId));
+    return true;
+}
+
+async function autenticarWebAuthn() {
+    const credId = localStorage.getItem(WA_CRED_KEY);
+    const allowCreds = credId
+        ? [{ type: 'public-key', id: _fromB64url(credId), transports: ['internal'] }]
+        : [];
+
+    await navigator.credentials.get({
+        publicKey: {
+            challenge:        _randomBytes(32),
+            rpId:             location.hostname,
+            allowCredentials: allowCreds,
+            userVerification: 'required',
+            timeout:          60000,
+        }
+    });
+    return true;
+}
+
+async function entrarComDispositivo() {
+    if (!window.PublicKeyCredential) {
+        showError('pin-error', 'Seu navegador não suporta autenticação do dispositivo.');
+        return;
+    }
+
+    const btn = document.getElementById('btn-device');
+    if (btn) btn.disabled = true;
+    clearError('pin-error');
+
+    try {
+        const temCredencial = !!localStorage.getItem(WA_CRED_KEY);
+
+        if (!temCredencial) {
+            // Primeiro uso — registra a credencial do dispositivo
+            await registrarWebAuthn();
+        }
+
+        // Autentica com o dispositivo
+        await autenticarWebAuthn();
+
+        // Sucesso — libera acesso
+        sessionStorage.setItem(SESSION_KEY, 'ok');
+        showScreen('logado');
+        document.getElementById('btn-alterar').style.display = 'block';
+
+    } catch (e) {
+        if (e.name === 'NotAllowedError') {
+            showError('pin-error', 'Autenticação cancelada.');
+        } else if (e.name === 'InvalidStateError') {
+            // Credencial inválida — remove e pede novo registro
+            localStorage.removeItem(WA_CRED_KEY);
+            showError('pin-error', 'Credencial expirada. Tente novamente.');
+        } else {
+            showError('pin-error', 'Use o PIN acima.');
+            console.warn('WebAuthn:', e);
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', init);

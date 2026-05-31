@@ -168,3 +168,25 @@ body {
     margin-top: 8px;
 }
 .pin-btn-entrar:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,83,0.4); }
+
+
+.pin-btn-device {
+    display: none;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    margin-bottom: 16px;
+}
+.pin-btn-device:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--text); }
+.pin-btn-device:disabled { opacity: 0.5; cursor: not-allowed; }
