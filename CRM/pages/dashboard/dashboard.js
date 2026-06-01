@@ -1206,24 +1206,28 @@ class Dashboard {
     carregarConfiguracao();
     sincronizarComFirebase();
 
-    // Picture-in-Picture (Janela Flutuante)
-    const abrirJanelaFlutuante = async () => {
+    // Janela Flutuante (abrir em nova janela pequena)
+    const abrirJanelaFlutuante = () => {
       try {
-        const video = document.createElement('video');
-        video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc2F2YzEAAAAA';
-        video.style.display = 'none';
-        document.body.appendChild(video);
+        const width = 400;
+        const height = 600;
+        const left = window.innerWidth - width - 20;
+        const top = 100;
 
-        if (document.pictureInPictureEnabled) {
-          await video.play();
-          await video.requestPictureInPicture();
-          atualizarDebug('📺 Janela flutuante aberta');
+        const janela = window.open(
+          '/CRM/pages/dashboard/index.html?mini=1',
+          'alarme-flutuante',
+          `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`
+        );
+
+        if (janela) {
+          atualizarDebug('📺 Janela flutuante aberta! (Desktop)');
         } else {
-          atualizarDebug('⚠️ Seu navegador não suporta Picture-in-Picture');
+          atualizarDebug('⚠️ Popup bloqueado. Desbloqueia popups no navegador.');
         }
       } catch (e) {
-        console.warn('Erro PiP:', e);
-        atualizarDebug('⚠️ Erro ao abrir janela flutuante');
+        console.warn('Erro janela:', e);
+        atualizarDebug('⚠️ Erro ao abrir janela');
       }
     };
 
@@ -1234,39 +1238,31 @@ class Dashboard {
         return;
       }
 
+      if (Notification.permission === 'denied') {
+        atualizarDebug('⚠️ Notificações bloqueadas nas config');
+        return;
+      }
+
       if (Notification.permission !== 'granted') {
         const perm = await Notification.requestPermission();
         if (perm !== 'granted') {
-          atualizarDebug('⚠️ Permissão de notificações bloqueada');
+          atualizarDebug('⚠️ Você bloqueou notificações');
           return;
         }
       }
 
-      // Cria notificação persistente
-      self.registration.showNotification('🔔 Alarme Ativo', {
-        body: `Horário: ${inputHoraInicio.value} | Status: Monitorando`,
-        icon: '/CRM/assets/logo.png',
-        badge: '/CRM/assets/logo.png',
-        tag: 'alarme-persistente',
-        requireInteraction: true,
-        sticky: true,
-        actions: [
-          { action: 'fechar', title: '✕ Fechar' }
-        ]
-      }).catch(err => {
-        // Fallback para Notification API
-        try {
-          new Notification('🔔 Alarme Ativo', {
-            body: `Horário: ${inputHoraInicio.value} | Status: Monitorando`,
-            icon: '/CRM/assets/logo.png',
-            tag: 'alarme-persistente',
-            requireInteraction: true
-          });
-          atualizarDebug('📌 Notificação persistente ativada');
-        } catch (e) {
-          console.warn('Erro notificação:', e);
-        }
-      });
+      try {
+        new Notification('🔔 Alarme Ativo', {
+          body: `Horário: ${inputHoraInicio.value} - Status: Monitorando`,
+          icon: '/CRM/assets/logo.png',
+          badge: '/CRM/assets/logo.png',
+          tag: 'alarme-persistente'
+        });
+        atualizarDebug('📌 Notificação ativada!');
+      } catch (e) {
+        console.warn('Erro notificação:', e);
+        atualizarDebug('⚠️ Erro ao criar notificação: ' + e.message);
+      }
     };
 
     // Wake Lock para manter tela acordada
@@ -1363,6 +1359,7 @@ class Dashboard {
 
     const btnPiP = document.getElementById('alarme-pip-btn');
     const btnNotif = document.getElementById('alarme-notif-btn');
+    const btnAtalho = document.getElementById('alarme-atalho-btn');
 
     btnTestar.addEventListener('click', tocarSomTeste);
     btnSalvar.addEventListener('click', () => {
@@ -1381,35 +1378,33 @@ class Dashboard {
       btnNotif.addEventListener('click', mostrarNotificacaoPersistente);
     }
 
+    // Botão Atalho
+    if (btnAtalho) {
+      btnAtalho.addEventListener('click', criarAtalho);
+    }
+
     btnClose.addEventListener('click', () => {
       panel.style.display = 'none';
     });
 
     // Criar atalho para tela inicial (Android)
-    const criarAtalho = async () => {
-      if (!('shortcuts' in navigator)) {
-        atualizarDebug('⚠️ Seu navegador não suporta atalhos');
+    const criarAtalho = () => {
+      // iOS
+      if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+        alert('iOS: Menu Compartilhar → Adicionar à Tela Inicial');
+        atualizarDebug('📌 iOS: Use o menu Compartilhar');
         return;
       }
 
-      try {
-        await navigator.shortcuts.add({
-          name: 'Alarme CRM',
-          short_name: 'Alarme',
-          description: 'Abre alarme do CRM',
-          url: '/CRM/pages/dashboard/?alarme=1',
-          icons: [
-            {
-              src: '/CRM/assets/logo.png',
-              sizes: '192x192',
-              type: 'image/png'
-            }
-          ]
-        });
-        atualizarDebug('⚡ Atalho criado na tela inicial');
-      } catch (e) {
-        console.warn('Erro ao criar atalho:', e);
-        atualizarDebug('⚠️ Erro ao criar atalho');
+      // Android
+      const isAndroid = /Android/.test(navigator.userAgent);
+      if (isAndroid) {
+        alert('✓ Atalho já criado! Procura "Cell City" na sua tela inicial ou gaveta de apps.\n\nSe não encontrar:\n1. Menu ⋮\n2. "Instalar app"\n3. Confirma');
+        atualizarDebug('⚡ Verifique a tela inicial (Android)');
+      } else {
+        // Desktop
+        alert('Desktop: O app já está instalado.\nDesktop não suporta atalho na tela inicial.');
+        atualizarDebug('💻 Desktop: Use favoritos do navegador');
       }
     };
 
@@ -1427,7 +1422,6 @@ class Dashboard {
     };
 
     window.openAlarmePanel = openAlarmePanel;
-    window.criarAtalho = criarAtalho;
 
     // Atualiza hora do dispositivo a cada segundo
     setInterval(atualizarHoraDispositivo, 1000);
