@@ -400,7 +400,13 @@ body {
     border-top: 1px solid var(--border);
 }
 
-.visao-financeira-header { margin-bottom: 12px; }
+.visao-financeira-header {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
 
 .visao-financeira-header h2 {
     font-size: 11px;
@@ -409,6 +415,126 @@ body {
     letter-spacing: 1px;
     color: var(--green-light);
 }
+
+.btn-auditoria {
+    padding: 7px 14px;
+    background: rgba(33,150,243,0.1);
+    border: 1px solid rgba(33,150,243,0.3);
+    border-radius: var(--radius-sm);
+    color: var(--blue);
+    font-size: 12px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 200ms;
+}
+.btn-auditoria:hover { background: rgba(33,150,243,0.2); }
+
+/* ═══════════════════════════════════════════
+   MODAL DE AUDITORIA FINANCEIRA
+   ═══════════════════════════════════════════ */
+.modal-auditoria {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    animation: fadeIn 0.2s var(--ease);
+}
+.modal-auditoria.active { display: flex; }
+.modal-auditoria-content {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 94%;
+    max-width: 720px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    animation: slideUp 0.25s var(--ease);
+}
+.modal-auditoria-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.modal-auditoria-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.aud-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text2);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 2px 10px;
+}
+.modal-auditoria-body {
+    padding: 8px 12px;
+    overflow: auto;
+    flex: 1;
+}
+.tabela-auditoria {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+.tabela-auditoria thead th {
+    position: sticky;
+    top: 0;
+    background: var(--surface-solid);
+    color: var(--text3);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    text-align: left;
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--border);
+}
+.tabela-auditoria td {
+    padding: 9px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text);
+    vertical-align: top;
+}
+.tabela-auditoria tbody tr:hover { background: rgba(255,255,255,0.03); }
+.tabela-auditoria .aud-num { text-align: right; font-family: var(--font-mono); white-space: nowrap; }
+.tabela-auditoria .aud-lucro { color: var(--blue); font-weight: 700; }
+.modal-auditoria-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.aud-tot {
+    flex: 1;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.aud-tot span { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.4px; }
+.aud-tot strong { font-size: 15px; font-family: var(--font-mono); color: var(--text); }
+.aud-tot strong.aud-lucro { color: var(--blue); }
 
 /* Filtros Compactos */
 .filtros-financeiros {
@@ -501,6 +627,19 @@ body {
 .card-entradas .card-valor { color: var(--green-light); }
 .card-saidas .card-valor { color: var(--red); }
 .card-lucro .card-valor { color: var(--blue); }
+
+/* Lucro Líquido em destaque (indicador principal) */
+.card-lucro-destaque {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(33,150,243,0.10), var(--surface2));
+    border-color: rgba(33,150,243,0.35);
+    padding: 18px 12px;
+}
+.card-lucro-destaque .card-valor {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--blue);
+}
 
 /* ═══════════════════════════════════════════
    MOVIMENTAÇÕES COMPACTAS
@@ -802,6 +941,7 @@ body {
     
     .cards-financeiros { grid-template-columns: 1fr; }
     .card-saldo { grid-column: span 1; }
+    .card-lucro-destaque { grid-column: span 1; }
     
     .form-row { grid-template-columns: 1fr; }
     .tipo-selector { flex-direction: column; }
@@ -1014,6 +1154,57 @@ body {
     padding: 1px 7px;
     font-size: 11px;
     font-weight: 800;
+}
+
+/* ========== BOTÃO FLUTUANTE (FAB) LEMBRETES ========== */
+.fab-lembretes {
+    position: fixed;
+    right: 18px;
+    bottom: 96px; /* acima do dock inferior */
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #fbbf24;
+    border: none;
+    color: #000;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    z-index: 9100;
+    transition: transform 200ms, background 200ms;
+}
+.fab-lembretes:hover { transform: scale(1.08); background: #fcd34d; }
+.fab-lembretes-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 100px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1a1d23;
+}
+/* Quando há lembretes vencidos: FAB pulsa em vermelho */
+.fab-lembretes.fab-vencido {
+    background: #ef4444;
+    color: #fff;
+    animation: fab-pulse 1.6s ease-in-out infinite;
+}
+.fab-lembretes.fab-vencido:hover { background: #f87171; }
+@keyframes fab-pulse {
+    0%   { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 0 rgba(239,68,68,0.55); }
+    70%  { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 14px rgba(239,68,68,0); }
+    100% { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 0 rgba(239,68,68,0); }
 }
 
 /* MODAL LEMBRETES */

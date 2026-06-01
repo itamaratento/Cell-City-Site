@@ -68,7 +68,7 @@
         <!-- ═══════════════════════════════════════ -->
         <section class="secao-lembretes-btn">
             <button class="btn-lembrete-compacto" onclick="toggleLembretes()">
-                🔔 Lembretes
+                🔔 <span id="lembretes-texto">Lembretes</span>
                 <span class="lembretes-badge" id="lembretes-badge" style="display:none">0</span>
             </button>
         </section>
@@ -178,6 +178,7 @@
         <section class="secao-visao-financeira secao-normal">
             <div class="visao-financeira-header">
                 <h2>📊 VISÃO FINANCEIRA</h2>
+                <button class="btn-auditoria" onclick="abrirAuditoria()">🔍 Auditoria</button>
             </div>
 
             <!-- Filtros AGORA dentro da Visão Financeira -->
@@ -190,21 +191,21 @@
 
             <!-- Cards Financeiros -->
             <div class="cards-financeiros">
-                <div class="card-financeiro card-saldo">
-                    <div class="card-label">Saldo Geral</div>
-                    <div class="card-valor" id="saldoGeral">R$ 0,00</div>
-                </div>
                 <div class="card-financeiro card-entradas">
-                    <div class="card-label">🟢 Entradas</div>
+                    <div class="card-label">💵 Faturamento Bruto</div>
                     <div class="card-valor" id="totalEntradas">R$ 0,00</div>
                 </div>
                 <div class="card-financeiro card-saidas">
-                    <div class="card-label">🔴 Saídas</div>
-                    <div class="card-valor" id="totalSaidas">R$ 0,00</div>
+                    <div class="card-label">📦 Custos</div>
+                    <div class="card-valor" id="totalCustos">R$ 0,00</div>
                 </div>
-                <div class="card-financeiro card-lucro">
-                    <div class="card-label">💎 Lucro</div>
+                <div class="card-financeiro card-lucro card-lucro-destaque">
+                    <div class="card-label">💎 Lucro Líquido — o que realmente sobrou</div>
                     <div class="card-valor" id="totalLucro">R$ 0,00</div>
+                </div>
+                <div class="card-financeiro card-saldo">
+                    <div class="card-label">💳 Saldo em Caixa</div>
+                    <div class="card-valor" id="saldoGeral">R$ 0,00</div>
                 </div>
             </div>
         </section>
@@ -282,6 +283,43 @@
             </div>
         </div>
     </div>
+
+    <!-- MODAL DE AUDITORIA FINANCEIRA -->
+    <div id="modalAuditoria" class="modal-auditoria">
+        <div class="modal-auditoria-content">
+            <div class="modal-auditoria-header">
+                <h3>🔍 Auditoria Financeira <span id="auditoria-periodo" class="aud-badge">Todos</span></h3>
+                <button class="modal-close" onclick="fecharAuditoria()">✕</button>
+            </div>
+            <div class="modal-auditoria-body">
+                <table class="tabela-auditoria">
+                    <thead>
+                        <tr>
+                            <th>Descrição</th>
+                            <th>Tipo</th>
+                            <th class="aud-num">Valor</th>
+                            <th class="aud-num">Custo</th>
+                            <th class="aud-num">Lucro</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditoria-corpo"></tbody>
+                </table>
+            </div>
+            <div class="modal-auditoria-footer">
+                <div class="aud-tot"><span>Lançamentos</span><strong id="auditoria-contador">0</strong></div>
+                <div class="aud-tot"><span>💵 Faturamento</span><strong id="auditoria-tot-fat">R$ 0,00</strong></div>
+                <div class="aud-tot"><span>📦 Custos</span><strong id="auditoria-tot-custo">R$ 0,00</strong></div>
+                <div class="aud-tot"><span>💎 Lucro Líquido</span><strong id="auditoria-tot-lucro" class="aud-lucro">R$ 0,00</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTÃO FLUTUANTE DE LEMBRETES (FAB) -->
+    <button class="fab-lembretes" id="fab-lembretes" onclick="toggleLembretes()" title="Lembretes de pagamento" aria-label="Lembretes de pagamento">
+        🔔
+        <span class="fab-lembretes-badge" id="fab-lembretes-badge" style="display:none">0</span>
+    </button>
 
     <!-- TOAST -->
     <div id="toast" class="premium-toast"></div>

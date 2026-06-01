@@ -106,6 +106,7 @@ async function init() {
     await carregarCategorias();
     iniciarListenerCategorias();
     iniciarListenerLancamentos();
+    carregarLembretes(); // carrega lembretes no início p/ badge/FAB aparecerem sozinhos
     setTimeout(() => executarOrquestradorHistorico(), 2500);
 }
 
@@ -672,6 +673,56 @@ function exibirAnaliseCompleta() {
 window.corrigirMigracaoLucroSaidas = corrigirMigracaoLucroSaidas;
 window.exibirAnaliseCompleta = exibirAnaliseCompleta;
 
+// ═══════════════════════════════════════════
+// 🔍 TELA DE AUDITORIA FINANCEIRA (visível)
+// ═══════════════════════════════════════════
+window.abrirAuditoria  = abrirAuditoria;
+window.fecharAuditoria = fecharAuditoria;
+
+function abrirAuditoria() {
+    renderAuditoria();
+    document.getElementById('modalAuditoria')?.classList.add('active');
+}
+
+function fecharAuditoria() {
+    document.getElementById('modalAuditoria')?.classList.remove('active');
+}
+
+function renderAuditoria() {
+    const f = aplicarFiltros(lancamentos);
+    const e  = f.filter(l => l.tipo === 'entrada' || l.tipo === 'servico').reduce((s, l) => s + (l.valor || 0), 0);
+    const lu = f.reduce((s, l) => s + (l.lucro || 0), 0);
+    const custos = e - lu; // mesmo critério dos cards do painel
+
+    const periodoLabel = { todos: 'Todos', hoje: 'Hoje', semana: 'Semana', mes: 'Mês' }[periodoFiltro] || periodoFiltro;
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('auditoria-periodo', periodoLabel);
+
+    const corpo = document.getElementById('auditoria-corpo');
+    if (corpo) {
+        if (!f.length) {
+            corpo.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:22px;color:var(--text3)">Nenhum lançamento neste período</td></tr>`;
+        } else {
+            corpo.innerHTML = f.map(l => {
+                const tipoLabel = l.tipo === 'entrada' ? '🟢 Entrada' : l.tipo === 'saida' ? '🔴 Saída' : '🔵 Serviço';
+                return `<tr>
+                    <td>${l.descricao || '-'}</td>
+                    <td>${tipoLabel}</td>
+                    <td class="aud-num">${formatarMoeda(l.valor)}</td>
+                    <td class="aud-num">${formatarMoeda(l.custo || 0)}</td>
+                    <td class="aud-num aud-lucro">${formatarMoeda(l.lucro || 0)}</td>
+                    <td>${formatarData(l.dataISO)}</td>
+                </tr>`;
+            }).join('');
+        }
+    }
+
+    setTxt('auditoria-contador', f.length);
+    setTxt('auditoria-tot-fat',   formatarMoeda(e));
+    setTxt('auditoria-tot-custo', formatarMoeda(custos));
+    setTxt('auditoria-tot-lucro', formatarMoeda(lu));
+}
+
 // ═══════════════════════════════════════════════════════════════
 // 💼 LÓGICA OPERACIONAL (CRUD - MANTIDA IGUAL)
 // ═══════════════════════════════════════════════════════════════
@@ -1015,14 +1066,18 @@ function atualizarInterface() {
     const e = f.filter(l => l.tipo === 'entrada' || l.tipo === 'servico').reduce((s, l) => s + l.valor, 0);
     const sa = f.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
     const lu = f.reduce((s, l) => s + (l.lucro || 0), 0);
+    // Custos = Faturamento − Lucro (= custo das mercadorias embutido + despesas). Sempre consistente com o lucro gravado.
+    const custos = e - lu;
     const elSaldo = document.getElementById('saldoGeral');
     const elE = document.getElementById('totalEntradas');
     const elS = document.getElementById('totalSaidas');
+    const elCustos = document.getElementById('totalCustos');
     const elL = document.getElementById('totalLucro');
     const elC = document.getElementById('contadorLancamentos');
     if (elSaldo) elSaldo.textContent = formatarMoeda(e - sa);
     if (elE) elE.textContent = formatarMoeda(e);
     if (elS) elS.textContent = formatarMoeda(sa);
+    if (elCustos) elCustos.textContent = formatarMoeda(custos);
     if (elL) elL.textContent = formatarMoeda(lu);
     if (elC) elC.textContent = f.length;
     renderizarLista(f);
@@ -1162,6 +1217,7 @@ function showToast(msg) { const t=document.getElementById('toast'); if(!t) retur
 document.getElementById('editValor')?.addEventListener('input', calcularLucroEdicao);
 document.getElementById('editCusto')?.addEventListener('input', calcularLucroEdicao);
 document.getElementById('modalEdicao')?.addEventListener('click', (e) => { if(e.target.id==='modalEdicao') fecharModalEdicao(); });
+document.getElementById('modalAuditoria')?.addEventListener('click', (e) => { if(e.target.id==='modalAuditoria') fecharAuditoria(); });
 
 // ═══════════════════════════════════════════
 // AUTOCOMPLETE DE ESTOQUE NA DESCRIÇÃO
@@ -1389,11 +1445,26 @@ async function pagarLembrete(id, fornecedor, descricao, valor) {
 function renderLembretes() {
     const lista = document.getElementById('lembretes-lista');
     const badge = document.getElementById('lembretes-badge');
-    if (!lista) return;
+    const total = lembretes.length;
+    // Conta lembretes vencidos (vencimento anterior a hoje)
+    const hojeSP = getDataEmSP(new Date());
+    const vencidos = lembretes.filter(l => l.vencimento && l.vencimento < hojeSP).length;
+    // Badge + texto do botão compacto
     if (badge) {
-        badge.textContent    = lembretes.length;
-        badge.style.display  = lembretes.length > 0 ? 'inline-flex' : 'none';
+        badge.textContent    = total;
+        badge.style.display  = total > 0 ? 'inline-flex' : 'none';
     }
+    const texto = document.getElementById('lembretes-texto');
+    if (texto) texto.textContent = total > 0 ? `${total} lembrete${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}` : 'Lembretes';
+    // Botão flutuante (FAB)
+    const fabBadge = document.getElementById('fab-lembretes-badge');
+    if (fabBadge) {
+        fabBadge.textContent   = total;
+        fabBadge.style.display = total > 0 ? 'inline-flex' : 'none';
+    }
+    const fab = document.getElementById('fab-lembretes');
+    if (fab) fab.classList.toggle('fab-vencido', vencidos > 0);
+    if (!lista) return;
     if (!lembretes.length) {
         lista.innerHTML = `<div class="lem-empty">Nenhum lembrete pendente</div>`;
         return;
