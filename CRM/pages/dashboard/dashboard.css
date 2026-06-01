@@ -1714,10 +1714,11 @@ body {
   .workspace { padding: 20px 16px 140px; }
   .calendar-popup { left: 16px; right: 16px; width: auto; }
   .brand-header-subtitle { display: none; }
-  .ops-block { grid-template-columns: 1fr; gap: 16px; }
+  .ops-block { grid-template-columns: 1fr; gap: 20px; }
   .module-card { padding: 14px; }
   .module-icon { width: 40px; height: 40px; font-size: 18px; }
-  .alerts-card { min-height: 260px; }
+  .alerts-card { min-height: 320px; }
+  .meta-card { min-height: 280px; }
   .alert-title { font-size: 17px; }
   .alert-icon { font-size: 44px; }
   .dock {
@@ -1742,7 +1743,9 @@ body {
 }
 
 @media (max-width: 520px) {
-  .ops-block { grid-template-columns: 1fr; gap: 16px; }
+  .ops-block { grid-template-columns: 1fr; gap: 20px; }
+  .alerts-card { min-height: 340px; }
+  .meta-card { min-height: 300px; }
   .meta-current { font-size: 20px; }
   .ai-title { font-size: 12.5px; }
   .ai-subtitle { display: none; }
