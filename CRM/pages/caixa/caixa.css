@@ -1139,79 +1139,43 @@ body {
     margin: 0 auto;
 }
 .btn-lembrete-compacto {
-    display: inline-flex;
+    display: flex;
+    width: 100%;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 9px 18px;
-    background: rgba(251,191,36,0.1);
-    border: 1px solid rgba(251,191,36,0.3);
-    border-radius: 10px;
+    padding: 14px 18px;
+    background: rgba(251,191,36,0.12);
+    border: 1px solid rgba(251,191,36,0.35);
+    border-radius: 12px;
     color: #fbbf24;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
-    transition: background 200ms;
+    transition: background 200ms, border-color 200ms;
 }
 .btn-lembrete-compacto:hover { background: rgba(251,191,36,0.2); }
+.btn-lembrete-compacto:active { background: rgba(251,191,36,0.28); }
 .btn-lembrete-compacto .lembretes-badge {
     background: #fbbf24;
     color: #000;
     border-radius: 100px;
-    padding: 1px 7px;
-    font-size: 11px;
-    font-weight: 800;
-}
-
-/* ========== BOTÃO FLUTUANTE (FAB) LEMBRETES ========== */
-.fab-lembretes {
-    position: fixed;
-    right: 18px;
-    bottom: 96px; /* acima do dock inferior */
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: #fbbf24;
-    border: none;
-    color: #000;
-    font-size: 24px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.45);
-    z-index: 9100;
-    transition: transform 200ms, background 200ms;
-}
-.fab-lembretes:hover { transform: scale(1.08); background: #fcd34d; }
-.fab-lembretes-badge {
-    position: absolute;
-    top: -2px;
-    right: -2px;
-    min-width: 22px;
-    height: 22px;
-    padding: 0 6px;
-    border-radius: 100px;
-    background: #ef4444;
-    color: #fff;
+    padding: 1px 8px;
     font-size: 12px;
     font-weight: 800;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 2px solid #1a1d23;
 }
-/* Quando há lembretes vencidos: FAB pulsa em vermelho */
-.fab-lembretes.fab-vencido {
-    background: #ef4444;
-    color: #fff;
-    animation: fab-pulse 1.6s ease-in-out infinite;
+/* Quando há lembrete vencido: botão fica vermelho e pulsa */
+.btn-lembrete-compacto.lem-vencido {
+    background: rgba(239,68,68,0.15);
+    border-color: rgba(239,68,68,0.5);
+    color: #f87171;
+    animation: lem-pulse 1.8s ease-in-out infinite;
 }
-.fab-lembretes.fab-vencido:hover { background: #f87171; }
-@keyframes fab-pulse {
-    0%   { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 0 rgba(239,68,68,0.55); }
-    70%  { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 14px rgba(239,68,68,0); }
-    100% { box-shadow: 0 6px 18px rgba(0,0,0,0.45), 0 0 0 0 rgba(239,68,68,0); }
+.btn-lembrete-compacto.lem-vencido .lembretes-badge { background: #ef4444; color: #fff; }
+@keyframes lem-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.0); }
+    50%      { box-shadow: 0 0 0 4px rgba(239,68,68,0.18); }
 }
 
 /* MODAL LEMBRETES */

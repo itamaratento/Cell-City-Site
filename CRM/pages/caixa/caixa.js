@@ -1463,14 +1463,9 @@ function renderLembretes() {
     }
     const texto = document.getElementById('lembretes-texto');
     if (texto) texto.textContent = total > 0 ? `${total} lembrete${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}` : 'Lembretes';
-    // Botão flutuante (FAB)
-    const fabBadge = document.getElementById('fab-lembretes-badge');
-    if (fabBadge) {
-        fabBadge.textContent   = total;
-        fabBadge.style.display = total > 0 ? 'inline-flex' : 'none';
-    }
-    const fab = document.getElementById('fab-lembretes');
-    if (fab) fab.classList.toggle('fab-vencido', vencidos > 0);
+    // Destaca o botão do topo em vermelho quando há lembrete vencido
+    const btnTopo = document.querySelector('.btn-lembrete-compacto');
+    if (btnTopo) btnTopo.classList.toggle('lem-vencido', vencidos > 0);
     if (!lista) return;
     if (!lembretes.length) {
         lista.innerHTML = `<div class="lem-empty">Nenhum lembrete pendente</div>`;
