@@ -845,6 +845,7 @@ class Dashboard {
     const inputHoraInicio = document.getElementById('alarme-hora-inicio');
     const inputHoraFim = document.getElementById('alarme-hora-fim');
     const inputVolume = document.getElementById('alarme-volume');
+    const inputAnotacao = document.getElementById('alarme-anotacao');
     const btnTestar = document.getElementById('alarme-testar-btn');
     const btnSalvar = document.getElementById('alarme-salvar-btn');
     const diasChecks = document.querySelectorAll('.alarme-dia-check');
@@ -855,6 +856,8 @@ class Dashboard {
 
     let audioContext = null;
     let isTocarAlarm = false;
+    let unsubscribeOS = null;
+    let ultimaOSDetectada = null;
 
     const salvarConfiguracao = () => {
       const config = {
@@ -862,11 +865,13 @@ class Dashboard {
         horaInicio: inputHoraInicio.value,
         horaFim: inputHoraFim.value,
         volume: inputVolume.value,
+        anotacao: inputAnotacao.value,
         dias: Array.from(diasChecks)
           .filter(c => c.checked)
           .map(c => parseInt(c.value))
       };
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
+      console.log('✓ Config alarme salva:', config);
     };
 
     const carregarConfiguracao = () => {
@@ -875,6 +880,7 @@ class Dashboard {
       if (config.horaInicio) inputHoraInicio.value = config.horaInicio;
       if (config.horaFim) inputHoraFim.value = config.horaFim;
       if (config.volume) inputVolume.value = config.volume;
+      if (config.anotacao) inputAnotacao.value = config.anotacao;
       if (config.dias && config.dias.length > 0) {
         diasChecks.forEach(c => c.checked = config.dias.includes(parseInt(c.value)));
       }
@@ -937,45 +943,73 @@ class Dashboard {
     const verificarHorarioEDia = () => {
       const agora = new Date();
       const diaAtual = agora.getDay();
-      const horaAtual = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+      const hAtual = agora.getHours();
+      const mAtual = agora.getMinutes();
+      const horaEmMinutos = hAtual * 60 + mAtual;
+
+      const [hInicio, mInicio] = inputHoraInicio.value.split(':').map(Number);
+      const [hFim, mFim] = inputHoraFim.value.split(':').map(Number);
+      const minInicio = hInicio * 60 + mInicio;
+      const minFim = hFim * 60 + mFim;
 
       const diaPermitido = Array.from(diasChecks)
         .filter(c => c.checked)
         .map(c => parseInt(c.value))
         .includes(diaAtual);
 
-      const horaInicio = inputHoraInicio.value;
-      const horaFim = inputHoraFim.value;
-      const dentroHorario = horaAtual >= horaInicio && horaAtual <= horaFim;
+      const dentroHorario = horaEmMinutos >= minInicio && horaEmMinutos <= minFim;
+
+      console.log(`🔔 Verificação: dia=${diaAtual} (OK=${diaPermitido}), hora=${String(hAtual).padStart(2,'0')}:${String(mAtual).padStart(2,'0')} (OK=${dentroHorario})`);
 
       return diaPermitido && dentroHorario;
     };
 
     const monitorarOS = () => {
-      if (!toggleAtivo.checked) return;
+      if (!toggleAtivo.checked) {
+        if (unsubscribeOS) unsubscribeOS();
+        return;
+      }
 
       try {
-        import('../../scripts/firebase.js').then(m => {
-          const { query, where, collection, onSnapshot } = m;
-          const ordersRef = query(
-            collection(m.db, 'orders'),
-            where('createdAt', '>', new Date(Date.now() - 60000))
-          );
+        const { collection, onSnapshot } = window.__firebaseModule || {};
 
-          const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-              if (change.type === 'added' && toggleAtivo.checked && verificarHorarioEDia()) {
-                console.log('🔔 OS nova detectada:', change.doc.id);
-                const volume = parseInt(inputVolume.value) / 100;
-                gerarSomAlarme(5, volume);
+        if (!collection || !onSnapshot) {
+          console.warn('Firebase não carregado ainda, tentando novamente em 2s...');
+          setTimeout(monitorarOS, 2000);
+          return;
+        }
+
+        const ordersRef = collection(db, 'orders');
+
+        if (unsubscribeOS) unsubscribeOS();
+
+        unsubscribeOS = onSnapshot(ordersRef, (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const osId = change.doc.id;
+              const osData = change.doc.data();
+              const createdAt = osData.createdAt?.toDate?.() || new Date(osData.createdAt);
+
+              // Apenas toca alarme se foi criada nos últimos 10 segundos
+              const agora = new Date();
+              const diffSegundos = (agora - createdAt) / 1000;
+
+              if (diffSegundos < 10 && ultimaOSDetectada !== osId) {
+                ultimaOSDetectada = osId;
+
+                if (toggleAtivo.checked && verificarHorarioEDia()) {
+                  console.log('🔔 OS NOVA DETECTADA:', osId);
+                  const volume = parseInt(inputVolume.value) / 100;
+                  gerarSomAlarme(5, volume);
+                } else {
+                  console.log('⏭️ OS nova mas fora do horário/dia configurado');
+                }
               }
-            });
+            }
           });
-
-          setTimeout(() => unsubscribe(), 3600000);
         });
       } catch (e) {
-        console.warn('Monitor OS:', e);
+        console.warn('Erro no monitor OS:', e);
       }
     };
 
@@ -985,20 +1019,41 @@ class Dashboard {
       atualizarLabels();
       salvarConfiguracao();
       if (toggleAtivo.checked) {
+        console.log('🔔 Alarme ATIVADO');
         monitorarOS();
+      } else {
+        console.log('🔔 Alarme DESATIVADO');
+        if (unsubscribeOS) unsubscribeOS();
       }
     });
 
-    inputHoraInicio.addEventListener('change', salvarConfiguracao);
-    inputHoraFim.addEventListener('change', salvarConfiguracao);
-    inputVolume.addEventListener('input', atualizarLabels);
-    inputVolume.addEventListener('change', salvarConfiguracao);
-
-    diasChecks.forEach(check => {
-      check.addEventListener('change', salvarConfiguracao);
+    inputHoraInicio.addEventListener('change', () => {
+      salvarConfiguracao();
+      console.log('⏰ Horário início alterado:', inputHoraInicio.value);
     });
 
-    btnTestar.addEventListener('click', tocarSomTeste);
+    inputHoraFim.addEventListener('change', () => {
+      salvarConfiguracao();
+      console.log('⏰ Horário fim alterado:', inputHoraFim.value);
+    });
+
+    inputVolume.addEventListener('input', atualizarLabels);
+    inputVolume.addEventListener('change', salvarConfiguracao);
+    inputAnotacao.addEventListener('input', salvarConfiguracao);
+
+    diasChecks.forEach(check => {
+      check.addEventListener('change', () => {
+        salvarConfiguracao();
+        const diasSelecionados = Array.from(diasChecks).filter(c => c.checked).map(c => c.value).join(', ');
+        console.log('📅 Dias alterados:', diasSelecionados);
+      });
+    });
+
+    btnTestar.addEventListener('click', () => {
+      console.log('🔊 Testando som...');
+      tocarSomTeste();
+    });
+
     btnSalvar.addEventListener('click', () => {
       salvarConfiguracao();
       alert('✓ Configuração salva com sucesso!');
@@ -1008,12 +1063,16 @@ class Dashboard {
       panel.style.display = 'none';
     });
 
-    // Abre painel de alarme ao clicar em dock (criar botão na dock depois)
     const openAlarmePanel = () => {
       panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
     };
 
     window.openAlarmePanel = openAlarmePanel;
+
+    // Inicia monitor se alarme estava ativo
+    if (toggleAtivo.checked) {
+      setTimeout(() => monitorarOS(), 1000);
+    }
   }
 
   // ===== CLIQUES FORA =====

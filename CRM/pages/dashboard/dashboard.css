@@ -2188,6 +2188,28 @@ body {
   margin-top: 2px;
 }
 
+.alarme-anotacao {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  resize: none;
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.alarme-anotacao:focus {
+  border-color: var(--cell-green);
+}
+
+.alarme-anotacao::placeholder {
+  color: var(--text-tertiary);
+}
+
 .alarme-actions {
   display: flex;
   gap: 6px;
