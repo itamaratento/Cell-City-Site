@@ -31,6 +31,7 @@ window.shareWhatsApp = shareWhatsApp;
 window.printOS = printOS;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
+window.generateWarrantyLink = generateWarrantyLink;
 window.searchClients = searchClients;
 window.showClientDetail = showClientDetail;
 window.startOSForClient = startOSForClient;
@@ -478,7 +479,7 @@ function renderDetail() {
     }
     
     const _acaoBtn = os.status === 'orcamento' ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!['entregue','devolvido_orcamento'].includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -568,6 +569,25 @@ function copyWarrantyToClipboard() {
         showToast('✅ Garantia copiada para a área de transferência');
     }).catch(() => {
         showToast('❌ Erro ao copiar');
+    });
+}
+
+function generateWarrantyLink() {
+    if (!currentOS) return;
+    const os = currentOS;
+    let cfg = { logo: '', garantias: [], loja: {} };
+    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    if (garantias.length === 0) { showToast('⚠️ Nenhuma garantia configurada'); return; }
+    const garantia = garantias.find(g => g.padrao) || garantias[0];
+    if (!garantia) { showToast('⚠️ Nenhuma garantia disponível'); return; }
+    const dados = { os: { id: os.id, model: os.model, defect: os.defect, createdAt: os.createdAt }, garantia: { texto: garantia.texto }, loja: cfg.loja || {} };
+    localStorage.setItem(`cc_garantia_${os.id}`, JSON.stringify(dados));
+    const baseUrl = window.location.origin + '/CRM/garantia?id=' + os.id;
+    navigator.clipboard.writeText(baseUrl).then(() => {
+        showToast('🔗 Link copiado: ' + baseUrl);
+    }).catch(() => {
+        showToast('❌ Erro ao copiar link');
     });
 }
 

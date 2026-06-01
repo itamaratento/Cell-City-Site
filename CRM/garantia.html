@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Garantia - Cell City</title>
+    <link rel="stylesheet" href="styles/global.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .garantia-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        }
+        .garantia-header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 20px;
+        }
+        .garantia-logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .garantia-titulo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--cell-green);
+            margin-bottom: 20px;
+        }
+        .garantia-info {
+            background: var(--surface2);
+            padding: 20px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            border-left: 4px solid var(--cell-green);
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: var(--text2);
+        }
+        .info-value {
+            color: var(--cell-green);
+            font-weight: 500;
+        }
+        .garantia-texto {
+            background: var(--surface2);
+            padding: 20px;
+            border-radius: var(--radius);
+            line-height: 1.8;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+        .garantia-rodape {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px dashed var(--border);
+        }
+        .acoes {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn-acao {
+            flex: 1;
+            padding: 12px;
+            background: var(--cell-green);
+            color: #000;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all var(--transition-smooth);
+        }
+        .btn-acao:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 230, 118, 0.3);
+        }
+        .btn-acao.secundario {
+            background: var(--surface3);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-acao.secundario:hover {
+            background: var(--surface2);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text2);
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--cell-green);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .erro {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 20px;
+            border-radius: var(--radius);
+            text-align: center;
+        }
+        @media print {
+            body { background: white; }
+            .garantia-container { box-shadow: none; padding: 0; }
+            .acoes, .garantia-rodape { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="garantia-container">
+        <div id="conteudo">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 20px;">Carregando garantia...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+            });
+        }
+
+        function renderGarantia(dados) {
+            const { os, garantia, loja } = dados;
+            const createdDate = formatDate(os.createdAt);
+
+            return `
+                <div class="acoes">
+                    <button class="btn-acao" onclick="copiarGarantia()">📋 Copiar Texto</button>
+                    <button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir</button>
+                </div>
+
+                <div class="garantia-header">
+                    <div class="garantia-logo">📱</div>
+                    <div class="garantia-titulo">${loja.nome || 'CELL CITY'}</div>
+                </div>
+
+                <div class="garantia-info">
+                    <div class="info-row">
+                        <span class="info-label">Ordem de Serviço:</span>
+                        <span class="info-value">${os.id}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Data:</span>
+                        <span class="info-value">${createdDate}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Equipamento:</span>
+                        <span class="info-value">${os.model}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Serviço:</span>
+                        <span class="info-value">${os.defect || 'Não especificado'}</span>
+                    </div>
+                </div>
+
+                <h2 style="font-size: 16px; font-weight: 700; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; color: var(--cell-green);">Termos de Garantia</h2>
+
+                <div class="garantia-texto">${garantia.texto}</div>
+
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <p style="color: var(--text2); font-size: 14px;">Obrigado pela preferência.</p>
+                </div>
+
+                <div class="garantia-rodape">
+                    <p>Cell City Informática</p>
+                    <p style="margin-top: 10px;">Este é um documento de garantia compartilhado</p>
+                </div>
+            `;
+        }
+
+        window.copiarGarantia = function() {
+            const osId = getQueryParam('id');
+            const dataStr = localStorage.getItem(`cc_garantia_${osId}`);
+
+            if (!dataStr) {
+                alert('Erro ao copiar garantia');
+                return;
+            }
+
+            const dados = JSON.parse(dataStr);
+            const { os, garantia, loja } = dados;
+            const createdDate = formatDate(os.createdAt);
+
+            const texto = `${loja.nome || 'CELL CITY'}\n\nOS: ${os.id}\nData: ${createdDate}\nEquipamento: ${os.model}\nServiço: ${os.defect || 'Não especificado'}\n\nGARANTIA\n\n${garantia.texto}\n\nObrigado pela preferência.`;
+
+            navigator.clipboard.writeText(texto).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copiado!';
+                setTimeout(() => { btn.textContent = originalText; }, 2000);
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const osId = getQueryParam('id');
+
+            if (!osId) {
+                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não especificada na URL</div>';
+                return;
+            }
+
+            const dataStr = localStorage.getItem(`cc_garantia_${osId}`);
+
+            if (!dataStr) {
+                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Garantia não encontrada. A janela pode ter sido fechada ou o navegador limpo.</div>';
+                return;
+            }
+
+            try {
+                const dados = JSON.parse(dataStr);
+                document.getElementById('conteudo').innerHTML = renderGarantia(dados);
+                document.title = `Garantia ${osId} - Cell City`;
+            } catch (e) {
+                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Erro ao carregar garantia</div>';
+            }
+        });
+    </script>
+</body>
+</html>
