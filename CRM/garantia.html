@@ -5,6 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Garantia - Cell City</title>
     <link rel="stylesheet" href="styles/global.css">
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC3ZLx2m-IWG2tNvIGZYKEqcXh2mEzJGP8",
+            authDomain: "cellcity-crm.firebaseapp.com",
+            projectId: "cellcity-crm",
+            storageBucket: "cellcity-crm.appspot.com",
+            messagingSenderId: "1068710301995",
+            appId: "1:1068710301995:web:45a59e12bf48a929ca9b8b"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.loadGarantia = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const osId = urlParams.get('id');
+
+            if (!osId) {
+                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não especificada na URL</div>';
+                return;
+            }
+
+            try {
+                const osDocRef = doc(db, "os", osId);
+                const osDoc = await getDoc(osDocRef);
+
+                if (!osDoc.exists()) {
+                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não encontrada no banco de dados</div>';
+                    return;
+                }
+
+                const osData = osDoc.data();
+                let cfg = { logo: '', garantias: [], loja: {} };
+
+                try {
+                    const c = localStorage.getItem('cc_config_impressao');
+                    if (c) cfg = JSON.parse(c);
+                } catch (e) {}
+
+                const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+                if (garantias.length === 0) {
+                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Nenhuma garantia configurada no sistema</div>';
+                    return;
+                }
+
+                const garantia = garantias.find(g => g.padrao) || garantias[0];
+                if (!garantia) {
+                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Nenhuma garantia disponível</div>';
+                    return;
+                }
+
+                const dados = {
+                    os: osData,
+                    garantia: garantia,
+                    loja: cfg.loja || {}
+                };
+
+                renderGarantiaHTML(dados);
+                document.title = `Garantia ${osId} - Cell City`;
+                window.garantiaData = dados;
+
+            } catch (error) {
+                console.error('Erro ao carregar garantia:', error);
+                document.getElementById('conteudo').innerHTML = '<div class="erro">❌ Erro ao carregar garantia: ' + error.message + '</div>';
+            }
+        };
+
+        window.addEventListener('load', loadGarantia);
+    </script>
     <style>
         body {
             background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
@@ -147,17 +219,12 @@
         <div id="conteudo">
             <div class="loading">
                 <div class="spinner"></div>
-                <p style="margin-top: 20px;">Carregando garantia...</p>
+                <p style="margin-top: 20px;">Carregando garantia do banco de dados...</p>
             </div>
         </div>
     </div>
 
     <script>
-        function getQueryParam(param) {
-            const urlParams = new URLSearchParams(window.location.search);
-            return urlParams.get(param);
-        }
-
         function formatDate(iso) {
             if (!iso) return '';
             return new Date(iso).toLocaleDateString('pt-BR', {
@@ -167,11 +234,11 @@
             });
         }
 
-        function renderGarantia(dados) {
+        function renderGarantiaHTML(dados) {
             const { os, garantia, loja } = dados;
             const createdDate = formatDate(os.createdAt);
 
-            return `
+            const html = `
                 <div class="acoes">
                     <button class="btn-acao" onclick="copiarGarantia()">📋 Copiar Texto</button>
                     <button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir</button>
@@ -219,19 +286,17 @@
                     <p style="margin-top: 10px;">Este é um documento de garantia compartilhado</p>
                 </div>
             `;
+
+            document.getElementById('conteudo').innerHTML = html;
         }
 
         window.copiarGarantia = function() {
-            const osId = getQueryParam('id');
-            const dataStr = localStorage.getItem(`cc_garantia_${osId}`);
-
-            if (!dataStr) {
+            if (!window.garantiaData) {
                 alert('Erro ao copiar garantia');
                 return;
             }
 
-            const dados = JSON.parse(dataStr);
-            const { os, garantia, loja } = dados;
+            const { os, garantia, loja } = window.garantiaData;
             const createdDate = formatDate(os.createdAt);
 
             const texto = `${loja.nome || 'CELL CITY'}\n\nOS: ${os.id}\nData: ${createdDate}\nEquipamento: ${os.model}\nServiço: ${os.defect || 'Não especificado'}\n\nGARANTIA\n\n${garantia.texto}\n\nObrigado pela preferência.`;
@@ -243,30 +308,6 @@
                 setTimeout(() => { btn.textContent = originalText; }, 2000);
             });
         };
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const osId = getQueryParam('id');
-
-            if (!osId) {
-                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não especificada na URL</div>';
-                return;
-            }
-
-            const dataStr = localStorage.getItem(`cc_garantia_${osId}`);
-
-            if (!dataStr) {
-                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Garantia não encontrada. A janela pode ter sido fechada ou o navegador limpo.</div>';
-                return;
-            }
-
-            try {
-                const dados = JSON.parse(dataStr);
-                document.getElementById('conteudo').innerHTML = renderGarantia(dados);
-                document.title = `Garantia ${osId} - Cell City`;
-            } catch (e) {
-                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Erro ao carregar garantia</div>';
-            }
-        });
     </script>
 </body>
 </html>
