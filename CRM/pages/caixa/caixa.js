@@ -595,6 +595,40 @@ async function forcarResumoLiveManual() {
     await atualizarResumosLive("manual");
 }
 
+async function corrigirMigracaoLucroSaidas() {
+    if (!confirm('⚠️ MIGRAÇÃO: Inverter sinal de lucro para TODAS as saídas?\n\nEsta ação é IRREVERSÍVEL.\n\nClique OK para confirmar.')) return;
+    console.log('🔄 [MIGRAÇÃO] Iniciando correção de lucro para saídas...');
+    let totalAtualizado = 0;
+    let totalErro = 0;
+    try {
+        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+        const saidas = snap.docs.filter(d => d.data().tipo === 'saida');
+        console.log(`📊 [MIGRAÇÃO] Encontradas ${saidas.length} saídas para corrigir`);
+        for (const docSnap of saidas) {
+            const dados = docSnap.data();
+            const lucroAnterior = dados.lucro || 0;
+            const lucroNovo = -lucroAnterior;
+            try {
+                await updateDoc(doc(db, COLLECTION_LANCAMENTOS, docSnap.id), { lucro: lucroNovo });
+                totalAtualizado++;
+                console.log(`✅ ID ${docSnap.id}: ${lucroAnterior} → ${lucroNovo}`);
+            } catch (err) {
+                totalErro++;
+                console.error(`❌ ID ${docSnap.id}: ${err.message}`);
+            }
+        }
+        console.log(`🔄 [MIGRAÇÃO] Concluída: ${totalAtualizado} ✅, ${totalErro} ❌`);
+        showToast(`✅ Migração: ${totalAtualizado} saídas corrigidas, ${totalErro} erros`);
+        ultimoResumoLiveExecutado = 0;
+        await atualizarResumosLive("migracaoLucro");
+    } catch (error) {
+        console.error('❌ [MIGRAÇÃO] Erro:', error);
+        showToast('❌ Erro na migração: ' + error.message);
+    }
+}
+
+window.corrigirMigracaoLucroSaidas = corrigirMigracaoLucroSaidas;
+
 // ═══════════════════════════════════════════════════════════════
 // 💼 LÓGICA OPERACIONAL (CRUD - MANTIDA IGUAL)
 // ═══════════════════════════════════════════════════════════════
@@ -760,7 +794,8 @@ function selecionarTipoEdicao(tipo) {
 function calcularLucro() {
     const v = parseFloat(document.getElementById('valor')?.value || 0);
     const c = parseFloat(document.getElementById('custo')?.value || 0);
-    const l = v - c;
+    let l = v - c;
+    if (tipoSelecionado === 'saida') l = -l;
     const li = document.getElementById('lucroAuto');
     const ap = document.getElementById('alertaPrejuizo');
     if (li) li.value = l >= 0 ? `R$ ${l.toFixed(2)}` : `- R$ ${Math.abs(l).toFixed(2)}`;
@@ -770,7 +805,8 @@ function calcularLucro() {
 function calcularLucroEdicao() {
     const v = parseFloat(document.getElementById('editValor')?.value || 0);
     const c = parseFloat(document.getElementById('editCusto')?.value || 0);
-    const l = v - c;
+    let l = v - c;
+    if (tipoSelecionadoEdicao === 'saida') l = -l;
     const li = document.getElementById('editLucroAuto');
     if (li) li.value = l >= 0 ? `R$ ${l.toFixed(2)}` : `- R$ ${Math.abs(l).toFixed(2)}`;
 }
@@ -814,7 +850,8 @@ function getNumeroSemana(data) {
 async function salvarLancamento() {
     const valor = parseFloat(document.getElementById('valor')?.value || 0);
     const custo = parseFloat(document.getElementById('custo')?.value || 0);
-    const lucro = valor - custo;
+    let lucro = valor - custo;
+    if (tipoSelecionado === 'saida') lucro = -lucro;
     const t = criarEstruturaTemporal();
     
     const dados = {
@@ -1042,8 +1079,10 @@ async function salvarEdicao() {
     if (!orig) return showToast('❌ Lançamento não encontrado');
     const nv = parseFloat(document.getElementById('editValor').value || 0);
     const nc = parseFloat(document.getElementById('editCusto').value || 0);
+    let lucroCalc = nv - nc;
+    if (tipoSelecionadoEdicao === 'saida') lucroCalc = -lucroCalc;
     const dados = { tipo: tipoSelecionadoEdicao, descricao: document.getElementById('editDescricao').value.trim(),
-        categoria: document.getElementById('editCategoria').value, valor: nv, custo: nc, lucro: nv - nc };
+        categoria: document.getElementById('editCategoria').value, valor: nv, custo: nc, lucro: lucroCalc };
     const erro = validarLancamento(dados);
     if (erro) return showToast(`⚠️ ${erro}`);
     const oldData = { tipo: orig.tipo, descricao: orig.descricao, categoria: orig.categoria, valor: orig.valor, custo: orig.custo, lucro: orig.lucro };
