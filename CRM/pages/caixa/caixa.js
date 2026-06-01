@@ -1087,16 +1087,23 @@ function renderizarCardMovimentacao(l) {
     const vc = l.tipo === 'entrada' ? 'valor-entrada' : l.tipo === 'saida' ? 'valor-saida' : 'valor-servico';
     const tc = `tag-${l.tipo}`;
     const ue = l.editHistory?.length > 0 ? l.editHistory[l.editHistory.length - 1] : null;
+    // Quando há custo em entrada/serviço: mostra o LÍQUIDO em destaque + a conta "Venda − Custo"
+    const temCusto = (l.custo || 0) > 0 && l.tipo !== 'saida';
+    const liquido = l.lucro || 0;
+    const valorTopo = temCusto
+        ? `${liquido < 0 ? '-' : '+'} ${formatarMoeda(Math.abs(liquido))}`
+        : `${l.tipo === 'saida' ? '-' : '+'} ${formatarMoeda(l.valor)}`;
     return `
         <div class="movimentacao-card">
             <div class="movimentacao-header">
                 <div class="movimentacao-descricao">${l.descricao}</div>
-                <div class="movimentacao-valor ${vc}">${l.tipo === 'saida' ? '-' : '+'} ${formatarMoeda(l.valor)}</div>
+                <div class="movimentacao-valor ${vc}">${valorTopo}</div>
             </div>
+            ${temCusto ? `<div class="movimentacao-conta">Venda ${formatarMoeda(l.valor)} − Custo ${formatarMoeda(l.custo)} = Líquido ${formatarMoeda(liquido)}</div>` : ''}
             <div class="movimentacao-info">
                 <span class="tag ${tc}">${l.tipo}</span>
                 <span class="tag tag-categoria">${l.categoria}</span>
-                ${l.lucro !== undefined ? `<span class="tag" style="background:rgba(33,150,243,0.15);color:#60a5fa;">Lucro: ${formatarMoeda(l.lucro)}</span>` : ''}
+                ${(!temCusto && l.lucro !== undefined) ? `<span class="tag" style="background:rgba(33,150,243,0.15);color:#60a5fa;">Lucro: ${formatarMoeda(l.lucro)}</span>` : ''}
                 <div class="movimentacao-acoes">
                     <button class="btn-acao btn-editar" onclick="editarLancamento('${l.id}')" title="Editar">✏️</button>
                     <button class="btn-acao btn-excluir" onclick="excluirLancamento('${l.id}')" title="Excluir">🗑️</button>
