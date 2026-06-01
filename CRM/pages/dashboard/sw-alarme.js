@@ -226,10 +226,17 @@ async function iniciarRelogioBackground(config) {
 
   // Sincroniza com Firebase a cada 5 minutos
   intervaloSincronizacao = setInterval(() => {
+    console.log('🔄 [SW] Sincronizando com Firebase (5 min)...');
     sincronizarComFirebase();
   }, 300000); // 5 minutos
 
-  // Verificação a cada segundo (suporta múltiplos alarmes)
+  // PRIMEIRO sync imediato
+  setTimeout(() => sincronizarComFirebase(), 1000);
+
+  // Verificação A CADA SEGUNDO (suporta múltiplos alarmes)
+  console.log('⏱️ [SW] Iniciando verificação de alarmes a cada 1 segundo');
+  let ultimoMinutoVerificado = -1;
+
   intervaloRelogio = setInterval(() => {
     const agora = new Date();
     const diaAtual = agora.getDay();
@@ -237,8 +244,15 @@ async function iniciarRelogioBackground(config) {
     const mAtual = agora.getMinutes();
     const horaAtualFormatada = String(hAtual).padStart(2, '0') + ':' + String(mAtual).padStart(2, '0');
 
+    // Log apenas a cada mudança de minuto (para não poluir logs)
+    if (mAtual !== ultimoMinutoVerificado) {
+      console.log(`⏰ [SW] Verificando alarmes às ${horaAtualFormatada}`);
+      ultimoMinutoVerificado = mAtual;
+    }
+
     // Verifica cada alarme
     const alarmes = configAtual?.alarmes || [];
+    if (alarmes.length === 0) return;
 
     alarmes.forEach(alarme => {
       if (!alarme.ativo) return;
@@ -258,29 +272,38 @@ async function iniciarRelogioBackground(config) {
 
           console.log(`🔔 [SW] ALARME! ${horaInicioFormatada} - ${alarme.anotacao}`);
 
-          // Função para disparar notificação
-          const dispararAlarme = () => {
-            self.registration.showNotification('🔔 ALARME', {
-              body: `${horaInicioFormatada} - ${alarme.anotacao}`,
-              icon: '/CRM/assets/logo.png',
-              badge: '/CRM/assets/logo.png',
-              tag: 'alarme-disparo',
-              requireInteraction: true,
-              actions: [
-                { action: 'abrir', title: '👀 Abrir' },
-                { action: 'fechar', title: '✕ Fechar' }
-              ]
-            });
+          // Função para disparar notificação COM SOM
+          const dispararAlarme = async () => {
+            try {
+              // Mostra notificação persistente
+              await self.registration.showNotification('🔔 ALARME - OS NOVA', {
+                body: `⏰ ${horaInicioFormatada} - ${alarme.anotacao}`,
+                icon: '/CRM/assets/logo.png',
+                badge: '/CRM/assets/logo.png',
+                tag: 'alarme-disparo',
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200],
+                actions: [
+                  { action: 'abrir', title: '👀 Abrir App' },
+                  { action: 'fechar', title: '⏹️ Parar' }
+                ]
+              });
 
-            self.clients.matchAll().then(clients => {
+              console.log('📢 [SW] Notificação exibida com vibração');
+
+              // Envia mensagem a todos os clientes (tabs abertas)
+              const clients = await self.clients.matchAll();
               clients.forEach(client => {
                 client.postMessage({
-                  tipo: 'alarmeDisparat',
+                  tipo: 'alarmeDisparou',
                   hora: horaInicioFormatada,
-                  anotacao: alarme.anotacao
+                  anotacao: alarme.anotacao,
+                  repeticao: alarme.repeticao
                 });
               });
-            });
+            } catch (e) {
+              console.error('❌ [SW] Erro ao disparar alarme:', e);
+            }
           };
 
           // Dispara primeira vez

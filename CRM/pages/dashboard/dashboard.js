@@ -935,6 +935,31 @@ class Dashboard {
     let atualizandoDoFirebase = false;
     let alarmes = []; // Array de múltiplos alarmes
 
+    // ===== LISTENER PARA MENSAGENS DO SERVICE WORKER =====
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const { tipo, hora, anotacao, repeticao } = event.data;
+
+        if (tipo === 'alarmeDisparou') {
+          console.log(`📢 Alarme disparou às ${hora}: ${anotacao}`);
+          atualizarDebug(`🔔 ALARME! ${hora} - ${anotacao}`);
+
+          // Toca o som do alarme no app se ele estiver aberto
+          const volume = (inputVolume?.value || 80) / 100;
+          gerarSomAlarme(10, volume);
+
+          // Foco na janela se estiver minimizada
+          window.focus();
+
+          // Vibração no Android
+          if ('vibrate' in navigator) {
+            navigator.vibrate([200, 100, 200, 100, 200]);
+          }
+        }
+      });
+      console.log('✅ Listener de mensagens do Service Worker configurado');
+    }
+
     const atualizarDebug = (msg) => {
       const agora = new Date();
       const hora = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') + ':' + String(agora.getSeconds()).padStart(2, '0');
@@ -1077,9 +1102,8 @@ class Dashboard {
         `;
       }).join('');
 
-      console.log('📝 HTML gerado:', html.substring(0, 100), '... Total chars:', html.length);
       lista.innerHTML = html;
-      console.log('✅ innerHTML atualizado. Lista altura:', lista.offsetHeight);
+      console.log('✅ Lista renderizada com', alarmes.length, 'alarme(s)');
     };
 
     // Salvar alarmes em Firebase
@@ -1100,24 +1124,47 @@ class Dashboard {
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
       console.log('✅ Salvo no localStorage');
 
-      // 📤 ENVIA AO SERVICE WORKER
-      if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({
-          tipo: 'atualizarConfig',
-          config: config,
-          timestamp: Date.now()
-        });
-      }
+      // 📤 ENVIA AO SERVICE WORKER (INICIA MONITORAMENTO)
+      const enviarAoServiceWorker = () => {
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            tipo: 'atualizarConfig',
+            config: config,
+            timestamp: Date.now()
+          });
+          console.log('📤 Config enviada ao Service Worker com alarmes ativas');
+        }
+      };
 
       // Salva no Firebase
       try {
         const { setDoc } = await import('../../scripts/firebase.js');
         const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         const docRef = doc(db, 'alarme_config', userId);
-        await setDoc(docRef, config, { merge: true });
+
+        // Inclui informação de dispositivo para rastrear sincronização
+        const configComMetadata = {
+          ...config,
+          ultimaAtualizacao: {
+            timestamp: Date.now(),
+            dispositivo: navigator.userAgent.substring(0, 100),
+            seuUserId: userId
+          }
+        };
+
+        await setDoc(docRef, configComMetadata, { merge: true });
+        console.log('✅ Salvo no Firebase - URL:', `alarme_config/${userId}`);
         atualizarDebug('☁️ Alarmes sincronizados com Firebase');
+
+        // Aguarda um pouco para garantir que Firebase atualizou
+        setTimeout(() => {
+          enviarAoServiceWorker();
+        }, 300);
       } catch (e) {
-        console.warn('Erro ao sincronizar:', e);
+        console.error('❌ Erro ao sincronizar Firebase:', e);
+        atualizarDebug(`❌ Erro Firebase: ${e.message}`);
+        // Mesmo com erro, tenta avisar o SW
+        enviarAoServiceWorker();
       }
     };
 
@@ -1229,23 +1276,60 @@ class Dashboard {
 
         if (unsubscribeFirebase) unsubscribeFirebase();
 
+        console.log('🔄 Configurando listener Firebase para:', userId);
+
         unsubscribeFirebase = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
             const configFirebase = snapshot.data();
-            atualizandoDoFirebase = true;
+            const timestamp = configFirebase.ultimaAtualizacao?.timestamp || Date.now();
+            const dispositivoRemoto = configFirebase.ultimaAtualizacao?.dispositivo || 'Outro dispositivo';
 
-            atualizarUiComConfig(configFirebase);
-            localStorage.setItem('alarme_os_config', JSON.stringify(configFirebase));
-            atualizarLabels();
+            console.log('📡 Alteração detectada do Firebase:', dispositivoRemoto);
 
-            const dispositivo = configFirebase.dispositivo || 'Outro dispositivo';
-            atualizarDebug(`🔄 Sincronizado de: ${dispositivo}`);
+            // Verifica se é uma atualização do mesmo dispositivo
+            const ehDoMesmDispositivo = dispositivoRemoto.includes(navigator.userAgent.substring(0, 30));
 
-            atualizandoDoFirebase = false;
+            if (!ehDoMesmDispositivo && !atualizandoDoFirebase) {
+              // Vem de outro dispositivo, atualiza!
+              console.log('🔄 Recebendo alteração de outro dispositivo - sincronizando...');
+              atualizandoDoFirebase = true;
+
+              // Atualiza a lista de alarmes
+              if (configFirebase.alarmes && Array.isArray(configFirebase.alarmes)) {
+                alarmes = configFirebase.alarmes;
+                console.log('✅ Alarmes atualizados:', alarmes.length);
+              }
+
+              atualizarUiComConfig(configFirebase);
+              localStorage.setItem('alarme_os_config', JSON.stringify(configFirebase));
+              renderizarAlarmes();
+              atualizarLabels();
+
+              atualizarDebug(`🔄 Sincronizado de outro dispositivo! ${alarmes.length} alarmes`);
+
+              // Avisa o Service Worker sobre a mudança
+              if (navigator.serviceWorker?.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                  tipo: 'atualizarConfig',
+                  config: configFirebase,
+                  timestamp: timestamp
+                });
+              }
+
+              atualizandoDoFirebase = false;
+            } else {
+              // É do próprio dispositivo, só atualiza timestamp
+              console.log('✓ Confirmação da própria sincronização');
+            }
+          } else {
+            console.log('📭 Nenhuma config no Firebase ainda');
           }
+        }, (error) => {
+          console.error('❌ Erro ao escutar Firebase:', error);
+          atualizarDebug(`❌ Erro sincronização: ${error.message}`);
         });
 
-        atualizarDebug('☁️ Sincronização ativada');
+        atualizarDebug('☁️ Sincronização ativa - monitorando alterações');
       } catch (e) {
         console.warn('Erro sincronização Firebase:', e);
       }
@@ -1396,12 +1480,54 @@ class Dashboard {
     window.abrirAlarme = abrirAlarme;
     window.removerAlarme = removerAlarme;
     window.openAlarmePanel = () => {
+      const estava_oculto = panel.style.display === 'none';
       panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+
+      // Se estava oculto e agora abriu, re-renderiza a lista
+      if (estava_oculto && panel.style.display === 'flex') {
+        console.log('📂 Painel aberto, re-renderizando lista...');
+        setTimeout(() => renderizarAlarmes(), 50);
+      }
+    };
+
+    // DEBUG: Função para ver status de sincronização
+    window.statusAlarme = () => {
+      const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+      const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+      console.log('=== STATUS DO ALARME ===');
+      console.log('User ID:', userId);
+      console.log('Alarmes salvos:', alarmes.length);
+      console.log('Últimas alteração:', config.ultimaAtualizacao?.timestamp);
+      console.log('Dispositivo:', config.ultimaAtualizacao?.dispositivo);
+      console.log('Service Worker ativo:', !!navigator.serviceWorker?.controller);
+      console.log('========================');
+      return { userId, alarmes: alarmes.length, config };
     };
 
     carregarConfiguracao();
     carregarAlarmes();
-    sincronizarComFirebase();
+
+    // Aguarda um pouco para garantir que alarmes foram carregados
+    setTimeout(() => {
+      console.log('⏱️ Iniciando sincronização com Firebase...');
+      sincronizarComFirebase();
+
+      // Ativa o Service Worker com os alarmes carregados
+      if (navigator.serviceWorker?.controller && alarmes.length > 0) {
+        const config = {
+          alarmes: alarmes,
+          atualizadoEm: new Date().toISOString(),
+          dispositivo: navigator.userAgent.substring(0, 50)
+        };
+        navigator.serviceWorker.controller.postMessage({
+          tipo: 'atualizarConfig',
+          config: config,
+          timestamp: Date.now()
+        });
+        console.log('🚀 Service Worker ativado com', alarmes.length, 'alarmes');
+        atualizarDebug(`🚀 Monitorando ${alarmes.length} alarmes em background`);
+      }
+    }, 500);
 
     // Botão adicionar usa onclick direto no HTML agora
     console.log('✅ Alarme setup completo - adicionarAlarme exposta no window');
