@@ -905,6 +905,8 @@ class Dashboard {
     let intervaloVerificacao = null;
     let intervaloRelogio = null;
     let ultimoDisparo = null;
+    let unsubscribeFirebase = null;
+    let atualizandoDoFirebase = false;
 
     const atualizarDebug = (msg) => {
       const agora = new Date();
@@ -913,7 +915,9 @@ class Dashboard {
       console.log(msg);
     };
 
-    const salvarConfiguracao = () => {
+    const salvarConfiguracao = async () => {
+      if (atualizandoDoFirebase) return; // Evita loop infinito
+
       const config = {
         ativo: toggleAtivo.checked,
         horaInicio: inputHoraInicio.value,
@@ -922,9 +926,24 @@ class Dashboard {
         anotacao: inputAnotacao.value,
         dias: Array.from(diasChecks)
           .filter(c => c.checked)
-          .map(c => parseInt(c.value))
+          .map(c => parseInt(c.value)),
+        atualizadoEm: new Date().toISOString(),
+        dispositivo: navigator.userAgent.substring(0, 50)
       };
+
+      // Salva localmente
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
+
+      // Salva no Firebase
+      try {
+        const { setDoc } = await import('../../scripts/firebase.js');
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+        const docRef = doc(db, 'alarme_config', userId);
+        await setDoc(docRef, config, { merge: true });
+        atualizarDebug('☁️ Config sincronizada com Firebase');
+      } catch (e) {
+        console.warn('Erro ao sincronizar:', e);
+      }
     };
 
     const atualizarHoraDispositivo = () => {
@@ -970,6 +989,12 @@ class Dashboard {
 
     const carregarConfiguracao = () => {
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+      atualizarUiComConfig(config);
+      atualizarLabels();
+      atualizarHoraDispositivo();
+    };
+
+    const atualizarUiComConfig = (config) => {
       if (config.ativo !== undefined) toggleAtivo.checked = config.ativo;
       if (config.horaInicio) inputHoraInicio.value = config.horaInicio;
       if (config.horaFim) inputHoraFim.value = config.horaFim;
@@ -978,8 +1003,36 @@ class Dashboard {
       if (config.dias && config.dias.length > 0) {
         diasChecks.forEach(c => c.checked = config.dias.includes(parseInt(c.value)));
       }
-      atualizarLabels();
-      atualizarHoraDispositivo();
+    };
+
+    const sincronizarComFirebase = async () => {
+      try {
+        const { onSnapshot } = await import('../../scripts/firebase.js');
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+        const docRef = doc(db, 'alarme_config', userId);
+
+        if (unsubscribeFirebase) unsubscribeFirebase();
+
+        unsubscribeFirebase = onSnapshot(docRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const configFirebase = snapshot.data();
+            atualizandoDoFirebase = true;
+
+            atualizarUiComConfig(configFirebase);
+            localStorage.setItem('alarme_os_config', JSON.stringify(configFirebase));
+            atualizarLabels();
+
+            const dispositivo = configFirebase.dispositivo || 'Outro dispositivo';
+            atualizarDebug(`🔄 Sincronizado de: ${dispositivo}`);
+
+            atualizandoDoFirebase = false;
+          }
+        });
+
+        atualizarDebug('☁️ Sincronização ativada');
+      } catch (e) {
+        console.warn('Erro sincronização Firebase:', e);
+      }
     };
 
     const atualizarLabels = () => {
@@ -1115,6 +1168,7 @@ class Dashboard {
     };
 
     carregarConfiguracao();
+    sincronizarComFirebase();
 
     toggleAtivo.addEventListener('change', async () => {
       atualizarLabels();
@@ -1156,13 +1210,13 @@ class Dashboard {
       }
     });
 
-    inputHoraInicio.addEventListener('change', () => {
-      salvarConfiguracao();
+    inputHoraInicio.addEventListener('change', async () => {
+      await salvarConfiguracao();
       atualizarDebug(`⏰ Início: ${inputHoraInicio.value}`);
     });
 
-    inputHoraFim.addEventListener('change', () => {
-      salvarConfiguracao();
+    inputHoraFim.addEventListener('change', async () => {
+      await salvarConfiguracao();
       atualizarDebug(`⏰ Fim: ${inputHoraFim.value}`);
     });
 
