@@ -18,9 +18,28 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
     padding:10px 16px;
     display:flex; align-items:center; justify-content:center;
     backdrop-filter:blur(16px); min-height:54px;
+    position: relative;
 }
 .fin-header::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--green),transparent); opacity:.6; }
-h1 { font-size:18px; font-weight:800; text-align:center; }
+h1 { font-size:18px; font-weight:800; text-align:center; flex: 1; }
+.fin-toggle-busca {
+    position: absolute;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 200ms, transform 200ms;
+    font-weight: 600;
+}
+.fin-toggle-busca:hover {
+    color: var(--green-light);
+}
+.fin-toggle-busca.expanded {
+    transform: rotate(45deg);
+}
 
 /* TOP BAR (busca + resumo) */
 .fin-top-bar {
@@ -29,6 +48,14 @@ h1 { font-size:18px; font-weight:800; text-align:center; }
     padding: 10px 16px 14px;
     backdrop-filter: blur(8px);
     position: sticky; top: 54px; z-index: 90;
+    max-height: 200px;
+    overflow: hidden;
+    transition: max-height 300ms ease;
+}
+.fin-top-bar.fin-busca-collapsed {
+    max-height: 0;
+    padding: 0 16px;
+    border-bottom: none;
 }
 .fin-busca-row { display:flex; gap:8px; max-width:800px; margin:0 auto 12px; }
 .fin-busca {

@@ -1144,14 +1144,16 @@ document.addEventListener('click', e => {
     }
 });
 
-// Hook no salvarLancamento para perguntar sobre estoque
+// Hook no salvarLancamento para perguntar sobre estoque (apenas categoria Vendas)
 const _salvarLancamentoOriginal = window.salvarLancamento;
 window.salvarLancamento = async function() {
     const descricao = document.getElementById('descricao')?.value.trim() || '';
+    const categoria = document.getElementById('categoria')?.value || '';
     await _salvarLancamentoOriginal();
     // Verifica se após salvar a descrição foi limpada (indica sucesso)
     const descDepois = document.getElementById('descricao')?.value.trim() || '';
     if (descDepois !== '' || !descricao) return; // não salvou ou estava vazio
+    if (categoria !== 'Vendas') return; // só pergunta sobre estoque em vendas
     // Se não havia item selecionado do estoque, pergunta se quer criar
     if (!_ultimoItemSelecionado) {
         const produtos = await _carregarProdutosEstoque();

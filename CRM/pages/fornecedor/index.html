@@ -9,15 +9,16 @@
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
-    <header class="header" id="mainHeader">
-        <h1 style="text-align:center;width:100%;">🏭 Fornecedor</h1>
+    <header class="header forn-header-compact" id="mainHeader">
+        <h1>🏭 Fornecedor</h1>
+        <button class="forn-toggle-busca" id="forn-toggle-busca" title="Mostrar/ocultar busca">＋</button>
     </header>
 
-    <!-- BUSCA GLOBAL (abaixo do título, acima das abas) -->
-    <div class="forn-busca-wrap">
+    <!-- BUSCA GLOBAL (colapsável) -->
+    <div class="forn-busca-wrap forn-busca-collapsed" id="forn-busca-wrap">
         <div class="forn-busca-row">
+            <button class="forn-btn-listar" id="forn-btn-listar">Limpar Tudo</button>
             <input type="search" id="forn-busca-global" class="forn-busca-input" placeholder="🔍 Buscar item na lista de compras...">
-            <button class="forn-btn-listar" id="forn-btn-listar">Listar Tudo</button>
         </div>
     </div>
 

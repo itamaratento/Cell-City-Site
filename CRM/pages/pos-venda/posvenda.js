@@ -283,9 +283,9 @@ function openWhatsApp(phone, name, model, prazo) {
     const cleanPhone = (phone || '').replace(/\D/g, '');
     if (!cleanPhone) { showToast('⚠️ Telefone não cadastrado'); return; }
     const msgs = {
-        5:  `Olá ${name}! Tudo bem com seu ${model}? Passando para saber se ficou tudo certo com o serviço. Cell City 😊`,
-        15: `Olá ${name}! Tudo bem? Alguma dúvida ou problema com seu ${model}? Estamos à disposição. Cell City`,
-        30: `Olá ${name}! Já faz um mês do serviço do seu ${model}. Que tal uma revisão gratuita? Agende com a gente! Cell City`
+        5:  `Olá ${name}, como está o funcionamento do ${model}? Precisa de ajuda?`,
+        15: `Olá ${name}, estamos com uma oferta especial para você. Gostaria de saber?`,
+        30: `Olá ${name}, sua garantia está perto do fim. Agende uma revisão.`
     };
     const msg = msgs[prazo] || msgs[5];
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');

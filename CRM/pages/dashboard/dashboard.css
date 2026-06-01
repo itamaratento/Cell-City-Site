@@ -1059,6 +1059,7 @@ body {
   gap: 0;
   height: auto !important;
   align-self: stretch;
+  min-height: 160px;
   padding: 14px 16px 6px;
   cursor: default;
   background: linear-gradient(160deg, rgba(0,200,83,0.07) 0%, var(--bg-surface) 55%, rgba(0,0,0,0.15) 100%);
@@ -1108,9 +1109,9 @@ body {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 6px;
+  gap: 12px;
   min-height: 0;
-  padding: 4px 0;
+  padding: 10px 0;
 }
 
 .alert-icon {
@@ -1127,22 +1128,23 @@ body {
   color: var(--cell-green-light);
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  line-height: 1.2;
+  line-height: 1.4;
   text-shadow: 0 0 14px rgba(0, 200, 83, 0.5);
 }
 
 .alert-subtitle {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
-  line-height: 1.3;
+  line-height: 1.4;
   margin-top: 2px;
 }
 
 .alert-detail {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-tertiary);
+  line-height: 1.4;
   margin-top: 2px;
 }
 
@@ -1162,7 +1164,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
 }
 
 .alert-cat-icon {

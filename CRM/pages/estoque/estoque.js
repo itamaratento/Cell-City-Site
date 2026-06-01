@@ -37,6 +37,22 @@ function toast(msg) {
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
 }
 
+// ── toggle busca ───────────────────────────────────────────────────
+const toggleBuscaBtn = document.getElementById('est-toggle-busca');
+const toolbarEl = document.getElementById('est-toolbar');
+toggleBuscaBtn?.addEventListener('click', () => {
+    toolbarEl.classList.toggle('est-toolbar-collapsed');
+    toggleBuscaBtn.classList.toggle('expanded');
+});
+
+// ── toggle lista produtos ───────────────────────────────────────────
+const toggleListaBtn = document.getElementById('est-lista-toggle');
+const catsContainer = document.getElementById('est-cats-container');
+toggleListaBtn?.addEventListener('click', () => {
+    catsContainer.classList.toggle('collapsed');
+    toggleListaBtn.classList.toggle('collapsed');
+});
+
 // ── carregar ───────────────────────────────────────────────────────
 async function carregar() {
     try {
@@ -106,17 +122,30 @@ function render(lista) {
             const badges = baixo ? `<span class="est-cat-badge-alerta">${baixo} baixo</span>` : '';
             return `
             <div class="est-cat-group">
-                <div class="est-cat-header">
+                <div class="est-cat-header expanded" data-cat="${cat}">
+                    <span class="est-cat-toggle">＋</span>
                     <span class="est-cat-icon">${icon}</span>
                     <span class="est-cat-nome">${escHtml(cat)}</span>
                     <span class="est-cat-count">${itens.length}</span>
                     ${badges}
                 </div>
-                <div class="est-cat-lista">
+                <div class="est-cat-lista" data-cat="${cat}">
                     ${itens.map(p => renderCard(p, fmt)).join('')}
                 </div>
             </div>`;
         }).join('');
+
+    // Toggle de categorias
+    container.querySelectorAll('.est-cat-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const cat = header.dataset.cat;
+            const lista = container.querySelector(`.est-cat-lista[data-cat="${cat}"]`);
+            if (lista) {
+                header.classList.toggle('expanded');
+                lista.classList.toggle('collapsed');
+            }
+        });
+    });
 
     // eventos dos cards
     container.querySelectorAll('[data-edit]').forEach(btn => {

@@ -46,6 +46,24 @@ body {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;
 }
+.est-toggle-busca {
+    position: absolute;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 200ms, transform 200ms;
+    font-weight: 600;
+}
+.est-toggle-busca:hover {
+    color: var(--green-light);
+}
+.est-toggle-busca.expanded {
+    transform: rotate(45deg);
+}
 
 #crm-brand-bar .crm-page-title {
     flex: 1 !important; position: static !important;
@@ -165,12 +183,27 @@ body {
 .est-resumo-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
 .est-resumo-div { width: 1px; background: var(--border); height: 32px; }
 
-/* TOOLBAR */
-.est-toolbar {
+/* TOOLBAR WRAPPER */
+.est-toolbar-wrapper {
     display: flex;
     gap: 10px;
     margin-bottom: 16px;
     align-items: center;
+}
+
+/* TOOLBAR (busca colapsável) */
+.est-toolbar {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex: 1;
+    max-height: 80px;
+    overflow: hidden;
+    transition: max-height 300ms ease;
+}
+.est-toolbar.est-toolbar-collapsed {
+    max-height: 0;
+    flex: 0;
 }
 .est-search {
     flex: 1;
@@ -253,6 +286,53 @@ body {
 }
 .est-btn-cancelar:hover { background: rgba(255,255,255,0.1); }
 
+/* TOGGLE LISTA PRODUTOS */
+.est-lista-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+}
+.est-lista-toggle {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: var(--green-light);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: transform 200ms;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.est-lista-toggle:hover {
+    transform: scale(1.1);
+}
+.est-lista-toggle.collapsed {
+    transform: rotate(45deg);
+}
+.est-lista-titulo {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text2);
+    flex: 1;
+}
+
+/* CONTAINER PRODUTOS */
+.est-cats-container-expanded {
+    max-height: 9999px;
+    overflow: hidden;
+    transition: max-height 300ms ease, opacity 300ms ease;
+    opacity: 1;
+}
+.est-cats-container-expanded.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
 /* GRUPOS DE CATEGORIA */
 .est-cat-group { margin-bottom: 16px; }
 .est-cat-header {
@@ -262,9 +342,27 @@ body {
     padding: 8px 12px;
     background: rgba(255,255,255,0.04);
     border: 1px solid var(--border);
-    border-radius: 10px 10px 0 0;
+    border-radius: 10px;
     font-size: 14px;
     font-weight: 700;
+    cursor: pointer;
+    transition: background 200ms, border-radius 200ms;
+}
+.est-cat-header:hover { background: rgba(255,255,255,0.08); }
+.est-cat-header.expanded {
+    border-radius: 10px 10px 0 0;
+}
+.est-cat-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--green-light);
+    transition: transform 200ms;
+    flex-shrink: 0;
+}
+.est-cat-header.expanded .est-cat-toggle {
+    transform: rotate(45deg);
 }
 .est-cat-icon { font-size: 16px; }
 .est-cat-nome { flex: 1; color: var(--text); }
@@ -283,7 +381,20 @@ body {
     padding: 2px 8px;
     color: #f87171;
 }
-.est-cat-lista { border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; }
+.est-cat-lista {
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    max-height: 2000px;
+    transition: max-height 300ms ease, opacity 300ms ease;
+    opacity: 1;
+}
+.est-cat-lista.collapsed {
+    max-height: 0;
+    opacity: 0;
+    border: none;
+}
 
 /* CARDS DE PRODUTO */
 .est-card {

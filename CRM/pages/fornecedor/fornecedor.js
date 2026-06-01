@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
 
 const COL_COMPRAS    = 'fornecedor_compras';
 const COL_TENDENCIAS = 'fornecedor_tendencias';
@@ -18,6 +18,14 @@ function toast(msg) {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
 }
+
+// ── toggle busca ───────────────────────────────────────────────────
+const toggleBuscaBtn = document.getElementById('forn-toggle-busca');
+const buscaWrap = document.getElementById('forn-busca-wrap');
+toggleBuscaBtn?.addEventListener('click', () => {
+    buscaWrap.classList.toggle('forn-busca-collapsed');
+    toggleBuscaBtn.classList.toggle('expanded');
+});
 
 // ── tabs ───────────────────────────────────────────────────────────
 document.querySelectorAll('.forn-tab').forEach(btn => {
@@ -66,10 +74,12 @@ function renderCompras(itens) {
     const emptyEl = document.getElementById('compras-empty');
     if (!itens.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
     emptyEl.style.display = 'none';
-    listaEl.innerHTML = itens.map(item => `
-        <div class="forn-card">
+    listaEl.innerHTML = itens.map(item => {
+        const feita = item.status === 'feita';
+        return `
+        <div class="forn-card${feita ? ' forn-card--feita' : ''}">
             <div class="forn-card-info">
-                <div class="forn-card-nome">${escHtml(item.nome)}</div>
+                <div class="forn-card-nome">${escHtml(item.nome)}${feita ? ' <span class="forn-badge-feita">✅ feita</span>' : ''}</div>
                 <div class="forn-card-sub">
                     Qtd: <strong>${item.quantidade || 1}</strong>
                     ${item.obs ? ` · ${escHtml(item.obs)}` : ''}
@@ -78,22 +88,20 @@ function renderCompras(itens) {
             <div class="forn-card-dir">
                 <span class="forn-urg">${URGENCIA_ICON[item.urgencia] || '🟡'}</span>
                 <button class="forn-card-edit" data-id="${item.id}" title="Editar">✏️</button>
-                <button class="forn-card-comprado" data-id="${item.id}" title="Marcar como comprado e remover">✓ Comprado</button>
-                <button class="forn-card-del" data-id="${item.id}" title="Excluir">🗑️ Excluir</button>
+                <button class="forn-card-comprado" data-id="${item.id}" title="Comprado — remove da lista">✓ Comprado</button>
+                <button class="forn-card-feita${feita ? ' marcado' : ''}" data-id="${item.id}" data-feita="${feita}" title="${feita ? 'Desmarcar feita' : 'Marcar tarefa como feita'}">${feita ? '↩ Desmarcar' : '✅ Feita'}</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     listaEl.querySelectorAll('.forn-card-edit').forEach(btn => {
         btn.addEventListener('click', () => abrirFormCompraEdicao(btn.dataset.id, todosItensCompra));
     });
     listaEl.querySelectorAll('.forn-card-comprado').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            await excluirCompraById(btn.dataset.id, '✅ Compra concluída! Item removido da lista.');
-        });
+        btn.addEventListener('click', () => excluirCompraById(btn.dataset.id, '✅ Comprado! Item removido da lista.'));
     });
-    listaEl.querySelectorAll('.forn-card-del').forEach(btn => {
-        btn.addEventListener('click', () => excluirCompra(btn.dataset.id));
+    listaEl.querySelectorAll('.forn-card-feita').forEach(btn => {
+        btn.addEventListener('click', () => concluirCompra(btn.dataset.id, btn.dataset.feita === 'true'));
     });
 }
 
@@ -159,6 +167,14 @@ async function excluirCompraById(id, mensagem = '🗑️ Item removido.') {
 async function excluirCompra(id) {
     if (!confirm('Excluir este item da lista de compras?')) return;
     await excluirCompraById(id);
+}
+
+async function concluirCompra(id, jaFeita) {
+    try {
+        await updateDoc(doc(db, COL_COMPRAS, id), { status: jaFeita ? '' : 'feita' });
+        toast(jaFeita ? '↩ Desmarcado.' : '✅ Tarefa marcada como feita!');
+        await carregarCompras();
+    } catch { toast('⚠ Erro ao marcar.'); }
 }
 
 // ── ESTOQUE BAIXO ──────────────────────────────────────────────────
@@ -285,10 +301,14 @@ document.getElementById('ft-cancelar').addEventListener('click', fecharFormTende
 
 // busca global
 document.getElementById('forn-busca-global')?.addEventListener('input', filtrarCompras);
-document.getElementById('forn-btn-listar')?.addEventListener('click', () => {
-    const inp = document.getElementById('forn-busca-global');
-    if (inp) inp.value = '';
-    renderCompras(todosItensCompra);
+document.getElementById('forn-btn-listar')?.addEventListener('click', async () => {
+    if (!todosItensCompra.length) { toast('⚠ Lista já está vazia.'); return; }
+    if (!confirm(`Apagar todos os ${todosItensCompra.length} itens da lista de compras? Esta ação não pode ser desfeita.`)) return;
+    try {
+        await Promise.all(todosItensCompra.map(item => deleteDoc(doc(db, COL_COMPRAS, item.id))));
+        toast('🗑️ Lista limpa com sucesso!');
+        await carregarCompras();
+    } catch { toast('⚠ Erro ao limpar a lista.'); }
 });
 
 document.addEventListener('DOMContentLoaded', carregarCompras);

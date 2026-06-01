@@ -10,7 +10,8 @@
 </head>
 <body>
     <header class="header" id="mainHeader">
-        <h1>📦 Estoque</h1>
+        <h1 style="flex: 1; text-align: center; transform: translateX(-80px);">📦 Estoque</h1>
+        <button class="est-toggle-busca" id="est-toggle-busca" title="Mostrar/ocultar busca">＋</button>
     </header>
 
     <main>
@@ -34,9 +35,11 @@
                 </div>
             </div>
 
-            <!-- TOOLBAR -->
-            <div class="est-toolbar">
-                <input type="search" id="est-search" class="est-search" placeholder="🔍 Buscar produto ou categoria...">
+            <!-- TOOLBAR: BUSCA (colapsável) + BOTÃO NOVO (sempre visível) -->
+            <div class="est-toolbar-wrapper">
+                <div class="est-toolbar est-toolbar-collapsed" id="est-toolbar">
+                    <input type="search" id="est-search" class="est-search" placeholder="🔍 Buscar produto ou categoria...">
+                </div>
                 <button class="est-btn-nova" id="est-btn-novo">＋ Novo Produto</button>
             </div>
 
@@ -92,8 +95,14 @@
                 <span>Carregando estoque...</span>
             </div>
 
+            <!-- TOGGLE LISTA PRODUTOS -->
+            <div class="est-lista-header">
+                <button class="est-lista-toggle" id="est-lista-toggle">＋</button>
+                <span class="est-lista-titulo">Produtos</span>
+            </div>
+
             <!-- CATEGORIAS -->
-            <div id="est-cats-container"></div>
+            <div id="est-cats-container" class="est-cats-container-expanded"></div>
 
             <!-- VAZIO -->
             <div class="est-empty" id="est-empty" style="display:none">

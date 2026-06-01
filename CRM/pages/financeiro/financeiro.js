@@ -26,6 +26,14 @@ function toast(msg) {
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2500);
 }
 
+// ── toggle busca ───────────────────────────────────────────────────
+const toggleBuscaBtn = document.getElementById('fin-toggle-busca');
+const topBar = document.getElementById('fin-top-bar');
+toggleBuscaBtn?.addEventListener('click', () => {
+    topBar.classList.toggle('fin-busca-collapsed');
+    toggleBuscaBtn.classList.toggle('expanded');
+});
+
 // ── tabs (delegated via ativarTab definido abaixo) ─────────────────
 // listeners das 3 abas fixas são adicionados após a definição de ativarTab
 

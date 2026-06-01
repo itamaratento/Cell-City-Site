@@ -197,6 +197,18 @@ h1 { font-size:18px; font-weight:800; }
     white-space: nowrap;
 }
 .forn-card-comprado:hover { background: rgba(0,200,83,0.25); }
+.forn-card--feita { border-color: rgba(0,200,83,0.25); background: rgba(0,200,83,0.04); }
+.forn-badge-feita {
+    font-size: 11px;
+    font-weight: 600;
+    color: #00e676;
+    opacity: 0.8;
+}
+.forn-card-feita.marcado {
+    background: rgba(251,191,36,0.06);
+    border-color: rgba(251,191,36,0.15);
+    color: rgba(251,191,36,0.5);
+}
 .forn-card-del {
     background: rgba(248,113,113,0.1);
     border: 1px solid rgba(248,113,113,0.25);
@@ -211,3 +223,69 @@ h1 { font-size:18px; font-weight:800; }
     white-space: nowrap;
 }
 .forn-card-del:hover { background: rgba(248,113,113,0.2); }
+.forn-card-feita {
+    background: rgba(251,191,36,0.12);
+    border: 1px solid rgba(251,191,36,0.3);
+    border-radius: 8px;
+    color: #fbbf24;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: background 200ms;
+    white-space: nowrap;
+}
+.forn-card-feita:hover { background: rgba(251,191,36,0.25); }
+
+/* HEADER COMPACTO COM BUSCA COLAPSÁVEL */
+.forn-header-compact {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.forn-header-compact h1 {
+    flex: 1;
+    text-align: center;
+}
+.forn-toggle-busca {
+    position: absolute;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--text2);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: color 200ms, transform 200ms;
+    font-weight: 600;
+}
+.forn-toggle-busca:hover {
+    color: var(--green-light);
+}
+.forn-toggle-busca.expanded {
+    transform: rotate(45deg);
+}
+
+/* BUSCA COLAPSÁVEL */
+.forn-busca-wrap {
+    background: rgba(10,12,11,.92);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    backdrop-filter: blur(8px);
+    max-height: 80px;
+    overflow: hidden;
+    transition: max-height 300ms ease;
+}
+.forn-busca-wrap.forn-busca-collapsed {
+    max-height: 0;
+    padding: 0 16px;
+    border-bottom: none;
+}
+.forn-busca-row {
+    display: flex;
+    gap: 8px;
+    max-width: 800px;
+    margin: 0 auto;
+}
