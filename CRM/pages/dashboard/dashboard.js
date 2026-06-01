@@ -863,6 +863,29 @@ class Dashboard {
             scope: '/CRM/'
           });
           console.log('✓ Service Worker Alarme registrado');
+
+          // Registra Background Sync (sincronizar a cada hora)
+          if ('sync' in reg) {
+            try {
+              await reg.sync.register('alarme-sync');
+              console.log('📡 Background Sync registrado');
+            } catch (e) {
+              console.warn('Background Sync:', e);
+            }
+          }
+
+          // Registra Periodic Background Sync (Android) - a cada 60 minutos
+          if ('periodicSync' in reg) {
+            try {
+              await reg.periodicSync.register('alarme-periodico', {
+                minInterval: 60 * 60 * 1000 // 60 minutos
+              });
+              console.log('⏰ Periodic Sync registrado (Android)');
+            } catch (e) {
+              console.warn('Periodic Sync:', e);
+            }
+          }
+
           return reg;
         } catch (e) {
           console.warn('⚠️ Service Worker:', e.message);
@@ -889,10 +912,13 @@ class Dashboard {
     // Envia config para Service Worker
     const enviarConfigSW = (config) => {
       if (navigator.serviceWorker.controller) {
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         navigator.serviceWorker.controller.postMessage({
           tipo: 'iniciarRelogio',
-          config: config
+          config: config,
+          userId: userId
         });
+        console.log('📤 Config enviada ao Service Worker');
       }
     };
 
@@ -1170,6 +1196,33 @@ class Dashboard {
     carregarConfiguracao();
     sincronizarComFirebase();
 
+    // Wake Lock para manter tela acordada
+    const ativarWakeLock = async () => {
+      if ('wakeLock' in navigator) {
+        try {
+          const wakeLock = await navigator.wakeLock.request('screen');
+          atualizarDebug('🔒 Tela será mantida acordada');
+
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake Lock liberado');
+          });
+
+          // Reacquire se página volta do background
+          document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && toggleAtivo.checked) {
+              try {
+                await navigator.wakeLock.request('screen');
+              } catch (e) {
+                console.warn('Erro reacquiring wake lock:', e);
+              }
+            }
+          });
+        } catch (e) {
+          console.warn('Wake Lock não disponível:', e);
+        }
+      }
+    };
+
     toggleAtivo.addEventListener('change', async () => {
       atualizarLabels();
       salvarConfiguracao();
@@ -1179,6 +1232,9 @@ class Dashboard {
         if (!temPermissao) {
           atualizarDebug('⚠️ Notificações bloqueadas. Ative nas config do navegador.');
         }
+
+        // Ativa Wake Lock para manter tela acordada
+        await ativarWakeLock();
 
         atualizarDebug('✓ Alarme ATIVADO - Aguardando horário...');
 
@@ -1281,6 +1337,26 @@ class Dashboard {
           gerarSomAlarme(5, volume);
         }
       });
+
+      // Envia config atualizada ao SW a cada 2 minutos (para manter sincronizado)
+      setInterval(() => {
+        if (toggleAtivo.checked && navigator.serviceWorker.controller) {
+          const config = {
+            ativo: toggleAtivo.checked,
+            horaInicio: inputHoraInicio.value,
+            horaFim: inputHoraFim.value,
+            volume: inputVolume.value,
+            anotacao: inputAnotacao.value,
+            dias: Array.from(diasChecks)
+              .filter(c => c.checked)
+              .map(c => parseInt(c.value))
+          };
+          navigator.serviceWorker.controller.postMessage({
+            tipo: 'atualizarConfig',
+            config: config
+          });
+        }
+      }, 120000); // 2 minutos
     }
   }
 
