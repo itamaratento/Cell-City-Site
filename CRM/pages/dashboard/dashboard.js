@@ -968,6 +968,50 @@ class Dashboard {
       atualizarDebug(`➕ Alarme adicionado: ${novoAlarme.horaInicio}${msgRepeticao}`);
     };
 
+    // Abrir/Editar alarme
+    const abrirAlarme = (id) => {
+      console.log('📂 [DEBUG] Abrindo alarme:', id);
+
+      const alarme = alarmes.find(a => a.id === id);
+      if (!alarme) {
+        console.warn('⚠️ [DEBUG] Alarme não encontrado:', id);
+        atualizarDebug('⚠️ Alarme não encontrado');
+        return;
+      }
+
+      try {
+        // Preenche os campos com dados do alarme
+        inputHoraInicio.value = alarme.horaInicio || '09:00';
+        inputHoraFim.value = alarme.horaFim || '18:00';
+        inputVolume.value = alarme.volume || 80;
+        inputAnotacao.value = alarme.anotacao || 'Alarme';
+
+        // Marca os dias
+        diasChecks.forEach(check => {
+          check.checked = (alarme.dias || []).includes(parseInt(check.value));
+        });
+
+        // Define repetição
+        const inputRepeticao = document.getElementById('alarme-repeticao');
+        if (inputRepeticao) {
+          inputRepeticao.value = alarme.repeticao || 0;
+        }
+
+        atualizarLabels();
+        atualizarDebug(`✏️ Editando: ${alarme.anotacao}`);
+
+        // Scroll para os campos
+        setTimeout(() => {
+          panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+
+        console.log('✅ [DEBUG] Alarme aberto com sucesso:', alarme);
+      } catch (e) {
+        console.error('❌ [DEBUG] Erro ao abrir alarme:', e);
+        atualizarDebug('❌ Erro ao abrir: ' + e.message);
+      }
+    };
+
     // Remover alarme
     const removerAlarme = (id) => {
       alarmes = alarmes.filter(a => a.id !== id);
@@ -989,12 +1033,12 @@ class Dashboard {
       lista.innerHTML = alarmes.map(alarme => {
         const repeticaoText = alarme.repeticao > 0 ? ` 🔁 ${alarme.repeticao}s` : '';
         return `
-          <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+          <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''" onclick="console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
             <div style="flex: 1; font-size: 12px;">
               <strong style="color: var(--cell-green);">${alarme.horaInicio}</strong>${repeticaoText}
               <div style="color: var(--text-tertiary); font-size: 10px;">${alarme.anotacao}</div>
             </div>
-            <button onclick="window.removerAlarme('${alarme.id}')" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 14px;">✕</button>
+            <button onclick="event.stopPropagation(); event.preventDefault(); window.removerAlarme('${alarme.id}'); return false;" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
           </div>
         `;
       }).join('');
@@ -1088,20 +1132,38 @@ class Dashboard {
     };
 
     const carregarConfiguracao = () => {
-      const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
-      atualizarUiComConfig(config);
-      atualizarLabels();
-      atualizarHoraDispositivo();
+      try {
+        if (!toggleAtivo || !inputHoraInicio) {
+          console.warn('⚠️ Elementos ainda não carregados, pulando carregarConfiguracao');
+          return;
+        }
+        const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+        atualizarUiComConfig(config);
+        atualizarLabels();
+        atualizarHoraDispositivo();
+      } catch (e) {
+        console.error('❌ Erro ao carregar configuração:', e);
+      }
     };
 
     const atualizarUiComConfig = (config) => {
-      if (config.ativo !== undefined) toggleAtivo.checked = config.ativo;
-      if (config.horaInicio) inputHoraInicio.value = config.horaInicio;
-      if (config.horaFim) inputHoraFim.value = config.horaFim;
-      if (config.volume) inputVolume.value = config.volume;
-      if (config.anotacao) inputAnotacao.value = config.anotacao;
-      if (config.dias && config.dias.length > 0) {
-        diasChecks.forEach(c => c.checked = config.dias.includes(parseInt(c.value)));
+      if (!config) return;
+      if (!toggleAtivo || !inputHoraInicio) {
+        console.warn('⚠️ Elementos não encontrados ao atualizar UI');
+        return;
+      }
+
+      try {
+        if (config.ativo !== undefined && toggleAtivo) toggleAtivo.checked = config.ativo;
+        if (config.horaInicio && inputHoraInicio) inputHoraInicio.value = config.horaInicio;
+        if (config.horaFim && inputHoraFim) inputHoraFim.value = config.horaFim;
+        if (config.volume && inputVolume) inputVolume.value = config.volume;
+        if (config.anotacao && inputAnotacao) inputAnotacao.value = config.anotacao;
+        if (config.dias && config.dias.length > 0 && diasChecks && diasChecks.length > 0) {
+          diasChecks.forEach(c => c.checked = config.dias.includes(parseInt(c.value)));
+        }
+      } catch (e) {
+        console.error('❌ Erro ao atualizar UI:', e);
       }
     };
 
@@ -1267,12 +1329,16 @@ class Dashboard {
       }
     };
 
+    // Exposição global para funções de alarme (ANTES de carregar)
+    window.abrirAlarme = abrirAlarme;
+    window.removerAlarme = removerAlarme;
+    window.openAlarmePanel = () => {
+      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+    };
+
     carregarConfiguracao();
     carregarAlarmes();
     sincronizarComFirebase();
-
-    // Exposição global para remover alarme
-    window.removerAlarme = removerAlarme;
 
     // Botão adicionar
     const btnAdicionar = document.getElementById('alarme-adicionar-btn');
@@ -1489,6 +1555,13 @@ class Dashboard {
         panel.style.display = 'flex';
         atualizarDebug('⚡ Aberto via atalho');
       }, 500);
+    }
+
+    // Expõe função globalmente se não foi feito ainda
+    if (!window.openAlarmePanel) {
+      window.openAlarmePanel = () => {
+        panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+      };
     }
 
     // Atualiza hora do dispositivo a cada segundo
