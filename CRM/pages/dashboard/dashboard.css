@@ -1187,7 +1187,7 @@ body {
   height: 3px;
   background: rgba(255,255,255,0.06);
   border-radius: 0 0 12px 12px;
-  margin: 8px -16px 0;
+  margin: 8px 0 0 0;
   overflow: hidden;
 }
 
@@ -1713,11 +1713,11 @@ body {
   .workspace { padding: 20px 16px 140px; }
   .calendar-popup { left: 16px; right: 16px; width: auto; }
   .brand-header-subtitle { display: none; }
-  .ops-block { grid-template-columns: 1fr; gap: 20px; }
-  .module-card { padding: 14px; }
+  .ops-block { grid-template-columns: 1fr; gap: 30px; }
+  .module-card { padding: 14px; margin-bottom: 20px; }
   .module-icon { width: 40px; height: 40px; font-size: 18px; }
-  .alerts-card { min-height: 320px; }
-  .meta-card { min-height: 280px; }
+  .alerts-card { min-height: 280px; margin-bottom: 30px; }
+  .meta-card { min-height: 220px; margin-bottom: 30px; }
   .alert-title { font-size: 17px; }
   .alert-icon { font-size: 44px; }
   .dock {
@@ -1742,9 +1742,9 @@ body {
 }
 
 @media (max-width: 520px) {
-  .ops-block { grid-template-columns: 1fr; gap: 20px; }
-  .alerts-card { min-height: 340px; }
-  .meta-card { min-height: 300px; }
+  .ops-block { grid-template-columns: 1fr; gap: 30px; }
+  .alerts-card { min-height: 280px; margin-bottom: 30px; }
+  .meta-card { min-height: 220px; margin-bottom: 30px; }
   .meta-current { font-size: 20px; }
   .ai-title { font-size: 12.5px; }
   .ai-subtitle { display: none; }
