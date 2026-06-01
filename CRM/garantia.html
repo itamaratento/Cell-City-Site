@@ -40,16 +40,24 @@
                 }
 
                 const osData = osDoc.data();
+
+                const configDocRef = doc(db, "config", "impressao");
+                const configDoc = await getDoc(configDocRef);
+
                 let cfg = { logo: '', garantias: [], loja: {} };
 
-                try {
-                    const c = localStorage.getItem('cc_config_impressao');
-                    if (c) cfg = JSON.parse(c);
-                } catch (e) {}
+                if (configDoc.exists()) {
+                    cfg = configDoc.data() || { logo: '', garantias: [], loja: {} };
+                } else {
+                    try {
+                        const c = localStorage.getItem('cc_config_impressao');
+                        if (c) cfg = JSON.parse(c);
+                    } catch (e) {}
+                }
 
                 const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
                 if (garantias.length === 0) {
-                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Nenhuma garantia configurada no sistema</div>';
+                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Nenhuma garantia configurada no sistema. Configure as garantias no módulo de impressão do CRM.</div>';
                     return;
                 }
 
