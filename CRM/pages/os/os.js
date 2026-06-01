@@ -581,7 +581,7 @@ function generateWarrantyLink() {
     if (garantias.length === 0) { showToast('⚠️ Nenhuma garantia configurada'); return; }
     const garantia = garantias.find(g => g.padrao) || garantias[0];
     if (!garantia) { showToast('⚠️ Nenhuma garantia disponível'); return; }
-    const dados = { os: { id: os.id, model: os.model, defect: os.defect, createdAt: os.createdAt }, garantia: { texto: garantia.texto }, loja: cfg.loja || {} };
+    const dados = { os: { id: os.id, clientName: os.clientName, phone: os.phone, model: os.model, defect: os.defect, createdAt: os.createdAt }, garantia: { texto: garantia.texto }, loja: cfg.loja || {} };
     localStorage.setItem(`cc_garantia_${os.id}`, JSON.stringify(dados));
     const baseUrl = window.location.origin + '/CRM/garantia?id=' + os.id;
     navigator.clipboard.writeText(baseUrl).then(() => {
