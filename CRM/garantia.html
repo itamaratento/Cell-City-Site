@@ -359,6 +359,21 @@
         function renderGarantiaHTML(dados) {
             const { os, garantia, loja } = dados;
             const createdDate = formatDate(os.createdAt);
+            const createdDateOnly = createdDate.split(' ')[0];
+
+            const logoHtml = loja.logo ? `<div style="text-align:center;margin-bottom:16px;"><img src="${loja.logo}" style="max-height:80px;max-width:220px;object-fit:contain;"></div>` : '';
+
+            const cabecalhoHtml = `
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h1 style="text-align:center;font-size:20px;border-bottom:2px solid #000;padding-bottom:12px;margin:0 0 12px 0;">${loja.nome || 'CELL CITY INFORMÁTICA'}</h1>
+                    ${loja.endereco ? `<p style="text-align:center;font-size:12px;margin:6px 0;color:#1f2937;">${loja.endereco}</p>` : ''}
+                    ${loja.whatsapp ? `<p style="text-align:center;font-size:12px;margin:4px 0;color:#1f2937;">WhatsApp: ${loja.whatsapp}</p>` : ''}
+                    ${loja.cnpj ? `<p style="text-align:center;font-size:12px;margin:4px 0 0 0;color:#1f2937;">CNPJ: ${loja.cnpj}</p>` : ''}
+                </div>
+            `;
+
+            const statusTexto = os.status === 'entregue' ? 'ENTREGUE' : os.status || 'Em processamento';
+            const statusStyle = os.status === 'entregue' ? 'style="font-weight:bold;"' : '';
 
             const html = `
                 <div class="acoes">
@@ -366,33 +381,39 @@
                     <button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir</button>
                 </div>
 
-                <div class="garantia-header">
-                    <div class="garantia-logo">📱</div>
-                    <div class="garantia-titulo">${loja.nome || 'CELL CITY'}</div>
-                    <div class="garantia-subtitulo">Informática</div>
+                <div class="garantia-header" style="border-bottom: none; padding-bottom: 0;">
+                    ${logoHtml}
+                    ${cabecalhoHtml}
                 </div>
 
-                <div class="cliente-info">
-                    <div class="cliente-nome">${os.clientName || 'Cliente'}</div>
-                    ${os.phone ? `<div class="cliente-telefone">📞 ${os.phone}</div>` : ''}
-                </div>
-
-                <div class="garantia-info">
+                <div class="garantia-info" style="border-left: none; background: #ffffff; border: 1px solid #d1d5db; padding: 16px;">
                     <div class="info-row">
-                        <span class="info-label">Ordem de Serviço:</span>
+                        <span class="info-label">O.S.:</span>
                         <span class="info-value">${os.id}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Data:</span>
-                        <span class="info-value">${createdDate}</span>
+                        <span class="info-value">${createdDateOnly}</span>
                     </div>
+                </div>
+
+                <div class="cliente-info" style="text-align: left; border: none; padding: 16px; background: #ffffff; margin-bottom: 16px; border: 1px solid #d1d5db;">
+                    <div style="font-size: 14px; color: #4b5563;"><strong>Cliente:</strong> ${os.clientName || 'Não informado'}</div>
+                    ${os.phone ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>Telefone:</strong> ${os.phone}</div>` : ''}
+                </div>
+
+                <div class="garantia-info" style="border-left: 4px solid #1f2937; background: #f9fafb; padding: 16px;">
                     <div class="info-row">
                         <span class="info-label">Equipamento:</span>
-                        <span class="info-value">${os.model}</span>
+                        <span class="info-value">${os.model || 'Não especificado'}</span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Serviço:</span>
                         <span class="info-value">${os.defect || 'Não especificado'}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value" ${statusStyle}>${statusTexto}</span>
                     </div>
                 </div>
 
@@ -400,13 +421,25 @@
 
                 <div class="garantia-texto">${garantia.texto}</div>
 
-                <div style="text-align: center; margin-bottom: 28px;">
-                    <p style="color: #4b5563; font-size: 14px; margin: 0;">Obrigado pela preferência.</p>
+                <div style="text-align: center; margin-bottom: 28px; padding: 20px; border-top: 2px solid #d1d5db; border-bottom: 2px solid #d1d5db;">
+                    <p style="color: #1f2937; font-size: 13px; margin: 0; line-height: 1.6;">
+                        Declaro ter recebido o aparelho e estar ciente dos termos de garantia.
+                    </p>
+                    <div style="margin-top: 20px; border-top: 1px solid #000; min-height: 60px; padding-top: 8px;">
+                        <p style="margin: 0; color: #1f2937; font-size: 12px; font-weight: 600;">Assinatura do Cliente</p>
+                    </div>
+                    <p style="color: #4b5563; font-size: 12px; margin-top: 16px;">Data da entrega: ___/___/____</p>
                 </div>
 
-                <div class="garantia-rodape">
-                    <p style="margin: 0; font-weight: 600;">Cell City Informática</p>
-                    <p style="margin: 8px 0 0 0; font-size: 11px;">Este é um documento de garantia compartilhado</p>
+                <div style="text-align: center; margin-bottom: 0; padding: 16px; border-top: 1px dashed #d1d5db; background: #f9fafb;">
+                    <p style="color: #4b5563; font-size: 12px; margin: 0; font-style: italic;">
+                        Confira todas as funcionalidades do aparelho antes de deixar a loja.
+                    </p>
+                </div>
+
+                <div class="garantia-rodape" style="border-top: none; margin-top: 20px; padding-top: 0;">
+                    <p style="margin: 0; font-weight: 600; color: #1f2937;">Cell City Informática</p>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #6b7280;">Este é um documento de garantia compartilhado</p>
                 </div>
             `;
 
