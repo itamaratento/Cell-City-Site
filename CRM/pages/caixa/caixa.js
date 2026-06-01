@@ -191,7 +191,7 @@ function gerarHashSnapshot(resumo) {
 // ═══════════════════════════════════════════
 function calcularResumoPeriodo(lancamentosFiltrados) {
     const entradas = lancamentosFiltrados
-        .filter(l => l.tipo === 'entrada')
+        .filter(l => l.tipo === 'entrada' || l.tipo === 'servico')
         .reduce((sum, l) => sum + (l.valor || 0), 0);
     
     const saidas = lancamentosFiltrados
@@ -969,7 +969,7 @@ function renderizarResultadosPesquisa() {
 function atualizarInterface() {
     if (termoPesquisa.trim()) return;
     const f = aplicarFiltros(lancamentos);
-    const e = f.filter(l => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+    const e = f.filter(l => l.tipo === 'entrada' || l.tipo === 'servico').reduce((s, l) => s + l.valor, 0);
     const sa = f.filter(l => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
     const lu = f.reduce((s, l) => s + (l.lucro || 0), 0);
     const elSaldo = document.getElementById('saldoGeral');
