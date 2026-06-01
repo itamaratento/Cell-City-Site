@@ -944,28 +944,45 @@ class Dashboard {
 
     // Adicionar novo alarme
     const adicionarAlarme = () => {
-      const inputRepeticao = document.getElementById('alarme-repeticao');
-      const repeticao = inputRepeticao ? parseInt(inputRepeticao.value) || 0 : 0;
+      console.log('📥 [DEBUG] adicionarAlarme chamado');
 
-      const novoAlarme = {
-        id: Date.now().toString(),
-        ativo: true,
-        horaInicio: inputHoraInicio.value,
-        horaFim: inputHoraFim.value,
-        volume: inputVolume.value,
-        anotacao: inputAnotacao.value || 'Novo Alarme',
-        dias: Array.from(diasChecks)
-          .filter(c => c.checked)
-          .map(c => parseInt(c.value)),
-        repeticao: repeticao // Repetição em segundos
-      };
+      try {
+        if (!inputHoraInicio || !inputAnotacao) {
+          console.warn('⚠️ Elementos não encontrados');
+          atualizarDebug('⚠️ Elementos não carregados');
+          return;
+        }
 
-      alarmes.push(novoAlarme);
-      salvarAlarmes();
-      renderizarAlarmes();
+        const inputRepeticao = document.getElementById('alarme-repeticao');
+        const repeticao = inputRepeticao ? parseInt(inputRepeticao.value) || 0 : 0;
 
-      const msgRepeticao = repeticao > 0 ? ` (repete a cada ${repeticao}s)` : '';
-      atualizarDebug(`➕ Alarme adicionado: ${novoAlarme.horaInicio}${msgRepeticao}`);
+        const novoAlarme = {
+          id: Date.now().toString(),
+          ativo: true,
+          horaInicio: inputHoraInicio.value || '09:00',
+          horaFim: inputHoraFim.value || '18:00',
+          volume: inputVolume.value || 80,
+          anotacao: inputAnotacao.value || 'Novo Alarme',
+          dias: Array.from(diasChecks || [])
+            .filter(c => c.checked)
+            .map(c => parseInt(c.value)),
+          repeticao: repeticao
+        };
+
+        console.log('📋 Novo alarme:', novoAlarme);
+
+        alarmes.push(novoAlarme);
+        salvarAlarmes();
+        renderizarAlarmes();
+
+        const msgRepeticao = repeticao > 0 ? ` (repete a cada ${repeticao}s)` : '';
+        atualizarDebug(`➕ Alarme adicionado: ${novoAlarme.horaInicio}${msgRepeticao}`);
+
+        console.log('✅ Alarme adicionado com sucesso');
+      } catch (e) {
+        console.error('❌ Erro ao adicionar alarme:', e);
+        atualizarDebug(`❌ Erro: ${e.message}`);
+      }
     };
 
     // Abrir/Editar alarme
@@ -1023,14 +1040,19 @@ class Dashboard {
     // Renderizar lista de alarmes
     const renderizarAlarmes = () => {
       const lista = document.getElementById('alarmes-lista');
-      if (!lista) return;
+      console.log('🎨 renderizarAlarmes chamado, lista:', lista, 'alarmes:', alarmes.length);
+      if (!lista) {
+        console.warn('⚠️ Lista não encontrada!');
+        return;
+      }
 
       if (alarmes.length === 0) {
+        console.log('📭 Nenhum alarme, mostrando vazio');
         lista.innerHTML = '<div style="padding: 10px; color: var(--text-tertiary); text-align: center; font-size: 12px;">Nenhum alarme adicionado</div>';
         return;
       }
 
-      lista.innerHTML = alarmes.map(alarme => {
+      const html = alarmes.map(alarme => {
         const repeticaoText = alarme.repeticao > 0 ? ` 🔁 ${alarme.repeticao}s` : '';
         return `
           <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''" onclick="console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
@@ -1042,11 +1064,18 @@ class Dashboard {
           </div>
         `;
       }).join('');
+
+      console.log('📝 HTML gerado:', html.substring(0, 100), '... Total chars:', html.length);
+      lista.innerHTML = html;
+      console.log('✅ innerHTML atualizado. Lista altura:', lista.offsetHeight);
     };
 
     // Salvar alarmes em Firebase
     const salvarAlarmes = async () => {
-      if (atualizandoDoFirebase) return;
+      if (atualizandoDoFirebase) {
+        console.warn('⏳ Atualizando do Firebase, ignorando salvar');
+        return;
+      }
 
       const config = {
         alarmes: alarmes,
@@ -1054,8 +1083,10 @@ class Dashboard {
         dispositivo: navigator.userAgent.substring(0, 50)
       };
 
+      console.log('💾 Salvando alarmes:', config);
       // Salva localmente
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
+      console.log('✅ Salvo no localStorage');
 
       // 📤 ENVIA AO SERVICE WORKER
       if (navigator.serviceWorker.controller) {
@@ -1081,8 +1112,12 @@ class Dashboard {
     // Carregar alarmes do localStorage
     const carregarAlarmes = () => {
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+      console.log('📂 carregarAlarmes - config:', config);
       if (config.alarmes && Array.isArray(config.alarmes)) {
         alarmes = config.alarmes;
+        console.log('✅ Alarmes carregados:', alarmes.length);
+      } else {
+        console.log('❌ Nenhum alarme no localStorage');
       }
       renderizarAlarmes();
     };
@@ -1169,6 +1204,13 @@ class Dashboard {
 
     const sincronizarComFirebase = async () => {
       try {
+        // Aguarda elementos estarem prontos
+        if (!toggleAtivo || !inputHoraInicio) {
+          console.warn('⚠️ Aguardando elementos para sincronizar');
+          setTimeout(() => sincronizarComFirebase(), 500);
+          return;
+        }
+
         const { onSnapshot } = await import('../../scripts/firebase.js');
         const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         const docRef = doc(db, 'alarme_config', userId);
@@ -1198,8 +1240,16 @@ class Dashboard {
     };
 
     const atualizarLabels = () => {
-      statusLabel.textContent = toggleAtivo.checked ? '✓ Ativado' : 'Desativado';
-      volumeLabel.textContent = inputVolume.value + '%';
+      if (!toggleAtivo || !statusLabel || !volumeLabel || !inputVolume) {
+        console.warn('⚠️ Elementos ausentes em atualizarLabels');
+        return;
+      }
+      try {
+        statusLabel.textContent = toggleAtivo.checked ? '✓ Ativado' : 'Desativado';
+        volumeLabel.textContent = inputVolume.value + '%';
+      } catch (e) {
+        console.error('❌ Erro em atualizarLabels:', e);
+      }
     };
 
     const tocarSomTeste = () => {
@@ -1330,6 +1380,7 @@ class Dashboard {
     };
 
     // Exposição global para funções de alarme (ANTES de carregar)
+    window.adicionarAlarme = adicionarAlarme;
     window.abrirAlarme = abrirAlarme;
     window.removerAlarme = removerAlarme;
     window.openAlarmePanel = () => {
@@ -1340,11 +1391,8 @@ class Dashboard {
     carregarAlarmes();
     sincronizarComFirebase();
 
-    // Botão adicionar
-    const btnAdicionar = document.getElementById('alarme-adicionar-btn');
-    if (btnAdicionar) {
-      btnAdicionar.addEventListener('click', adicionarAlarme);
-    }
+    // Botão adicionar usa onclick direto no HTML agora
+    console.log('✅ Alarme setup completo - adicionarAlarme exposta no window');
 
     // Janela Flutuante (abrir em nova janela pequena)
     const abrirJanelaFlutuante = () => {

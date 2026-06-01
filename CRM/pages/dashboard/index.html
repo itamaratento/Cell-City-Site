@@ -235,23 +235,17 @@
     </div>
 
     <!-- LISTA DE ALARMES -->
-    <div id="alarmes-lista" style="max-height: 300px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-surface);"></div>
+    <div id="alarmes-lista" style="min-height: 80px; max-height: 300px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-surface);"></div>
 
-    <!-- BOTÃO ADICIONAR ALARME -->
-    <button id="alarme-adicionar-btn" class="alarme-btn" style="width: 100%; background: rgba(0,200,83,0.2); border-color: rgba(0,200,83,0.4); color: var(--cell-green); margin-bottom: 12px;">
-      ➕ Adicionar Alarme
-    </button>
-
-    <div class="alarme-section">
-      <label class="alarme-label">⏰ Horário</label>
-      <div class="alarme-time-inputs">
-        <input type="time" id="alarme-hora-inicio" value="09:00" class="alarme-time-input">
-        <span class="alarme-time-sep">até</span>
-        <input type="time" id="alarme-hora-fim" value="18:00" class="alarme-time-input">
-      </div>
-      <div style="font-size:10px; color: var(--text-tertiary); margin-top: 4px;">
-        Horário do dispositivo: <span id="alarme-hora-dispositivo">--:--</span>
-      </div>
+    <!-- BOTÃO ADICIONAR ALARME + TOGGLE ATIVO -->
+    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <button class="alarme-btn" onclick="console.log('🖱️ CLIQUE NO BOTÃO'); if(window.adicionarAlarme) { console.log('✅ Função existe'); window.adicionarAlarme(); } else { console.error('❌ Função NÃO existe no window'); } return false;" style="flex: 1; background: rgba(0,200,83,0.2); border-color: rgba(0,200,83,0.4); color: var(--cell-green);">
+        ➕ Adicionar Alarme
+      </button>
+      <label style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(0,200,83,0.1); border: 1px solid rgba(0,200,83,0.3); border-radius: 6px; cursor: pointer; color: var(--text-primary);">
+        <input type="checkbox" id="alarme-ativo" style="width: 18px; height: 18px; cursor: pointer;">
+        <span style="font-size: 12px; font-weight: 500;">Ativo</span>
+      </label>
     </div>
 
     <div class="alarme-section">
