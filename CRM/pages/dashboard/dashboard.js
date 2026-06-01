@@ -227,6 +227,9 @@ class Dashboard {
         const l = d.data();
         const iso = l.dataISO || l.createdAtISO || '';
         if (!iso) return;
+
+        if (l.tipo !== 'entrada') return;
+
         const lucro = Number(l.lucro || 0);
         const dt = new Date(iso);
         const ano = dt.getFullYear();
