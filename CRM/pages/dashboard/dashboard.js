@@ -1206,6 +1206,69 @@ class Dashboard {
     carregarConfiguracao();
     sincronizarComFirebase();
 
+    // Picture-in-Picture (Janela Flutuante)
+    const abrirJanelaFlutuante = async () => {
+      try {
+        const video = document.createElement('video');
+        video.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc2F2YzEAAAAA';
+        video.style.display = 'none';
+        document.body.appendChild(video);
+
+        if (document.pictureInPictureEnabled) {
+          await video.play();
+          await video.requestPictureInPicture();
+          atualizarDebug('📺 Janela flutuante aberta');
+        } else {
+          atualizarDebug('⚠️ Seu navegador não suporta Picture-in-Picture');
+        }
+      } catch (e) {
+        console.warn('Erro PiP:', e);
+        atualizarDebug('⚠️ Erro ao abrir janela flutuante');
+      }
+    };
+
+    // Notificação Persistente
+    const mostrarNotificacaoPersistente = async () => {
+      if (!('Notification' in window)) {
+        atualizarDebug('⚠️ Notificações não suportadas');
+        return;
+      }
+
+      if (Notification.permission !== 'granted') {
+        const perm = await Notification.requestPermission();
+        if (perm !== 'granted') {
+          atualizarDebug('⚠️ Permissão de notificações bloqueada');
+          return;
+        }
+      }
+
+      // Cria notificação persistente
+      self.registration.showNotification('🔔 Alarme Ativo', {
+        body: `Horário: ${inputHoraInicio.value} | Status: Monitorando`,
+        icon: '/CRM/assets/logo.png',
+        badge: '/CRM/assets/logo.png',
+        tag: 'alarme-persistente',
+        requireInteraction: true,
+        sticky: true,
+        actions: [
+          { action: 'fechar', title: '✕ Fechar' }
+        ]
+      }).catch(err => {
+        // Fallback para Notification API
+        try {
+          new Notification('🔔 Alarme Ativo', {
+            body: `Horário: ${inputHoraInicio.value} | Status: Monitorando`,
+            icon: '/CRM/assets/logo.png',
+            tag: 'alarme-persistente',
+            requireInteraction: true
+          });
+          atualizarDebug('📌 Notificação persistente ativada');
+        } catch (e) {
+          console.warn('Erro notificação:', e);
+        }
+      });
+    };
+
     // Wake Lock para manter tela acordada
     const ativarWakeLock = async () => {
       if ('wakeLock' in navigator) {
@@ -1246,7 +1309,9 @@ class Dashboard {
         // Ativa Wake Lock para manter tela acordada
         await ativarWakeLock();
 
-        atualizarDebug('✓ Alarme ATIVADO - Aguardando horário...');
+        // Mostra dica de manter aberto
+        const dica = `✓ ATIVADO! Para melhor funcionamento:\n1. Deixe a janela aberta\n2. Ou clique "Janela Flutuante"\n3. Ou clique "Notif. Ativa"\n4. Clique "⚡ Atalho" para acesso rápido`;
+        atualizarDebug(dica);
 
         // Envia config para Service Worker
         const config = {
@@ -1296,6 +1361,9 @@ class Dashboard {
       });
     });
 
+    const btnPiP = document.getElementById('alarme-pip-btn');
+    const btnNotif = document.getElementById('alarme-notif-btn');
+
     btnTestar.addEventListener('click', tocarSomTeste);
     btnSalvar.addEventListener('click', () => {
       salvarConfiguracao();
@@ -1303,15 +1371,63 @@ class Dashboard {
       setTimeout(() => alert('✓ Configuração salva com sucesso!'), 100);
     });
 
+    // Botão Janela Flutuante
+    if (btnPiP) {
+      btnPiP.addEventListener('click', abrirJanelaFlutuante);
+    }
+
+    // Botão Notificação Persistente
+    if (btnNotif) {
+      btnNotif.addEventListener('click', mostrarNotificacaoPersistente);
+    }
+
     btnClose.addEventListener('click', () => {
       panel.style.display = 'none';
     });
+
+    // Criar atalho para tela inicial (Android)
+    const criarAtalho = async () => {
+      if (!('shortcuts' in navigator)) {
+        atualizarDebug('⚠️ Seu navegador não suporta atalhos');
+        return;
+      }
+
+      try {
+        await navigator.shortcuts.add({
+          name: 'Alarme CRM',
+          short_name: 'Alarme',
+          description: 'Abre alarme do CRM',
+          url: '/CRM/pages/dashboard/?alarme=1',
+          icons: [
+            {
+              src: '/CRM/assets/logo.png',
+              sizes: '192x192',
+              type: 'image/png'
+            }
+          ]
+        });
+        atualizarDebug('⚡ Atalho criado na tela inicial');
+      } catch (e) {
+        console.warn('Erro ao criar atalho:', e);
+        atualizarDebug('⚠️ Erro ao criar atalho');
+      }
+    };
+
+    // Verifica se abriu via atalho (abre painel automaticamente)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('alarme') === '1') {
+      setTimeout(() => {
+        panel.style.display = 'flex';
+        atualizarDebug('⚡ Aberto via atalho');
+      }, 500);
+    }
 
     const openAlarmePanel = () => {
       panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
     };
 
     window.openAlarmePanel = openAlarmePanel;
+    window.criarAtalho = criarAtalho;
 
     // Atualiza hora do dispositivo a cada segundo
     setInterval(atualizarHoraDispositivo, 1000);
