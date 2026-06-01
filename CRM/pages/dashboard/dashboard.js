@@ -933,6 +933,7 @@ class Dashboard {
     let ultimoDisparo = null;
     let unsubscribeFirebase = null;
     let atualizandoDoFirebase = false;
+    let alarmes = []; // Array de múltiplos alarmes
 
     const atualizarDebug = (msg) => {
       const agora = new Date();
@@ -941,18 +942,70 @@ class Dashboard {
       console.log(msg);
     };
 
-    const salvarConfiguracao = async () => {
-      if (atualizandoDoFirebase) return;
+    // Adicionar novo alarme
+    const adicionarAlarme = () => {
+      const inputRepeticao = document.getElementById('alarme-repeticao');
+      const repeticao = inputRepeticao ? parseInt(inputRepeticao.value) || 0 : 0;
 
-      const config = {
-        ativo: toggleAtivo.checked,
+      const novoAlarme = {
+        id: Date.now().toString(),
+        ativo: true,
         horaInicio: inputHoraInicio.value,
         horaFim: inputHoraFim.value,
         volume: inputVolume.value,
-        anotacao: inputAnotacao.value,
+        anotacao: inputAnotacao.value || 'Novo Alarme',
         dias: Array.from(diasChecks)
           .filter(c => c.checked)
           .map(c => parseInt(c.value)),
+        repeticao: repeticao // Repetição em segundos
+      };
+
+      alarmes.push(novoAlarme);
+      salvarAlarmes();
+      renderizarAlarmes();
+
+      const msgRepeticao = repeticao > 0 ? ` (repete a cada ${repeticao}s)` : '';
+      atualizarDebug(`➕ Alarme adicionado: ${novoAlarme.horaInicio}${msgRepeticao}`);
+    };
+
+    // Remover alarme
+    const removerAlarme = (id) => {
+      alarmes = alarmes.filter(a => a.id !== id);
+      salvarAlarmes();
+      renderizarAlarmes();
+      atualizarDebug('🗑️ Alarme removido');
+    };
+
+    // Renderizar lista de alarmes
+    const renderizarAlarmes = () => {
+      const lista = document.getElementById('alarmes-lista');
+      if (!lista) return;
+
+      if (alarmes.length === 0) {
+        lista.innerHTML = '<div style="padding: 10px; color: var(--text-tertiary); text-align: center; font-size: 12px;">Nenhum alarme adicionado</div>';
+        return;
+      }
+
+      lista.innerHTML = alarmes.map(alarme => {
+        const repeticaoText = alarme.repeticao > 0 ? ` 🔁 ${alarme.repeticao}s` : '';
+        return `
+          <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1; font-size: 12px;">
+              <strong style="color: var(--cell-green);">${alarme.horaInicio}</strong>${repeticaoText}
+              <div style="color: var(--text-tertiary); font-size: 10px;">${alarme.anotacao}</div>
+            </div>
+            <button onclick="window.removerAlarme('${alarme.id}')" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 14px;">✕</button>
+          </div>
+        `;
+      }).join('');
+    };
+
+    // Salvar alarmes em Firebase
+    const salvarAlarmes = async () => {
+      if (atualizandoDoFirebase) return;
+
+      const config = {
+        alarmes: alarmes,
         atualizadoEm: new Date().toISOString(),
         dispositivo: navigator.userAgent.substring(0, 50)
       };
@@ -960,14 +1013,13 @@ class Dashboard {
       // Salva localmente
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
 
-      // 📤 ENVIA IMEDIATAMENTE AO SERVICE WORKER
+      // 📤 ENVIA AO SERVICE WORKER
       if (navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({
           tipo: 'atualizarConfig',
           config: config,
           timestamp: Date.now()
         });
-        console.log('📤 Config enviada ao SW instantaneamente');
       }
 
       // Salva no Firebase
@@ -976,11 +1028,23 @@ class Dashboard {
         const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         const docRef = doc(db, 'alarme_config', userId);
         await setDoc(docRef, config, { merge: true });
-        atualizarDebug('☁️ Config sincronizada com Firebase');
+        atualizarDebug('☁️ Alarmes sincronizados com Firebase');
       } catch (e) {
         console.warn('Erro ao sincronizar:', e);
       }
     };
+
+    // Carregar alarmes do localStorage
+    const carregarAlarmes = () => {
+      const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+      if (config.alarmes && Array.isArray(config.alarmes)) {
+        alarmes = config.alarmes;
+      }
+      renderizarAlarmes();
+    };
+
+    // Antigo: manter compatibilidade
+    const salvarConfiguracao = salvarAlarmes;
 
     const atualizarHoraDispositivo = () => {
       const agora = new Date();
@@ -1204,7 +1268,17 @@ class Dashboard {
     };
 
     carregarConfiguracao();
+    carregarAlarmes();
     sincronizarComFirebase();
+
+    // Exposição global para remover alarme
+    window.removerAlarme = removerAlarme;
+
+    // Botão adicionar
+    const btnAdicionar = document.getElementById('alarme-adicionar-btn');
+    if (btnAdicionar) {
+      btnAdicionar.addEventListener('click', adicionarAlarme);
+    }
 
     // Janela Flutuante (abrir em nova janela pequena)
     const abrirJanelaFlutuante = () => {

@@ -107,6 +107,7 @@ let intervaloRelogio = null;
 let ultimoDisparo = null;
 let configAtual = null;
 let intervaloSincronizacao = null;
+let alarmesAtivos = new Map(); // Rastreia alarmes em repetição
 const DB_NAME = 'AlarmeOSDB';
 const STORE_NAME = 'config';
 
@@ -228,55 +229,91 @@ async function iniciarRelogioBackground(config) {
     sincronizarComFirebase();
   }, 300000); // 5 minutos
 
-  // Verificação a cada segundo
+  // Verificação a cada segundo (suporta múltiplos alarmes)
   intervaloRelogio = setInterval(() => {
-    const configUso = configAtual || config;
-
-    if (!configUso.ativo) return;
-
     const agora = new Date();
     const diaAtual = agora.getDay();
     const hAtual = agora.getHours();
     const mAtual = agora.getMinutes();
     const horaAtualFormatada = String(hAtual).padStart(2, '0') + ':' + String(mAtual).padStart(2, '0');
 
-    const [hInicio, mInicio] = configUso.horaInicio.split(':').map(Number);
-    const horaInicioFormatada = String(hInicio).padStart(2, '0') + ':' + String(mInicio).padStart(2, '0');
+    // Verifica cada alarme
+    const alarmes = configAtual?.alarmes || [];
 
-    const diasPermitidos = configUso.dias || [];
-    const diaPermitido = diasPermitidos.includes(diaAtual);
+    alarmes.forEach(alarme => {
+      if (!alarme.ativo) return;
 
-    // Quando chega na hora início
-    if (horaAtualFormatada === horaInicioFormatada && diaPermitido) {
-      if (ultimoDisparo !== horaInicioFormatada) {
-        ultimoDisparo = horaInicioFormatada;
+      const [hInicio, mInicio] = alarme.horaInicio.split(':').map(Number);
+      const horaInicioFormatada = String(hInicio).padStart(2, '0') + ':' + String(mInicio).padStart(2, '0');
 
-        console.log(`🔔 [SW] HORA CHEGOU! ${horaInicioFormatada}`);
+      const diasPermitidos = alarme.dias || [];
+      const diaPermitido = diasPermitidos.includes(diaAtual);
 
-        // Envia notificação
-        self.registration.showNotification('🔔 ALARME - OS Nova', {
-          body: `Hora: ${horaInicioFormatada} | ${configUso.anotacao || 'Verificar novo evento'}`,
-          icon: '/CRM/assets/logo.png',
-          badge: '/CRM/assets/logo.png',
-          tag: 'alarme-os',
-          requireInteraction: true,
-          actions: [
-            { action: 'abrir', title: '👀 Abrir CRM' },
-            { action: 'fechar', title: '✕ Fechar' }
-          ]
-        });
+      // Quando chega na hora
+      if (horaAtualFormatada === horaInicioFormatada && diaPermitido) {
+        const chaveDisparo = `disparo_${alarme.id}_${horaInicioFormatada}`;
 
-        // Notifica a aba ativa (se estiver aberta)
-        self.clients.matchAll().then(clients => {
-          clients.forEach(client => {
-            client.postMessage({
-              tipo: 'alarmeDisparat',
-              hora: horaInicioFormatada
+        if (ultimoDisparo !== chaveDisparo) {
+          ultimoDisparo = chaveDisparo;
+
+          console.log(`🔔 [SW] ALARME! ${horaInicioFormatada} - ${alarme.anotacao}`);
+
+          // Função para disparar notificação
+          const dispararAlarme = () => {
+            self.registration.showNotification('🔔 ALARME', {
+              body: `${horaInicioFormatada} - ${alarme.anotacao}`,
+              icon: '/CRM/assets/logo.png',
+              badge: '/CRM/assets/logo.png',
+              tag: 'alarme-disparo',
+              requireInteraction: true,
+              actions: [
+                { action: 'abrir', title: '👀 Abrir' },
+                { action: 'fechar', title: '✕ Fechar' }
+              ]
             });
-          });
-        });
+
+            self.clients.matchAll().then(clients => {
+              clients.forEach(client => {
+                client.postMessage({
+                  tipo: 'alarmeDisparat',
+                  hora: horaInicioFormatada,
+                  anotacao: alarme.anotacao
+                });
+              });
+            });
+          };
+
+          // Dispara primeira vez
+          dispararAlarme();
+
+          // Se tem repetição, inicia intervalo
+          if (alarme.repeticao && alarme.repeticao > 0) {
+            const chaveIntervalo = `intervalo_${alarme.id}`;
+
+            // Limpa intervalo anterior se existir
+            if (alarmesAtivos.has(chaveIntervalo)) {
+              clearInterval(alarmesAtivos.get(chaveIntervalo));
+            }
+
+            // Cria novo intervalo
+            const novoIntervalo = setInterval(() => {
+              dispararAlarme();
+            }, alarme.repeticao * 1000);
+
+            alarmesAtivos.set(chaveIntervalo, novoIntervalo);
+            console.log(`🔁 [SW] Repetição iniciada: a cada ${alarme.repeticao}s`);
+          }
+        }
+      } else {
+        // Para a repetição quando sai do horário
+        const chaveIntervalo = `intervalo_${alarme.id}`;
+        if (alarmesAtivos.has(chaveIntervalo)) {
+          clearInterval(alarmesAtivos.get(chaveIntervalo));
+          alarmesAtivos.delete(chaveIntervalo);
+          console.log(`⏹️ [SW] Repetição parada`);
+        }
       }
-    }
+    });
   }, 1000);
 }
 
