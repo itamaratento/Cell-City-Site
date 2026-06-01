@@ -280,6 +280,32 @@ body {
     inset 0 1px 0 rgba(0, 230, 118, 0.15);
 }
 
+/* ============ DIA DO ANO (COLORIDO) ============ */
+.meta-day-of-year {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+  padding: 6px 11px;
+  background: linear-gradient(135deg, #00E676 0%, #00C853 100%);
+  border: 1px solid rgba(0, 200, 83, 0.5);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: all var(--transition-smooth);
+  flex-shrink: 0;
+  min-width: 40px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 230, 118, 0.25);
+}
+
+.meta-day-of-year:hover {
+  background: linear-gradient(135deg, #00F688 0%, #00D963 100%);
+  border-color: rgba(0, 255, 136, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 230, 118, 0.4);
+  transform: translateY(-1px);
+}
+
 /* ============ BUSCA GLOBAL INTELIGENTE ============ */
 .global-search-wrapper { display: flex; justify-content: center; position: relative; }
 
@@ -1726,6 +1752,7 @@ body {
   .top-meta-left { gap: 10px; }
   #date-text { font-size: 13px; }
   .meta-clock { font-size: 14.5px; padding: 6px 12px 6px 14px; }
+  .meta-day-of-year { font-size: 12px; padding: 5px 8px; }
   .global-search { max-width: 380px; }
   .ops-block {
     grid-template-columns: repeat(2, 1fr);
@@ -1752,6 +1779,7 @@ body {
   .workspace { padding: 20px 16px 140px; }
   .calendar-popup { left: 16px; right: 16px; width: auto; }
   .brand-header-subtitle { display: none; }
+  .meta-day-of-year { font-size: 11.5px; padding: 4px 7px; }
   .ops-block { grid-template-columns: 1fr; gap: 12px; }
   .module-card { padding: 14px; margin-bottom: 20px; }
   .module-icon { width: 40px; height: 40px; font-size: 18px; }
@@ -1790,6 +1818,7 @@ body {
   .brand-header-title { font-size: 13px; }
   #date-text { font-size: 12px; }
   .meta-clock { font-size: 13.5px; }
+  .meta-day-of-year { font-size: 11px; padding: 3px 6px; min-width: 35px; }
   .alert-title { font-size: 11.5px; }
 }
 

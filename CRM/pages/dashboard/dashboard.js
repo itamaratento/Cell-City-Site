@@ -71,6 +71,7 @@ class Dashboard {
   setupClock() {
     const clockEl = document.getElementById('clock-display');
     const dateText = document.getElementById('date-text');
+    const dayOfYearEl = document.getElementById('day-of-year-display');
 
     const update = () => {
       const now = new Date();
@@ -92,8 +93,12 @@ class Dashboard {
         minute: '2-digit'
       });
 
+      // DIA DO ANO — Ex: "152"
+      const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
+
       if (dateText) dateText.textContent = dateFull;
       if (clockEl) clockEl.textContent = timeStr;
+      if (dayOfYearEl) dayOfYearEl.textContent = dayOfYear;
     };
 
     update();
