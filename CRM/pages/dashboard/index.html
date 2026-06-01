@@ -220,8 +220,75 @@
   <textarea class="nota-textarea" id="nota-textarea" placeholder="Digite suas notas aqui...&#10;Salva automaticamente em todos os dispositivos."></textarea>
 </div>
 
+<!-- ========== PAINEL DE ALARME ========== -->
+<div class="alarme-panel" id="alarme-panel" style="display:none">
+  <div class="alarme-header">
+    <span class="alarme-title">🔔 Alarme para OS Nova</span>
+    <button class="alarme-close" id="alarme-close">✕</button>
+  </div>
+  <div class="alarme-body">
+    <div class="alarme-section">
+      <label class="alarme-label">Status</label>
+      <div class="alarme-toggle-group">
+        <input type="checkbox" id="alarme-ativo" class="alarme-toggle-input">
+        <span class="alarme-toggle-label" id="alarme-status-label">Desativado</span>
+      </div>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">⏰ Horário</label>
+      <div class="alarme-time-inputs">
+        <input type="time" id="alarme-hora-inicio" value="09:00" class="alarme-time-input">
+        <span class="alarme-time-sep">até</span>
+        <input type="time" id="alarme-hora-fim" value="18:00" class="alarme-time-input">
+      </div>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">📅 Dias da Semana</label>
+      <div class="alarme-dias-grid">
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="1" checked> Seg
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="2" checked> Ter
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="3" checked> Qua
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="4" checked> Qui
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="5" checked> Sex
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="0"> Sab
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="6"> Dom
+        </label>
+      </div>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">🔊 Volume</label>
+      <input type="range" id="alarme-volume" min="10" max="100" value="80" class="alarme-slider">
+      <span class="alarme-volume-label" id="alarme-volume-label">80%</span>
+    </div>
+
+    <div class="alarme-actions">
+      <button id="alarme-testar-btn" class="alarme-btn alarme-btn-testar">🔊 Testar Som</button>
+      <button id="alarme-salvar-btn" class="alarme-btn alarme-btn-salvar">✓ Salvar Config</button>
+    </div>
+  </div>
+</div>
+
 <!-- ========== DOCK LATERAL DIREITA ========== -->
 <aside class="dock">
+  <button class="dock-item" id="dock-alarme" data-tooltip="Alarme OS Nova" onclick="openAlarmePanel()">
+    <span class="dock-icon">🔔</span>
+  </button>
   <button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas">
     <span class="dock-icon">📋</span>
   </button>

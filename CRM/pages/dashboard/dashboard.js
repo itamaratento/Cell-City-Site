@@ -63,6 +63,7 @@ class Dashboard {
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupAvisoAcoes();
+    this.setupAlarmeOS();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -834,6 +835,185 @@ class Dashboard {
 
     verificar();
     setInterval(verificar, 60000);
+  }
+
+  // ===== ALARME PARA OS NOVA =====
+  setupAlarmeOS() {
+    const panel = document.getElementById('alarme-panel');
+    const btnClose = document.getElementById('alarme-close');
+    const toggleAtivo = document.getElementById('alarme-ativo');
+    const inputHoraInicio = document.getElementById('alarme-hora-inicio');
+    const inputHoraFim = document.getElementById('alarme-hora-fim');
+    const inputVolume = document.getElementById('alarme-volume');
+    const btnTestar = document.getElementById('alarme-testar-btn');
+    const btnSalvar = document.getElementById('alarme-salvar-btn');
+    const diasChecks = document.querySelectorAll('.alarme-dia-check');
+    const statusLabel = document.getElementById('alarme-status-label');
+    const volumeLabel = document.getElementById('alarme-volume-label');
+
+    if (!panel) return;
+
+    let audioContext = null;
+    let isTocarAlarm = false;
+
+    const salvarConfiguracao = () => {
+      const config = {
+        ativo: toggleAtivo.checked,
+        horaInicio: inputHoraInicio.value,
+        horaFim: inputHoraFim.value,
+        volume: inputVolume.value,
+        dias: Array.from(diasChecks)
+          .filter(c => c.checked)
+          .map(c => parseInt(c.value))
+      };
+      localStorage.setItem('alarme_os_config', JSON.stringify(config));
+    };
+
+    const carregarConfiguracao = () => {
+      const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
+      if (config.ativo !== undefined) toggleAtivo.checked = config.ativo;
+      if (config.horaInicio) inputHoraInicio.value = config.horaInicio;
+      if (config.horaFim) inputHoraFim.value = config.horaFim;
+      if (config.volume) inputVolume.value = config.volume;
+      if (config.dias && config.dias.length > 0) {
+        diasChecks.forEach(c => c.checked = config.dias.includes(parseInt(c.value)));
+      }
+      atualizarLabels();
+    };
+
+    const atualizarLabels = () => {
+      statusLabel.textContent = toggleAtivo.checked ? '✓ Ativado' : 'Desativado';
+      volumeLabel.textContent = inputVolume.value + '%';
+    };
+
+    const tocarSomTeste = () => {
+      const volume = parseInt(inputVolume.value) / 100;
+      gerarSomAlarme(3, volume);
+    };
+
+    const gerarSomAlarme = (duracao = 2, vol = 0.8) => {
+      if (isTocarAlarm) return;
+      isTocarAlarm = true;
+
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        const freq = 800;
+        const tempoFim = audioContext.currentTime + duracao;
+
+        const tocarBeep = () => {
+          if (audioContext.currentTime >= tempoFim) {
+            isTocarAlarm = false;
+            return;
+          }
+
+          const osc = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+
+          osc.frequency.value = freq;
+          osc.type = 'sine';
+
+          gainNode.gain.setValueAtTime(vol, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
+
+          osc.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.1);
+
+          setTimeout(tocarBeep, 150);
+        };
+
+        tocarBeep();
+      } catch (e) {
+        console.warn('Alarme de som:', e);
+        isTocarAlarm = false;
+      }
+    };
+
+    const verificarHorarioEDia = () => {
+      const agora = new Date();
+      const diaAtual = agora.getDay();
+      const horaAtual = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+
+      const diaPermitido = Array.from(diasChecks)
+        .filter(c => c.checked)
+        .map(c => parseInt(c.value))
+        .includes(diaAtual);
+
+      const horaInicio = inputHoraInicio.value;
+      const horaFim = inputHoraFim.value;
+      const dentroHorario = horaAtual >= horaInicio && horaAtual <= horaFim;
+
+      return diaPermitido && dentroHorario;
+    };
+
+    const monitorarOS = () => {
+      if (!toggleAtivo.checked) return;
+
+      try {
+        import('../../scripts/firebase.js').then(m => {
+          const { query, where, collection, onSnapshot } = m;
+          const ordersRef = query(
+            collection(m.db, 'orders'),
+            where('createdAt', '>', new Date(Date.now() - 60000))
+          );
+
+          const unsubscribe = onSnapshot(ordersRef, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === 'added' && toggleAtivo.checked && verificarHorarioEDia()) {
+                console.log('🔔 OS nova detectada:', change.doc.id);
+                const volume = parseInt(inputVolume.value) / 100;
+                gerarSomAlarme(5, volume);
+              }
+            });
+          });
+
+          setTimeout(() => unsubscribe(), 3600000);
+        });
+      } catch (e) {
+        console.warn('Monitor OS:', e);
+      }
+    };
+
+    carregarConfiguracao();
+
+    toggleAtivo.addEventListener('change', () => {
+      atualizarLabels();
+      salvarConfiguracao();
+      if (toggleAtivo.checked) {
+        monitorarOS();
+      }
+    });
+
+    inputHoraInicio.addEventListener('change', salvarConfiguracao);
+    inputHoraFim.addEventListener('change', salvarConfiguracao);
+    inputVolume.addEventListener('input', atualizarLabels);
+    inputVolume.addEventListener('change', salvarConfiguracao);
+
+    diasChecks.forEach(check => {
+      check.addEventListener('change', salvarConfiguracao);
+    });
+
+    btnTestar.addEventListener('click', tocarSomTeste);
+    btnSalvar.addEventListener('click', () => {
+      salvarConfiguracao();
+      alert('✓ Configuração salva com sucesso!');
+    });
+
+    btnClose.addEventListener('click', () => {
+      panel.style.display = 'none';
+    });
+
+    // Abre painel de alarme ao clicar em dock (criar botão na dock depois)
+    const openAlarmePanel = () => {
+      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    window.openAlarmePanel = openAlarmePanel;
   }
 
   // ===== CLIQUES FORA =====
