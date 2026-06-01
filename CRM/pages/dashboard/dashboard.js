@@ -855,6 +855,49 @@ class Dashboard {
 
     if (!panel) return;
 
+    // Registra Service Worker para background
+    const registrarServiceWorker = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.register('/CRM/pages/dashboard/sw-alarme.js', {
+            scope: '/CRM/'
+          });
+          console.log('✓ Service Worker Alarme registrado');
+          return reg;
+        } catch (e) {
+          console.warn('⚠️ Service Worker:', e.message);
+        }
+      }
+    };
+
+    // Pede permissão de notificações
+    const solicitarPermissaoNotificacoes = async () => {
+      if ('Notification' in window && Notification.permission === 'default') {
+        try {
+          const perm = await Notification.requestPermission();
+          if (perm === 'granted') {
+            atualizarDebug('✓ Notificações ativadas');
+            return true;
+          }
+        } catch (e) {
+          console.warn('Notificações:', e);
+        }
+      }
+      return Notification.permission === 'granted';
+    };
+
+    // Envia config para Service Worker
+    const enviarConfigSW = (config) => {
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          tipo: 'iniciarRelogio',
+          config: config
+        });
+      }
+    };
+
+    registrarServiceWorker();
+
     let audioContext = null;
     let isTocarAlarm = false;
     let unsubscribeOS = null;
@@ -1073,11 +1116,28 @@ class Dashboard {
 
     carregarConfiguracao();
 
-    toggleAtivo.addEventListener('change', () => {
+    toggleAtivo.addEventListener('change', async () => {
       atualizarLabels();
       salvarConfiguracao();
       if (toggleAtivo.checked) {
+        // Pede permissão de notificações
+        const temPermissao = await solicitarPermissaoNotificacoes();
+        if (!temPermissao) {
+          atualizarDebug('⚠️ Notificações bloqueadas. Ative nas config do navegador.');
+        }
+
         atualizarDebug('✓ Alarme ATIVADO - Aguardando horário...');
+
+        // Envia config para Service Worker
+        const config = {
+          horaInicio: inputHoraInicio.value,
+          dias: Array.from(diasChecks)
+            .filter(c => c.checked)
+            .map(c => parseInt(c.value)),
+          anotacao: inputAnotacao.value
+        };
+        enviarConfigSW(config);
+
         monitorarOS();
         iniciarRelogio();
       } else {
@@ -1086,6 +1146,13 @@ class Dashboard {
         if (intervaloVerificacao) clearInterval(intervaloVerificacao);
         if (intervaloRelogio) clearInterval(intervaloRelogio);
         ultimoDisparo = null;
+
+        // Para o Service Worker
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            tipo: 'pararRelogio'
+          });
+        }
       }
     });
 
@@ -1130,11 +1197,36 @@ class Dashboard {
     setInterval(atualizarHoraDispositivo, 1000);
 
     if (toggleAtivo.checked) {
-      setTimeout(() => {
+      setTimeout(async () => {
         atualizarDebug('🔔 Reiniciando monitor...');
+
+        // Pede permissão de notificações
+        await solicitarPermissaoNotificacoes();
+
+        // Envia config para Service Worker
+        const config = {
+          horaInicio: inputHoraInicio.value,
+          dias: Array.from(diasChecks)
+            .filter(c => c.checked)
+            .map(c => parseInt(c.value)),
+          anotacao: inputAnotacao.value
+        };
+        enviarConfigSW(config);
+
         monitorarOS();
         iniciarRelogio();
       }, 1000);
+    }
+
+    // Listener para mensagens do Service Worker
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data.tipo === 'alarmeDisparat') {
+          atualizarDebug(`🔔 ALARME DISPAROU: ${event.data.hora}`);
+          const volume = parseInt(inputVolume.value) / 100;
+          gerarSomAlarme(5, volume);
+        }
+      });
     }
   }
 
