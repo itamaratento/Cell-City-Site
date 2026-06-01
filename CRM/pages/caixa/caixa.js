@@ -1340,6 +1340,7 @@ window.addEventListener('beforeunload', () => { if(listenerLancamentos) listener
 // ═══════════════════════════════════════════
 window.toggleLembretes    = toggleLembretes;
 window.toggleFormLembrete = toggleFormLembrete;
+window.novoLembreteRapido = novoLembreteRapido;
 window.salvarLembrete     = salvarLembrete;
 window.removerLembrete    = removerLembrete;
 window.pagarLembrete      = pagarLembrete;
@@ -1363,6 +1364,16 @@ function toggleFormLembrete(show) {
     if (form) form.style.display = show ? 'block' : 'none';
     if (btn)  btn.style.display  = show ? 'none'  : 'block';
     if (!show) limparFormLembrete();
+}
+
+// Abre o painel já direto no formulário de cadastro (clicou → cadastra)
+function novoLembreteRapido() {
+    const overlay = document.getElementById('lembretes-overlay');
+    if (overlay) overlay.style.display = 'flex';
+    lembretesPanelAberto = true;
+    carregarLembretes();
+    toggleFormLembrete(true);
+    setTimeout(() => document.getElementById('lem-fornecedor')?.focus(), 120);
 }
 
 function limparFormLembrete() {
