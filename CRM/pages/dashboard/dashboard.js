@@ -1380,15 +1380,20 @@ class Dashboard {
 
     // Botão Atalho
     if (btnAtalho) {
-      btnAtalho.addEventListener('click', criarAtalho);
+      btnAtalho.addEventListener('click', () => window.criarAtalho());
     }
 
     btnClose.addEventListener('click', () => {
       panel.style.display = 'none';
     });
 
-    // Criar atalho para tela inicial (Android)
-    const criarAtalho = () => {
+    // Abrir/Fechar painel alarme (ANTES de ser usado)
+    window.openAlarmePanel = () => {
+      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+    };
+
+    // Criar atalho para tela inicial (ANTES de ser usado)
+    window.criarAtalho = () => {
       // iOS
       if (/iPhone|iPad|iPod/.test(navigator.userAgent)) {
         alert('iOS: Menu Compartilhar → Adicionar à Tela Inicial');
@@ -1416,12 +1421,6 @@ class Dashboard {
         atualizarDebug('⚡ Aberto via atalho');
       }, 500);
     }
-
-    const openAlarmePanel = () => {
-      panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
-    };
-
-    window.openAlarmePanel = openAlarmePanel;
 
     // Atualiza hora do dispositivo a cada segundo
     setInterval(atualizarHoraDispositivo, 1000);
