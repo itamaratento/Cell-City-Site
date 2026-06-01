@@ -10,15 +10,25 @@ self.addEventListener('activate', (event) => {
   console.log('✓ [PWA] Service Worker Alarme ativado');
   self.clients.claim();
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    Promise.all([
+      // Limpa caches antigos
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      }),
+      // Carrega config do IndexedDB se existir
+      carregarConfigIndexedDB().then(config => {
+        if (config) {
+          console.log('📂 [SW] Config carregada do IndexedDB');
+          configAtual = config;
+        }
+      })
+    ])
   );
 });
 
@@ -38,6 +48,10 @@ self.addEventListener('message', (event) => {
   if (tipo === 'atualizarConfig') {
     console.log('📥 [SW] Config atualizada:', config);
     configAtual = config;
+    // Salva em IndexedDB para persistência
+    salvarConfigIndexedDB(config).catch(err => {
+      console.warn('Erro salvando em IndexedDB:', err);
+    });
   }
 });
 
@@ -45,6 +59,56 @@ let intervaloRelogio = null;
 let ultimoDisparo = null;
 let configAtual = null;
 let intervaloSincronizacao = null;
+const DB_NAME = 'AlarmeOSDB';
+const STORE_NAME = 'config';
+
+// IndexedDB para persistir config
+async function salvarConfigIndexedDB(config) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, 1);
+
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      store.put(config, 'alarme');
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
+
+async function carregarConfigIndexedDB() {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(DB_NAME, 1);
+
+    request.onerror = () => resolve(null);
+    request.onsuccess = () => {
+      const db = request.result;
+      const transaction = db.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const get = store.get('alarme');
+
+      get.onsuccess = () => resolve(get.result || null);
+      get.onerror = () => resolve(null);
+    };
+
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME);
+      }
+    };
+  });
+}
 
 // Simula Firebase fetch (já que não pode usar SDK diretamente em SW)
 async function buscarConfigDoFirebase(userId) {
@@ -100,10 +164,13 @@ async function sincronizarComFirebase() {
   }
 }
 
-function iniciarRelogioBackground(config) {
+async function iniciarRelogioBackground(config) {
   console.log('🔔 [SW] Iniciando relógio em background:', config);
 
   configAtual = config;
+
+  // Salva em IndexedDB para persistência
+  await salvarConfigIndexedDB(config);
 
   if (intervaloRelogio) clearInterval(intervaloRelogio);
   if (intervaloSincronizacao) clearInterval(intervaloSincronizacao);

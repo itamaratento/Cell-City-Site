@@ -942,7 +942,7 @@ class Dashboard {
     };
 
     const salvarConfiguracao = async () => {
-      if (atualizandoDoFirebase) return; // Evita loop infinito
+      if (atualizandoDoFirebase) return;
 
       const config = {
         ativo: toggleAtivo.checked,
@@ -959,6 +959,16 @@ class Dashboard {
 
       // Salva localmente
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
+
+      // 📤 ENVIA IMEDIATAMENTE AO SERVICE WORKER
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          tipo: 'atualizarConfig',
+          config: config,
+          timestamp: Date.now()
+        });
+        console.log('📤 Config enviada ao SW instantaneamente');
+      }
 
       // Salva no Firebase
       try {
@@ -1338,7 +1348,8 @@ class Dashboard {
         }
       });
 
-      // Envia config atualizada ao SW a cada 2 minutos (para manter sincronizado)
+      // Envia config atualizada ao SW a cada 30 segundos (redundância)
+      // Garante que SW sempre tem config mais recente
       setInterval(() => {
         if (toggleAtivo.checked && navigator.serviceWorker.controller) {
           const config = {
@@ -1349,14 +1360,15 @@ class Dashboard {
             anotacao: inputAnotacao.value,
             dias: Array.from(diasChecks)
               .filter(c => c.checked)
-              .map(c => parseInt(c.value))
+              .map(c => parseInt(c.value)),
+            timestamp: Date.now()
           };
           navigator.serviceWorker.controller.postMessage({
             tipo: 'atualizarConfig',
             config: config
           });
         }
-      }, 120000); // 2 minutos
+      }, 30000); // 30 segundos
     }
   }
 
