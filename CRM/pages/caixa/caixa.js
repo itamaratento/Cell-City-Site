@@ -627,7 +627,50 @@ async function corrigirMigracaoLucroSaidas() {
     }
 }
 
+function exibirAnaliseCompleta() {
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('📊 ANÁLISE COMPLETA DO CAIXA OPERACIONAL');
+    console.log('═══════════════════════════════════════════════════════════════');
+
+    const dados = lancamentos.map(l => ({
+        id: l.id?.substring(0, 8) + '...',
+        descricao: l.descricao || '-',
+        tipo: l.tipo,
+        categoria: l.categoria || '-',
+        valor: l.valor,
+        custo: l.custo || 0,
+        lucro: l.lucro,
+        data: l.dia || '-'
+    }));
+
+    console.table(dados);
+
+    const somaEntradas = lancamentos
+        .filter(l => l.tipo === 'entrada' || l.tipo === 'servico')
+        .reduce((s, l) => s + (l.valor || 0), 0);
+
+    const somaSaidas = lancamentos
+        .filter(l => l.tipo === 'saida')
+        .reduce((s, l) => s + (l.valor || 0), 0);
+
+    const somaLucros = lancamentos
+        .reduce((s, l) => s + (l.lucro || 0), 0);
+
+    const saldo = somaEntradas - somaSaidas;
+
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('💰 RESUMO FINANCEIRO');
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log(`✅ Total de Entradas (entrada + servico): R$ ${somaEntradas.toFixed(2)}`);
+    console.log(`🔴 Total de Saídas: R$ ${somaSaidas.toFixed(2)}`);
+    console.log(`💳 Saldo Geral (Entradas - Saídas): R$ ${saldo.toFixed(2)}`);
+    console.log(`💎 Soma dos Lucros: R$ ${somaLucros.toFixed(2)}`);
+    console.log(`⚠️  Diferença (Saldo - Lucro): R$ ${(saldo - somaLucros).toFixed(2)}`);
+    console.log('═══════════════════════════════════════════════════════════════');
+}
+
 window.corrigirMigracaoLucroSaidas = corrigirMigracaoLucroSaidas;
+window.exibirAnaliseCompleta = exibirAnaliseCompleta;
 
 // ═══════════════════════════════════════════════════════════════
 // 💼 LÓGICA OPERACIONAL (CRUD - MANTIDA IGUAL)
