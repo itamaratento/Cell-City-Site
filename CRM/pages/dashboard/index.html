@@ -242,6 +242,9 @@
         <span class="alarme-time-sep">até</span>
         <input type="time" id="alarme-hora-fim" value="18:00" class="alarme-time-input">
       </div>
+      <div style="font-size:10px; color: var(--text-tertiary); margin-top: 4px;">
+        Horário do dispositivo: <span id="alarme-hora-dispositivo">--:--</span>
+      </div>
     </div>
 
     <div class="alarme-section">
@@ -280,6 +283,10 @@
     <div class="alarme-section">
       <label class="alarme-label">📝 Anotação</label>
       <textarea id="alarme-anotacao" class="alarme-anotacao" placeholder="Ex: Alarme para OS urgentes..." rows="2"></textarea>
+    </div>
+
+    <div class="alarme-status-debug" id="alarme-status-debug" style="font-size:11px; color: var(--text-tertiary); padding: 8px; background: var(--bg-surface); border-radius: 6px; margin-top: 8px;">
+      <div id="alarme-debug-info">Aguardando ativação...</div>
     </div>
 
     <div class="alarme-actions">
