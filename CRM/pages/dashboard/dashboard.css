@@ -948,7 +948,7 @@ body {
   grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: 124px;
   gap: 12px;
-  align-items: stretch;
+  align-items: start;
 }
 
 /* ============ CARDS DE MÓDULOS ============ */
@@ -1070,6 +1070,7 @@ body {
     0 0 20px rgba(0, 200, 83, 0.15),
     inset 0 1px 0 rgba(0, 230, 118, 0.08);
   animation: borderGlowGreen 3s ease-in-out infinite;
+  margin-bottom: 0;
 }
 
 .module-card.alerts-card:hover {
@@ -1713,11 +1714,11 @@ body {
   .workspace { padding: 20px 16px 140px; }
   .calendar-popup { left: 16px; right: 16px; width: auto; }
   .brand-header-subtitle { display: none; }
-  .ops-block { grid-template-columns: 1fr; gap: 30px; }
+  .ops-block { grid-template-columns: 1fr; gap: 200px; }
   .module-card { padding: 14px; margin-bottom: 20px; }
   .module-icon { width: 40px; height: 40px; font-size: 18px; }
-  .alerts-card { min-height: 280px; margin-bottom: 30px; }
-  .meta-card { min-height: 220px; margin-bottom: 30px; }
+  .alerts-card { min-height: 300px; }
+  .meta-card { min-height: 220px; margin-bottom: 30px; margin-top: 800px; }
   .alert-title { font-size: 17px; }
   .alert-icon { font-size: 44px; }
   .dock {
@@ -1742,9 +1743,9 @@ body {
 }
 
 @media (max-width: 520px) {
-  .ops-block { grid-template-columns: 1fr; gap: 30px; }
-  .alerts-card { min-height: 280px; margin-bottom: 30px; }
-  .meta-card { min-height: 220px; margin-bottom: 30px; }
+  .ops-block { grid-template-columns: 1fr; gap: 200px; }
+  .alerts-card { min-height: 300px; }
+  .meta-card { min-height: 220px; margin-bottom: 30px; margin-top: 800px; }
   .meta-current { font-size: 20px; }
   .ai-title { font-size: 12.5px; }
   .ai-subtitle { display: none; }
