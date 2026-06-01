@@ -30,6 +30,7 @@ window.saveObservation = saveObservation;
 window.shareWhatsApp = shareWhatsApp;
 window.printOS = printOS;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
+window.copyWarrantyToClipboard = copyWarrantyToClipboard;
 window.searchClients = searchClients;
 window.showClientDetail = showClientDetail;
 window.startOSForClient = startOSForClient;
@@ -477,7 +478,7 @@ function renderDetail() {
     }
     
     const _acaoBtn = os.status === 'orcamento' ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!['entregue','devolvido_orcamento'].includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -545,6 +546,30 @@ async function saveCurrentOS() { if (!currentOS) return; await DB.updateOS(curre
 async function deleteOS(id) { const c = prompt("Digite 77 para confirmar a exclusão"); if (c !== "77") { alert("Exclusão cancelada."); return; } try { await deleteDoc(doc(db, "os", id)); localOS = localOS.filter(o => o.id !== id); updateStats(); renderList(); showToast("🗑️ OS excluída."); window.markSaved(); } catch(e) { console.error(e); alert("Erro ao excluir."); } }
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${(os.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
+
+function _getWarrantyText() {
+    if (!currentOS) return null;
+    const os = currentOS;
+    let cfg = { logo: '', garantias: [] };
+    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    if (garantias.length === 0) return null;
+    const garantia = garantias.find(g => g.padrao) || garantias[0];
+    if (!garantia) return null;
+    const lojaNome = (cfg.loja?.nome || 'CELL CITY').toUpperCase();
+    const createdDate = formatDate(os.createdAt).split(' ')[0];
+    return `${lojaNome}\n\nOS: ${os.id}\nData: ${createdDate}\nEquipamento: ${os.model}\nServiço: ${os.defect || 'Não especificado'}\n\nGARANTIA\n\n${garantia.texto}\n\nObrigado pela preferência.`;
+}
+
+function copyWarrantyToClipboard() {
+    const text = _getWarrantyText();
+    if (!text) { showToast('⚠️ Nenhuma garantia disponível'); return; }
+    navigator.clipboard.writeText(text).then(() => {
+        showToast('✅ Garantia copiada para a área de transferência');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar');
+    });
+}
 
 function sendWarrantyWhatsApp() {
     if (!currentOS) return;
