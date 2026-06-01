@@ -1231,7 +1231,7 @@ class Dashboard {
       }
     };
 
-    // Notificação Persistente
+    // Notificação Persistente (agora automática ao ativar)
     const mostrarNotificacaoPersistente = async () => {
       if (!('Notification' in window)) {
         atualizarDebug('⚠️ Notificações não suportadas');
@@ -1251,17 +1251,12 @@ class Dashboard {
         }
       }
 
-      try {
-        new Notification('🔔 Alarme Ativo', {
-          body: `Horário: ${inputHoraInicio.value} - Status: Monitorando`,
-          icon: '/CRM/assets/logo.png',
-          badge: '/CRM/assets/logo.png',
-          tag: 'alarme-persistente'
+      // Service Worker mostra a notificação
+      if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({
+          tipo: 'mostrarNotificacao'
         });
-        atualizarDebug('📌 Notificação ativada!');
-      } catch (e) {
-        console.warn('Erro notificação:', e);
-        atualizarDebug('⚠️ Erro ao criar notificação: ' + e.message);
+        atualizarDebug('📌 Notificação persistente na barra!');
       }
     };
 

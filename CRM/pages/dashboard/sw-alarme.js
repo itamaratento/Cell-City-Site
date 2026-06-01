@@ -32,17 +32,56 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Mostra notificação persistente
+async function mostrarNotificacaoPersistente(config) {
+  try {
+    await self.registration.showNotification('🔔 Alarme CRM Ativo', {
+      body: `Horário: ${config.horaInicio} | Monitorando...`,
+      icon: '/CRM/assets/logo.png',
+      badge: '/CRM/assets/logo.png',
+      tag: 'alarme-persistente',
+      requireInteraction: true,
+      silent: true, // Não faz som agora (só quando dispara)
+      actions: [
+        { action: 'abrir', title: '👀 Abrir' },
+        { action: 'parar', title: '⏹️ Parar' }
+      ]
+    });
+    console.log('📌 [SW] Notificação persistente mostrada');
+  } catch (e) {
+    console.warn('❌ [SW] Erro notificação:', e);
+  }
+}
+
+// Atualiza notificação a cada mudança
+async function atualizarNotificacao(config) {
+  if (!config.ativo) {
+    try {
+      await self.registration.getNotifications({ tag: 'alarme-persistente' }).then(notifs => {
+        notifs.forEach(n => n.close());
+      });
+      console.log('📌 [SW] Notificação fechada');
+    } catch (e) {
+      console.warn('Erro ao fechar notificação:', e);
+    }
+  } else {
+    await mostrarNotificacaoPersistente(config);
+  }
+}
+
 self.addEventListener('message', (event) => {
   const { tipo, config, userId } = event.data;
 
   if (tipo === 'iniciarRelogio') {
     console.log('📥 [SW] Recebido iniciarRelogio');
     iniciarRelogioBackground(config);
+    atualizarNotificacao(config);
   }
 
   if (tipo === 'pararRelogio') {
     console.log('📥 [SW] Recebido pararRelogio');
     pararRelogioBackground();
+    atualizarNotificacao({ ativo: false });
   }
 
   if (tipo === 'atualizarConfig') {
@@ -52,6 +91,15 @@ self.addEventListener('message', (event) => {
     salvarConfigIndexedDB(config).catch(err => {
       console.warn('Erro salvando em IndexedDB:', err);
     });
+    // Atualiza notificação
+    atualizarNotificacao(config);
+  }
+
+  if (tipo === 'mostrarNotificacao') {
+    console.log('📥 [SW] Pedido para mostrar notificação');
+    if (configAtual) {
+      mostrarNotificacaoPersistente(configAtual);
+    }
   }
 });
 
@@ -243,21 +291,35 @@ function pararRelogioBackground() {
 
 // Quando clica na notificação
 self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
+  // NÃO fecha a notificação persistente automaticamente
+  if (event.notification.tag !== 'alarme-persistente') {
+    event.notification.close();
+  }
 
-  if (event.action === 'abrir') {
+  if (event.action === 'abrir' || !event.action) {
+    // Clicou no corpo da notificação ou botão "Abrir"
     event.waitUntil(
       clients.matchAll({ type: 'window' }).then((clientList) => {
         for (let client of clientList) {
-          if (client.url === '/CRM/pages/dashboard/index.html' && 'focus' in client) {
+          if (client.url.includes('/CRM/') && 'focus' in client) {
             return client.focus();
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow('/CRM/pages/dashboard/');
+          return clients.openWindow('/CRM/pages/dashboard/?alarme=1');
         }
       })
     );
+  }
+
+  if (event.action === 'parar') {
+    // Clicou em "Parar" - para o alarme
+    console.log('⏹️ [SW] Usuário clicou em Parar');
+    ultimoDisparo = null;
+    configAtual = { ...configAtual, ativo: false };
+
+    // Fecha a notificação
+    event.notification.close();
   }
 });
 
