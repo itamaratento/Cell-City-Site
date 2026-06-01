@@ -998,15 +998,17 @@ class Dashboard {
 
       try {
         // Preenche os campos com dados do alarme
-        inputHoraInicio.value = alarme.horaInicio || '09:00';
-        inputHoraFim.value = alarme.horaFim || '18:00';
-        inputVolume.value = alarme.volume || 80;
-        inputAnotacao.value = alarme.anotacao || 'Alarme';
+        if (inputHoraInicio) inputHoraInicio.value = alarme.horaInicio || '09:00';
+        if (inputHoraFim) inputHoraFim.value = alarme.horaFim || '18:00';
+        if (inputVolume) inputVolume.value = alarme.volume || 80;
+        if (inputAnotacao) inputAnotacao.value = alarme.anotacao || 'Alarme';
 
         // Marca os dias
-        diasChecks.forEach(check => {
-          check.checked = (alarme.dias || []).includes(parseInt(check.value));
-        });
+        if (diasChecks && diasChecks.length > 0) {
+          diasChecks.forEach(check => {
+            check.checked = (alarme.dias || []).includes(parseInt(check.value));
+          });
+        }
 
         // Define repetição
         const inputRepeticao = document.getElementById('alarme-repeticao');
@@ -1015,6 +1017,13 @@ class Dashboard {
         }
 
         atualizarLabels();
+
+        // Garante que o painel está visível
+        if (panel && panel.style.display === 'none') {
+          panel.style.display = 'flex';
+          console.log('📂 Painel aberto automaticamente');
+        }
+
         atualizarDebug(`✏️ Editando: ${alarme.anotacao}`);
 
         // Scroll para os campos
@@ -1055,12 +1064,15 @@ class Dashboard {
       const html = alarmes.map(alarme => {
         const repeticaoText = alarme.repeticao > 0 ? ` 🔁 ${alarme.repeticao}s` : '';
         return `
-          <div style="padding: 8px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''" onclick="console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
-            <div style="flex: 1; font-size: 12px;">
-              <strong style="color: var(--cell-green);">${alarme.horaInicio}</strong>${repeticaoText}
-              <div style="color: var(--text-tertiary); font-size: 10px;">${alarme.anotacao}</div>
+          <div style="padding: 10px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none; background: rgba(0,200,83,0.03);" onmouseover="this.style.background='rgba(0,200,83,0.08)'" onmouseout="this.style.background='rgba(0,200,83,0.03)'" onclick="console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
+            <div style="flex: 1;">
+              <div style="font-size: 13px; font-weight: 600; color: var(--cell-green); margin-bottom: 3px;">
+                ⏰ ${alarme.horaInicio} → ${alarme.horaFim}${repeticaoText}
+              </div>
+              <div style="color: var(--text-tertiary); font-size: 11px; margin-bottom: 2px;">${alarme.anotacao || 'Sem descrição'}</div>
+              <div style="color: var(--text-tertiary); font-size: 10px;">📅 ${alarme.dias?.length || 0} dias</div>
             </div>
-            <button onclick="event.stopPropagation(); event.preventDefault(); window.removerAlarme('${alarme.id}'); return false;" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 14px; padding: 4px;">✕</button>
+            <button onclick="event.stopPropagation(); event.preventDefault(); window.removerAlarme('${alarme.id}'); return false;" style="background: none; border: none; color: var(--accent-red); cursor: pointer; font-size: 16px; padding: 4px 8px; flex-shrink: 0;">✕</button>
           </div>
         `;
       }).join('');
