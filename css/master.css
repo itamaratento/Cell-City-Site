@@ -88,7 +88,7 @@ a {
 
 /* HERO */
 .hero {
-    padding: 180px 0 80px;
+    padding: 240px 0 80px;
     background: #0a0c12;
 }
 
@@ -490,6 +490,9 @@ a {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    align-items: center;
+    text-align: center;
+    justify-content: center;
 }
 
 .footer-links a {
