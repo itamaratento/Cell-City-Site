@@ -241,9 +241,12 @@ function fecharModalAutoatendimento() {
 
 // ===== CONVERSÃO PARA OS =====
 async function converterEmOS() {
-    if (!preOSEmFoco) return;
+    if (!preOSEmFoco) {
+        console.warn('[Conversão] Nenhuma Pré-OS em foco.');
+        return;
+    }
 
-    // Preparar dados para passar para a página de OS
+    // Preparar dados para a página de OS pré-preencher
     const dadosOS = {
         clienteNome: preOSEmFoco.cliente?.nome || '',
         clienteWhatsapp: preOSEmFoco.cliente?.whatsapp || '',
@@ -251,30 +254,18 @@ async function converterEmOS() {
         aparelhoMarca: preOSEmFoco.aparelho?.marca || '',
         aparelhoModelo: preOSEmFoco.aparelho?.modelo || '',
         defeito: preOSEmFoco.problema || '',
-        estadoAparelho: preOSEmFoco.estado_aparelho || [],
-        acessorios: preOSEmFoco.acessorios || [],
-        origemCliente: preOSEmFoco.origem_cliente || '',
-        senha: preOSEmFoco.senha || '',
-        imei: preOSEmFoco.imei || '',
+        senha: preOSEmFoco.password || '',
         observacoes: preOSEmFoco.observacoes || '',
         origem: 'Autoatendimento',
         preOSId: preOSEmFoco.id
     };
 
-    // Armazenar em sessionStorage para a página de OS ler
+    console.log('🚀 [Conversão] Pré-OS', preOSEmFoco.id, '→ abrindo formulário de OS pré-preenchido:', dadosOS);
+
+    // Armazenar em sessionStorage para a página de OS ler ao carregar.
+    // A Pré-OS só é marcada como CONVERTIDA quando a OS for de fato salva (na página de OS).
     sessionStorage.setItem('cc_dados_preos', JSON.stringify(dadosOS));
 
-    // Marcar como convertida (opcionalmente)
-    try {
-        await updateDoc(doc(db, COL, preOSEmFoco.id), {
-            status: 'CONVERTIDA',
-            atualizadoEm: serverTimestamp()
-        });
-    } catch (e) {
-        console.warn('Erro ao atualizar status:', e);
-    }
-
-    // Redirecionar para a página de OS
     window.location.href = '../os/index.html';
 }
 

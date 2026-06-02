@@ -418,7 +418,17 @@ async function saveOS() {
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
         os.patternSequence = window.tempPatternSequence;
     }
-    await DB.addOS(os); await updateClientHistory(telefone, nome, osId); showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
+    await DB.addOS(os); await updateClientHistory(telefone, nome, osId);
+    if (preOSPendente) {
+        try {
+            await updateDoc(doc(db, 'pre_os', preOSPendente), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() });
+            console.log('✅ [Conversão] Pré-OS', preOSPendente, 'marcada como CONVERTIDA e vinculada a', osId);
+        } catch (e) {
+            console.warn('⚠️ [Conversão] OS criada, mas não foi possível marcar a Pré-OS como convertida:', e);
+        }
+        preOSPendente = null;
+    }
+    showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
 }
 
 async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
@@ -1103,6 +1113,31 @@ function closeModal(event) { if (event && event.target === document.getElementBy
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
 function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document.getElementById('global-search')?.focus(), 150); }
 
+// ===== CONVERSÃO DE PRÉ-OS (vindo do Autoatendimento) =====
+let preOSPendente = null;
+function verificarConversaoPreOS() {
+    try {
+        const raw = sessionStorage.getItem('cc_dados_preos');
+        if (!raw) return;
+        sessionStorage.removeItem('cc_dados_preos');
+        const d = JSON.parse(raw);
+        console.log('🔄 [Conversão] Dados da Pré-OS recebidos:', d);
+        startOS('celular'); // abre o formulário de Nova OS na categoria padrão
+        const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+        set('f-nome', d.clienteNome);
+        set('f-telefone', formatPhone(d.clienteWhatsapp || ''));
+        set('f-modelo', [d.aparelhoMarca, d.aparelhoModelo].filter(Boolean).join(' ').trim());
+        set('f-defeito', d.defeito);
+        set('f-obs', d.observacoes);
+        if (d.senha) set('f-senha', d.senha);
+        preOSPendente = d.preOSId || null;
+        console.log('🔄 [Conversão] Formulário de OS pré-preenchido. Pré-OS pendente:', preOSPendente);
+        showToast('📥 Dados da Pré-OS carregados. Revise e clique em Salvar para gerar a OS.');
+    } catch (e) {
+        console.error('❌ [Conversão] Erro ao carregar dados da Pré-OS:', e);
+    }
+}
+
 // ===== INIT =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
@@ -1114,6 +1149,7 @@ async function init() {
         logoEl.dataset.logoHandler = 'true';
     }
     await DB.loadFromFirestore(); updateStats(); showScreen('home'); console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
+    verificarConversaoPreOS();
 }
 
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
