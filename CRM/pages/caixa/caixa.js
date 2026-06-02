@@ -106,6 +106,7 @@ async function init() {
     await carregarCategorias();
     iniciarListenerCategorias();
     iniciarListenerLancamentos();
+    carregarMetaSemanal(); // Carrega meta semanal no topo
     carregarLembretes(); // carrega lembretes no início p/ badge/FAB aparecerem sozinhos
     setTimeout(() => executarOrquestradorHistorico(), 2500);
 }
@@ -1332,6 +1333,90 @@ function mostrarToast(msg) {
 // ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+// META SEMANAL — Mesmo cálculo do Dashboard
+// ═══════════════════════════════════════════
+async function carregarMetaSemanal() {
+    try {
+        const CRESCIMENTO = 1.15;
+
+        // Número da semana ISO (1-53)
+        const _weekNum = (date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+            const jan1 = new Date(d.getFullYear(), 0, 1);
+            return Math.ceil((((d - jan1) / 86400000) + 1) / 7);
+        };
+
+        const now      = new Date();
+        const anoAtual = now.getFullYear();
+        const numSem   = _weekNum(now);
+
+        // Lê todos os lançamentos
+        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+
+        let lucroAtual = 0;
+        const lucroPorAno = {};
+
+        snap.forEach(d => {
+            const l = d.data();
+            const iso = l.dataISO || l.createdAtISO || '';
+            if (!iso) return;
+
+            const lucro = Number(l.lucro || 0);
+            const dt = new Date(iso);
+            const ano = dt.getFullYear();
+            const sem = _weekNum(dt);
+
+            if (ano === anoAtual && sem === numSem) lucroAtual += lucro;
+            if (ano !== anoAtual && sem === numSem) {
+                lucroPorAno[ano] = (lucroPorAno[ano] || 0) + lucro;
+            }
+        });
+
+        // Meta base: lucro do ano anterior, ou média dos anos disponíveis
+        const anosHistorico = Object.keys(lucroPorAno).map(Number).sort((a, b) => b - a);
+        let lucroBase = 0;
+        if (lucroPorAno[anoAtual - 1] > 0) {
+            lucroBase = lucroPorAno[anoAtual - 1];
+        } else if (anosHistorico.length > 0) {
+            const soma = anosHistorico.reduce((s, a) => s + lucroPorAno[a], 0);
+            lucroBase = soma / anosHistorico.length;
+        }
+
+        const metaCalculada = lucroBase > 0
+            ? Math.round(lucroBase * CRESCIMENTO)
+            : 5000; // meta padrão se não houver histórico
+
+        atualizarMetaSemanal(lucroAtual, metaCalculada);
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar meta semanal:', error);
+    }
+}
+
+function atualizarMetaSemanal(realizado, meta) {
+    const percent = Math.min((realizado / meta) * 100, 100);
+    const faltante = Math.max(meta - realizado, 0);
+    const formatBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR')}`;
+
+    // Atualizar card de Meta Semanal no header
+    const elPercent = document.getElementById('meta-card-percent');
+    const elRealizado = document.getElementById('meta-card-realizado');
+    const elMeta = document.getElementById('meta-card-meta');
+    const elFaltante = document.getElementById('meta-card-faltante');
+
+    if (elPercent) elPercent.textContent = `${percent.toFixed(0)}%`;
+    if (elRealizado) elRealizado.textContent = formatBRL(realizado);
+    if (elMeta) elMeta.textContent = formatBRL(meta);
+    if (elFaltante) elFaltante.textContent = formatBRL(faltante);
+
+    // "Faltam" como tooltip nativo no hover do card
+    const elBox = document.getElementById('meta-card-box');
+    if (elBox) elBox.title = `Faltam ${formatBRL(faltante)} para a meta semanal`;
+}
+
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 window.addEventListener('beforeunload', () => { if(listenerLancamentos) listenerLancamentos(); if(listenerCategorias) listenerCategorias(); });
 

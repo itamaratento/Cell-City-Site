@@ -1264,3 +1264,92 @@ body {
 }
 .autocomplete-item:last-child { border-bottom: none; }
 .autocomplete-item:hover { background: rgba(0,200,83,0.12); }
+
+/* ========== HEADER: título (centro) + meta semanal (direita) ========== */
+/* O brand-header.js migra estes filhos para dentro de #crm-brand-bar (flex). */
+.header-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+}
+
+.header-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+/* ========== META SEMANAL — irmão visual do .brand-header ========== */
+/* Espelha padding/raio/borda/altura do card "Cell City Informática". */
+.meta-semanal-card-header {
+    background: rgba(0, 200, 83, 0.06);
+    border: 1px solid rgba(0, 200, 83, 0.25);
+    border-radius: 12px;
+    padding: 6px 14px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0;
+    min-width: 171px;
+    flex-shrink: 0;
+    cursor: default;
+    user-select: none;
+    transition: all 250ms cubic-bezier(0.4,0,0.2,1);
+}
+
+.meta-semanal-card-header:hover {
+    background: rgba(0, 200, 83, 0.10);
+    border-color: rgba(0, 200, 83, 0.45);
+    box-shadow: 0 0 20px rgba(0, 200, 83, 0.15);
+}
+
+.meta-card-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    line-height: 1;
+}
+
+.meta-card-percent {
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    color: #00e676;
+    line-height: 1.05;
+}
+
+.meta-card-valores {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+}
+
+.meta-card-separador { color: var(--text3); }
+
+/* "Faltam" não é exibido no card — vai para o tooltip (title) no hover */
+.meta-card-faltante { display: none; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .header-center { order: 1; }
+    .header-right { order: 2; justify-content: center; width: 100%; }
+
+    .meta-semanal-card-header {
+        min-width: 0;
+        width: 100%;
+    }
+}

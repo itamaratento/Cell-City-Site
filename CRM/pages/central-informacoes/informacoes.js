@@ -61,6 +61,9 @@ window.toggleSenhaVisibility = toggleSenhaVisibility;
 window.downloadDocumento = downloadDocumento;
 window.limparArquivo = limparArquivo;
 
+window.copiarTitulo = copiarTitulo;
+window.visualizarSenha = visualizarSenha;
+
 // ===== INIT =====
 async function init() {
     await carregarCategorias();
@@ -79,6 +82,33 @@ async function init() {
     });
     document.getElementById('info-modal-cat')?.addEventListener('click', e => {
         if (e.target.id === 'info-modal-cat') fecharFormCategoria();
+    });
+
+    // Event delegation para títulos clicáveis
+    let lastClickTime = 0;
+    const doubleClickDelay = 300;
+    let pendingClickTimer = null;
+
+    document.getElementById('info-lista')?.addEventListener('click', e => {
+        const titulo = e.target.closest('.info-titulo-clicavel');
+        if (!titulo) return;
+
+        const id = titulo.dataset.id;
+        const tipo = titulo.dataset.tipo;
+        const now = Date.now();
+
+        // Detectar duplo clique
+        if (now - lastClickTime < doubleClickDelay && pendingClickTimer) {
+            clearTimeout(pendingClickTimer);
+            pendingClickTimer = null;
+            editarInformacao(id);
+        } else {
+            lastClickTime = now;
+            pendingClickTimer = setTimeout(() => {
+                copiarTitulo(id, tipo);
+                pendingClickTimer = null;
+            }, doubleClickDelay);
+        }
     });
 }
 
@@ -234,7 +264,7 @@ function renderItemLista(info) {
         <div class="info-lista-item">
             <span class="info-lista-item-icon">${icone}</span>
             <div class="info-lista-item-content">
-                <div class="info-lista-item-titulo">${info.titulo}</div>
+                <div class="info-lista-item-titulo info-titulo-clicavel" data-id="${info.id}" data-tipo="${info.tipo}">${info.titulo}</div>
                 <div class="info-lista-item-meta">${info.categoria}</div>
             </div>
             <div class="info-lista-item-actions">
@@ -268,7 +298,7 @@ function renderItemCard(info) {
             <div class="info-card-header">
                 <div class="info-card-titulo">
                     <span class="info-card-icon">${icone}</span>
-                    ${info.titulo}
+                    <span class="info-card-titulo-texto info-titulo-clicavel" data-id="${info.id}" data-tipo="${info.tipo}">${info.titulo}</span>
                     ${badge}
                 </div>
                 <span>${estrela}</span>
@@ -297,6 +327,7 @@ function renderAcoesPorTipo(info) {
         return `
             <button class="info-card-btn copy" onclick="copiarUsuario('${info.id}')">👤 User</button>
             <button class="info-card-btn copy" onclick="copiarSenha('${info.id}', 'senha')">🔑 Senha</button>
+            <button class="info-card-btn eye" onclick="visualizarSenha('${info.id}')" title="Visualizar senha">👁</button>
         `;
     } else if (info.tipo === 'documento') {
         return `<button class="info-card-btn copy" onclick="downloadDocumento('${info.id}')">📥 Download</button>`;
@@ -336,6 +367,43 @@ async function copiarComando(id) {
     toast('✅ Comando copiado!');
 }
 
+async function copiarTitulo(id, tipo) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info) return;
+
+    let conteudoCopiar = '';
+
+    if (tipo === 'comando') {
+        conteudoCopiar = info.conteudo || '';
+    } else if (tipo === 'site') {
+        conteudoCopiar = info.url || '';
+    } else if (tipo === 'senha') {
+        if (info.senhaOculta) {
+            try {
+                conteudoCopiar = descriptografarSenha(info.senhaOculta);
+            } catch (err) {
+                toast('❌ Erro ao descriptografar senha');
+                return;
+            }
+        }
+    } else if (tipo === 'anotacao') {
+        conteudoCopiar = info.conteudo || '';
+    } else if (tipo === 'documento') {
+        toast('📥 Use o botão Download para arquivos');
+        return;
+    }
+
+    if (!conteudoCopiar) {
+        toast('⚠️ Nenhum conteúdo para copiar');
+        return;
+    }
+
+    await navigator.clipboard.writeText(conteudoCopiar).catch(() => {
+        document.execCommand('copy', false, conteudoCopiar);
+    });
+    toast('✅ Conteúdo copiado com sucesso.');
+}
+
 async function abrirSite(id) {
     const info = informacoes.find(x => x.id === id);
     if (!info || !info.url) return;
@@ -364,6 +432,76 @@ async function copiarSenha(id, tipo) {
     } catch (err) {
         toast('❌ Erro ao descriptografar senha');
     }
+}
+
+async function visualizarSenha(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.senhaOculta) {
+        toast('⚠️ Senha não disponível');
+        return;
+    }
+
+    try {
+        const senhaDescriptografada = descriptografarSenha(info.senhaOculta);
+        mostrarPopoverSenha(id, senhaDescriptografada);
+    } catch (err) {
+        toast('❌ Erro ao descriptografar senha');
+    }
+}
+
+function mostrarPopoverSenha(id, senha) {
+    // Verificar se já existe popover aberto
+    const popoverExistente = document.getElementById('info-popover-senha-' + id);
+    if (popoverExistente) {
+        popoverExistente.remove();
+        return;
+    }
+
+    // Criar popover
+    const popover = document.createElement('div');
+    popover.id = 'info-popover-senha-' + id;
+    popover.className = 'info-popover-senha';
+    popover.innerHTML = `
+        <div class="info-popover-header">
+            <span>🔐 Senha</span>
+            <button class="info-popover-close" onclick="document.getElementById('info-popover-senha-${id}').remove()">✕</button>
+        </div>
+        <div class="info-popover-content">
+            <div class="info-popover-senha-display">
+                <code>${escapeHtml(senha)}</code>
+            </div>
+            <button class="info-popover-btn-copy" onclick="navigator.clipboard.writeText('${escapeBotoes(senha)}'); toast('✅ Copiado!'); document.getElementById('info-popover-senha-${id}').remove();">
+                📋 Copiar
+            </button>
+        </div>
+    `;
+
+    document.body.appendChild(popover);
+    toast('👁 Senha visível por 10 segundos');
+
+    // Auto-fechar após 10 segundos
+    setTimeout(() => {
+        const el = document.getElementById('info-popover-senha-' + id);
+        if (el) {
+            el.remove();
+            toast('🔒 Senha ocultada');
+        }
+    }, 10000);
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function escapeBotoes(text) {
+    return text.replace(/'/g, "\\'");
 }
 
 async function downloadDocumento(id) {

@@ -9,14 +9,34 @@
 <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
-    <!-- HEADER: título migrado para o brand bar por brand-header.js -->
-    <header class="header">
-        <span class="header-title">💰 Caixa Operacional</span>
+    <!-- HEADER: logo (injetado por brand-header.js) | título | meta semanal -->
+    <header class="header header-grid">
+        <!-- SEÇÃO CENTRO: Título -->
+        <div class="header-center">
+            <span class="header-title">💰 Caixa Operacional</span>
+        </div>
+
+        <!-- SEÇÃO DIREITA: Meta Semanal (irmão visual do card da esquerda) -->
+        <div class="header-right">
+            <div class="meta-semanal-card-header" id="meta-card-box" title="Meta semanal">
+                <div class="meta-card-label">META SEMANAL</div>
+                <div class="meta-card-percent" id="meta-card-percent">--</div>
+                <div class="meta-card-valores">
+                    <span id="meta-card-realizado">R$ 0,00</span>
+                    <span class="meta-card-separador">/</span>
+                    <span id="meta-card-meta">R$ 0,00</span>
+                </div>
+                <!-- Faltam: exibido como tooltip (title) no hover -->
+                <div class="meta-card-faltante">
+                    Faltam <span id="meta-card-faltante">R$ 0,00</span>
+                </div>
+            </div>
+        </div>
     </header>
 
     <!-- MAIN SCREEN -->
     <div class="screen active" id="screen-main">
-        
+
         <!-- ═══════════════════════════════════════ -->
         <!-- SEÇÃO 1: PESQUISA (TOPO - SOZINHA) -->
         <!-- ═══════════════════════════════════════ -->
