@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Corrigir Bug - Copiar Mensagem</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: monospace;
+            background: #0a0b0d;
+            color: #f5f7fa;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        h1 { color: #00e676; margin: 20px 0; }
+        .section {
+            background: #1a1d23;
+            border: 1px solid rgba(0,200,83,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        h2 { color: #00c853; margin: 15px 0; }
+        .log {
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 3px solid #00c853;
+            border-radius: 4px;
+        }
+        .error { border-left-color: #ef4444; }
+        button {
+            background: #00c853;
+            color: #000;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px 10px 0;
+            font-size: 14px;
+        }
+        button:hover { background: #00e676; }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            background: #0a0b0d;
+            border: 1px solid rgba(0,200,83,0.3);
+            color: #f5f7fa;
+            font-family: monospace;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 CORRIGIR BUG — Copiar Mensagem</h1>
+
+        <div class="section">
+            <h2>📊 PASSO 1: Verificar Firestore</h2>
+            <button onclick="verificarFirestore()">🔍 Verificar Firestore</button>
+            <div id="firestore-log"></div>
+        </div>
+
+        <div class="section">
+            <h2>📦 PASSO 2: Forçar Carregar Mensagens</h2>
+            <p>Se Firestore tem dados mas JavaScript não carregou:</p>
+            <button onclick="forcarCarregarMensagens()">⚡ Forçar Carregar</button>
+            <div id="load-log"></div>
+        </div>
+
+        <div class="section">
+            <h2>✅ PASSO 3: Testar Função</h2>
+            <button onclick="testarFuncao()">🧪 Testar copiarMensagem()</button>
+            <div id="test-log"></div>
+            <textarea id="resultado-teste" readonly placeholder="Resultado aqui"></textarea>
+        </div>
+
+        <div class="section">
+            <h2>🎯 PASSO 4: Criar Mensagens Padrão</h2>
+            <p>Se Firestore estiver vazio, crie as mensagens aqui:</p>
+            <button onclick="criarMensagensLocal()">✨ Criar Mensagens Locais</button>
+            <div id="create-log"></div>
+        </div>
+
+        <div class="section">
+            <h2>📋 PASSO 5: Resumo Final</h2>
+            <button onclick="resumoFinal()">📊 Gerar Resumo</button>
+            <div id="resume-log"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs, setDoc, doc, serverTimestamp } from "../../scripts/firebase.js";
+
+        window.verificarFirestore = async function() {
+            const log = document.getElementById('firestore-log');
+            log.innerHTML = '';
+
+            const addLog = (msg, isError = false) => {
+                const div = document.createElement('div');
+                div.className = 'log' + (isError ? ' error' : '');
+                div.textContent = msg;
+                log.appendChild(div);
+                console.log(msg);
+            };
+
+            try {
+                addLog('🔄 Conectando ao Firestore...');
+                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+
+                if (snap.empty) {
+                    addLog('❌ COLEÇÃO VAZIA!', true);
+                    addLog('Solução: Clique em "✨ Criar Mensagens Locais"');
+                    return;
+                }
+
+                addLog(`✅ Coleção encontrada: ${snap.size} documentos`);
+
+                snap.forEach(doc => {
+                    const msg = doc.data().mensagem;
+                    addLog(`   Doc ${doc.id}: ${msg ? '✅ OK' : '❌ VAZIO'}`);
+                    if (msg) {
+                        addLog(`      "${msg.substring(0, 60)}..."`);
+                    }
+                });
+
+                addLog('\n✅ FIRESTORE OK - Problema pode ser no carregamento do JS');
+            } catch (err) {
+                addLog(`❌ ERRO: ${err.message}`, true);
+            }
+        };
+
+        window.forcarCarregarMensagens = async function() {
+            const log = document.getElementById('load-log');
+            log.innerHTML = '';
+
+            const addLog = (msg) => {
+                const div = document.createElement('div');
+                div.className = 'log';
+                div.textContent = msg;
+                log.appendChild(div);
+                console.log(msg);
+            };
+
+            try {
+                addLog('🔄 Carregando mensagens do Firestore...');
+
+                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+                const mensagens = {};
+
+                snap.forEach(d => {
+                    mensagens[d.id] = d.data().mensagem;
+                });
+
+                // Salvar em window (global)
+                window.mensagensPosvenda = mensagens;
+
+                addLog('✅ Mensagens carregadas em window.mensagensPosvenda');
+                addLog(`   5 dias: ${mensagens[5] ? '✅' : '❌'}`);
+                addLog(`   15 dias: ${mensagens[15] ? '✅' : '❌'}`);
+                addLog(`   30 dias: ${mensagens[30] ? '✅' : '❌'}`);
+
+                addLog('\n✅ Dados salvos em memory');
+                addLog('Próximo: Teste a função no PASSO 3');
+
+            } catch (err) {
+                addLog(`❌ ERRO: ${err.message}`);
+            }
+        };
+
+        window.testarFuncao = function() {
+            const log = document.getElementById('test-log');
+            const resultado = document.getElementById('resultado-teste');
+            log.innerHTML = '';
+            resultado.value = '';
+
+            const addLog = (msg) => {
+                const div = document.createElement('div');
+                div.className = 'log';
+                div.textContent = msg;
+                log.appendChild(div);
+            };
+
+            // Simular OS
+            const osTest = {
+                clientName: 'Marivalda Silva',
+                model: 'iPhone 12',
+                prazo: 5
+            };
+
+            addLog('🧪 Testando com dados simulados:');
+            addLog(`   Cliente: ${osTest.clientName}`);
+            addLog(`   Modelo: ${osTest.model}`);
+            addLog(`   Prazo: ${osTest.prazo} dias`);
+
+            if (!window.mensagensPosvenda) {
+                addLog('\n❌ ERRO: window.mensagensPosvenda não existe');
+                addLog('Solução: Execute "⚡ Forçar Carregar" primeiro');
+                return;
+            }
+
+            const msgRaw = window.mensagensPosvenda[osTest.prazo];
+
+            if (!msgRaw || msgRaw.trim().length === 0) {
+                addLog(`\n❌ ERRO: Mensagem para prazo ${osTest.prazo} está VAZIA`);
+                return;
+            }
+
+            const msgProcessada = msgRaw
+                .replace('{{nome}}', osTest.clientName)
+                .replace('{{modelo}}', osTest.model);
+
+            addLog('\n✅ Mensagem processada:');
+            resultado.value = msgProcessada;
+
+            addLog('\n💾 Essa é a mensagem que DEVERIA ser copiada');
+        };
+
+        window.criarMensagensLocal = async function() {
+            const log = document.getElementById('create-log');
+            log.innerHTML = '';
+
+            const addLog = (msg, isError = false) => {
+                const div = document.createElement('div');
+                div.className = 'log' + (isError ? ' error' : '');
+                div.textContent = msg;
+                log.appendChild(div);
+            };
+
+            const mensagens = {
+                5: "Olá {{nome}}!\n\nA Cell City Informática agradece pela confiança.\n\nGostaríamos de saber se está tudo funcionando corretamente com seu {{modelo}} após o atendimento realizado.\n\nEstamos à disposição caso precise de qualquer suporte.",
+                15: "Olá {{nome}}!\n\nEsperamos que esteja tudo perfeito com seu {{modelo}}.\n\nAproveite para fazer uma limpeza completa do aparelho e verificar se há atualizações disponíveis.\n\nQualquer dúvida, nos procure!",
+                30: "Olá {{nome}}!\n\nVárias semanas se passaram desde o atendimento do seu {{modelo}}.\n\nFaça uma revisão completa do aparelho e aproveite para contratar nossos serviços de manutenção preventiva.\n\nPromoção especial: limpeza + verificação completa com 30% de desconto!"
+            };
+
+            try {
+                addLog('🔄 Criando mensagens no Firestore...');
+
+                for (const [prazo, msg] of Object.entries(mensagens)) {
+                    await setDoc(doc(db, "posvenda_mensagens", prazo), {
+                        mensagem: msg,
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    });
+                    addLog(`✅ Mensagem ${prazo} dias criada`);
+                }
+
+                // Também salvar em memory
+                window.mensagensPosvenda = mensagens;
+                addLog('\n✅ Todas as mensagens criadas!');
+                addLog('Próximo: Execute "⚡ Forçar Carregar" para sincronizar');
+
+            } catch (err) {
+                addLog(`❌ ERRO: ${err.message}`, true);
+            }
+        };
+
+        window.resumoFinal = async function() {
+            const log = document.getElementById('resume-log');
+            log.innerHTML = '';
+
+            const addLog = (msg, isError = false) => {
+                const div = document.createElement('div');
+                div.className = 'log' + (isError ? ' error' : '');
+                div.textContent = msg;
+                log.appendChild(div);
+            };
+
+            addLog('📊 RESUMO DO STATUS');
+            addLog('════════════════════════════════════════\n');
+
+            // 1. Firestore
+            try {
+                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+                addLog(`${snap.empty ? '❌' : '✅'} Firestore: ${snap.empty ? 'VAZIO' : 'OK'}`);
+            } catch (err) {
+                addLog(`❌ Firestore: ERRO`);
+            }
+
+            // 2. Memory
+            addLog(`${window.mensagensPosvenda ? '✅' : '❌'} Memória: ${window.mensagensPosvenda ? 'Carregado' : 'NÃO carregado'}`);
+
+            // 3. Função
+            addLog(`${typeof window.copiarMensagem === 'function' ? '✅' : '❌'} Função: ${typeof window.copiarMensagem === 'function' ? 'OK' : 'Não encontrada'}`);
+
+            addLog('\n════════════════════════════════════════');
+            addLog('\n💡 RECOMENDAÇÃO:');
+
+            if (!window.mensagensPosvenda || Object.values(window.mensagensPosvenda).some(m => !m)) {
+                addLog('1️⃣ Execute: "✨ Criar Mensagens Locais"');
+                addLog('2️⃣ Execute: "⚡ Forçar Carregar"');
+                addLog('3️⃣ Recarregue a página (F5)');
+            } else {
+                addLog('✅ Sistema parece estar OK');
+                addLog('Teste o botão 💬 Copiar Mensagem na Pós-venda');
+            }
+        };
+
+        // Auto-executar Verificar Firestore ao carregar
+        window.addEventListener('load', window.verificarFirestore);
+    </script>
+</body>
+</html>
