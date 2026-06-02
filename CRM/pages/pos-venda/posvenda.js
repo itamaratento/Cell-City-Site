@@ -217,7 +217,8 @@ function buildCard(os) {
         ${u.label}
         <div class="pv-buttons-row">
             <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
-            <button class="pv-copy-btn" title="B">💬 Mensagem</button>
+            <button class="pv-copy-btn" title="B">💬 Copiar</button>
+            <button class="pv-view-msg-btn" title="Ver">👁 Ver</button>
             <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
         </div>
         <div class="pv-emoji-row">
@@ -349,6 +350,11 @@ function setupEventDelegation() {
 
         if (e.target.closest('.pv-copy-btn')) {
             copiarMensagem(prazo, os.clientName, os.model);
+            return;
+        }
+
+        if (e.target.closest('.pv-view-msg-btn')) {
+            verMensagem(prazo, os.clientName, os.model);
             return;
         }
 
@@ -509,6 +515,36 @@ function atualizarContadores() {
                 counter.textContent = this.value.length;
             };
         }
+    });
+}
+
+// ===== VER MENSAGEM =====
+function verMensagem(prazo, nome, modelo) {
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    const popover = document.createElement('div');
+    popover.className = 'pv-msg-popover';
+    popover.innerHTML = `
+        <div class="pv-msg-content">
+            <div class="pv-msg-header">
+                <span>👁 Visualizar Mensagem</span>
+                <button class="pv-msg-close" onclick="this.closest('.pv-msg-popover').remove()">✕</button>
+            </div>
+            <div class="pv-msg-body">
+                ${msg}
+            </div>
+            <div class="pv-msg-footer">
+                <button class="pv-msg-copy-btn" onclick="navigator.clipboard.writeText('${msg.replace(/'/g, "\\'")}').then(() => { showToast('✅ Mensagem copiada'); this.closest('.pv-msg-popover').remove(); }).catch(() => showToast('❌ Erro ao copiar'))">📋 Copiar</button>
+                <button class="pv-msg-close-btn" onclick="this.closest('.pv-msg-popover').remove()">✕ Fechar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(popover);
+
+    popover.addEventListener('click', (e) => {
+        if (e.target === popover) popover.remove();
     });
 }
 
