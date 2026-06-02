@@ -76,16 +76,18 @@ body {
   margin-right: 0;
 }
 
-/* ===== TOPO (PESQUISA + NOVO) ===== */
+/* ===== TOPO (PESQUISA + NOVO) — Alinhado com containers abaixo ===== */
 
 .info-topo {
   display: flex;
   gap: 12px;
   margin-bottom: 16px;
   align-items: stretch;
-  padding: 0;
-  margin-left: 0;
-  margin-right: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 .info-search {
@@ -149,34 +151,31 @@ body {
 
 /* ===== FILTROS (TIPO E CATEGORIA) ===== */
 
-/* Wrapper dos filtros — alinhamento PRECISO por matemática */
-/* Segunda linha (categorias) */
+/* Wrapper dos filtros — ALINHAMENTO PRECISO PIXEL-PERFECT */
+/* Ambos containers na mesma coordenada X */
+
+.info-screen > div:nth-of-type(2),
 .info-screen > div:nth-of-type(3) {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
   margin-bottom: 12px !important;
   padding: 12px 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin: 0 !important;
   width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
-/* Primeira linha (tipo) — COMPENSAÇÃO: -12px para anular padding inline */
+/* Remove padding inline da primeira linha */
 .info-screen > div:nth-of-type(2) {
-  display: flex !important;
-  gap: 8px !important;
-  align-items: center !important;
-  margin-bottom: 12px !important;
-  padding: 12px 0 !important;
-  margin-left: -12px !important;
-  margin-right: 0 !important;
-  width: calc(100% + 12px) !important;
+  padding-left: 0 !important;
 }
 
 .info-screen > div:nth-of-type(2) .info-tipo-chips,
 .info-screen > div:nth-of-type(3) .info-categorias {
   padding: 0 12px;
+  margin: 0;
 }
 
 .info-tipo-chips,
@@ -255,13 +254,16 @@ body {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--glow-hover);
-  margin: 0;
-  padding: 0;
-  margin-top: 12px;
+  margin: 0 !important;
+  padding: 0 !important;
+  margin-top: 12px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .info-sec-titulo {
-  padding: 12px 16px;
+  padding: 12px 16px !important;
   border-bottom: 1px solid var(--border-medium);
   font-weight: 600;
   font-size: 15px;
@@ -270,7 +272,8 @@ body {
   justify-content: space-between;
   align-items: center;
   background: rgba(0, 200, 83, 0.05);
-  margin: 0;
+  margin: 0 !important;
+  width: 100% !important;
 }
 
 .info-lista-header {
