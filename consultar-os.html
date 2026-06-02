@@ -8,10 +8,10 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --cell-green: #00c853; --bg-base: #0a0b0d; --bg-surface: #121418; --bg-elevated: #1a1d23; --border: rgba(255,255,255,0.10); --text-primary: #f5f7fa; --text-secondary: #a1a8b3; --text-muted: #6b7280; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
-        .header { background: var(--bg-surface); padding: 15px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-        .logo { max-width: 140px; cursor: pointer; transition: transform 0.3s; grid-column: 2; justify-self: center; align-self: center; }
+        .header { background: var(--bg-surface); padding: 15px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.4); border-bottom: 1px solid var(--border); position: relative; display: flex; align-items: center; justify-content: center; }
+        .logo { max-width: 140px; cursor: pointer; transition: transform 0.3s; }
         .logo:hover { transform: scale(1.05); }
-        .btn-home { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; grid-column: 1; justify-self: start; align-self: center; white-space: nowrap; position: relative; top: -3px; }
+        .btn-home { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; white-space: nowrap; position: absolute; left: 20px; top: 0; bottom: 0; margin-top: auto; margin-bottom: auto; height: fit-content; }
         .btn-home:hover { background: linear-gradient(135deg, #00A040 0%, #008030 100%); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
         .container { max-width: 700px; margin: 30px auto; padding: 30px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
         .container h1 { color: var(--cell-green); margin-bottom: 10px; text-align: center; font-size: 28px; }
