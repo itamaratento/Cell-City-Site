@@ -3,207 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consultar OS - Cell City Informática</title>
-    <link rel="stylesheet" href="css/master.css?v=15">
-    <link rel="stylesheet" href="css/responsive.css?v=16">
-    <link rel="stylesheet" href="css/premium.css?v=1">
+    <title>Consultar OS - Cell City</title>
     <style>
-        .container-consulta {
-            max-width: 600px;
-            margin: 60px auto;
-            padding: 40px;
-            text-align: center;
-            background: linear-gradient(135deg, rgba(0, 200, 83, 0.1) 0%, rgba(0, 160, 64, 0.1) 100%);
-            border-radius: 12px;
-            border: 2px solid rgba(0, 200, 83, 0.3);
-        }
-
-        .container-consulta h1 {
-            color: #00C853;
-            margin-bottom: 10px;
-            font-size: 28px;
-        }
-
-        .container-consulta p {
-            color: #555;
-            margin: 15px 0;
-            line-height: 1.6;
-        }
-
-        .info-box {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #00C853;
-        }
-
-        .info-box strong {
-            color: #00C853;
-        }
-
-        .btn-whatsapp {
-            display: inline-block;
-            background: #25D366;
-            color: white;
-            padding: 12px 30px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            margin-top: 20px;
-            transition: background 0.3s;
-        }
-
-        .btn-whatsapp:hover {
-            background: #1DB854;
-        }
-
-        .features {
-            margin-top: 30px;
-            text-align: left;
-        }
-
-        .feature {
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(0, 200, 83, 0.2);
-        }
-
-        .feature:last-child {
-            border-bottom: none;
-        }
-
-        .feature strong {
-        }
-
-        /* Header e Footer */
-        .header-mini {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 12px 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .logo-link {
-            display: inline-flex;
-            align-items: center;
-            text-decoration: none;
-            transition: transform 0.3s ease;
-        }
-
-        .logo-link:hover {
-            transform: scale(1.05);
-        }
-
-        .logo-img {
-            max-width: 140px;
-            height: auto;
-        }
-
-        .footer-mini {
-            background: rgba(0, 200, 83, 0.1);
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid rgba(0, 200, 83, 0.2);
-            margin-top: 40px;
-        }
-
-        .btn-voltar {
-            display: inline-block;
-            background: linear-gradient(135deg, #00C853 0%, #00A040 100%);
-            color: white;
-            padding: 12px 28px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-voltar:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
-        
-            color: #00C853;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
+        .header { background: white; padding: 15px 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .logo { max-width: 140px; cursor: pointer; transition: transform 0.3s; }
+        .logo:hover { transform: scale(1.05); }
+        .btn-home { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; border: none; cursor: pointer; transition: all 0.3s; }
+        .btn-home:hover { background: linear-gradient(135deg, #00A040 0%, #008030 100%); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
+        .container { max-width: 700px; margin: 30px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); }
+        .container h1 { color: #00C853; margin-bottom: 10px; text-align: center; font-size: 28px; }
+        .container p { text-align: center; color: #666; margin-bottom: 25px; }
+        .search-box { background: linear-gradient(135deg, rgba(0, 200, 83, 0.1) 0%, rgba(0, 160, 64, 0.1) 100%); padding: 20px; border-radius: 8px; border: 2px solid rgba(0, 200, 83, 0.3); margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; margin-bottom: 10px; transition: border-color 0.3s; }
+        .search-box input:focus { outline: none; border-color: #00C853; }
+        .search-box button { width: 100%; background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 15px; transition: all 0.3s; }
+        .search-box button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
+        .search-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result-box { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #00C853; margin: 15px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: none; }
+        .result-box.show { display: block; }
+        .result-box h3 { color: #00C853; margin-bottom: 20px; font-size: 18px; }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .result-item { background: #f8f8f8; padding: 12px; border-radius: 6px; }
+        .result-label { font-weight: 600; color: #666; font-size: 12px; text-transform: uppercase; }
+        .result-value { color: #333; font-size: 15px; margin-top: 5px; font-weight: 500; }
+        .result-full { grid-column: 1 / -1; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+        .status-recebido { background: #E3F2FD; color: #1976D2; }
+        .status-em_analise { background: #E3F2FD; color: #1976D2; }
+        .status-aguardando_peca { background: #FFF3E0; color: #F57C00; }
+        .status-em_reparo { background: #FCE4EC; color: #C2185B; }
+        .status-em_manutencao { background: #FCE4EC; color: #C2185B; }
+        .status-pronto { background: #E8F5E9; color: #388E3C; }
+        .status-pronto_retirada { background: #E8F5E9; color: #388E3C; }
+        .status-entregue { background: #F5F5F5; color: #666; }
+        .error-box { background: #FFEBEE; color: #C62828; padding: 15px; border-radius: 6px; border-left: 4px solid #C62828; margin: 15px 0; display: none; text-align: center; }
+        .error-box.show { display: block; }
+        .loading-box { text-align: center; padding: 20px; display: none; }
+        .loading-box.show { display: block; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #00C853; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-    <!-- HEADER COM LOGO -->
-    <header class="header-mini">
-        <a href="/" class="logo-link" aria-label="Cell City - Voltar ao site">
-            <img src="/imagens/logooficial.jpeg" alt="Cell City Informática" class="logo-img">
-        </a>
-    </header>
-
-
-    </nav>
-</header>
-
-<!-- CONTEÚDO PRINCIPAL -->
-<div class="container-consulta">
-    <h1>🔍 Consultar Sua Ordem de Serviço</h1>
-    <p>Acompanhe o status de seu equipamento em tempo real</p>
-
-    <div class="info-box">
-        <p><strong>⏳ Aviso:</strong> Esta funcionalidade está em desenvolvimento e será lançada em breve!</p>
+    <div class="header">
+        <img src="/imagens/logooficial.jpeg" alt="Cell City" class="logo" onclick="window.location.href='/';">
+        <a href="/" class="btn-home">HOME Voltar ao Site</a>
     </div>
-
-    <p>
-        Aqui você poderá acompanhar o progresso de sua Ordem de Serviço (OS)
-        inserindo o número de atendimento ou seu número de telefone.
-    </p>
-
-    <div class="features">
-        <h3 style="color: #00C853; margin-top: 0;">Funcionalidades em Desenvolvimento:</h3>
-
-        <div class="feature">
-            <strong>📋 Consultar Status</strong> - Veja em qual etapa está seu equipamento
+    <div class="container">
+        <h1>Consultar Sua Ordem</h1>
+        <p>Informe o numero da OS ou seu telefone</p>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Ex: OS-0001 ou 11999999999" onkeypress="if(event.key==='Enter')searchOS()">
+            <button onclick="searchOS()" id="btn-search">Pesquisar</button>
         </div>
-
-        <div class="feature">
-            <strong>⏱️ Tempo Estimado</strong> - Saiba quando seu aparelho estará pronto
-        </div>
-
-        <div class="feature">
-            <strong>💬 Mensagens</strong> - Receba atualizações automaticamente
-        </div>
-
-        <div class="feature">
-            <strong>🔔 Notificações</strong> - Seja avisado quando seu equipamento estiver pronto
-        </div>
+        <div id="loading-box" class="loading-box"><div class="spinner"></div><p>Buscando...</p></div>
+        <div id="error-box" class="error-box"></div>
+        <div id="result-box" class="result-box"></div>
     </div>
-
-    <p style="margin-top: 30px; color: #666; font-style: italic;">
-        Enquanto isso, entre em contato conosco via WhatsApp para acompanhamento personalizado.
-    </p>
-
-    <a href="https://wa.me/5562981605863" class="btn-whatsapp">
-        💬 Falar com Técnico
-    </a>
-</div>
-
-<!-- RODAPÉ -->
-<footer id="contato" style="margin-top: 60px;">
-    <h2>Entre em Contato</h2>
-    <div class="contact-info">
-        <p><strong>📞 Telefone:</strong> (62) 98160-5863</p>
-        <p><strong>📍 Endereço:</strong> Goiânia, GO</p>
-        <p><strong>🌐 WhatsApp:</strong> <a href="https://wa.me/5562981605863">Clique aqui</a></p>
-    </div>
-    <p class="copyright">&copy; 2026 Cell City Informática. Todos os direitos reservados.</p>
-</footer>
-
-<script src="js/script.js?v=6" defer></script>
-
-    <!-- FOOTER -->
-    <footer class="footer-mini">
-        <a href="/" class="btn-voltar">🏠 Voltar ao Site</a>
-    </footer>
-
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js"></script>
+    <script>
+        firebase.initializeApp({apiKey:"AIzaSyC3ZLx2m-IWG2tNvIGZYKEqcXh2mEzJGP8",authDomain:"cellcity-crm.firebaseapp.com",projectId:"cellcity-crm",storageBucket:"cellcity-crm.appspot.com",messagingSenderId:"1068710301995",appId:"1:1068710301995:web:45a59e12bf48a929ca9b8b"});
+        const db=firebase.firestore();
+        async function searchOS(){const input=document.getElementById('search-input').value.trim();const resultBox=document.getElementById('result-box');const errorBox=document.getElementById('error-box');const loadingBox=document.getElementById('loading-box');const btn=document.getElementById('btn-search');if(!input){errorBox.textContent='Insira um numero de OS ou telefone.';errorBox.classList.add('show');resultBox.classList.remove('show');loadingBox.classList.remove('show');return;}errorBox.classList.remove('show');loadingBox.classList.add('show');resultBox.classList.remove('show');btn.disabled=true;try{let query;if(input.includes('-')||input.toUpperCase().includes('OS')){const osNumber=input.toUpperCase().replace(/[^0-9]/g,'');query=db.collection('os').where('id','==',`OS-${osNumber}`);}else{const phone=input.replace(/[^0-9]/g,'');query=db.collection('os').where('phone','==',phone);}const snapshot=await query.get();loadingBox.classList.remove('show');if(snapshot.empty){errorBox.textContent='OS nao encontrada. Verifique os dados.';errorBox.classList.add('show');btn.disabled=false;return;}let html='<h3>OS Encontrada</h3>';snapshot.forEach(doc=>{const os=doc.data();const statusLabel=getStatusLabel(os.status||'em_analise');const statusClass=`status-${(os.status||'em_analise').replace(/\s/g,'_')}`;const entryDate=formatDate(os.createdAt);html+=`<div class="result-grid"><div class="result-item"><div class="result-label">Numero</div><div class="result-value"><strong>${os.id||'N/A'}</strong></div></div><div class="result-item"><div class="result-label">Status</div><div class="result-value"><span class="status-badge ${statusClass}">${statusLabel}</span></div></div><div class="result-item"><div class="result-label">Cliente</div><div class="result-value">${os.clientName||'N/A'}</div></div><div class="result-item"><div class="result-label">Telefone</div><div class="result-value">${formatPhone(os.phone||'N/A')}</div></div><div class="result-item"><div class="result-label">Dispositivo</div><div class="result-value">${os.model||'N/A'}</div></div><div class="result-item"><div class="result-label">Categoria</div><div class="result-value">${os.category||'N/A'}</div></div><div class="result-item result-full"><div class="result-label">Problema</div><div class="result-value">${os.defect||'N/A'}</div></div><div class="result-item"><div class="result-label">Data Entrada</div><div class="result-value">${entryDate}</div></div>${os.observations?`<div class="result-item result-full"><div class="result-label">Observacoes</div><div class="result-value">${os.observations}</div></div>`:''}`;});resultBox.innerHTML=html;resultBox.classList.add('show');btn.disabled=false;}catch(error){loadingBox.classList.remove('show');errorBox.textContent=`Erro: ${error.message}`;errorBox.classList.add('show');btn.disabled=false;}}
+        function getStatusLabel(status){const map={'recebido':'Recebido','em_analise':'Em analise','aguardando_peca':'Aguardando peca','em_reparo':'Em reparo','em_manutencao':'Em manutencao','pronto':'Pronto','pronto_retirada':'Pronto para retirada','entregue':'Entregue','devolvido_orcamento':'Devolvido'};return map[status]||status||'N/A';}
+        function formatDate(date){if(!date)return 'N/A';try{if(typeof date==='object'&&date.toDate){return date.toDate().toLocaleDateString('pt-BR');}if(typeof date==='string'){return new Date(date).toLocaleDateString('pt-BR');}}catch(e){return 'N/A';}}
+        function formatPhone(phone){if(!phone||phone==='N/A')return phone;const cleaned=phone.replace(/\D/g,'');if(cleaned.length===11){return `(${cleaned.slice(0,2)}) ${cleaned.slice(2,7)}-${cleaned.slice(7)}`;}return phone;}
+        window.addEventListener('load',()=>{document.getElementById('search-input').focus();});
+    </script>
 </body>
 </html>
