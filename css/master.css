@@ -694,3 +694,40 @@ a {
     filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
     margin-bottom:8px;
 }
+
+/* Botões de navegação para Autoatendimento e Consultar OS */
+.nav-btn {
+    background: linear-gradient(135deg, #00C853 0%, #00A040 100%);
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease !important;
+    display: inline-block !important;
+    text-decoration: none !important;
+    margin-left: 8px !important;
+}
+
+.nav-btn:hover {
+    background: linear-gradient(135deg, #00A040 0%, #008030 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
+}
+
+.nav-atendimento {
+    background: linear-gradient(135deg, #FF6B35 0%, #FF5722 100%);
+}
+
+.nav-atendimento:hover {
+    background: linear-gradient(135deg, #FF5722 0%, #E64A19 100%);
+    box-shadow: 0 4px 12px rgba(255, 91, 34, 0.3);
+}
+
+.nav-consultar {
+    background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+}
+
+.nav-consultar:hover {
+    background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
