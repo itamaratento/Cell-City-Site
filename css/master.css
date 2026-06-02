@@ -731,3 +731,26 @@ a {
     background: linear-gradient(135deg, #1976D2 0%, #1565C0 100%);
     box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
 }
+
+/* Padronização de todos os itens do menu */
+.nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 204, 0, 0.3);
+    color: #ffcc00;
+    transform: translateY(-2px);
+}
