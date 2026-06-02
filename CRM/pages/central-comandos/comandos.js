@@ -10,11 +10,13 @@ const CACHE_KEY = 'cc_comandos_cache';
 const RECENTES_KEY = 'cc_comandos_recentes';
 
 const CATEGORIAS = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
+const VIEWMODE_KEY = 'cc_comandos_viewmode';
 
 // ===== STATE =====
 let comandos = [];
 let categoriaFiltro = 'Todas';
 let termoBusca = '';
+let viewMode = localStorage.getItem(VIEWMODE_KEY) || 'lista'; // 'lista' (padrão) | 'cards'
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.filtrarComandos    = filtrarComandos;
@@ -26,15 +28,30 @@ window.editarComando      = editarComando;
 window.excluirComando     = excluirComando;
 window.toggleFavorito     = toggleFavorito;
 window.filtrarPorCategoria = filtrarPorCategoria;
+window.setViewMode        = setViewMode;
 
 // ===== INIT =====
 function init() {
     montarCategorias();
     montarSelectCategorias();
+    aplicarBotoesView();
     carregarComandos();
     document.getElementById('cmd-modal')?.addEventListener('click', e => {
         if (e.target.id === 'cmd-modal') fecharFormComando();
     });
+}
+
+// ===== MODO DE VISUALIZAÇÃO =====
+function setViewMode(modo) {
+    viewMode = modo;
+    localStorage.setItem(VIEWMODE_KEY, modo);
+    aplicarBotoesView();
+    render();
+}
+
+function aplicarBotoesView() {
+    document.getElementById('cmd-view-lista')?.classList.toggle('active', viewMode === 'lista');
+    document.getElementById('cmd-view-cards')?.classList.toggle('active', viewMode === 'cards');
 }
 
 // ===== CARREGAR =====
@@ -98,10 +115,14 @@ function render() {
         );
     }
 
-    // Favoritos primeiro, depois por data de criação (já vem ordenado por criadoEm desc)
+    // Favoritos sempre fixos no topo, depois por data de criação (já vem ordenado por criadoEm desc)
     filtrados.sort((a, b) => (b.favorito === true) - (a.favorito === true));
 
     if (contador) contador.textContent = filtrados.length;
+
+    // Aplica o modo de visualização ao container
+    lista.classList.toggle('modo-lista', viewMode === 'lista');
+    lista.classList.toggle('modo-cards', viewMode === 'cards');
 
     if (!filtrados.length) {
         lista.innerHTML = `<div class="cmd-empty"><div class="cmd-empty-icon">🔍</div><p>${
@@ -110,7 +131,24 @@ function render() {
         return;
     }
 
-    lista.innerHTML = filtrados.map(renderCard).join('');
+    const renderizador = viewMode === 'lista' ? renderLinha : renderCard;
+    lista.innerHTML = filtrados.map(renderizador).join('');
+}
+
+// Modo LISTA — linha compacta, clicar no nome copia
+function renderLinha(c) {
+    const fav = c.favorito === true;
+    return `
+    <div class="cmd-linha${fav ? ' fav' : ''}">
+        <button class="cmd-linha-fav" onclick="toggleFavorito('${c.id}')" title="Favoritar">${fav ? '⭐' : '☆'}</button>
+        <span class="cmd-linha-nome" onclick="copiarComando('${c.id}')" title="Clique para copiar">${esc(c.titulo)}</span>
+        <span class="cmd-linha-cat">${esc(c.categoria || 'Outros')}</span>
+        <div class="cmd-linha-acoes">
+            <button class="cmd-acao cmd-acao-copiar" onclick="copiarComando('${c.id}')" title="Copiar">📋</button>
+            <button class="cmd-acao" onclick="editarComando('${c.id}')" title="Editar">✏️</button>
+            <button class="cmd-acao cmd-acao-excluir" onclick="excluirComando('${c.id}')" title="Excluir">🗑️</button>
+        </div>
+    </div>`;
 }
 
 function renderCard(c) {

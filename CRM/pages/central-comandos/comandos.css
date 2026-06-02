@@ -160,12 +160,84 @@ body {
 }
 .cmd-recente-chip:hover { border-color: var(--green-primary); color: var(--green-light); }
 
-/* ===== GRID DE COMANDOS ===== */
-.cmd-lista {
+/* ===== TOGGLE LISTA / CARDS ===== */
+.cmd-lista-header { justify-content: space-between; }
+.cmd-view-toggle { display: flex; gap: 4px; }
+.cmd-view-btn {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    width: 32px;
+    height: 28px;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 14px;
+    line-height: 1;
+    transition: all 150ms;
+}
+.cmd-view-btn:hover { color: var(--text); border-color: var(--border-hover); }
+.cmd-view-btn.active {
+    background: rgba(0,200,83,0.12);
+    border-color: var(--green-primary);
+    color: var(--green-light);
+}
+
+/* ===== CONTAINER: dois modos ===== */
+.cmd-lista.modo-cards {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
 }
+.cmd-lista.modo-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+/* ===== MODO LISTA (linha compacta) ===== */
+.cmd-linha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 150ms, background 150ms;
+}
+.cmd-linha:hover { border-color: var(--border-hover); background: var(--surface3); }
+.cmd-linha.fav { border-left: 3px solid #fbbf24; }
+.cmd-linha-fav {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: transform 150ms;
+}
+.cmd-linha-fav:hover { transform: scale(1.2); }
+.cmd-linha-nome {
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cmd-linha-nome:hover { color: var(--green-light); }
+.cmd-linha-cat {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--green-light);
+    background: rgba(0,200,83,0.12);
+    border-radius: 6px;
+    padding: 3px 9px;
+    flex-shrink: 0;
+}
+.cmd-linha-acoes { display: flex; gap: 4px; flex-shrink: 0; }
 .cmd-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -406,6 +478,9 @@ body {
 /* ===== RESPONSIVO ===== */
 @media (max-width: 600px) {
     .cmd-btn-novo { flex: 1; justify-content: center; }
-    .cmd-lista { grid-template-columns: 1fr; }
+    .cmd-lista.modo-cards { grid-template-columns: 1fr; }
     .header-title { font-size: 17px; }
+}
+@media (max-width: 440px) {
+    .cmd-linha-cat { display: none; } /* economiza espaço na lista em telas pequenas */
 }

@@ -35,7 +35,13 @@
 
         <!-- LISTA DE COMANDOS -->
         <section class="cmd-lista-sec">
-            <div class="cmd-sec-titulo">📚 Biblioteca <span class="cmd-contador" id="cmd-contador">0</span></div>
+            <div class="cmd-sec-titulo cmd-lista-header">
+                <span>📚 Biblioteca <span class="cmd-contador" id="cmd-contador">0</span></span>
+                <div class="cmd-view-toggle">
+                    <button class="cmd-view-btn" id="cmd-view-lista" onclick="setViewMode('lista')" title="Modo Lista">☰</button>
+                    <button class="cmd-view-btn" id="cmd-view-cards" onclick="setViewMode('cards')" title="Modo Cards">▦</button>
+                </div>
+            </div>
             <div class="cmd-lista" id="cmd-lista">
                 <div class="cmd-empty">
                     <div class="cmd-empty-icon">⚡</div>
