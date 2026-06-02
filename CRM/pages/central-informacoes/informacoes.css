@@ -149,7 +149,7 @@ body {
 
 /* ===== FILTROS (TIPO E CATEGORIA) ===== */
 
-/* Wrapper dos filtros — alinhamento perfeito */
+/* Wrapper dos filtros — alinhamento perfeito (ambas as linhas) */
 .info-screen > div:nth-of-type(2),
 .info-screen > div:nth-of-type(3) {
   display: flex !important;
@@ -157,8 +157,7 @@ body {
   align-items: center !important;
   margin-bottom: 12px !important;
   padding: 0 !important;
-  margin-left: 0 !important;
-  margin-right: 0 !important;
+  margin: 0 !important;
   width: 100% !important;
 }
 
@@ -175,6 +174,7 @@ body {
   flex: 1;
   margin: 0;
   min-width: 0;
+  align-items: center;
 }
 
 .info-tipo-chip,
