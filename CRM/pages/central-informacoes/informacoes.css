@@ -149,16 +149,17 @@ body {
 
 /* ===== FILTROS (TIPO E CATEGORIA) ===== */
 
-/* Wrapper dos filtros */
+/* Wrapper dos filtros — alinhamento perfeito */
 .info-screen > div:nth-of-type(2),
 .info-screen > div:nth-of-type(3) {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 12px !important;
   padding: 0 !important;
   margin-left: 0 !important;
   margin-right: 0 !important;
+  width: 100% !important;
 }
 
 .info-tipo-chips,
@@ -172,6 +173,8 @@ body {
   border-radius: var(--radius-md);
   margin-bottom: 0;
   flex: 1;
+  margin: 0;
+  min-width: 0;
 }
 
 .info-tipo-chip,
@@ -234,10 +237,12 @@ body {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--glow-hover);
+  margin: 0;
+  padding: 0;
 }
 
 .info-sec-titulo {
-  padding: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border-medium);
   font-weight: 600;
   font-size: 15px;
@@ -246,6 +251,7 @@ body {
   justify-content: space-between;
   align-items: center;
   background: rgba(0, 200, 83, 0.05);
+  margin: 0;
 }
 
 .info-lista-header {
@@ -292,6 +298,7 @@ body {
 .info-lista {
   padding: 12px;
   min-height: 200px;
+  margin: 0;
 }
 
 .info-lista.modo-lista {
@@ -304,7 +311,7 @@ body {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
-  padding: 16px;
+  padding: 12px;
 }
 
 /* ===== CARDS ===== */
