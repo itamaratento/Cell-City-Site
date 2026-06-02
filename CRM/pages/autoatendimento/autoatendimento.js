@@ -36,7 +36,7 @@ async function carregarPreOS() {
     try {
         const snap = await getDocs(query(collection(db, COL), orderBy('criadoEm', 'desc')));
         preOSList = [];
-        snap.forEach(d => preOSList.push({ id: d.id, ...d.data() }));
+        snap.forEach(d => preOSList.push({ ...d.data(), id: d.id }));
         localStorage.setItem(CACHE_KEY, JSON.stringify(preOSList));
     } catch {
         preOSList = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
@@ -50,7 +50,7 @@ function setupListenerRealtime() {
         if (listenerPreOS) listenerPreOS(); // cancela listener anterior
         listenerPreOS = onSnapshot(query(collection(db, COL), orderBy('criadoEm', 'desc')), snap => {
             preOSList = [];
-            snap.forEach(d => preOSList.push({ id: d.id, ...d.data() }));
+            snap.forEach(d => preOSList.push({ ...d.data(), id: d.id }));
             localStorage.setItem(CACHE_KEY, JSON.stringify(preOSList));
             render();
         });
@@ -255,6 +255,8 @@ async function converterEmOS() {
         aparelhoModelo: preOSEmFoco.aparelho?.modelo || '',
         defeito: preOSEmFoco.problema || '',
         senha: preOSEmFoco.password || '',
+        lockType: preOSEmFoco.lockType || '',
+        patternSequence: preOSEmFoco.patternSequence || null,
         observacoes: preOSEmFoco.observacoes || '',
         origem: 'Autoatendimento',
         preOSId: preOSEmFoco.id

@@ -1130,6 +1130,15 @@ function verificarConversaoPreOS() {
         set('f-defeito', d.defeito);
         set('f-obs', d.observacoes);
         if (d.senha) set('f-senha', d.senha);
+        // Transfere o padrão Android (desbloqueio) desenhado no Autoatendimento
+        if (d.lockType === 'Padrao' && Array.isArray(d.patternSequence) && d.patternSequence.length >= 4) {
+            const lockSel = document.getElementById('lock-type');
+            if (lockSel) lockSel.value = 'Padrao';
+            if (typeof toggleLockType === 'function') toggleLockType();
+            window.tempPatternSequence = [...d.patternSequence];
+            const s = document.getElementById('pattern-summary'); if (s) s.style.display = 'block';
+            console.log('🔄 [Conversão] Padrão Android transferido:', d.patternSequence);
+        }
         preOSPendente = d.preOSId || null;
         console.log('🔄 [Conversão] Formulário de OS pré-preenchido. Pré-OS pendente:', preOSPendente);
         showToast('📥 Dados da Pré-OS carregados. Revise e clique em Salvar para gerar a OS.');
