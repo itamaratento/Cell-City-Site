@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste Clipboard - Copiar Mensagem</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #0a0b0d;
+            color: #f5f7fa;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { color: #00e676; margin-bottom: 20px; }
+        .box {
+            background: #1a1d23;
+            border: 1px solid rgba(0,200,83,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #00c853;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        button {
+            background: #00c853;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 10px 5px 10px 0;
+        }
+        button:hover { background: #00e676; }
+        .result {
+            background: rgba(0,200,83,0.1);
+            border-left: 3px solid #00c853;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .error {
+            background: rgba(239,68,68,0.1);
+            border-left-color: #ef4444;
+            color: #f87171;
+        }
+        .textarea {
+            width: 100%;
+            height: 150px;
+            padding: 10px;
+            background: #0a0b0d;
+            border: 1px solid rgba(0,200,83,0.3);
+            color: #f5f7fa;
+            font-family: monospace;
+            border-radius: 6px;
+            resize: vertical;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 TESTE CLIPBOARD — O que está sendo copiado?</h1>
+
+        <div class="box">
+            <h2>1️⃣ Testar a Função</h2>
+            <p>Simulando o que acontece quando você clica em "💬 Copiar Mensagem":</p>
+            <button onclick="testarFuncaoCopiarMensagem()">▶️ Simular Clique no Botão 💬 Copiar</button>
+            <div id="resultado-funcao" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="box">
+            <h2>2️⃣ Teste Real — Clicar no Botão</h2>
+            <p>Clique no botão abaixo se houver um card visível:</p>
+            <button onclick="clicarBotaoCopiarMensagem()">▶️ Clicar em 💬 Copiar (primeiro card)</button>
+            <p style="margin-top: 15px; color: #a1a8b3; font-size: 12px;">Após clicar, cole aqui e veja o resultado:</p>
+            <textarea id="paste-area" placeholder="Pressione Ctrl+V aqui para colar o que foi copiado..."></textarea>
+            <div id="resultado-real" class="result" style="display:none;"></div>
+        </div>
+
+        <div class="box">
+            <h2>3️⃣ Diagnóstico</h2>
+            <button onclick="diagnosticar()">🔍 Executar Diagnóstico Completo</button>
+            <div id="diagnostico" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { db, collection, getDocs } from "../../scripts/firebase.js";
+
+        window.testarFuncaoCopiarMensagem = async function() {
+            const resultado = document.getElementById('resultado-funcao');
+            resultado.innerHTML = '';
+            resultado.style.display = 'block';
+
+            // Verificar se há pendentes
+            if (!window.pendentes || Object.keys(window.pendentes).length === 0) {
+                resultado.innerHTML = '❌ ERRO: window.pendentes não encontrado\n\nAbra a página de Pós-venda primeiro';
+                resultado.classList.add('error');
+                return;
+            }
+
+            // Encontrar primeiro atendimento
+            let os = null;
+            let prazo = null;
+
+            for (const p of [5, 15, 30]) {
+                if (window.pendentes[p] && window.pendentes[p].length > 0) {
+                    os = window.pendentes[p][0];
+                    prazo = p;
+                    break;
+                }
+            }
+
+            if (!os) {
+                resultado.innerHTML = '❌ ERRO: Nenhum atendimento pendente encontrado';
+                resultado.classList.add('error');
+                return;
+            }
+
+            resultado.classList.remove('error');
+
+            // Verificar mensagens
+            if (!window.mensagensPosvenda) {
+                resultado.innerHTML = '❌ ERRO: window.mensagensPosvenda não encontrado';
+                resultado.classList.add('error');
+                return;
+            }
+
+            const msg = window.mensagensPosvenda[prazo];
+
+            if (!msg || msg.trim().length === 0) {
+                resultado.innerHTML = `❌ ERRO: Mensagem para prazo ${prazo} está VAZIA\n\nwindow.mensagensPosvenda[${prazo}] = "${msg}"`;
+                resultado.classList.add('error');
+                return;
+            }
+
+            // Processar mensagem
+            const msgProcessada = msg.replace('{{nome}}', os.clientName).replace('{{modelo}}', os.model);
+
+            resultado.innerHTML = `✅ SUCESSO!\n\nDados encontrados:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\nOS ID: ${os.osId}\nCliente: ${os.clientName}\nModelo: ${os.model}\nTelefone: ${os.phone}\nPrazo: ${prazo} dias\n\n✅ Mensagem que DEVERIA ser copiada:\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n${msgProcessada}`;
+        };
+
+        window.clicarBotaoCopiarMensagem = function() {
+            const cards = document.querySelectorAll('.pv-card');
+            if (cards.length === 0) {
+                alert('❌ Nenhum card encontrado. Abra a página de Pós-venda primeiro');
+                return;
+            }
+
+            const btnCopy = cards[0].querySelector('.pv-copy-btn');
+            if (!btnCopy) {
+                alert('❌ Botão não encontrado');
+                return;
+            }
+
+            // Clicar no botão
+            btnCopy.click();
+
+            // Aguardar e mostrar resultado
+            setTimeout(() => {
+                const pasteArea = document.getElementById('paste-area');
+                pasteArea.focus();
+                pasteArea.select();
+                document.execCommand('paste');
+
+                const resultado = document.getElementById('resultado-real');
+                resultado.innerHTML = `✅ Cole o que foi copiado na textarea acima para ver`;
+                resultado.style.display = 'block';
+            }, 500);
+        };
+
+        window.diagnosticar = async function() {
+            const resultado = document.getElementById('diagnostico');
+            resultado.innerHTML = 'Analisando...\n';
+            resultado.style.display = 'block';
+
+            let output = '📊 DIAGNÓSTICO COMPLETO\n';
+            output += '═══════════════════════════════════════\n\n';
+
+            // 1. Firestore
+            output += '1️⃣ FIRESTORE\n';
+            output += '─────────────────────────────────────\n';
+            try {
+                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+                output += `✅ Documentos no Firestore: ${snap.size}\n`;
+
+                snap.forEach(doc => {
+                    const msg = doc.data().mensagem;
+                    output += `   Doc ${doc.id}: ${msg ? '✅ OK' : '❌ VAZIO'}\n`;
+                });
+            } catch (err) {
+                output += `❌ Erro: ${err.message}\n`;
+            }
+
+            output += '\n2️⃣ JAVASCRIPT\n';
+            output += '─────────────────────────────────────\n';
+
+            if (window.mensagensPosvenda) {
+                output += `✅ window.mensagensPosvenda encontrado\n`;
+                [5, 15, 30].forEach(p => {
+                    const msg = window.mensagensPosvenda[p];
+                    output += `   Prazo ${p}: ${msg ? `✅ "${msg.substring(0, 40)}..."` : '❌ VAZIO'}\n`;
+                });
+            } else {
+                output += '❌ window.mensagensPosvenda NÃO ENCONTRADO\n';
+            }
+
+            output += '\n3️⃣ FUNÇÃO\n';
+            output += '─────────────────────────────────────\n';
+            output += `${typeof window.copiarMensagem === 'function' ? '✅' : '❌'} copiarMensagem()\n`;
+
+            output += '\n4️⃣ CARDS\n';
+            output += '─────────────────────────────────────\n';
+            const cards = document.querySelectorAll('.pv-card');
+            output += `${cards.length > 0 ? '✅' : '❌'} ${cards.length} cards encontrados\n`;
+
+            resultado.innerHTML = output;
+        };
+    </script>
+</body>
+</html>
