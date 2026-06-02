@@ -149,16 +149,29 @@ body {
 
 /* ===== FILTROS (TIPO E CATEGORIA) ===== */
 
-/* Wrapper dos filtros — alinhamento perfeito (ambas as linhas) */
-.info-screen > div:nth-of-type(2),
+/* Wrapper dos filtros — alinhamento PRECISO por matemática */
+/* Segunda linha (categorias) */
 .info-screen > div:nth-of-type(3) {
   display: flex !important;
   gap: 8px !important;
   align-items: center !important;
   margin-bottom: 12px !important;
   padding: 12px 0 !important;
-  margin: 0 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
   width: 100% !important;
+}
+
+/* Primeira linha (tipo) — COMPENSAÇÃO: -12px para anular padding inline */
+.info-screen > div:nth-of-type(2) {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  margin-bottom: 12px !important;
+  padding: 12px 0 !important;
+  margin-left: -12px !important;
+  margin-right: 0 !important;
+  width: calc(100% + 12px) !important;
 }
 
 .info-screen > div:nth-of-type(2) .info-tipo-chips,
