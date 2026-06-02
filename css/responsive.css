@@ -420,7 +420,7 @@ img, video, iframe {
     }
 
     .hero {
-        padding: 280px 0 100px;
+        padding: 200px 0 100px;
     }
 
     .hero-grid {
@@ -440,6 +440,8 @@ img, video, iframe {
 
     .hero-content {
         max-width: 450px;
+        align-self: flex-start;
+        margin-top: 70px;
     }
 
     .hero-buttons {
