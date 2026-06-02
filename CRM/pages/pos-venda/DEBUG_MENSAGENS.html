@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug - Carregamento de Mensagens</title>
+    <style>
+        body { font-family: monospace; background: #0a0b0d; color: #f5f7fa; padding: 20px; }
+        .log { background: #1a1d23; padding: 15px; margin: 10px 0; border-left: 3px solid #00c853; border-radius: 6px; }
+        .error { border-left-color: #ef4444; }
+        .success { border-left-color: #00c853; }
+        .warning { border-left-color: #f59e0b; }
+        h1 { color: #00e676; }
+        button { background: #00c853; color: #000; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin: 10px 5px 10px 0; font-weight: bold; }
+        button:hover { background: #00e676; }
+        code { background: rgba(0,200,83,0.1); padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 DEBUG - Carregamento de Mensagens Pós-venda</h1>
+
+    <div id="output"></div>
+
+    <button onclick="testarCarregamento()">▶️ Testar Carregamento de Mensagens</button>
+    <button onclick="testarBotoes()">▶️ Testar Botões</button>
+    <button onclick="limparLogs()">🗑️ Limpar Logs</button>
+
+    <script type="module">
+        import { db, collection, getDocs, doc, getDoc } from "../../scripts/firebase.js";
+
+        window.logs = [];
+
+        function addLog(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${msg}`;
+            window.logs.push({ msg: logEntry, type });
+
+            const output = document.getElementById('output');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : ''}`;
+            logDiv.innerHTML = logEntry.replace(/\n/g, '<br>');
+            output.appendChild(logDiv);
+
+            console.log(logEntry);
+        }
+
+        window.limparLogs = function() {
+            document.getElementById('output').innerHTML = '';
+            window.logs = [];
+        };
+
+        window.testarCarregamento = async function() {
+            addLog('🔄 Iniciando teste de carregamento...', 'info');
+
+            try {
+                // 1. Verificar se Firestore está conectado
+                addLog('1️⃣ Verificando conexão com Firestore...', 'info');
+
+                // 2. Verificar se coleção existe
+                addLog('2️⃣ Buscando coleção posvenda_mensagens...', 'info');
+                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+
+                if (snap.empty) {
+                    addLog('❌ ERRO: Coleção está VAZIA!', 'error');
+                    addLog('⚠️ Ação necessária: Execute o script init-posvenda-mensagens.js', 'warning');
+                    addLog('📝 Console: import("./CRM/scripts/init-posvenda-mensagens.js").then(m => m.inicializarMensagensPosvenda());', 'warning');
+                    return;
+                }
+
+                addLog(`✅ Coleção encontrada com ${snap.size} documentos`, 'success');
+
+                // 3. Verificar cada documento
+                let temTodas = true;
+                const mensagens = {};
+
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    const hasMensagem = data.mensagem && data.mensagem.trim().length > 0;
+                    mensagens[doc.id] = data;
+
+                    if (hasMensagem) {
+                        addLog(`✅ Doc ID="${doc.id}": "${data.mensagem.substring(0, 50)}..."`, 'success');
+                    } else {
+                        addLog(`❌ Doc ID="${doc.id}": VAZIO ou nulo`, 'error');
+                        temTodas = false;
+                    }
+                });
+
+                // 4. Verificar se estão sendo carregadas no JS
+                addLog('3️⃣ Verificando se mensagens foram carregadas no JavaScript...', 'info');
+
+                if (window.mensagensPosvenda) {
+                    addLog('✅ window.mensagensPosvenda encontrado', 'success');
+                    addLog(`   5 dias: "${window.mensagensPosvenda[5] ? 'OK' : 'VAZIO'}"`, window.mensagensPosvenda[5] ? 'success' : 'error');
+                    addLog(`   15 dias: "${window.mensagensPosvenda[15] ? 'OK' : 'VAZIO'}"`, window.mensagensPosvenda[15] ? 'success' : 'error');
+                    addLog(`   30 dias: "${window.mensagensPosvenda[30] ? 'OK' : 'VAZIO'}"`, window.mensagensPosvenda[30] ? 'success' : 'error');
+                } else {
+                    addLog('❌ window.mensagensPosvenda NÃO ENCONTRADO', 'error');
+                    addLog('⚠️ Verifique se init() foi executado', 'warning');
+                }
+
+                // 5. Resumo
+                addLog('', 'info');
+                if (temTodas && window.mensagensPosvenda && window.mensagensPosvenda[5] && window.mensagensPosvenda[15] && window.mensagensPosvenda[30]) {
+                    addLog('✅ TUDO OK! Mensagens estão carregadas corretamente', 'success');
+                } else {
+                    addLog('❌ PROBLEMA ENCONTRADO! Verifique os logs acima', 'error');
+                }
+
+            } catch (err) {
+                addLog(`❌ ERRO: ${err.message}`, 'error');
+                addLog(`Stack: ${err.stack}`, 'error');
+            }
+        };
+
+        window.testarBotoes = async function() {
+            addLog('🔄 Testando botões...', 'info');
+
+            // Verificar se há cards
+            const cards = document.querySelectorAll('.pv-card');
+            if (cards.length === 0) {
+                addLog('⚠️ Nenhum card encontrado. Abra a página de Pós-venda primeiro', 'warning');
+                return;
+            }
+
+            addLog(`✅ ${cards.length} cards encontrados`, 'success');
+
+            // Verificar primeiro card
+            const card = cards[0];
+            const osId = card.dataset.osid;
+            const prazo = card.dataset.prazo;
+
+            addLog(`Card 1:`, 'info');
+            addLog(`  osId: ${osId}`, 'info');
+            addLog(`  prazo: ${prazo}`, 'info');
+
+            // Verificar botões
+            const btnCopy = card.querySelector('.pv-copy-btn');
+            const btnPhone = card.querySelector('.pv-copy-phone-btn');
+            const btnAll = card.querySelector('.pv-copy-all-btn');
+
+            if (btnCopy) addLog(`✅ Botão "Copiar Mensagem" encontrado`, 'success');
+            else addLog(`❌ Botão "Copiar Mensagem" NÃO encontrado`, 'error');
+
+            if (btnPhone) addLog(`✅ Botão "Copiar Telefone" encontrado`, 'success');
+            else addLog(`❌ Botão "Copiar Telefone" NÃO encontrado`, 'error');
+
+            if (btnAll) addLog(`✅ Botão "Copiar Tudo" encontrado`, 'success');
+            else addLog(`❌ Botão "Copiar Tudo" NÃO encontrado`, 'error');
+
+            addLog('', 'info');
+            addLog('💡 Dica: Clique em qualquer botão para testar', 'warning');
+        };
+
+        // Auto-testar ao abrir a página
+        window.addEventListener('load', () => {
+            addLog('✅ Página carregada. Clique nos botões para testar.', 'success');
+        });
+    </script>
+</body>
+</html>
