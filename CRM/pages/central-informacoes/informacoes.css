@@ -69,7 +69,7 @@ body {
 /* Compensa o peso visual do logo à esquerda: nudge do título p/ centralização
    óptica em relação ao conteúdo da página. Só posição (transform), sem reflow. */
 #crm-brand-bar .crm-page-title {
-  transform: translateX(-70px);
+  transform: translateX(-90px);
 }
 
 .info-screen {
