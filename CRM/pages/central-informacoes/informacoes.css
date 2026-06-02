@@ -66,6 +66,12 @@ body {
   letter-spacing: -0.5px;
 }
 
+/* Compensa o peso visual do logo à esquerda: nudge do título p/ centralização
+   óptica em relação ao conteúdo da página. Só posição (transform), sem reflow. */
+#crm-brand-bar .crm-page-title {
+  transform: translateX(-70px);
+}
+
 .info-screen {
   width: 100%;
   max-width: calc(100% - 120px);
@@ -131,9 +137,9 @@ body {
   background: var(--cell-green);
   color: white;
   border: none;
-  padding: 12px 20px;
+  padding: 11px 17px;
   border-radius: var(--radius-md);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
