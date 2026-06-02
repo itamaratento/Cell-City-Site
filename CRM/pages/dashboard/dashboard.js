@@ -1469,7 +1469,7 @@ class Dashboard {
       try {
         const { onSnapshot, collection } = await import('../../scripts/firebase.js');
 
-        const ordersRef = collection(db, 'orders');
+        const ordersRef = collection(db, 'os');
 
         if (unsubscribeOS) unsubscribeOS();
 
