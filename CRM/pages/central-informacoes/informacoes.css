@@ -156,9 +156,14 @@ body {
   gap: 8px !important;
   align-items: center !important;
   margin-bottom: 12px !important;
-  padding: 0 !important;
+  padding: 12px 0 !important;
   margin: 0 !important;
   width: 100% !important;
+}
+
+.info-screen > div:nth-of-type(2) .info-tipo-chips,
+.info-screen > div:nth-of-type(3) .info-categorias {
+  padding: 0 12px;
 }
 
 .info-tipo-chips,
@@ -166,7 +171,7 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 12px;
+  padding: 0;
   background: var(--bg-elevated);
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-md);
@@ -229,7 +234,7 @@ body {
   color: var(--cell-green);
 }
 
-/* ===== LISTA/CARDS ===== */
+/* ===== LISTA/CARDS — Alinhado com pesquisa e filtros ===== */
 
 .info-lista-sec {
   background: var(--bg-elevated);
@@ -239,6 +244,7 @@ body {
   box-shadow: var(--glow-hover);
   margin: 0;
   padding: 0;
+  margin-top: 12px;
 }
 
 .info-sec-titulo {
