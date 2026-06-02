@@ -254,14 +254,15 @@ body {
 }
 
 .pv-copy-btn,
-.pv-copy-phone-btn {
+.pv-copy-phone-btn,
+.pv-copy-all-btn {
     flex: 1;
     padding: 11px;
     background: rgba(0, 200, 83, 0.08);
     border: 1px solid rgba(0, 200, 83, 0.25);
     border-radius: var(--radius-sm);
     color: var(--green-primary);
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     font-family: var(--font-main);
     cursor: pointer;
@@ -269,17 +270,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 4px;
+    min-width: 90px;
 }
 .pv-copy-btn:hover,
-.pv-copy-phone-btn:hover {
+.pv-copy-phone-btn:hover,
+.pv-copy-all-btn:hover {
     background: rgba(0, 200, 83, 0.15);
     border-color: rgba(0, 200, 83, 0.5);
     box-shadow: 0 0 16px rgba(0, 200, 83, 0.15);
     transform: translateY(-1px);
 }
 .pv-copy-btn:active,
-.pv-copy-phone-btn:active { transform: scale(0.98); }
+.pv-copy-phone-btn:active,
+.pv-copy-all-btn:active { transform: scale(0.98); }
 
 /* ===== EMOJIS ===== */
 .pv-emoji-row {

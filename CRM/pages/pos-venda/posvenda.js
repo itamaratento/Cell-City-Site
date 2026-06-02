@@ -216,8 +216,9 @@ function buildCard(os) {
         </div>
         ${u.label}
         <div class="pv-buttons-row">
-            <button class="pv-copy-btn">📋 Copiar Mensagem</button>
-            <button class="pv-copy-phone-btn">📱 Copiar Telefone</button>
+            <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
+            <button class="pv-copy-btn" title="B">💬 Mensagem</button>
+            <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
         </div>
         <div class="pv-emoji-row">
             <button class="emoji-btn" data-emoji="😄" data-label="Muito satisfeito" title="Muito satisfeito">😄</button>
@@ -310,6 +311,25 @@ function copiarTelefone(phone) {
     });
 }
 
+// ===== COPIAR TUDO (NOME + TELEFONE + MENSAGEM) =====
+function copiarTudo(prazo, nome, telefone, modelo) {
+    if (!nome || !telefone) {
+        showToast('⚠️ Dados incompletos');
+        return;
+    }
+
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    const textoCompleto = `${nome}\n${telefone}\n\n${msg}`;
+
+    navigator.clipboard.writeText(textoCompleto).then(() => {
+        showToast('✅ Telefone + mensagem copiados');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
 // ===== EVENT DELEGATION =====
 function setupEventDelegation() {
     const container = document.getElementById('pendentes-container');
@@ -322,13 +342,18 @@ function setupEventDelegation() {
         const os = pendentes[prazo]?.find(o => o.osId === osId);
         if (!os) return;
 
+        if (e.target.closest('.pv-copy-phone-btn')) {
+            copiarTelefone(os.phone);
+            return;
+        }
+
         if (e.target.closest('.pv-copy-btn')) {
             copiarMensagem(prazo, os.clientName, os.model);
             return;
         }
 
-        if (e.target.closest('.pv-copy-phone-btn')) {
-            copiarTelefone(os.phone);
+        if (e.target.closest('.pv-copy-all-btn')) {
+            copiarTudo(prazo, os.clientName, os.phone, os.model);
             return;
         }
 
@@ -486,6 +511,40 @@ function atualizarContadores() {
         }
     });
 }
+
+// ===== ATALHOS DE TECLADO =====
+window.atalhos = atalhos;
+function atalhos(event) {
+    const key = event.key.toUpperCase();
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement.tagName === 'INPUT' ||
+                          activeElement.tagName === 'TEXTAREA' ||
+                          activeElement.contentEditable === 'true';
+
+    if (isInputFocused) return;
+
+    const cardAtivo = document.querySelector('.pv-card:hover');
+    if (!cardAtivo) return;
+
+    const osId = cardAtivo.dataset.osid;
+    const prazo = parseInt(cardAtivo.dataset.prazo);
+    const os = pendentes[prazo]?.find(o => o.osId === osId);
+
+    if (!os) return;
+
+    if (key === 'V') {
+        event.preventDefault();
+        copiarTelefone(os.phone);
+    } else if (key === 'B') {
+        event.preventDefault();
+        copiarMensagem(prazo, os.clientName, os.model);
+    } else if (key === 'N') {
+        event.preventDefault();
+        copiarTudo(prazo, os.clientName, os.phone, os.model);
+    }
+}
+
+document.addEventListener('keydown', atalhos);
 
 // ===== START =====
 document.addEventListener('DOMContentLoaded', init);
