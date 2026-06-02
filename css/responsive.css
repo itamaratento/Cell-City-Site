@@ -463,7 +463,7 @@ img, video, iframe {
     }
 
     .footer-grid {
-        grid-template-columns: 2fr 1fr 1.5fr;
+        grid-template-columns: 2fr 1.5fr;
         text-align: left;
     }
 
