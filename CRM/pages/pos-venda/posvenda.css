@@ -44,7 +44,7 @@ body {
     background: rgba(10, 12, 11, 0.92);
     border-bottom: 1px solid var(--border);
     padding: 10px 16px;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: center; justify-content: space-between;
     backdrop-filter: blur(16px);
     min-height: 54px;
 }
@@ -52,6 +52,8 @@ body {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;
 }
+.header-spacer { flex: 1; }
+#headerTitle { flex-shrink: 0; }
 
 /* ===== LAYOUT ===== */
 .pv-content {
@@ -244,31 +246,40 @@ body {
 .urg-atencao .pv-urg-label { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
 .urg-urgente .pv-urg-label { background: rgba(239, 68, 68, 0.15); color: #f87171; }
 
-.pv-whatsapp-btn {
-    width: 100%;
+/* ===== BOTÕES (COPIAR + WHATSAPP) ===== */
+.pv-buttons-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.pv-copy-btn,
+.pv-copy-phone-btn {
+    flex: 1;
     padding: 11px;
-    background: rgba(37, 211, 102, 0.08);
-    border: 1px solid rgba(37, 211, 102, 0.25);
+    background: rgba(0, 200, 83, 0.08);
+    border: 1px solid rgba(0, 200, 83, 0.25);
     border-radius: var(--radius-sm);
-    color: #25d366;
+    color: var(--green-primary);
     font-size: 14px;
     font-weight: 700;
     font-family: var(--font-main);
     cursor: pointer;
     transition: all var(--duration) var(--ease);
-    margin-bottom: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
 }
-.pv-whatsapp-btn:hover {
-    background: rgba(37, 211, 102, 0.15);
-    border-color: rgba(37, 211, 102, 0.5);
-    box-shadow: 0 0 16px rgba(37, 211, 102, 0.15);
+.pv-copy-btn:hover,
+.pv-copy-phone-btn:hover {
+    background: rgba(0, 200, 83, 0.15);
+    border-color: rgba(0, 200, 83, 0.5);
+    box-shadow: 0 0 16px rgba(0, 200, 83, 0.15);
     transform: translateY(-1px);
 }
-.pv-whatsapp-btn:active { transform: scale(0.98); }
+.pv-copy-btn:active,
+.pv-copy-phone-btn:active { transform: scale(0.98); }
 
 /* ===== EMOJIS ===== */
 .pv-emoji-row {
@@ -422,10 +433,189 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
 
+/* ===== CONFIGURAÇÕES (MODAL) ===== */
+.pv-config-btn {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 20px;
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    padding: 8px;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.pv-config-btn:hover {
+    color: var(--green-primary);
+    background: rgba(0, 200, 83, 0.1);
+}
+
+.pv-config-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration) var(--ease);
+}
+.pv-config-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.pv-config-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.95);
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--duration) var(--ease);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+}
+.pv-config-modal.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.pv-config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.pv-config-header h2 {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text);
+}
+.pv-config-close {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 20px;
+    cursor: pointer;
+    transition: color var(--duration) var(--ease);
+}
+.pv-config-close:hover { color: var(--text); }
+
+.pv-config-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pv-config-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.pv-config-field label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.pv-config-field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--font-main);
+    resize: vertical;
+    min-height: 80px;
+    transition: all var(--duration) var(--ease);
+    outline: none;
+}
+.pv-config-field textarea:focus {
+    border-color: var(--green-primary);
+    box-shadow: 0 0 0 3px var(--green-glow);
+    background: var(--surface-solid);
+}
+
+.pv-char-count {
+    font-size: 11px;
+    color: var(--text3);
+    text-align: right;
+    margin-top: 4px;
+}
+
+.pv-config-footer {
+    display: flex;
+    gap: 10px;
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.pv-config-btn-cancel,
+.pv-config-btn-save {
+    flex: 1;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    border: 1px solid;
+}
+
+.pv-config-btn-cancel {
+    background: var(--surface2);
+    border-color: var(--border);
+    color: var(--text3);
+}
+.pv-config-btn-cancel:hover {
+    background: var(--surface3);
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text2);
+}
+
+.pv-config-btn-save {
+    background: rgba(0, 200, 83, 0.15);
+    border-color: var(--green-primary);
+    color: var(--green-light);
+}
+.pv-config-btn-save:hover {
+    background: rgba(0, 200, 83, 0.25);
+    border-color: var(--green-light);
+    box-shadow: 0 0 16px var(--green-glow);
+}
+.pv-config-btn-save:active { transform: scale(0.98); }
+
 @media (max-width: 480px) {
     .pv-content { padding: 14px; padding-bottom: 80px; }
     .pv-sum-num { font-size: 22px; }
     .emoji-btn { font-size: 20px; padding: 8px 4px; }
+
+    .pv-config-modal {
+        width: 95%;
+        max-height: 90vh;
+    }
+    .pv-config-header h2 { font-size: 14px; }
 }
 
 /* AGENDAMENTOS FUTUROS */

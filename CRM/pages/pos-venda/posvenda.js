@@ -5,15 +5,20 @@ import {
 // ===== GLOBAL EXPOSURE =====
 window.showTab = showTab;
 window.filterHistorico = filterHistorico;
+window.abrirConfiguracoes = abrirConfiguracoes;
+window.fecharConfiguracoes = fecharConfiguracoes;
+window.salvarConfiguracoes = salvarConfiguracoes;
 
 // ===== STATE =====
 let pendentes = { 5: [], 15: [], 30: [] };
 let historico = [];
 let contatosFeitos = new Set();
+let mensagensPosvenda = { 5: '', 15: '', 30: '' };
 
 // ===== INIT =====
 async function init() {
     try {
+        await carregarMensagensPosvenda();
         await loadData();
     } catch (err) {
         console.error('❌ Pós-venda: erro ao carregar dados', err);
@@ -78,6 +83,28 @@ async function loadData() {
         const dateB = b.dataContato ? new Date(b.dataContato) : 0;
         return dateB - dateA;
     });
+}
+
+// ===== CARREGAR MENSAGENS POSVENDA =====
+async function carregarMensagensPosvenda() {
+    try {
+        const snap = await getDocs(collection(db, "posvenda_mensagens"));
+        snap.forEach(d => {
+            const prazo = d.id;
+            const data = d.data();
+            if (data.mensagem) {
+                mensagensPosvenda[prazo] = data.mensagem;
+            }
+        });
+        console.log('✅ Mensagens pós-venda carregadas:', mensagensPosvenda);
+    } catch (err) {
+        console.warn('⚠️ Mensagens posvenda não encontradas. Usando padrão.', err);
+        mensagensPosvenda = {
+            5: "Olá {{nome}}, como está o funcionamento do {{modelo}}? Precisa de ajuda?",
+            15: "Olá {{nome}}, estamos com uma oferta especial para você. Gostaria de saber?",
+            30: "Olá {{nome}}, sua garantia está perto do fim. Agende uma revisão."
+        };
+    }
 }
 
 function getDeliveryDate(os) {
@@ -188,7 +215,10 @@ function buildCard(os) {
             </div>
         </div>
         ${u.label}
-        <button class="pv-whatsapp-btn">📱 Enviar WhatsApp</button>
+        <div class="pv-buttons-row">
+            <button class="pv-copy-btn">📋 Copiar Mensagem</button>
+            <button class="pv-copy-phone-btn">📱 Copiar Telefone</button>
+        </div>
         <div class="pv-emoji-row">
             <button class="emoji-btn" data-emoji="😄" data-label="Muito satisfeito" title="Muito satisfeito">😄</button>
             <button class="emoji-btn" data-emoji="🙂" data-label="Satisfeito" title="Satisfeito">🙂</button>
@@ -254,6 +284,32 @@ function buildHistCard(c) {
     </div>`;
 }
 
+// ===== COPIAR MENSAGEM =====
+function copiarMensagem(prazo, nome, modelo) {
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    navigator.clipboard.writeText(msg).then(() => {
+        showToast('✅ Mensagem copiada');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
+// ===== COPIAR TELEFONE =====
+function copiarTelefone(phone) {
+    if (!phone || phone.trim() === '') {
+        showToast('⚠️ Telefone não cadastrado');
+        return;
+    }
+
+    navigator.clipboard.writeText(phone).then(() => {
+        showToast('✅ Telefone copiado');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
 // ===== EVENT DELEGATION =====
 function setupEventDelegation() {
     const container = document.getElementById('pendentes-container');
@@ -266,8 +322,13 @@ function setupEventDelegation() {
         const os = pendentes[prazo]?.find(o => o.osId === osId);
         if (!os) return;
 
-        if (e.target.closest('.pv-whatsapp-btn')) {
-            openWhatsApp(os.phone, os.clientName, os.model, prazo);
+        if (e.target.closest('.pv-copy-btn')) {
+            copiarMensagem(prazo, os.clientName, os.model);
+            return;
+        }
+
+        if (e.target.closest('.pv-copy-phone-btn')) {
+            copiarTelefone(os.phone);
             return;
         }
 
@@ -358,6 +419,72 @@ function showToast(msg) {
     toast.textContent = msg;
     toast.classList.add('show');
     setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== CONFIGURAÇÕES =====
+function abrirConfiguracoes() {
+    const overlay = document.getElementById('configOverlay');
+    const modal = document.getElementById('configModal');
+
+    // Carregar mensagens atuais
+    document.getElementById('msg-5').value = mensagensPosvenda[5] || '';
+    document.getElementById('msg-15').value = mensagensPosvenda[15] || '';
+    document.getElementById('msg-30').value = mensagensPosvenda[30] || '';
+
+    atualizarContadores();
+
+    overlay.classList.add('active');
+    modal.classList.add('active');
+}
+
+function fecharConfiguracoes(event) {
+    if (event && event.target.id !== 'configOverlay') return;
+
+    const overlay = document.getElementById('configOverlay');
+    const modal = document.getElementById('configModal');
+
+    overlay.classList.remove('active');
+    modal.classList.remove('active');
+}
+
+async function salvarConfiguracoes() {
+    const msg5 = document.getElementById('msg-5').value.trim();
+    const msg15 = document.getElementById('msg-15').value.trim();
+    const msg30 = document.getElementById('msg-30').value.trim();
+
+    if (!msg5 || !msg15 || !msg30) {
+        showToast('❌ Todas as mensagens são obrigatórias');
+        return;
+    }
+
+    try {
+        await setDoc(doc(db, "posvenda_mensagens", "5"), { mensagem: msg5, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "15"), { mensagem: msg15, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "30"), { mensagem: msg30, updatedAt: new Date() }, { merge: true });
+
+        mensagensPosvenda[5] = msg5;
+        mensagensPosvenda[15] = msg15;
+        mensagensPosvenda[30] = msg30;
+
+        showToast('✅ Configurações salvas com sucesso');
+        fecharConfiguracoes();
+    } catch (err) {
+        console.error('❌ Erro ao salvar configurações:', err);
+        showToast('❌ Erro ao salvar. Tente novamente.');
+    }
+}
+
+function atualizarContadores() {
+    ['5', '15', '30'].forEach(prazo => {
+        const textarea = document.getElementById(`msg-${prazo}`);
+        const counter = document.getElementById(`count-${prazo}-chars`);
+        if (textarea && counter) {
+            counter.textContent = textarea.value.length;
+            textarea.oninput = function() {
+                counter.textContent = this.value.length;
+            };
+        }
+    });
 }
 
 // ===== START =====

@@ -11,7 +11,9 @@
 <body>
 
     <header class="header" id="mainHeader">
+        <div class="header-spacer"></div>
         <h1 id="headerTitle">Pós-venda</h1>
+        <button class="pv-config-btn" onclick="abrirConfiguracoes()" title="Configurações">⚙️</button>
     </header>
 
     <main>
@@ -72,6 +74,36 @@
                 </div>
             </div>
 
+        </div>
+
+        <!-- MODAL DE CONFIGURAÇÕES -->
+        <div class="pv-config-overlay" id="configOverlay" onclick="fecharConfiguracoes(event)"></div>
+        <div class="pv-config-modal" id="configModal">
+            <div class="pv-config-header">
+                <h2>Configurações - Mensagens Pós-venda</h2>
+                <button class="pv-config-close" onclick="fecharConfiguracoes()">✕</button>
+            </div>
+            <div class="pv-config-body">
+                <div class="pv-config-field">
+                    <label for="msg-5">📋 Mensagem - 5 dias</label>
+                    <textarea id="msg-5" placeholder="Digite a mensagem para 5 dias..." maxlength="500"></textarea>
+                    <span class="pv-char-count"><span id="count-5-chars">0</span>/500</span>
+                </div>
+                <div class="pv-config-field">
+                    <label for="msg-15">📋 Mensagem - 15 dias</label>
+                    <textarea id="msg-15" placeholder="Digite a mensagem para 15 dias..." maxlength="500"></textarea>
+                    <span class="pv-char-count"><span id="count-15-chars">0</span>/500</span>
+                </div>
+                <div class="pv-config-field">
+                    <label for="msg-30">📋 Mensagem - 30 dias</label>
+                    <textarea id="msg-30" placeholder="Digite a mensagem para 30 dias..." maxlength="500"></textarea>
+                    <span class="pv-char-count"><span id="count-30-chars">0</span>/500</span>
+                </div>
+            </div>
+            <div class="pv-config-footer">
+                <button class="pv-config-btn-cancel" onclick="fecharConfiguracoes()">Cancelar</button>
+                <button class="pv-config-btn-save" onclick="salvarConfiguracoes()">Salvar Alterações</button>
+            </div>
         </div>
     </main>
 
