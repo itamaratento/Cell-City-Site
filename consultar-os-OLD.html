@@ -73,74 +73,24 @@
         }
 
         .feature strong {
-        }
-
-        /* Header e Footer */
-        .header-mini {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 12px 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .logo-link {
-            display: inline-flex;
-            align-items: center;
-            text-decoration: none;
-            transition: transform 0.3s ease;
-        }
-
-        .logo-link:hover {
-            transform: scale(1.05);
-        }
-
-        .logo-img {
-            max-width: 140px;
-            height: auto;
-        }
-
-        .footer-mini {
-            background: rgba(0, 200, 83, 0.1);
-            padding: 20px;
-            text-align: center;
-            border-top: 1px solid rgba(0, 200, 83, 0.2);
-            margin-top: 40px;
-        }
-
-        .btn-voltar {
-            display: inline-block;
-            background: linear-gradient(135deg, #00C853 0%, #00A040 100%);
-            color: white;
-            padding: 12px 28px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-voltar:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
-        
             color: #00C853;
         }
     </style>
 </head>
 <body>
-    <!-- HEADER COM LOGO -->
-    <header class="header-mini">
-        <a href="/" class="logo-link" aria-label="Cell City - Voltar ao site">
-            <img src="/imagens/logooficial.jpeg" alt="Cell City Informática" class="logo-img">
-        </a>
-    </header>
 
-
+<!-- MENU -->
+<header>
+    <nav>
+        <ul>
+            <li><a href="/">Início</a></li>
+            <li><a href="/celular/">Celulares</a></li>
+            <li><a href="/notebook/">Notebooks</a></li>
+            <li><a href="/impressora/">Impressoras</a></li>
+            <li><a href="#contato">Contato</a></li>
+            <li><a href="/consultar-os" class="nav-btn nav-consultar">🔍 Consultar OS</a></li>
+            <li><a href="/autoatendimento" class="nav-btn nav-atendimento">📱 Abrir Atendimento</a></li>
+        </ul>
     </nav>
 </header>
 
@@ -199,11 +149,6 @@
 </footer>
 
 <script src="js/script.js?v=6" defer></script>
-
-    <!-- FOOTER -->
-    <footer class="footer-mini">
-        <a href="/" class="btn-voltar">🏠 Voltar ao Site</a>
-    </footer>
 
 </body>
 </html>
