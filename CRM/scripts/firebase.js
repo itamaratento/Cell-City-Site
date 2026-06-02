@@ -12,6 +12,7 @@ import {
   deleteDoc,
   query,
   orderBy,
+  where,
   onSnapshot,
   runTransaction,
   serverTimestamp // ← ADICIONADO: timestamp do servidor
@@ -175,6 +176,7 @@ export {
   deleteDoc,
   query,
   orderBy,
+  where,
   onSnapshot,
   runTransaction,
   serverTimestamp
