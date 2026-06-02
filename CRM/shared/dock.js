@@ -19,8 +19,8 @@ function buildDockHTML() {
     <button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas">
       <span class="dock-icon">📋</span>
     </button>
-    <a href="https://mail.google.com" class="dock-item" target="_blank" data-tooltip="Gmail">
-      <span class="dock-icon">📧</span>
+    <a href="../central-comandos/index.html" class="dock-item" data-tooltip="Central de Comandos">
+      <span class="dock-icon">⚡</span>
     </a>
     <a href="https://drive.google.com" class="dock-item" target="_blank" data-tooltip="Drive">
       <span class="dock-icon">☁️</span>

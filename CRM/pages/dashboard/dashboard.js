@@ -742,6 +742,7 @@ class Dashboard {
   navigateTo(module) {
     const routes = {
       os: '../../pages/os/index.html',
+      'central-comandos': '../../pages/central-comandos/index.html',
       clientes: '../../pages/clientes/index.html',
       caixa: '../../pages/caixa/index.html',
       estoque: '../../pages/estoque/index.html',
