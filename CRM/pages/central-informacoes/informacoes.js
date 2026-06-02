@@ -1,0 +1,758 @@
+// ============================================
+// CENTRAL DE INFORMAÇÕES — Cell City CRM
+// ============================================
+import {
+    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, orderBy, serverTimestamp
+} from "../../scripts/firebase.js";
+import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+
+const COL = 'informacoes';
+const CAT_COL = 'categorias_informacoes';
+const CACHE_KEY = 'cc_informacoes_cache';
+const RECENTES_KEY = 'cc_informacoes_recentes';
+const CACHE_CAT_KEY = 'cc_categorias_informacoes_cache';
+const VIEWMODE_KEY = 'cc_informacoes_viewmode';
+
+const TIPOS_REGISTRO = ['Todos', 'Comando', 'Site', 'Senha', 'Anotação', 'Documento'];
+const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
+const CRIPTOGRAFIA_KEY = 'cellcity-2026'; // Chave para criptografia local (não é seguro, apenas ofuscação)
+
+const storage = getStorage();
+
+// ===== STATE =====
+let informacoes = [];
+let categorias = [...CATEGORIAS_PADRAO];
+let tipoFiltro = 'Todos';
+let categoriaFiltro = 'Todas';
+let termoBusca = '';
+let viewMode = localStorage.getItem(VIEWMODE_KEY) || 'lista';
+let currentEditType = null;
+let currentEditFile = null;
+
+// ===== EXPOSIÇÃO GLOBAL =====
+window.filtrarInformacoes = filtrarInformacoes;
+window.filtrarPorTipo = filtrarPorTipo;
+window.filtrarPorCategoria = filtrarPorCategoria;
+window.setViewMode = setViewMode;
+
+window.abrirFormNovaInfo = abrirFormNovaInfo;
+window.fecharFormNovaInfo = fecharFormNovaInfo;
+window.fecharFormEditar = fecharFormEditar;
+window.abrirFormComando = abrirFormComando;
+window.abrirFormSite = abrirFormSite;
+window.abrirFormSenha = abrirFormSenha;
+window.abrirFormAnotacao = abrirFormAnotacao;
+window.abrirFormDocumento = abrirFormDocumento;
+
+window.salvarInformacao = salvarInformacao;
+window.editarInformacao = editarInformacao;
+window.excluirInformacao = excluirInformacao;
+window.toggleFavorito = toggleFavorito;
+
+window.abrirFormCategoria = abrirFormCategoria;
+window.fecharFormCategoria = fecharFormCategoria;
+window.salvarCategoria = salvarCategoria;
+
+window.copiarComando = copiarComando;
+window.abrirSite = abrirSite;
+window.copiarUsuario = copiarUsuario;
+window.copiarSenha = copiarSenha;
+window.toggleSenhaVisibility = toggleSenhaVisibility;
+window.downloadDocumento = downloadDocumento;
+window.limparArquivo = limparArquivo;
+
+// ===== INIT =====
+async function init() {
+    await carregarCategorias();
+    montarCategorias();
+    montarSelectCategorias();
+    montarFiltrosTipo();
+    aplicarBotoesView();
+    await carregarInformacoes();
+
+    // Event listeners para modais
+    document.getElementById('info-modal-tipo')?.addEventListener('click', e => {
+        if (e.target.id === 'info-modal-tipo') fecharFormNovaInfo();
+    });
+    document.getElementById('info-modal-editar')?.addEventListener('click', e => {
+        if (e.target.id === 'info-modal-editar') fecharFormEditar();
+    });
+    document.getElementById('info-modal-cat')?.addEventListener('click', e => {
+        if (e.target.id === 'info-modal-cat') fecharFormCategoria();
+    });
+}
+
+// ===== MODO DE VISUALIZAÇÃO =====
+function setViewMode(modo) {
+    viewMode = modo;
+    localStorage.setItem(VIEWMODE_KEY, modo);
+    aplicarBotoesView();
+    render();
+}
+
+function aplicarBotoesView() {
+    document.getElementById('info-view-lista')?.classList.toggle('active', viewMode === 'lista');
+    document.getElementById('info-view-cards')?.classList.toggle('active', viewMode === 'cards');
+}
+
+// ===== CARREGAR DO FIRESTORE =====
+async function carregarCategorias() {
+    try {
+        const snap = await getDocs(collection(db, CAT_COL));
+        const customizadas = snap.docs.map(d => d.data().nome).filter(Boolean);
+        if (customizadas.length > 0) {
+            categorias = [...CATEGORIAS_PADRAO, ...customizadas];
+            localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
+        }
+    } catch {
+        const cached = localStorage.getItem(CACHE_CAT_KEY);
+        if (cached) categorias = JSON.parse(cached);
+    }
+}
+
+async function carregarInformacoes() {
+    try {
+        const snap = await getDocs(query(collection(db, COL), orderBy('criadoEm', 'desc')));
+        informacoes = [];
+        snap.forEach(d => informacoes.push({ id: d.id, ...d.data() }));
+        localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
+    } catch {
+        informacoes = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+    }
+    render();
+}
+
+// ===== FILTROS =====
+function montarFiltrosTipo() {
+    const cont = document.getElementById('info-tipo-chips');
+    if (!cont) return;
+    cont.innerHTML = TIPOS_REGISTRO.map(t =>
+        `<button class="info-tipo-chip${t === tipoFiltro ? ' active' : ''}" onclick="filtrarPorTipo('${t}')">${t === 'Todos' ? 'Todos' : t}</button>`
+    ).join('');
+}
+
+function filtrarPorTipo(tipo) {
+    tipoFiltro = tipo;
+    montarFiltrosTipo();
+    render();
+}
+
+function montarCategorias() {
+    const cont = document.getElementById('info-categorias');
+    if (!cont) return;
+    const todas = ['Todas', ...categorias];
+    cont.innerHTML = todas.map(c =>
+        `<button class="info-cat-chip${c === categoriaFiltro ? ' active' : ''}" onclick="filtrarPorCategoria('${c}')">${c}</button>`
+    ).join('');
+}
+
+function montarSelectCategorias() {
+    const sel = document.getElementById('info-f-categoria');
+    if (!sel) return;
+    sel.innerHTML = categorias.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function filtrarPorCategoria(cat) {
+    categoriaFiltro = cat;
+    montarCategorias();
+    render();
+}
+
+function filtrarInformacoes() {
+    termoBusca = (document.getElementById('info-busca')?.value || '').toLowerCase().trim();
+    render();
+}
+
+// ===== RENDER =====
+function render() {
+    const lista = document.getElementById('info-lista');
+    const contador = document.getElementById('info-contador');
+    if (!lista) return;
+
+    let filtrados = informacoes.slice();
+
+    // Filtrar por tipo
+    if (tipoFiltro !== 'Todos') {
+        filtrados = filtrados.filter(i => i.tipo === tipoFiltro.toLowerCase());
+    }
+
+    // Filtrar por categoria
+    if (categoriaFiltro !== 'Todas') {
+        filtrados = filtrados.filter(i => i.categoria === categoriaFiltro);
+    }
+
+    // Busca textual
+    if (termoBusca) {
+        filtrados = filtrados.filter(i => {
+            const titulo = (i.titulo || '').toLowerCase();
+            const categoria = (i.categoria || '').toLowerCase();
+            const conteudo = (i.conteudo || '').toLowerCase();
+            const usuario = (i.usuario || '').toLowerCase();
+            const siteServico = (i.site_servico || '').toLowerCase();
+            const descricao = (i.descricao || '').toLowerCase();
+
+            return titulo.includes(termoBusca) ||
+                   categoria.includes(termoBusca) ||
+                   conteudo.includes(termoBusca) ||
+                   usuario.includes(termoBusca) ||
+                   siteServico.includes(termoBusca) ||
+                   descricao.includes(termoBusca);
+        });
+    }
+
+    // Favoritos no topo
+    filtrados.sort((a, b) => (b.favorito === true) - (a.favorito === true));
+
+    if (contador) contador.textContent = filtrados.length;
+
+    lista.classList.toggle('modo-lista', viewMode === 'lista');
+    lista.classList.toggle('modo-cards', viewMode === 'cards');
+
+    if (filtrados.length === 0) {
+        lista.innerHTML = `
+            <div class="info-empty">
+                <div class="info-empty-icon">📚</div>
+                <p>Nenhuma informação encontrada.</p>
+            </div>
+        `;
+        return;
+    }
+
+    if (viewMode === 'lista') {
+        lista.innerHTML = filtrados.map(renderItemLista).join('');
+    } else {
+        lista.innerHTML = filtrados.map(renderItemCard).join('');
+    }
+}
+
+function renderItemLista(info) {
+    const icone = getIconoTipo(info.tipo);
+    const badge = `<span class="info-card-badge ${info.tipo}">${getTituloTipo(info.tipo)}</span>`;
+    const estrela = info.favorito ? '⭐' : '☆';
+
+    return `
+        <div class="info-lista-item">
+            <span class="info-lista-item-icon">${icone}</span>
+            <div class="info-lista-item-content">
+                <div class="info-lista-item-titulo">${info.titulo}</div>
+                <div class="info-lista-item-meta">${info.categoria}</div>
+            </div>
+            <div class="info-lista-item-actions">
+                ${renderAcoesPorTipo(info)}
+                <button class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favorito">${estrela}</button>
+                <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
+                <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderItemCard(info) {
+    const icone = getIconoTipo(info.tipo);
+    const badge = `<span class="info-card-badge ${info.tipo}">${getTituloTipo(info.tipo)}</span>`;
+    const estrela = info.favorito ? '⭐' : '☆';
+    let conteudo = '';
+
+    if (info.tipo === 'comando' || info.tipo === 'anotacao') {
+        conteudo = (info.conteudo || '').substring(0, 100);
+    } else if (info.tipo === 'site') {
+        conteudo = `<strong>URL:</strong> ${info.url}<br><strong>Usuário:</strong> ${info.usuario || '-'}`;
+    } else if (info.tipo === 'senha') {
+        conteudo = `<strong>Serviço:</strong> ${info.site_servico}<br><strong>Usuário:</strong> ${info.usuario}`;
+    } else if (info.tipo === 'documento') {
+        conteudo = `<strong>Descrição:</strong> ${info.descricao || '-'}`;
+    }
+
+    return `
+        <div class="info-card">
+            <div class="info-card-header">
+                <div class="info-card-titulo">
+                    <span class="info-card-icon">${icone}</span>
+                    ${info.titulo}
+                    ${badge}
+                </div>
+                <span>${estrela}</span>
+            </div>
+            <div class="info-card-content">${conteudo}</div>
+            <div class="info-card-actions" style="margin-top: 12px;">
+                ${renderAcoesPorTipo(info)}
+                <button class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐</button>
+                <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
+                <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
+            </div>
+        </div>
+    `;
+}
+
+function renderAcoesPorTipo(info) {
+    if (info.tipo === 'comando') {
+        return `<button class="info-card-btn copy" onclick="copiarComando('${info.id}')">📋 Copiar</button>`;
+    } else if (info.tipo === 'site') {
+        return `
+            <button class="info-card-btn copy" onclick="abrirSite('${info.id}')">🌐 Abrir</button>
+            ${info.usuario ? `<button class="info-card-btn copy" onclick="copiarUsuario('${info.id}')">👤 User</button>` : ''}
+            ${info.usuario ? `<button class="info-card-btn copy" onclick="copiarSenha('${info.id}', 'site')">🔑 Senha</button>` : ''}
+        `;
+    } else if (info.tipo === 'senha') {
+        return `
+            <button class="info-card-btn copy" onclick="copiarUsuario('${info.id}')">👤 User</button>
+            <button class="info-card-btn copy" onclick="copiarSenha('${info.id}', 'senha')">🔑 Senha</button>
+        `;
+    } else if (info.tipo === 'documento') {
+        return `<button class="info-card-btn copy" onclick="downloadDocumento('${info.id}')">📥 Download</button>`;
+    }
+    return '';
+}
+
+function getIconoTipo(tipo) {
+    const ícones = {
+        'comando': '📝',
+        'site': '🌐',
+        'senha': '🔐',
+        'anotacao': '📌',
+        'documento': '📄'
+    };
+    return ícones[tipo] || '📌';
+}
+
+function getTituloTipo(tipo) {
+    const títulos = {
+        'comando': 'Comando',
+        'site': 'Site',
+        'senha': 'Senha',
+        'anotacao': 'Anotação',
+        'documento': 'Documento'
+    };
+    return títulos[tipo] || tipo;
+}
+
+// ===== AÇÕES POR TIPO =====
+async function copiarComando(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.conteudo) return;
+    await navigator.clipboard.writeText(info.conteudo).catch(() => {
+        document.execCommand('copy', false, info.conteudo);
+    });
+    toast('✅ Comando copiado!');
+}
+
+async function abrirSite(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.url) return;
+    window.open(info.url, '_blank');
+}
+
+async function copiarUsuario(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.usuario) return;
+    await navigator.clipboard.writeText(info.usuario).catch(() => {
+        document.execCommand('copy', false, info.usuario);
+    });
+    toast('✅ Usuário copiado!');
+}
+
+async function copiarSenha(id, tipo) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.senhaOculta) return;
+
+    try {
+        const senhaDescriptografada = descriptografarSenha(info.senhaOculta);
+        await navigator.clipboard.writeText(senhaDescriptografada).catch(() => {
+            document.execCommand('copy', false, senhaDescriptografada);
+        });
+        toast('✅ Senha copiada!');
+    } catch (err) {
+        toast('❌ Erro ao descriptografar senha');
+    }
+}
+
+async function downloadDocumento(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.storageUrl) return;
+
+    try {
+        toast('📥 Baixando arquivo...');
+        const bytes = await getBytes(ref(storage, info.storageUrl));
+        const blob = new Blob([bytes]);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = info.titulo + '.' + (info.extensao || 'pdf');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('✅ Download concluído!');
+    } catch (err) {
+        console.error('Download error:', err);
+        toast('❌ Erro ao baixar arquivo');
+    }
+}
+
+// ===== CRIPTOGRAFIA LOCAL =====
+function criptografarSenha(plaintext) {
+    return CryptoJS.AES.encrypt(plaintext, CRIPTOGRAFIA_KEY).toString();
+}
+
+function descriptografarSenha(ciphertext) {
+    const bytes = CryptoJS.AES.decrypt(ciphertext, CRIPTOGRAFIA_KEY);
+    return bytes.toString(CryptoJS.enc.Utf8);
+}
+
+// ===== FORMS =====
+function abrirFormNovaInfo() {
+    document.getElementById('info-modal-tipo').classList.add('active');
+}
+
+function fecharFormNovaInfo() {
+    document.getElementById('info-modal-tipo').classList.remove('active');
+}
+
+function abrirFormComando() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('comando', '📝 Novo Comando');
+}
+
+function abrirFormSite() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('site', '🌐 Novo Site');
+}
+
+function abrirFormSenha() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('senha', '🔐 Nova Senha');
+}
+
+function abrirFormAnotacao() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('anotacao', '📌 Nova Anotação');
+}
+
+function abrirFormDocumento() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('documento', '📄 Novo Documento');
+}
+
+function abrirFormEditarInterno(tipo, titulo) {
+    currentEditType = tipo;
+    currentEditFile = null;
+
+    // Limpar campos
+    document.getElementById('info-edit-id').value = '';
+    document.getElementById('info-edit-tipo').value = tipo;
+    document.getElementById('info-modal-titulo').textContent = titulo;
+    document.getElementById('info-f-titulo').value = '';
+    document.getElementById('info-f-categoria').value = categorias[0];
+    document.getElementById('info-f-favorito').checked = false;
+
+    // Limpar campos tipo-específicos
+    ['comando', 'site', 'senha', 'anotacao', 'documento'].forEach(t => {
+        const el = document.getElementById(`info-form-${t}`);
+        if (el) el.style.display = 'none';
+    });
+
+    // Mostrar campos do tipo
+    const formTipo = document.getElementById(`info-form-${tipo}`);
+    if (formTipo) formTipo.style.display = 'block';
+
+    // Limpar campos específicos
+    if (tipo === 'comando') {
+        document.getElementById('info-f-conteudo').value = '';
+    } else if (tipo === 'site') {
+        document.getElementById('info-f-url').value = '';
+        document.getElementById('info-f-usuario').value = '';
+        document.getElementById('info-f-senha-site').value = '';
+        document.getElementById('info-f-observacoes-site').value = '';
+    } else if (tipo === 'senha') {
+        document.getElementById('info-f-site-servico').value = '';
+        document.getElementById('info-f-usuario-senha').value = '';
+        document.getElementById('info-f-senha').value = '';
+        document.getElementById('info-f-observacoes-senha').value = '';
+    } else if (tipo === 'anotacao') {
+        document.getElementById('info-f-conteudo-anotacao').value = '';
+    } else if (tipo === 'documento') {
+        document.getElementById('info-f-arquivo').value = '';
+        document.getElementById('info-f-descricao-doc').value = '';
+        document.getElementById('info-arquivo-carregado').style.display = 'none';
+    }
+
+    document.getElementById('info-modal-editar').classList.add('active');
+    setTimeout(() => document.getElementById('info-f-titulo')?.focus(), 100);
+}
+
+function fecharFormEditar() {
+    document.getElementById('info-modal-editar').classList.remove('active');
+}
+
+function editarInformacao(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info) return;
+
+    currentEditType = info.tipo;
+    currentEditFile = null;
+
+    const tipo = info.tipo;
+    const titulo = getTituloTipo(tipo);
+
+    // Mostrar form correto
+    document.getElementById('info-edit-id').value = id;
+    document.getElementById('info-edit-tipo').value = tipo;
+    document.getElementById('info-modal-titulo').textContent = `✏️ Editar ${titulo}`;
+
+    ['comando', 'site', 'senha', 'anotacao', 'documento'].forEach(t => {
+        const el = document.getElementById(`info-form-${t}`);
+        if (el) el.style.display = 'none';
+    });
+    const formTipo = document.getElementById(`info-form-${tipo}`);
+    if (formTipo) formTipo.style.display = 'block';
+
+    // Preencher campos comuns
+    document.getElementById('info-f-titulo').value = info.titulo || '';
+    document.getElementById('info-f-categoria').value = info.categoria || categorias[0];
+    document.getElementById('info-f-favorito').checked = info.favorito === true;
+
+    // Preencher campos tipo-específicos
+    if (tipo === 'comando') {
+        document.getElementById('info-f-conteudo').value = info.conteudo || '';
+    } else if (tipo === 'site') {
+        document.getElementById('info-f-url').value = info.url || '';
+        document.getElementById('info-f-usuario').value = info.usuario || '';
+        document.getElementById('info-f-senha-site').value = '';
+        document.getElementById('info-f-observacoes-site').value = info.observacoes || '';
+    } else if (tipo === 'senha') {
+        document.getElementById('info-f-site-servico').value = info.site_servico || '';
+        document.getElementById('info-f-usuario-senha').value = info.usuario || '';
+        document.getElementById('info-f-senha').value = '';
+        document.getElementById('info-f-observacoes-senha').value = info.observacoes || '';
+    } else if (tipo === 'anotacao') {
+        document.getElementById('info-f-conteudo-anotacao').value = info.conteudo || '';
+    } else if (tipo === 'documento') {
+        document.getElementById('info-f-arquivo').value = '';
+        document.getElementById('info-f-descricao-doc').value = info.descricao || '';
+        document.getElementById('info-arquivo-carregado').style.display = info.storageUrl ? 'flex' : 'none';
+        if (info.storageUrl) {
+            document.getElementById('info-arquivo-nome').textContent = info.titulo;
+        }
+    }
+
+    document.getElementById('info-modal-editar').classList.add('active');
+}
+
+async function salvarInformacao() {
+    const id = document.getElementById('info-edit-id').value;
+    const tipo = currentEditType || document.getElementById('info-edit-tipo').value;
+    const titulo = document.getElementById('info-f-titulo').value.trim();
+    const categoria = document.getElementById('info-f-categoria').value;
+    const favorito = document.getElementById('info-f-favorito').checked;
+
+    if (!titulo) return toast('⚠️ Informe o título.');
+    if (!tipo) return toast('⚠️ Tipo inválido.');
+
+    const agoraISO = new Date().toISOString();
+    let dados = { titulo, categoria, favorito, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO, tipo };
+
+    // Validar e adicionar campos específicos
+    if (tipo === 'comando') {
+        const conteudo = document.getElementById('info-f-conteudo').value.trim();
+        if (!conteudo) return toast('⚠️ Informe o conteúdo do comando.');
+        dados.conteudo = conteudo;
+    } else if (tipo === 'site') {
+        const url = document.getElementById('info-f-url').value.trim();
+        const usuario = document.getElementById('info-f-usuario').value.trim();
+        const senha = document.getElementById('info-f-senha-site').value.trim();
+        const observacoes = document.getElementById('info-f-observacoes-site').value.trim();
+        if (!url) return toast('⚠️ Informe a URL.');
+        dados.url = url;
+        dados.usuario = usuario || '';
+        dados.senhaOculta = senha ? criptografarSenha(senha) : '';
+        dados.observacoes = observacoes;
+    } else if (tipo === 'senha') {
+        const siteServico = document.getElementById('info-f-site-servico').value.trim();
+        const usuario = document.getElementById('info-f-usuario-senha').value.trim();
+        const senha = document.getElementById('info-f-senha').value.trim();
+        const observacoes = document.getElementById('info-f-observacoes-senha').value.trim();
+        if (!siteServico || !usuario || !senha) return toast('⚠️ Informe site/serviço, usuário e senha.');
+        dados.site_servico = siteServico;
+        dados.usuario = usuario;
+        dados.senhaOculta = criptografarSenha(senha);
+        dados.observacoes = observacoes;
+    } else if (tipo === 'anotacao') {
+        const conteudo = document.getElementById('info-f-conteudo-anotacao').value.trim();
+        if (!conteudo) return toast('⚠️ Informe o conteúdo da anotação.');
+        dados.conteudo = conteudo;
+    } else if (tipo === 'documento') {
+        const arquivo = currentEditFile;
+        const descricao = document.getElementById('info-f-descricao-doc').value.trim();
+
+        if (!id && !arquivo) return toast('⚠️ Selecione um arquivo.');
+
+        dados.descricao = descricao;
+
+        if (arquivo) {
+            try {
+                toast('📤 Enviando arquivo...');
+                const storageRef = ref(storage, `docs/${Date.now()}_${arquivo.name}`);
+                await uploadBytes(storageRef, arquivo);
+                dados.storageUrl = `docs/${Date.now()}_${arquivo.name}`;
+                dados.extensao = arquivo.name.split('.').pop();
+                toast('✅ Arquivo enviado.');
+            } catch (err) {
+                console.error('Upload error:', err);
+                return toast('❌ Erro ao enviar arquivo.');
+            }
+        }
+    }
+
+    // Salvar
+    try {
+        if (id) {
+            // Editar
+            const orig = informacoes.find(c => c.id === id) || {};
+            const dadosFinais = { ...orig, ...dados };
+            await setDoc(doc(db, COL, id), dadosFinais, { merge: true });
+            toast('✅ Informação atualizada.');
+        } else {
+            // Novo
+            dados.criadoEm = serverTimestamp();
+            dados.criadoEmISO = agoraISO;
+            const ref = doc(collection(db, COL));
+            await setDoc(ref, { ...dados, id: ref.id });
+            toast('✅ Informação criada.');
+        }
+
+        fecharFormEditar();
+        await carregarInformacoes();
+    } catch (err) {
+        console.error('Save error:', err);
+        toast('❌ Erro ao salvar.');
+    }
+}
+
+async function excluirInformacao(id) {
+    if (!confirm('Tem certeza que deseja excluir?')) return;
+
+    try {
+        const info = informacoes.find(x => x.id === id);
+
+        // Excluir arquivo do Storage se for documento
+        if (info && info.tipo === 'documento' && info.storageUrl) {
+            try {
+                await deleteObject(ref(storage, info.storageUrl));
+            } catch (err) {
+                console.warn('Erro ao deletar arquivo do Storage:', err);
+            }
+        }
+
+        await deleteDoc(doc(db, COL, id));
+        informacoes = informacoes.filter(x => x.id !== id);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
+        render();
+        toast('✅ Informação excluída.');
+    } catch (err) {
+        console.error('Delete error:', err);
+        toast('❌ Erro ao excluir.');
+    }
+}
+
+async function toggleFavorito(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info) return;
+    info.favorito = !info.favorito;
+    render();
+    try {
+        await setDoc(doc(db, COL, id), { ...info, atualizadoEm: serverTimestamp() }, { merge: true });
+        localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
+    } catch {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
+    }
+}
+
+// ===== CATEGORIAS =====
+function abrirFormCategoria() {
+    document.getElementById('info-f-cat-nome').value = '';
+    document.getElementById('info-modal-cat').classList.add('active');
+    setTimeout(() => document.getElementById('info-f-cat-nome')?.focus(), 100);
+}
+
+function fecharFormCategoria() {
+    document.getElementById('info-modal-cat').classList.remove('active');
+}
+
+async function salvarCategoria() {
+    const nome = document.getElementById('info-f-cat-nome').value.trim();
+    if (!nome) return toast('⚠️ Informe o nome da categoria.');
+    if (categorias.includes(nome)) return toast('⚠️ Esta categoria já existe.');
+
+    const agoraISO = new Date().toISOString();
+    const ref = doc(collection(db, CAT_COL));
+    const dados = { id: ref.id, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
+
+    try {
+        await setDoc(ref, dados);
+        toast('✅ Categoria criada.');
+    } catch {
+        toast('✅ Categoria criada (offline).');
+    }
+
+    categorias.push(nome);
+    localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
+    fecharFormCategoria();
+    montarCategorias();
+    montarSelectCategorias();
+}
+
+// ===== ARQUIVO =====
+function limparArquivo() {
+    document.getElementById('info-f-arquivo').value = '';
+    document.getElementById('info-arquivo-carregado').style.display = 'none';
+    currentEditFile = null;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('info-f-arquivo');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const arquivo = e.target.files[0];
+            if (arquivo) {
+                if (arquivo.size > 5 * 1024 * 1024) {
+                    toast('⚠️ Arquivo muito grande (máx 5MB)');
+                    e.target.value = '';
+                    return;
+                }
+                currentEditFile = arquivo;
+                document.getElementById('info-arquivo-carregado').style.display = 'flex';
+                document.getElementById('info-arquivo-nome').textContent = arquivo.name;
+            }
+        });
+    }
+});
+
+function toggleSenhaVisibility(fieldId, btn) {
+    const field = document.getElementById(fieldId);
+    if (field.type === 'password') {
+        field.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        field.type = 'password';
+        btn.textContent = '👁️';
+    }
+}
+
+// ===== TOAST =====
+function toast(msg) {
+    const el = document.getElementById('info-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.classList.remove('success', 'error', 'warning');
+    if (msg.includes('✅')) el.classList.add('success');
+    else if (msg.includes('❌')) el.classList.add('error');
+    else if (msg.includes('⚠️')) el.classList.add('warning');
+
+    setTimeout(() => {
+        el.style.display = 'none';
+    }, 2500);
+}
+
+// ===== INIT =====
+init();

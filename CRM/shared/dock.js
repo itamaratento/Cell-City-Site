@@ -19,7 +19,7 @@ function buildDockHTML() {
     <button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas">
       <span class="dock-icon">📋</span>
     </button>
-    <a href="../central-comandos/index.html" class="dock-item" data-tooltip="Central de Comandos">
+    <a href="../central-informacoes/index.html" class="dock-item" data-tooltip="Central de Informações">
       <span class="dock-icon">⚡</span>
     </a>
     <a href="../pages/autoatendimento/index.html" class="dock-item" data-tooltip="Autoatendimento">
