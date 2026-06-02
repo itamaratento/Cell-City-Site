@@ -25,7 +25,10 @@
         </section>
 
         <!-- FILTRO DE CATEGORIAS -->
-        <section class="cmd-categorias" id="cmd-categorias"></section>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+            <section class="cmd-categorias" id="cmd-categorias" style="flex: 1; margin-bottom: 0;"></section>
+            <button class="cmd-btn-nova-cat" onclick="abrirFormCategoria()" title="Adicionar categoria">➕</button>
+        </div>
 
         <!-- ÚLTIMOS UTILIZADOS -->
         <section class="cmd-recentes-sec" id="cmd-recentes-sec" style="display:none">
@@ -80,6 +83,26 @@
             <div class="cmd-modal-footer">
                 <button class="cmd-btn-cancelar" onclick="fecharFormComando()">Cancelar</button>
                 <button class="cmd-btn-salvar" onclick="salvarComando()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NOVA CATEGORIA -->
+    <div id="cmd-modal-cat" class="cmd-modal">
+        <div class="cmd-modal-content">
+            <div class="cmd-modal-header">
+                <h3>➕ Nova Categoria</h3>
+                <button class="cmd-modal-close" onclick="fecharFormCategoria()">✕</button>
+            </div>
+            <div class="cmd-modal-body">
+                <div class="cmd-form-group">
+                    <label>Nome da categoria *</label>
+                    <input type="text" id="cmd-f-cat-nome" placeholder="Ex: DevOps" autocomplete="off">
+                </div>
+            </div>
+            <div class="cmd-modal-footer">
+                <button class="cmd-btn-cancelar" onclick="fecharFormCategoria()">Cancelar</button>
+                <button class="cmd-btn-salvar" onclick="salvarCategoria()">💾 Salvar</button>
             </div>
         </div>
     </div>

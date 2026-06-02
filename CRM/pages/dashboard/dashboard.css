@@ -1099,6 +1099,25 @@ body {
   animation: pulse 2s ease-in-out infinite;
 }
 
+.badge-contador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  background: var(--cell-green);
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 200, 83, 0.4);
+}
+
+.badge-contador.empty {
+  display: none;
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.6; transform: scale(0.9); }

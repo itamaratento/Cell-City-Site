@@ -3,7 +3,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
-import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs } from "../../scripts/firebase.js";
+import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where } from "../../scripts/firebase.js";
 
 
 class Dashboard {
@@ -55,6 +55,7 @@ class Dashboard {
     this.setupNotas();
     this.setupClock();
     this.setupMetaSemanal();
+    this.setupAutoatendimento();
     this.setupAlerts();
     this.setupGlobalSearch();
     this.setupCalendar();
@@ -228,8 +229,6 @@ class Dashboard {
         const iso = l.dataISO || l.createdAtISO || '';
         if (!iso) return;
 
-        if (l.tipo !== 'entrada') return;
-
         const lucro = Number(l.lucro || 0);
         const dt = new Date(iso);
         const ano = dt.getFullYear();
@@ -289,6 +288,34 @@ class Dashboard {
     if (elRemaining) elRemaining.textContent = formatBRL(remaining);
     if (fill) {
       requestAnimationFrame(() => { fill.style.width = `${percent}%`; });
+    }
+  }
+
+  // ===== AUTOATENDIMENTO =====
+  setupAutoatendimento() {
+    this._carregarContadorAutoatendimento();
+  }
+
+  async _carregarContadorAutoatendimento() {
+    try {
+      const q = query(collection(db, 'pre_os'), where('status', '==', 'AGUARDANDO_CONVERSAO'));
+
+      // Listener realtime
+      onSnapshot(q, snap => {
+        const pendentes = snap.size;
+        const badge = document.getElementById('auto-badge');
+
+        if (badge) {
+          badge.textContent = pendentes;
+          if (pendentes === 0) {
+            badge.classList.add('empty');
+          } else {
+            badge.classList.remove('empty');
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Erro ao carregar Autoatendimento:', e);
     }
   }
 
@@ -743,6 +770,7 @@ class Dashboard {
     const routes = {
       os: '../../pages/os/index.html',
       'central-comandos': '../../pages/central-comandos/index.html',
+      autoatendimento: '../../pages/autoatendimento/index.html',
       clientes: '../../pages/clientes/index.html',
       caixa: '../../pages/caixa/index.html',
       estoque: '../../pages/estoque/index.html',

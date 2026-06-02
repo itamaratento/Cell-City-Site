@@ -91,6 +91,22 @@ body {
 }
 .cmd-btn-novo:hover { background: var(--green-light); }
 
+.cmd-btn-nova-cat {
+    padding: 8px 12px;
+    background: var(--green-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #000;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 200ms;
+    align-self: center;
+    margin-left: auto;
+}
+.cmd-btn-nova-cat:hover { background: var(--green-light); }
+
 /* ===== CATEGORIAS (chips) ===== */
 .cmd-categorias {
     display: flex;

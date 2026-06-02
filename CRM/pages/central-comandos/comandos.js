@@ -6,14 +6,17 @@ import {
 } from "../../scripts/firebase.js";
 
 const COL = 'comandos';
+const CAT_COL = 'categorias_comandos';
 const CACHE_KEY = 'cc_comandos_cache';
 const RECENTES_KEY = 'cc_comandos_recentes';
+const CACHE_CAT_KEY = 'cc_categorias_cache';
 
-const CATEGORIAS = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
+const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
 const VIEWMODE_KEY = 'cc_comandos_viewmode';
 
 // ===== STATE =====
 let comandos = [];
+let categorias = [...CATEGORIAS_PADRAO];
 let categoriaFiltro = 'Todas';
 let termoBusca = '';
 let viewMode = localStorage.getItem(VIEWMODE_KEY) || 'lista'; // 'lista' (padrão) | 'cards'
@@ -29,15 +32,22 @@ window.excluirComando     = excluirComando;
 window.toggleFavorito     = toggleFavorito;
 window.filtrarPorCategoria = filtrarPorCategoria;
 window.setViewMode        = setViewMode;
+window.abrirFormCategoria = abrirFormCategoria;
+window.fecharFormCategoria = fecharFormCategoria;
+window.salvarCategoria    = salvarCategoria;
 
 // ===== INIT =====
-function init() {
+async function init() {
+    await carregarCategorias();
     montarCategorias();
     montarSelectCategorias();
     aplicarBotoesView();
     carregarComandos();
     document.getElementById('cmd-modal')?.addEventListener('click', e => {
         if (e.target.id === 'cmd-modal') fecharFormComando();
+    });
+    document.getElementById('cmd-modal-cat')?.addEventListener('click', e => {
+        if (e.target.id === 'cmd-modal-cat') fecharFormCategoria();
     });
 }
 
@@ -55,6 +65,20 @@ function aplicarBotoesView() {
 }
 
 // ===== CARREGAR =====
+async function carregarCategorias() {
+    try {
+        const snap = await getDocs(collection(db, CAT_COL));
+        const customizadas = snap.docs.map(d => d.data().nome).filter(Boolean);
+        if (customizadas.length > 0) {
+            categorias = [...CATEGORIAS_PADRAO, ...customizadas];
+            localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
+        }
+    } catch {
+        const cached = localStorage.getItem(CACHE_CAT_KEY);
+        if (cached) categorias = JSON.parse(cached);
+    }
+}
+
 async function carregarComandos() {
     try {
         const snap = await getDocs(query(collection(db, COL), orderBy('criadoEm', 'desc')));
@@ -72,7 +96,7 @@ async function carregarComandos() {
 function montarCategorias() {
     const cont = document.getElementById('cmd-categorias');
     if (!cont) return;
-    const todas = ['Todas', ...CATEGORIAS];
+    const todas = ['Todas', ...categorias];
     cont.innerHTML = todas.map(c =>
         `<button class="cmd-cat-chip${c === categoriaFiltro ? ' active' : ''}" onclick="filtrarPorCategoria('${c}')">${c}</button>`
     ).join('');
@@ -81,7 +105,7 @@ function montarCategorias() {
 function montarSelectCategorias() {
     const sel = document.getElementById('cmd-f-categoria');
     if (!sel) return;
-    sel.innerHTML = CATEGORIAS.map(c => `<option value="${c}">${c}</option>`).join('');
+    sel.innerHTML = categorias.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
 function filtrarPorCategoria(cat) {
@@ -243,7 +267,7 @@ function abrirFormComando() {
     document.getElementById('cmd-edit-id').value = '';
     document.getElementById('cmd-modal-titulo').textContent = '➕ Novo Comando';
     document.getElementById('cmd-f-titulo').value = '';
-    document.getElementById('cmd-f-categoria').value = CATEGORIAS[0];
+    document.getElementById('cmd-f-categoria').value = categorias[0];
     document.getElementById('cmd-f-conteudo').value = '';
     document.getElementById('cmd-f-favorito').checked = false;
     document.getElementById('cmd-modal').classList.add('active');
@@ -256,7 +280,7 @@ function editarComando(id) {
     document.getElementById('cmd-edit-id').value = id;
     document.getElementById('cmd-modal-titulo').textContent = '✏️ Editar Comando';
     document.getElementById('cmd-f-titulo').value = c.titulo || '';
-    document.getElementById('cmd-f-categoria').value = c.categoria || CATEGORIAS[0];
+    document.getElementById('cmd-f-categoria').value = c.categoria || categorias[0];
     document.getElementById('cmd-f-conteudo').value = c.conteudo || '';
     document.getElementById('cmd-f-favorito').checked = c.favorito === true;
     document.getElementById('cmd-modal').classList.add('active');
@@ -264,6 +288,40 @@ function editarComando(id) {
 
 function fecharFormComando() {
     document.getElementById('cmd-modal').classList.remove('active');
+}
+
+// ===== MODAL / CATEGORIA =====
+function abrirFormCategoria() {
+    document.getElementById('cmd-f-cat-nome').value = '';
+    document.getElementById('cmd-modal-cat').classList.add('active');
+    setTimeout(() => document.getElementById('cmd-f-cat-nome')?.focus(), 100);
+}
+
+function fecharFormCategoria() {
+    document.getElementById('cmd-modal-cat').classList.remove('active');
+}
+
+async function salvarCategoria() {
+    const nome = document.getElementById('cmd-f-cat-nome').value.trim();
+    if (!nome) return toast('⚠️ Informe o nome da categoria.');
+    if (categorias.includes(nome)) return toast('⚠️ Esta categoria já existe.');
+
+    const agoraISO = new Date().toISOString();
+    const ref = doc(collection(db, CAT_COL));
+    const dados = { id: ref.id, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
+
+    try {
+        await setDoc(ref, dados);
+        toast('✅ Categoria criada.');
+    } catch {
+        toast('✅ Categoria criada (offline).');
+    }
+
+    categorias.push(nome);
+    localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
+    fecharFormCategoria();
+    montarCategorias();
+    montarSelectCategorias();
 }
 
 async function salvarComando() {
