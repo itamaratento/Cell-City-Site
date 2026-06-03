@@ -496,18 +496,11 @@ class Dashboard {
     const CAT_CLASS = { crm: 'cat-crm', vendas: 'cat-vendas', motivacional: 'cat-motivacional', atencao: 'cat-atencao', critico: 'cat-critico' };
     const BAR_CLASS = { crm: 'cat-crm-bar', vendas: 'cat-vendas-bar', motivacional: 'cat-motivacional-bar', atencao: 'cat-atencao-bar', critico: 'cat-critico-bar' };
     const DURATION  = 120000; // 120s por alerta/dica na tela
-    const card = document.getElementById('alerts-card');
 
     const aplicarCategoria = (dica) => {
       const cls = CAT_CLASS[dica.cat] || 'cat-crm';
       titleEl.className = 'alert-title ' + cls;
       if (iconEl) iconEl.textContent = dica.icon;
-      // Cor do card conforme severidade do alerta (sem piscar)
-      if (card) {
-        card.classList.remove('alert-mode-atencao', 'alert-mode-critico');
-        if (dica.cor === 'critico') card.classList.add('alert-mode-critico');
-        else if (dica.cor === 'atencao') card.classList.add('alert-mode-atencao');
-      }
       if (progressEl) {
         progressEl.className = 'alert-progress-bar ' + (BAR_CLASS[dica.cat] || 'cat-crm-bar');
         progressEl.style.animation = 'none';
