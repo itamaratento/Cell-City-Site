@@ -309,6 +309,19 @@ function sincronizarToggleDispositivo() {
         : 'Desativado — usa o PIN do CRM.';
 }
 
+// ===== Painel de diagnóstico on-screen =====
+function _diagReset() {
+    const box = document.getElementById('seg-device-diag');
+    if (box) { box.style.display = 'block'; box.innerHTML = '🔎 Diagnóstico WebAuthn\n'; }
+}
+function _diagLine(label, valor, classe) {
+    const box = document.getElementById('seg-device-diag');
+    if (!box) return;
+    const cls = classe ? ` class="${classe}"` : '';
+    const v = (valor === undefined || valor === null) ? '—' : String(valor);
+    box.innerHTML += `<span${cls}>• ${label}: ${v}</span>\n`;
+}
+
 async function toggleDispositivo() {
     const toggle = document.getElementById('seg-device-toggle');
     const status = document.getElementById('seg-device-status');
@@ -328,8 +341,29 @@ async function toggleDispositivo() {
     // Ativar — registra a credencial do aparelho agora para confirmar que funciona
     if (toggle) toggle.classList.add('loading');
     if (status) status.textContent = 'Confirme com a biometria/senha do aparelho...';
+
+    // ── DIAGNÓSTICO ──
+    let etapa = 'verificação';
+    _diagReset();
+    _diagLine('Domínio (rp.id)', location.hostname);
+    const credAnterior = localStorage.getItem(WA_CRED_KEY);
+    _diagLine('Credencial/passkey anterior', credAnterior ? 'SIM (já registrada neste app)' : 'não', credAnterior ? 'diag-ok' : '');
+
     try {
+        // (1) Verificação — autenticador de plataforma disponível?
+        let uvpaa = 'indisponível';
+        try {
+            uvpaa = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+        } catch (errUv) {
+            uvpaa = `erro: ${errUv.name}`;
+        }
+        _diagLine('isUserVerifyingPlatformAuthenticatorAvailable()', uvpaa, uvpaa === true ? 'diag-ok' : 'diag-err');
+
+        // (2) Registro
+        etapa = 'registro';
         await registrarWebAuthn();
+        _diagLine('Registro (credentials.create)', 'OK', 'diag-ok');
+
         localStorage.setItem(USAR_DISPOSITIVO_KEY, '1');
         if (toggle) toggle.classList.remove('loading');
         sincronizarToggleDispositivo();   // sucesso — atualiza o switch para "Ativado"
@@ -337,18 +371,21 @@ async function toggleDispositivo() {
         localStorage.removeItem(USAR_DISPOSITIVO_KEY);
         localStorage.removeItem(WA_CRED_KEY);
         console.warn('Ativar dispositivo:', e);
-        // Mostra o motivo REAL do WebAuthn na tela (sem ser sobrescrito).
         if (toggle) {
             toggle.classList.remove('loading');
             toggle.classList.remove('on');
         }
+        // Diagnóstico cru, sem agrupar casos
+        _diagLine('Etapa que falhou', etapa, 'diag-err');
+        _diagLine('e.name', e && e.name, 'diag-err');
+        _diagLine('e.message', e && e.message, 'diag-err');
+
         if (status) {
-            let msg;
-            if (e.name === 'NotAllowedError')      msg = 'Cancelado ou bloqueio de tela não configurado no aparelho.';
-            else if (e.name === 'NotSupportedError') msg = 'Este aparelho não tem biometria/PIN compatível.';
-            else if (e.name === 'SecurityError')   msg = 'Erro de segurança (domínio). Acesse pelo site oficial em HTTPS.';
-            else msg = `Falha: ${e.name || 'erro'} — ${e.message || 'sem detalhes'}`;
-            status.textContent = msg;
+            if (e.name === 'InvalidStateError')      status.textContent = 'Já existe uma passkey deste app neste aparelho. Use "Redefinir" ou remova a passkey antiga.';
+            else if (e.name === 'NotAllowedError')   status.textContent = 'Não autorizado (cancelado, timeout ou conflito). Veja o diagnóstico abaixo.';
+            else if (e.name === 'NotSupportedError') status.textContent = 'Este aparelho não tem biometria/PIN compatível.';
+            else if (e.name === 'SecurityError')     status.textContent = 'Erro de segurança (domínio). Acesse pelo site oficial em HTTPS.';
+            else status.textContent = `Falha na etapa de ${etapa}. Veja o diagnóstico abaixo.`;
         }
     }
 }
