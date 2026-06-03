@@ -1292,6 +1292,20 @@ body {
 /* Esconde o ícone do painel de alertas/dicas (a pedido: sem ícones) */
 .alert-cat-icon { display: none !important; }
 
+/* ===== AÇÃO DA SEMANA — card piscando quando há tarefa no horário ===== */
+.module-card[data-module="acaodasemana"].acao-vencida {
+  border-color: rgba(239, 68, 68, 0.7);
+  animation: acaoVencidaPulse 1.4s ease-in-out infinite;
+}
+@keyframes acaoVencidaPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.40); border-color: rgba(239,68,68,0.55); }
+  50%      { box-shadow: 0 0 14px 3px rgba(239,68,68,0.28); border-color: rgba(239,68,68,0.95); }
+}
+.module-card[data-module="acaodasemana"].acao-vencida .module-sub {
+  color: #EF4444;
+  font-weight: 700;
+}
+
 /* ===== CENTRAL DE ALERTAS — cores por severidade (sem piscar) ===== */
 .cat-atencao { color: #F59E0B !important; text-shadow: 0 0 12px rgba(245,158,11,0.5); }
 .cat-critico { color: #EF4444 !important; text-shadow: 0 0 12px rgba(239,68,68,0.5); }

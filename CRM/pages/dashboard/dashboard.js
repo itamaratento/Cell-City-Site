@@ -64,6 +64,7 @@ class Dashboard {
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupAvisoAcoes();
+    this.monitorarCardAcaoSemana();
     this.setupAlarmeOS();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
@@ -319,6 +320,63 @@ class Dashboard {
     }
   }
 
+  // ===== AÇÃO DA SEMANA — conta tarefas vencidas (hoje + atrasadas) =====
+  async _contarAcoesVencidas() {
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+    const DIA_JS = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+    try {
+      const snap = await getDoc(doc(db, 'acoes_semana', userId));
+      const acoes = snap.exists() ? (snap.data().acoes || []) : [];
+      const agora = new Date();
+      const hojeDia = DIA_JS[agora.getDay()];
+
+      const estaVencida = (a) => {
+        if (a.concluida) return false;
+        // Com data marcada: vence quando data + hora (ou 00:00) já passou — inclui dias anteriores
+        if (a.data) {
+          const dt = new Date(`${a.data}T${a.hora || '00:00'}:00`);
+          return dt.getTime() <= agora.getTime();
+        }
+        // Recorrente por dia da semana: precisa de hora e ser hoje
+        if (Array.isArray(a.diasSemana) && a.diasSemana.includes(hojeDia) && a.hora) {
+          const [h, m] = a.hora.split(':').map(Number);
+          const dt = new Date(agora);
+          dt.setHours(h, m, 0, 0);
+          return dt.getTime() <= agora.getTime();
+        }
+        return false;
+      };
+
+      const venc = acoes.filter(estaVencida);
+      return { count: venc.length, titulos: venc.map(a => a.titulo) };
+    } catch {
+      return { count: 0, titulos: [] };
+    }
+  }
+
+  // ===== AÇÃO DA SEMANA — faz o card do Dashboard piscar quando há tarefa vencida =====
+  monitorarCardAcaoSemana() {
+    const card = document.querySelector('.module-card[data-module="acaodasemana"]');
+    if (!card) return;
+    const subEl = card.querySelector('.module-sub');
+    const subOriginal = subEl ? subEl.textContent : 'Tarefas & Prioridades';
+
+    const verificar = async () => {
+      const { count } = await this._contarAcoesVencidas();
+      if (count > 0) {
+        card.classList.add('acao-vencida');
+        if (subEl) subEl.textContent = `🔴 ${count} pendência${count > 1 ? 's' : ''}`;
+      } else {
+        card.classList.remove('acao-vencida');
+        if (subEl) subEl.textContent = subOriginal;
+      }
+    };
+
+    verificar();
+    setInterval(verificar, 60000);          // re-checa a cada 60s
+    window.addEventListener('focus', verificar); // re-checa ao voltar pra aba (depois de abrir o módulo/marcar feito)
+  }
+
   // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
   async gerarAlertas() {
     const alertas = [];
@@ -341,6 +399,18 @@ class Dashboard {
     };
 
     try {
+      // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (horário vencido) =====
+      const acaoVenc = await this._contarAcoesVencidas();
+      if (acaoVenc.count > 0) {
+        alertas.push({
+          icon: '💡', cat: 'critico', cor: 'critico',
+          title: 'AÇÃO DA SEMANA',
+          sub: acaoVenc.count === 1 ? 'Tarefa programada para agora' : `${acaoVenc.count} tarefas no horário`,
+          detail: `${acaoVenc.count} tarefa(s) da Ação da Semana no horário/atrasada(s).` +
+                  (acaoVenc.titulos[0] ? ` Ex.: ${acaoVenc.titulos[0]}` : '')
+        });
+      }
+
       const osSnap = await getDocs(collection(db, 'os'));
       const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
 
