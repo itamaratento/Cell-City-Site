@@ -1,18 +1,20 @@
 // ===== IMPORTS (Padrão OS) =====
-import { 
-    db, 
-    collection, 
-    doc, 
-    setDoc, 
+import {
+    db,
+    collection,
+    doc,
+    setDoc,
     addDoc,
-    getDocs, 
+    getDocs,
     getDoc,
-    updateDoc, 
+    updateDoc,
     deleteDoc,
     onSnapshot,
     query,
     orderBy,
-    serverTimestamp 
+    where,
+    runTransaction,
+    serverTimestamp
 } from "../../scripts/firebase.js";
 
 // ═══════════════════════════════════════════
@@ -966,6 +968,43 @@ async function salvarLancamento() {
     const erro = validarLancamento(dados);
     if (erro) return showToast(`⚠️ ${erro}`);
     
+    // ═══════════════════════════════════════════
+    // 🔗 VALIDAÇÃO ESTOQUE (apenas para entradas/vendas)
+    // ═══════════════════════════════════════════
+    if (dados.tipo !== 'servico' && dados.tipo !== 'saida') {
+        const validacao = await validarEstoque(dados.descricao, dados.categoria);
+        
+        if (validacao.status === 'sem_estoque') {
+            showToast(`🚫 "${validacao.produto.nome}" está sem estoque! Venda bloqueada.`);
+            console.warn(`[ESTOQUE↔CAIXA] BLOQUEADO - Produto "${validacao.produto.nome}" sem estoque (qtd=0)`);
+            return;
+        }
+        
+        if (validacao.status === 'nao_encontrado') {
+            const confirmar = confirm(
+                `❌ Produto "${dados.descricao}" não encontrado no Estoque!\n\n` +
+                `Deseja cadastrá-lo automaticamente no estoque e continuar a venda?`
+            );
+            if (!confirmar) {
+                console.log(`[ESTOQUE↔CAIXA] CANCELADO - Usuário recusou cadastro automático`);
+                showToast('❌ Venda cancelada — produto não cadastrado no estoque');
+                return;
+            }
+            await cadastrarProdutoAutomatico({
+                nome: dados.descricao.toUpperCase(),
+                descricao: dados.descricao,
+                categoria: dados.categoria,
+                preco: dados.valor
+            });
+            console.log(`[ESTOQUE↔CAIXA] CADASTRO AUTO - Produto "${dados.descricao}" criado no estoque via Caixa`);
+        }
+        
+        if (validacao.status === 'encontrado') {
+            await descontarEstoque(validacao.produto.id, validacao.produto);
+            console.log(`[ESTOQUE↔CAIXA] DESCONTADO - Produto "${validacao.produto.nome}" (${validacao.produto.quantidade}→${validacao.produto.quantidade - 1})`);
+        }
+    }
+    
     try {
         const docRef = doc(collection(db, COLLECTION_LANCAMENTOS));
         await setDoc(docRef, { ...dados, id: docRef.id });
@@ -980,6 +1019,116 @@ async function salvarLancamento() {
     } catch (error) {
         console.error('❌ Erro ao salvar:', error);
         showToast('❌ Erro ao salvar lançamento');
+    }
+}
+ 
+// ═══════════════════════════════════════════
+// 🔗 VALIDAÇÃO DE ESTOQUE
+// ═══════════════════════════════════════════
+const COLLECTION_PRODUTOS = "estoque_produtos";
+
+async function validarEstoque(descricao, categoria) {
+    try {
+        const termo = descricao.trim().toUpperCase();
+        if (!termo) return { status: 'nao_encontrado' };
+        
+        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+        
+        let produto = null;
+        snap.forEach(d => {
+            const p = { id: d.id, ...d.data() };
+            const nome = (p.nome || p.description || '').toUpperCase();
+            if (nome === termo) {
+                produto = p;
+            }
+        });
+        
+        if (!produto) {
+            snap.forEach(d => {
+                const p = { id: d.id, ...d.data() };
+                const nome = (p.nome || p.description || '').toUpperCase();
+                if (nome.includes(termo) || termo.includes(nome.substring(0, 10))) {
+                    if (!produto) produto = p;
+                }
+            });
+        }
+        
+        if (!produto) {
+            return { status: 'nao_encontrado' };
+        }
+        
+        const qtd = Number(produto.quantidade || 0);
+        if (qtd <= 0) {
+            return { status: 'sem_estoque', produto };
+        }
+        
+        return { status: 'encontrado', produto };
+        
+    } catch (error) {
+        console.error('❌ Erro ao validar estoque:', error);
+        console.warn('[ESTOQUE↔CAIXA] Falha na validação — venda permitida por segurança');
+        return { status: 'encontrado', produto: null };
+    }
+}
+
+// ═══════════════════════════════════════════
+// 💾 CADASTRO AUTOMÁTICO DE PRODUTO
+// ═══════════════════════════════════════════
+async function cadastrarProdutoAutomatico({ nome, descricao, categoria, preco }) {
+    try {
+        const dados = {
+            nome,
+            descricao,
+            categoria: categoria || 'Outro',
+            quantidade: 0,
+            quantidadeMinima: 1,
+            venda: preco || 0,
+            custo: 0,
+            atualizadoEm: serverTimestamp()
+        };
+        
+        const docRef = doc(collection(db, COLLECTION_PRODUTOS));
+        await setDoc(docRef, { ...dados, id: docRef.id });
+        
+        console.log(`✅ [ESTOQUE] Produto "${nome}" cadastrado automaticamente via Caixa (ID: ${docRef.id})`);
+        return docRef.id;
+        
+    } catch (error) {
+        console.error('❌ [ESTOQUE] Erro ao cadastrar produto automático:', error);
+        showToast('⚠️ Erro ao cadastrar no estoque');
+        return null;
+    }
+}
+
+// ═══════════════════════════════════════════
+// 🔽 DESCONTAR ESTOQUE (via Transaction)
+// ═══════════════════════════════════════════
+async function descontarEstoque(produtoId, produto) {
+    try {
+        await runTransaction(db, async (transaction) => {
+            const ref = doc(db, COLLECTION_PRODUTOS, produtoId);
+            const snap = await transaction.get(ref);
+            
+            if (!snap.exists()) {
+                throw new Error("Produto não encontrado no momento do desconto");
+            }
+            
+            const qtdAtual = snap.data().quantidade || 0;
+            const novaQtd = Math.max(qtdAtual - 1, 0);
+            
+            transaction.update(ref, {
+                quantidade: novaQtd,
+                atualizadoEm: serverTimestamp()
+            });
+        });
+        
+        console.log(`📦 [ESTOQUE↔CAIXA] Estoque descontado: "${produto.nome}" (1 un.)`);
+        return true;
+        
+    } catch (error) {
+        console.error('❌ [ESTOQUE↔CAIXA] Erro no desconto de estoque:', error);
+        console.warn('⚠️ [ESTOQUE↔CAIXA] Venda concluída, mas estoque NÃO foi descontado devido a erro');
+        return false;
     }
 }
 
@@ -1290,39 +1439,6 @@ document.addEventListener('click', e => {
     }
 });
 
-// Hook no salvarLancamento para perguntar sobre estoque (apenas categoria Vendas)
-const _salvarLancamentoOriginal = window.salvarLancamento;
-window.salvarLancamento = async function() {
-    const descricao = document.getElementById('descricao')?.value.trim() || '';
-    const categoria = document.getElementById('categoria')?.value || '';
-    await _salvarLancamentoOriginal();
-    // Verifica se após salvar a descrição foi limpada (indica sucesso)
-    const descDepois = document.getElementById('descricao')?.value.trim() || '';
-    if (descDepois !== '' || !descricao) return; // não salvou ou estava vazio
-    if (categoria !== 'Vendas') return; // só pergunta sobre estoque em vendas
-    // Se não havia item selecionado do estoque, pergunta se quer criar
-    if (!_ultimoItemSelecionado) {
-        const produtos = await _carregarProdutosEstoque();
-        const jaExiste = produtos.some(p => (p.nome || p.description || '').toLowerCase() === descricao.toLowerCase());
-        if (!jaExiste) {
-            const criar = confirm(`"${descricao}" não está no estoque.\nDeseja adicionar ao estoque agora?`);
-            if (criar) {
-                try {
-                    const valor = Number(document.getElementById('valor')?.value) || 0;
-                    await setDoc(doc(db, 'estoque_produtos', `prod_${Date.now()}`), {
-                        nome: descricao, categoria: 'Outro',
-                        quantidade: 0, quantidadeMinima: 1,
-                        venda: valor, custo: 0,
-                        atualizadoEm: serverTimestamp()
-                    });
-                    _cacheProdutos = null; // invalida cache
-                    mostrarToast('✅ Item adicionado ao estoque!');
-                } catch { mostrarToast('⚠ Erro ao criar no estoque.'); }
-            }
-        }
-    }
-    _ultimoItemSelecionado = null;
-};
 
 function mostrarToast(msg) {
     const t = document.getElementById('toast-caixa') || (() => { const el = document.createElement('div'); el.id='toast-caixa'; el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1d23;border:1px solid rgba(0,200,83,.3);border-radius:100px;padding:10px 22px;color:#fff;font-size:14px;opacity:0;transition:all 300ms;pointer-events:none;white-space:nowrap;z-index:9500;'; document.body.appendChild(el); return el; })();
