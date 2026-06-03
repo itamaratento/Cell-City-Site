@@ -23,8 +23,52 @@
                 <div class="pin-logo-sub">Acesso Seguro</div>
             </div>
 
-            <!-- MODO: DIGITAR PIN -->
+            <!-- MODO: LOGIN USUÁRIO + SENHA (principal) -->
             <div id="screen-login" class="pin-screen active">
+                <p class="pin-label">Entrar no CRM</p>
+                <div class="cc-field">
+                    <label for="login-user">Usuário</label>
+                    <input type="text" id="login-user" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="usuário">
+                </div>
+                <div class="cc-field">
+                    <label for="login-pass">Senha</label>
+                    <input type="password" id="login-pass" autocomplete="current-password" placeholder="senha">
+                </div>
+                <label class="cc-check">
+                    <input type="checkbox" id="login-lembrar">
+                    <span>Lembrar este dispositivo por 90 dias</span>
+                </label>
+                <div class="pin-error" id="login-error"></div>
+                <button class="pin-btn-entrar" id="btn-login" onclick="fazerLogin()">Entrar</button>
+                <button class="pin-link" onclick="showScreen('pin')">Entrar com PIN</button>
+
+                <!-- WebAuthn preservado, porém oculto (substituído pelo token de dispositivo) -->
+                <button class="pin-btn-device" id="btn-device" onclick="entrarComDispositivo()" style="display:none">
+                    🔐 Usar senha do dispositivo
+                </button>
+            </div>
+
+            <!-- MODO: CRIAR ACESSO (1º uso — define usuário e senha) -->
+            <div id="screen-criar-acesso" class="pin-screen">
+                <p class="pin-label">Criar acesso do CRM</p>
+                <div class="cc-field">
+                    <label for="ca-user">Usuário</label>
+                    <input type="text" id="ca-user" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="defina um usuário">
+                </div>
+                <div class="cc-field">
+                    <label for="ca-pass">Senha</label>
+                    <input type="password" id="ca-pass" placeholder="defina uma senha">
+                </div>
+                <div class="cc-field">
+                    <label for="ca-pass2">Confirmar senha</label>
+                    <input type="password" id="ca-pass2" placeholder="repita a senha">
+                </div>
+                <div class="pin-error" id="ca-error"></div>
+                <button class="pin-btn-entrar" onclick="criarAcesso()">Criar acesso</button>
+            </div>
+
+            <!-- MODO: DIGITAR PIN (alternativa) -->
+            <div id="screen-pin" class="pin-screen">
                 <p class="pin-label" id="pin-label">Digite seu PIN</p>
                 <div class="pin-dots" id="pin-dots">
                     <span class="pin-dot"></span>
@@ -47,9 +91,7 @@
                     <button class="pin-btn pin-btn-del" onclick="pinDelete()">⌫</button>
                     <button class="pin-btn pin-btn-empty"></button>
                 </div>
-                <button class="pin-btn-device" id="btn-device" onclick="entrarComDispositivo()" style="display:none">
-                    🔐 Usar senha do dispositivo
-                </button>
+                <button class="pin-link" onclick="showScreen('login')">← Voltar ao login</button>
                 <button class="pin-link" id="btn-alterar" onclick="showScreen('alterar')" style="display:none">Alterar PIN</button>
                 <button class="pin-link pin-link-sair" id="btn-redefinir" onclick="redefinirPin()" style="display:none">Redefinir PIN</button>
             </div>
@@ -86,6 +128,10 @@
                 <div class="pin-success">✅</div>
                 <p class="pin-label">Acesso liberado</p>
                 <a href="/CRM/pages/dashboard/index.html" class="pin-btn-entrar">Abrir CRM</a>
+<<<<<<< HEAD
+                <button class="pin-link" onclick="showScreen('dispositivos')" style="margin-top:12px">📱 Dispositivos autorizados</button>
+                <button class="pin-link" onclick="showScreen('alterar')">🔑 Alterar PIN</button>
+=======
 
                 <!-- SEGURANÇA: Usar senha do dispositivo -->
                 <div class="seg-device-row" id="seg-device-row" style="display:none" onclick="toggleDispositivo()">
@@ -100,7 +146,19 @@
                 <pre class="seg-device-diag" id="seg-device-diag" style="display:none"></pre>
 
                 <button class="pin-link" onclick="showScreen('alterar')" style="margin-top:12px">🔑 Alterar PIN</button>
+>>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
                 <button class="pin-link pin-link-sair" onclick="sair()">Sair</button>
+            </div>
+
+            <!-- MODO: DISPOSITIVOS AUTORIZADOS -->
+            <div id="screen-dispositivos" class="pin-screen">
+                <p class="pin-label">Dispositivos autorizados</p>
+                <div class="pin-error" id="disp-error"></div>
+                <div class="cc-dev-list" id="disp-lista">
+                    <div class="cc-dev-empty">Carregando…</div>
+                </div>
+                <button class="pin-btn-danger" onclick="desconectarTodos()">Desconectar todos os dispositivos</button>
+                <button class="pin-link" onclick="showScreen('logado')">← Voltar</button>
             </div>
 
         </div>

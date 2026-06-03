@@ -17,6 +17,11 @@ import {
   runTransaction,
   serverTimestamp // ← ADICIONADO: timestamp do servidor
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+  getAuth,
+  signInAnonymously,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -30,6 +35,25 @@ const firebaseConfig = {
 // Inicializa
 const app = initializeApp(firebaseConfig);
  const db = getFirestore(app);
+
+// ===== AUTENTICAÇÃO ANÔNIMA (compartilhada por todas as páginas) =====
+// Garante que TODAS as páginas que importam este arquivo tenham um usuário
+// autenticado, satisfazendo as regras do Firestore (request.auth != null).
+// O Firestore aguarda automaticamente o token de auth antes de enviar as
+// requisições, então não é preciso alterar as páginas que já usam `db`.
+const auth = getAuth(app);
+const authReady = new Promise((resolve) => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      resolve(user);
+    } else {
+      signInAnonymously(auth).catch((e) => {
+        console.warn('⚠️ Falha na autenticação anônima:', e);
+        resolve(null);
+      });
+    }
+  });
+});
 
 // ===== ADAPTADOR: Firestore + Cache Local =====
 export const FirestoreDB = {
@@ -166,6 +190,8 @@ export function listenToOrders(callback) {
 // ===== EXPORTS PARA USO DIRETO (opcional) =====
 export {
   db,
+  auth,
+  authReady,
   collection,
   addDoc,
   getDocs,

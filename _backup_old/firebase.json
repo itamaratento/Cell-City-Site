@@ -1,0 +1,37 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/autoatendimento",
+        "destination": "/autoatendimento.html"
+      },
+      {
+        "source": "/autoatendimento/**",
+        "destination": "/autoatendimento.html"
+      },
+      {
+        "source": "/consultar-os",
+        "destination": "/consultar-os.html"
+      },
+      {
+        "source": "/consultar-os/**",
+        "destination": "/consultar-os.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "cleanUrls": true,
+    "trailingSlashBehavior": "ADD"
+  }
+}

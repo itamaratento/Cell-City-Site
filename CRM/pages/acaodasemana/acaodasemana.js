@@ -1,272 +1,362 @@
-import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase.js';
+// ===== AGENDA INTELIGENTE — Cell City (calendário com Sticky Notes) =====
+// 1 documento por DIA: { data, notas: [ {texto, cor}, ... ], atualizadoEm }
+// Cada anotação tem o horário no início do texto (ex.: "09:00 Buscar películas").
+import {
+  db, collection, doc, setDoc, deleteDoc,
+  onSnapshot, serverTimestamp
+} from '../../scripts/firebase.js';
 
-const PRIO_ICON = { alta: '🔴', media: '🟡', baixa: '🟢' };
-const CAT_LABEL = { vendas: '📈 Vendas', operacional: '⚙️ Operacional', marketing: '📣 Marketing', financeiro: '💰 Financeiro', outro: '📌 Outro' };
-const DIAS_LABEL = { segunda: 'Seg', terca: 'Ter', quarta: 'Qua', quinta: 'Qui', sexta: 'Sex', sabado: 'Sáb', domingo: 'Dom' };
+// ── 5 cores estilo lembretes do Windows ────────────────────────────
+const CORES = {
+  verde:    { hex: '#22C55E', bg: '#b9f6ca', fg: '#0b3d1f', emoji: '🟢', nome: 'Rotina' },
+  amarelo:  { hex: '#EAB308', bg: '#fff59d', fg: '#4a3b00', emoji: '🟡', nome: 'Atenção' },
+  vermelho: { hex: '#EF4444', bg: '#ffcdd2', fg: '#7a0012', emoji: '🔴', nome: 'Urgente' },
+  azul:     { hex: '#3B82F6', bg: '#bbdefb', fg: '#0d2a4a', emoji: '🔵', nome: 'Lembrete' },
+  branco:   { hex: '#E5E7EB', bg: '#f6f6f6', fg: '#1a1a1a', emoji: '⚪', nome: 'Informação' },
+};
+const ORDEM = ['verde', 'amarelo', 'vermelho', 'azul', 'branco'];
+const COR_PADRAO = 'verde';
 
-const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
-const ref    = doc(db, 'acoes_semana', userId);
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-let acoes = [];
-let editandoId = null; // id da ação em edição, null = nova ação
+// ── estado ─────────────────────────────────────────────────────────
+let notas = {};                 // data -> [ {texto, cor} ]
+let viewAno, viewMes;
+let diaSelecionado = isoHoje();
+let editando = false;
+let saveTimer = null;
+let notaFonte = Math.min(22, Math.max(12, parseInt(localStorage.getItem('ag_nota_fonte') || '15', 10)));
 
 // ── elementos ──────────────────────────────────────────────────────
-const listaEl   = document.getElementById('as-lista');
-const formEl    = document.getElementById('as-form');
-const btnNova   = document.getElementById('as-btn-nova');
-const btnSalvar = document.getElementById('as-btn-salvar');
-const btnCancel = document.getElementById('as-btn-cancelar');
-const tituloInp = document.getElementById('as-titulo-input');
-const descInp   = document.getElementById('as-desc-input');
-const prioInp   = document.getElementById('as-prio-input');
-const catInp    = document.getElementById('as-categoria-input');
-const dataInp   = document.getElementById('as-data-input');
-const horaInp   = document.getElementById('as-hora-input');
-const toastEl   = document.getElementById('as-toast');
-const formTitulo = formEl.querySelector('.as-form-titulo');
+const $ = (id) => document.getElementById(id);
+const gradeEl   = $('ag-cal-grade');
+const tituloCal = $('ag-cal-titulo');
+const diaTitulo = $('ag-dia-titulo');
+const listaEl   = $('ag-notas-lista');
+const statusEl  = $('ag-nota-status');
+const painelEl  = document.querySelector('.ag-nota-painel');
+const toastEl   = $('ag-toast');
 
-// ── toast ──────────────────────────────────────────────────────────
+// ── util ───────────────────────────────────────────────────────────
+function isoHoje() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function pad(n) { return String(n).padStart(2, '0'); }
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s ?? ''; return d.innerHTML; }
+function fmtData(iso) { if (!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtDiaLongo(iso) {
+  const [y,m,d] = iso.split('-').map(Number);
+  const dt = new Date(y, m-1, d);
+  const sem = ['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'][dt.getDay()];
+  return `${sem}, ${d} de ${MESES[m-1]}`;
+}
+function corValida(c) { return CORES[c] ? c : COR_PADRAO; }
+
 let toastTimer;
 function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('visivel');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
+  toastEl.textContent = msg; toastEl.classList.add('visivel');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 1500);
 }
 
-// ── dias marcados ──────────────────────────────────────────────────
-function getDiasMarcados() {
-  return [...formEl.querySelectorAll('input[name="dia"]:checked')].map(cb => cb.value);
+// linhas "HH:MM texto" → compromissos com horário (para resumo/alertas)
+function itensComHorario() {
+  const out = [];
+  for (const [data, arr] of Object.entries(notas)) {
+    (arr || []).forEach(n => {
+      const m = (n.texto || '').match(/^\s*(\d{1,2}):(\d{2})\s+(.*\S)/);
+      if (m) { const hh = String(Math.min(23, +m[1])).padStart(2, '0'); out.push({ data, hora: `${hh}:${m[2]}`, titulo: m[3].trim() }); }
+    });
+  }
+  return out;
 }
 
-function setDiasMarcados(dias = []) {
-  formEl.querySelectorAll('input[name="dia"]').forEach(cb => {
-    cb.checked = dias.includes(cb.value);
+// ── calendário: cada dia mostra suas anotações empilhadas ──────────
+function renderCalendario() {
+  tituloCal.textContent = `${MESES[viewMes]} ${viewAno}`;
+  gradeEl.innerHTML = '';
+
+  const primeiroDiaSemana = new Date(viewAno, viewMes, 1).getDay();
+  const diasNoMes = new Date(viewAno, viewMes + 1, 0).getDate();
+  const hoje = isoHoje();
+
+  for (let i = 0; i < primeiroDiaSemana; i++) {
+    const v = document.createElement('div'); v.className = 'ag-cel ag-cel-vazia'; gradeEl.appendChild(v);
+  }
+
+  for (let dia = 1; dia <= diasNoMes; dia++) {
+    const iso = `${viewAno}-${pad(viewMes+1)}-${pad(dia)}`;
+    const arr = notas[iso] || [];
+    const cel = document.createElement('div');
+    cel.className = 'ag-cel';
+    if (iso === hoje) cel.classList.add('ag-cel-hoje');
+    if (iso === diaSelecionado) cel.classList.add('ag-cel-sel');
+
+    const chips = arr.map(n => {
+      const c = CORES[corValida(n.cor)];
+      const m = (n.texto || '').match(/^\s*(\d{1,2}:\d{2})\s+([\s\S]*)$/);
+      const inner = m ? `<b>${m[1]}</b> ${escHtml(m[2])}` : escHtml(n.texto);
+      return `<div class="ag-chip" style="--bg:${c.bg};--fg:${c.fg}" title="${escHtml(n.texto)}"><span class="ag-chip-t">${inner}</span></div>`;
+    }).join('');
+
+    cel.innerHTML = `<span class="ag-cel-num">${dia}</span><div class="ag-cel-notas">${chips}</div>`;
+    cel.addEventListener('click', () => selecionarDia(iso));
+    gradeEl.appendChild(cel);
+  }
+
+  requestAnimationFrame(ajustarQuadrados);
+}
+
+// Cada card cresce com as anotações até uma altura máxima; o que passar vira "+N".
+// O texto quebra linha e aparece inteiro (sem "…"), com fonte confortável fixa.
+function ajustarQuadrados() {
+  const mobile = window.matchMedia('(max-width: 600px)').matches;
+  const MAXH = mobile ? 150 : 176;            // altura máx. da área de anotações
+  const GAP = 3;
+
+  gradeEl.querySelectorAll('.ag-cel-notas').forEach(wrap => {
+    const antigo = wrap.querySelector('.ag-mais'); if (antigo) antigo.remove();
+    const chips = [...wrap.querySelectorAll('.ag-chip')];
+    chips.forEach(c => c.style.display = '');
+    wrap.style.maxHeight = '';
+    const total = chips.length;
+    if (total === 0) return;
+
+    // tudo cabe na altura máxima → deixa o card crescer naturalmente (sem "+N")
+    if (wrap.scrollHeight <= MAXH) return;
+
+    // senão: limita a altura e mostra só as anotações que couberem + "+N"
+    const badge = document.createElement('div');
+    badge.className = 'ag-mais';
+    badge.textContent = '+0';
+    wrap.appendChild(badge);
+    const badgeH = badge.offsetHeight + GAP;
+
+    let usado = 0, visiveis = 0;
+    for (let i = 0; i < total; i++) {
+      const h = chips[i].offsetHeight + GAP;
+      if (usado + h <= MAXH - badgeH) { usado += h; visiveis++; } else break;
+    }
+    if (visiveis < 1) visiveis = 1;            // mostra ao menos 1 anotação
+
+    chips.forEach((c, i) => { c.style.display = i < visiveis ? '' : 'none'; });
+    badge.textContent = `+${total - visiveis}`;
+    wrap.appendChild(badge);
+    wrap.style.maxHeight = MAXH + 'px';
   });
 }
 
-// ── abrir/fechar form ──────────────────────────────────────────────
-function abrirForm(acao = null) {
-  editandoId = acao ? acao.id : null;
-  formTitulo.textContent = acao ? 'Editar Ação' : 'Nova Ação da Semana';
-  tituloInp.value = acao ? acao.titulo     : '';
-  descInp.value   = acao ? acao.descricao  : '';
-  prioInp.value   = acao ? acao.prioridade : 'media';
-  catInp.value    = acao ? acao.categoria  : 'vendas';
-  dataInp.value   = acao ? (acao.data || '') : '';
-  horaInp.value   = acao ? (acao.hora || '') : '';
-  setDiasMarcados(acao ? (acao.diasSemana || []) : []);
-  formEl.style.display = 'flex';
-  btnNova.style.display = 'none';
-  tituloInp.focus();
+function selecionarDia(iso) {
+  flushSave();
+  diaSelecionado = iso;
+  editando = false;
+  carregarEditor();
+  renderCalendario();
+  painelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  const primeiro = listaEl.querySelector('.ag-nlinha .ag-nlinha-txt');
+  if (primeiro && !primeiro.value) primeiro.focus();
 }
 
-function fecharForm() {
-  formEl.style.display = 'none';
-  btnNova.style.display = '';
-  editandoId = null;
+// ── editor: lista de anotações (cada uma = 1 linha colorida) ───────
+function carregarEditor() {
+  diaTitulo.textContent = fmtDiaLongo(diaSelecionado);
+  listaEl.innerHTML = '';
+  (notas[diaSelecionado] || []).forEach(n => listaEl.appendChild(criarLinha(n)));
+  listaEl.appendChild(criarLinha(null));   // linha vazia para digitar rápido
+  aplicarFonteLinhas();
+}
+
+function criarLinha(n) {
+  const cor = corValida(n?.cor);
+  const l = document.createElement('div');
+  l.className = 'ag-nlinha';
+  l.dataset.cor = cor;
+  pintarLinha(l, cor);
+  l.innerHTML = `
+    <button class="ag-nlinha-cor" title="Trocar cor"></button>
+    <input class="ag-nlinha-txt" placeholder="09:00 Anotação..." maxlength="200">
+    <button class="ag-nlinha-del" title="Excluir">✕</button>`;
+  l.querySelector('.ag-nlinha-txt').value = n?.texto || '';
+  l.querySelector('.ag-nlinha-cor').style.background = CORES[cor].hex;
+
+  l.querySelector('.ag-nlinha-cor').addEventListener('click', () => { ciclarCor(l); agendarSave(); });
+  const txt = l.querySelector('.ag-nlinha-txt');
+  txt.addEventListener('input', () => { agendarSave(); });
+  txt.addEventListener('blur', () => { flushSave(); });
+  txt.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); flushSave(); novaLinhaFoco(); }
+  });
+  l.querySelector('.ag-nlinha-del').addEventListener('click', () => { l.remove(); flushSave(); });
+  return l;
+}
+
+function pintarLinha(l, cor) {
+  const c = CORES[cor];
+  l.style.setProperty('--bg', c.bg);
+  l.style.setProperty('--fg', c.fg);
+}
+function ciclarCor(l) {
+  const prox = ORDEM[(ORDEM.indexOf(l.dataset.cor || COR_PADRAO) + 1) % ORDEM.length];
+  l.dataset.cor = prox;
+  pintarLinha(l, prox);
+  l.querySelector('.ag-nlinha-cor').style.background = CORES[prox].hex;
+}
+function aplicarFonteLinhas() {
+  listaEl.querySelectorAll('.ag-nlinha-txt').forEach(i => { i.style.fontSize = notaFonte + 'px'; });
+}
+function novaLinhaFoco() {
+  let vazia = [...listaEl.querySelectorAll('.ag-nlinha')].find(l => !l.querySelector('.ag-nlinha-txt').value.trim());
+  if (!vazia) { vazia = criarLinha(null); listaEl.appendChild(vazia); aplicarFonteLinhas(); }
+  vazia.querySelector('.ag-nlinha-txt').focus();
+}
+
+// ── salvamento automático (array do dia) ───────────────────────────
+function lerLinhas() {
+  return [...listaEl.querySelectorAll('.ag-nlinha')]
+    .map(l => ({ texto: l.querySelector('.ag-nlinha-txt').value.trim(), cor: corValida(l.dataset.cor) }))
+    .filter(n => n.texto);
+}
+function agendarSave() {
+  statusEl.textContent = 'Salvando…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(salvar, 600);
+}
+function flushSave() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; salvar(); } }
+
+async function salvar() {
+  clearTimeout(saveTimer); saveTimer = null;
+  const data = diaSelecionado;
+  const arr = lerLinhas();
+  const ref = doc(db, 'agenda', data);
+  try {
+    if (arr.length === 0) {
+      if (notas[data]) await deleteDoc(ref);
+      delete notas[data];
+    } else {
+      await setDoc(ref, { data, notas: arr, atualizadoEm: serverTimestamp() }, { merge: true });
+      notas[data] = arr;
+    }
+    statusEl.textContent = '✓ Salvo';
+  } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
 }
 
 // ── resumo ─────────────────────────────────────────────────────────
-function atualizarResumo() {
-  const total      = acoes.length;
-  const concluidas = acoes.filter(a => a.concluida).length;
-  document.getElementById('as-total').textContent      = total;
-  document.getElementById('as-concluidas').textContent = concluidas;
-  document.getElementById('as-pendentes').textContent  = total - concluidas;
+function renderResumo() {
+  const hoje = isoHoje();
+  const agora = Date.now();
+  const doHoje = itensComHorario().filter(i => i.data === hoje);
+  const passou = doHoje.filter(i => new Date(`${i.data}T${i.hora}:00`).getTime() < agora);
+  $('ag-res-hoje').textContent      = doHoje.length;
+  $('ag-res-avencer').textContent   = doHoje.length - passou.length;
+  $('ag-res-atrasados').textContent = passou.length;
+  const prox = itensComHorario()
+    .map(i => ({ ...i, ts: new Date(`${i.data}T${i.hora}:00`).getTime() }))
+    .filter(i => i.ts >= agora)
+    .sort((a, b) => a.ts - b.ts)[0];
+  $('ag-res-proximo').textContent = prox ? `${fmtData(prox.data)} ${prox.hora} — ${prox.titulo}` : 'Nenhum';
 }
 
-// ── render ─────────────────────────────────────────────────────────
-function render() {
-  atualizarResumo();
-  listaEl.innerHTML = '';
-
-  if (acoes.length === 0) {
-    listaEl.innerHTML = `<div class="as-vazio">
-      <div class="as-vazio-icon">🎯</div>
-      Nenhuma ação ainda.<br>Clique em <strong>＋ Nova Ação</strong> para começar.
-    </div>`;
-    return;
-  }
-
-  const ordenadas = [...acoes].sort((a, b) => {
-    if (a.concluida !== b.concluida) return a.concluida ? 1 : -1;
-    const p = { alta: 0, media: 1, baixa: 2 };
-    return (p[a.prioridade] ?? 1) - (p[b.prioridade] ?? 1);
-  });
-
-  ordenadas.forEach(a => {
-    const card = document.createElement('div');
-    card.className = 'as-card' + (a.concluida ? ' concluida' : '');
-
-    const diasHtml = (a.diasSemana && a.diasSemana.length)
-      ? `<div class="as-card-dias">${a.diasSemana.map(d => `<span class="as-dia-tag">${DIAS_LABEL[d] || d}</span>`).join('')}</div>`
-      : '';
-
-    // Data e hora formatadas para exibição
-    const dataFmt = a.data ? (() => { const [y,m,d] = a.data.split('-'); return `${d}/${m}/${y}`; })() : '';
-    const horaFmt = a.hora || '';
-    const datetimeHtml = (dataFmt || horaFmt)
-      ? `<span class="as-card-datetime">📅 ${dataFmt}${horaFmt ? ` às ${horaFmt}` : ''}</span>`
-      : '';
-
-    card.innerHTML = `
-      <div class="as-card-topo">
-        <div class="as-card-esq">
-          <input type="checkbox" class="as-card-check" ${a.concluida ? 'checked' : ''}>
-          <span class="as-card-titulo">${escHtml(a.titulo)}</span>
-        </div>
-        <div class="as-card-dir">
-          <span class="as-card-prio">${PRIO_ICON[a.prioridade] || '🟡'}</span>
-          <button class="as-card-copy" title="Copiar lembrete">📋</button>
-          <button class="as-card-edit" title="Editar">✏️</button>
-          <button class="as-card-del" title="Excluir">✕</button>
-        </div>
-      </div>
-      ${a.descricao ? `<div class="as-card-desc">${escHtml(a.descricao)}</div>` : ''}
-      ${diasHtml}
-      <div class="as-card-rodape">
-        <span class="as-card-cat">${CAT_LABEL[a.categoria] || a.categoria}</span>
-        ${datetimeHtml}
-      </div>`;
-
-    card.querySelector('.as-card-check').addEventListener('change', e => {
-      acoes.find(x => x.id === a.id).concluida = e.target.checked;
-      salvar(); render();
-      toast(e.target.checked ? '✅ Ação concluída!' : 'Ação reaberta.');
-    });
-
-    card.querySelector('.as-card-copy').addEventListener('click', () => {
-      copiarLembrete(a);
-    });
-
-    card.querySelector('.as-card-edit').addEventListener('click', () => {
-      abrirForm(acoes.find(x => x.id === a.id));
-    });
-
-    card.querySelector('.as-card-del').addEventListener('click', () => {
-      acoes = acoes.filter(x => x.id !== a.id);
-      salvar(); render();
-      toast('🗑️ Ação removida.');
-    });
-
-    listaEl.appendChild(card);
-  });
-}
-
-// ── salvar ─────────────────────────────────────────────────────────
-async function salvar() {
-  try { await setDoc(ref, { acoes, atualizadoEm: serverTimestamp() }); } catch {}
-}
-
-// ── carregar ───────────────────────────────────────────────────────
-async function carregar() {
-  try {
-    const snap = await getDoc(ref);
-    acoes = snap.exists() ? (snap.data().acoes || []) : [];
-  } catch { acoes = []; }
-  render();
-}
-
-// ── adicionar / editar ─────────────────────────────────────────────
-function salvarAcao() {
-  const titulo = tituloInp.value.trim();
-  if (!titulo) { tituloInp.focus(); return; }
-
-  if (editandoId) {
-    // Edição
-    const idx = acoes.findIndex(x => x.id === editandoId);
-    if (idx !== -1) {
-      acoes[idx] = {
-        ...acoes[idx],
-        titulo,
-        descricao:   descInp.value.trim(),
-        prioridade:  prioInp.value,
-        categoria:   catInp.value,
-        diasSemana:  getDiasMarcados(),
-        data:        dataInp.value || null,
-        hora:        horaInp.value || null,
-        editadoEm:   new Date().toISOString()
-      };
+// ── alerta quando chega o horário ──────────────────────────────────
+const alertasDisparados = new Set();
+function verificarAlertas() {
+  const agora = new Date();
+  const hoje = isoHoje();
+  itensComHorario().filter(i => i.data === hoje).forEach(i => {
+    const [h, m] = i.hora.split(':').map(Number);
+    const alvo = new Date(agora); alvo.setHours(h, m, 0, 0);
+    const diffMin = Math.round((agora - alvo) / 60000);
+    const chave = `${i.data}_${i.hora}_${i.titulo}`;
+    if (diffMin >= 0 && diffMin <= 60 && !alertasDisparados.has(chave)) {
+      alertasDisparados.add(chave);
+      $('ag-alerta-hora').textContent = i.hora;
+      $('ag-alerta-titulo').textContent = i.titulo;
+      $('ag-alerta-status').textContent = diffMin <= 0 ? 'Agora!' : `Atrasado há ${diffMin} min`;
+      $('ag-alerta-vivo').hidden = false;
+      tocarSom();
     }
-    toast('✏️ Ação atualizada!');
-  } else {
-    // Nova
-    acoes.push({
-      id:          Date.now().toString(),
-      titulo,
-      descricao:   descInp.value.trim(),
-      prioridade:  prioInp.value,
-      categoria:   catInp.value,
-      diasSemana:  getDiasMarcados(),
-      data:        dataInp.value || null,
-      hora:        horaInp.value || null,
-      concluida:   false,
-      criadoEm:    new Date().toISOString()
-    });
-    toast('✅ Ação adicionada!');
-  }
-
-  fecharForm();
-  salvar();
-  render();
-}
-
-// ── copiar lembrete ────────────────────────────────────────────────
-function copiarLembrete(acao) {
-  const dataFmt = acao.data
-    ? (() => { const [y, m, d] = acao.data.split('-'); return `${d}/${m}/${y}`; })()
-    : '';
-  const horaFmt = acao.hora || '';
-  let texto = `[Cell City] ${acao.titulo}`;
-  if (dataFmt) texto += ` - ${dataFmt}`;
-  if (horaFmt) texto += ` às ${horaFmt}`;
-
-  navigator.clipboard.writeText(texto)
-    .then(() => toast('📋 Lembrete copiado!'))
-    .catch(() => {
-      // fallback para ambientes sem permissão de clipboard
-      const el = document.createElement('textarea');
-      el.value = texto;
-      el.style.position = 'fixed';
-      el.style.opacity = '0';
-      document.body.appendChild(el);
-      el.select();
-      document.execCommand('copy');
-      el.remove();
-      toast('📋 Lembrete copiado!');
-    });
-}
-
-// ── escape html ────────────────────────────────────────────────────
-function escHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-// ── eventos ────────────────────────────────────────────────────────
-btnNova.addEventListener('click', () => abrirForm());
-btnCancel.addEventListener('click', fecharForm);
-btnSalvar.addEventListener('click', salvarAcao);
-tituloInp.addEventListener('keypress', e => { if (e.key === 'Enter') salvarAcao(); });
-
-document.getElementById('as-btn-limpar').addEventListener('click', async () => {
-    if (!acoes.length) { toast('ℹ️ Nenhuma ação para limpar.'); return; }
-    const confirmar = confirm(`Tem certeza que deseja apagar TODAS as ${acoes.length} ação(ões)?\n\nEssa ação não pode ser desfeita.`);
-    if (!confirmar) return;
-    acoes = [];
-    await salvar();
-    render();
-    toast('🗑️ Todas as ações foram apagadas.');
-});
-
-document.getElementById('as-busca')?.addEventListener('input', e => {
-  const termo = e.target.value.trim().toLowerCase();
-  document.querySelectorAll('.as-card').forEach(card => {
-    const texto = card.querySelector('.as-card-titulo')?.textContent.toLowerCase() || '';
-    card.style.display = (!termo || texto.includes(termo)) ? '' : 'none';
   });
+}
+function tocarSom() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination); osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
+  } catch {}
+}
+
+// ── fonte (A- / A+) ────────────────────────────────────────────────
+function mudarFonte(delta) {
+  notaFonte = Math.min(22, Math.max(12, notaFonte + delta));
+  localStorage.setItem('ag_nota_fonte', String(notaFonte));
+  aplicarFonteLinhas();
+}
+
+// ── navegação ──────────────────────────────────────────────────────
+function navegar(delta) {
+  viewMes += delta;
+  if (viewMes < 0)  { viewMes = 11; viewAno--; }
+  if (viewMes > 11) { viewMes = 0;  viewAno++; }
+  renderCalendario();
+}
+
+// ── snapshot em tempo real ─────────────────────────────────────────
+function iniciar() {
+  const hoje = new Date();
+  viewAno = hoje.getFullYear();
+  viewMes = hoje.getMonth();
+  carregarEditor();
+
+  onSnapshot(collection(db, 'agenda'),
+    (snap) => {
+      notas = {};
+      snap.forEach(d => {
+        const dados = d.data();
+        const data = dados.data || d.id;
+        let arr = [];
+        if (Array.isArray(dados.notas)) {
+          arr = dados.notas.filter(n => n && (n.texto || '').trim())
+                           .map(n => ({ texto: n.texto, cor: corValida(n.cor) }));
+        } else if (typeof dados.texto === 'string') {           // formato anterior (1 nota multiline)
+          const cor = corValida(dados.cor);
+          arr = dados.texto.split(/\r?\n+/).map(t => t.trim()).filter(Boolean).map(t => ({ texto: t, cor }));
+        } else if (dados.titulo) {                              // formato bem antigo
+          arr = [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: COR_PADRAO }];
+        }
+        if (arr.length) notas[data] = arr;
+      });
+      $('ag-loading')?.remove();
+      renderCalendario();
+      renderResumo();
+      verificarAlertas();
+      if (!editando) carregarEditor();
+    },
+    (err) => { console.warn('⚠️ Agenda offline', err); statusEl.textContent = '⚠️ Sem conexão'; }
+  );
+
+  setInterval(() => { renderResumo(); verificarAlertas(); renderCalendario(); }, 60000);
+}
+
+// trava/destrava re-render do editor conforme o foco
+painelEl.addEventListener('focusin', () => { editando = true; });
+painelEl.addEventListener('focusout', () => {
+  setTimeout(() => { if (!painelEl.contains(document.activeElement)) { editando = false; carregarEditor(); } }, 150);
 });
 
-carregar();
+// ── eventos de UI ──────────────────────────────────────────────────
+$('ag-prev').addEventListener('click', () => navegar(-1));
+$('ag-next').addEventListener('click', () => navegar(1));
+$('ag-hoje').addEventListener('click', () => {
+  const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
+  selecionarDia(isoHoje());
+});
+$('ag-add-nota').addEventListener('click', () => novaLinhaFoco());
+$('ag-alerta-fechar').addEventListener('click', () => { $('ag-alerta-vivo').hidden = true; });
+$('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
+$('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
+
+let resizeTimer;
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(ajustarQuadrados, 150); });
+
+iniciar();

@@ -4,115 +4,97 @@
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cell City — Ação da Semana</title>
+    <title>Cell City — Agenda Inteligente</title>
     <link rel="stylesheet" href="acaodasemana.css">
-<link rel="stylesheet" href="../../shared/dock.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
 
     <header class="header" id="mainHeader">
-        <h1 class="as-header-titulo">🎯 Ação da Semana</h1>
+        <h1 class="ag-header-titulo">🗓️ Agenda Inteligente</h1>
     </header>
 
-    <div class="as-busca-wrap">
-        <div class="as-header-busca">
-            <span class="as-busca-icon">🔍</span>
-            <input type="text" id="as-busca" placeholder="Buscar ação..." autocomplete="off">
-        </div>
-    </div>
-
     <main>
-        <div class="as-content">
+        <div class="ag-content">
 
-            <!-- RESUMO DE STATUS -->
-            <div class="as-resumo" id="as-resumo">
-                <div class="as-resumo-item">
-                    <span class="as-resumo-num" id="as-total">—</span>
-                    <span class="as-resumo-label">Total</span>
+            <!-- ALERTA DE COMPROMISSO NO HORÁRIO -->
+            <div class="ag-alerta-vivo" id="ag-alerta-vivo" hidden>
+                <div class="ag-alerta-icone">⚠</div>
+                <div class="ag-alerta-corpo">
+                    <div class="ag-alerta-topo">COMPROMISSO</div>
+                    <div class="ag-alerta-hora" id="ag-alerta-hora">--:--</div>
+                    <div class="ag-alerta-titulo" id="ag-alerta-titulo">—</div>
+                    <div class="ag-alerta-status" id="ag-alerta-status">—</div>
                 </div>
-                <div class="as-resumo-divider"></div>
-                <div class="as-resumo-item">
-                    <span class="as-resumo-num as-verde" id="as-concluidas">—</span>
-                    <span class="as-resumo-label">Concluídas</span>
+                <button class="ag-alerta-fechar" id="ag-alerta-fechar" title="Dispensar">✕</button>
+            </div>
+
+            <!-- RESUMO -->
+            <div class="ag-resumo" id="ag-resumo">
+                <div class="ag-resumo-item">
+                    <span class="ag-resumo-num" id="ag-res-hoje">—</span>
+                    <span class="ag-resumo-label">Hoje</span>
                 </div>
-                <div class="as-resumo-divider"></div>
-                <div class="as-resumo-item">
-                    <span class="as-resumo-num as-amarelo" id="as-pendentes">—</span>
-                    <span class="as-resumo-label">Pendentes</span>
+                <div class="ag-resumo-divider"></div>
+                <div class="ag-resumo-item">
+                    <span class="ag-resumo-num ag-amarelo" id="ag-res-avencer">—</span>
+                    <span class="ag-resumo-label">A vencer</span>
+                </div>
+                <div class="ag-resumo-divider"></div>
+                <div class="ag-resumo-item">
+                    <span class="ag-resumo-num ag-vermelho" id="ag-res-atrasados">—</span>
+                    <span class="ag-resumo-label">Passou</span>
+                </div>
+                <div class="ag-resumo-divider ag-prox-divider"></div>
+                <div class="ag-resumo-item ag-resumo-prox">
+                    <span class="ag-resumo-num-prox" id="ag-res-proximo">—</span>
+                    <span class="ag-resumo-label">Próximo compromisso</span>
                 </div>
             </div>
 
-            <!-- BOTÕES DE AÇÃO -->
-            <div class="as-toolbar">
-                <button class="as-btn-nova" id="as-btn-nova">＋ Nova Ação</button>
-                <button class="as-btn-limpar" id="as-btn-limpar">🗑 Limpar Tudo</button>
+            <!-- CABEÇALHO DO CALENDÁRIO -->
+            <div class="ag-cal-header">
+                <button class="ag-nav-btn" id="ag-prev" title="Mês anterior">◀</button>
+                <div class="ag-cal-titulo-wrap">
+                    <span class="ag-cal-titulo" id="ag-cal-titulo">—</span>
+                    <button class="ag-hoje-btn" id="ag-hoje">Hoje</button>
+                </div>
+                <button class="ag-nav-btn" id="ag-next" title="Próximo mês">▶</button>
             </div>
 
-            <!-- FORMULÁRIO (oculto por padrão) -->
-            <div class="as-form" id="as-form" style="display:none">
-                <div class="as-form-titulo">Nova Ação da Semana</div>
-                <input type="text" id="as-titulo-input" placeholder="Título da ação..." maxlength="100">
-                <textarea id="as-desc-input" placeholder="Descrição (opcional)..." rows="3" maxlength="500"></textarea>
-                <div class="as-form-row">
-                    <select id="as-prio-input">
-                        <option value="alta">🔴 Alta prioridade</option>
-                        <option value="media" selected>🟡 Média prioridade</option>
-                        <option value="baixa">🟢 Baixa prioridade</option>
-                    </select>
-                    <select id="as-categoria-input">
-                        <option value="vendas">📈 Vendas</option>
-                        <option value="operacional">⚙️ Operacional</option>
-                        <option value="marketing">📣 Marketing</option>
-                        <option value="financeiro">💰 Financeiro</option>
-                        <option value="outro">📌 Outro</option>
-                    </select>
+            <!-- GRADE — cada dia é uma nota colada -->
+            <div class="ag-cal">
+                <div class="ag-cal-semana">
+                    <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
+                    <span>Qui</span><span>Sex</span><span>Sáb</span>
                 </div>
-                <!-- DATA E HORÁRIO -->
-                <div class="as-form-datetime">
-                    <div class="as-form-dt-group">
-                        <label class="as-form-dias-label">Data:</label>
-                        <input type="date" id="as-data-input" class="as-dt-input">
-                    </div>
-                    <div class="as-form-dt-group">
-                        <label class="as-form-dias-label">Horário:</label>
-                        <input type="time" id="as-hora-input" class="as-dt-input" placeholder="--:--">
-                    </div>
-                </div>
-                <!-- CHECKLIST DIAS DA SEMANA -->
-                <div class="as-form-dias">
-                    <span class="as-form-dias-label">Dias da semana:</span>
-                    <div class="as-dias-checks">
-                        <label><input type="checkbox" name="dia" value="segunda"> Seg</label>
-                        <label><input type="checkbox" name="dia" value="terca">   Ter</label>
-                        <label><input type="checkbox" name="dia" value="quarta">  Qua</label>
-                        <label><input type="checkbox" name="dia" value="quinta">  Qui</label>
-                        <label><input type="checkbox" name="dia" value="sexta">   Sex</label>
-                        <label><input type="checkbox" name="dia" value="sabado">  Sáb</label>
-                        <label><input type="checkbox" name="dia" value="domingo"> Dom</label>
-                    </div>
-                </div>
-                <div class="as-form-btns">
-                    <button class="as-btn-salvar" id="as-btn-salvar">Salvar Ação</button>
-                    <button class="as-btn-cancelar" id="as-btn-cancelar">Cancelar</button>
-                </div>
+                <div class="ag-cal-grade" id="ag-cal-grade"></div>
             </div>
 
-            <!-- LISTA DE AÇÕES -->
-            <div class="as-lista" id="as-lista">
-                <div class="as-loading" id="as-loading">
-                    <div class="as-spinner"></div>
-                    <span>Carregando ações...</span>
+            <!-- BLOCO DE NOTAS DO DIA (várias anotações empilhadas) -->
+            <div class="ag-nota-painel">
+                <div class="ag-nota-head">
+                    <span class="ag-nota-titulo" id="ag-dia-titulo">Selecione um dia</span>
+                    <div class="ag-nota-controles">
+                        <div class="ag-fonte">
+                            <button type="button" id="ag-fonte-menos" title="Diminuir fonte">A−</button>
+                            <button type="button" id="ag-fonte-mais" title="Aumentar fonte">A+</button>
+                        </div>
+                        <button type="button" class="ag-add-nota" id="ag-add-nota">＋ Nota</button>
+                    </div>
                 </div>
+                <div class="ag-dica">Cada linha é uma anotação. Comece pelo horário (ex.: 09:00). Clique na bolinha para a cor · Enter cria outra · salva sozinho.</div>
+                <div class="ag-notas-lista" id="ag-notas-lista"></div>
+                <div class="ag-nota-status" id="ag-nota-status"></div>
             </div>
 
         </div>
     </main>
 
-    <div class="as-toast" id="as-toast"></div>
-
+    <div class="ag-toast" id="ag-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="acaodasemana.js"></script>
-<script type="module" src="../../shared/dock.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
 </body>
 </html>

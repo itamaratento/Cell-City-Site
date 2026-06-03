@@ -1,6 +1,12 @@
 {
+  "firestore": {
+    "database": "(default)",
+    "location": "southamerica-east1",
+    "rules": "CRM/firestore.rules",
+    "indexes": "CRM/firestore.indexes.json"
+  },
   "hosting": {
-    "public": ".",
+    "public": "CRM",
     "ignore": [
       "firebase.json",
       "**/.*",
@@ -8,27 +14,9 @@
     ],
     "rewrites": [
       {
-        "source": "/autoatendimento",
-        "destination": "/autoatendimento.html"
-      },
-      {
-        "source": "/autoatendimento/**",
-        "destination": "/autoatendimento.html"
-      },
-      {
-        "source": "/consultar-os",
-        "destination": "/consultar-os.html"
-      },
-      {
-        "source": "/consultar-os/**",
-        "destination": "/consultar-os.html"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
-    ],
-    "cleanUrls": true,
-    "trailingSlashBehavior": "ADD"
+    ]
   }
 }

@@ -320,61 +320,110 @@ class Dashboard {
     }
   }
 
-  // ===== AÇÃO DA SEMANA — conta tarefas vencidas (hoje + atrasadas) =====
-  async _contarAcoesVencidas() {
-    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
-    const DIA_JS = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+  // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) e extrai os horários =====
+  // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
+  // "HH:MM descrição" viram compromissos com horário para o Dashboard.
+  async _lerAgenda() {
     try {
-      const snap = await getDoc(doc(db, 'acoes_semana', userId));
-      const acoes = snap.exists() ? (snap.data().acoes || []) : [];
-      const agora = new Date();
-      const hojeDia = DIA_JS[agora.getDay()];
-
-      const estaVencida = (a) => {
-        if (a.concluida) return false;
-        // Com data marcada: vence quando data + hora (ou 00:00) já passou — inclui dias anteriores
-        if (a.data) {
-          const dt = new Date(`${a.data}T${a.hora || '00:00'}:00`);
-          return dt.getTime() <= agora.getTime();
+      const snap = await getDocs(collection(db, 'agenda'));
+      const eventos = [];
+      const parseLinha = (dia, txt) => {
+        const m = String(txt).match(/^\s*(\d{1,2}):(\d{2})\s+(.*\S)/);
+        if (m) {
+          const hh = String(Math.min(23, +m[1])).padStart(2, '0');
+          eventos.push({ data: dia, hora: `${hh}:${m[2]}`, titulo: m[3].trim(), concluido: false, alerta: true });
         }
-        // Recorrente por dia da semana: precisa de hora e ser hoje
-        if (Array.isArray(a.diasSemana) && a.diasSemana.includes(hojeDia) && a.hora) {
-          const [h, m] = a.hora.split(':').map(Number);
-          const dt = new Date(agora);
-          dt.setHours(h, m, 0, 0);
-          return dt.getTime() <= agora.getTime();
-        }
-        return false;
       };
+      snap.forEach(d => {
+        const dados = d.data();
+        const dia = dados.data || d.id;
+        if (Array.isArray(dados.notas)) {
+          dados.notas.forEach(n => n && n.texto && parseLinha(dia, n.texto));
+        } else if (typeof dados.texto === 'string') {
+          dados.texto.split(/\r?\n+/).forEach(linha => parseLinha(dia, linha));
+        } else if (dados.titulo) {
+          // compatibilidade com formato antigo (1 doc por tarefa)
+          eventos.push({ data: dia, hora: dados.hora || '', titulo: dados.titulo, concluido: !!dados.concluido, alerta: dados.alerta !== false });
+        }
+      });
+      return eventos;
+    } catch {
+      return [];
+    }
+  }
 
-      const venc = acoes.filter(estaVencida);
-      return { count: venc.length, titulos: venc.map(a => a.titulo) };
+  // ===== AGENDA — itens "no horário" (do horário até 60 min depois) =====
+  _vencidos(eventos) {
+    const agora = Date.now();
+    return (eventos || []).filter(e => {
+      if (e.concluido || !e.data || !e.hora) return false;
+      const dt = new Date(`${e.data}T${e.hora}:00`).getTime();
+      const diffMin = (agora - dt) / 60000;
+      return diffMin >= 0 && diffMin <= 60;
+    });
+  }
+
+  // ===== AGENDA — conta compromissos no horário/atrasados (janela 60 min) =====
+  async _contarAcoesVencidas(eventos) {
+    try {
+      const evs = eventos || await this._lerAgenda();
+      const venc = this._vencidos(evs);
+      return { count: venc.length, titulos: venc.map(e => e.titulo) };
     } catch {
       return { count: 0, titulos: [] };
     }
   }
 
-  // ===== AÇÃO DA SEMANA — faz o card do Dashboard piscar quando há tarefa vencida =====
+  // ===== AGENDA — calcula o próximo compromisso futuro =====
+  _proximoCompromisso(eventos) {
+    const agora = Date.now();
+    return (eventos || [])
+      .filter(e => !e.concluido && e.data)
+      .map(e => ({ ...e, ts: new Date(`${e.data}T${e.hora || '00:00'}:00`).getTime() }))
+      .filter(e => e.ts >= agora)
+      .sort((a, b) => a.ts - b.ts)[0] || null;
+  }
+
+  // ===== AGENDA — card do Dashboard: pisca quando há evento vencido + mostra resumo =====
   monitorarCardAcaoSemana() {
     const card = document.querySelector('.module-card[data-module="acaodasemana"]');
     if (!card) return;
     const subEl = card.querySelector('.module-sub');
-    const subOriginal = subEl ? subEl.textContent : 'Tarefas & Prioridades';
+    const subOriginal = 'Agenda Inteligente';
 
     const verificar = async () => {
-      const { count } = await this._contarAcoesVencidas();
+      const eventos = await this._lerAgenda();
+      const { count } = await this._contarAcoesVencidas(eventos);
+      const prox = this._proximoCompromisso(eventos);
+
       if (count > 0) {
+        // Compromisso no horário → pisca em vermelho com título e atraso
+        const venc = this._vencidos(eventos)
+          .sort((a, b) => new Date(`${b.data}T${b.hora}`) - new Date(`${a.data}T${a.hora}`))[0];
         card.classList.add('acao-vencida');
-        if (subEl) subEl.textContent = `🔴 ${count} pendência${count > 1 ? 's' : ''}`;
+        if (subEl && venc) {
+          const dt = new Date(`${venc.data}T${venc.hora || '00:00'}:00`);
+          const atrasoMin = Math.max(0, Math.round((Date.now() - dt.getTime()) / 60000));
+          const atrasoTxt = atrasoMin >= 60
+            ? `${Math.floor(atrasoMin/60)}h${atrasoMin%60 ? ' '+(atrasoMin%60)+'min' : ''}`
+            : `${atrasoMin} min`;
+          subEl.textContent = `🔴 ${venc.hora || ''} ${venc.titulo} · atrasado há ${atrasoTxt}`;
+        } else if (subEl) {
+          subEl.textContent = `🔴 ${count} pendência${count > 1 ? 's' : ''}`;
+        }
       } else {
         card.classList.remove('acao-vencida');
-        if (subEl) subEl.textContent = subOriginal;
+        if (subEl) {
+          subEl.textContent = prox
+            ? `📅 Próx.: ${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`
+            : subOriginal;
+        }
       }
     };
 
     verificar();
     setInterval(verificar, 60000);          // re-checa a cada 60s
-    window.addEventListener('focus', verificar); // re-checa ao voltar pra aba (depois de abrir o módulo/marcar feito)
+    window.addEventListener('focus', verificar); // re-checa ao voltar pra aba
   }
 
   // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
@@ -1040,10 +1089,8 @@ class Dashboard {
     }
   }
 
-  // ===== AVISO DE AÇÕES DA SEMANA =====
+  // ===== AVISO DE EVENTOS DA AGENDA =====
   setupAvisoAcoes() {
-    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
-    const acoesRef = doc(db, 'acoes_semana', userId);
     let alertaAtivo = false; // evita tocar o som repetidamente no mesmo minuto
 
     const tocarSom = () => {
@@ -1063,7 +1110,7 @@ class Dashboard {
       } catch {}
     };
 
-    const dispararAlerta = (acao, diffMin) => {
+    const dispararAlerta = (evento, diffMin) => {
       const card = document.querySelector('.alerts-card');
       const titleEl    = document.querySelector('.alert-title');
       const subtitleEl = document.querySelector('.alert-subtitle');
@@ -1071,13 +1118,13 @@ class Dashboard {
       const iconEl     = document.getElementById('alert-cat-icon');
       if (!card || !titleEl) return;
 
-      const horaFmt = acao.hora || '';
+      const horaFmt = evento.hora || '';
       const label = diffMin === 0 ? 'AGORA!' : `em ${diffMin} min`;
 
       if (iconEl)     iconEl.textContent     = '⏰';
-      titleEl.textContent    = `AÇÃO DA SEMANA — ${label}`;
+      titleEl.textContent    = `AGENDA — ${label}`;
       titleEl.className      = 'alert-title cat-alerta-acao';
-      if (subtitleEl) subtitleEl.textContent = acao.titulo;
+      if (subtitleEl) subtitleEl.textContent = evento.titulo;
       if (detailEl)   detailEl.textContent   = horaFmt ? `Horário: ${horaFmt}` : '';
 
       card.classList.add('alert-card-pulsing');
@@ -1089,26 +1136,25 @@ class Dashboard {
 
     const verificar = async () => {
       try {
-        const snap = await getDoc(acoesRef);
-        const acoes = snap.exists() ? (snap.data().acoes || []) : [];
+        const eventos = await this._lerAgenda();
         const agora = new Date();
-        const hojeISO = agora.toISOString().slice(0, 10);
+        const hojeISO = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
         const hAtual = agora.getHours();
         const mAtual = agora.getMinutes();
 
-        for (const acao of acoes) {
-          if (acao.concluida || !acao.data || !acao.hora) continue;
-          if (acao.data !== hojeISO) continue;
+        for (const evento of eventos) {
+          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
+          if (evento.data !== hojeISO) continue;
 
-          const [hAcao, mAcao] = acao.hora.split(':').map(Number);
-          const diffMin = (hAcao * 60 + mAcao) - (hAtual * 60 + mAtual);
+          const [hEv, mEv] = evento.hora.split(':').map(Number);
+          const diffMin = (hEv * 60 + mEv) - (hAtual * 60 + mAtual);
 
           // Alerta: 0 a 5 minutos antes
           if (diffMin >= 0 && diffMin <= 5) {
-            const chave = `aviso_${acao.id}_${acao.hora}`;
+            const chave = `aviso_${evento.id}_${evento.hora}`;
             if (!sessionStorage.getItem(chave)) {
               sessionStorage.setItem(chave, '1');
-              dispararAlerta(acao, diffMin);
+              dispararAlerta(evento, diffMin);
             }
             break;
           }

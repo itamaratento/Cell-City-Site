@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────────────────────────
+    // PÚBLICO (clientes sem login) — acesso mínimo necessário
+    // ─────────────────────────────────────────────
+
+    // Consulta de garantia: leitura de uma OS específica (garantia.html)
+    match /os/{osId} {
+      allow get: if true;
+    }
+
+    // Layout de impressão usado na garantia (garantia.html lê config/impressao).
+    // Escopo restrito ao doc "impressao" — NÃO expõe config/pin nem outros docs.
+    match /config/impressao {
+      allow get: if true;
+    }
+
+    // Abertura de atendimento pelo cliente, sem login (abrir-atendimento.html)
+    match /pre_os/{docId} {
+      allow create: if true;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO — todo o restante exige usuário autenticado.
+    // O app autentica anonimamente em CRM/scripts/firebase.js, então
+    // todas as páginas internas (Caixa, Estoque, Dashboard, Agenda, OS,
+    // config/pin, etc.) continuam funcionando.
+    // ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+  }
+}

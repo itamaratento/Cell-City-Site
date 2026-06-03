@@ -954,7 +954,7 @@ async function salvarLancamento() {
     const dados = {
         tipo: tipoSelecionado, descricao: document.getElementById('descricao')?.value.trim() || '',
         categoria: document.getElementById('categoria')?.value || '',
-        valor, custo, lucro, status: "ativo",
+        valor, custo, lucro, status: "ativo", produtoId: _ultimoItemSelecionado || null,
         source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
         createdAt: serverTimestamp(), createdAtISO: t.dataISO,
         updatedAt: serverTimestamp(), updatedAtISO: t.dataISO,
@@ -1509,6 +1509,82 @@ document.addEventListener('click', e => {
     }
 });
 
+<<<<<<< HEAD
+// Hook no salvarLancamento — baixa estoque automaticamente + gerencia produtos
+const _salvarLancamentoOriginal = window.salvarLancamento;
+window.salvarLancamento = async function() {
+    const descricao = document.getElementById('descricao')?.value.trim() || '';
+    const categoria = document.getElementById('categoria')?.value || '';
+    const produtoId = _ultimoItemSelecionado;
+
+    // Se produto do estoque foi selecionado, garante custo real no cálculo do lucro
+    if (produtoId) {
+        const produtos = await _carregarProdutosEstoque();
+        const prod = produtos.find(p => p.id === produtoId);
+        if (prod && prod.custo) {
+            document.getElementById('custo').value = prod.custo;
+            calcularLucro(); // recalcula: lucro = valor - custoReal
+        }
+    }
+
+    await _salvarLancamentoOriginal();
+
+    // Verifica se salvou com sucesso (descrição foi limpada = indicador de sucesso)
+    const descDepois = document.getElementById('descricao')?.value.trim() || '';
+    if (descDepois !== '' || !descricao) return;
+
+    // ═══════════════════════════════════════
+    // 🎯 BAIXA DE ESTOQUE (produto selecionado do autocomplete)
+    // ═══════════════════════════════════════
+    if (produtoId) {
+        try {
+            const prodRef = doc(db, 'estoque_produtos', produtoId);
+            const prodSnap = await getDoc(prodRef);
+            if (prodSnap.exists()) {
+                const prod = prodSnap.data();
+                const novaQty = Math.max((prod.quantidade || 0) - 1, 0);
+                await setDoc(prodRef, {
+                    ...prod,
+                    quantidade: novaQty,
+                    atualizadoEm: serverTimestamp()
+                });
+                _cacheProdutos = null; // invalida cache p/ recarregar na próxima
+                mostrarToast(`📦 Estoque baixado: ${novaQty} restante(s)`);
+            }
+        } catch (e) {
+            console.error('❌ Erro ao baixar estoque:', e);
+            mostrarToast('⚠ Erro ao baixar estoque');
+        }
+        _ultimoItemSelecionado = null;
+        return;
+    }
+
+    // ═══════════════════════════════════════
+    // ➕ CRIAÇÃO DE NOVO PRODUTO NO ESTOQUE (digitou manualmente)
+    // ═══════════════════════════════════════
+    if (categoria !== 'Vendas') return;
+    const produtos = await _carregarProdutosEstoque();
+    const jaExiste = produtos.some(p => (p.nome || p.description || '').toLowerCase() === descricao.toLowerCase());
+    if (!jaExiste) {
+        const criar = confirm(`"${descricao}" não está no estoque.\nDeseja adicionar ao estoque agora?`);
+        if (criar) {
+            try {
+                const valor = Number(document.getElementById('valor')?.value) || 0;
+                await setDoc(doc(db, 'estoque_produtos', `prod_${Date.now()}`), {
+                    nome: descricao, categoria: 'Outro',
+                    quantidade: 0, quantidadeMinima: 1,
+                    venda: valor, custo: 0,
+                    atualizadoEm: serverTimestamp()
+                });
+                _cacheProdutos = null;
+                mostrarToast('✅ Item adicionado ao estoque!');
+            } catch { mostrarToast('⚠ Erro ao criar no estoque.'); }
+        }
+    }
+    _ultimoItemSelecionado = null;
+};
+=======
+>>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
 
 function mostrarToast(msg) {
     const t = document.getElementById('toast-caixa') || (() => { const el = document.createElement('div'); el.id='toast-caixa'; el.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1d23;border:1px solid rgba(0,200,83,.3);border-radius:100px;padding:10px 22px;color:#fff;font-size:14px;opacity:0;transition:all 300ms;pointer-events:none;white-space:nowrap;z-index:9500;'; document.body.appendChild(el); return el; })();
