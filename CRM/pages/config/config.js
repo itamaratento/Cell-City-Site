@@ -244,6 +244,13 @@ function _fromB64url(str) {
 }
 
 async function registrarWebAuthn() {
+    // Se já existe uma credencial neste aparelho, exclui da criação para
+    // evitar o "UnknownError / transient reason" em tentativas repetidas.
+    const credExistente = localStorage.getItem(WA_CRED_KEY);
+    const excludeCredentials = credExistente
+        ? [{ type: 'public-key', id: _fromB64url(credExistente), transports: ['internal'] }]
+        : [];
+
     const cred = await navigator.credentials.create({
         publicKey: {
             challenge:  _randomBytes(32),
@@ -253,8 +260,9 @@ async function registrarWebAuthn() {
             authenticatorSelection: {
                 authenticatorAttachment: 'platform',
                 userVerification: 'required',
-                residentKey: 'preferred',
+                residentKey: 'discouraged',  // não precisamos de credencial residente — guardamos o credId nós mesmos
             },
+            excludeCredentials,
             timeout: 60000,
         }
     });
@@ -323,16 +331,25 @@ async function toggleDispositivo() {
     try {
         await registrarWebAuthn();
         localStorage.setItem(USAR_DISPOSITIVO_KEY, '1');
+        if (toggle) toggle.classList.remove('loading');
+        sincronizarToggleDispositivo();   // sucesso — atualiza o switch para "Ativado"
     } catch (e) {
         localStorage.removeItem(USAR_DISPOSITIVO_KEY);
         localStorage.removeItem(WA_CRED_KEY);
-        if (status) status.textContent = e.name === 'NotAllowedError'
-            ? 'Cancelado. A opção continua desativada.'
-            : 'Não foi possível ativar neste aparelho.';
         console.warn('Ativar dispositivo:', e);
-    } finally {
-        if (toggle) toggle.classList.remove('loading');
-        sincronizarToggleDispositivo();
+        // Mostra o motivo REAL do WebAuthn na tela (sem ser sobrescrito).
+        if (toggle) {
+            toggle.classList.remove('loading');
+            toggle.classList.remove('on');
+        }
+        if (status) {
+            let msg;
+            if (e.name === 'NotAllowedError')      msg = 'Cancelado ou bloqueio de tela não configurado no aparelho.';
+            else if (e.name === 'NotSupportedError') msg = 'Este aparelho não tem biometria/PIN compatível.';
+            else if (e.name === 'SecurityError')   msg = 'Erro de segurança (domínio). Acesse pelo site oficial em HTTPS.';
+            else msg = `Falha: ${e.name || 'erro'} — ${e.message || 'sem detalhes'}`;
+            status.textContent = msg;
+        }
     }
 }
 
