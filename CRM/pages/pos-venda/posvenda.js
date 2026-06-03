@@ -228,7 +228,7 @@ function buildCard(os) {
             <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
             <button class="pv-copy-btn" title="B">💬 Copiar</button>
             <button class="pv-view-msg-btn" title="Ver">👁 Ver</button>
-            <button class="pv-copy-all-btn" title="N — aperte 1x p/ telefone, 2x p/ mensagem">🔄 Tel→Msg</button>
+            <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
         </div>
         <div class="pv-emoji-row">
             <button class="emoji-btn" data-emoji="😄" data-label="Muito satisfeito" title="Muito satisfeito">😄</button>
@@ -340,37 +340,6 @@ function copiarTudo(prazo, nome, telefone, modelo) {
     });
 }
 
-// ===== COPIAR EM SEQUÊNCIA (alterna telefone -> mensagem na mesma tecla N) =====
-let seqCopiaOsId = null;
-let seqCopiaPasso = 0; // 0 = próximo copia telefone | 1 = próximo copia mensagem
-
-function copiarSequencia(osId, prazo, nome, phone, modelo) {
-    // Trocou de cliente? Recomeça do telefone
-    if (osId !== seqCopiaOsId) {
-        seqCopiaOsId = osId;
-        seqCopiaPasso = 0;
-    }
-
-    if (seqCopiaPasso === 0) {
-        // PASSO 1 — Telefone
-        if (!phone || phone.trim() === '') {
-            showToast('⚠️ Telefone não cadastrado');
-            return;
-        }
-        navigator.clipboard.writeText(phone).then(() => {
-            showToast('📞 Telefone copiado — cole no WhatsApp e aperte de novo p/ a mensagem');
-            seqCopiaPasso = 1;
-        }).catch(() => showToast('❌ Erro ao copiar. Tente novamente.'));
-    } else {
-        // PASSO 2 — Mensagem
-        let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
-        msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
-        navigator.clipboard.writeText(msg).then(() => {
-            showToast('💬 Mensagem copiada — cole e envie');
-            seqCopiaPasso = 0;
-        }).catch(() => showToast('❌ Erro ao copiar. Tente novamente.'));
-    }
-}
 
 // ===== EVENT DELEGATION =====
 function setupEventDelegation() {
@@ -400,7 +369,7 @@ function setupEventDelegation() {
         }
 
         if (e.target.closest('.pv-copy-all-btn')) {
-            copiarSequencia(osId, prazo, os.clientName, os.phone, os.model);
+            copiarTudo(prazo, os.clientName, os.phone, os.model);
             return;
         }
 
@@ -617,7 +586,7 @@ function atalhos(event) {
         copiarMensagem(prazo, os.clientName, os.model);
     } else if (key === 'N') {
         event.preventDefault();
-        copiarSequencia(osId, prazo, os.clientName, os.phone, os.model);
+        copiarTudo(prazo, os.clientName, os.phone, os.model);
     }
 }
 
