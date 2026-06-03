@@ -1289,6 +1289,9 @@ body {
   background: linear-gradient(90deg, #0284C7, #38BDF8);
 }
 
+/* Esconde o ícone do painel de alertas/dicas (a pedido: sem ícones) */
+.alert-cat-icon { display: none !important; }
+
 /* ===== CENTRAL DE ALERTAS — cores por severidade (sem piscar) ===== */
 .cat-atencao { color: #F59E0B !important; text-shadow: 0 0 12px rgba(245,158,11,0.5); }
 .cat-critico { color: #EF4444 !important; text-shadow: 0 0 12px rgba(239,68,68,0.5); }
