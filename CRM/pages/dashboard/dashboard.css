@@ -1289,6 +1289,26 @@ body {
   background: linear-gradient(90deg, #0284C7, #38BDF8);
 }
 
+/* ===== CENTRAL DE ALERTAS — cores por severidade (sem piscar) ===== */
+.cat-atencao { color: #F59E0B !important; text-shadow: 0 0 12px rgba(245,158,11,0.5); }
+.cat-critico { color: #EF4444 !important; text-shadow: 0 0 12px rgba(239,68,68,0.5); }
+.alert-progress-bar.cat-atencao-bar { background: linear-gradient(90deg, #D97706, #F59E0B); }
+.alert-progress-bar.cat-critico-bar { background: linear-gradient(90deg, #DC2626, #EF4444); }
+
+/* Borda/glow do card conforme o alerta ativo (substitui o verde padrão) */
+.module-card.alerts-card.alert-mode-atencao {
+  border-color: rgba(245,158,11,0.5);
+  box-shadow: 0 0 20px rgba(245,158,11,0.18), inset 0 1px 0 rgba(245,158,11,0.08);
+  background: linear-gradient(160deg, rgba(245,158,11,0.08) 0%, var(--bg-surface) 55%, rgba(0,0,0,0.15) 100%);
+  animation: none;
+}
+.module-card.alerts-card.alert-mode-critico {
+  border-color: rgba(239,68,68,0.6);
+  box-shadow: 0 0 22px rgba(239,68,68,0.22), inset 0 1px 0 rgba(239,68,68,0.1);
+  background: linear-gradient(160deg, rgba(239,68,68,0.10) 0%, var(--bg-surface) 55%, rgba(0,0,0,0.15) 100%);
+  animation: none;
+}
+
 @keyframes progressFill {
   from { width: 0%; }
   to   { width: 100%; }

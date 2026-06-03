@@ -319,6 +319,155 @@ class Dashboard {
     }
   }
 
+  // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
+  async gerarAlertas() {
+    const alertas = [];
+    const now = new Date();
+
+    // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
+    const getDeliveryDate = (os) => {
+      if (Array.isArray(os.timeline)) {
+        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
+        if (entry?.date) return entry.date;
+      }
+      const ua = os.updatedAt;
+      if (!ua) return null;
+      if (typeof ua === 'string') return ua;
+      if (ua.toDate) return ua.toDate().toISOString();
+      return null;
+    };
+    const calcDias = (dateStr) => {
+      try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
+    };
+
+    try {
+      const osSnap = await getDocs(collection(db, 'os'));
+      const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
+
+      const contatosFeitos = new Set();
+      contatosSnap.forEach(d => { const c = d.data(); contatosFeitos.add(`${c.osId}_${c.prazo}`); });
+
+      const osList = [];
+      osSnap.forEach(d => osList.push({ firestoreId: d.id, ...d.data() }));
+
+      // ===== PRIORIDADE 1 — PÓS-VENDA =====
+      let pvPendentes = 0;
+      let pvVencidos = 0;
+      const pvVencidosClientes = [];
+
+      osList.forEach(os => {
+        if (os.status !== 'entregue') return;
+        const dd = getDeliveryDate(os);
+        if (!dd) return;
+        const dias = calcDias(dd);
+        const osId = os.id || os.firestoreId;
+        [5, 15, 30].forEach(prazo => {
+          if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+          const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
+          if (dias < prazo || dias >= proxPrazo) return;
+          pvPendentes++;
+          if (dias > prazo + 2) {
+            pvVencidos++;
+            pvVencidosClientes.push({ nome: os.clientName || 'Cliente', dias });
+          }
+        });
+      });
+
+      // Clientes vencidos específicos (crítico) — até 3
+      pvVencidosClientes.slice(0, 3).forEach(c => {
+        alertas.push({
+          icon: '🔴', cat: 'critico', cor: 'critico',
+          title: 'PÓS-VENDA ATRASADO',
+          sub: `${c.nome} aguardando contato`,
+          detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`
+        });
+      });
+      if (pvVencidos > 0) {
+        alertas.push({
+          icon: '🔴', cat: 'critico', cor: 'critico',
+          title: 'PÓS-VENDA ATRASADO',
+          sub: `${pvVencidos} contato(s) vencido(s)`,
+          detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`
+        });
+      }
+      if (pvPendentes > 0) {
+        alertas.push({
+          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          title: 'PÓS-VENDA PENDENTE',
+          sub: `${pvPendentes} cliente(s) pendente(s)`,
+          detail: `Existem ${pvPendentes} cliente(s) aguardando contato de pós-venda.`
+        });
+      }
+
+      // ===== PRIORIDADE 2 — ORDEM DE SERVIÇO =====
+      let osOrcamento = 0;
+      let osPronto = 0;
+      let osOrcamentoParado = 0;
+      osList.forEach(os => {
+        if (os.status === 'orcamento') {
+          osOrcamento++;
+          const ref = getDeliveryDate(os) || os.createdAt;
+          if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) {
+            osOrcamentoParado++;
+          }
+        }
+        if (os.status === 'pronto') osPronto++;
+      });
+
+      if (osOrcamentoParado > 0) {
+        alertas.push({
+          icon: '🔴', cat: 'critico', cor: 'critico',
+          title: 'OS AGUARDANDO CLIENTE',
+          sub: `${osOrcamentoParado} orçamento(s) parado(s)`,
+          detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`
+        });
+      }
+      if (osOrcamento > 0) {
+        alertas.push({
+          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          title: 'OS AGUARDANDO APROVAÇÃO',
+          sub: `${osOrcamento} aparelho(s) no orçamento`,
+          detail: `Existem ${osOrcamento} aparelho(s) aguardando aprovação do orçamento.`
+        });
+      }
+      if (osPronto > 0) {
+        alertas.push({
+          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          title: 'OS PRONTAS PARA ENTREGA',
+          sub: `${osPronto} OS pronta(s)`,
+          detail: `Existem ${osPronto} OS pronta(s) para entrega. Avise os clientes.`
+        });
+      }
+
+      // ===== PRIORIDADE 3 — CAIXA (META) =====
+      const meta = this.state && this.state.meta;
+      if (meta && meta.goal > 0) {
+        const percent = Math.round((meta.current / meta.goal) * 100);
+        const falta = Math.max(meta.goal - meta.current, 0);
+        const fmt = (v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
+        if (percent >= 100) {
+          alertas.push({
+            icon: '✅', cat: 'crm', cor: null,
+            title: 'META SEMANAL CONCLUÍDA',
+            sub: 'Parabéns! 🎉',
+            detail: `Meta semanal atingida (${percent}%). Excelente trabalho!`
+          });
+        } else {
+          alertas.push({
+            icon: '🟡', cat: 'atencao', cor: 'atencao',
+            title: 'META SEMANAL',
+            sub: `Atingida em ${percent}%`,
+            detail: `Meta semanal em ${percent}%. Faltam ${fmt(falta)} para atingir o objetivo.`
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Central de Alertas — erro ao gerar:', e);
+    }
+
+    return alertas;
+  }
+
   // ===== ALERTAS + DICAS ROTATIVAS =====
   setupAlerts() {
     const titleEl    = document.querySelector('.alert-title');
@@ -342,15 +491,23 @@ class Dashboard {
     ];
 
     let idx = 0;
+    let lista = DICAS; // começa com dicas; vira lista de alertas quando houver pendências
 
-    const CAT_CLASS = { crm: 'cat-crm', vendas: 'cat-vendas', motivacional: 'cat-motivacional' };
-    const BAR_CLASS = { crm: 'cat-crm-bar', vendas: 'cat-vendas-bar', motivacional: 'cat-motivacional-bar' };
-    const DURATION  = 180000;
+    const CAT_CLASS = { crm: 'cat-crm', vendas: 'cat-vendas', motivacional: 'cat-motivacional', atencao: 'cat-atencao', critico: 'cat-critico' };
+    const BAR_CLASS = { crm: 'cat-crm-bar', vendas: 'cat-vendas-bar', motivacional: 'cat-motivacional-bar', atencao: 'cat-atencao-bar', critico: 'cat-critico-bar' };
+    const DURATION  = 120000; // 120s por alerta/dica na tela
+    const card = document.getElementById('alerts-card');
 
     const aplicarCategoria = (dica) => {
       const cls = CAT_CLASS[dica.cat] || 'cat-crm';
       titleEl.className = 'alert-title ' + cls;
       if (iconEl) iconEl.textContent = dica.icon;
+      // Cor do card conforme severidade do alerta (sem piscar)
+      if (card) {
+        card.classList.remove('alert-mode-atencao', 'alert-mode-critico');
+        if (dica.cor === 'critico') card.classList.add('alert-mode-critico');
+        else if (dica.cor === 'atencao') card.classList.add('alert-mode-atencao');
+      }
       if (progressEl) {
         progressEl.className = 'alert-progress-bar ' + (BAR_CLASS[dica.cat] || 'cat-crm-bar');
         progressEl.style.animation = 'none';
@@ -384,10 +541,35 @@ class Dashboard {
 
     mostrar(DICAS[0], false);
 
+    // Aplica nova lista (alertas reais ou dicas) reiniciando o ciclo
+    const aplicarLista = (nova) => {
+      lista = (nova && nova.length) ? nova : DICAS;
+      idx = 0;
+      mostrar(lista[0], true);
+    };
+
+    // Verifica os módulos e atualiza a lista de alertas
+    const atualizarAlertas = async () => {
+      try {
+        const alertas = await this.gerarAlertas();
+        aplicarLista(alertas);
+      } catch (e) {
+        console.warn('Central de Alertas:', e);
+        aplicarLista(DICAS);
+      }
+    };
+
+    // Primeira verificação ao abrir
+    atualizarAlertas();
+
+    // Rotaciona o que estiver na tela (alertas ou dicas)
     setInterval(() => {
-      idx = (idx + 1) % DICAS.length;
-      mostrar(DICAS[idx], true);
-    }, 180000); // 3 minutos
+      idx = (idx + 1) % lista.length;
+      mostrar(lista[idx], true);
+    }, DURATION); // 120 segundos
+
+    // Re-verifica os módulos a cada 3 minutos
+    setInterval(atualizarAlertas, 180000);
   }
 
   // ===== MINI CALENDÁRIO =====
