@@ -7,10 +7,16 @@ window.pinNovoDelete     = pinNovoDelete;
 window.showScreen        = showScreen;
 window.sair              = sair;
 window.entrarComDispositivo = entrarComDispositivo;
+window.toggleDispositivo    = toggleDispositivo;
 
 const PIN_DOC   = doc(db, "config", "pin");
 const PIN_CACHE = "cc_pin_hash";
 const SESSION_KEY = "cc_acesso";
+const USAR_DISPOSITIVO_KEY = "cc_usar_dispositivo"; // preferência só neste aparelho
+
+function dispositivoAtivado() {
+    return localStorage.getItem(USAR_DISPOSITIVO_KEY) === '1';
+}
 
 let inputAtual = '';
 let inputNovo  = '';
@@ -42,12 +48,13 @@ async function init() {
         // Já autenticado nesta sessão
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
+        sincronizarToggleDispositivo();
     } else {
         showScreen('login');
         document.getElementById('btn-alterar').style.display = 'none';
 
-        // Mostra botão do dispositivo se WebAuthn disponível
-        if (window.PublicKeyCredential) {
+        // Botão do dispositivo só aparece se a opção estiver ATIVADA e o navegador suportar
+        if (window.PublicKeyCredential && dispositivoAtivado()) {
             const btn = document.getElementById('btn-device');
             if (btn) btn.style.display = 'flex';
 
@@ -73,6 +80,9 @@ function showScreen(name) {
     clearError('pin-novo-error');
     if (name === 'alterar') {
         document.getElementById('pin-novo-label').textContent = pinSalvo ? 'Digite o novo PIN' : 'Criar PIN de acesso';
+    }
+    if (name === 'logado') {
+        sincronizarToggleDispositivo();
     }
 }
 
@@ -268,6 +278,62 @@ async function autenticarWebAuthn() {
         }
     });
     return true;
+}
+
+// ===== TOGGLE "Usar senha do dispositivo" (tela Segurança) =====
+function sincronizarToggleDispositivo() {
+    const row    = document.getElementById('seg-device-row');
+    const toggle = document.getElementById('seg-device-toggle');
+    const status = document.getElementById('seg-device-status');
+    if (!row || !toggle) return;
+
+    // Só faz sentido se o navegador suportar autenticação do dispositivo
+    if (!window.PublicKeyCredential) {
+        row.style.display = 'none';
+        return;
+    }
+    row.style.display = 'flex';
+
+    const ativo = dispositivoAtivado();
+    toggle.classList.toggle('on', ativo);
+    if (status) status.textContent = ativo
+        ? 'Ativado — entra com biometria/senha do aparelho.'
+        : 'Desativado — usa o PIN do CRM.';
+}
+
+async function toggleDispositivo() {
+    const toggle = document.getElementById('seg-device-toggle');
+    const status = document.getElementById('seg-device-status');
+    if (!window.PublicKeyCredential) {
+        if (status) status.textContent = 'Seu navegador não suporta autenticação do dispositivo.';
+        return;
+    }
+
+    if (dispositivoAtivado()) {
+        // Desativar — volta a usar o PIN do CRM
+        localStorage.removeItem(USAR_DISPOSITIVO_KEY);
+        localStorage.removeItem(WA_CRED_KEY);
+        sincronizarToggleDispositivo();
+        return;
+    }
+
+    // Ativar — registra a credencial do aparelho agora para confirmar que funciona
+    if (toggle) toggle.classList.add('loading');
+    if (status) status.textContent = 'Confirme com a biometria/senha do aparelho...';
+    try {
+        await registrarWebAuthn();
+        localStorage.setItem(USAR_DISPOSITIVO_KEY, '1');
+    } catch (e) {
+        localStorage.removeItem(USAR_DISPOSITIVO_KEY);
+        localStorage.removeItem(WA_CRED_KEY);
+        if (status) status.textContent = e.name === 'NotAllowedError'
+            ? 'Cancelado. A opção continua desativada.'
+            : 'Não foi possível ativar neste aparelho.';
+        console.warn('Ativar dispositivo:', e);
+    } finally {
+        if (toggle) toggle.classList.remove('loading');
+        sincronizarToggleDispositivo();
+    }
 }
 
 async function entrarComDispositivo() {

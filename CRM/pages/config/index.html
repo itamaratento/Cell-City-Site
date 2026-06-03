@@ -86,6 +86,15 @@
                 <div class="pin-success">✅</div>
                 <p class="pin-label">Acesso liberado</p>
                 <a href="/CRM/pages/dashboard/index.html" class="pin-btn-entrar">Abrir CRM</a>
+
+                <!-- SEGURANÇA: Usar senha do dispositivo -->
+                <div class="seg-device-row" id="seg-device-row" style="display:none" onclick="toggleDispositivo()">
+                    <div class="seg-device-info">
+                        <div class="seg-device-title">🔐 Usar senha do dispositivo</div>
+                        <div class="seg-device-status" id="seg-device-status">Desativado — usa o PIN do CRM.</div>
+                    </div>
+                    <div class="seg-device-toggle" id="seg-device-toggle"><span class="seg-device-knob"></span></div>
+                </div>
                 <button class="pin-link" onclick="showScreen('alterar')" style="margin-top:12px">🔑 Alterar PIN</button>
                 <button class="pin-link pin-link-sair" onclick="sair()">Sair</button>
             </div>
