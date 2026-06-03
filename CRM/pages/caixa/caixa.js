@@ -1278,12 +1278,82 @@ function renderizarLista(lista) {
 // ═══════════════════════════════════════════
 async function excluirLancamento(id) {
     if (!confirm('Deseja realmente excluir este lançamento?\n\nEsta ação é PERMANENTE.')) return;
+    
+    // 🔍 Busca o lançamento para saber se precisa repor estoque
+    const lanc = lancamentos.find(l => l.id === id);
+    
     try {
+        // 🔗 Se for venda (entrada/servico), repõe estoque antes de excluir
+        if (lanc && lanc.tipo !== 'saida') {
+            await reporEstoque(lanc.descricao);
+        }
+        
         await deleteDoc(doc(db, COLLECTION_LANCAMENTOS, id));
         showToast('🗑️ Lançamento excluído permanentemente');
     } catch (error) {
         console.error('❌ Erro ao excluir:', error);
         showToast('❌ Erro ao excluir: ' + error.message);
+    }
+}
+
+// ═══════════════════════════════════════════
+// 🔁 REPOSIÇÃO AUTOMÁTICA DE ESTOQUE
+// ═══════════════════════════════════════════
+async function reporEstoque(descricao) {
+    try {
+        const termo = descricao?.trim().toUpperCase();
+        if (!termo) return;
+        
+        // Busca o produto pelo nome (mesma lógica da validação)
+        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+        let produto = null;
+        snap.forEach(d => {
+            const p = { id: d.id, ...d.data() };
+            const nome = (p.nome || p.description || '').toUpperCase();
+            if (nome === termo && !produto) {
+                produto = p;
+            }
+        });
+        
+        // Fallback: busca parcial
+        if (!produto) {
+            snap.forEach(d => {
+                const p = { id: d.id, ...d.data() };
+                const nome = (p.nome || p.description || '').toUpperCase();
+                if ((nome.includes(termo) || termo.includes(nome.substring(0, 10))) && !produto) {
+                    produto = p;
+                }
+            });
+        }
+        
+        if (!produto) {
+            console.warn(`[ESTOQUE↔CAIXA] Produto "${descricao}" não encontrado para repor estoque`);
+            return;
+        }
+        
+        // Repõe 1 unidade via transaction atômica
+        await runTransaction(db, async (transaction) => {
+            const ref = doc(db, COLLECTION_PRODUTOS, produto.id);
+            const snapTrans = await transaction.get(ref);
+            
+            if (!snapTrans.exists()) {
+                throw new Error("Produto não encontrado no momento da reposição");
+            }
+            
+            const qtdAtual = snapTrans.data().quantidade || 0;
+            transaction.update(ref, {
+                quantidade: qtdAtual + 1,
+                atualizadoEm: serverTimestamp()
+            });
+        });
+        
+        console.log(`📦 [ESTOQUE↔CAIXA] Estoque REPOSTO: "${produto.nome}" (${produto.quantidade} → ${produto.quantidade + 1})`);
+        
+    } catch (error) {
+        console.error('❌ [ESTOQUE↔CAIXA] Erro na reposição de estoque:', error);
+        // Não bloqueia a exclusão se a reposição falhar
+        console.warn('⚠️ [ESTOQUE↔CAIXA] Lançamento excluído, mas estoque NÃO foi reposto devido a erro');
+        showToast('⚠️ Lançamento excluído, mas estoque não foi reposto');
     }
 }
 
