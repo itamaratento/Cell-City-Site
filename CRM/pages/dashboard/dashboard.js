@@ -376,7 +376,7 @@ class Dashboard {
       // Clientes vencidos específicos (crítico) — até 3
       pvVencidosClientes.slice(0, 3).forEach(c => {
         alertas.push({
-          icon: '🔴', cat: 'critico', cor: 'critico',
+          icon: '💡', cat: 'critico', cor: 'critico',
           title: 'PÓS-VENDA ATRASADO',
           sub: `${c.nome} aguardando contato`,
           detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`
@@ -384,7 +384,7 @@ class Dashboard {
       });
       if (pvVencidos > 0) {
         alertas.push({
-          icon: '🔴', cat: 'critico', cor: 'critico',
+          icon: '💡', cat: 'critico', cor: 'critico',
           title: 'PÓS-VENDA ATRASADO',
           sub: `${pvVencidos} contato(s) vencido(s)`,
           detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`
@@ -392,7 +392,7 @@ class Dashboard {
       }
       if (pvPendentes > 0) {
         alertas.push({
-          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          icon: '💡', cat: 'atencao', cor: 'atencao',
           title: 'PÓS-VENDA PENDENTE',
           sub: `${pvPendentes} cliente(s) pendente(s)`,
           detail: `Existem ${pvPendentes} cliente(s) aguardando contato de pós-venda.`
@@ -416,7 +416,7 @@ class Dashboard {
 
       if (osOrcamentoParado > 0) {
         alertas.push({
-          icon: '🔴', cat: 'critico', cor: 'critico',
+          icon: '💡', cat: 'critico', cor: 'critico',
           title: 'OS AGUARDANDO CLIENTE',
           sub: `${osOrcamentoParado} orçamento(s) parado(s)`,
           detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`
@@ -424,7 +424,7 @@ class Dashboard {
       }
       if (osOrcamento > 0) {
         alertas.push({
-          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          icon: '💡', cat: 'atencao', cor: 'atencao',
           title: 'OS AGUARDANDO APROVAÇÃO',
           sub: `${osOrcamento} aparelho(s) no orçamento`,
           detail: `Existem ${osOrcamento} aparelho(s) aguardando aprovação do orçamento.`
@@ -432,7 +432,7 @@ class Dashboard {
       }
       if (osPronto > 0) {
         alertas.push({
-          icon: '🟡', cat: 'atencao', cor: 'atencao',
+          icon: '💡', cat: 'atencao', cor: 'atencao',
           title: 'OS PRONTAS PARA ENTREGA',
           sub: `${osPronto} OS pronta(s)`,
           detail: `Existem ${osPronto} OS pronta(s) para entrega. Avise os clientes.`
@@ -454,7 +454,7 @@ class Dashboard {
           });
         } else {
           alertas.push({
-            icon: '🟡', cat: 'atencao', cor: 'atencao',
+            icon: '💡', cat: 'atencao', cor: 'atencao',
             title: 'META SEMANAL',
             sub: `Atingida em ${percent}%`,
             detail: `Meta semanal em ${percent}%. Faltam ${fmt(falta)} para atingir o objetivo.`
