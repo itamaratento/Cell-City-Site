@@ -13,12 +13,22 @@ window.salvarConfiguracoes = salvarConfiguracoes;
 let pendentes = { 5: [], 15: [], 30: [] };
 let historico = [];
 let contatosFeitos = new Set();
-let mensagensPosvenda = { 5: '', 15: '', 30: '' };
+
+// Mensagens PADRÃO — usadas sempre que o Firestore não tiver a mensagem do prazo
+const MENSAGENS_PADRAO = {
+    5: "Olá {{nome}}!\n\nA Cell City Informática agradece pela confiança.\n\nGostaríamos de saber se está tudo funcionando corretamente com seu {{modelo}} após o atendimento realizado.\n\nEstamos à disposição caso precise de qualquer suporte.",
+    15: "Olá {{nome}}!\n\nEsperamos que esteja tudo perfeito com seu {{modelo}}.\n\nCaso tenha qualquer dúvida ou precise de suporte, a Cell City Informática está à disposição.",
+    30: "Olá {{nome}}!\n\nJá faz um mês desde o atendimento do seu {{modelo}}.\n\nA Cell City Informática agradece pela confiança e está à disposição para qualquer manutenção ou suporte que precisar."
+};
+
+// Começa com os padrões; o Firestore só sobrescreve quando tiver mensagem cadastrada
+let mensagensPosvenda = { ...MENSAGENS_PADRAO };
 
 // ===== INIT =====
 async function init() {
     try {
         await carregarMensagensPosvenda();
+        window.mensagensPosvenda = mensagensPosvenda; // exposto p/ verificação no console
         await loadData();
     } catch (err) {
         console.error('❌ Pós-venda: erro ao carregar dados', err);
@@ -87,23 +97,22 @@ async function loadData() {
 
 // ===== CARREGAR MENSAGENS POSVENDA =====
 async function carregarMensagensPosvenda() {
+    // Sempre parte dos padrões — garante que nunca fica vazio
+    mensagensPosvenda = { ...MENSAGENS_PADRAO };
     try {
         const snap = await getDocs(collection(db, "posvenda_mensagens"));
         snap.forEach(d => {
             const prazo = d.id;
             const data = d.data();
-            if (data.mensagem) {
+            // Só sobrescreve o padrão se o Firestore tiver mensagem com conteúdo real
+            if (data.mensagem && data.mensagem.trim().length > 0) {
                 mensagensPosvenda[prazo] = data.mensagem;
             }
         });
         console.log('✅ Mensagens pós-venda carregadas:', mensagensPosvenda);
     } catch (err) {
-        console.warn('⚠️ Mensagens posvenda não encontradas. Usando padrão.', err);
-        mensagensPosvenda = {
-            5: "Olá {{nome}}, como está o funcionamento do {{modelo}}? Precisa de ajuda?",
-            15: "Olá {{nome}}, estamos com uma oferta especial para você. Gostaria de saber?",
-            30: "Olá {{nome}}, sua garantia está perto do fim. Agende uma revisão."
-        };
+        // Em caso de erro, os padrões já estão aplicados acima
+        console.warn('⚠️ Erro ao buscar mensagens do Firestore. Usando padrão.', err);
     }
 }
 
