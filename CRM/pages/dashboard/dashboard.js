@@ -327,22 +327,47 @@ class Dashboard {
     try {
       const snap = await getDocs(collection(db, 'agenda'));
       const eventos = [];
+      const hojeISO = new Date().toISOString().slice(0, 10);
+
+      const linhasDe = (dados) => {
+        if (Array.isArray(dados.notas)) return dados.notas.map(n => n && n.texto).filter(Boolean);
+        if (typeof dados.texto === 'string') return dados.texto.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+        if (dados.titulo) return [`${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`];
+        return [];
+      };
+      const horaDaLinha = (linha) => { const m = String(linha).match(/^\s*(\d{1,2}:\d{2})\b/); return m ? m[1] : ''; };
+      const semHora = (linha) => String(linha).replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim();
+      // A recorrência (origem) cai em `iso`?
+      const recCai = (iso, origem, pat) => {
+        if (!pat || iso < origem) return false;
+        const a = new Date(iso + 'T00:00:00'), b = new Date(origem + 'T00:00:00');
+        if (pat === 'semanal') return a.getDay() === b.getDay();
+        if (pat === 'mensal')  return a.getDate() === b.getDate();
+        if (pat === 'anual')   return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+        return false;
+      };
+
       snap.forEach(d => {
         const dados = d.data();
         const dia = dados.data || d.id;
-        // ALERTA OPT-IN: só geram alerta os dias marcados com
-        // "Exibir alerta no Dashboard" na Agenda Inteligente.
-        if (!dados.alertaDashboard) return;
-        const hora = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
-        // Reúne as linhas de anotação do dia (qualquer formato)
-        let linhas = [];
-        if (Array.isArray(dados.notas)) linhas = dados.notas.map(n => n && n.texto).filter(Boolean);
-        else if (typeof dados.texto === 'string') linhas = dados.texto.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
-        else if (dados.titulo) linhas = [`${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`];
-        // Título do alerta: a linha que começa com a hora do alerta, senão a 1ª linha
-        const escolhida = (hora && linhas.find(l => l.trim().startsWith(hora))) || linhas[0] || 'Anotação';
-        const titulo = escolhida.replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim() || escolhida;
-        eventos.push({ data: dia, hora, titulo, concluido: false, alerta: true });
+        const linhas = linhasDe(dados);
+
+        if (dados.recorrencia) {
+          // RECORRENTE: gera alerta na ocorrência de HOJE (quando o padrão bate).
+          // Cada linha vira um alerta, no horário da própria linha (se houver).
+          if (recCai(hojeISO, dia, dados.recorrencia)) {
+            const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
+            linhas.forEach(l => {
+              const hora = horaDaLinha(l) || horaPadrao;
+              eventos.push({ data: hojeISO, hora, titulo: semHora(l) || l, concluido: false, alerta: true, recorrente: true });
+            });
+          }
+        } else if (dados.alertaDashboard) {
+          // OPT-IN (não recorrente): 1 alerta no horário configurado.
+          const hora = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
+          const escolhida = (hora && linhas.find(l => l.trim().startsWith(hora))) || linhas[0] || 'Anotação';
+          eventos.push({ data: dia, hora, titulo: semHora(escolhida) || escolhida, concluido: false, alerta: true });
+        }
       });
       return eventos;
     } catch {
