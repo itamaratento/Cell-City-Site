@@ -628,7 +628,7 @@ $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
 const tituloPagina = document.querySelector('.ag-header-titulo');
 const navAgenda = $('ag-nav-agenda');
 const navInteligente = $('ag-nav-inteligente');
-if (navAgenda) navAgenda.addEventListener('click', (e) => { e.stopPropagation(); fecharMini(); rolarParaCalendario(); });
+if (navAgenda) navAgenda.addEventListener('click', (e) => { e.stopPropagation(); fecharMini(); irHoje(); });
 if (navInteligente) navInteligente.addEventListener('click', (e) => {
   e.stopPropagation();
   if (miniEl && !miniEl.hidden) fecharMini(); else abrirMini();
