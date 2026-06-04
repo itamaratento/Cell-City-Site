@@ -32,7 +32,7 @@ const $ = (id) => document.getElementById(id);
 const gradeEl   = $('ag-cal-grade');
 const tituloCal = $('ag-cal-titulo');
 const diaTitulo = $('ag-dia-titulo');
-const listaEl   = $('ag-notas-lista');
+const areaEl    = $('ag-nota-area');
 const statusEl  = $('ag-nota-status');
 const painelEl  = document.querySelector('.ag-nota-painel');
 const toastEl   = $('ag-toast');
@@ -150,76 +150,41 @@ function selecionarDia(iso) {
   carregarEditor();
   renderCalendario();
   painelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  const primeiro = listaEl.querySelector('.ag-nlinha .ag-nlinha-txt');
-  if (primeiro && !primeiro.value) primeiro.focus();
+  if (areaEl && !areaEl.value) areaEl.focus();
 }
 
-// ── editor: lista de anotações (cada uma = 1 linha colorida) ───────
+// ── editor: UMA única área de texto contínua por dia (estilo bloco de notas) ──
 function carregarEditor() {
   diaTitulo.textContent = fmtDiaLongo(diaSelecionado);
-  listaEl.innerHTML = '';
-  (notas[diaSelecionado] || []).forEach(n => listaEl.appendChild(criarLinha(n)));
-  listaEl.appendChild(criarLinha(null));   // linha vazia para digitar rápido
-  aplicarFonteLinhas();
+  const arr = notas[diaSelecionado] || [];
+  areaEl.value = arr.map(n => n.texto).join('\n');
+  aplicarFonteLinhas();   // já chama autoGrow()
 }
 
-function criarLinha(n) {
-  const cor = corValida(n?.cor);
-  const concluido = !!n?.concluido;
-  const l = document.createElement('div');
-  l.className = 'ag-nlinha' + (concluido ? ' concluida' : '');
-  l.dataset.cor = cor;
-  pintarLinha(l, cor);
-  l.innerHTML = `
-    <button class="ag-nlinha-cor" title="Trocar cor"></button>
-    <input type="checkbox" class="ag-nlinha-check" title="Marcar como concluído">
-    <input class="ag-nlinha-txt" placeholder="09:00 Anotação..." maxlength="200">
-    <button class="ag-nlinha-del" title="Excluir">✕</button>`;
-  l.querySelector('.ag-nlinha-txt').value = n?.texto || '';
-  l.querySelector('.ag-nlinha-cor').style.background = CORES[cor].hex;
-  l.querySelector('.ag-nlinha-check').checked = concluido;
-
-  l.querySelector('.ag-nlinha-cor').addEventListener('click', () => { ciclarCor(l); agendarSave(); });
-  const chk = l.querySelector('.ag-nlinha-check');
-  chk.addEventListener('change', () => {
-    l.classList.toggle('concluida', chk.checked);
-    agendarSave();
-  });
-  const txt = l.querySelector('.ag-nlinha-txt');
-  txt.addEventListener('input', () => { agendarSave(); });
-  txt.addEventListener('blur', () => { flushSave(); });
-  txt.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); flushSave(); novaLinhaFoco(); }
-  });
-  l.querySelector('.ag-nlinha-del').addEventListener('click', () => { l.remove(); flushSave(); });
-  return l;
-}
-
-function pintarLinha(l, cor) {
-  const c = CORES[cor];
-  l.style.setProperty('--bg', c.bg);
-  l.style.setProperty('--fg', c.fg);
-}
-function ciclarCor(l) {
-  const prox = ORDEM[(ORDEM.indexOf(l.dataset.cor || COR_PADRAO) + 1) % ORDEM.length];
-  l.dataset.cor = prox;
-  pintarLinha(l, prox);
-  l.querySelector('.ag-nlinha-cor').style.background = CORES[prox].hex;
-}
+// Aplica a fonte escolhida (A− / A+) e reajusta a altura
 function aplicarFonteLinhas() {
-  listaEl.querySelectorAll('.ag-nlinha-txt').forEach(i => { i.style.fontSize = notaFonte + 'px'; });
-}
-function novaLinhaFoco() {
-  let vazia = [...listaEl.querySelectorAll('.ag-nlinha')].find(l => !l.querySelector('.ag-nlinha-txt').value.trim());
-  if (!vazia) { vazia = criarLinha(null); listaEl.appendChild(vazia); aplicarFonteLinhas(); }
-  vazia.querySelector('.ag-nlinha-txt').focus();
+  areaEl.style.fontSize = notaFonte + 'px';
+  autoGrow();
 }
 
-// ── salvamento automático (array do dia) ───────────────────────────
+// Cresce a altura conforme o conteúdo (texto nunca sai do quadro;
+// rola internamente se passar do máximo da tela).
+function autoGrow() {
+  areaEl.style.height = 'auto';
+  const max = Math.max(180, Math.round(window.innerHeight * 0.5));
+  areaEl.style.height = Math.min(areaEl.scrollHeight, max) + 'px';
+  areaEl.style.overflowY = areaEl.scrollHeight > max ? 'auto' : 'hidden';
+}
+
+// ── salvamento automático ──────────────────────────────────────────
+// Cada linha não-vazia vira uma anotação no mesmo formato de dados de
+// sempre ({texto, cor}), preservando calendário, resumo e alertas.
 function lerLinhas() {
-  return [...listaEl.querySelectorAll('.ag-nlinha')]
-    .map(l => ({ texto: l.querySelector('.ag-nlinha-txt').value.trim(), cor: corValida(l.dataset.cor), concluido: l.querySelector('.ag-nlinha-check').checked }))
-    .filter(n => n.texto);
+  return areaEl.value
+    .split(/\r?\n/)
+    .map(t => t.trim())
+    .filter(Boolean)
+    .map(t => ({ texto: t, cor: COR_PADRAO }));
 }
 function agendarSave() {
   statusEl.textContent = 'Salvando…';
@@ -238,7 +203,7 @@ async function salvar() {
       if (notas[data]) await deleteDoc(ref);
       delete notas[data];
     } else {
-      await setDoc(ref, { data, notas: arr, atualizadoEm: serverTimestamp() }, { merge: true });
+      await setDoc(ref, { data, notas: arr, atualizadoEm: serverTimestamp() });
       notas[data] = arr;
     }
     statusEl.textContent = '✓ Salvo';
@@ -380,11 +345,17 @@ function iniciar() {
   setInterval(() => { renderResumo(); verificarAlertas(); renderCalendario(); }, 60000);
 }
 
-// trava/destrava re-render do editor conforme o foco
+// trava/destrava re-render do editor conforme o foco.
+// NÃO recarrega o editor no blur (evita apagar texto ainda não salvo);
+// mudanças vindas de outro dispositivo chegam pelo onSnapshot.
 painelEl.addEventListener('focusin', () => { editando = true; });
 painelEl.addEventListener('focusout', () => {
-  setTimeout(() => { if (!painelEl.contains(document.activeElement)) { editando = false; carregarEditor(); } }, 150);
+  setTimeout(() => { if (!painelEl.contains(document.activeElement)) editando = false; }, 150);
 });
+
+// Área de texto única: salva sozinho e cresce com o conteúdo
+areaEl.addEventListener('input', () => { agendarSave(); autoGrow(); });
+areaEl.addEventListener('blur', () => { flushSave(); });
 
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));
@@ -393,7 +364,6 @@ $('ag-hoje').addEventListener('click', () => {
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
   selecionarDia(isoHoje());
 });
-$('ag-add-nota').addEventListener('click', () => novaLinhaFoco());
 $('ag-alerta-fechar').addEventListener('click', () => { $('ag-alerta-vivo').hidden = true; });
 $('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
 $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));

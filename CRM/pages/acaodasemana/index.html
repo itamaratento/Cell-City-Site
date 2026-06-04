@@ -71,7 +71,7 @@
                 <div class="ag-cal-grade" id="ag-cal-grade"></div>
             </div>
 
-            <!-- BLOCO DE NOTAS DO DIA (várias anotações empilhadas) -->
+            <!-- BLOCO DE NOTAS DO DIA (uma única área de texto contínua) -->
             <div class="ag-nota-painel">
                 <div class="ag-nota-head">
                     <span class="ag-nota-titulo" id="ag-dia-titulo">Selecione um dia</span>
@@ -80,11 +80,11 @@
                             <button type="button" id="ag-fonte-menos" title="Diminuir fonte">A−</button>
                             <button type="button" id="ag-fonte-mais" title="Aumentar fonte">A+</button>
                         </div>
-                        <button type="button" class="ag-add-nota" id="ag-add-nota">＋ Nota</button>
                     </div>
                 </div>
-                <div class="ag-dica">Cada linha é uma anotação. Comece pelo horário (ex.: 09:00). Clique na bolinha para a cor · Enter cria outra · salva sozinho.</div>
-                <div class="ag-notas-lista" id="ag-notas-lista"></div>
+                <div class="ag-dica">Escreva livremente, uma linha por anotação. Comece pelo horário (ex.: 09:00). Salva sozinho.</div>
+                <textarea class="ag-nota-area" id="ag-nota-area" spellcheck="true"
+                    placeholder="09:00 Buscar películas&#10;14:00 Ligar fornecedor&#10;17:00 Atualizar preços&#10;18:00 Fazer postagem Instagram"></textarea>
                 <div class="ag-nota-status" id="ag-nota-status"></div>
             </div>
 
