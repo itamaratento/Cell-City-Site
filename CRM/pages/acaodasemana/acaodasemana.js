@@ -28,6 +28,7 @@ let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
 let saveTimer = null;
+let buscaTermo = '';            // termo atual da busca (minúsculo)
 
 // Cores disponíveis para alternar rapidamente (4, na ordem pedida)
 const CORES_EDITOR = ['verde', 'amarelo', 'azul', 'vermelho'];
@@ -94,6 +95,9 @@ function renderCalendario() {
     cel.className = 'ag-cel';
     if (iso === hoje) cel.classList.add('ag-cel-hoje');
     if (iso === diaSelecionado) cel.classList.add('ag-cel-sel');
+    if (buscaTermo && arr.some(n => (n.texto || '').toLowerCase().includes(buscaTermo))) {
+      cel.classList.add('ag-cel-match');
+    }
 
     const chips = arr.map(n => {
       const c = CORES[corValida(n.cor)];
@@ -250,87 +254,35 @@ async function salvar() {
   } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
 }
 
-// ── resumo ─────────────────────────────────────────────────────────
-function renderResumo() {
-  const hoje = isoHoje();
-  const agora = Date.now();
-  const todos = itensComHorario();
-  const naoConcluidos = todos.filter(i => !i.concluido);
-  const doHoje = naoConcluidos.filter(i => i.data === hoje);
-  const passou = doHoje.filter(i => new Date(`${i.data}T${i.hora}:00`).getTime() < agora);
-  $('ag-res-hoje').textContent      = doHoje.length;
-  $('ag-res-avencer').textContent   = doHoje.length - passou.length;
-  $('ag-res-atrasados').textContent = passou.length;
-  const prox = naoConcluidos
-    .map(i => ({ ...i, ts: new Date(`${i.data}T${i.hora}:00`).getTime() }))
-    .filter(i => i.ts >= agora)
-    .sort((a, b) => a.ts - b.ts)[0];
-  $('ag-res-proximo').textContent = prox ? `${fmtData(prox.data)} ${prox.hora} — ${prox.titulo}` : 'Nenhum';
-}
+// ── busca ──────────────────────────────────────────────────────────
+// Procura o termo em qualquer anotação; vai ao 1º dia encontrado,
+// abre o mês correspondente e destaca os dias com correspondência.
+function buscar(termo) {
+  buscaTermo = (termo || '').trim().toLowerCase();
+  const info = $('ag-busca-info');
 
-// ── alerta quando chega o horário (inclui atrasados de dias anteriores) ──
-const alertasDisparados = new Set();
-const _fmtAtraso = (min) => {
-  const abs = Math.abs(min);
-  if (abs >= 1440) return `${Math.floor(abs/1440)}d ${Math.floor((abs%1440)/60)}h`;
-  if (abs >= 60)   return `${Math.floor(abs/60)}h${abs%60 ? ' '+(abs%60)+'min' : ''}`;
-  return `${abs} min`;
-};
-function verificarAlertas() {
-  const agora = new Date();
-  const agoraTs = Date.now();
-  const hoje = isoHoje();
-
-  // Filtra APENAS itens NÃO concluídos
-  const todos = itensComHorario().filter(i => !i.concluido);
-
-  // 1. PRIORIDADE: atrasados de QUALQUER dia (não só hoje)
-  const atrasados = todos.filter(i => {
-    return new Date(`${i.data}T${i.hora}:00`).getTime() < agoraTs;
-  }).sort((a, b) => new Date(`${a.data}T${a.hora}:00`) - new Date(`${b.data}T${b.hora}:00`));
-
-  if (atrasados.length > 0) {
-    const pior = atrasados[0];
-    const diffMin = Math.round((agoraTs - new Date(`${pior.data}T${pior.hora}:00`).getTime()) / 60000);
-    const chave = `atrasado_${pior.data}_${pior.hora}_${pior.titulo}`;
-    if (!alertasDisparados.has(chave)) {
-      alertasDisparados.add(chave);
-      $('ag-alerta-hora').textContent = pior.hora;
-      $('ag-alerta-titulo').textContent = `${pior.titulo} (${pior.data})`;
-      $('ag-alerta-status').textContent = `Atrasado há ${_fmtAtraso(diffMin)}`;
-      $('ag-alerta-vivo').hidden = false;
-      tocarSom();
-    }
-    return; // prioridade total ao atrasado
+  if (!buscaTermo) {
+    if (info) info.textContent = '';
+    renderCalendario();
+    return;
   }
 
-  // 2. Horário atual (hoje, 0-60 min) — apenas não concluídos
-  todos.filter(i => i.data === hoje).forEach(i => {
-    const [h, m] = i.hora.split(':').map(Number);
-    const alvo = new Date(agora); alvo.setHours(h, m, 0, 0);
-    const diffMin = Math.round((agoraTs - alvo.getTime()) / 60000);
-    const chave = `${i.data}_${i.hora}_${i.titulo}`;
-    if (diffMin >= 0 && diffMin <= 60 && !alertasDisparados.has(chave)) {
-      alertasDisparados.add(chave);
-      $('ag-alerta-hora').textContent = i.hora;
-      $('ag-alerta-titulo').textContent = i.titulo;
-      $('ag-alerta-status').textContent = diffMin <= 0 ? 'Agora!' : `Atrasado há ${_fmtAtraso(diffMin)}`;
-      $('ag-alerta-vivo').hidden = false;
-      tocarSom();
-    }
-  });
-}
-function tocarSom() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator(); const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination); osc.type = 'sine';
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
-  } catch {}
+  const dias = Object.keys(notas)
+    .filter(d => (notas[d] || []).some(n => (n.texto || '').toLowerCase().includes(buscaTermo)))
+    .sort();
+
+  if (info) info.textContent = dias.length
+    ? `${dias.length} dia(s) encontrado(s)`
+    : 'Nada encontrado';
+
+  if (dias.length) {
+    const alvo = dias[0];
+    const [y, m] = alvo.split('-').map(Number);
+    viewAno = y; viewMes = m - 1;
+    diaSelecionado = alvo;
+    carregarEditor();
+  }
+  renderCalendario();
 }
 
 // ── fonte (A- / A+) ────────────────────────────────────────────────
@@ -380,14 +332,13 @@ function iniciar() {
       });
       $('ag-loading')?.remove();
       renderCalendario();
-      renderResumo();
-      verificarAlertas();
       if (!editando) carregarEditor();
     },
     (err) => { console.warn('⚠️ Agenda offline', err); statusEl.textContent = '⚠️ Sem conexão'; }
   );
 
-  setInterval(() => { renderResumo(); verificarAlertas(); renderCalendario(); }, 60000);
+  // Atualiza o destaque de "hoje" à meia-noite (re-render leve)
+  setInterval(() => renderCalendario(), 60000);
 }
 
 // trava/destrava re-render do editor conforme o foco.
@@ -410,13 +361,36 @@ document.querySelectorAll('.ag-cor-btn').forEach(b => {
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));
 $('ag-next').addEventListener('click', () => navegar(1));
-$('ag-hoje').addEventListener('click', () => {
+// Ir ao mês atual, selecionar hoje e focar a anotação (1 clique)
+function irHojeFoco() {
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
   selecionarDia(isoHoje());
-});
-$('ag-alerta-fechar').addEventListener('click', () => { $('ag-alerta-vivo').hidden = true; });
+  areaEl.focus();
+}
+$('ag-hoje').addEventListener('click', irHojeFoco);
 $('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
 $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
+
+// Clicar no título "Agenda Inteligente" → mês atual + hoje + foco na anotação
+const tituloPagina = document.querySelector('.ag-header-titulo');
+if (tituloPagina) {
+  tituloPagina.style.cursor = 'pointer';
+  tituloPagina.title = 'Ir para hoje';
+  tituloPagina.addEventListener('click', irHojeFoco);
+}
+
+// Busca (com debounce); Enter aplica na hora
+let buscaTimer;
+const buscaInput = $('ag-busca');
+if (buscaInput) {
+  buscaInput.addEventListener('input', () => {
+    clearTimeout(buscaTimer);
+    buscaTimer = setTimeout(() => buscar(buscaInput.value), 250);
+  });
+  buscaInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { clearTimeout(buscaTimer); buscar(buscaInput.value); }
+  });
+}
 
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(ajustarQuadrados, 150); });

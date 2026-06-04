@@ -17,39 +17,11 @@
     <main>
         <div class="ag-content">
 
-            <!-- ALERTA DE COMPROMISSO NO HORÁRIO -->
-            <div class="ag-alerta-vivo" id="ag-alerta-vivo" hidden>
-                <div class="ag-alerta-icone">⚠</div>
-                <div class="ag-alerta-corpo">
-                    <div class="ag-alerta-topo">COMPROMISSO</div>
-                    <div class="ag-alerta-hora" id="ag-alerta-hora">--:--</div>
-                    <div class="ag-alerta-titulo" id="ag-alerta-titulo">—</div>
-                    <div class="ag-alerta-status" id="ag-alerta-status">—</div>
-                </div>
-                <button class="ag-alerta-fechar" id="ag-alerta-fechar" title="Dispensar">✕</button>
-            </div>
-
-            <!-- RESUMO -->
-            <div class="ag-resumo" id="ag-resumo">
-                <div class="ag-resumo-item">
-                    <span class="ag-resumo-num" id="ag-res-hoje">—</span>
-                    <span class="ag-resumo-label">Hoje</span>
-                </div>
-                <div class="ag-resumo-divider"></div>
-                <div class="ag-resumo-item">
-                    <span class="ag-resumo-num ag-amarelo" id="ag-res-avencer">—</span>
-                    <span class="ag-resumo-label">A vencer</span>
-                </div>
-                <div class="ag-resumo-divider"></div>
-                <div class="ag-resumo-item">
-                    <span class="ag-resumo-num ag-vermelho" id="ag-res-atrasados">—</span>
-                    <span class="ag-resumo-label">Passou</span>
-                </div>
-                <div class="ag-resumo-divider ag-prox-divider"></div>
-                <div class="ag-resumo-item ag-resumo-prox">
-                    <span class="ag-resumo-num-prox" id="ag-res-proximo">—</span>
-                    <span class="ag-resumo-label">Próximo compromisso</span>
-                </div>
+            <!-- BUSCA -->
+            <div class="ag-busca-wrap">
+                <input type="search" id="ag-busca" class="ag-busca" autocomplete="off"
+                    placeholder="🔍 Buscar anotação, cliente, compromisso...">
+                <span class="ag-busca-info" id="ag-busca-info"></span>
             </div>
 
             <!-- CABEÇALHO DO CALENDÁRIO -->

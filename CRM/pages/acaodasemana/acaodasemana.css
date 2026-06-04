@@ -29,6 +29,37 @@ body {
 .header::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, var(--green), transparent); opacity: 0.6; }
 .ag-header-titulo { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; }
 
+/* Título centralizado na barra superior (injetada por brand-header.js) e clicável */
+#crm-brand-bar .ag-header-titulo {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    margin: 0; cursor: pointer; z-index: 1; font-size: 19px;
+}
+#crm-brand-bar .ag-header-titulo:hover { color: var(--green-light); }
+
+/* ── BUSCA ── */
+.ag-busca-wrap { display: flex; align-items: center; gap: 10px; }
+.ag-busca {
+    flex: 1; min-width: 0; padding: 13px 16px;
+    border-radius: 12px; background: var(--surface2);
+    border: 1px solid var(--border-md); color: var(--text);
+    font-size: 15px; font-family: inherit; outline: none;
+    transition: border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+.ag-busca:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,200,83,0.15); }
+.ag-busca::placeholder { color: var(--text3); }
+.ag-busca-info { font-size: 12px; color: var(--text3); white-space: nowrap; }
+
+/* Destaque do dia encontrado na busca */
+.ag-cel-match { outline: 2px solid var(--amber); outline-offset: -2px; }
+.ag-cel-match::after {
+    content: ''; position: absolute; inset: 0; border-radius: 8px; pointer-events: none;
+    animation: agBusca 1.1s ease-in-out infinite;
+}
+@keyframes agBusca {
+    0%,100% { box-shadow: inset 0 0 0 0 rgba(245,158,11,0.0); }
+    50%     { box-shadow: inset 0 0 16px 2px rgba(245,158,11,0.45); }
+}
+
 /* ── LAYOUT ── */
 .ag-content { max-width: 1100px; margin: 0 auto; padding: 16px 14px 24px; display: flex; flex-direction: column; gap: 16px; }
 
