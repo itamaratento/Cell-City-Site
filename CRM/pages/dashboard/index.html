@@ -389,7 +389,18 @@
 <script src="../../shared/brand-header.js"></script>
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' });
+    navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' }).then(r => {
+      r.onupdatefound = () => {
+        const i = r.installing;
+        if (i) {
+          i.onstatechange = () => {
+            if (i.state === 'installed' && navigator.serviceWorker.controller) {
+              location.reload();
+            }
+          };
+        }
+      };
+    });
   }
 </script>
 </body>

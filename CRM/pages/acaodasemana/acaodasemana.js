@@ -62,7 +62,7 @@ function itensComHorario() {
   for (const [data, arr] of Object.entries(notas)) {
     (arr || []).forEach(n => {
       const m = (n.texto || '').match(/^\s*(\d{1,2}):(\d{2})\s+(.*\S)/);
-      if (m) { const hh = String(Math.min(23, +m[1])).padStart(2, '0'); out.push({ data, hora: `${hh}:${m[2]}`, titulo: m[3].trim() }); }
+      if (m) { const hh = String(Math.min(23, +m[1])).padStart(2, '0'); out.push({ data, hora: `${hh}:${m[2]}`, titulo: m[3].trim(), concluido: !!n.concluido }); }
     });
   }
   return out;
@@ -165,18 +165,26 @@ function carregarEditor() {
 
 function criarLinha(n) {
   const cor = corValida(n?.cor);
+  const concluido = !!n?.concluido;
   const l = document.createElement('div');
-  l.className = 'ag-nlinha';
+  l.className = 'ag-nlinha' + (concluido ? ' concluida' : '');
   l.dataset.cor = cor;
   pintarLinha(l, cor);
   l.innerHTML = `
     <button class="ag-nlinha-cor" title="Trocar cor"></button>
+    <input type="checkbox" class="ag-nlinha-check" title="Marcar como concluído">
     <input class="ag-nlinha-txt" placeholder="09:00 Anotação..." maxlength="200">
     <button class="ag-nlinha-del" title="Excluir">✕</button>`;
   l.querySelector('.ag-nlinha-txt').value = n?.texto || '';
   l.querySelector('.ag-nlinha-cor').style.background = CORES[cor].hex;
+  l.querySelector('.ag-nlinha-check').checked = concluido;
 
   l.querySelector('.ag-nlinha-cor').addEventListener('click', () => { ciclarCor(l); agendarSave(); });
+  const chk = l.querySelector('.ag-nlinha-check');
+  chk.addEventListener('change', () => {
+    l.classList.toggle('concluida', chk.checked);
+    agendarSave();
+  });
   const txt = l.querySelector('.ag-nlinha-txt');
   txt.addEventListener('input', () => { agendarSave(); });
   txt.addEventListener('blur', () => { flushSave(); });
@@ -210,7 +218,7 @@ function novaLinhaFoco() {
 // ── salvamento automático (array do dia) ───────────────────────────
 function lerLinhas() {
   return [...listaEl.querySelectorAll('.ag-nlinha')]
-    .map(l => ({ texto: l.querySelector('.ag-nlinha-txt').value.trim(), cor: corValida(l.dataset.cor) }))
+    .map(l => ({ texto: l.querySelector('.ag-nlinha-txt').value.trim(), cor: corValida(l.dataset.cor), concluido: l.querySelector('.ag-nlinha-check').checked }))
     .filter(n => n.texto);
 }
 function agendarSave() {
@@ -241,33 +249,67 @@ async function salvar() {
 function renderResumo() {
   const hoje = isoHoje();
   const agora = Date.now();
-  const doHoje = itensComHorario().filter(i => i.data === hoje);
+  const todos = itensComHorario();
+  const naoConcluidos = todos.filter(i => !i.concluido);
+  const doHoje = naoConcluidos.filter(i => i.data === hoje);
   const passou = doHoje.filter(i => new Date(`${i.data}T${i.hora}:00`).getTime() < agora);
   $('ag-res-hoje').textContent      = doHoje.length;
   $('ag-res-avencer').textContent   = doHoje.length - passou.length;
   $('ag-res-atrasados').textContent = passou.length;
-  const prox = itensComHorario()
+  const prox = naoConcluidos
     .map(i => ({ ...i, ts: new Date(`${i.data}T${i.hora}:00`).getTime() }))
     .filter(i => i.ts >= agora)
     .sort((a, b) => a.ts - b.ts)[0];
   $('ag-res-proximo').textContent = prox ? `${fmtData(prox.data)} ${prox.hora} — ${prox.titulo}` : 'Nenhum';
 }
 
-// ── alerta quando chega o horário ──────────────────────────────────
+// ── alerta quando chega o horário (inclui atrasados de dias anteriores) ──
 const alertasDisparados = new Set();
+const _fmtAtraso = (min) => {
+  const abs = Math.abs(min);
+  if (abs >= 1440) return `${Math.floor(abs/1440)}d ${Math.floor((abs%1440)/60)}h`;
+  if (abs >= 60)   return `${Math.floor(abs/60)}h${abs%60 ? ' '+(abs%60)+'min' : ''}`;
+  return `${abs} min`;
+};
 function verificarAlertas() {
   const agora = new Date();
+  const agoraTs = Date.now();
   const hoje = isoHoje();
-  itensComHorario().filter(i => i.data === hoje).forEach(i => {
+
+  // Filtra APENAS itens NÃO concluídos
+  const todos = itensComHorario().filter(i => !i.concluido);
+
+  // 1. PRIORIDADE: atrasados de QUALQUER dia (não só hoje)
+  const atrasados = todos.filter(i => {
+    return new Date(`${i.data}T${i.hora}:00`).getTime() < agoraTs;
+  }).sort((a, b) => new Date(`${a.data}T${a.hora}:00`) - new Date(`${b.data}T${b.hora}:00`));
+
+  if (atrasados.length > 0) {
+    const pior = atrasados[0];
+    const diffMin = Math.round((agoraTs - new Date(`${pior.data}T${pior.hora}:00`).getTime()) / 60000);
+    const chave = `atrasado_${pior.data}_${pior.hora}_${pior.titulo}`;
+    if (!alertasDisparados.has(chave)) {
+      alertasDisparados.add(chave);
+      $('ag-alerta-hora').textContent = pior.hora;
+      $('ag-alerta-titulo').textContent = `${pior.titulo} (${pior.data})`;
+      $('ag-alerta-status').textContent = `Atrasado há ${_fmtAtraso(diffMin)}`;
+      $('ag-alerta-vivo').hidden = false;
+      tocarSom();
+    }
+    return; // prioridade total ao atrasado
+  }
+
+  // 2. Horário atual (hoje, 0-60 min) — apenas não concluídos
+  todos.filter(i => i.data === hoje).forEach(i => {
     const [h, m] = i.hora.split(':').map(Number);
     const alvo = new Date(agora); alvo.setHours(h, m, 0, 0);
-    const diffMin = Math.round((agora - alvo) / 60000);
+    const diffMin = Math.round((agoraTs - alvo.getTime()) / 60000);
     const chave = `${i.data}_${i.hora}_${i.titulo}`;
     if (diffMin >= 0 && diffMin <= 60 && !alertasDisparados.has(chave)) {
       alertasDisparados.add(chave);
       $('ag-alerta-hora').textContent = i.hora;
       $('ag-alerta-titulo').textContent = i.titulo;
-      $('ag-alerta-status').textContent = diffMin <= 0 ? 'Agora!' : `Atrasado há ${diffMin} min`;
+      $('ag-alerta-status').textContent = diffMin <= 0 ? 'Agora!' : `Atrasado há ${_fmtAtraso(diffMin)}`;
       $('ag-alerta-vivo').hidden = false;
       tocarSom();
     }

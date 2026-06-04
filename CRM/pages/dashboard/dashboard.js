@@ -327,18 +327,21 @@ class Dashboard {
     try {
       const snap = await getDocs(collection(db, 'agenda'));
       const eventos = [];
-      const parseLinha = (dia, txt) => {
+      const parseLinha = (dia, txt, concluido = false) => {
         const m = String(txt).match(/^\s*(\d{1,2}):(\d{2})\s+(.*\S)/);
         if (m) {
           const hh = String(Math.min(23, +m[1])).padStart(2, '0');
-          eventos.push({ data: dia, hora: `${hh}:${m[2]}`, titulo: m[3].trim(), concluido: false, alerta: true });
+          eventos.push({ data: dia, hora: `${hh}:${m[2]}`, titulo: m[3].trim(), concluido, alerta: true });
+        } else if (String(txt).trim()) {
+          // Tarefa sem horário — data apenas. Considera como "vencível" pelo dia.
+          eventos.push({ data: dia, hora: '', titulo: String(txt).trim(), concluido, alerta: true });
         }
       };
       snap.forEach(d => {
         const dados = d.data();
         const dia = dados.data || d.id;
         if (Array.isArray(dados.notas)) {
-          dados.notas.forEach(n => n && n.texto && parseLinha(dia, n.texto));
+          dados.notas.forEach(n => n && n.texto && parseLinha(dia, n.texto, !!n.concluido));
         } else if (typeof dados.texto === 'string') {
           dados.texto.split(/\r?\n+/).forEach(linha => parseLinha(dia, linha));
         } else if (dados.titulo) {
@@ -352,14 +355,19 @@ class Dashboard {
     }
   }
 
-  // ===== AGENDA — itens "no horário" (do horário até 60 min depois) =====
+  // ===== AGENDA — TODOS os itens atrasados (qualquer hora/dia passado) =====
   _vencidos(eventos) {
     const agora = Date.now();
+    const hojeISO = new Date().toISOString().slice(0, 10);
     return (eventos || []).filter(e => {
-      if (e.concluido || !e.data || !e.hora) return false;
-      const dt = new Date(`${e.data}T${e.hora}:00`).getTime();
-      const diffMin = (agora - dt) / 60000;
-      return diffMin >= 0 && diffMin <= 60;
+      if (e.concluido || !e.data) return false;
+      if (e.hora) {
+        // Tem horário definido — compara data+hora
+        const dt = new Date(`${e.data}T${e.hora}:00`).getTime();
+        return (agora - dt) / 60000 >= 0;
+      }
+      // Sem horário — compara apenas a data (considera vencido se data passou)
+      return e.data < hojeISO;
     });
   }
 
@@ -384,36 +392,88 @@ class Dashboard {
       .sort((a, b) => a.ts - b.ts)[0] || null;
   }
 
-  // ===== AGENDA — card do Dashboard: pisca quando há evento vencido + mostra resumo =====
+  // ===== AGENDA — card do Dashboard: destaca ENQUANTO tarefa não for concluída =====
+  // Prioridade: 1. Atrasadas (qualquer dia), 2. Horário atual, 3. Próximas (até 15 min)
   monitorarCardAcaoSemana() {
     const card = document.querySelector('.module-card[data-module="acaodasemana"]');
     if (!card) return;
     const subEl = card.querySelector('.module-sub');
     const subOriginal = 'Agenda Inteligente';
 
+    const _fmtAtraso = (min) => {
+      if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
+      if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
+      return `${min} min`;
+    };
+
     const verificar = async () => {
       const eventos = await this._lerAgenda();
-      const { count } = await this._contarAcoesVencidas(eventos);
-      const prox = this._proximoCompromisso(eventos);
+      const agora = Date.now();
+      const hojeISO = new Date().toISOString().slice(0, 10);
+      const d = new Date();
+      const minsAtual = d.getHours() * 60 + d.getMinutes();
 
-      if (count > 0) {
-        // Compromisso no horário → pisca em vermelho com título e atraso
-        const venc = this._vencidos(eventos)
-          .sort((a, b) => new Date(`${b.data}T${b.hora}`) - new Date(`${a.data}T${a.hora}`))[0];
+      // ─── Helper para determinar se um evento está atrasado ───
+      const estaAtrasado = (e) => {
+        if (e.concluido || !e.data) return false;
+        if (e.hora) {
+          return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        }
+        // Sem horário — considera atrasado se a data já passou
+        return e.data < hojeISO;
+      };
+
+      // ─── Helper para calcular minutos entre agora e o evento ───
+      const diffMinEvento = (e) => {
+        if (!e.hora) return Infinity; // sem horário, não calcula diff
+        const [h, m] = e.hora.split(':').map(Number);
+        return (h * 60 + m) - minsAtual;
+      };
+
+      // 1. PRIORIDADE MÁXIMA — ATRASADOS (qualquer dia, não concluído, horário/data passou)
+      const atrasados = (eventos || []).filter(estaAtrasado);
+
+      // 2. HORÁRIO ATUAL — tarefas de hoje com hora exata agora (janela 0–5 min)
+      const noHorario = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff >= 0 && diff <= 5;
+      });
+
+      // 3. PRÓXIMOS — tarefas de hoje até 15 min (só se não houver atrasadas)
+      const proximos = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff > 5 && diff <= 15;
+      });
+
+      // --- definir qual estado mostrar (prioridade: atrasados > noHorario > proximos > padrão) ---
+      if (atrasados.length > 0) {
+        // Pega o MAIS atrasado (mais antigo primeiro)
+        const pior = atrasados.sort((a, b) => {
+          const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
+          const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
+          return tsA - tsB;
+        })[0];
         card.classList.add('acao-vencida');
-        if (subEl && venc) {
-          const dt = new Date(`${venc.data}T${venc.hora || '00:00'}:00`);
-          const atrasoMin = Math.max(0, Math.round((Date.now() - dt.getTime()) / 60000));
-          const atrasoTxt = atrasoMin >= 60
-            ? `${Math.floor(atrasoMin/60)}h${atrasoMin%60 ? ' '+(atrasoMin%60)+'min' : ''}`
-            : `${atrasoMin} min`;
-          subEl.textContent = `🔴 ${venc.hora || ''} ${venc.titulo} · atrasado há ${atrasoTxt}`;
-        } else if (subEl) {
-          subEl.textContent = `🔴 ${count} pendência${count > 1 ? 's' : ''}`;
+        if (subEl) {
+          const dt = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
+          const atrasoMin = Math.max(0, Math.round((agora - dt.getTime()) / 60000));
+          subEl.textContent = `🔴 ${pior.hora || ''} ${pior.titulo} · ${_fmtAtraso(atrasoMin)} atrasado`;
+        }
+      } else if (noHorario.length > 0) {
+        card.classList.add('acao-vencida');
+        if (subEl) {
+          const ev = noHorario[0];
+          subEl.textContent = `🔴 ${ev.hora} ${ev.titulo} · AGORA!`;
         }
       } else {
         card.classList.remove('acao-vencida');
         if (subEl) {
+          // Próximo compromisso (até 15 min) ou futuro distante
+          const prox = this._proximoCompromisso(eventos);
           subEl.textContent = prox
             ? `📅 Próx.: ${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`
             : subOriginal;
@@ -422,8 +482,8 @@ class Dashboard {
     };
 
     verificar();
-    setInterval(verificar, 60000);          // re-checa a cada 60s
-    window.addEventListener('focus', verificar); // re-checa ao voltar pra aba
+    setInterval(verificar, 60000);
+    window.addEventListener('focus', verificar);
   }
 
   // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
@@ -448,15 +508,89 @@ class Dashboard {
     };
 
     try {
-      // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (horário vencido) =====
-      const acaoVenc = await this._contarAcoesVencidas();
-      if (acaoVenc.count > 0) {
+      // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (atrasadas + horário atual + próximas) =====
+      const eventos = await this._lerAgenda();
+      const agora = Date.now();
+      const hojeISO = new Date().toISOString().slice(0, 10);
+      const d = new Date();
+      const minsAtual = d.getHours() * 60 + d.getMinutes();
+
+      // ─── Helper: verifica se evento está atrasado ───
+      const estaAtrasado = (e) => {
+        if (e.concluido || !e.data) return false;
+        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        return e.data < hojeISO; // sem horário — data passou
+      };
+
+      // ─── Helper: diff em minutos do evento ───
+      const diffMinEvento = (e) => {
+        if (!e.hora) return Infinity;
+        const [h, m] = e.hora.split(':').map(Number);
+        return (h * 60 + m) - minsAtual;
+      };
+
+      // Atrasadas (qualquer dia, não concluídas, horário/data passou)
+      const atrasadas = (eventos || []).filter(estaAtrasado);
+
+      // No horário atual (hoje, diff 0–5 min) — só se não houver atrasadas
+      const noHorario = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff >= 0 && diff <= 5;
+      });
+
+      // Próximas (hoje, 6–15 min) — só se não houver atrasadas nem noHorario
+      const proximas = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff > 5 && diff <= 15;
+      });
+
+      // Gera alertas na ordem de prioridade
+
+      // 1. PRIORIDADE MÁXIMA — ATRASADAS (inclui dias anteriores)
+      if (atrasadas.length > 0) {
+        const totalAtrasadas = atrasadas.length;
+        const _fmtAtraso = (min) => {
+          if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
+          if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
+          return `${min} min`;
+        };
+        const maisAntiga = atrasadas.sort((a, b) => {
+          const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
+          const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
+          return tsA - tsB;
+        })[0];
+        const tituloExemplo = maisAntiga.titulo;
+        const dtExemplo = new Date(`${maisAntiga.data}T${maisAntiga.hora || '00:00'}:00`);
+        const atrasoMin = Math.max(0, Math.round((agora - dtExemplo.getTime()) / 60000));
+        alertas.push({
+          icon: '💡', cat: 'critico', cor: 'critico',
+          title: `AÇÃO DA SEMANA · ${totalAtrasadas} atrasada(s)`,
+          sub: `🔴 Aguardando conclusão · ${_fmtAtraso(atrasoMin)} atrasado`,
+          detail: `${totalAtrasadas} tarefa(s) atrasada(s) — Ex.: ${tituloExemplo}. Conclua para remover o alerta.`
+        });
+      }
+
+      // 2. HORÁRIO ATUAL (só se NÃO houver atrasadas)
+      if (atrasadas.length === 0 && noHorario.length > 0) {
         alertas.push({
           icon: '💡', cat: 'critico', cor: 'critico',
           title: 'AÇÃO DA SEMANA',
-          sub: acaoVenc.count === 1 ? 'Tarefa programada para agora' : `${acaoVenc.count} tarefas no horário`,
-          detail: `${acaoVenc.count} tarefa(s) da Ação da Semana no horário/atrasada(s).` +
-                  (acaoVenc.titulos[0] ? ` Ex.: ${acaoVenc.titulos[0]}` : '')
+          sub: noHorario.length === 1 ? 'Tarefa programada para AGORA' : `${noHorario.length} tarefas AGORA`,
+          detail: noHorario.map(e => `${e.hora} ${e.titulo}`).join(' · ')
+        });
+      }
+
+      // 3. PRÓXIMAS (até 15 min)
+      if (atrasadas.length === 0 && noHorario.length === 0 && proximas.length > 0) {
+        alertas.push({
+          icon: '💡', cat: 'atencao', cor: 'atencao',
+          title: 'AÇÃO DA SEMANA · Próximos',
+          sub: proximas.length === 1 ? `Em ${proximas[0].hora}` : `${proximas.length} tarefas em breve`,
+          detail: proximas.map(e => `${e.hora} ${e.titulo}`).join(' · ')
         });
       }
 
@@ -1090,8 +1224,16 @@ class Dashboard {
   }
 
   // ===== AVISO DE EVENTOS DA AGENDA =====
+  // Prioridade: 1. Atrasados (qualquer dia), 2. Horário atual, 3. Próximos (até 15 min)
   setupAvisoAcoes() {
-    let alertaAtivo = false; // evita tocar o som repetidamente no mesmo minuto
+    let ultimoAvisoKey = ''; // controla para não repetir o mesmo aviso
+
+    const _fmtAtraso = (min) => {
+      const abs = Math.abs(min);
+      if (abs >= 1440) return `${Math.floor(abs/1440)}d ${Math.floor((abs%1440)/60)}h`;
+      if (abs >= 60)   return `${Math.floor(abs/60)}h${abs%60 ? ' '+(abs%60)+'min' : ''}`;
+      return `${abs} min`;
+    };
 
     const tocarSom = () => {
       try {
@@ -1110,7 +1252,7 @@ class Dashboard {
       } catch {}
     };
 
-    const dispararAlerta = (evento, diffMin) => {
+    const dispararAlerta = (evento, label) => {
       const card = document.querySelector('.alerts-card');
       const titleEl    = document.querySelector('.alert-title');
       const subtitleEl = document.querySelector('.alert-subtitle');
@@ -1119,18 +1261,14 @@ class Dashboard {
       if (!card || !titleEl) return;
 
       const horaFmt = evento.hora || '';
-      const label = diffMin === 0 ? 'AGORA!' : `em ${diffMin} min`;
-
-      if (iconEl)     iconEl.textContent     = '⏰';
-      titleEl.textContent    = `AGENDA — ${label}`;
-      titleEl.className      = 'alert-title cat-alerta-acao';
+      if (iconEl) iconEl.textContent = '⏰';
+      titleEl.textContent = `AGENDA — ${label}`;
+      titleEl.className = 'alert-title cat-alerta-acao';
       if (subtitleEl) subtitleEl.textContent = evento.titulo;
-      if (detailEl)   detailEl.textContent   = horaFmt ? `Horário: ${horaFmt}` : '';
+      if (detailEl) detailEl.textContent = horaFmt ? `Horário: ${horaFmt}` : '';
 
       card.classList.add('alert-card-pulsing');
       tocarSom();
-
-      // Remove o pulso após 10 segundos
       setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
     };
 
@@ -1138,27 +1276,77 @@ class Dashboard {
       try {
         const eventos = await this._lerAgenda();
         const agora = new Date();
+        const agoraTs = Date.now();
         const hojeISO = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
         const hAtual = agora.getHours();
         const mAtual = agora.getMinutes();
+        const minsAtual = hAtual * 60 + mAtual;
 
+        // ─── Helper: verifica se evento está atrasado ───
+        const estaAtrasado = (e) => {
+          if (e.concluido || e.alerta === false || !e.data) return false;
+          if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agoraTs;
+          return e.data < hojeISO; // sem horário — data passou
+        };
+
+        // 1. PRIORIDADE MÁXIMA — ATRASADOS (qualquer dia/hora no passado, não concluído)
+        const atrasados = (eventos || []).filter(estaAtrasado);
+
+        if (atrasados.length > 0) {
+          const pior = atrasados.sort((a, b) => {
+            const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
+            const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
+            return tsA - tsB;
+          })[0];
+          const dtPior = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
+          const diffMin = Math.round((agoraTs - dtPior.getTime()) / 60000);
+          const key = `atrasado_${pior.data}_${pior.hora}`;
+          if (ultimoAvisoKey !== key) {
+            ultimoAvisoKey = key;
+            dispararAlerta(pior, `ATRASADO há ${_fmtAtraso(diffMin)}`);
+          }
+          return; // atrasado tem prioridade total
+        }
+
+        // 2. SEGUNDA PRIORIDADE — HORÁRIO ATUAL (hoje, diff 0–5 min)
         for (const evento of eventos) {
           if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
           if (evento.data !== hojeISO) continue;
-
           const [hEv, mEv] = evento.hora.split(':').map(Number);
-          const diffMin = (hEv * 60 + mEv) - (hAtual * 60 + mAtual);
+          const evMin = hEv * 60 + mEv;
+          const diff = evMin - minsAtual;
 
-          // Alerta: 0 a 5 minutos antes
-          if (diffMin >= 0 && diffMin <= 5) {
-            const chave = `aviso_${evento.id}_${evento.hora}`;
-            if (!sessionStorage.getItem(chave)) {
-              sessionStorage.setItem(chave, '1');
-              dispararAlerta(evento, diffMin);
+          if (diff >= 0 && diff <= 5) {
+            const key = `agora_${evento.hora}`;
+            if (ultimoAvisoKey !== key) {
+              ultimoAvisoKey = key;
+              dispararAlerta(evento, diff === 0 ? 'AGORA!' : `em ${diff} min`);
             }
-            break;
+            return;
           }
         }
+
+        // 3. TERCEIRA PRIORIDADE — PRÓXIMOS (hoje, 6–15 min)
+        for (const evento of eventos) {
+          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
+          if (evento.data !== hojeISO) continue;
+          const [hEv, mEv] = evento.hora.split(':').map(Number);
+          const evMin = hEv * 60 + mEv;
+          const diff = evMin - minsAtual;
+
+          if (diff > 5 && diff <= 15) {
+            const key = `prox_${evento.hora}`;
+            if (ultimoAvisoKey !== key) {
+              ultimoAvisoKey = key;
+              dispararAlerta(evento, `em ${diff} min`);
+            }
+            return;
+          }
+        }
+
+        // Nada a alertar — reseta para permitir novos avisos
+        ultimoAvisoKey = '';
+
       } catch {}
     };
 
