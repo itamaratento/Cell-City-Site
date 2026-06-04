@@ -244,6 +244,33 @@ body {
 .ag-alerta-hora input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
 .ag-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
 .ag-check input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
+.ag-recorr-sel { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text2); }
+.ag-recorr-sel select {
+    background: var(--bg); border: 1px solid var(--border-md); color: var(--text);
+    font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 9px; cursor: pointer;
+}
+
+/* ── BADGE DE RECORRÊNCIA (canto do dia, sem ocupar o quadrado) ── */
+.ag-recorr-badge {
+    position: absolute; top: 3px; right: 3px; z-index: 5;
+    display: inline-flex; align-items: center; gap: 2px;
+    background: rgba(0,200,83,0.18); border: 1px solid rgba(0,200,83,0.5);
+    color: var(--green-light); font-size: 10.5px; font-weight: 800;
+    padding: 1px 5px; border-radius: 999px; cursor: pointer; line-height: 1.4;
+}
+.ag-recorr-badge:hover { background: rgba(0,200,83,0.3); }
+
+/* ── POPUP DA LISTA RECORRENTE ── */
+.ag-recorr-pop {
+    position: fixed; z-index: 700; max-width: 280px; min-width: 200px;
+    background: var(--surface2); border: 1px solid var(--border-md);
+    border-radius: 12px; padding: 12px 14px; box-shadow: 0 14px 36px rgba(0,0,0,.6);
+}
+.ag-recorr-pop[hidden] { display: none; }
+.ag-recorr-pop-tit { font-size: 12px; font-weight: 800; color: var(--green-light); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+.ag-recorr-pop-lista { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.ag-recorr-pop-lista li { font-size: 13px; color: var(--text); font-weight: 600; padding-left: 14px; position: relative; overflow-wrap: anywhere; }
+.ag-recorr-pop-lista li::before { content: '•'; position: absolute; left: 2px; color: var(--green); }
 
 /* ── ÁREA DE TEXTO ÚNICA (estilo bloco de notas / sticky note) ── */
 .ag-nota-area {

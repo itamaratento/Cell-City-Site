@@ -77,6 +77,15 @@
                         <input type="checkbox" id="ag-alerta-dash">
                         <span>Exibir alerta no Dashboard</span>
                     </label>
+                    <label class="ag-recorr-sel">
+                        <span>⟳ Repetir</span>
+                        <select id="ag-recorr">
+                            <option value="">Não repetir</option>
+                            <option value="semanal">Semanalmente</option>
+                            <option value="mensal">Mensalmente</option>
+                            <option value="anual">Anualmente</option>
+                        </select>
+                    </label>
                 </div>
 
                 <div class="ag-nota-status" id="ag-nota-status"></div>
@@ -84,6 +93,12 @@
 
         </div>
     </main>
+
+    <!-- POPUP: lista de lembretes recorrentes do dia -->
+    <div class="ag-recorr-pop" id="ag-recorr-pop" hidden>
+        <div class="ag-recorr-pop-tit" id="ag-recorr-pop-tit">Lembretes recorrentes</div>
+        <ul class="ag-recorr-pop-lista" id="ag-recorr-pop-lista"></ul>
+    </div>
 
     <div class="ag-toast" id="ag-toast"></div>
 

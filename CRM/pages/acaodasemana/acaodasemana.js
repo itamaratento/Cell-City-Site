@@ -25,6 +25,7 @@ let docIds = {};                // data -> [ idsReaisNoFirestore ] (corrige órf
 let corPorDia = {};             // data -> cor (do calendário / bloco)
 let corDiaSel = COR_PADRAO;     // cor escolhida para o dia aberto no editor
 let alertaPorDia = {};          // data -> { hora, dashboard }
+let recorrenciaPorDia = {};     // data -> 'semanal' | 'mensal' | 'anual'
 let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
@@ -45,6 +46,10 @@ const diaTitulo  = $('ag-dia-titulo');
 const areaEl     = $('ag-nota-area');
 const alertaHoraEl = $('ag-alerta-hora');
 const alertaDashEl = $('ag-alerta-dash');
+const recorrEl   = $('ag-recorr');
+const recorrPop  = $('ag-recorr-pop');
+const recorrPopTit = $('ag-recorr-pop-tit');
+const recorrPopLista = $('ag-recorr-pop-lista');
 const statusEl   = $('ag-nota-status');
 const painelEl   = document.querySelector('.ag-nota-painel');
 const toastEl    = $('ag-toast');
@@ -61,6 +66,26 @@ function fmtDiaLongo(iso) {
   return `${sem}, ${d} de ${MESES[m-1]}`;
 }
 function corValida(c) { return CORES[c] ? c : COR_PADRAO; }
+
+// Recorrência: a data `iso` recebe a tarefa criada em `origem`?
+function _dataLanda(iso, origem, pattern) {
+  if (iso < origem) return false;                 // só a partir da data de origem
+  const a = new Date(iso + 'T00:00:00'), b = new Date(origem + 'T00:00:00');
+  if (pattern === 'semanal') return a.getDay() === b.getDay();
+  if (pattern === 'mensal')  return a.getDate() === b.getDate();
+  if (pattern === 'anual')   return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return false;
+}
+// Lembretes recorrentes que "caem" no dia iso (textos)
+function recorrentesNoDia(iso) {
+  const out = [];
+  for (const origem of Object.keys(recorrenciaPorDia)) {
+    if (_dataLanda(iso, origem, recorrenciaPorDia[origem])) {
+      (notas[origem] || []).forEach(n => out.push(n.texto));
+    }
+  }
+  return out;
+}
 
 let toastTimer;
 function toast(msg) {
@@ -106,15 +131,25 @@ function renderCalendario() {
       cel.classList.add(temMatch ? 'ag-cel-match' : 'ag-cel-dim');
     }
 
-    const chips = arr.map(n => {
+    // Dias recorrentes NÃO enchem o quadrado: viram só um badge no canto.
+    const ehRecorrente = !!recorrenciaPorDia[iso];
+    const chipsArr = ehRecorrente ? [] : arr;
+    const chips = chipsArr.map(n => {
       const c = CORES[corValida(n.cor)];
       const m = (n.texto || '').match(/^\s*(\d{1,2}:\d{2})\s+([\s\S]*)$/);
       const inner = m ? `<b>${m[1]}</b> ${escHtml(m[2])}` : escHtml(n.texto);
       return `<div class="ag-chip" style="--bg:${c.bg};--fg:${c.fg}" title="${escHtml(n.texto)}"><span class="ag-chip-t">${inner}</span></div>`;
     }).join('');
 
-    cel.innerHTML = `<span class="ag-cel-num">${dia}</span><div class="ag-cel-notas">${chips}</div>`;
+    const rec = recorrentesNoDia(iso);
+    const badge = rec.length
+      ? `<div class="ag-recorr-badge" data-dia="${iso}" title="${rec.length} lembrete(s) recorrente(s)">🔔 ${rec.length}</div>`
+      : '';
+
+    cel.innerHTML = `<span class="ag-cel-num">${dia}</span>${badge}<div class="ag-cel-notas">${chips}</div>`;
     cel.addEventListener('click', () => selecionarDia(iso));
+    const badgeEl = cel.querySelector('.ag-recorr-badge');
+    if (badgeEl) badgeEl.addEventListener('click', (e) => { e.stopPropagation(); abrirRecorrPop(iso, badgeEl); });
     gradeEl.appendChild(cel);
   }
 
@@ -181,8 +216,27 @@ function carregarEditor() {
   const al = alertaPorDia[diaSelecionado] || {};
   if (alertaHoraEl) alertaHoraEl.value = al.hora || '';
   if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
+  if (recorrEl) recorrEl.value = recorrenciaPorDia[diaSelecionado] || '';
   aplicarFonteLinhas();   // já chama autoGrow()
 }
+
+// Popup com a lista de lembretes recorrentes do dia
+function abrirRecorrPop(iso, anchor) {
+  const itens = recorrentesNoDia(iso);
+  if (!itens.length || !recorrPop) return;
+  recorrPopTit.textContent = `Recorrentes · ${fmtData(iso)}`;
+  recorrPopLista.innerHTML = itens.map(t => `<li>${escHtml(t)}</li>`).join('');
+  recorrPop.hidden = false;
+  const r = anchor.getBoundingClientRect();
+  const pw = recorrPop.offsetWidth, ph = recorrPop.offsetHeight;
+  let left = Math.min(r.right - pw, window.innerWidth - pw - 8);
+  if (left < 8) left = 8;
+  let top = r.bottom + 6;
+  if (top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 6);
+  recorrPop.style.left = left + 'px';
+  recorrPop.style.top = top + 'px';
+}
+function fecharRecorrPop() { if (recorrPop) recorrPop.hidden = true; }
 
 // Pinta o bloco com a cor do dia e marca o botão ativo
 function pintarArea() {
@@ -248,6 +302,7 @@ async function salvar() {
   try {
     const alertaHora = (alertaHoraEl && alertaHoraEl.value) || '';
     const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked);
+    const recorrencia = (recorrEl && recorrEl.value) || '';
     if (arr.length === 0) {
       // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
       await apagarDocsDoDia(data);
@@ -255,14 +310,12 @@ async function salvar() {
       delete docIds[data];
       delete corPorDia[data];
       delete alertaPorDia[data];
+      delete recorrenciaPorDia[data];
     } else {
       // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
-      // FUTURO (recorrência): basta adicionar aqui um campo, ex.:
-      //   recorrencia: 'semanal' | 'mensal' | 'anual' | null
-      // e o Dashboard/Agenda poderão repetir a tarefa automaticamente.
       await setDoc(doc(db, 'agenda', data), {
         data, notas: arr, cor: corDiaSel,
-        alertaHora, alertaDashboard,
+        alertaHora, alertaDashboard, recorrencia,
         atualizadoEm: serverTimestamp()
       });
       const orfaos = (docIds[data] || []).filter(id => id !== data);
@@ -271,6 +324,7 @@ async function salvar() {
       docIds[data] = [data];
       corPorDia[data] = corDiaSel;
       alertaPorDia[data] = { hora: alertaHora, dashboard: alertaDashboard };
+      if (recorrencia) recorrenciaPorDia[data] = recorrencia; else delete recorrenciaPorDia[data];
     }
     statusEl.textContent = '✓ Salvo';
   } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
@@ -375,6 +429,7 @@ function iniciar() {
       docIds = {};
       corPorDia = {};
       alertaPorDia = {};
+      recorrenciaPorDia = {};
       snap.forEach(d => {
         const dados = d.data();
         const data = dados.data || d.id;
@@ -383,6 +438,7 @@ function iniciar() {
         if (dados.alertaHora || dados.alertaDashboard) {
           alertaPorDia[data] = { hora: dados.alertaHora || '', dashboard: !!dados.alertaDashboard };
         }
+        if (dados.recorrencia) recorrenciaPorDia[data] = dados.recorrencia;
         if (Array.isArray(dados.notas)) {
           arr = dados.notas.filter(n => n && (n.texto || '').trim())
                            .map(n => ({ texto: n.texto, cor: corValida(dados.cor || n.cor) }));
@@ -427,6 +483,22 @@ document.querySelectorAll('.ag-cor-btn').forEach(b => {
 // Alerta opcional (salva sozinho)
 if (alertaHoraEl) alertaHoraEl.addEventListener('input', agendarSave);
 if (alertaDashEl) alertaDashEl.addEventListener('change', agendarSave);
+
+// Recorrência (atualiza o badge na hora e salva)
+if (recorrEl) recorrEl.addEventListener('change', () => {
+  if (recorrEl.value) recorrenciaPorDia[diaSelecionado] = recorrEl.value;
+  else delete recorrenciaPorDia[diaSelecionado];
+  renderCalendario();
+  agendarSave();
+});
+
+// Fecha o popup de recorrentes ao clicar fora / rolar
+document.addEventListener('click', (e) => {
+  if (recorrPop && !recorrPop.hidden && !recorrPop.contains(e.target) && !e.target.classList.contains('ag-recorr-badge')) {
+    fecharRecorrPop();
+  }
+});
+window.addEventListener('scroll', () => fecharRecorrPop(), true);
 
 // ── seletor de mês / ano (dropdown) ────────────────────────────────
 function abrirDropdown(tipo, btn) {
