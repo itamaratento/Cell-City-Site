@@ -1,6 +1,6 @@
 /* =============================================
    PAINEL ADMINISTRATIVO — PORTAL DO CLIENTE
-   Design System — v1.0
+   Design System — v2.3 (otimizado)
    ============================================= */
 
 /* ===== CSS VARIABLES (tema escuro CRM) ===== */
@@ -27,6 +27,10 @@
   --radius-md: 10px;
   --radius-lg: 14px;
   --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Brand bar height */
+  --brand-bar-height: 56px;
+  --topbar-height: 44px;
 }
 
 /* ===== RESET ===== */
@@ -63,62 +67,187 @@ a:hover { text-decoration: underline; }
   to { transform: rotate(360deg); }
 }
 
-/* ===== TOP BAR ===== */
+/* ===== BRAND BAR (CELL CITY — igual ao CRM) ===== */
+.admin-brand-bar {
+  position: sticky;
+  top: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 16px;
+  background: rgba(8, 9, 10, 0.97);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  min-height: var(--brand-bar-height);
+}
+
+.admin-brand-header {
+  display: flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: rgba(0, 200, 83, 0.06);
+  border: 1px solid rgba(0, 200, 83, 0.25);
+  border-radius: 12px;
+  transition: all 250ms cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  position: relative;
+  box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.1);
+}
+.admin-brand-header::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.admin-brand-header:hover {
+  background: rgba(0, 200, 83, 0.10);
+  border-color: rgba(0, 200, 83, 0.45);
+  box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.15);
+}
+.admin-brand-header:active {
+  transform: translateY(0);
+  opacity: 0.85;
+}
+.admin-brand-header-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  position: relative;
+  z-index: 1;
+}
+.admin-brand-header-title {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 8px rgba(0, 200, 83, 0.4));
+}
+.admin-brand-header-divider {
+  height: 1px;
+  background: linear-gradient(90deg, #00c853 0%, rgba(0, 200, 83, 0.2) 70%, transparent 100%);
+  margin: 2px 0;
+  width: 100%;
+  opacity: 0.7;
+}
+.admin-brand-header-subtitle {
+  font-size: 10px;
+  color: #a1a8b3;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* Título da página centralizado no brand bar */
+.admin-brand-page-title {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #4ade80;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Lado direito do brand bar */
+.admin-brand-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Botão "Voltar ao CRM" */
+.admin-home-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid rgba(0, 200, 83, 0.3);
+  border-radius: 8px;
+  background: rgba(0, 200, 83, 0.08);
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.admin-home-btn:hover {
+  background: rgba(0, 200, 83, 0.15);
+  border-color: rgba(0, 200, 83, 0.5);
+  text-decoration: none;
+  color: #00e676;
+}
+.home-btn-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.home-btn-label {
+  font-size: 11px;
+}
+
+/* ===== TOP BAR (simplificado) ===== */
 .admin-topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 20px;
-  height: 52px;
+  padding: 0 16px;
+  height: var(--topbar-height);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   position: sticky;
-  top: 0;
+  top: var(--brand-bar-height);
   z-index: 100;
 }
 
-.admin-topbar-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.admin-topbar-logo {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.admin-topbar-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text-primary);
-  display: block;
-  line-height: 1.2;
-}
-
-.admin-topbar-sub {
-  font-size: 11px;
-  color: var(--text-secondary);
-  display: block;
-  line-height: 1.2;
-}
-
+.admin-topbar-left,
 .admin-topbar-right {
   display: flex;
   gap: 6px;
+  align-items: center;
+}
+
+.admin-topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.admin-topbar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
 }
 
 .admin-topbar-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   background: var(--bg-card);
   color: var(--text-primary);
-  font-size: 16px;
+  font-size: 14px;
   cursor: pointer;
   transition: background 0.2s, border-color 0.2s;
   text-decoration: none;
@@ -130,11 +259,25 @@ a:hover { text-decoration: underline; }
   text-decoration: none;
 }
 
+/* Esconde botão duplicado no mobile (desktop mostra ambos) */
+.admin-topbar-left .admin-topbar-btn {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .admin-topbar-left .admin-topbar-btn {
+    display: flex;
+  }
+  .admin-topbar-right .admin-topbar-btn:first-child {
+    display: none;
+  }
+}
+
 /* ===== TABS ===== */
 .admin-tabs {
   display: flex;
   gap: 2px;
-  padding: 8px 12px;
+  padding: 6px 12px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
@@ -148,7 +291,7 @@ a:hover { text-decoration: underline; }
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -172,7 +315,7 @@ a:hover { text-decoration: underline; }
   color: var(--accent-green);
 }
 
-.tab-icon { font-size: 16px; }
+.tab-icon { font-size: 15px; }
 .tab-label { font-size: 12px; }
 
 .tab-badge {
@@ -198,7 +341,7 @@ a:hover { text-decoration: underline; }
   padding: 16px;
   max-width: 1100px;
   margin: 0 auto;
-  min-height: calc(100vh - 52px - 48px - 40px);
+  min-height: calc(100vh - var(--brand-bar-height) - var(--topbar-height) - 48px - 36px);
 }
 
 .admin-loading {
@@ -223,7 +366,7 @@ a:hover { text-decoration: underline; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 16px;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   font-size: 11px;
@@ -231,6 +374,11 @@ a:hover { text-decoration: underline; }
 }
 
 .admin-footer-sep { color: var(--border-color); }
+
+.admin-footer-otimizado {
+  color: var(--accent-green);
+  font-weight: 600;
+}
 
 /* ===== GRID DE CARDS (CENTRAL DO PORTAL) ===== */
 .central-grid {
@@ -717,6 +865,27 @@ a:hover { text-decoration: underline; }
 
   .admin-list-item-top {
     flex-direction: column;
+  }
+
+  /* Brand bar responsivo */
+  .admin-brand-bar {
+    padding: 4px 10px;
+    gap: 8px;
+  }
+  .admin-brand-header-title {
+    font-size: 12px;
+  }
+  .admin-brand-header-subtitle {
+    font-size: 9px;
+  }
+  .admin-brand-page-title {
+    font-size: 13px;
+  }
+  .admin-home-btn {
+    padding: 5px 10px;
+  }
+  .home-btn-label {
+    display: none;
   }
 }
 

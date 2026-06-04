@@ -5,6 +5,10 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 
+// ─── Mapa: dia da semana (JS 0-6) → chave usada no tarefas_semana ───
+const JS_DIA_CHAVE = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+const DIAS_SEMANA_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
 
 class Dashboard {
   constructor() {
@@ -320,14 +324,17 @@ class Dashboard {
     }
   }
 
-  // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) e extrai os horários =====
+  // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) + tarefas_semana =====
   // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
+  // Também lê da coleção tarefas_semana para integrar os alertas.
   async _lerAgenda() {
     try {
-      const snap = await getDocs(collection(db, 'agenda'));
-      const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
+      const eventos = [];
+
+      // ========== 1. Lê da coleção 'agenda' (sticky notes originais) ==========
+      const snap = await getDocs(collection(db, 'agenda'));
 
       // Helper: extrai {texto, concluido} de cada nota do documento
       const notasDe = (dados) => {
@@ -391,6 +398,60 @@ class Dashboard {
           }
         }
       });
+
+      // ========== 2. Lê da coleção 'tarefas_semana' (Minha Semana) ==========
+      try {
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
+        const refTarefas = doc(db, 'tarefas_semana', userId);
+        const snapTarefas = await getDoc(refTarefas);
+
+        if (snapTarefas.exists()) {
+          const dadosTarefas = snapTarefas.data();
+          const tarefas = dadosTarefas.tarefas || [];
+
+          // Converte cada tarefa da semana em evento para o sistema de alertas
+          tarefas.forEach(t => {
+            if (!t.descricao) return;
+            const diaSemana = t.dia; // ex: "Segunda", "Terça"...
+            if (!diaSemana) return;
+
+            // Mapeia o nome do dia da semana para índice (0=domingo, 1=segunda...)
+            const idxDia = DIAS_SEMANA_LABEL.indexOf(diaSemana);
+            if (idxDia < 0) return;
+
+            // Calcula a data real do evento nesta semana.
+            // Se o dia já passou (diff negativo), a tarefa fica com data PASSADA
+            // para que o sistema a detecte como ATRASADA (overdue).
+            // NÃO adicionamos +7 aqui justamente para isso.
+            const hoje = new Date();
+            const hojeIdx = hoje.getDay(); // 0=domingo
+            const diffDias = idxDia - hojeIdx;
+            const dataEvento = new Date(hoje);
+            dataEvento.setDate(hoje.getDate() + diffDias);
+
+            // Se a tarefa tem horário (formato "HH:MM" no início da descrição)
+            const hora = horaDoTexto(t.descricao);
+            const descricaoLimpa = semHora(t.descricao) || t.descricao;
+
+            // Prioridade visual
+            const emojiPrio = t.prioridade === 'alta' ? '🔴' : t.prioridade === 'baixa' ? '🟢' : '🟡';
+
+            eventos.push({
+              data: dataEvento.toISOString().slice(0, 10),
+              hora: hora || '',
+              titulo: descricaoLimpa,
+              concluido: !!t.concluida,
+              alerta: true,
+              origem: 'tarefas_semana',
+              prioridade: t.prioridade || 'media',
+              rotulo: `${emojiPrio} ${diaSemana} ${hora ? hora + ' ' : ''}${descricaoLimpa}`
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('[Dashboard] Erro ao ler tarefas_semana:', e);
+      }
+
       return eventos;
     } catch {
       return [];

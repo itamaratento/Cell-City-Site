@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Administrativo — Portal do Cliente</title>
-  <link rel="stylesheet" href="admin.css?v=2.1">
+  <link rel="stylesheet" href="admin.css?v=2.3">
 
   <!-- Firebase SDK (compat) v10.8.0 -->
   <script type="importmap">
@@ -19,18 +19,35 @@
 </head>
 <body>
 
-  <!-- ===== TOP BAR ===== -->
+  <!-- ===== BRAND HEADER (CELL CITY — verde, igual ao CRM) ===== -->
+  <header class="admin-brand-bar" id="admin-brand-bar" title="Voltar ao CRM">
+    <div class="admin-brand-header">
+      <div class="admin-brand-header-text">
+        <div class="admin-brand-header-title">Cell City Informática</div>
+        <div class="admin-brand-header-divider"></div>
+        <div class="admin-brand-header-subtitle">CRM Operacional</div>
+      </div>
+    </div>
+    <div class="admin-brand-page-title">🔷 Portal do Cliente / Painel Administrativo</div>
+    <div class="admin-brand-right">
+      <a href="../../index.html" class="admin-home-btn" title="Voltar ao CRM">
+        <span class="home-btn-icon">🏠</span>
+        <span class="home-btn-label">Voltar ao CRM</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== TOP BAR (simplificado, sem título — agora está no brand header) ===== -->
   <header class="admin-topbar">
     <div class="admin-topbar-left">
-      <span class="admin-topbar-logo">🔷</span>
-      <div>
-        <span class="admin-topbar-title">Portal do Cliente</span>
-        <span class="admin-topbar-sub">Painel Administrativo</span>
-      </div>
+      <button class="admin-topbar-btn" onclick="window.PortalAdmin?.refresh?.()" title="Atualizar dados">🔄</button>
+    </div>
+    <div class="admin-topbar-center">
+      <span class="admin-topbar-title">Painel Administrativo</span>
     </div>
     <div class="admin-topbar-right">
       <button class="admin-topbar-btn" onclick="window.PortalAdmin?.refresh?.()" title="Atualizar">🔄</button>
-      <a href="../../index.html" class="admin-topbar-btn" title="Voltar ao CRM">🏠</a>
+      <a href="../../index.html" class="admin-topbar-btn admin-topbar-btn-home" title="Voltar ao CRM">🏠</a>
     </div>
   </header>
 
@@ -72,7 +89,9 @@
   <footer class="admin-footer">
     <span>Cell City Informática © <span id="admin-year">2026</span></span>
     <span class="admin-footer-sep">|</span>
-    <span>Portal do Cliente — v2.0</span>
+    <span>Portal do Cliente — v2.3</span>
+    <span class="admin-footer-sep">|</span>
+    <span class="admin-footer-otimizado">⚡ Carregamento otimizado</span>
   </footer>
 
   <script type="module">
@@ -82,7 +101,7 @@
     import {
       getFirestore,
       collection, query, where, getDocs, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp
+      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
     } from 'firebase/firestore';
 
     const firebaseConfig = {
@@ -102,7 +121,7 @@
     window.db = db;
     window.FirebaseModules = {
       collection, query, where, getDocs, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp
+      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
     };
 
     // Auth anônima
@@ -123,6 +142,6 @@
     });
   </script>
 
-  <script src="admin.js?v=2.1"></script>
+  <script src="admin.js?v=2.3"></script>
 </body>
 </html>
