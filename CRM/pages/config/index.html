@@ -39,7 +39,8 @@
                     <span>Lembrar este dispositivo por 90 dias</span>
                 </label>
                 <div class="pin-error" id="login-error"></div>
-                <button class="pin-btn-entrar" id="btn-login" onclick="fazerLogin()">Entrar</button>
+                <button class="pin-btn-entrar" id="btn-login">Entrar</button>
+                <button class="pin-link" id="btn-debug" style="margin-top:0;font-size:10px;color:#555;" onclick="toggleDebug()">🔍 Debug</button>
                 <button class="pin-link" onclick="showScreen('pin')">Entrar com PIN</button>
 
                 <!-- WebAuthn preservado, porém oculto (substituído pelo token de dispositivo) -->
@@ -128,10 +129,7 @@
                 <div class="pin-success">✅</div>
                 <p class="pin-label">Acesso liberado</p>
                 <a href="/CRM/pages/dashboard/index.html" class="pin-btn-entrar">Abrir CRM</a>
-<<<<<<< HEAD
                 <button class="pin-link" onclick="showScreen('dispositivos')" style="margin-top:12px">📱 Dispositivos autorizados</button>
-                <button class="pin-link" onclick="showScreen('alterar')">🔑 Alterar PIN</button>
-=======
 
                 <!-- SEGURANÇA: Usar senha do dispositivo -->
                 <div class="seg-device-row" id="seg-device-row" style="display:none" onclick="toggleDispositivo()">
@@ -146,7 +144,6 @@
                 <pre class="seg-device-diag" id="seg-device-diag" style="display:none"></pre>
 
                 <button class="pin-link" onclick="showScreen('alterar')" style="margin-top:12px">🔑 Alterar PIN</button>
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
                 <button class="pin-link pin-link-sair" onclick="sair()">Sair</button>
             </div>
 

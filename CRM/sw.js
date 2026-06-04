@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.0
-const CACHE = 'cellcity-crm-v3';
+// Cell City CRM — Service Worker v1.1 (bump for login fix + fallback)
+const CACHE = 'cellcity-crm-v4';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -27,6 +27,8 @@ const SHELL = [
   '/CRM/pages/importar/importar.css',
   '/CRM/pages/importar/importar.js',
   '/CRM/pages/config/index.html',
+  '/CRM/pages/config/config.js',
+  '/CRM/pages/config/config.css',
   '/CRM/scripts/firebase.js',
 ];
 

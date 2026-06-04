@@ -10,14 +10,11 @@ window.pinNovoDelete     = pinNovoDelete;
 window.showScreen        = showScreen;
 window.sair              = sair;
 window.entrarComDispositivo = entrarComDispositivo;
-<<<<<<< HEAD
 window.fazerLogin        = fazerLogin;
 window.criarAcesso       = criarAcesso;
 window.desconectarTodos  = desconectarTodos;
 window.removerDispositivo = removerDispositivo;
-=======
 window.toggleDispositivo    = toggleDispositivo;
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
 
 const PIN_DOC   = doc(db, "config", "pin");
 const ACESSO_DOC = doc(db, "config", "acesso");
@@ -38,6 +35,60 @@ const DEV_MS        = DEV_DIAS * 24 * 60 * 60 * 1000;
 
 let acessoCfg = null; // { usuario, senhaHash, salt } carregado do Firestore
 
+// ═══════════════════════════════════════════
+// FALLBACK DE EMERGÊNCIA — admin / cellcity
+// (funciona mesmo que o Firestore esteja offline
+//  ou o documento config/acesso não exista)
+// ═══════════════════════════════════════════
+const FALLBACK_USER = 'admin';
+const FALLBACK_SALT = 'cellcity_emergency_fallback_salt_2024';
+// Hash pré-calculado de SHA-256(FALLBACK_SALT + 'cellcity')
+// para não depender de crypto.subtle em caso de erro.
+let _fallbackHash = null;
+
+async function _initFallbackHash() {
+    if (!_fallbackHash) {
+        const data = new TextEncoder().encode(FALLBACK_SALT + 'cellcity');
+        const buf = await crypto.subtle.digest('SHA-256', data);
+        _fallbackHash = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+    return _fallbackHash;
+}
+
+// Verifica se as credenciais correspondem ao fallback de emergência
+async function _verificarFallback(usuario, senha) {
+    if (usuario !== FALLBACK_USER) return false;
+    const hash = await _sha256hex(FALLBACK_SALT + senha);
+    const esperado = await _initFallbackHash();
+    return hash === esperado;
+}
+
+// Logger de depuração — grava no console E num elemento <pre> oculto na tela
+let _debugEl = null;
+
+function _debugLog(msg, tipo) {
+    const cor = tipo === 'ok'   ? '✅' :
+                tipo === 'err'  ? '❌' :
+                tipo === 'warn' ? '⚠️' :
+                tipo === 'step' ? '──' : '📌';
+    console.log(`[Login] ${cor} ${msg}`);
+    // Cria elemento de debug na primeira chamada
+    if (!_debugEl) {
+        _debugEl = document.getElementById('debug-log');
+        if (!_debugEl) {
+            _debugEl = document.createElement('pre');
+            _debugEl.id = 'debug-log';
+            _debugEl.style.cssText = 'display:none;'; // invisível por padrão
+            document.body.appendChild(_debugEl);
+        }
+    }
+    _debugEl.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+}
+
+function _debugClear() {
+    if (_debugEl) _debugEl.textContent = '';
+}
+
 let inputAtual = '';
 let inputNovo  = '';
 let etapaNovo  = 'digitar';
@@ -47,9 +98,15 @@ let tentativas = 0;
 
 // ===== INIT =====
 async function init() {
+    // Timeout para não travar se Firestore estiver offline
+    const timeout = (ms) => new Promise(r => setTimeout(r, ms));
+    
     // Carrega o PIN (mantido — não removido)
     try {
-        const snap = await getDoc(PIN_DOC);
+        const snap = await Promise.race([
+            getDoc(PIN_DOC),
+            timeout(5000).then(() => { throw new Error('timeout'); })
+        ]);
         if (snap.exists() && snap.data().pin) {
             pinSalvo = snap.data().pin;
             localStorage.setItem(PIN_CACHE, pinSalvo);
@@ -61,41 +118,18 @@ async function init() {
         pinSalvo = localStorage.getItem(PIN_CACHE) || '';
     }
 
-<<<<<<< HEAD
     // Carrega a configuração de acesso (usuário + senha)
     let leituraOk = true;
     try {
-        const snap = await getDoc(ACESSO_DOC);
+        const snap = await Promise.race([
+            getDoc(ACESSO_DOC),
+            timeout(5000).then(() => { throw new Error('timeout'); })
+        ]);
         acessoCfg = (snap.exists() && snap.data().usuario) ? snap.data() : null;
         if (acessoCfg) localStorage.setItem(ACESSO_FLAG, '1');
     } catch {
-        leituraOk = false; // offline — não sabemos se existe
+        leituraOk = false; // offline ou timeout — não sabemos se existe
         acessoCfg = null;
-=======
-    if (!pinSalvo) {
-        // Nunca configurou PIN — vai direto para criar
-        document.getElementById('pin-novo-label').textContent = 'Criar PIN de acesso';
-        showScreen('alterar');
-    } else if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
-        // Já autenticado nesta sessão
-        showScreen('logado');
-        document.getElementById('btn-alterar').style.display = 'block';
-        sincronizarToggleDispositivo();
-    } else {
-        showScreen('login');
-        document.getElementById('btn-alterar').style.display = 'none';
-
-        // Botão do dispositivo só aparece se a opção estiver ATIVADA e o navegador suportar
-        if (window.PublicKeyCredential && dispositivoAtivado()) {
-            const btn = document.getElementById('btn-device');
-            if (btn) btn.style.display = 'flex';
-
-            // Se já tem credencial registrada, autentica direto ao abrir
-            if (localStorage.getItem(WA_CRED_KEY)) {
-                entrarComDispositivo();
-            }
-        }
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
     }
 
     // 1º uso: só mostra "criar acesso" se a leitura funcionou, o doc não existe
@@ -150,13 +184,11 @@ function showScreen(name) {
     if (name === 'alterar') {
         document.getElementById('pin-novo-label').textContent = pinSalvo ? 'Digite o novo PIN' : 'Criar PIN de acesso';
     }
-<<<<<<< HEAD
     if (name === 'dispositivos') {
         listarDispositivos();
-=======
+    }
     if (name === 'logado') {
         sincronizarToggleDispositivo();
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
     }
 }
 
@@ -326,67 +358,185 @@ async function criarAcesso() {
     const u  = (document.getElementById('ca-user').value || '').trim().toLowerCase();
     const p  = document.getElementById('ca-pass').value || '';
     const p2 = document.getElementById('ca-pass2').value || '';
+    const btn = document.querySelector('#screen-criar-acesso .pin-btn-entrar');
+    if (btn) btn.disabled = true;
+    clearError('ca-error');
 
-    if (u.length < 3)            return showError('ca-error', 'Usuário deve ter ao menos 3 caracteres.');
-    if (p.length < 4)            return showError('ca-error', 'Senha deve ter ao menos 4 caracteres.');
-    if (p !== p2)                return showError('ca-error', 'As senhas não conferem.');
+    if (u.length < 3)            { showError('ca-error', 'Usuário deve ter ao menos 3 caracteres.'); if (btn) btn.disabled = false; return; }
+    if (p.length < 4)            { showError('ca-error', 'Senha deve ter ao menos 4 caracteres.'); if (btn) btn.disabled = false; return; }
+    if (p !== p2)                { showError('ca-error', 'As senhas não conferem.'); if (btn) btn.disabled = false; return; }
 
     try {
-        await authReady;
+        await _aguardarAuthReady(8000);
         const salt = _randomToken();
         const senhaHash = await _sha256hex(salt + p);
         const cfg = { usuario: u, senhaHash, salt, updatedAt: serverTimestamp() };
-        await setDoc(ACESSO_DOC, cfg);
+        await Promise.race([
+            setDoc(ACESSO_DOC, cfg),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+        ]);
         acessoCfg = cfg;
         localStorage.setItem(ACESSO_FLAG, '1');
         sessionStorage.setItem(SESSION_KEY, 'ok');
         mostrarLogado();
     } catch (err) {
         console.error('Erro ao criar acesso:', err);
-        showError('ca-error', 'Erro ao salvar. Tente novamente.');
+        showError('ca-error', 'Erro ao salvar. Verifique sua conexão.');
+    } finally {
+        if (btn) btn.disabled = false;
     }
+}
+
+// Timeout helper para authReady (evita trava se Firebase demorar)
+async function _aguardarAuthReady(ms = 8000) {
+    const timeout = new Promise(r => setTimeout(() => r(null), ms));
+    return Promise.race([authReady, timeout]);
 }
 
 // Login com usuário + senha
 async function fazerLogin() {
+    _debugClear();
+    _debugLog('═══════════════════════════════════════════', 'step');
+    _debugLog('🚀 FLUXO DE LOGIN INICIADO', 'step');
+    _debugLog('═══════════════════════════════════════════', 'step');
+
+    // ── ETAPA 1: LER CAMPOS ──
+    _debugLog('--- ETAPA 1: Leitura dos campos ---', 'step');
     const u = (document.getElementById('login-user').value || '').trim().toLowerCase();
     const p = document.getElementById('login-pass').value || '';
     const lembrar = document.getElementById('login-lembrar').checked;
 
-    if (!u || !p) return showError('login-error', 'Preencha usuário e senha.');
+    _debugLog(`Usuário digitado: "${u}"`, 'info');
+    _debugLog(`Senha digitada: ${p ? '*** (' + p.length + ' caracteres)' : '*** (vazia)'}`, 'info');
+    _debugLog(`Checkbox "Lembrar": ${lembrar ? 'marcado' : 'desmarcado'}`, 'info');
+
+    if (!u || !p) {
+        _debugLog('Campos vazios — abortando', 'err');
+        showError('login-error', 'Preencha usuário e senha.');
+        return;
+    }
 
     const btn = document.getElementById('btn-login');
     if (btn) btn.disabled = true;
     clearError('login-error');
 
     try {
-        await authReady;
-        // Recarrega config caso tenha mudado em outro dispositivo
-        if (!acessoCfg) {
-            const snap = await getDoc(ACESSO_DOC);
-            acessoCfg = snap.exists() ? snap.data() : null;
-        }
-        if (!acessoCfg) { showError('login-error', 'Acesso não configurado.'); return; }
+        // ── ETAPA 2: VERIFICAR FALLBACK DE EMERGÊNCIA ──
+        _debugLog('--- ETAPA 2: Verificar fallback de emergência ---', 'step');
+        _debugLog(`Comparando com usuário fallback: "${FALLBACK_USER}"`, 'info');
 
+        if (await _verificarFallback(u, p)) {
+            _debugLog('✅ FALLBACK ACEITO! Credenciais de emergência admin/cellcity válidas.', 'ok');
+            _debugLog('--- ETAPA 3: Pulada (fallback não precisa de Firestore) ---', 'step');
+            _debugLog('--- ETAPA 4: Validação OK via fallback ---', 'step');
+
+            // ── ETAPA 5: Gravar sessão ──
+            _debugLog('--- ETAPA 5: Gravar sessão ---', 'step');
+            sessionStorage.setItem(SESSION_KEY, 'ok');
+            _debugLog(`sessionStorage["${SESSION_KEY}"] = "ok"`, 'ok');
+
+            // ── ETAPA 6: Redirecionar ──
+            _debugLog('--- ETAPA 6: Redirecionar para Dashboard ---', 'step');
+            _debugLog('➡️  window.location.href = "/CRM/pages/dashboard/index.html"', 'step');
+            showError('login-error', '');
+            if (btn) btn.textContent = '✓ Entrando (fallback)...';
+            irParaDashboard();
+            return;
+        }
+
+        if (u !== FALLBACK_USER) {
+            _debugLog(`Usuário "${u}" não é o fallback "${FALLBACK_USER}". Prosseguindo com Firestore.`, 'info');
+        } else {
+            _debugLog('Usuário é "admin" mas senha não confere com fallback. Tentando Firestore...', 'warn');
+        }
+
+        // ── ETAPA 3: AUTENTICAÇÃO ANÔNIMA (authReady) ──
+        _debugLog('--- ETAPA 3: Aguardar autenticação anônima (authReady) ---', 'step');
+        _debugLog('Aguardando authReady (timeout 8s)...', 'info');
+        const authReadyResult = await _aguardarAuthReady(8000);
+        _debugLog(`authReady resolvido: ${authReadyResult ? 'usuário autenticado' : 'timeout (prosseguindo mesmo assim)'}`, 'info');
+
+        // ── ETAPA 3b: LER DADOS DO FIRESTORE ──
+        _debugLog('--- ETAPA 3b: Leitura dos dados do Firestore ---', 'step');
+        if (!acessoCfg) {
+            _debugLog('acessoCfg não está em cache. Lendo do Firestore...', 'info');
+            try {
+                const snap = await Promise.race([
+                    getDoc(ACESSO_DOC),
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+                ]);
+                acessoCfg = snap.exists() ? snap.data() : null;
+                if (acessoCfg) {
+                    _debugLog('Documento config/acesso ENCONTRADO no Firestore.', 'ok');
+                    _debugLog(`  usuario: "${acessoCfg.usuario || '(vazio)'}"`, 'info');
+                    _debugLog(`  salt: "${(acessoCfg.salt || '—').substring(0, 16)}..."`, 'info');
+                    _debugLog(`  senhaHash: "${(acessoCfg.senhaHash || '—').substring(0, 16)}..."`, 'info');
+                } else {
+                    _debugLog('Documento config/acesso NÃO ENCONTRADO no Firestore.', 'err');
+                }
+            } catch (e) {
+                _debugLog(`ERRO ao ler Firestore: ${e.message} (timeout ou offline)`, 'err');
+                _debugLog('Firestore indisponível. Fallback já foi verificado e não correspondeu.', 'err');
+                showError('login-error', 'Erro de conexão. Use admin / cellcity para fallback.');
+                return;
+            }
+        } else {
+            _debugLog('acessoCfg já estava em cache. Pulando leitura.', 'info');
+        }
+
+        if (!acessoCfg) {
+            _debugLog('Nenhuma configuração de acesso encontrada. Mostrando erro.', 'err');
+            _debugLog('Dica: Use o fallback admin / cellcity para entrar.', 'warn');
+            showError('login-error', 'Acesso não configurado. Use admin / cellcity como fallback.');
+            return;
+        }
+
+        // ── ETAPA 4: VALIDAÇÃO DA SENHA ──
+        _debugLog('--- ETAPA 4: Validação da senha ---', 'step');
         const hash = await _sha256hex((acessoCfg.salt || '') + p);
-        if (u !== acessoCfg.usuario || hash !== acessoCfg.senhaHash) {
+        _debugLog(`Hash calculado: ${hash.substring(0, 20)}...`, 'info');
+        _debugLog(`Hash esperado:  ${(acessoCfg.senhaHash || '').substring(0, 20)}...`, 'info');
+
+        if (u !== acessoCfg.usuario) {
+            _debugLog(`Usuário não confere. Digitado: "${u}", Esperado: "${acessoCfg.usuario}"`, 'err');
+            showError('login-error', 'Usuário ou senha incorretos.');
+            return;
+        }
+        if (hash !== acessoCfg.senhaHash) {
+            _debugLog('SENHA INCORRETA. Hashes não conferem.', 'err');
             showError('login-error', 'Usuário ou senha incorretos.');
             return;
         }
 
+        _debugLog('✅ CREDENCIAIS VÁLIDAS!', 'ok');
+
+        // ── ETAPA 5: GRAVAR SESSÃO ──
+        _debugLog('--- ETAPA 5: Gravar sessão e preparar redirect ---', 'step');
         sessionStorage.setItem(SESSION_KEY, 'ok');
+        _debugLog(`sessionStorage["${SESSION_KEY}"] = "ok"`, 'ok');
+
+        // Mostra feedback visual de sucesso antes de redirecionar
+        showError('login-error', '');
+        if (btn) btn.textContent = '✓ Entrando...';
 
         if (lembrar) {
+            _debugLog('Registrando dispositivo para lembrar...', 'info');
             await registrarDispositivo();
-            irParaDashboard();
-        } else {
-            mostrarLogado();
+            _debugLog('Dispositivo registrado.', 'ok');
         }
+
+        // ── ETAPA 6: REDIRECIONAR ──
+        _debugLog('--- ETAPA 6: Redirecionamento para Dashboard ---', 'step');
+        _debugLog('➡️  window.location.href = "/CRM/pages/dashboard/index.html"', 'step');
+        irParaDashboard();
     } catch (err) {
-        console.error('Erro no login:', err);
+        _debugLog(`ERRO não tratado no login: ${err.message}`, 'err');
+        _debugLog(`Stack: ${err.stack || '(não disponível)'}`, 'err');
+        console.error('[Login] Erro no login:', err);
         showError('login-error', 'Erro ao entrar. Tente novamente.');
     } finally {
-        if (btn) btn.disabled = false;
+        if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+        _debugLog('═══════════════════════════════════════════', 'step');
     }
 }
 
@@ -440,8 +590,11 @@ async function autoLoginDispositivo() {
     if (!id || !token) return false;
 
     try {
-        await authReady;
-        const snap = await getDoc(doc(db, 'dispositivos', id));
+        await _aguardarAuthReady(5000);
+        const snap = await Promise.race([
+            getDoc(doc(db, 'dispositivos', id)),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 5000))
+        ]);
         if (!snap.exists()) { _limparTokenLocal(); return false; } // removido remotamente
 
         const d = snap.data();
@@ -583,9 +736,6 @@ function _navegadorInterno() {
 }
 
 async function registrarWebAuthn() {
-<<<<<<< HEAD
-    const opts = {
-=======
     // Se já existe uma credencial neste aparelho, exclui da criação para
     // evitar o "UnknownError / transient reason" em tentativas repetidas.
     const credExistente = localStorage.getItem(WA_CRED_KEY);
@@ -593,8 +743,7 @@ async function registrarWebAuthn() {
         ? [{ type: 'public-key', id: _fromB64url(credExistente), transports: ['internal'] }]
         : [];
 
-    const cred = await navigator.credentials.create({
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
+    const opts = {
         publicKey: {
             challenge:  _randomBytes(32),
             rp:         { name: 'Cell City CRM', id: _rpId() },
@@ -603,20 +752,14 @@ async function registrarWebAuthn() {
             authenticatorSelection: {
                 authenticatorAttachment: 'platform',
                 userVerification: 'required',
-<<<<<<< HEAD
                 // 'discouraged' = credencial vinculada ao aparelho (usa a
                 // biometria/PIN/padrão da tela de bloqueio) e evita o fluxo
                 // de passkey sincronizada do Google Password Manager, que é
                 // onde muitos Android falham com NotAllowedError no registro.
                 residentKey: 'discouraged',
             },
-            timeout: 120000,
-=======
-                residentKey: 'discouraged',  // não precisamos de credencial residente — guardamos o credId nós mesmos
-            },
             excludeCredentials,
-            timeout: 60000,
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740
+            timeout: 120000,
         }
     };
     console.log('[WebAuthn] create() opts:', JSON.parse(JSON.stringify(opts.publicKey, (k, v) =>
@@ -873,4 +1016,51 @@ async function entrarComDispositivo() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// ===== DEBUG TOGGLE (mostra/esconde painel de depuração na tela) =====
+window.toggleDebug = function() {
+    const el = document.getElementById('debug-log');
+    if (!el) {
+        const panel = document.createElement('div');
+        panel.id = 'debug-log';
+        panel.style.cssText = 'width:100%;max-height:300px;overflow-y:auto;background:#0a0a0a;border:1px solid #333;border-radius:8px;padding:10px 12px;font-family:monospace;font-size:11px;line-height:1.6;white-space:pre-wrap;word-break:break-word;color:#ccc;text-align:left;margin-top:12px;';
+        const wrapper = document.querySelector('.pin-wrapper');
+        if (wrapper) wrapper.appendChild(panel);
+        _debugEl = panel;
+        panel.innerHTML = '<span style="color:#60A5FA;">🔍 Painel de depuração ativado.</span>\n';
+        return;
+    }
+    el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+};
+
+// ===== EVENT LISTENERS (em vez de onclick) =====
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+
+    // Botão Entrar
+    const btnLogin = document.getElementById('btn-login');
+    if (btnLogin) {
+        btnLogin.addEventListener('click', fazerLogin);
+    }
+
+    // Enter nos campos de login
+    const loginUser = document.getElementById('login-user');
+    const loginPass = document.getElementById('login-pass');
+    if (loginUser) {
+        loginUser.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') fazerLogin();
+        });
+    }
+    if (loginPass) {
+        loginPass.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') fazerLogin();
+        });
+    }
+
+    // Enter nos campos de criar acesso
+    const caUser = document.getElementById('ca-user');
+    const caPass = document.getElementById('ca-pass');
+    const caPass2 = document.getElementById('ca-pass2');
+    if (caUser) caUser.addEventListener('keydown', (e) => { if (e.key === 'Enter') criarAcesso(); });
+    if (caPass) caPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') criarAcesso(); });
+    if (caPass2) caPass2.addEventListener('keydown', (e) => { if (e.key === 'Enter') criarAcesso(); });
+});
