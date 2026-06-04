@@ -15,7 +15,8 @@ import {
   where,
   onSnapshot,
   runTransaction,
-  serverTimestamp // ← ADICIONADO: timestamp do servidor
+  serverTimestamp, // ← ADICIONADO: timestamp do servidor
+  limit           // ← ADICIONADO: limite de resultados
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
@@ -205,7 +206,8 @@ export {
   where,
   onSnapshot,
   runTransaction,
-  serverTimestamp
+  serverTimestamp,
+  limit
 };
 
 // ===== GLOBALS PARA DEBUG (opcional) =====

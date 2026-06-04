@@ -3,7 +3,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
-import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where } from "../../scripts/firebase.js";
+import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 
 
 class Dashboard {
@@ -329,14 +329,15 @@ class Dashboard {
       const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
 
-      const linhasDe = (dados) => {
-        if (Array.isArray(dados.notas)) return dados.notas.map(n => n && n.texto).filter(Boolean);
-        if (typeof dados.texto === 'string') return dados.texto.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
-        if (dados.titulo) return [`${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`];
+      // Helper: extrai {texto, concluido} de cada nota do documento
+      const notasDe = (dados) => {
+        if (Array.isArray(dados.notas)) return dados.notas.map(n => n || {}).filter(n => n.texto);
+        if (typeof dados.texto === 'string') return dados.texto.split(/\r?\n+/).map(s => ({ texto: s.trim(), concluido: false })).filter(n => n.texto);
+        if (dados.titulo) return [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, concluido: false }];
         return [];
       };
-      const horaDaLinha = (linha) => { const m = String(linha).match(/^\s*(\d{1,2}:\d{2})\b/); return m ? m[1] : ''; };
-      const semHora = (linha) => String(linha).replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim();
+      const horaDoTexto = (txt) => { const m = String(txt).match(/^\s*(\d{1,2}:\d{2})\b/); return m ? m[1] : ''; };
+      const semHora = (txt) => String(txt).replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim();
       // A recorrência (origem) cai em `iso`?
       const recCai = (iso, origem, pat) => {
         if (!pat || iso < origem) return false;
@@ -350,23 +351,44 @@ class Dashboard {
       snap.forEach(d => {
         const dados = d.data();
         const dia = dados.data || d.id;
-        const linhas = linhasDe(dados);
+        const notas = notasDe(dados);
 
         if (dados.recorrencia) {
-          // RECORRENTE: gera alerta na ocorrência de HOJE (quando o padrão bate).
-          // Cada linha vira um alerta, no horário da própria linha (se houver).
+          // RECORRENTE: gera alerta na ocorrência de HOJE (quando o padrão bate)
+          // e SOMENTE quando há horário definido. Sem horário, fica só na Agenda.
           if (recCai(hojeISO, dia, dados.recorrencia)) {
             const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
-            linhas.forEach(l => {
-              const hora = horaDaLinha(l) || horaPadrao;
-              eventos.push({ data: hojeISO, hora, titulo: semHora(l) || l, concluido: false, alerta: true, recorrente: true });
+            const DIASEM = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+            const wd = DIASEM[new Date(hojeISO + 'T00:00:00').getDay()];
+            notas.forEach(n => {
+              const hora = horaDoTexto(n.texto) || horaPadrao;
+              if (!hora) return; // sem horário → não gera alerta no Dashboard
+              const desc = semHora(n.texto) || n.texto;
+              eventos.push({
+                data: hojeISO, hora, titulo: desc, concluido: !!n.concluido, alerta: true,
+                recorrente: true, rotulo: `🔄 ${wd} ${hora} ${desc}`
+              });
             });
           }
         } else if (dados.alertaDashboard) {
-          // OPT-IN (não recorrente): 1 alerta no horário configurado.
-          const hora = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
-          const escolhida = (hora && linhas.find(l => l.trim().startsWith(hora))) || linhas[0] || 'Anotação';
-          eventos.push({ data: dia, hora, titulo: semHora(escolhida) || escolhida, concluido: false, alerta: true });
+          // OPT-IN (não recorrente): gera alertas para TODAS as notas com horário definido
+          const comHora = notas.filter(n => horaDoTexto(n.texto));
+          if (comHora.length > 0) {
+            comHora.forEach(n => {
+              const hora = horaDoTexto(n.texto);
+              eventos.push({
+                data: dia, hora, titulo: semHora(n.texto) || n.texto,
+                concluido: !!n.concluido, alerta: true
+              });
+            });
+          } else if (notas.length > 0) {
+            // Sem horário: usa a primeira nota + alertaHora configurado
+            const n = notas[0];
+            eventos.push({
+              data: dia, hora: dados.alertaHora || '', titulo: n.texto,
+              concluido: !!n.concluido, alerta: true
+            });
+          }
         }
       });
       return eventos;
@@ -485,22 +507,23 @@ class Dashboard {
         if (subEl) {
           const dt = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
           const atrasoMin = Math.max(0, Math.round((agora - dt.getTime()) / 60000));
-          subEl.textContent = `🔴 ${cont}${pior.hora || ''} ${pior.titulo} · ${_fmtAtraso(atrasoMin)} atrasado`;
+          const rot = pior.rotulo || `${pior.hora || ''} ${pior.titulo}`;
+          subEl.textContent = `🔴 ${cont}${rot} · ${_fmtAtraso(atrasoMin)} atrasado`;
         }
       } else if (noHorario.length > 0) {
         card.classList.add('acao-vencida');
         if (subEl) {
           const ev = noHorario[0];
-          subEl.textContent = `🔴 ${cont}${ev.hora} ${ev.titulo} · AGORA!`;
+          const rot = ev.rotulo || `${ev.hora} ${ev.titulo}`;
+          subEl.textContent = `🔴 ${cont}${rot} · AGORA!`;
         }
       } else {
         card.classList.remove('acao-vencida');
         if (subEl) {
           // Próximo compromisso (até 15 min) ou futuro distante
           const prox = this._proximoCompromisso(eventos);
-          subEl.textContent = prox
-            ? `📅 Próx.: ${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`
-            : subOriginal;
+          const rotProx = prox && (prox.rotulo || `${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`);
+          subEl.textContent = prox ? `📅 Próx.: ${rotProx}` : subOriginal;
         }
       }
     };
@@ -738,6 +761,114 @@ class Dashboard {
           });
         }
       }
+
+      // ===== PRIORIDADE 4 — PORTAL DO CLIENTE =====
+      try {
+        const portalMsgsSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        );
+        const msgsNaoLidas = [];
+        portalMsgsSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
+
+        if (msgsNaoLidas.length > 0) {
+          const badge = document.getElementById('portal-badge');
+          if (badge) {
+            badge.textContent = msgsNaoLidas.length;
+            badge.style.display = '';
+          }
+
+          alertas.push({
+            icon: '💬', cat: 'atencao', cor: 'atencao',
+            title: 'PORTAL DO CLIENTE',
+            sub: `${msgsNaoLidas.length} mensagem(ns) não lida(s)`,
+            detail: `${msgsNaoLidas.length} cliente(s) enviaram mensagem pelo Portal do Cliente. Acesse o módulo para responder.`
+          });
+
+          msgsNaoLidas.slice(0, 3).forEach(m => {
+            alertas.push({
+              icon: '💬', cat: 'crm', cor: null,
+              title: `📩 ${m.clientName || m.nome || 'Cliente'}`,
+              sub: (m.texto || '').slice(0, 60) + ((m.texto || '').length > 60 ? '...' : ''),
+              detail: `Cliente enviou mensagem pelo portal. Acesse o módulo Portal do Cliente para visualizar e responder.`
+            });
+          });
+        } else {
+          const badge = document.getElementById('portal-badge');
+          if (badge) badge.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar mensagens do portal:', e);
+      }
+
+      // ===== AVALIAÇÕES DO PORTAL =====
+      try {
+        const avaliacoesSnap = await getDocs(
+          query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(5))
+        );
+        const avaliacoesRecentes = [];
+        avaliacoesSnap.forEach(d => avaliacoesRecentes.push({ id: d.id, ...d.data() }));
+
+        if (avaliacoesRecentes.length > 0) {
+          // Filtra avaliações de hoje para alerta
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          const hojeTs = hoje.toISOString();
+          const avaliacoesHoje = avaliacoesRecentes.filter(a => {
+            if (!a.createdAt) return false;
+            const dt = typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt));
+            return dt >= hoje;
+          });
+
+          if (avaliacoesHoje.length > 0) {
+            alertas.push({
+              icon: '⭐', cat: 'crm', cor: null,
+              title: 'AVALIAÇÕES RECEBIDAS',
+              sub: `${avaliacoesHoje.length} nova(s) avaliação(ões) hoje`,
+              detail: `${avaliacoesHoje.length} cliente(s) avaliaram o atendimento pelo Portal do Cliente hoje.`
+            });
+          }
+
+          // Alerta para avaliações baixas (nota <= 2)
+          const avaliacoesCriticas = avaliacoesRecentes.filter(a => a.nota && a.nota <= 2);
+          if (avaliacoesCriticas.length > 0) {
+            alertas.push({
+              icon: '🔴', cat: 'critico', cor: 'critico',
+              title: 'AVALIAÇÕES CRÍTICAS',
+              sub: `${avaliacoesCriticas.length} avaliação(ões) com nota baixa`,
+              detail: `${avaliacoesCriticas.length} cliente(s) deram nota baixa. Verifique o feedback e entre em contato.`
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar avaliações:', e);
+      }
+
+      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
+      try {
+        const solicitacoesSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        );
+        const solicitacoes = [];
+        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
+        // Este bloco complementa o de mensagens, focando em solicitações específicas
+        const solicitacoesServico = solicitacoes.filter(s =>
+          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
+                      s.texto.toLowerCase().includes('conserto') ||
+                      s.texto.toLowerCase().includes('reparo') ||
+                      s.texto.toLowerCase().includes('manutenção'))
+        );
+        if (solicitacoesServico.length > 0) {
+          alertas.push({
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE SERVIÇO',
+            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
+            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
+          });
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
+      }
+
     } catch (e) {
       console.warn('Central de Alertas — erro ao gerar:', e);
     }
@@ -1236,7 +1367,8 @@ class Dashboard {
       financeiro: '../../pages/financeiro/index.html',
       'em-breve': '../../pages/em-breve/index.html',
       'minha-semana':   '../../pages/minha-semana/index.html',
-      'acaodasemana':   '../../pages/acaodasemana/index.html'
+      'acaodasemana':   '../../pages/acaodasemana/index.html',
+      'portal-cliente': '../../pages/portal-cliente/index.html'
     };
     const url = routes[module];
     if (url) {
