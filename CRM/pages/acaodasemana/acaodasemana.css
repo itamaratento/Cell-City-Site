@@ -81,6 +81,26 @@ body {
 .ag-busca::placeholder { color: var(--text3); }
 .ag-busca-info { font-size: 12px; color: var(--text3); white-space: nowrap; }
 
+/* Lista rápida de resultados da busca */
+.ag-busca-result {
+    display: flex; flex-direction: column; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border-md);
+    border-radius: 12px; padding: 8px; max-height: 260px; overflow-y: auto;
+}
+.ag-busca-result[hidden] { display: none; }
+.ag-busca-vazio { padding: 10px; font-size: 13px; color: var(--text3); text-align: center; }
+.ag-busca-item {
+    display: flex; flex-direction: column; gap: 2px; text-align: left;
+    background: transparent; border: none; border-radius: 9px; padding: 9px 12px;
+    cursor: pointer; font-family: inherit; transition: background .12s var(--ease);
+}
+.ag-busca-item:hover { background: rgba(0,200,83,0.12); }
+.ag-busca-data { font-size: 11px; font-weight: 800; color: var(--green-light); }
+.ag-busca-txt { font-size: 14px; color: var(--text); font-weight: 600; overflow-wrap: anywhere; }
+
+/* Dia sem resultado fica esmaecido durante a busca */
+.ag-cel-dim { opacity: 0.28; filter: grayscale(0.4); }
+
 /* Destaque do dia encontrado na busca */
 .ag-cel-match { outline: 2px solid var(--amber); outline-offset: -2px; }
 .ag-cel-match::after {

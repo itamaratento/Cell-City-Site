@@ -101,8 +101,9 @@ function renderCalendario() {
     cel.className = 'ag-cel';
     if (iso === hoje) cel.classList.add('ag-cel-hoje');
     if (iso === diaSelecionado) cel.classList.add('ag-cel-sel');
-    if (buscaTermo && arr.some(n => (n.texto || '').toLowerCase().includes(buscaTermo))) {
-      cel.classList.add('ag-cel-match');
+    if (buscaTermo) {
+      const temMatch = arr.some(n => (n.texto || '').toLowerCase().includes(buscaTermo));
+      cel.classList.add(temMatch ? 'ag-cel-match' : 'ag-cel-dim');
     }
 
     const chips = arr.map(n => {
@@ -256,6 +257,9 @@ async function salvar() {
       delete alertaPorDia[data];
     } else {
       // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
+      // FUTURO (recorrência): basta adicionar aqui um campo, ex.:
+      //   recorrencia: 'semanal' | 'mensal' | 'anual' | null
+      // e o Dashboard/Agenda poderão repetir a tarefa automaticamente.
       await setDoc(doc(db, 'agenda', data), {
         data, notas: arr, cor: corDiaSel,
         alertaHora, alertaDashboard,
@@ -272,35 +276,61 @@ async function salvar() {
   } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
 }
 
-// ── busca ──────────────────────────────────────────────────────────
-// Procura o termo em qualquer anotação; vai ao 1º dia encontrado,
-// abre o mês correspondente e destaca os dias com correspondência.
+// ── busca inteligente ──────────────────────────────────────────────
+// Procura o termo em cada LINHA de anotação. Destaca os dias com
+// resultado, escurece os demais, lista os resultados e, ao clicar,
+// vai ao dia, destaca o quadrado e seleciona a anotação.
 function buscar(termo) {
   buscaTermo = (termo || '').trim().toLowerCase();
   const info = $('ag-busca-info');
+  const resultEl = $('ag-busca-result');
 
   if (!buscaTermo) {
     if (info) info.textContent = '';
+    if (resultEl) { resultEl.hidden = true; resultEl.innerHTML = ''; }
     renderCalendario();
     return;
   }
 
-  const dias = Object.keys(notas)
-    .filter(d => (notas[d] || []).some(n => (n.texto || '').toLowerCase().includes(buscaTermo)))
-    .sort();
+  // Resultados por linha: { data, texto }
+  const resultados = [];
+  Object.keys(notas).sort().forEach(d => {
+    (notas[d] || []).forEach(n => {
+      if ((n.texto || '').toLowerCase().includes(buscaTermo)) resultados.push({ data: d, texto: n.texto });
+    });
+  });
 
-  if (info) info.textContent = dias.length
-    ? `${dias.length} dia(s) encontrado(s)`
+  if (info) info.textContent = resultados.length
+    ? `${resultados.length} resultado(s)`
     : 'Nada encontrado';
 
-  if (dias.length) {
-    const alvo = dias[0];
+  // Lista rápida de resultados
+  if (resultEl) {
+    if (!resultados.length) {
+      resultEl.hidden = false;
+      resultEl.innerHTML = '<div class="ag-busca-vazio">Nenhuma anotação encontrada.</div>';
+    } else {
+      resultEl.hidden = false;
+      resultEl.innerHTML = resultados.map(r =>
+        `<button class="ag-busca-item" data-dia="${r.data}">` +
+          `<span class="ag-busca-data">📅 ${fmtData(r.data)}</span>` +
+          `<span class="ag-busca-txt">${escHtml(r.texto)}</span>` +
+        `</button>`
+      ).join('');
+      resultEl.querySelectorAll('.ag-busca-item').forEach(b => {
+        b.addEventListener('click', () => irParaResultado(b.dataset.dia));
+      });
+    }
+  }
+
+  // Vai ao 1º resultado e rola até o calendário (sem abrir a edição)
+  if (resultados.length) {
+    const alvo = resultados[0].data;
     const [y, m] = alvo.split('-').map(Number);
     viewAno = y; viewMes = m - 1;
     diaSelecionado = alvo;
     carregarEditor();
     renderCalendario();
-    // Rola suavemente até o calendário, centralizando o dia encontrado
     requestAnimationFrame(() => {
       const cel = gradeEl.querySelector('.ag-cel-match') || document.querySelector('.ag-cal');
       cel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -308,6 +338,13 @@ function buscar(termo) {
     return;
   }
   renderCalendario();
+}
+
+// Clicar num resultado da busca → vai ao dia, destaca e seleciona a anotação
+function irParaResultado(data) {
+  const [y, m] = data.split('-').map(Number);
+  viewAno = y; viewMes = m - 1;
+  selecionarDia(data);   // carrega a anotação e rola até a edição
 }
 
 // ── fonte (A- / A+) ────────────────────────────────────────────────
@@ -443,13 +480,24 @@ document.addEventListener('click', (e) => {
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));
 $('ag-next').addEventListener('click', () => navegar(1));
-// Ir ao mês atual, selecionar hoje e focar a anotação (1 clique)
+// Título: ir ao mês atual, selecionar hoje e focar a anotação (1 clique)
 function irHojeFoco() {
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
   selecionarDia(isoHoje());
   areaEl.focus();
 }
-$('ag-hoje').addEventListener('click', irHojeFoco);
+// Botão HOJE: atalho rápido — volta ao mês atual e seleciona/destaca o
+// dia de hoje, SEM rolar para a área de edição e sem focar o teclado.
+function irHoje() {
+  flushSave();
+  const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
+  diaSelecionado = isoHoje();
+  editando = false;
+  carregarEditor();
+  renderCalendario();
+  document.querySelector('.ag-cal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('ag-hoje').addEventListener('click', irHoje);
 $('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
 $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
 
