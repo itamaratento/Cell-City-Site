@@ -628,7 +628,7 @@ $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
 const tituloPagina = document.querySelector('.ag-header-titulo');
 const navAgenda = $('ag-nav-agenda');
 const navInteligente = $('ag-nav-inteligente');
-if (navAgenda) navAgenda.addEventListener('click', (e) => { e.stopPropagation(); fecharMini(); irHoje(); });
+if (navAgenda) navAgenda.addEventListener('click', (e) => { e.stopPropagation(); fecharMini(); irHoje(); recolherBusca(); });
 if (navInteligente) navInteligente.addEventListener('click', (e) => {
   e.stopPropagation();
   if (miniEl && !miniEl.hidden) fecharMini(); else abrirMini();
@@ -665,6 +665,37 @@ if (buscaInput) {
     if (e.key === 'Enter') { clearTimeout(buscaTimer); buscar(buscaInput.value); }
   });
 }
+
+// Busca recolhível: "Agenda" recolhe; lupa expande
+const buscaArea = $('ag-busca-area');
+function recolherBusca() {
+  if (!buscaArea) return;
+  if (buscaInput) buscaInput.value = '';
+  buscar('');                       // limpa destaque/resultados
+  buscaArea.classList.add('recolhida');
+}
+function expandirBusca() {
+  if (!buscaArea) return;
+  buscaArea.classList.remove('recolhida');
+  buscaInput?.focus();
+}
+$('ag-lupa')?.addEventListener('click', expandirBusca);
+
+// Densidade do calendário (compacto / expandido) — preferência salva
+const DENSIDADE_KEY = 'ag_densidade';
+function aplicarDensidade(modo) {
+  const exp = modo === 'expandido';
+  document.body.classList.toggle('ag-den-expandido', exp);
+  const btn = $('ag-densidade');
+  if (btn) { btn.textContent = exp ? '⊟' : '⊞'; btn.title = exp ? 'Mudar para compacto' : 'Mudar para expandido'; }
+  requestAnimationFrame(ajustarQuadrados);
+}
+$('ag-densidade')?.addEventListener('click', () => {
+  const novo = document.body.classList.contains('ag-den-expandido') ? 'compacto' : 'expandido';
+  localStorage.setItem(DENSIDADE_KEY, novo);
+  aplicarDensidade(novo);
+});
+aplicarDensidade(localStorage.getItem(DENSIDADE_KEY) || 'compacto');
 
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(ajustarQuadrados, 150); });

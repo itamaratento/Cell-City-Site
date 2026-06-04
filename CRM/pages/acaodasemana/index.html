@@ -17,8 +17,9 @@
     <main>
         <div class="ag-content">
 
-            <!-- BUSCA -->
-            <div class="ag-busca-wrap">
+            <!-- BUSCA (recolhível) -->
+            <div class="ag-busca-wrap" id="ag-busca-area">
+                <button type="button" class="ag-lupa" id="ag-lupa" title="Buscar">🔍</button>
                 <input type="search" id="ag-busca" class="ag-busca" autocomplete="off"
                     placeholder="🔍 Buscar anotação, cliente, compromisso...">
                 <span class="ag-busca-info" id="ag-busca-info"></span>
@@ -32,6 +33,7 @@
                     <button class="ag-sel-btn" id="ag-mes-btn" title="Escolher mês">Mês ▾</button>
                     <button class="ag-sel-btn" id="ag-ano-btn" title="Escolher ano">Ano ▾</button>
                     <button class="ag-hoje-btn" id="ag-hoje">Hoje</button>
+                    <button class="ag-hoje-btn" id="ag-densidade" title="Alternar compacto/expandido">⊞</button>
                 </div>
                 <button class="ag-nav-btn" id="ag-next" title="Próximo mês">▶</button>
                 <div class="ag-dropdown" id="ag-dropdown" hidden></div>

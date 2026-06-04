@@ -68,8 +68,26 @@ body {
 .ag-dd-item:hover { background: rgba(0,200,83,0.15); color: var(--text); }
 .ag-dd-item.atual { background: rgba(0,200,83,0.22); color: var(--green-light); font-weight: 800; }
 
-/* ── BUSCA ── */
+/* ── DENSIDADE DO CALENDÁRIO (compacto / expandido) — altura FIXA ── */
+body { --cel-h: 96px; }                       /* compacto (padrão) */
+body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
+@media (max-width: 600px) {
+    body { --cel-h: 76px; }
+    body.ag-den-expandido { --cel-h: 104px; }
+}
+
+/* ── BUSCA (recolhível) ── */
 .ag-busca-wrap { display: flex; align-items: center; gap: 10px; }
+.ag-lupa {
+    display: none; flex-shrink: 0; width: 44px; height: 44px; border-radius: 12px;
+    background: var(--surface2); border: 1px solid var(--border-md); color: var(--text2);
+    font-size: 17px; cursor: pointer; align-items: center; justify-content: center;
+}
+.ag-lupa:hover { background: rgba(0,200,83,0.15); border-color: var(--green); color: var(--text); }
+.ag-busca-wrap.recolhida { gap: 0; }
+.ag-busca-wrap.recolhida .ag-busca,
+.ag-busca-wrap.recolhida .ag-busca-info { display: none; }
+.ag-busca-wrap.recolhida .ag-lupa { display: flex; }
 .ag-busca {
     flex: 1; min-width: 0; padding: 13px 16px;
     border-radius: 12px; background: var(--surface2);
@@ -150,7 +168,7 @@ body {
 .ag-cal-semana { margin-bottom: 8px; }
 .ag-cal-semana span { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; }
 .ag-cel {
-    position: relative; height: 132px;              /* TAMANHO FIXO — nunca cresce */
+    position: relative; height: var(--cel-h, 96px);  /* TAMANHO FIXO — nunca cresce */
     border-radius: 8px; background: rgba(255,255,255,0.025); border: 1px solid var(--border);
     cursor: pointer; padding: 4px 4px 6px; display: flex; flex-direction: column;
     overflow: hidden; transition: background .12s var(--ease);
@@ -375,7 +393,7 @@ body {
     .ag-content { padding: 12px 10px 20px; gap: 12px; }
     .ag-cal { padding: 8px; }
     .ag-cal-semana, .ag-cal-grade { gap: 4px; }
-    .ag-cel { height: 104px; padding: 3px; }
+    .ag-cel { padding: 3px; }
     .ag-cel-num { font-size: 11px; }
     .ag-chip { padding: 2px 5px; }
     .ag-chip-t { font-size: 10.5px; line-height: 1.3; }
