@@ -24,6 +24,7 @@ let notas = {};                 // data -> [ {texto, cor} ]
 let docIds = {};                // data -> [ idsReaisNoFirestore ] (corrige órfãos)
 let corPorDia = {};             // data -> cor (do calendário / bloco)
 let corDiaSel = COR_PADRAO;     // cor escolhida para o dia aberto no editor
+let alertaPorDia = {};          // data -> { hora, dashboard }
 let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
@@ -36,13 +37,17 @@ let notaFonte = Math.min(22, Math.max(12, parseInt(localStorage.getItem('ag_nota
 
 // ── elementos ──────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-const gradeEl   = $('ag-cal-grade');
-const tituloCal = $('ag-cal-titulo');
-const diaTitulo = $('ag-dia-titulo');
-const areaEl    = $('ag-nota-area');
-const statusEl  = $('ag-nota-status');
-const painelEl  = document.querySelector('.ag-nota-painel');
-const toastEl   = $('ag-toast');
+const gradeEl    = $('ag-cal-grade');
+const mesBtn     = $('ag-mes-btn');
+const anoBtn     = $('ag-ano-btn');
+const dropdownEl = $('ag-dropdown');
+const diaTitulo  = $('ag-dia-titulo');
+const areaEl     = $('ag-nota-area');
+const alertaHoraEl = $('ag-alerta-hora');
+const alertaDashEl = $('ag-alerta-dash');
+const statusEl   = $('ag-nota-status');
+const painelEl   = document.querySelector('.ag-nota-painel');
+const toastEl    = $('ag-toast');
 
 // ── util ───────────────────────────────────────────────────────────
 function isoHoje() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
@@ -77,7 +82,8 @@ function itensComHorario() {
 
 // ── calendário: cada dia mostra suas anotações empilhadas ──────────
 function renderCalendario() {
-  tituloCal.textContent = `${MESES[viewMes]} ${viewAno}`;
+  if (mesBtn) mesBtn.textContent = `${MESES[viewMes]} ▾`;
+  if (anoBtn) anoBtn.textContent = `${viewAno} ▾`;
   gradeEl.innerHTML = '';
 
   const primeiroDiaSemana = new Date(viewAno, viewMes, 1).getDay();
@@ -170,6 +176,10 @@ function carregarEditor() {
   areaEl.value = arr.map(n => n.texto).join('\n');
   corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
   pintarArea();
+  // Alerta opcional do dia
+  const al = alertaPorDia[diaSelecionado] || {};
+  if (alertaHoraEl) alertaHoraEl.value = al.hora || '';
+  if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
   aplicarFonteLinhas();   // já chama autoGrow()
 }
 
@@ -235,20 +245,28 @@ async function salvar() {
   const data = diaSelecionado;
   const arr = lerLinhas();
   try {
+    const alertaHora = (alertaHoraEl && alertaHoraEl.value) || '';
+    const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked);
     if (arr.length === 0) {
       // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
       await apagarDocsDoDia(data);
       delete notas[data];
       delete docIds[data];
       delete corPorDia[data];
+      delete alertaPorDia[data];
     } else {
       // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
-      await setDoc(doc(db, 'agenda', data), { data, notas: arr, cor: corDiaSel, atualizadoEm: serverTimestamp() });
+      await setDoc(doc(db, 'agenda', data), {
+        data, notas: arr, cor: corDiaSel,
+        alertaHora, alertaDashboard,
+        atualizadoEm: serverTimestamp()
+      });
       const orfaos = (docIds[data] || []).filter(id => id !== data);
       await Promise.all(orfaos.map(id => deleteDoc(doc(db, 'agenda', id)).catch(() => {})));
       notas[data] = arr;
       docIds[data] = [data];
       corPorDia[data] = corDiaSel;
+      alertaPorDia[data] = { hora: alertaHora, dashboard: alertaDashboard };
     }
     statusEl.textContent = '✓ Salvo';
   } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
@@ -319,11 +337,15 @@ function iniciar() {
       notas = {};
       docIds = {};
       corPorDia = {};
+      alertaPorDia = {};
       snap.forEach(d => {
         const dados = d.data();
         const data = dados.data || d.id;
         let arr = [];
         let corDoc = corValida(dados.cor);
+        if (dados.alertaHora || dados.alertaDashboard) {
+          alertaPorDia[data] = { hora: dados.alertaHora || '', dashboard: !!dados.alertaDashboard };
+        }
         if (Array.isArray(dados.notas)) {
           arr = dados.notas.filter(n => n && (n.texto || '').trim())
                            .map(n => ({ texto: n.texto, cor: corValida(dados.cor || n.cor) }));
@@ -363,6 +385,59 @@ areaEl.addEventListener('blur', () => { flushSave(); });
 // Seletor de cores do dia (4 cores)
 document.querySelectorAll('.ag-cor-btn').forEach(b => {
   b.addEventListener('click', () => escolherCor(b.dataset.cor));
+});
+
+// Alerta opcional (salva sozinho)
+if (alertaHoraEl) alertaHoraEl.addEventListener('input', agendarSave);
+if (alertaDashEl) alertaDashEl.addEventListener('change', agendarSave);
+
+// ── seletor de mês / ano (dropdown) ────────────────────────────────
+function abrirDropdown(tipo, btn) {
+  if (!dropdownEl) return;
+  // fecha se já estava aberto no mesmo tipo
+  if (!dropdownEl.hidden && dropdownEl.dataset.tipo === tipo) { fecharDropdown(); return; }
+
+  dropdownEl.dataset.tipo = tipo;
+  dropdownEl.className = 'ag-dropdown' + (tipo === 'mes' ? ' meses' : '');
+  dropdownEl.innerHTML = '';
+
+  let itens;
+  if (tipo === 'mes') {
+    itens = MESES.map((nome, i) => ({ rotulo: nome, valor: i, ativo: i === viewMes }));
+  } else {
+    const base = new Date().getFullYear();
+    itens = [];
+    for (let y = base - 3; y <= base + 6; y++) itens.push({ rotulo: String(y), valor: y, ativo: y === viewAno });
+  }
+
+  itens.forEach(it => {
+    const b = document.createElement('button');
+    b.className = 'ag-dd-item' + (it.ativo ? ' atual' : '');
+    b.textContent = it.rotulo;
+    b.addEventListener('click', () => {
+      if (tipo === 'mes') viewMes = it.valor; else viewAno = it.valor;
+      fecharDropdown();
+      renderCalendario();
+    });
+    dropdownEl.appendChild(b);
+  });
+
+  // posiciona sob o botão
+  const header = btn.closest('.ag-cal-header');
+  const hr = header.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  dropdownEl.style.left = (br.left - hr.left) + 'px';
+  dropdownEl.style.top = (br.bottom - hr.top + 6) + 'px';
+  dropdownEl.hidden = false;
+}
+function fecharDropdown() { if (dropdownEl) dropdownEl.hidden = true; }
+
+if (mesBtn) mesBtn.addEventListener('click', (e) => { e.stopPropagation(); abrirDropdown('mes', mesBtn); });
+if (anoBtn) anoBtn.addEventListener('click', (e) => { e.stopPropagation(); abrirDropdown('ano', anoBtn); });
+document.addEventListener('click', (e) => {
+  if (dropdownEl && !dropdownEl.hidden && !dropdownEl.contains(e.target) && e.target !== mesBtn && e.target !== anoBtn) {
+    fecharDropdown();
+  }
 });
 
 // ── eventos de UI ──────────────────────────────────────────────────

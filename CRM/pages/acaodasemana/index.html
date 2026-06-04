@@ -25,13 +25,15 @@
             </div>
 
             <!-- CABEÇALHO DO CALENDÁRIO -->
-            <div class="ag-cal-header">
+            <div class="ag-cal-header" style="position:relative">
                 <button class="ag-nav-btn" id="ag-prev" title="Mês anterior">◀</button>
                 <div class="ag-cal-titulo-wrap">
-                    <span class="ag-cal-titulo" id="ag-cal-titulo">—</span>
+                    <button class="ag-sel-btn" id="ag-mes-btn" title="Escolher mês">Mês ▾</button>
+                    <button class="ag-sel-btn" id="ag-ano-btn" title="Escolher ano">Ano ▾</button>
                     <button class="ag-hoje-btn" id="ag-hoje">Hoje</button>
                 </div>
                 <button class="ag-nav-btn" id="ag-next" title="Próximo mês">▶</button>
+                <div class="ag-dropdown" id="ag-dropdown" hidden></div>
             </div>
 
             <!-- GRADE — cada dia é uma nota colada -->
@@ -63,6 +65,19 @@
                 <div class="ag-dica">Escreva livremente, uma linha por anotação. Comece pelo horário (ex.: 09:00). Salva sozinho.</div>
                 <textarea class="ag-nota-area" id="ag-nota-area" spellcheck="true"
                     placeholder="09:00 Buscar películas&#10;14:00 Ligar fornecedor&#10;17:00 Atualizar preços&#10;18:00 Fazer postagem Instagram"></textarea>
+
+                <!-- ALERTA OPCIONAL NO DASHBOARD -->
+                <div class="ag-alerta-cfg">
+                    <label class="ag-alerta-hora">
+                        <span>⏰ Horário de alerta</span>
+                        <input type="time" id="ag-alerta-hora" step="60">
+                    </label>
+                    <label class="ag-check">
+                        <input type="checkbox" id="ag-alerta-dash">
+                        <span>Exibir alerta no Dashboard</span>
+                    </label>
+                </div>
+
                 <div class="ag-nota-status" id="ag-nota-status"></div>
             </div>
 

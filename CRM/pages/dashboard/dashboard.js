@@ -327,27 +327,22 @@ class Dashboard {
     try {
       const snap = await getDocs(collection(db, 'agenda'));
       const eventos = [];
-      const parseLinha = (dia, txt, concluido = false) => {
-        const m = String(txt).match(/^\s*(\d{1,2}):(\d{2})\s+(.*\S)/);
-        if (m) {
-          const hh = String(Math.min(23, +m[1])).padStart(2, '0');
-          eventos.push({ data: dia, hora: `${hh}:${m[2]}`, titulo: m[3].trim(), concluido, alerta: true });
-        } else if (String(txt).trim()) {
-          // Tarefa sem horário — data apenas. Considera como "vencível" pelo dia.
-          eventos.push({ data: dia, hora: '', titulo: String(txt).trim(), concluido, alerta: true });
-        }
-      };
       snap.forEach(d => {
         const dados = d.data();
         const dia = dados.data || d.id;
-        if (Array.isArray(dados.notas)) {
-          dados.notas.forEach(n => n && n.texto && parseLinha(dia, n.texto, !!n.concluido));
-        } else if (typeof dados.texto === 'string') {
-          dados.texto.split(/\r?\n+/).forEach(linha => parseLinha(dia, linha));
-        } else if (dados.titulo) {
-          // compatibilidade com formato antigo (1 doc por tarefa)
-          eventos.push({ data: dia, hora: dados.hora || '', titulo: dados.titulo, concluido: !!dados.concluido, alerta: dados.alerta !== false });
-        }
+        // ALERTA OPT-IN: só geram alerta os dias marcados com
+        // "Exibir alerta no Dashboard" na Agenda Inteligente.
+        if (!dados.alertaDashboard) return;
+        const hora = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
+        // Reúne as linhas de anotação do dia (qualquer formato)
+        let linhas = [];
+        if (Array.isArray(dados.notas)) linhas = dados.notas.map(n => n && n.texto).filter(Boolean);
+        else if (typeof dados.texto === 'string') linhas = dados.texto.split(/\r?\n+/).map(s => s.trim()).filter(Boolean);
+        else if (dados.titulo) linhas = [`${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`];
+        // Título do alerta: a linha que começa com a hora do alerta, senão a 1ª linha
+        const escolhida = (hora && linhas.find(l => l.trim().startsWith(hora))) || linhas[0] || 'Anotação';
+        const titulo = escolhida.replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim() || escolhida;
+        eventos.push({ data: dia, hora, titulo, concluido: false, alerta: true });
       });
       return eventos;
     } catch {
@@ -450,6 +445,10 @@ class Dashboard {
       });
 
       // --- definir qual estado mostrar (prioridade: atrasados > noHorario > proximos > padrão) ---
+      // Contador de alertas pendentes (atrasados + no horário agora)
+      const pendentes = atrasados.length + noHorario.length;
+      const cont = pendentes > 1 ? `(${pendentes}) ` : '';
+
       if (atrasados.length > 0) {
         // Pega o MAIS atrasado (mais antigo primeiro)
         const pior = atrasados.sort((a, b) => {
@@ -461,13 +460,13 @@ class Dashboard {
         if (subEl) {
           const dt = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
           const atrasoMin = Math.max(0, Math.round((agora - dt.getTime()) / 60000));
-          subEl.textContent = `🔴 ${pior.hora || ''} ${pior.titulo} · ${_fmtAtraso(atrasoMin)} atrasado`;
+          subEl.textContent = `🔴 ${cont}${pior.hora || ''} ${pior.titulo} · ${_fmtAtraso(atrasoMin)} atrasado`;
         }
       } else if (noHorario.length > 0) {
         card.classList.add('acao-vencida');
         if (subEl) {
           const ev = noHorario[0];
-          subEl.textContent = `🔴 ${ev.hora} ${ev.titulo} · AGORA!`;
+          subEl.textContent = `🔴 ${cont}${ev.hora} ${ev.titulo} · AGORA!`;
         }
       } else {
         card.classList.remove('acao-vencida');

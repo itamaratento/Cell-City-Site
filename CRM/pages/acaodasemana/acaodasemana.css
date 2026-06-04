@@ -36,6 +36,38 @@ body {
 }
 #crm-brand-bar .ag-header-titulo:hover { color: var(--green-light); }
 
+/* Mobile: nunca sobrepor o logo — título cai para a 2ª linha, centralizado */
+@media (max-width: 600px) {
+    body #crm-brand-bar { flex-wrap: wrap; row-gap: 2px; padding-bottom: 8px; }
+    #crm-brand-bar .ag-header-titulo {
+        position: static; transform: none; left: auto;
+        order: 3; flex-basis: 100%; width: 100%;
+        text-align: center; font-size: 16px;
+    }
+}
+
+/* ── SELETOR DE MÊS / ANO ── */
+.ag-sel-btn {
+    background: var(--surface2); border: 1px solid var(--border-md); color: var(--text);
+    font-size: 16px; font-weight: 800; padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    transition: .15s var(--ease); white-space: nowrap;
+}
+.ag-sel-btn:hover { background: rgba(0,200,83,0.15); border-color: var(--green); }
+.ag-dropdown {
+    position: absolute; z-index: 200; background: var(--surface2);
+    border: 1px solid var(--border-md); border-radius: 12px; padding: 6px;
+    box-shadow: 0 12px 32px rgba(0,0,0,.55); max-height: 280px; overflow-y: auto;
+    display: grid; gap: 4px; min-width: 120px;
+}
+.ag-dropdown[hidden] { display: none; }
+.ag-dropdown.meses { grid-template-columns: repeat(2, 1fr); }
+.ag-dd-item {
+    background: transparent; border: none; color: var(--text2); font-family: inherit;
+    font-size: 14px; font-weight: 600; padding: 9px 12px; border-radius: 8px; cursor: pointer; text-align: center; white-space: nowrap;
+}
+.ag-dd-item:hover { background: rgba(0,200,83,0.15); color: var(--text); }
+.ag-dd-item.atual { background: rgba(0,200,83,0.22); color: var(--green-light); font-weight: 800; }
+
 /* ── BUSCA ── */
 .ag-busca-wrap { display: flex; align-items: center; gap: 10px; }
 .ag-busca {
@@ -177,6 +209,21 @@ body {
 .ag-nlinha-del { width: 30px; height: 30px; flex-shrink: 0; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; background: rgba(0,0,0,0.12); color: var(--fg, #111); opacity: .65; }
 .ag-nlinha-del:hover { opacity: 1; background: rgba(0,0,0,0.2); }
 .ag-nota-status { font-size: 11px; color: var(--text3); margin-top: 10px; min-height: 14px; }
+
+/* ── ALERTA OPCIONAL ── */
+.ag-alerta-cfg {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    margin-top: 12px; padding: 12px 14px;
+    background: var(--surface2); border: 1px solid var(--border-md); border-radius: 12px;
+}
+.ag-alerta-hora { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text2); }
+.ag-alerta-hora input[type="time"] {
+    background: var(--bg); border: 1px solid var(--border-md); color: var(--text);
+    font-family: inherit; font-size: 14px; padding: 7px 10px; border-radius: 9px; cursor: pointer;
+}
+.ag-alerta-hora input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
+.ag-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+.ag-check input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
 
 /* ── ÁREA DE TEXTO ÚNICA (estilo bloco de notas / sticky note) ── */
 .ag-nota-area {
