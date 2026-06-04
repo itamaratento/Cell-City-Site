@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.1 (bump for login fix + fallback)
-const CACHE = 'cellcity-crm-v4';
+// Cell City CRM — Service Worker v1.3 (PIN como acesso principal)
+const CACHE = 'cellcity-crm-v6';
 
 // Arquivos do shell — carregados no install
 const SHELL = [

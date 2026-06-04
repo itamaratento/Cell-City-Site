@@ -194,7 +194,6 @@ body {
 .pin-btn-device:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--text); }
 .pin-btn-device:disabled { opacity: 0.5; cursor: not-allowed; }
 
-<<<<<<< HEAD
 /* ===== CAMPOS DE TEXTO (usuário / senha) ===== */
 .cc-field { width: 100%; display: flex; flex-direction: column; gap: 6px; }
 .cc-field label { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
@@ -279,7 +278,7 @@ body {
     transition: all var(--duration) var(--ease);
 }
 .cc-dev-x:hover { background: rgba(239, 68, 68, 0.15); }
-=======
+
 /* ===== SEGURANÇA: Usar senha do dispositivo ===== */
 .seg-device-row {
     display: flex;
@@ -338,4 +337,3 @@ body {
 }
 .seg-device-diag .diag-ok   { color: var(--green-light); }
 .seg-device-diag .diag-err  { color: var(--red); }
->>>>>>> 3c2338f7dc2684ddb5f44deea6bb936ed74e7740

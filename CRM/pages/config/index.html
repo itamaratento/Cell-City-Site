@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Cell City">
     <link rel="apple-touch-icon" href="/CRM/assets/logo.png">
-    <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' });</script>
+    <script>if ('serviceWorker' in navigator) { const reg=navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' }); reg.then(r=>{ r.onupdatefound=()=>{ const i=r.installing; if(i){ i.onstatechange=()=>{ if(i.state==='installed'&&navigator.serviceWorker.controller) location.reload(); }; } }; }); }</script>
 </head>
 <body>
 
@@ -23,8 +23,8 @@
                 <div class="pin-logo-sub">Acesso Seguro</div>
             </div>
 
-            <!-- MODO: LOGIN USUÁRIO + SENHA (principal) -->
-            <div id="screen-login" class="pin-screen active">
+            <!-- MODO: LOGIN USUÁRIO + SENHA (em desenvolvimento — não bloqueia) -->
+            <div id="screen-login" class="pin-screen">
                 <p class="pin-label">Entrar no CRM</p>
                 <div class="cc-field">
                     <label for="login-user">Usuário</label>
@@ -68,8 +68,8 @@
                 <button class="pin-btn-entrar" onclick="criarAcesso()">Criar acesso</button>
             </div>
 
-            <!-- MODO: DIGITAR PIN (alternativa) -->
-            <div id="screen-pin" class="pin-screen">
+            <!-- MODO: DIGITAR PIN (acesso principal) -->
+            <div id="screen-pin" class="pin-screen active">
                 <p class="pin-label" id="pin-label">Digite seu PIN</p>
                 <div class="pin-dots" id="pin-dots">
                     <span class="pin-dot"></span>

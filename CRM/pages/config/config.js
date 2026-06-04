@@ -153,7 +153,15 @@ async function init() {
         return;
     }
 
-    // Caso contrário, tela de login (usuário + senha)
+    // PRIORIDADE: PIN como acesso imediato e confiável.
+    // Se existe um PIN salvo, abre direto no teclado de PIN.
+    // (usuário/senha continua disponível pelo link "Usar usuário e senha")
+    if (pinSalvo) {
+        showScreen('pin');
+        return;
+    }
+
+    // Sem PIN salvo: oferece usuário/senha (não bloqueia o acesso).
     showScreen('login');
 }
 
