@@ -150,7 +150,7 @@ body {
 .ag-cal-semana { margin-bottom: 8px; }
 .ag-cal-semana span { text-align: center; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; }
 .ag-cel {
-    position: relative; min-height: 92px;          /* cresce conforme as anotações */
+    position: relative; height: 104px;              /* TAMANHO FIXO — nunca cresce */
     border-radius: 8px; background: rgba(255,255,255,0.025); border: 1px solid var(--border);
     cursor: pointer; padding: 4px 4px 6px; display: flex; flex-direction: column;
     overflow: hidden; transition: background .12s var(--ease);
@@ -162,8 +162,8 @@ body {
 .ag-cel-hoje .ag-cel-num { color: var(--green-light); }
 .ag-cel-sel { box-shadow: 0 0 0 2px rgba(0,200,83,0.7); }
 
-/* anotações empilhadas — cada uma quebra linha e aparece inteira */
-.ag-cel-notas { overflow: hidden; display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
+/* anotações empilhadas — área clipada (o quadrado nunca cresce) */
+.ag-cel-notas { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
 .ag-chip {
     background: var(--bg); color: var(--fg);
     border-radius: 5px; padding: 2px 6px; flex-shrink: 0;
@@ -171,10 +171,51 @@ body {
 }
 .ag-chip-t {
     display: block; font-size: 11.5px; line-height: 1.32; font-weight: 600;
-    white-space: normal; overflow-wrap: anywhere; word-break: break-word;   /* quebra de linha, sem "…" */
+    white-space: normal; overflow-wrap: anywhere; word-break: break-word;
 }
 .ag-chip-t b { font-weight: 800; }
 .ag-mais { font-size: 11px; font-weight: 800; color: var(--text2); padding: 2px 6px; flex-shrink: 0; }
+
+/* Botão "expandir" — aparece só quando o conteúdo não cabe no quadrado */
+.ag-expand {
+    position: absolute; bottom: 3px; right: 3px; z-index: 5;
+    width: 20px; height: 20px; padding: 0; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45); border: 1px solid var(--border-md); color: var(--text2);
+    font-size: 11px; line-height: 1; backdrop-filter: blur(2px);
+}
+.ag-expand:hover { background: rgba(0,200,83,0.25); color: var(--text); border-color: var(--green); }
+
+/* Parte clicável do título (Agenda / Inteligente) */
+.ag-nav-part { cursor: pointer; }
+.ag-nav-part:hover { color: var(--green-light); }
+
+/* ── MODAL DIA COMPLETO ── */
+.ag-modal-overlay {
+    position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center; padding: 16px;
+    backdrop-filter: blur(2px);
+}
+.ag-modal-overlay[hidden] { display: none; }
+.ag-modal {
+    width: 100%; max-width: 440px; max-height: 80vh; display: flex; flex-direction: column;
+    background: var(--surface2); border: 1px solid var(--border-md); border-radius: 16px;
+    padding: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.7);
+}
+.ag-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ag-modal-tit { font-size: 16px; font-weight: 800; color: var(--text); }
+.ag-modal-x { width: 32px; height: 32px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border-md); color: var(--text2); cursor: pointer; font-size: 14px; }
+.ag-modal-x:hover { color: var(--red); border-color: var(--red); }
+.ag-modal-body { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.ag-modal-linha {
+    background: var(--bg); border-radius: 8px; padding: 10px 12px; font-size: 14px; font-weight: 600;
+    color: var(--text); overflow-wrap: anywhere;
+}
+.ag-modal-editar {
+    margin-top: 14px; padding: 11px; border: none; border-radius: 10px; cursor: pointer;
+    background: linear-gradient(135deg, var(--green), var(--green-light)); color: #00120a; font-weight: 800; font-size: 14px;
+}
+.ag-modal-editar:hover { filter: brightness(1.08); }
 
 /* ── EDITOR (anotações coloridas) ── */
 .ag-nota-painel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
@@ -334,7 +375,7 @@ body {
     .ag-content { padding: 12px 10px 20px; gap: 12px; }
     .ag-cal { padding: 8px; }
     .ag-cal-semana, .ag-cal-grade { gap: 4px; }
-    .ag-cel { min-height: 76px; padding: 3px; }
+    .ag-cel { height: 84px; padding: 3px; }
     .ag-cel-num { font-size: 11px; }
     .ag-chip { padding: 2px 5px; }
     .ag-chip-t { font-size: 10.5px; line-height: 1.3; }

@@ -54,6 +54,10 @@ const miniEl     = $('ag-mini');
 const miniTitulo = $('ag-mini-titulo');
 const miniGrade  = $('ag-mini-grade');
 let miniAno, miniMes;
+const modalOverlay = $('ag-modal-overlay');
+const modalTit   = $('ag-modal-tit');
+const modalBody  = $('ag-modal-body');
+let modalDia = null;
 const statusEl   = $('ag-nota-status');
 const painelEl   = document.querySelector('.ag-nota-painel');
 const toastEl    = $('ag-toast');
@@ -150,6 +154,7 @@ function renderCalendario() {
       ? `<div class="ag-recorr-badge" data-dia="${iso}" title="${rec.length} lembrete(s) recorrente(s)">🔔 ${rec.length}</div>`
       : '';
 
+    cel.dataset.iso = iso;
     cel.innerHTML = `<span class="ag-cel-num">${dia}</span>${badge}<div class="ag-cel-notas">${chips}</div>`;
     cel.addEventListener('click', () => selecionarDia(iso));
     const badgeEl = cel.querySelector('.ag-recorr-badge');
@@ -160,42 +165,23 @@ function renderCalendario() {
   requestAnimationFrame(ajustarQuadrados);
 }
 
-// Cada card cresce com as anotações até uma altura máxima; o que passar vira "+N".
-// O texto quebra linha e aparece inteiro (sem "…"), com fonte confortável fixa.
+// Quadrados têm tamanho FIXO. Quando o conteúdo não cabe, adiciona um
+// botão "⛶ expandir" no canto — o quadrado nunca cresce nem encolhe a fonte.
 function ajustarQuadrados() {
-  const mobile = window.matchMedia('(max-width: 600px)').matches;
-  const MAXH = mobile ? 150 : 176;            // altura máx. da área de anotações
-  const GAP = 3;
-
-  gradeEl.querySelectorAll('.ag-cel-notas').forEach(wrap => {
-    const antigo = wrap.querySelector('.ag-mais'); if (antigo) antigo.remove();
-    const chips = [...wrap.querySelectorAll('.ag-chip')];
-    chips.forEach(c => c.style.display = '');
-    wrap.style.maxHeight = '';
-    const total = chips.length;
-    if (total === 0) return;
-
-    // tudo cabe na altura máxima → deixa o card crescer naturalmente (sem "+N")
-    if (wrap.scrollHeight <= MAXH) return;
-
-    // senão: limita a altura e mostra só as anotações que couberem + "+N"
-    const badge = document.createElement('div');
-    badge.className = 'ag-mais';
-    badge.textContent = '+0';
-    wrap.appendChild(badge);
-    const badgeH = badge.offsetHeight + GAP;
-
-    let usado = 0, visiveis = 0;
-    for (let i = 0; i < total; i++) {
-      const h = chips[i].offsetHeight + GAP;
-      if (usado + h <= MAXH - badgeH) { usado += h; visiveis++; } else break;
+  gradeEl.querySelectorAll('.ag-cel').forEach(cel => {
+    const antigo = cel.querySelector('.ag-expand'); if (antigo) antigo.remove();
+    const wrap = cel.querySelector('.ag-cel-notas');
+    if (!wrap) return;
+    if (wrap.scrollHeight > wrap.clientHeight + 1) {
+      const iso = cel.dataset.iso;
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ag-expand';
+      btn.textContent = '⛶';
+      btn.title = 'Ver dia completo';
+      btn.addEventListener('click', (e) => { e.stopPropagation(); abrirDiaModal(iso); });
+      cel.appendChild(btn);
     }
-    if (visiveis < 1) visiveis = 1;            // mostra ao menos 1 anotação
-
-    chips.forEach((c, i) => { c.style.display = i < visiveis ? '' : 'none'; });
-    badge.textContent = `+${total - visiveis}`;
-    wrap.appendChild(badge);
-    wrap.style.maxHeight = MAXH + 'px';
   });
 }
 
@@ -288,6 +274,20 @@ function escolherMiniDia(iso) {
   fecharMini();
   selecionarDia(iso);   // navega, seleciona e abre a edição do dia
 }
+
+// ── MODAL: conteúdo completo de um dia (sem alterar o calendário) ──
+function abrirDiaModal(iso) {
+  if (!modalOverlay || !iso) return;
+  modalDia = iso;
+  modalTit.textContent = fmtDiaLongo(iso);
+  const linhas = (notas[iso] || []).map(n => n.texto);
+  const rec = recorrentesNoDia(iso).filter(t => !linhas.includes(t));
+  let html = linhas.map(t => `<div class="ag-modal-linha">${escHtml(t)}</div>`).join('');
+  if (rec.length) html += rec.map(t => `<div class="ag-modal-linha">🔄 ${escHtml(t)}</div>`).join('');
+  modalBody.innerHTML = html || '<div class="ag-modal-linha" style="opacity:.6">Sem anotações.</div>';
+  modalOverlay.hidden = false;
+}
+function fecharDiaModal() { if (modalOverlay) modalOverlay.hidden = true; modalDia = null; }
 
 // Pinta o bloco com a cor do dia e marca o botão ativo
 function pintarArea() {
@@ -603,8 +603,12 @@ document.addEventListener('click', (e) => {
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));
 $('ag-next').addEventListener('click', () => navegar(1));
-// Botão HOJE: atalho rápido — volta ao mês atual e seleciona/destaca o
-// dia de hoje, SEM rolar para a área de edição e sem focar o teclado.
+// Rola até o topo mostrando o calendário inteiro (cabeçalho + semana + 1ª linha),
+// sem ficar cortado atrás da barra superior fixa.
+function rolarParaCalendario() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+// Botão HOJE: volta ao mês atual e seleciona/destaca o dia de hoje.
 function irHoje() {
   flushSave();
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
@@ -612,24 +616,37 @@ function irHoje() {
   editando = false;
   carregarEditor();
   renderCalendario();
-  document.querySelector('.ag-cal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  rolarParaCalendario();
 }
 $('ag-hoje').addEventListener('click', irHoje);
 $('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
 $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
 
-// Título "Agenda Inteligente" = atalho principal de navegação:
-// volta ao calendário (mês atual + hoje) e abre o mini calendário.
+// Título dividido em duas funções:
+//   "📅 Agenda"   → apenas rola para o calendário principal (não abre mini)
+//   "Inteligente" → abre/fecha o mini calendário (toggle)
 const tituloPagina = document.querySelector('.ag-header-titulo');
-if (tituloPagina) {
-  tituloPagina.style.cursor = 'pointer';
-  tituloPagina.title = 'Voltar ao calendário';
-  tituloPagina.addEventListener('click', (e) => { e.stopPropagation(); irHoje(); abrirMini(); });
-}
+const navAgenda = $('ag-nav-agenda');
+const navInteligente = $('ag-nav-inteligente');
+if (navAgenda) navAgenda.addEventListener('click', (e) => { e.stopPropagation(); fecharMini(); rolarParaCalendario(); });
+if (navInteligente) navInteligente.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (miniEl && !miniEl.hidden) fecharMini(); else abrirMini();
+});
 
 // Mini calendário: navegação e fechamento
 $('ag-mini-prev')?.addEventListener('click', (e) => { e.stopPropagation(); navMini(-1); });
 $('ag-mini-next')?.addEventListener('click', (e) => { e.stopPropagation(); navMini(1); });
+
+// Modal do dia: fechar e editar
+$('ag-modal-x')?.addEventListener('click', fecharDiaModal);
+modalOverlay?.addEventListener('click', (e) => { if (e.target === modalOverlay) fecharDiaModal(); });
+$('ag-modal-editar')?.addEventListener('click', () => {
+  const iso = modalDia;
+  fecharDiaModal();
+  if (iso) selecionarDia(iso);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { fecharDiaModal(); fecharMini(); } });
 document.addEventListener('click', (e) => {
   if (miniEl && !miniEl.hidden && !miniEl.contains(e.target) && !tituloPagina?.contains(e.target)) {
     fecharMini();

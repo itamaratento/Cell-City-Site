@@ -11,7 +11,7 @@
 <body>
 
     <header class="header" id="mainHeader">
-        <h1 class="ag-header-titulo">🗓️ Agenda Inteligente</h1>
+        <h1 class="ag-header-titulo"><span id="ag-nav-agenda" class="ag-nav-part" title="Ir para o calendário">📅 Agenda</span> <span id="ag-nav-inteligente" class="ag-nav-part" title="Abrir/fechar mini calendário">Inteligente</span></h1>
     </header>
 
     <main>
@@ -103,6 +103,18 @@
         </div>
         <div class="ag-mini-dow"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
         <div class="ag-mini-grade" id="ag-mini-grade"></div>
+    </div>
+
+    <!-- MODAL: conteúdo completo de um dia (quando não cabe no quadrado) -->
+    <div class="ag-modal-overlay" id="ag-modal-overlay" hidden>
+        <div class="ag-modal" role="dialog" aria-modal="true">
+            <div class="ag-modal-head">
+                <span class="ag-modal-tit" id="ag-modal-tit">Dia</span>
+                <button type="button" class="ag-modal-x" id="ag-modal-x" title="Fechar">✕</button>
+            </div>
+            <div class="ag-modal-body" id="ag-modal-body"></div>
+            <button type="button" class="ag-modal-editar" id="ag-modal-editar">✏️ Editar este dia</button>
+        </div>
     </div>
 
     <!-- POPUP: lista de lembretes recorrentes do dia -->
