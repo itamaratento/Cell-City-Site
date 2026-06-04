@@ -111,18 +111,19 @@ window.Portal = {
 
     // Navega
     switch (route) {
-      case 'painel':      this.renderPainel(); break;
-      case 'os':          this.renderOSList(); break;
-      case 'os-detalhe':  this.renderOSDetalhe(parts[1]); break;
-      case 'garantias':   this.renderGarantias(); break;
-      case 'avaliar':     this.renderAvaliar(); break;
-      case 'mensagens':   this.renderMensagens(); break;
-      case 'contato':     this.renderContato(); break;
-      case 'como-chegar': this.renderComoChegar(); break;
-      default:            location.hash = '#/painel';
+      case 'painel':        this.renderPainel(); break;
+      case 'os':            this.renderOSList(); break;
+      case 'os-detalhe':    this.renderOSDetalhe(parts[1]); break;
+      case 'garantias':     this.renderGarantias(); break;
+      case 'avaliar':       this.renderAvaliar(); break;
+      case 'mensagens':     this.renderMensagens(); break;
+      case 'contato':       this.renderContato(); break;
+      case 'como-chegar':   this.renderComoChegar(); break;
+      case 'abrir-chamado': this.renderAbrirChamado(); break;
+      default:              location.hash = '#/painel';
     }
-    // Marca o link ativo (exceto login, os-detalhe e como-chegar)
-    if (route !== 'login' && route !== 'os-detalhe' && route !== 'como-chegar') {
+    // Marca o link ativo (exceto login, os-detalhe, como-chegar, abrir-chamado)
+    if (route !== 'login' && route !== 'os-detalhe' && route !== 'como-chegar' && route !== 'abrir-chamado') {
       this._setActiveNav(route);
     }
   },
@@ -157,7 +158,7 @@ window.Portal = {
           <div class="login-form-group">
             <label class="login-label">📱 Seu telefone</label>
             <input type="tel" id="login-phone" class="login-input"
-                   placeholder="(11) 99999-9999" maxlength="15"
+                   placeholder="(62) 98160-5863" maxlength="15"
                    inputmode="numeric" autocomplete="tel">
             <span class="login-hint">Digite o número cadastrado em seu serviço</span>
             <span class="login-error" id="login-error"></span>
@@ -288,6 +289,7 @@ window.Portal = {
       // Cria sessão
       this.session = {
         telefone: formatted,
+        telefoneRaw: raw,
         clientName: clientName || `Cliente`,
         osCount
       };
@@ -297,6 +299,9 @@ window.Portal = {
       // Escuta OS em tempo real
       this._listenOS();
       this._listenMensagens();
+
+      // Tracking de acesso
+      this._trackEvent('acesso', 'login');
 
       // Vai para o painel
       location.hash = '#/painel';
@@ -310,27 +315,60 @@ window.Portal = {
 
   // ===== LISTENERS EM TEMPO REAL =====
   _listenOS() {
-    if (this.unsubscribeOS) this.unsubscribeOS();
+    if (this.unsubscribeOS) {
+      // Cancela listeners anteriores
+      if (typeof this.unsubscribeOS === 'function') this.unsubscribeOS();
+      else if (Array.isArray(this.unsubscribeOS)) {
+        this.unsubscribeOS.forEach(fn => { if (typeof fn === 'function') fn(); });
+      }
+    }
     const db = window.db;
     const { collection, query, where, onSnapshot } = window.FirebaseModules;
-    const q = query(collection(db, 'os'), where('phone', '==', this.session.telefone));
-    this.unsubscribeOS = onSnapshot(q, (snap) => {
-      this.currentOS = [];
-      snap.forEach(d => this.currentOS.push({ firestoreId: d.id, ...d.data() }));
-      this.currentOS.sort((a, b) => {
-        const da = a.createdAt || a.updatedAt || '';
-        const db_ = b.createdAt || b.updatedAt || '';
-        return db_ > da ? 1 : -1;
-      });
-      // Se estiver em tela que mostra OS, atualiza
-      const route = location.hash.slice(1).split('/')[0];
-      if (route === 'os') this.renderOSList();
-      else if (route === 'os-detalhe') {
-        const id = location.hash.split('/')[1];
-        if (id) this.renderOSDetalhe(id);
+    const telefone = this.session.telefone;       // "(62) 98160-5863"
+    const telefoneRaw = this.session.telefoneRaw; // "62981605863"
+
+    let unsubscribers = [];
+
+    // Listener 1: busca com telefone formatado (padrão atual)
+    const q1 = query(collection(db, 'os'), where('phone', '==', telefone));
+    unsubscribers.push(onSnapshot(q1, (snap) => {
+      this._mergeOS(snap);
+    }, (err) => console.warn('[Portal] Erro listener OS (fmt):', err)));
+
+    // Listener 2: busca com telefone raw (dados antigos)
+    if (telefoneRaw && telefoneRaw !== telefone) {
+      const q2 = query(collection(db, 'os'), where('phone', '==', telefoneRaw));
+      unsubscribers.push(onSnapshot(q2, (snap) => {
+        this._mergeOS(snap);
+      }, (err) => console.warn('[Portal] Erro listener OS (raw):', err)));
+    }
+
+    this.unsubscribeOS = unsubscribers;
+  },
+
+  _mergeOS(snap) {
+    // Adiciona OSs do snapshot, evitando duplicatas por firestoreId
+    const existingIds = new Set(this.currentOS.map(o => o.firestoreId));
+    snap.forEach(d => {
+      if (!existingIds.has(d.id)) {
+        existingIds.add(d.id);
+        this.currentOS.push({ firestoreId: d.id, ...d.data() });
       }
-      else if (route === 'painel') this.renderPainel();
-    }, (err) => console.warn('[Portal] Erro listener OS:', err));
+    });
+    // Ordena por data (mais recente primeiro)
+    this.currentOS.sort((a, b) => {
+      const da = a.createdAt || a.updatedAt || '';
+      const db_ = b.createdAt || b.updatedAt || '';
+      return db_ > da ? 1 : -1;
+    });
+    // Atualiza telas se necessário
+    const route = location.hash.slice(1).split('/')[0];
+    if (route === 'os') this.renderOSList();
+    else if (route === 'os-detalhe') {
+      const id = location.hash.split('/')[1];
+      if (id) this.renderOSDetalhe(id);
+    }
+    else if (route === 'painel') this.renderPainel();
   },
 
   _listenMensagens() {
@@ -463,6 +501,11 @@ window.Portal = {
             <div class="painel-card-title">Contato</div>
             <div class="painel-card-sub">WhatsApp & Telefone</div>
           </div>
+          <div class="painel-card painel-card-destaque" onclick="Portal.navegar('abrir-chamado')">
+            <div class="painel-card-icon">🔧</div>
+            <div class="painel-card-title">Solicitar Orçamento</div>
+            <div class="painel-card-sub">Abra um chamado agora</div>
+          </div>
         </div>
       </div>
     `;
@@ -503,6 +546,7 @@ window.Portal = {
 
   // ===== LISTA DE OS =====
   renderOSList() {
+    this._trackEvent('consulta_os', 'os');
     const el = document.getElementById('app-content');
     document.getElementById('btn-back').style.display = '';
 
@@ -764,6 +808,7 @@ window.Portal = {
   },
 
   renderGarantias() {
+    this._trackEvent('consulta_garantia', 'garantias');
     const el = document.getElementById('app-content');
     document.getElementById('btn-back').style.display = '';
 
@@ -916,16 +961,59 @@ window.Portal = {
     document.getElementById('avaliar-nota').textContent =
       ['', 'Péssimo', 'Ruim', 'Regular', 'Bom', 'Excelente'][val];
 
-    // Mostra feedback para 1-3, Google para 4-5
+    // Esconde tudo primeiro
+    document.getElementById('avaliar-feedback').style.display = 'none';
+    document.getElementById('avaliar-google').style.display = 'none';
+
     if (val <= 3) {
+      // Feedback negativo → mostra formulário
       document.getElementById('avaliar-feedback').style.display = '';
-      document.getElementById('avaliar-google').style.display = 'none';
-    } else {
-      document.getElementById('avaliar-feedback').style.display = 'none';
-      document.getElementById('avaliar-google').style.display = '';
-      // Já salva avaliação no Firestore
-      this._salvarAvaliacao(val, '');
+    } else if (val === 4) {
+      // 4 estrelas → mostra formulário de feedback positivo
+      document.getElementById('avaliar-feedback').style.display = '';
+    } else if (val === 5) {
+      // 5 estrelas → pergunta se quer avaliar no Google
+      this._mostrarModalGoogle();
     }
+  },
+
+  _mostrarModalGoogle() {
+    // Remove modal anterior se existir
+    const existing = document.querySelector('.modal-google-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-google-overlay';
+    overlay.innerHTML = `
+      <div class="modal-google-box">
+        <div class="modal-google-icon">⭐</div>
+        <h3 class="modal-google-title">Agradecemos seu carinho! 💚</h3>
+        <p class="modal-google-text">
+          Deseja avaliar a <strong>Cell City</strong> no Google?
+        </p>
+        <p class="modal-google-sub">
+          Sua avaliação nos ajuda a crescer e atender melhor!
+        </p>
+        <div class="modal-google-actions">
+          <a href="https://www.google.com/maps/search/?api=1&query=Cell+City+Inform%C3%A1tica+Goi%C3%A2nia"
+             target="_blank"
+             class="modal-google-btn-yes"
+             onclick="this.closest('.modal-google-overlay').remove()">
+            👍 SIM — Avaliar no Google
+          </a>
+          <button class="modal-google-btn-no" onclick="this.closest('.modal-google-overlay').remove()">
+            Agora não
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    // Fecha ao clicar fora
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+    // Salva avaliação 5 estrelas no Firestore em background
+    this._salvarAvaliacao(5, '');
   },
 
   async _checkAvaliacaoExistente() {
@@ -1093,22 +1181,22 @@ window.Portal = {
 
     el.innerHTML = `
       <div class="contato-container">
-        <h2 class="screen-title">📍 Fale Conosco</h2>
+        <h2 class="screen-title">📞 Fale Conosco</h2>
 
-        <a href="https://wa.me/5511949464940?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente" target="_blank" class="contato-card whatsapp-card">
+        <a href="https://wa.me/5562981605863?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente" target="_blank" class="contato-card whatsapp-card" onclick="Portal._trackEvent('clique_whatsapp','contato')">
           <div class="contato-card-icon">💚</div>
           <div class="contato-card-info">
             <div class="contato-card-title">WhatsApp</div>
-            <div class="contato-card-text">(11) 94946-4940</div>
+            <div class="contato-card-text">(62) 98160-5863</div>
           </div>
           <div class="contato-card-arrow">→</div>
         </a>
 
-        <a href="tel:+5511949464940" class="contato-card phone-card">
+        <a href="tel:+5562981605863" class="contato-card phone-card">
           <div class="contato-card-icon">📞</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Telefone</div>
-            <div class="contato-card-text">(11) 94946-4940</div>
+            <div class="contato-card-text">(62) 98160-5863</div>
           </div>
           <div class="contato-card-arrow">→</div>
         </a>
@@ -1117,8 +1205,8 @@ window.Portal = {
           <div class="contato-card-icon">📍</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Endereço</div>
-            <div class="contato-card-text">Rua Cel. José Eusébio, 39 — sala 1</div>
-            <div class="contato-card-text">Tatuapé, São Paulo — SP</div>
+            <div class="contato-card-text">Rua 6, nº 455 — Setor Central</div>
+            <div class="contato-card-text">Goiânia — GO, CEP 74023-030</div>
           </div>
         </div>
 
@@ -1126,12 +1214,12 @@ window.Portal = {
           <div class="contato-card-icon">🕐</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Horários</div>
-            <div class="contato-card-text">Seg–Sex: 09:00–19:00</div>
-            <div class="contato-card-text">Sáb: 09:00–14:00</div>
+            <div class="contato-card-text">Seg–Sex: 08:00–18:00</div>
+            <div class="contato-card-text">Sáb: 08:00–14:00</div>
           </div>
         </div>
 
-        <a href="https://www.google.com/maps/place/Rua+Cel.+Jos%C3%A9+Eus%C3%A9bio,+39+%E2%80%94+sala+1,+Tatuap%C3%A9,+S%C3%A3o+Paulo+%E2%80%94+SP" target="_blank" class="contato-card map-card">
+        <a href="https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/" target="_blank" class="contato-card map-card">
           <div class="contato-card-icon">🗺️</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Ver no mapa</div>
@@ -1149,7 +1237,7 @@ window.Portal = {
     document.getElementById('btn-back').style.display = '';
 
     const MAPS_URL = 'https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/';
-    const WHATSAPP_URL = 'https://wa.me/5511949464940?text=Ol%C3%A1!%20Vim%20pelo%20Portal%20do%20Cliente%20e%20gostaria%20de%20saber%20como%20chegar';
+    const WHATSAPP_URL = 'https://wa.me/5562981605863?text=Ol%C3%A1!%20Vim%20pelo%20Portal%20do%20Cliente%20e%20gostaria%20de%20saber%20como%20chegar';
 
     // Verifica se há OS pronta para retirada
     const osPronta = this.currentOS.filter(o => o.status === 'pronto');
@@ -1157,7 +1245,7 @@ window.Portal = {
     el.innerHTML = `
       <div class="como-chegar-container">
         ${osPronta.length > 0 ? `
-          <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;">
+          <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;" onclick="Portal._trackEvent('clique_maps','como-chegar')">
             <div class="pronto-banner-icon">🟢</div>
             <div class="pronto-banner-text">
               <strong>Seu aparelho está pronto para retirada!</strong>
@@ -1169,7 +1257,7 @@ window.Portal = {
         <h2 class="screen-title">📍 Como Chegar</h2>
 
         <!-- MAPA PLACEHOLDER -->
-        <a href="${MAPS_URL}" target="_blank" class="como-chegar-mapa">
+        <a href="${MAPS_URL}" target="_blank" class="como-chegar-mapa" onclick="Portal._trackEvent('clique_maps','como-chegar')">
           <div class="mapa-placeholder">
             <span class="mapa-icon">🗺️</span>
             <span class="mapa-text">Abrir no Google Maps</span>
@@ -1189,42 +1277,190 @@ window.Portal = {
 
         <!-- AÇÕES -->
         <div class="como-chegar-acoes">
-          <a href="${MAPS_URL}" target="_blank" class="acao-card">
+          <a href="${MAPS_URL}" target="_blank" class="acao-card" onclick="Portal._trackEvent('clique_maps','como-chegar')">
             <span class="acao-icon">🗺️</span>
             <span class="acao-label">Abrir no Maps</span>
           </a>
-          <a href="${WHATSAPP_URL}" target="_blank" class="acao-card">
+          <a href="${WHATSAPP_URL}" target="_blank" class="acao-card" onclick="Portal._trackEvent('clique_whatsapp','como-chegar')">
             <span class="acao-icon">💚</span>
             <span class="acao-label">WhatsApp</span>
           </a>
-          <a href="tel:+5511949464940" class="acao-card">
+          <a href="tel:+5562981605863" class="acao-card">
             <span class="acao-icon">📞</span>
             <span class="acao-label">Ligar Agora</span>
           </a>
           <div class="acao-card">
             <span class="acao-icon">🕐</span>
-            <span class="acao-label">Seg–Sex: 09–19<br>Sáb: 09–14</span>
+            <span class="acao-label">Seg–Sex: 08–18<br>Sáb: 08–14</span>
           </div>
         </div>
 
         <!-- BOTÃO PRINCIPAL -->
-        <a href="${MAPS_URL}" target="_blank" class="como-chegar-btn">
+        <a href="${MAPS_URL}" target="_blank" class="como-chegar-btn" onclick="Portal._trackEvent('clique_maps','como-chegar')">
           🗺️ Abrir no Google Maps
         </a>
       </div>
     `;
   },
 
+  // ===== ABRIR CHAMADO / SOLICITAR ORÇAMENTO =====
+  renderAbrirChamado() {
+    const el = document.getElementById('app-content');
+    document.getElementById('btn-back').style.display = '';
+
+    el.innerHTML = `
+      <div class="chamado-container">
+        <h2 class="screen-title">🔧 Solicitar Orçamento</h2>
+        <p class="chamado-subtitle">
+          Preencha os dados abaixo que entraremos em contato com um orçamento.
+        </p>
+
+        <div class="chamado-card">
+          <div class="chamado-form-group">
+            <label class="chamado-label">👤 Seu Nome</label>
+            <input type="text" id="chamado-nome" class="chamado-input"
+                   value="${this._esc(this.session.clientName)}" placeholder="Seu nome completo">
+          </div>
+
+          <div class="chamado-form-group">
+            <label class="chamado-label">📱 Telefone</label>
+            <input type="text" id="chamado-telefone" class="chamado-input"
+                   value="${this._esc(this.session.telefone)}" readonly>
+          </div>
+
+          <div class="chamado-form-group">
+            <label class="chamado-label">📦 Tipo de Equipamento</label>
+            <select id="chamado-tipo" class="chamado-select">
+              <option value="">Selecione...</option>
+              <option value="celular">📱 Celular</option>
+              <option value="notebook">💻 Notebook</option>
+              <option value="desktop">🖥️ Desktop / PC</option>
+              <option value="impressora">🖨️ Impressora</option>
+              <option value="tablet">📟 Tablet</option>
+              <option value="outro">❓ Outro</option>
+            </select>
+          </div>
+
+          <div class="chamado-form-group">
+            <label class="chamado-label">🏷️ Modelo</label>
+            <input type="text" id="chamado-modelo" class="chamado-input"
+                   placeholder="Ex: Samsung Galaxy S23, Dell Inspiron...">
+          </div>
+
+          <div class="chamado-form-group">
+            <label class="chamado-label">⚠️ Descreva o Problema</label>
+            <textarea id="chamado-defeito" class="chamado-textarea"
+                      placeholder="Descreva detalhadamente o que está acontecendo..."
+                      rows="4"></textarea>
+          </div>
+
+          <div class="chamado-form-group">
+            <label class="chamado-label">📝 Observações (opcional)</label>
+            <textarea id="chamado-obs" class="chamado-textarea"
+                      placeholder="Algo mais que queira nos informar..."
+                      rows="2"></textarea>
+          </div>
+
+          <div class="chamado-error" id="chamado-error"></div>
+
+          <button id="btn-chamado" class="login-btn" onclick="Portal.enviarSolicitacaoDiagnostico()">
+            📤 Solicitar Orçamento
+          </button>
+          <button id="btn-chamado-loading" class="login-btn" style="display:none" disabled>
+            <span class="spinner"></span> Enviando...
+          </button>
+        </div>
+
+        <div id="chamado-sucesso" style="display:none;" class="chamado-sucesso">
+          <div class="chamado-sucesso-icon">✅</div>
+          <h3>Solicitação Enviada!</h3>
+          <p>Recebemos seu pedido de orçamento. Entraremos em contato em breve pelo WhatsApp.</p>
+          <button class="login-btn" onclick="Portal.navegar('painel')">Voltar ao Painel</button>
+        </div>
+      </div>
+    `;
+  },
+
+  async enviarSolicitacaoDiagnostico() {
+    const nome = document.getElementById('chamado-nome').value.trim();
+    const tipo = document.getElementById('chamado-tipo').value;
+    const modelo = document.getElementById('chamado-modelo').value.trim();
+    const defeito = document.getElementById('chamado-defeito').value.trim();
+    const obs = document.getElementById('chamado-obs').value.trim();
+    const errorEl = document.getElementById('chamado-error');
+
+    // Validações
+    if (!nome) { errorEl.textContent = '👤 Digite seu nome'; return; }
+    if (!tipo) { errorEl.textContent = '📦 Selecione o tipo de equipamento'; return; }
+    if (!defeito || defeito.length < 5) { errorEl.textContent = '⚠️ Descreva o problema (mín. 5 caracteres)'; return; }
+
+    errorEl.textContent = '';
+    document.getElementById('btn-chamado').style.display = 'none';
+    document.getElementById('btn-chamado-loading').style.display = '';
+
+    try {
+      const db = window.db;
+      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
+      await addDoc(collection(db, 'solicitacoes_diagnostico'), {
+        telefone: this.session.telefone,
+        telefoneRaw: this.session.telefoneRaw || '',
+        clientName: nome,
+        tipoEquipamento: tipo,
+        modelo: modelo || '',
+        descricaoDefeito: defeito,
+        observacoes: obs || '',
+        status: 'pendente',     // pendente → em_andamento → concluido
+        origem: 'portal',
+        lida: false,
+        createdAt: serverTimestamp()
+      });
+
+      // Esconde formulário, mostra sucesso
+      document.querySelector('.chamado-card').style.display = 'none';
+      document.getElementById('chamado-sucesso').style.display = '';
+      this._toast('✅ Solicitação enviada com sucesso!');
+    } catch (err) {
+      console.error('[Portal] Erro ao enviar solicitação:', err);
+      errorEl.textContent = '❌ Erro ao enviar. Tente novamente.';
+      document.getElementById('btn-chamado').style.display = '';
+    }
+    document.getElementById('btn-chamado-loading').style.display = 'none';
+  },
+
   // ===== LOGOUT =====
   logout() {
     if (!confirm('Deseja sair do Portal do Cliente?')) return;
-    if (this.unsubscribeOS) this.unsubscribeOS();
-    if (this.unsubscribeMsgs) this.unsubscribeMsgs();
+    // Cancela listeners (pode ser função única ou array)
+    const cancel = (u) => {
+      if (!u) return;
+      if (typeof u === 'function') u();
+      else if (Array.isArray(u)) u.forEach(fn => { if (typeof fn === 'function') fn(); });
+    };
+    cancel(this.unsubscribeOS);
+    cancel(this.unsubscribeMsgs);
     this.session = null;
     this.currentOS = [];
     this.currentMsgs = [];
     sessionStorage.removeItem('portal_session');
     location.hash = '#/login';
+  },
+
+  // ===== TRACKING DE EVENTOS =====
+  _trackEvent(tipo, pagina) {
+    if (!this.session?.telefone) return;
+    try {
+      const db = window.db;
+      const { addDoc, collection, serverTimestamp } = window.FirebaseModules;
+      addDoc(collection(db, 'portal_eventos'), {
+        telefone: this.session.telefone,
+        clientName: this.session.clientName || '',
+        tipo,
+        pagina,
+        createdAt: serverTimestamp()
+      }).catch(() => {});
+    } catch (e) {
+      console.warn('[Portal] Erro tracking:', e);
+    }
   },
 
   // ===== UTILITÁRIOS =====

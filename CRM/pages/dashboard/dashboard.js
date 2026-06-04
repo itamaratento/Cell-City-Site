@@ -843,31 +843,45 @@ class Dashboard {
         console.warn('Central de Alertas — erro ao buscar avaliações:', e);
       }
 
-      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
+      // ===== SOLICITAÇÕES DE DIAGNÓSTICO (Abrir Chamado) =====
       try {
-        const solicitacoesSnap = await getDocs(
-          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        const diagSnap = await getDocs(
+          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
         );
-        const solicitacoes = [];
-        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
-        // Este bloco complementa o de mensagens, focando em solicitações específicas
-        const solicitacoesServico = solicitacoes.filter(s =>
-          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
-                      s.texto.toLowerCase().includes('conserto') ||
-                      s.texto.toLowerCase().includes('reparo') ||
-                      s.texto.toLowerCase().includes('manutenção'))
-        );
-        if (solicitacoesServico.length > 0) {
+        const diagnosticos = [];
+        diagSnap.forEach(d => diagnosticos.push({ id: d.id, ...d.data() }));
+
+        if (diagnosticos.length > 0) {
           alertas.push({
-            icon: '🔧', cat: 'atencao', cor: 'atencao',
-            title: 'SOLICITAÇÕES DE SERVIÇO',
-            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
-            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
+            icon: '🔧', cat: 'critico', cor: 'critico',
+            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
+            sub: `${diagnosticos.length} chamado(s) aguardando`,
+            detail: `${diagnosticos.length} cliente(s) solicitaram orçamento pelo Portal do Cliente. Acesse o módulo para responder.`
+          });
+
+          // Mostra até 2 detalhes
+          diagnosticos.slice(0, 2).forEach(d => {
+            alertas.push({
+              icon: '🔧', cat: 'crm', cor: null,
+              title: `🔧 ${d.clientName || 'Cliente'} — ${d.tipoEquipamento || 'Equipamento'}`,
+              sub: (d.descricaoDefeito || '').slice(0, 60),
+              detail: `Cliente solicitou diagnóstico. Equipamento: ${d.tipoEquipamento || '—'}, Modelo: ${d.modelo || '—'}.`
+            });
           });
         }
       } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
+        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
       }
+
+      // ===== PULSA CARD DO PORTAL QUANDO HOUVER PENDÊNCIAS =====
+      try {
+        const portalCard = document.querySelector('.module-card[data-module="portal-cliente"]');
+        if (portalCard) {
+          const temPendencias =
+            (alertas.filter(a => a.title === 'PORTAL DO CLIENTE' || a.title === 'SOLICITAÇÕES DE DIAGNÓSTICO').length > 0);
+          portalCard.classList.toggle('module-card-pulse', temPendencias);
+        }
+      } catch (e) { /* ignora */ }
 
     } catch (e) {
       console.warn('Central de Alertas — erro ao gerar:', e);
@@ -1368,7 +1382,7 @@ class Dashboard {
       'em-breve': '../../pages/em-breve/index.html',
       'minha-semana':   '../../pages/minha-semana/index.html',
       'acaodasemana':   '../../pages/acaodasemana/index.html',
-      'portal-cliente': '../../pages/portal-cliente/index.html'
+      'portal-cliente': '../../pages/portal-cliente/admin.html'
     };
     const url = routes[module];
     if (url) {
