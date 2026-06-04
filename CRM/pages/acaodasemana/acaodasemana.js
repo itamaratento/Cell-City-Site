@@ -281,6 +281,13 @@ function buscar(termo) {
     viewAno = y; viewMes = m - 1;
     diaSelecionado = alvo;
     carregarEditor();
+    renderCalendario();
+    // Rola suavemente até o calendário, centralizando o dia encontrado
+    requestAnimationFrame(() => {
+      const cel = gradeEl.querySelector('.ag-cel-match') || document.querySelector('.ag-cal');
+      cel?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    return;
   }
   renderCalendario();
 }
