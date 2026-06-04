@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel Administrativo — Portal do Cliente</title>
-  <link rel="stylesheet" href="admin.css?v=2.3">
+  <link rel="stylesheet" href="admin.css?v=2.4">
 
-  <!-- Firebase SDK (compat) v10.8.0 -->
+  <!-- Firebase SDK (compat) v10.8.0 → carregamento lazy via defer -->
   <script type="importmap">
   {
     "imports": {
@@ -16,12 +16,19 @@
     }
   }
   </script>
+  <style>
+    /* ⚡ OTIMIZAÇÃO: oculta conteúdo até JS carregar (evita flash) */
+    .admin-content > *:not(.admin-loading) { display: none; }
+    .admin-content.carregado .admin-loading { display: none; }
+    .admin-content.carregado > *:not(.admin-loading) { display: block; }
+  </style>
 </head>
 <body>
 
   <!-- ===== BRAND HEADER (CELL CITY — verde, igual ao CRM) ===== -->
-  <header class="admin-brand-bar" id="admin-brand-bar" title="Voltar ao CRM">
-    <div class="admin-brand-header">
+  <header class="admin-brand-bar" id="admin-brand-bar">
+    <!-- ⚡ OTIMIZAÇÃO #1: Logo clicável → volta ao Dashboard Principal do CRM -->
+    <div class="admin-brand-header" id="admin-brand-logo" title="Voltar ao Dashboard Principal" style="cursor:pointer;">
       <div class="admin-brand-header-text">
         <div class="admin-brand-header-title">Cell City Informática</div>
         <div class="admin-brand-header-divider"></div>
@@ -37,41 +44,40 @@
     </div>
   </header>
 
-  <!-- ===== TOP BAR (simplificado, sem título — agora está no brand header) ===== -->
+  <!-- ===== TOP BAR (simplificado) ===== -->
   <header class="admin-topbar">
     <div class="admin-topbar-left">
-      <button class="admin-topbar-btn" onclick="window.PortalAdmin?.refresh?.()" title="Atualizar dados">🔄</button>
+      <button class="admin-topbar-btn" id="btn-refresh" title="Atualizar dados">🔄</button>
     </div>
     <div class="admin-topbar-center">
       <span class="admin-topbar-title">Painel Administrativo</span>
     </div>
     <div class="admin-topbar-right">
-      <button class="admin-topbar-btn" onclick="window.PortalAdmin?.refresh?.()" title="Atualizar">🔄</button>
       <a href="../../index.html" class="admin-topbar-btn admin-topbar-btn-home" title="Voltar ao CRM">🏠</a>
     </div>
   </header>
 
   <!-- ===== ABAS ===== -->
   <nav class="admin-tabs" id="admin-tabs">
-    <button class="admin-tab active" data-tab="central" onclick="window.PortalAdmin?.navegar?.('central')">
+    <button class="admin-tab active" data-tab="central">
       <span class="tab-icon">🏠</span>
       <span class="tab-label">Central</span>
     </button>
-    <button class="admin-tab" data-tab="mensagens" onclick="window.PortalAdmin?.navegar?.('mensagens')">
+    <button class="admin-tab" data-tab="mensagens">
       <span class="tab-icon">💬</span>
       <span class="tab-label">Mensagens</span>
       <span class="tab-badge" id="badge-mensagens" style="display:none;">0</span>
     </button>
-    <button class="admin-tab" data-tab="avaliacoes" onclick="window.PortalAdmin?.navegar?.('avaliacoes')">
+    <button class="admin-tab" data-tab="avaliacoes">
       <span class="tab-icon">⭐</span>
       <span class="tab-label">Avaliações</span>
     </button>
-    <button class="admin-tab" data-tab="solicitacoes" onclick="window.PortalAdmin?.navegar?.('solicitacoes')">
+    <button class="admin-tab" data-tab="solicitacoes">
       <span class="tab-icon">🔧</span>
       <span class="tab-label">Solicitações</span>
       <span class="tab-badge" id="badge-solicitacoes" style="display:none;">0</span>
     </button>
-    <button class="admin-tab" data-tab="estatisticas" onclick="window.PortalAdmin?.navegar?.('estatisticas')">
+    <button class="admin-tab" data-tab="estatisticas">
       <span class="tab-icon">📊</span>
       <span class="tab-label">Estatísticas</span>
     </button>
@@ -89,13 +95,13 @@
   <footer class="admin-footer">
     <span>Cell City Informática © <span id="admin-year">2026</span></span>
     <span class="admin-footer-sep">|</span>
-    <span>Portal do Cliente — v2.3</span>
+    <span>Portal do Cliente — v2.4</span>
     <span class="admin-footer-sep">|</span>
     <span class="admin-footer-otimizado">⚡ Carregamento otimizado</span>
   </footer>
 
   <script type="module">
-    // ===== FIREBASE INIT =====
+    // ===== FIREBASE INIT (OTIMIZADO) =====
     import { initializeApp } from 'firebase/app';
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
     import {
@@ -113,35 +119,34 @@
       appId: "1:52486693325:web:33b53a088c9fe3a10e9585"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    // ⚡ OTIMIZAÇÃO #2: Inicialização única, evita recriação
+    if (!window._adminFirebaseInit) {
+      window._adminFirebaseInit = true;
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
 
-    // Expõe globais para admin.js (não-module)
-    window.db = db;
-    window.FirebaseModules = {
-      collection, query, where, getDocs, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
-    };
+      window.db = db;
+      window.FirebaseModules = {
+        collection, query, where, getDocs, onSnapshot,
+        addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
+      };
 
-    // Auth anônima
-    window.authReady = false;
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        try {
-          await signInAnonymously(auth);
-        } catch (err) {
-          console.error('[Admin] Erro auth:', err);
-          window.authReady = true;
-          window.dispatchEvent(new Event('admin-firebase-ready'));
+      window.authReady = false;
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          try {
+            await signInAnonymously(auth);
+          } catch (err) {
+            console.error('[Admin] Erro auth:', err);
+          }
         }
-      } else {
         window.authReady = true;
         window.dispatchEvent(new Event('admin-firebase-ready'));
-      }
-    });
+      });
+    }
   </script>
 
-  <script src="admin.js?v=2.3"></script>
+  <script src="admin.js?v=2.4"></script>
 </body>
 </html>

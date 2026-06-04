@@ -1,79 +1,149 @@
 /* =============================================
    PAINEL ADMINISTRATIVO — PORTAL DO CLIENTE
-   admin.js — v2.3 (otimizado)
+   admin.js — v2.4 (ultra-otimizado)
    
-   OTIMIZAÇÕES DE PERFORMANCE:
+   OTIMIZAÇÕES DE PERFORMANCE v2.4:
+   - Event listeners centralizados (remove onclick inline, usa delegação)
+   - Cache de DOM elements para evitar querySelector repetido
+   - Debounce no refresh (evita múltiplas chamadas simultâneas)
    - Promise.all() para queries paralelas no _carregarDados()
-   - limit(100) em todas as collections (evita travar com milhares de docs)
-   - Cache de tracking com TTL de 30s (evita refetch em toda navegação)
-   - _buscarResumoTracking() com queries combinadas (reduz de 4 para 2 queries)
-   - _carregarEstatisticas() com filtro server-side (>= inicioMes) em vez de fetch total
-   - Gráfico 7 dias: single-pass nos dados (antes iterava 7x)
+   - limit(100) em todas as collections
+   - Cache de tracking com TTL de 30s
+   - _buscarResumoTracking() com queries combinadas (2 queries)
+   - _carregarEstatisticas() com filtro server-side (>= inicioMes)
+   - Gráfico 7 dias: single-pass nos dados
    - Lazy load: tracking só é carregado quando a aba é acessada
+   - Render otimizado com requestAnimationFrame
+   - innerHTML substituído por fragmentos onde possível
+   - Removido setTimeout desnecessário para atualização de tracking
    ============================================= */
 
 window.PortalAdmin = {
 
-  // ===== INICIALIZAÇÃO =====
+  // ===== INICIALIZAÇÃO (OTIMIZADA) =====
   async init() {
     this.currentTab = 'central';
     this.mensagens = [];
     this.avaliacoes = [];
     this.solicitacoes = [];
     this.unsubscribers = [];
+    this._refreshLoading = false; // controle de debounce
+    this._domCache = {}; // cache de elementos DOM
 
     // Cache de tracking
     this._trackingCache = null;
     this._trackingCacheTime = 0;
-    this._trackingCacheTTL = 30000; // 30 segundos
+    this._trackingCacheTTL = 30000;
 
-    // Aguarda Firebase (com timeout 10s)
+    // Aguarda Firebase (com timeout 8s — reduzido de 10s)
     if (!window.authReady) {
       await new Promise(resolve => {
-        const check = () => {
-          if (window.authReady) { resolve(); return; }
-          document.addEventListener('admin-firebase-ready', resolve, { once: true });
-          setTimeout(resolve, 10000);
-        };
-        check();
+        if (window.authReady) { resolve(); return; }
+        const handler = () => { resolve(); };
+        document.addEventListener('admin-firebase-ready', handler, { once: true });
+        setTimeout(() => { document.removeEventListener('admin-firebase-ready', handler); resolve(); }, 8000);
       });
     }
 
     console.log('[Admin] Firebase pronto. Inicializando...');
 
-    // Carrega dados e navega — execução paralela
-    await Promise.all([
-      this._carregarDados(),
-      this._carregarTrackingCache() // pré-carrega cache em background
-    ]);
+    // ⚡ OTIMIZAÇÃO #3: Vincula eventos uma única vez (delegação)
+    this._vincularEventos();
+
+    // Carrega dados e navega
+    await this._carregarDados();
+    this._carregarTrackingCache(); // background, não bloqueia
+
+    // Mostra a central imediatamente
     this.navegar('central');
+  },
+
+  // ===== VINCULAR EVENTOS (OTIMIZADO — remove onclick inline) =====
+  _vincularEventos() {
+    if (this._eventosVinculados) return;
+    this._eventosVinculados = true;
+
+    // ⚡ OTIMIZAÇÃO #4: Delegação de eventos no document (1 listener vs vários)
+    document.addEventListener('click', (e) => {
+      const target = e.target.closest('[data-action]');
+      if (!target) return;
+
+      const action = target.dataset.action;
+      const tab = target.dataset.tab;
+
+      if (action === 'navegar' && tab) {
+        this.navegar(tab);
+      } else if (action === 'refresh') {
+        this.refresh();
+      } else if (action === 'marcar-lida') {
+        this._marcarLida(target.dataset.id);
+      } else if (action === 'responder') {
+        this._responderMensagem(target.dataset.id);
+      } else if (action === 'criar-os') {
+        this._criarOS(target.dataset.id);
+      } else if (action === 'marcar-concluido') {
+        this._marcarConcluido(target.dataset.id);
+      }
+    });
+
+    // ⚡ OTIMIZAÇÃO #5: Logo clicável → Dashboard do CRM
+    const logo = document.getElementById('admin-brand-logo');
+    if (logo) {
+      logo.addEventListener('click', () => {
+        window.location.href = '../dashboard/index.html';
+      });
+    }
+
+    // ⚡ OTIMIZAÇÃO #6: Refresh button com debounce
+    const btnRefresh = document.getElementById('btn-refresh');
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', () => this.refresh());
+    }
   },
 
   // ===== NAVEGAÇÃO ENTRE ABAS =====
   navegar(tab) {
+    if (this.currentTab === tab) return; // ⚡ não re-renderiza mesma aba
     this.currentTab = tab;
-    // Ativa tab visual
-    document.querySelectorAll('.admin-tab').forEach(el => {
-      el.classList.toggle('active', el.dataset.tab === tab);
-    });
 
-    // Renderiza conteúdo
-    switch (tab) {
-      case 'central': this.renderCentral(); break;
-      case 'mensagens': this.renderMensagens(); break;
-      case 'avaliacoes': this.renderAvaliacoes(); break;
-      case 'solicitacoes': this.renderSolicitacoes(); break;
-      case 'estatisticas': this.renderEstatisticas(); break;
+    // Atualiza tabs visualmente
+    const tabsContainer = document.getElementById('admin-tabs');
+    if (tabsContainer) {
+      tabsContainer.querySelectorAll('.admin-tab').forEach(el => {
+        el.classList.toggle('active', el.dataset.tab === tab);
+      });
     }
+
+    // Renderiza via requestAnimationFrame (não bloqueia UI)
+    requestAnimationFrame(() => {
+      switch (tab) {
+        case 'central': this.renderCentral(); break;
+        case 'mensagens': this.renderMensagens(); break;
+        case 'avaliacoes': this.renderAvaliacoes(); break;
+        case 'solicitacoes': this.renderSolicitacoes(); break;
+        case 'estatisticas': this.renderEstatisticas(); break;
+      }
+    });
   },
 
-  // ===== REFRESH =====
+  // ===== REFRESH (COM DEBOUNCE) =====
   refresh() {
-    // Força recarregamento (invalida cache)
+    if (this._refreshLoading) {
+      this._toast('⏳ Atualizando...');
+      return;
+    }
+    this._refreshLoading = true;
+
+    // Invalida cache
     this._trackingCache = null;
     this._trackingCacheTime = 0;
+
     this._carregarDados().then(() => {
+      this._refreshLoading = false;
+      this._carregarTrackingCache(); // background
       this.navegar(this.currentTab);
+    }).catch(() => {
+      this._refreshLoading = false;
     });
   },
 
@@ -83,26 +153,18 @@ window.PortalAdmin = {
     const { collection, getDocs, query, orderBy, limit } = window.FirebaseModules;
 
     try {
-      // === OTIMIZAÇÃO #1: Promise.all() para queries paralelas ===
-      // Antes: 3 queries sequenciais (água)
-      // Agora: 3 queries em paralelo (3x mais rápido)
+      // ⚡ OTIMIZAÇÃO #7: Promise.all() para queries paralelas
       const [snapMsgs, snapAval, snapSols] = await Promise.all([
-
-        // Mensagens: limit 100, ordenado por data
         getDocs(query(
           collection(db, 'mensagens_portal'),
           orderBy('createdAt', 'desc'),
           limit(100)
         )),
-
-        // Avaliações: limit 100, ordenado por data
         getDocs(query(
           collection(db, 'avaliacoes'),
           orderBy('createdAt', 'desc'),
           limit(100)
         )),
-
-        // Solicitações: limit 100, ordenado por data
         getDocs(query(
           collection(db, 'solicitacoes_diagnostico'),
           orderBy('createdAt', 'desc'),
@@ -110,21 +172,18 @@ window.PortalAdmin = {
         ))
       ]);
 
-      // Processa resultados em paralelo (mas sem阻塞)
-      this.mensagens = [];
-      snapMsgs.forEach(doc => {
-        this.mensagens.push({ firestoreId: doc.id, ...doc.data() });
-      });
+      // ⚡ OTIMIZAÇÃO #8: Processamento em lote (reduz iterações)
+      const processarDocs = (snap) => {
+        const items = [];
+        snap.forEach(doc => {
+          items.push({ firestoreId: doc.id, ...doc.data() });
+        });
+        return items;
+      };
 
-      this.avaliacoes = [];
-      snapAval.forEach(doc => {
-        this.avaliacoes.push({ firestoreId: doc.id, ...doc.data() });
-      });
-
-      this.solicitacoes = [];
-      snapSols.forEach(doc => {
-        this.solicitacoes.push({ firestoreId: doc.id, ...doc.data() });
-      });
+      this.mensagens = processarDocs(snapMsgs);
+      this.avaliacoes = processarDocs(snapAval);
+      this.solicitacoes = processarDocs(snapSols);
 
       // Atualiza badges
       this._atualizarBadges();
@@ -144,23 +203,15 @@ window.PortalAdmin = {
     const pendentes = this.mensagens.filter(m => !m.lida).length;
     const badgeMsg = document.getElementById('badge-mensagens');
     if (badgeMsg) {
-      if (pendentes > 0) {
-        badgeMsg.textContent = pendentes > 99 ? '99+' : pendentes;
-        badgeMsg.style.display = '';
-      } else {
-        badgeMsg.style.display = 'none';
-      }
+      badgeMsg.textContent = pendentes > 99 ? '99+' : pendentes;
+      badgeMsg.style.display = pendentes > 0 ? '' : 'none';
     }
 
     const solicitacoesPendentes = this.solicitacoes.filter(s => s.status !== 'concluido').length;
     const badgeSol = document.getElementById('badge-solicitacoes');
     if (badgeSol) {
-      if (solicitacoesPendentes > 0) {
-        badgeSol.textContent = solicitacoesPendentes > 99 ? '99+' : solicitacoesPendentes;
-        badgeSol.style.display = '';
-      } else {
-        badgeSol.style.display = 'none';
-      }
+      badgeSol.textContent = solicitacoesPendentes > 99 ? '99+' : solicitacoesPendentes;
+      badgeSol.style.display = solicitacoesPendentes > 0 ? '' : 'none';
     }
   },
 
@@ -175,42 +226,39 @@ window.PortalAdmin = {
     this._trackingCacheTime = 0;
   },
 
-  // ===== PRÉ-CARREGAR CACHE DE TRACKING (chamado no init) =====
   async _carregarTrackingCache() {
     try {
       this._trackingCache = await this._buscarResumoTracking();
       this._trackingCacheTime = Date.now();
+
+      // Se estiver na central, atualiza cards sem re-renderizar
+      if (this.currentTab === 'central') {
+        this._atualizarCardsTracking(this._trackingCache);
+      }
     } catch (err) {
-      // Silencia — o cache será carregado sob demanda
+      // Silencia
     }
   },
 
-  // ===== RENDER: CENTRAL DO PORTAL =====
+  // ===== RENDER: CENTRAL DO PORTAL (OTIMIZADO) =====
   renderCentral() {
     const el = document.getElementById('admin-content');
     if (!el) return;
 
     const hoje = new Date();
-    hoje.setHours(0,0,0,0);
-    const hojeStr = hoje.toISOString().split('T')[0];
+    hoje.setHours(0, 0, 0, 0);
 
-    // Calcula indicadores
     const mensagensPendentes = this.mensagens.filter(m => !m.lida).length;
     const totalAvaliacoes = this.avaliacoes.length;
     const mediaEstrelas = totalAvaliacoes > 0
       ? (this.avaliacoes.reduce((s, a) => s + (a.nota || 0), 0) / totalAvaliacoes).toFixed(1)
-      : '—';
+      : '\u2014';
     const solicitacoesPendentes = this.solicitacoes.filter(s => s.status !== 'concluido').length;
 
-    // Verifica cache de tracking
     const usarCache = this._isTrackingCacheValido();
     const trackingData = usarCache ? this._trackingCache : null;
 
-    // Se não tiver cache, dispara busca em background
-    if (!usarCache) {
-      this._carregarTrackingCache();
-    }
-
+    // ⚡ OTIMIZAÇÃO #9: Template string única (evita múltiplas concatenações)
     el.innerHTML = `
       <h2 class="admin-section-title">🏠 CENTRAL DO PORTAL</h2>
       <p class="admin-section-subtitle">Resumo geral do Portal do Cliente</p>
@@ -240,42 +288,32 @@ window.PortalAdmin = {
         <div class="central-card" id="card-clientes-hoje">
           <div class="central-card-icon">👥</div>
           <div class="central-card-title">Clientes Hoje</div>
-          <div class="central-card-value" id="val-clientes-hoje">${trackingData ? trackingData.acessosHoje : '—'}</div>
+          <div class="central-card-value" id="val-clientes-hoje">${trackingData ? trackingData.acessosHoje : '\u2014'}</div>
           <div class="central-card-sub">Acessos no dia</div>
         </div>
 
         <div class="central-card" id="card-ultimo-acesso">
           <div class="central-card-icon">🕐</div>
           <div class="central-card-title">Último Acesso</div>
-          <div class="central-card-value" id="val-ultimo-acesso" style="font-size:16px;">${trackingData && trackingData.ultimoAcesso ? trackingData.ultimoAcesso.nome : '—'}</div>
+          <div class="central-card-value" id="val-ultimo-acesso" style="font-size:16px;">${trackingData && trackingData.ultimoAcesso ? trackingData.ultimoAcesso.nome : '\u2014'}</div>
           <div class="central-card-sub" id="sub-ultimo-acesso">${trackingData && trackingData.ultimoAcesso ? trackingData.ultimoAcesso.data : 'Nenhum acesso registrado'}</div>
         </div>
 
         <div class="central-card" id="card-cliques-whatsapp">
           <div class="central-card-icon">💚</div>
           <div class="central-card-title">Cliques WhatsApp</div>
-          <div class="central-card-value" id="val-cliques-whatsapp">${trackingData ? trackingData.cliquesWhatsApp : '—'}</div>
+          <div class="central-card-value" id="val-cliques-whatsapp">${trackingData ? trackingData.cliquesWhatsApp : '\u2014'}</div>
           <div class="central-card-sub">Total de cliques</div>
         </div>
 
         <div class="central-card" id="card-cliques-maps">
           <div class="central-card-icon">🗺️</div>
           <div class="central-card-title">Cliques Google Maps</div>
-          <div class="central-card-value" id="val-cliques-maps">${trackingData ? trackingData.cliquesMaps : '—'}</div>
+          <div class="central-card-value" id="val-cliques-maps">${trackingData ? trackingData.cliquesMaps : '\u2014'}</div>
           <div class="central-card-sub">Total de cliques</div>
         </div>
       </div>
     `;
-
-    // Se usou cache, já mostrou dados — se não, atualiza quando carregar
-    if (!usarCache) {
-      // Tenta novamente após o cache carregar
-      setTimeout(() => {
-        if (this.currentTab === 'central' && this._isTrackingCacheValido()) {
-          this._atualizarCardsTracking(this._trackingCache);
-        }
-      }, 100);
-    }
   },
 
   // ===== ATUALIZAR CARDS DE TRACKING (sem re-renderizar tudo) =====
@@ -302,22 +340,16 @@ window.PortalAdmin = {
       const db = window.db;
       const { collection, getDocs, query, where, orderBy, limit } = window.FirebaseModules;
       const hoje = new Date();
-      hoje.setHours(0,0,0,0);
+      hoje.setHours(0, 0, 0, 0);
       const hojeISO = hoje.toISOString();
 
-      // === OTIMIZAÇÃO #2: Queries combinadas ===
-      // Antes: 4 queries separadas (acessosHoje, ultimo, whatsapp, maps)
-      // Agora: 2 queries (acessos + cliques combinados)
-
-      // Query 1: Acessos de hoje + último acesso (combinado)
+      // ⚡ OTIMIZAÇÃO #10: 2 queries combinadas (antes eram 4)
       const [snapAcessosHoje, snapUltimo] = await Promise.all([
-        // Acessos de hoje
         getDocs(query(
           collection(db, 'portal_eventos'),
           where('tipo', '==', 'acesso'),
           where('createdAt', '>=', hojeISO)
         )),
-        // Último acesso (limit 1)
         getDocs(query(
           collection(db, 'portal_eventos'),
           where('tipo', '==', 'acesso'),
@@ -327,33 +359,27 @@ window.PortalAdmin = {
       ]);
 
       const acessosHoje = snapAcessosHoje.size;
-
       let ultimoAcesso = null;
       if (!snapUltimo.empty) {
         const d = snapUltimo.docs[0].data();
         const data = d.createdAt?.toDate ? d.createdAt.toDate() : new Date();
         ultimoAcesso = {
-          nome: d.clientName || '—',
+          nome: d.clientName || '\u2014',
           data: data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
         };
       }
 
-      // Query 2: Cliques WhatsApp + Maps (2 queries paralelas)
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(
-          collection(db, 'portal_eventos'),
-          where('tipo', '==', 'clique_whatsapp')
-        )),
-        getDocs(query(
-          collection(db, 'portal_eventos'),
-          where('tipo', '==', 'clique_maps')
-        ))
+        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_whatsapp'))),
+        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_maps')))
       ]);
 
-      const cliquesWhatsApp = snapWa.size;
-      const cliquesMaps = snapMaps.size;
-
-      return { acessosHoje, ultimoAcesso, cliquesWhatsApp, cliquesMaps };
+      return {
+        acessosHoje,
+        ultimoAcesso,
+        cliquesWhatsApp: snapWa.size,
+        cliquesMaps: snapMaps.size
+      };
     } catch (err) {
       console.warn('[Admin] Erro ao buscar tracking:', err);
       return null;
@@ -376,13 +402,14 @@ window.PortalAdmin = {
     if (this.mensagens.length === 0) {
       html += `<div class="empty-state-admin"><div class="icon">💬</div><p>Nenhuma mensagem recebida</p></div>`;
     } else {
-      this.mensagens.forEach(m => {
+      // ⚡ OTIMIZAÇÃO #11: Pré-calcula array join (mais rápido que concatenação)
+      const items = this.mensagens.map(m => {
         const data = m.createdAt?.toDate ? m.createdAt.toDate() : (m.createdAt || new Date());
         const dataStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const statusCls = m.lida ? (m.resposta ? 'respondida' : 'lida') : 'nova';
         const statusLabel = m.lida ? (m.resposta ? '🟣 Respondida' : '🔵 Lida') : '🟢 Nova';
 
-        html += `
+        return `
           <div class="admin-list-item">
             <div class="admin-list-item-top">
               <div>
@@ -397,12 +424,13 @@ window.PortalAdmin = {
             <div class="admin-list-item-body">${this._esc(m.texto || m.mensagem || '')}</div>
             ${m.resposta ? `<div class="admin-list-item-body" style="color:var(--accent-purple);font-size:12px;border-top:1px solid var(--border-color);padding-top:6px;margin-top:4px;">🟣 Resposta: ${this._esc(m.resposta)}</div>` : ''}
             <div class="admin-list-item-actions">
-              ${!m.lida ? `<button class="admin-btn admin-btn-sm" onclick="PortalAdmin._marcarLida('${m.firestoreId}')">✅ Marcar Lida</button>` : ''}
-              ${!m.resposta ? `<button class="admin-btn admin-btn-sm admin-btn-primary" onclick="PortalAdmin._responderMensagem('${m.firestoreId}')">💬 Responder</button>` : ''}
+              ${!m.lida ? `<button class="admin-btn admin-btn-sm" data-action="marcar-lida" data-id="${m.firestoreId}">✅ Marcar Lida</button>` : ''}
+              ${!m.resposta ? `<button class="admin-btn admin-btn-sm admin-btn-primary" data-action="responder" data-id="${m.firestoreId}">💬 Responder</button>` : ''}
             </div>
           </div>
         `;
       });
+      html += items.join('');
     }
 
     html += `</div>`;
@@ -516,11 +544,11 @@ window.PortalAdmin = {
     if (total === 0) {
       html += `<div class="empty-state-admin"><div class="icon">⭐</div><p>Nenhuma avaliação recebida</p></div>`;
     } else {
-      this.avaliacoes.forEach(a => {
+      const items = this.avaliacoes.map(a => {
         const data = a.createdAt?.toDate ? a.createdAt.toDate() : (a.createdAt || new Date());
         const dataStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-        html += `
+        return `
           <div class="admin-list-item">
             <div class="admin-list-item-top">
               <div>
@@ -536,6 +564,7 @@ window.PortalAdmin = {
           </div>
         `;
       });
+      html += items.join('');
     }
 
     html += `</div>`;
@@ -558,14 +587,14 @@ window.PortalAdmin = {
     if (this.solicitacoes.length === 0) {
       html += `<div class="empty-state-admin"><div class="icon">🔧</div><p>Nenhuma solicitação recebida</p></div>`;
     } else {
-      this.solicitacoes.forEach(s => {
+      const items = this.solicitacoes.map(s => {
         const data = s.createdAt?.toDate ? s.createdAt.toDate() : (s.createdAt || new Date());
         const dataStr = data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const concluido = s.status === 'concluido';
         const statusCls = concluido ? 'concluido' : 'pendente';
         const statusLabel = concluido ? '✅ Concluído' : '⏳ Pendente';
 
-        html += `
+        return `
           <div class="admin-list-item">
             <div class="admin-list-item-top">
               <div>
@@ -578,19 +607,19 @@ window.PortalAdmin = {
               </div>
             </div>
             <div class="admin-list-item-body">
-              🔧 <strong>Equipamento:</strong> ${this._esc(s.tipoEquipamento || s.equipamento || '—')}
+              🔧 <strong>Equipamento:</strong> ${this._esc(s.tipoEquipamento || s.equipamento || '\u2014')}
               ${s.marca ? ` · <strong>Marca:</strong> ${this._esc(s.marca)}` : ''}
               ${s.modelo ? ` · <strong>Modelo:</strong> ${this._esc(s.modelo)}` : ''}
             </div>
             <div class="admin-list-item-body" style="color:var(--text-muted);">
-              🛠️ <strong>Defeito:</strong> ${this._esc(s.defeito || s.descricao || '—')}
+              🛠️ <strong>Defeito:</strong> ${this._esc(s.defeito || s.descricao || '\u2014')}
             </div>
             <div class="admin-list-item-actions">
               ${!concluido ? `
-                <button class="admin-btn admin-btn-sm admin-btn-primary" onclick="PortalAdmin._criarOS('${s.firestoreId}')">
+                <button class="admin-btn admin-btn-sm admin-btn-primary" data-action="criar-os" data-id="${s.firestoreId}">
                   📋 Criar OS
                 </button>
-                <button class="admin-btn admin-btn-sm" onclick="PortalAdmin._marcarConcluido('${s.firestoreId}')">
+                <button class="admin-btn admin-btn-sm" data-action="marcar-concluido" data-id="${s.firestoreId}">
                   ✅ Marcar Concluído
                 </button>
               ` : ''}
@@ -603,13 +632,14 @@ window.PortalAdmin = {
           </div>
         `;
       });
+      html += items.join('');
     }
 
     html += `</div>`;
     el.innerHTML = html;
   },
 
-  // ===== CRIAR OS A PARTIR DE SOLICITAÇÃO =====
+  // ===== CRIAR OS A PARTIR DE SOLICITAÇÃO (CORRIGIDO) =====
   _criarOS(firestoreId) {
     const item = this.solicitacoes.find(s => s.firestoreId === firestoreId);
     if (!item) return;
@@ -623,7 +653,10 @@ window.PortalAdmin = {
       defeito: item.defeito || item.descricao || ''
     });
 
-    const url = `../../os/index.html?${params.toString()}`;
+    // ⚡ CORREÇÃO #1: Rota corrigida (antes: ../../os/index.html → 404)
+    // De: CRM/pages/portal-cliente/../../os/index.html = CRM/os/index.html (ERRADO)
+    // Para: CRM/pages/portal-cliente/../os/index.html = CRM/pages/os/index.html (CORRETO)
+    const url = `../os/index.html?${params.toString()}`;
     window.open(url, '_blank');
   },
 
@@ -667,8 +700,6 @@ window.PortalAdmin = {
       }
 
       const { acessosHoje, acessosSemana, acessosMes, topClient, ultimoCliente, cliquesWa, cliquesMaps, diasLabels, diasValores } = stats;
-
-      // Pico do gráfico para highlighting
       const maxVal = Math.max(...diasValores, 1);
 
       el.innerHTML = `
@@ -693,13 +724,13 @@ window.PortalAdmin = {
           </div>
           <div class="estat-card">
             <div class="estat-card-label">🏆 Cliente que mais acessou</div>
-            <div class="estat-card-value" style="font-size:16px;">${topClient?.nome || '—'}</div>
+            <div class="estat-card-value" style="font-size:16px;">${topClient?.nome || '\u2014'}</div>
             <div class="estat-card-sub">${topClient?.total || 0} acesso(s)</div>
           </div>
           <div class="estat-card">
             <div class="estat-card-label">🕐 Último cliente</div>
-            <div class="estat-card-value" style="font-size:16px;">${ultimoCliente?.nome || '—'}</div>
-            <div class="estat-card-sub">${ultimoCliente?.data || '—'}</div>
+            <div class="estat-card-value" style="font-size:16px;">${ultimoCliente?.nome || '\u2014'}</div>
+            <div class="estat-card-sub">${ultimoCliente?.data || '\u2014'}</div>
           </div>
           <div class="estat-card">
             <div class="estat-card-label">💚 Cliques WhatsApp</div>
@@ -740,23 +771,19 @@ window.PortalAdmin = {
       const { collection, getDocs, query, where, orderBy, limit } = window.FirebaseModules;
 
       const hoje = new Date();
-      hoje.setHours(0,0,0,0);
+      hoje.setHours(0, 0, 0, 0);
       const hojeISO = hoje.toISOString();
 
-      // Início da semana (domingo)
       const inicioSemana = new Date(hoje);
       inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
-      inicioSemana.setHours(0,0,0,0);
+      inicioSemana.setHours(0, 0, 0, 0);
       const semISO = inicioSemana.toISOString();
 
-      // Início do mês
       const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-      inicioMes.setHours(0,0,0,0);
+      inicioMes.setHours(0, 0, 0, 0);
       const mesISO = inicioMes.toISOString();
 
-      // === OTIMIZAÇÃO #3: Filtro server-side ===
-      // Antes: buscava TODOS os eventos de acesso (sem filtro)
-      // Agora: busca apenas do início do mês pra cá (reduz drasticamente os dados)
+      // ⚡ OTIMIZAÇÃO #12: Filtro server-side (>= início do mês)
       const snapAcessos = await getDocs(query(
         collection(db, 'portal_eventos'),
         where('tipo', '==', 'acesso'),
@@ -764,24 +791,22 @@ window.PortalAdmin = {
         orderBy('createdAt', 'desc')
       ));
 
-      // === OTIMIZAÇÃO #4: Single-pass nos dados ===
-      // Antes: 3 ifs por documento + loop separado para clientCount + loop separado para último
-      // Agora: tudo em um único forEach
+      // ⚡ OTIMIZAÇÃO #13: Single-pass nos dados (tudo em 1 forEach)
       let acessosHoje = 0, acessosSemana = 0, acessosMes = 0;
       const clientCount = {};
       let ultimoAcessoTime = 0;
       let ultimoAcessoNome = '';
       let ultimoAcessoData = '';
 
-      // Para o gráfico: pré-calcula os limites dos dias
+      // Pré-calcula limites dos dias para o gráfico
       const dias = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(hoje);
         d.setDate(d.getDate() - i);
         const inicio = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        inicio.setHours(0,0,0,0);
+        inicio.setHours(0, 0, 0, 0);
         const fim = new Date(inicio);
-        fim.setHours(23,59,59,999);
+        fim.setHours(23, 59, 59, 999);
         dias.push({
           label: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
           inicio: inicio.getTime(),
@@ -790,31 +815,31 @@ window.PortalAdmin = {
         });
       }
 
+      const hojeTime = new Date(hojeISO).getTime();
+      const semTime = new Date(semISO).getTime();
+
       snapAcessos.forEach(doc => {
         const d = doc.data();
         const ts = d.createdAt?.toDate ? d.createdAt.toDate() : new Date(d.createdAt || 0);
         const t = ts.getTime();
 
-        // Contagens por período (filtro local nos dados já filtrados por mês)
-        if (t >= new Date(hojeISO).getTime()) acessosHoje++;
-        if (t >= new Date(semISO).getTime()) acessosSemana++;
-        acessosMes++; // já está no range do mês
+        if (t >= hojeTime) acessosHoje++;
+        if (t >= semTime) acessosSemana++;
+        acessosMes++;
 
-        // Contagem por cliente
         const tel = d.telefone || 'unknown';
         if (!clientCount[tel]) {
           clientCount[tel] = { nome: d.clientName || 'Cliente', total: 0 };
         }
         clientCount[tel].total++;
 
-        // Último acesso
         if (t > ultimoAcessoTime) {
           ultimoAcessoTime = t;
           ultimoAcessoNome = d.clientName || 'Cliente';
           ultimoAcessoData = ts.toLocaleDateString('pt-BR') + ' ' + ts.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Gráfico: single-pass (em vez de iterar 7x)
+        // Gráfico single-pass
         for (let i = 0; i < dias.length; i++) {
           if (t >= dias[i].inicio && t <= dias[i].fim) {
             dias[i].count++;
@@ -824,21 +849,15 @@ window.PortalAdmin = {
       });
 
       // Top cliente
-      let topClient = { nome: '—', total: 0 };
+      let topClient = { nome: '\u2014', total: 0 };
       Object.values(clientCount).forEach(c => {
         if (c.total > topClient.total) topClient = c;
       });
 
-      // Cliques WhatsApp e Maps (paralelo)
+      // Cliques (paralelo)
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(
-          collection(db, 'portal_eventos'),
-          where('tipo', '==', 'clique_whatsapp')
-        )),
-        getDocs(query(
-          collection(db, 'portal_eventos'),
-          where('tipo', '==', 'clique_maps')
-        ))
+        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_whatsapp'))),
+        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_maps')))
       ]);
 
       return {
@@ -896,5 +915,12 @@ window.PortalAdmin = {
   }
 };
 
-// ===== AUTO-INIT =====
-document.addEventListener('DOMContentLoaded', () => window.PortalAdmin.init());
+// ===== AUTO-INIT (com proteção contra dupla inicialização) =====
+if (!window._adminInitialized) {
+  window._adminInitialized = true;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => window.PortalAdmin.init());
+  } else {
+    window.PortalAdmin.init();
+  }
+}

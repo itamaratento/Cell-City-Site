@@ -1147,7 +1147,50 @@ function verificarConversaoPreOS() {
     }
 }
 
-// ===== INIT =====
+// ===== PREENCHER FORMULÁRIO VIA URL (vindo do Painel Administrativo "Criar OS") =====
+function verificarParametrosURL() {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const nome = params.get('nome');
+        if (!nome) return; // sem parâmetros, não faz nada
+
+        const telefone = params.get('telefone') || '';
+        const equipamento = params.get('equipamento') || '';
+        const marca = params.get('marca') || '';
+        const modelo = params.get('modelo') || '';
+        const defeito = params.get('defeito') || '';
+
+        console.log('🔄 [URL] Parâmetros recebidos do Painel Admin:', { nome, telefone, equipamento, marca, modelo, defeito });
+
+        // Determina categoria com base no equipamento
+        let categoria = 'celular';
+        const eq = (equipamento + ' ' + modelo).toLowerCase();
+        if (eq.includes('note') || eq.includes('lap') || eq.includes('computer')) {
+            categoria = 'notebook';
+        } else if (eq.includes('impress') || eq.includes('print')) {
+            categoria = 'impressora';
+        }
+
+        startOS(categoria);
+        const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+        set('f-nome', nome);
+        set('f-telefone', formatPhone(telefone));
+        set('f-modelo', [marca, modelo].filter(Boolean).join(' ').trim());
+        set('f-defeito', defeito);
+
+        showToast('📋 Dados carregados do Painel Administrativo. Preencha e salve a OS.');
+        console.log('🔄 [URL] Formulário de OS pré-preenchido via URL.');
+
+        // Remove os parâmetros da URL sem recarregar
+        if (window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    } catch (e) {
+        console.error('❌ [URL] Erro ao processar parâmetros URL:', e);
+    }
+}
+
+// ===== INIT (OTIMIZADO) =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
@@ -1158,6 +1201,8 @@ async function init() {
         logoEl.dataset.logoHandler = 'true';
     }
     await DB.loadFromFirestore(); updateStats(); showScreen('home'); console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
+    // ⚡ Verifica primeiro parâmetros URL (Painel Admin), depois Pré-OS (Autoatendimento)
+    verificarParametrosURL();
     verificarConversaoPreOS();
 }
 
