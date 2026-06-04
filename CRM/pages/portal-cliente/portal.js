@@ -118,10 +118,11 @@ window.Portal = {
       case 'avaliar':     this.renderAvaliar(); break;
       case 'mensagens':   this.renderMensagens(); break;
       case 'contato':     this.renderContato(); break;
+      case 'como-chegar': this.renderComoChegar(); break;
       default:            location.hash = '#/painel';
     }
-    // Marca o link ativo (exceto login e os-detalhe)
-    if (route !== 'login' && route !== 'os-detalhe') {
+    // Marca o link ativo (exceto login, os-detalhe e como-chegar)
+    if (route !== 'login' && route !== 'os-detalhe' && route !== 'como-chegar') {
       this._setActiveNav(route);
     }
   },
@@ -432,6 +433,11 @@ window.Portal = {
 
         <!-- GRID DE NAVEGAÇÃO -->
         <div class="painel-grid">
+          <div class="painel-card painel-card-destaque" onclick="Portal.navegar('como-chegar')">
+            <div class="painel-card-icon">📍</div>
+            <div class="painel-card-title">Como Chegar</div>
+            <div class="painel-card-sub">Veja como nos encontrar</div>
+          </div>
           <div class="painel-card" onclick="Portal.navegar('os')">
             <div class="painel-card-icon">📋</div>
             <div class="painel-card-title">Minhas OS</div>
@@ -453,9 +459,9 @@ window.Portal = {
             <div class="painel-card-sub">${msgsNaoLidas.length > 0 ? `${msgsNaoLidas.length} pendente(s)` : 'Fale conosco'}</div>
           </div>
           <div class="painel-card" onclick="Portal.navegar('contato')">
-            <div class="painel-card-icon">📍</div>
+            <div class="painel-card-icon">📞</div>
             <div class="painel-card-title">Contato</div>
-            <div class="painel-card-sub">WhatsApp & Endereço</div>
+            <div class="painel-card-sub">WhatsApp & Telefone</div>
           </div>
         </div>
       </div>
@@ -581,6 +587,7 @@ window.Portal = {
     const updated = this._fmtDate(o.updatedAt);
     const timeline = Array.isArray(o.timeline) ? o.timeline : [];
     const progress = this._statusProgress(o.status);
+    const MAPS_URL = 'https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/';
 
     // Verifica se está em garantia
     const emGarantia = this._emGarantia(o);
@@ -629,6 +636,19 @@ window.Portal = {
             ${o.valor ? `<div class="os-detail-row"><span class="os-detail-label">💰 Valor</span><span class="os-detail-value">R$ ${Number(o.valor).toFixed(2)}</span></div>` : ''}
           </div>
     `;
+
+    // Banner de Pronto para Retirada
+    if (o.status === 'pronto') {
+      html += `
+        <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;">
+          <div class="pronto-banner-icon">🟢</div>
+          <div class="pronto-banner-text">
+            <strong>Seu aparelho está pronto para retirada!</strong>
+            <span>📍 Toque aqui para ver como chegar</span>
+          </div>
+        </a>
+      `;
+    }
 
     // Card de orçamento (se status for orcamento)
     if (o.status === 'orcamento') {
@@ -1118,6 +1138,78 @@ window.Portal = {
             <div class="contato-card-text">Google Maps</div>
           </div>
           <div class="contato-card-arrow">→</div>
+        </a>
+      </div>
+    `;
+  },
+
+  // ===== COMO CHEGAR =====
+  renderComoChegar() {
+    const el = document.getElementById('app-content');
+    document.getElementById('btn-back').style.display = '';
+
+    const MAPS_URL = 'https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/';
+    const WHATSAPP_URL = 'https://wa.me/5511949464940?text=Ol%C3%A1!%20Vim%20pelo%20Portal%20do%20Cliente%20e%20gostaria%20de%20saber%20como%20chegar';
+
+    // Verifica se há OS pronta para retirada
+    const osPronta = this.currentOS.filter(o => o.status === 'pronto');
+
+    el.innerHTML = `
+      <div class="como-chegar-container">
+        ${osPronta.length > 0 ? `
+          <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;">
+            <div class="pronto-banner-icon">🟢</div>
+            <div class="pronto-banner-text">
+              <strong>Seu aparelho está pronto para retirada!</strong>
+              <span>📍 Toque aqui para ver a rota</span>
+            </div>
+          </a>
+        ` : ''}
+
+        <h2 class="screen-title">📍 Como Chegar</h2>
+
+        <!-- MAPA PLACEHOLDER -->
+        <a href="${MAPS_URL}" target="_blank" class="como-chegar-mapa">
+          <div class="mapa-placeholder">
+            <span class="mapa-icon">🗺️</span>
+            <span class="mapa-text">Abrir no Google Maps</span>
+            <span class="mapa-sub">Toque para ver a rota até a Cell City</span>
+          </div>
+        </a>
+
+        <!-- ENDEREÇO -->
+        <div class="como-chegar-card endereco-card">
+          <div class="como-chegar-card-icon">📍</div>
+          <div class="como-chegar-card-info">
+            <div class="como-chegar-card-title">Cell City Informática</div>
+            <div class="como-chegar-card-text">Rua 6, nº 455 — Setor Central</div>
+            <div class="como-chegar-card-text">Goiânia — GO, CEP 74023-030</div>
+          </div>
+        </div>
+
+        <!-- AÇÕES -->
+        <div class="como-chegar-acoes">
+          <a href="${MAPS_URL}" target="_blank" class="acao-card">
+            <span class="acao-icon">🗺️</span>
+            <span class="acao-label">Abrir no Maps</span>
+          </a>
+          <a href="${WHATSAPP_URL}" target="_blank" class="acao-card">
+            <span class="acao-icon">💚</span>
+            <span class="acao-label">WhatsApp</span>
+          </a>
+          <a href="tel:+5511949464940" class="acao-card">
+            <span class="acao-icon">📞</span>
+            <span class="acao-label">Ligar Agora</span>
+          </a>
+          <div class="acao-card">
+            <span class="acao-icon">🕐</span>
+            <span class="acao-label">Seg–Sex: 09–19<br>Sáb: 09–14</span>
+          </div>
+        </div>
+
+        <!-- BOTÃO PRINCIPAL -->
+        <a href="${MAPS_URL}" target="_blank" class="como-chegar-btn">
+          🗺️ Abrir no Google Maps
         </a>
       </div>
     `;
