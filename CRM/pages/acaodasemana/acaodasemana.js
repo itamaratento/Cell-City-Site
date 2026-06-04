@@ -21,10 +21,16 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 
 // ── estado ─────────────────────────────────────────────────────────
 let notas = {};                 // data -> [ {texto, cor} ]
+let docIds = {};                // data -> [ idsReaisNoFirestore ] (corrige órfãos)
+let corPorDia = {};             // data -> cor (do calendário / bloco)
+let corDiaSel = COR_PADRAO;     // cor escolhida para o dia aberto no editor
 let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
 let saveTimer = null;
+
+// Cores disponíveis para alternar rapidamente (4, na ordem pedida)
+const CORES_EDITOR = ['verde', 'amarelo', 'azul', 'vermelho'];
 let notaFonte = Math.min(22, Math.max(12, parseInt(localStorage.getItem('ag_nota_fonte') || '15', 10)));
 
 // ── elementos ──────────────────────────────────────────────────────
@@ -158,7 +164,27 @@ function carregarEditor() {
   diaTitulo.textContent = fmtDiaLongo(diaSelecionado);
   const arr = notas[diaSelecionado] || [];
   areaEl.value = arr.map(n => n.texto).join('\n');
+  corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
+  pintarArea();
   aplicarFonteLinhas();   // já chama autoGrow()
+}
+
+// Pinta o bloco com a cor do dia e marca o botão ativo
+function pintarArea() {
+  const c = CORES[corDiaSel];
+  areaEl.style.background = c.bg;
+  areaEl.style.color = c.fg;
+  document.querySelectorAll('.ag-cor-btn').forEach(b => {
+    b.classList.toggle('ativa', b.dataset.cor === corDiaSel);
+  });
+}
+
+// Troca a cor do dia (aplica e salva)
+function escolherCor(cor) {
+  corDiaSel = corValida(cor);
+  corPorDia[diaSelecionado] = corDiaSel;
+  pintarArea();
+  agendarSave();
 }
 
 // Aplica a fonte escolhida (A− / A+) e reajusta a altura
@@ -184,7 +210,7 @@ function lerLinhas() {
     .split(/\r?\n/)
     .map(t => t.trim())
     .filter(Boolean)
-    .map(t => ({ texto: t, cor: COR_PADRAO }));
+    .map(t => ({ texto: t, cor: corDiaSel }));
 }
 function agendarSave() {
   statusEl.textContent = 'Salvando…';
@@ -193,18 +219,32 @@ function agendarSave() {
 }
 function flushSave() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; salvar(); } }
 
+// Remove TODOS os documentos que representam esse dia, inclusive órfãos com
+// ID aleatório (formato antigo) cujo campo `data` aponta para o mesmo dia.
+async function apagarDocsDoDia(data) {
+  const ids = new Set([data, ...(docIds[data] || [])]);
+  await Promise.all([...ids].map(id => deleteDoc(doc(db, 'agenda', id)).catch(() => {})));
+}
+
 async function salvar() {
   clearTimeout(saveTimer); saveTimer = null;
   const data = diaSelecionado;
   const arr = lerLinhas();
-  const ref = doc(db, 'agenda', data);
   try {
     if (arr.length === 0) {
-      if (notas[data]) await deleteDoc(ref);
+      // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
+      await apagarDocsDoDia(data);
       delete notas[data];
+      delete docIds[data];
+      delete corPorDia[data];
     } else {
-      await setDoc(ref, { data, notas: arr, atualizadoEm: serverTimestamp() });
+      // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
+      await setDoc(doc(db, 'agenda', data), { data, notas: arr, cor: corDiaSel, atualizadoEm: serverTimestamp() });
+      const orfaos = (docIds[data] || []).filter(id => id !== data);
+      await Promise.all(orfaos.map(id => deleteDoc(doc(db, 'agenda', id)).catch(() => {})));
       notas[data] = arr;
+      docIds[data] = [data];
+      corPorDia[data] = corDiaSel;
     }
     statusEl.textContent = '✓ Salvo';
   } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
@@ -318,20 +358,25 @@ function iniciar() {
   onSnapshot(collection(db, 'agenda'),
     (snap) => {
       notas = {};
+      docIds = {};
+      corPorDia = {};
       snap.forEach(d => {
         const dados = d.data();
         const data = dados.data || d.id;
         let arr = [];
+        let corDoc = corValida(dados.cor);
         if (Array.isArray(dados.notas)) {
           arr = dados.notas.filter(n => n && (n.texto || '').trim())
-                           .map(n => ({ texto: n.texto, cor: corValida(n.cor) }));
+                           .map(n => ({ texto: n.texto, cor: corValida(dados.cor || n.cor) }));
+          if (!dados.cor && dados.notas[0]) corDoc = corValida(dados.notas[0].cor);
         } else if (typeof dados.texto === 'string') {           // formato anterior (1 nota multiline)
-          const cor = corValida(dados.cor);
-          arr = dados.texto.split(/\r?\n+/).map(t => t.trim()).filter(Boolean).map(t => ({ texto: t, cor }));
+          arr = dados.texto.split(/\r?\n+/).map(t => t.trim()).filter(Boolean).map(t => ({ texto: t, cor: corDoc }));
         } else if (dados.titulo) {                              // formato bem antigo
-          arr = [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: COR_PADRAO }];
+          arr = [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: corDoc }];
         }
-        if (arr.length) notas[data] = arr;
+        // Rastreia o ID real (corrige delete de órfãos/duplicados)
+        (docIds[data] = docIds[data] || []).push(d.id);
+        if (arr.length) { notas[data] = arr; corPorDia[data] = corDoc; }
       });
       $('ag-loading')?.remove();
       renderCalendario();
@@ -356,6 +401,11 @@ painelEl.addEventListener('focusout', () => {
 // Área de texto única: salva sozinho e cresce com o conteúdo
 areaEl.addEventListener('input', () => { agendarSave(); autoGrow(); });
 areaEl.addEventListener('blur', () => { flushSave(); });
+
+// Seletor de cores do dia (4 cores)
+document.querySelectorAll('.ag-cor-btn').forEach(b => {
+  b.addEventListener('click', () => escolherCor(b.dataset.cor));
+});
 
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));

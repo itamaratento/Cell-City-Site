@@ -103,6 +103,17 @@ body {
 .ag-fonte button:hover { background: rgba(0,200,83,0.15); border-color: var(--green); }
 .ag-add-nota { background: linear-gradient(135deg, var(--green), var(--green-light)); color: #00120a; font-weight: 800; font-size: 13px; border: none; border-radius: 9px; padding: 8px 14px; cursor: pointer; }
 .ag-add-nota:hover { filter: brightness(1.08); }
+
+/* ── SELETOR DE CORES DO DIA ── */
+.ag-cores { display: flex; gap: 7px; align-items: center; }
+.ag-cor-btn {
+    width: 26px; height: 26px; border-radius: 50%; padding: 0; cursor: pointer;
+    background: var(--c); border: 2px solid rgba(255,255,255,0.22);
+    transition: transform .1s var(--ease), box-shadow .1s var(--ease);
+}
+.ag-cor-btn:hover { transform: scale(1.14); }
+.ag-cor-btn.ativa { border-color: #fff; box-shadow: 0 0 0 2px var(--c); transform: scale(1.1); }
+
 .ag-dica { font-size: 11px; color: var(--text3); margin-bottom: 12px; }
 .ag-notas-lista { display: flex; flex-direction: column; gap: 8px; }
 
