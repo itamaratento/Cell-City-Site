@@ -250,6 +250,29 @@ body {
     font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 9px; cursor: pointer;
 }
 
+/* ── MINI CALENDÁRIO (atalho do título) ── */
+.ag-mini {
+    position: fixed; z-index: 800; width: 290px; max-width: calc(100vw - 24px);
+    background: var(--surface2); border: 1px solid var(--border-md);
+    border-radius: 14px; padding: 12px; box-shadow: 0 18px 44px rgba(0,0,0,.6);
+}
+.ag-mini[hidden] { display: none; }
+.ag-mini-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.ag-mini-titulo { font-size: 14px; font-weight: 800; color: var(--text); }
+.ag-mini-nav { width: 32px; height: 32px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border-md); color: var(--text); cursor: pointer; font-size: 13px; }
+.ag-mini-nav:hover { background: rgba(0,200,83,0.15); border-color: var(--green); }
+.ag-mini-dow, .ag-mini-grade { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.ag-mini-dow span { text-align: center; font-size: 10px; font-weight: 700; color: var(--text3); padding: 2px 0; }
+.ag-mini-day {
+    aspect-ratio: 1 / 1; border: none; background: transparent; color: var(--text2);
+    font-family: inherit; font-size: 13px; font-weight: 600; border-radius: 8px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; position: relative;
+}
+.ag-mini-day:hover { background: rgba(0,200,83,0.18); color: var(--text); }
+.ag-mini-day.vazia { visibility: hidden; cursor: default; }
+.ag-mini-day.hoje { outline: 2px solid var(--green); outline-offset: -2px; color: var(--green-light); }
+.ag-mini-day.com-nota::after { content: ''; position: absolute; bottom: 4px; width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
+
 /* ── BADGE DE RECORRÊNCIA (canto do dia, sem ocupar o quadrado) ── */
 .ag-recorr-badge {
     position: absolute; top: 3px; right: 3px; z-index: 5;

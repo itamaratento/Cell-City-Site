@@ -50,6 +50,10 @@ const recorrEl   = $('ag-recorr');
 const recorrPop  = $('ag-recorr-pop');
 const recorrPopTit = $('ag-recorr-pop-tit');
 const recorrPopLista = $('ag-recorr-pop-lista');
+const miniEl     = $('ag-mini');
+const miniTitulo = $('ag-mini-titulo');
+const miniGrade  = $('ag-mini-grade');
+let miniAno, miniMes;
 const statusEl   = $('ag-nota-status');
 const painelEl   = document.querySelector('.ag-nota-painel');
 const toastEl    = $('ag-toast');
@@ -237,6 +241,53 @@ function abrirRecorrPop(iso, anchor) {
   recorrPop.style.top = top + 'px';
 }
 function fecharRecorrPop() { if (recorrPop) recorrPop.hidden = true; }
+
+// ── MINI CALENDÁRIO (atalho do título) ─────────────────────────────
+function renderMini() {
+  if (!miniGrade) return;
+  miniTitulo.textContent = `${MESES[miniMes]} ${miniAno}`;
+  miniGrade.innerHTML = '';
+  const hoje = isoHoje();
+  const primeiro = new Date(miniAno, miniMes, 1).getDay();
+  const dias = new Date(miniAno, miniMes + 1, 0).getDate();
+  for (let i = 0; i < primeiro; i++) {
+    const v = document.createElement('div'); v.className = 'ag-mini-day vazia'; miniGrade.appendChild(v);
+  }
+  for (let d = 1; d <= dias; d++) {
+    const iso = `${miniAno}-${pad(miniMes + 1)}-${pad(d)}`;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ag-mini-day';
+    if (iso === hoje) b.classList.add('hoje');
+    if ((notas[iso] && notas[iso].length) || recorrenciaPorDia[iso]) b.classList.add('com-nota');
+    b.textContent = d;
+    b.addEventListener('click', () => escolherMiniDia(iso));
+    miniGrade.appendChild(b);
+  }
+}
+function abrirMini() {
+  if (!miniEl) return;
+  miniAno = viewAno; miniMes = viewMes;
+  renderMini();
+  miniEl.hidden = false;
+  // posiciona centralizado horizontalmente, logo abaixo da barra superior
+  const pw = miniEl.offsetWidth || 290;
+  miniEl.style.left = Math.max(12, Math.round((window.innerWidth - pw) / 2)) + 'px';
+  miniEl.style.top = '64px';
+}
+function fecharMini() { if (miniEl) miniEl.hidden = true; }
+function navMini(delta) {
+  miniMes += delta;
+  if (miniMes < 0) { miniMes = 11; miniAno--; }
+  if (miniMes > 11) { miniMes = 0; miniAno++; }
+  renderMini();
+}
+function escolherMiniDia(iso) {
+  const [y, m] = iso.split('-').map(Number);
+  viewAno = y; viewMes = m - 1;
+  fecharMini();
+  selecionarDia(iso);   // navega, seleciona e abre a edição do dia
+}
 
 // Pinta o bloco com a cor do dia e marca o botão ativo
 function pintarArea() {
@@ -552,12 +603,6 @@ document.addEventListener('click', (e) => {
 // ── eventos de UI ──────────────────────────────────────────────────
 $('ag-prev').addEventListener('click', () => navegar(-1));
 $('ag-next').addEventListener('click', () => navegar(1));
-// Título: ir ao mês atual, selecionar hoje e focar a anotação (1 clique)
-function irHojeFoco() {
-  const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
-  selecionarDia(isoHoje());
-  areaEl.focus();
-}
 // Botão HOJE: atalho rápido — volta ao mês atual e seleciona/destaca o
 // dia de hoje, SEM rolar para a área de edição e sem focar o teclado.
 function irHoje() {
@@ -573,13 +618,23 @@ $('ag-hoje').addEventListener('click', irHoje);
 $('ag-fonte-menos').addEventListener('click', () => mudarFonte(-2));
 $('ag-fonte-mais').addEventListener('click', () => mudarFonte(2));
 
-// Clicar no título "Agenda Inteligente" → mês atual + hoje + foco na anotação
+// Título "Agenda Inteligente" = atalho principal de navegação:
+// volta ao calendário (mês atual + hoje) e abre o mini calendário.
 const tituloPagina = document.querySelector('.ag-header-titulo');
 if (tituloPagina) {
   tituloPagina.style.cursor = 'pointer';
-  tituloPagina.title = 'Ir para hoje';
-  tituloPagina.addEventListener('click', irHojeFoco);
+  tituloPagina.title = 'Voltar ao calendário';
+  tituloPagina.addEventListener('click', (e) => { e.stopPropagation(); irHoje(); abrirMini(); });
 }
+
+// Mini calendário: navegação e fechamento
+$('ag-mini-prev')?.addEventListener('click', (e) => { e.stopPropagation(); navMini(-1); });
+$('ag-mini-next')?.addEventListener('click', (e) => { e.stopPropagation(); navMini(1); });
+document.addEventListener('click', (e) => {
+  if (miniEl && !miniEl.hidden && !miniEl.contains(e.target) && !tituloPagina?.contains(e.target)) {
+    fecharMini();
+  }
+});
 
 // Busca (com debounce); Enter aplica na hora
 let buscaTimer;
