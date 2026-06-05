@@ -697,6 +697,30 @@ $('ag-densidade')?.addEventListener('click', () => {
 });
 aplicarDensidade(localStorage.getItem(DENSIDADE_KEY) || 'compacto');
 
+// ── EXPANDIR / RECOLHER navegação e busca ───────────────────────────
+const COLAPSE_KEY = 'ag_colapse';
+const colapseBtn = $('ag-colapse-btn');
+const agContent = document.querySelector('.ag-content');
+
+function aplicarColapso(recolhido) {
+  if (!agContent) return;
+  agContent.classList.toggle('ag-recolhido', recolhido);
+  if (colapseBtn) {
+    colapseBtn.textContent = recolhido ? '▼' : '▲';
+    colapseBtn.title = recolhido ? 'Expandir navegação e busca' : 'Recolher navegação e busca';
+  }
+  localStorage.setItem(COLAPSE_KEY, recolhido ? '1' : '');
+}
+
+if (colapseBtn && agContent) {
+  colapseBtn.addEventListener('click', () => {
+    aplicarColapso(!agContent.classList.contains('ag-recolhido'));
+  });
+  // Restaura estado salvo
+  const salvo = localStorage.getItem(COLAPSE_KEY) === '1';
+  aplicarColapso(salvo);
+}
+
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(ajustarQuadrados, 150); });
 

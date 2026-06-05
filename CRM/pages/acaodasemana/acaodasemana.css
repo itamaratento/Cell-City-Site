@@ -208,6 +208,34 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-nav-part { cursor: pointer; }
 .ag-nav-part:hover { color: var(--green-light); }
 
+/* ── BOTÃO EXPANDIR / RECOLHER (ao lado do título) ── */
+.ag-expbtn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-md);
+    color: var(--text2);
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 7px;
+    cursor: pointer;
+    margin-left: 8px;
+    vertical-align: middle;
+    line-height: 1.3;
+    transition: .15s var(--ease);
+    font-family: inherit;
+}
+.ag-expbtn:hover {
+    background: rgba(0,200,83,0.15);
+    border-color: var(--green);
+    color: var(--text);
+}
+
+/* Estado recolhido: oculta navegação do calendário e área de busca */
+.ag-content.ag-recolhido .ag-cal-header,
+.ag-content.ag-recolhido .ag-busca-wrap,
+.ag-content.ag-recolhido .ag-busca-result {
+    display: none;
+}
+
 /* ── MODAL DIA COMPLETO ── */
 .ag-modal-overlay {
     position: fixed; inset: 0; z-index: 900; background: rgba(0,0,0,0.6);

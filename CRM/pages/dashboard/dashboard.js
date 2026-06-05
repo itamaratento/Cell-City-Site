@@ -5,10 +5,6 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 
-// ─── Mapa: dia da semana (JS 0-6) → chave usada no tarefas_semana ───
-const JS_DIA_CHAVE = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
-const DIAS_SEMANA_LABEL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
-
 
 class Dashboard {
   constructor() {
@@ -324,17 +320,14 @@ class Dashboard {
     }
   }
 
-  // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) + tarefas_semana =====
+  // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) e extrai os horários =====
   // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
-  // Também lê da coleção tarefas_semana para integrar os alertas.
   async _lerAgenda() {
     try {
-      const hojeISO = new Date().toISOString().slice(0, 10);
-      const eventos = [];
-
-      // ========== 1. Lê da coleção 'agenda' (sticky notes originais) ==========
       const snap = await getDocs(collection(db, 'agenda'));
+      const eventos = [];
+      const hojeISO = new Date().toISOString().slice(0, 10);
 
       // Helper: extrai {texto, concluido} de cada nota do documento
       const notasDe = (dados) => {
@@ -398,60 +391,6 @@ class Dashboard {
           }
         }
       });
-
-      // ========== 2. Lê da coleção 'tarefas_semana' (Minha Semana) ==========
-      try {
-        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
-        const refTarefas = doc(db, 'tarefas_semana', userId);
-        const snapTarefas = await getDoc(refTarefas);
-
-        if (snapTarefas.exists()) {
-          const dadosTarefas = snapTarefas.data();
-          const tarefas = dadosTarefas.tarefas || [];
-
-          // Converte cada tarefa da semana em evento para o sistema de alertas
-          tarefas.forEach(t => {
-            if (!t.descricao) return;
-            const diaSemana = t.dia; // ex: "Segunda", "Terça"...
-            if (!diaSemana) return;
-
-            // Mapeia o nome do dia da semana para índice (0=domingo, 1=segunda...)
-            const idxDia = DIAS_SEMANA_LABEL.indexOf(diaSemana);
-            if (idxDia < 0) return;
-
-            // Calcula a data real do evento nesta semana.
-            // Se o dia já passou (diff negativo), a tarefa fica com data PASSADA
-            // para que o sistema a detecte como ATRASADA (overdue).
-            // NÃO adicionamos +7 aqui justamente para isso.
-            const hoje = new Date();
-            const hojeIdx = hoje.getDay(); // 0=domingo
-            const diffDias = idxDia - hojeIdx;
-            const dataEvento = new Date(hoje);
-            dataEvento.setDate(hoje.getDate() + diffDias);
-
-            // Se a tarefa tem horário (formato "HH:MM" no início da descrição)
-            const hora = horaDoTexto(t.descricao);
-            const descricaoLimpa = semHora(t.descricao) || t.descricao;
-
-            // Prioridade visual
-            const emojiPrio = t.prioridade === 'alta' ? '🔴' : t.prioridade === 'baixa' ? '🟢' : '🟡';
-
-            eventos.push({
-              data: dataEvento.toISOString().slice(0, 10),
-              hora: hora || '',
-              titulo: descricaoLimpa,
-              concluido: !!t.concluida,
-              alerta: true,
-              origem: 'tarefas_semana',
-              prioridade: t.prioridade || 'media',
-              rotulo: `${emojiPrio} ${diaSemana} ${hora ? hora + ' ' : ''}${descricaoLimpa}`
-            });
-          });
-        }
-      } catch (e) {
-        console.warn('[Dashboard] Erro ao ler tarefas_semana:', e);
-      }
-
       return eventos;
     } catch {
       return [];
@@ -904,45 +843,31 @@ class Dashboard {
         console.warn('Central de Alertas — erro ao buscar avaliações:', e);
       }
 
-      // ===== SOLICITAÇÕES DE DIAGNÓSTICO (Abrir Chamado) =====
+      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
       try {
-        const diagSnap = await getDocs(
-          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
+        const solicitacoesSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
         );
-        const diagnosticos = [];
-        diagSnap.forEach(d => diagnosticos.push({ id: d.id, ...d.data() }));
-
-        if (diagnosticos.length > 0) {
+        const solicitacoes = [];
+        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
+        // Este bloco complementa o de mensagens, focando em solicitações específicas
+        const solicitacoesServico = solicitacoes.filter(s =>
+          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
+                      s.texto.toLowerCase().includes('conserto') ||
+                      s.texto.toLowerCase().includes('reparo') ||
+                      s.texto.toLowerCase().includes('manutenção'))
+        );
+        if (solicitacoesServico.length > 0) {
           alertas.push({
-            icon: '🔧', cat: 'critico', cor: 'critico',
-            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
-            sub: `${diagnosticos.length} chamado(s) aguardando`,
-            detail: `${diagnosticos.length} cliente(s) solicitaram orçamento pelo Portal do Cliente. Acesse o módulo para responder.`
-          });
-
-          // Mostra até 2 detalhes
-          diagnosticos.slice(0, 2).forEach(d => {
-            alertas.push({
-              icon: '🔧', cat: 'crm', cor: null,
-              title: `🔧 ${d.clientName || 'Cliente'} — ${d.tipoEquipamento || 'Equipamento'}`,
-              sub: (d.descricaoDefeito || '').slice(0, 60),
-              detail: `Cliente solicitou diagnóstico. Equipamento: ${d.tipoEquipamento || '—'}, Modelo: ${d.modelo || '—'}.`
-            });
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE SERVIÇO',
+            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
+            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
           });
         }
       } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
+        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
       }
-
-      // ===== PULSA CARD DO PORTAL QUANDO HOUVER PENDÊNCIAS =====
-      try {
-        const portalCard = document.querySelector('.module-card[data-module="portal-cliente"]');
-        if (portalCard) {
-          const temPendencias =
-            (alertas.filter(a => a.title === 'PORTAL DO CLIENTE' || a.title === 'SOLICITAÇÕES DE DIAGNÓSTICO').length > 0);
-          portalCard.classList.toggle('module-card-pulse', temPendencias);
-        }
-      } catch (e) { /* ignora */ }
 
     } catch (e) {
       console.warn('Central de Alertas — erro ao gerar:', e);
@@ -1443,7 +1368,7 @@ class Dashboard {
       'em-breve': '../../pages/em-breve/index.html',
       'minha-semana':   '../../pages/minha-semana/index.html',
       'acaodasemana':   '../../pages/acaodasemana/index.html',
-      'portal-cliente': '../../pages/portal-cliente/admin.html'
+      'portal-cliente': '../../pages/portal-cliente/index.html'
     };
     const url = routes[module];
     if (url) {
