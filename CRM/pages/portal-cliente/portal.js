@@ -5,22 +5,43 @@
 
 // ===== CONSTANTES =====
 const STATUS_LABEL = {
-  'em_analise':           { label: 'Em Análise',           cor: '#FFA726', icon: '🟡' },
+  // ===== Fluxo oficial (8 etapas) =====
+  'recebido':             { label: 'Recebido',             cor: '#42A5F5', icon: '📥' },
+  'em_analise':           { label: 'Em Análise',           cor: '#42A5F5', icon: '🔍' },
+  'aguardando_aprovacao': { label: 'Aguardando Aprovação', cor: '#FFA726', icon: '📋' },
+  'aprovado':             { label: 'Aprovado',             cor: '#FF6D00', icon: '👍' },
+  'em_reparo':            { label: 'Em Reparo',            cor: '#FF6D00', icon: '🛠️' },
+  'testes_finais':        { label: 'Testes Finais',        cor: '#a78bfa', icon: '🧪' },
+  'concluido':            { label: 'Concluído',            cor: '#00C853', icon: '✅' },
+  'entregue':             { label: 'Entregue',             cor: '#78909C', icon: '🎉' },
+  // ===== Compatibilidade com OS antigas =====
   'aguardando_peca':      { label: 'Aguardando Peça',      cor: '#42A5F5', icon: '🔵' },
-  'em_reparo':            { label: 'Em Manutenção',        cor: '#FF6D00', icon: '🟠' },
-  'orcamento':            { label: 'Orçamento',            cor: '#EF5350', icon: '📋' },
-  'pronto':               { label: 'Pronto para Retirada', cor: '#00C853', icon: '🟢' },
-  'entregue':             { label: 'Entregue',             cor: '#78909C', icon: '✅' },
+  'orcamento':            { label: 'Aguardando Aprovação', cor: '#FFA726', icon: '📋' },
+  'pronto':               { label: 'Concluído',            cor: '#00C853', icon: '✅' },
   'devolvido_orcamento':  { label: 'Não Aprovado',         cor: '#8D6E63', icon: '❌' },
   'garantia_em_atendimento': { label: 'Garantia em Atendimento', cor: '#D32F2F', icon: '🔴' }
 };
 
 const PRAZO_GARANTIA_DIAS = 90; // 3 meses padrão
 
+// ===== DADOS DA LOJA (fallback) =====
+// Fonte primária: documento `config/impressao`.loja no Firestore (mesma config usada
+// na impressão de OS). Este objeto é só o fallback, com os dados REAIS da loja —
+// nada de endereço/telefone fictício hardcoded espalhado pelas telas.
+const LOJA_DEFAULT = {
+  nome: 'Cell City Informática',
+  endereco: 'Rua 6, nº 455 — Setor Central, Goiânia — GO, CEP 74023-030',
+  whatsapp: '(62) 98160-5863',
+  horarios: 'Seg–Sex: 09:00–18:00 • Sáb: 09:00–13:00',
+  mapsUrl: 'https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/',
+  googlePlaceId: ''
+};
+
 // ===== OBJETO PRINCIPAL =====
 window.Portal = {
   // ---- Estado da Sessão ----
   session: null,       // { telefone, clientName, osCount, ... }
+  loja: { ...LOJA_DEFAULT }, // dados da loja (carregados do Firestore em _boot)
   currentOS: [],       // OS do cliente logado
   currentMsgs: [],     // Mensagens do cliente
   currentAval: null,   // Avaliação existente (se houver)
@@ -54,6 +75,10 @@ window.Portal = {
 
   async _boot() {
     console.log('[Portal] _boot() chamado');
+
+    // Carrega os dados reais da loja do Firestore (config/impressao.loja)
+    await this._loadLoja();
+
     console.log('[Portal] location.hash:', location.hash);
     console.log('[Portal] sessionStorage.portal_session:', sessionStorage.getItem('portal_session'));
 
@@ -129,6 +154,41 @@ window.Portal = {
 
   navegar(hash) {
     location.hash = '#' + hash;
+  },
+
+  // ===== DADOS DA LOJA =====
+  async _loadLoja() {
+    try {
+      const db = window.db;
+      const { doc, getDoc } = window.FirebaseModules;
+      if (db && getDoc) {
+        const snap = await getDoc(doc(db, 'config', 'impressao'));
+        if (snap.exists()) {
+          const data = snap.data();
+          // Mescla com o default para preencher campos que a config não tem (maps/horários).
+          this.loja = { ...LOJA_DEFAULT, ...(data.loja || {}) };
+        }
+      }
+    } catch (e) {
+      console.warn('[Portal] Não foi possível carregar config da loja, usando padrão:', e);
+    }
+    // Atualiza o botão flutuante de WhatsApp (estático no index.html) com o número real.
+    const waBtn = document.getElementById('whatsapp-float');
+    if (waBtn) waBtn.href = this._waLink('Olá! Vim pelo Portal do Cliente');
+    return this.loja;
+  },
+
+  // Extrai só os dígitos do WhatsApp e garante o DDI 55 (Brasil) para links wa.me.
+  _waDigits() {
+    let d = (this.loja.whatsapp || '').replace(/\D/g, '');
+    if (d && !d.startsWith('55')) d = '55' + d;
+    return d;
+  },
+
+  _waLink(text) {
+    const d = this._waDigits();
+    const q = text ? `?text=${encodeURIComponent(text)}` : '';
+    return `https://wa.me/${d}${q}`;
   },
 
   // ===== LOGIN =====
@@ -534,7 +594,7 @@ window.Portal = {
               ${st.icon} ${st.label}
             </span>
           </div>
-          <div class="os-card-model">📱 ${this._esc(o.model || '')}</div>
+          <div class="os-card-model">📱 ${this._esc([o.brand, o.model].filter(Boolean).join(' '))}</div>
           <div class="os-card-defect">🔧 ${this._esc(o.defect || '')}</div>
           <div class="os-card-date">📅 ${date}</div>
           <div class="os-progress-bar">
@@ -549,25 +609,24 @@ window.Portal = {
   },
 
   // ===== STATUS PROGRESS =====
+  // Ordem oficial do fluxo (8 etapas).
+  STATUS_ORDER: ['recebido','em_analise','aguardando_aprovacao','aprovado','em_reparo','testes_finais','concluido','entregue'],
+
+  // Mapeia status antigos (OS já gravadas) para a etapa equivalente do fluxo novo.
+  _normStatus(status) {
+    const map = {
+      orcamento: 'aguardando_aprovacao',
+      pronto: 'concluido',
+      aguardando_peca: 'em_reparo'
+    };
+    return map[status] || status;
+  },
+
   _statusProgress(status) {
-    const ORDER = [
-      'em_analise',
-      'aguardando_peca',
-      'orcamento',
-      'em_reparo',
-      'pronto',
-      'entregue'
-    ];
-    const LABELS = [
-      'Recebida',
-      'Aguardando Peça',
-      'Orçamento',
-      'Em Reparo',
-      'Pronta',
-      'Concluída'
-    ];
-    const idx = ORDER.indexOf(status);
-    if (idx === -1) return { percent: 0, label: status || '—' };
+    const ORDER = this.STATUS_ORDER;
+    const LABELS = ['Recebida','Em análise','Aguardando aprovação','Aprovado','Em reparo','Testes finais','Concluída','Entregue'];
+    const idx = ORDER.indexOf(this._normStatus(status));
+    if (idx === -1) return { percent: 0, label: (STATUS_LABEL[status] && STATUS_LABEL[status].label) || status || '—' };
     const pct = Math.round((idx / (ORDER.length - 1)) * 100);
     return { percent: pct, label: `${idx + 1}/${ORDER.length} — ${LABELS[idx]}` };
   },
@@ -628,17 +687,19 @@ window.Portal = {
           ` : ''}
 
           <div class="os-detail-section">
-            <div class="os-detail-row"><span class="os-detail-label">📱 Modelo</span><span class="os-detail-value">${this._esc(o.model || '')}</span></div>
+            <div class="os-detail-row"><span class="os-detail-label">📱 Aparelho</span><span class="os-detail-value">${this._esc([o.brand, o.model].filter(Boolean).join(' '))}</span></div>
+            ${o.imei ? `<div class="os-detail-row"><span class="os-detail-label">🔢 IMEI</span><span class="os-detail-value">${this._esc(o.imei)}</span></div>` : ''}
             <div class="os-detail-row"><span class="os-detail-label">🔧 Defeito</span><span class="os-detail-value">${this._esc(o.defect || '')}</span></div>
             ${o.observations ? `<div class="os-detail-row"><span class="os-detail-label">📝 Obs</span><span class="os-detail-value">${this._esc(o.observations)}</span></div>` : ''}
             <div class="os-detail-row"><span class="os-detail-label">📅 Abertura</span><span class="os-detail-value">${date}</span></div>
             <div class="os-detail-row"><span class="os-detail-label">🔄 Atualização</span><span class="os-detail-value">${updated}</span></div>
             ${o.valor ? `<div class="os-detail-row"><span class="os-detail-label">💰 Valor</span><span class="os-detail-value">R$ ${Number(o.valor).toFixed(2)}</span></div>` : ''}
+            ${o.technician ? `<div class="os-detail-row"><span class="os-detail-label">🛠️ Técnico</span><span class="os-detail-value">${this._esc(o.technician)}</span></div>` : ''}
           </div>
     `;
 
     // Banner de Pronto para Retirada
-    if (o.status === 'pronto') {
+    if (o.status === 'concluido' || o.status === 'pronto') {
       html += `
         <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;">
           <div class="pronto-banner-icon">🟢</div>
@@ -650,8 +711,8 @@ window.Portal = {
       `;
     }
 
-    // Card de orçamento (se status for orcamento)
-    if (o.status === 'orcamento') {
+    // Card de orçamento (aguardando aprovação do cliente)
+    if (o.status === 'aguardando_aprovacao' || o.status === 'orcamento') {
       html += `
         <div class="orcamento-card">
           <div class="orcamento-title">💰 Orçamento Pendente</div>
@@ -696,7 +757,7 @@ window.Portal = {
       const { doc, updateDoc, serverTimestamp, arrayUnion } = window.FirebaseModules;
       const ref = doc(db, 'os', osId);
       await updateDoc(ref, {
-        status: 'em_reparo',
+        status: 'aprovado',
         updatedAt: serverTimestamp(),
         timeline: arrayUnion({
           date: new Date().toISOString(),
@@ -891,7 +952,7 @@ window.Portal = {
 
         <div id="avaliar-google" style="display:none;" class="avaliar-google-box">
           <p class="avaliar-google-text">💚 Seu feedback foi registrado! Que tal nos avaliar no Google?</p>
-          <a href="https://search.google.com/local/writereview?placeid=SEU_PLACE_ID_AQUI" target="_blank" class="avaliar-google-btn">
+          <a href="${this.loja.googlePlaceId ? 'https://search.google.com/local/writereview?placeid=' + this.loja.googlePlaceId : (this.loja.mapsUrl || LOJA_DEFAULT.mapsUrl)}" target="_blank" class="avaliar-google-btn">
             <span class="google-icon">G</span> Avaliar no Google
           </a>
           <p class="avaliar-google-obs">Você nos ajuda a crescer! 🙏</p>
@@ -1091,24 +1152,28 @@ window.Portal = {
     const el = document.getElementById('app-content');
     document.getElementById('btn-back').style.display = '';
 
+    const loja = this.loja || LOJA_DEFAULT;
+    const tel = loja.whatsapp || '';
+    const horarios = (loja.horarios || '').split('•').map(s => s.trim()).filter(Boolean);
+
     el.innerHTML = `
       <div class="contato-container">
         <h2 class="screen-title">📍 Fale Conosco</h2>
 
-        <a href="https://wa.me/5511949464940?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente" target="_blank" class="contato-card whatsapp-card">
+        <a href="${this._waLink('Olá! Vim pelo Portal do Cliente')}" target="_blank" class="contato-card whatsapp-card">
           <div class="contato-card-icon">💚</div>
           <div class="contato-card-info">
             <div class="contato-card-title">WhatsApp</div>
-            <div class="contato-card-text">(11) 94946-4940</div>
+            <div class="contato-card-text">${this._esc(tel)}</div>
           </div>
           <div class="contato-card-arrow">→</div>
         </a>
 
-        <a href="tel:+5511949464940" class="contato-card phone-card">
+        <a href="tel:+${this._waDigits()}" class="contato-card phone-card">
           <div class="contato-card-icon">📞</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Telefone</div>
-            <div class="contato-card-text">(11) 94946-4940</div>
+            <div class="contato-card-text">${this._esc(tel)}</div>
           </div>
           <div class="contato-card-arrow">→</div>
         </a>
@@ -1117,21 +1182,20 @@ window.Portal = {
           <div class="contato-card-icon">📍</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Endereço</div>
-            <div class="contato-card-text">Rua Cel. José Eusébio, 39 — sala 1</div>
-            <div class="contato-card-text">Tatuapé, São Paulo — SP</div>
+            <div class="contato-card-text">${this._esc(loja.endereco || '')}</div>
           </div>
         </div>
 
+        ${horarios.length ? `
         <div class="contato-card hours-card">
           <div class="contato-card-icon">🕐</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Horários</div>
-            <div class="contato-card-text">Seg–Sex: 09:00–19:00</div>
-            <div class="contato-card-text">Sáb: 09:00–14:00</div>
+            ${horarios.map(h => `<div class="contato-card-text">${this._esc(h)}</div>`).join('')}
           </div>
-        </div>
+        </div>` : ''}
 
-        <a href="https://www.google.com/maps/place/Rua+Cel.+Jos%C3%A9+Eus%C3%A9bio,+39+%E2%80%94+sala+1,+Tatuap%C3%A9,+S%C3%A3o+Paulo+%E2%80%94+SP" target="_blank" class="contato-card map-card">
+        <a href="${loja.mapsUrl || LOJA_DEFAULT.mapsUrl}" target="_blank" class="contato-card map-card">
           <div class="contato-card-icon">🗺️</div>
           <div class="contato-card-info">
             <div class="contato-card-title">Ver no mapa</div>
@@ -1148,11 +1212,13 @@ window.Portal = {
     const el = document.getElementById('app-content');
     document.getElementById('btn-back').style.display = '';
 
-    const MAPS_URL = 'https://www.google.com/maps/dir//Cell+City+%E2%80%93+Conserto+de+Celular,+Notebook+e+Impressora,+R.+6,+455+-+St.+Central,+Goi%C3%A2nia+-+GO,+74023-030/';
-    const WHATSAPP_URL = 'https://wa.me/5511949464940?text=Ol%C3%A1!%20Vim%20pelo%20Portal%20do%20Cliente%20e%20gostaria%20de%20saber%20como%20chegar';
+    const loja = this.loja || LOJA_DEFAULT;
+    const MAPS_URL = loja.mapsUrl || LOJA_DEFAULT.mapsUrl;
+    const WHATSAPP_URL = this._waLink('Olá! Vim pelo Portal do Cliente e gostaria de saber como chegar');
+    const horarios = (loja.horarios || '').split('•').map(s => s.trim()).filter(Boolean);
 
     // Verifica se há OS pronta para retirada
-    const osPronta = this.currentOS.filter(o => o.status === 'pronto');
+    const osPronta = this.currentOS.filter(o => o.status === 'concluido' || o.status === 'pronto');
 
     el.innerHTML = `
       <div class="como-chegar-container">
@@ -1181,9 +1247,8 @@ window.Portal = {
         <div class="como-chegar-card endereco-card">
           <div class="como-chegar-card-icon">📍</div>
           <div class="como-chegar-card-info">
-            <div class="como-chegar-card-title">Cell City Informática</div>
-            <div class="como-chegar-card-text">Rua 6, nº 455 — Setor Central</div>
-            <div class="como-chegar-card-text">Goiânia — GO, CEP 74023-030</div>
+            <div class="como-chegar-card-title">${this._esc(loja.nome || 'Cell City Informática')}</div>
+            <div class="como-chegar-card-text">${this._esc(loja.endereco || '')}</div>
           </div>
         </div>
 
@@ -1197,13 +1262,13 @@ window.Portal = {
             <span class="acao-icon">💚</span>
             <span class="acao-label">WhatsApp</span>
           </a>
-          <a href="tel:+5511949464940" class="acao-card">
+          <a href="tel:+${this._waDigits()}" class="acao-card">
             <span class="acao-icon">📞</span>
             <span class="acao-label">Ligar Agora</span>
           </a>
           <div class="acao-card">
             <span class="acao-icon">🕐</span>
-            <span class="acao-label">Seg–Sex: 09–19<br>Sáb: 09–14</span>
+            <span class="acao-label">${horarios.length ? horarios.map(h => this._esc(h)).join('<br>') : 'Consulte horários'}</span>
           </div>
         </div>
 
@@ -1274,16 +1339,9 @@ window.Portal = {
 
   // ===== STATUS STEPS HTML =====
   _statusStepsHTML(status) {
-    const ORDER = [
-      'em_analise',
-      'aguardando_peca',
-      'orcamento',
-      'em_reparo',
-      'pronto',
-      'entregue'
-    ];
-    const LABELS = ['📥', '🔧', '📋', '🛠️', '✅', '🎉'];
-    const idx = ORDER.indexOf(status);
+    const ORDER = this.STATUS_ORDER;
+    const LABELS = ['📥', '🔍', '📋', '👍', '🛠️', '🧪', '✅', '🎉'];
+    const idx = ORDER.indexOf(this._normStatus(status));
     if (idx === -1) return '';
     let html = '';
     ORDER.forEach((s, i) => {

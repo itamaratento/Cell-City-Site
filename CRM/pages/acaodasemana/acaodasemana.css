@@ -332,6 +332,21 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
 .ag-check input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
 .ag-recorr-sel { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text2); }
+
+/* ── PALETA DE CORES DO TEXTO ── */
+.ag-text-cores {
+    display: flex; align-items: center; gap: 8px;
+    margin-top: 8px; padding: 6px 0;
+}
+.ag-tcor-btn {
+    width: 28px; height: 28px; border-radius: 50%; padding: 0; cursor: pointer;
+    background: var(--c); border: 2px solid rgba(255,255,255,0.25);
+    transition: transform .1s var(--ease), box-shadow .1s var(--ease), border-color .1s var(--ease);
+    flex-shrink: 0;
+}
+.ag-tcor-btn:hover { transform: scale(1.18); }
+.ag-tcor-btn.ativa { border-color: var(--green); box-shadow: 0 0 0 2px var(--green); transform: scale(1.12); }
+
 .ag-recorr-sel select {
     background: var(--bg); border: 1px solid var(--border-md); color: var(--text);
     font-family: inherit; font-size: 13px; padding: 7px 10px; border-radius: 9px; cursor: pointer;
@@ -382,6 +397,23 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-recorr-pop-lista li { font-size: 13px; color: var(--text); font-weight: 600; padding-left: 14px; position: relative; overflow-wrap: anywhere; }
 .ag-recorr-pop-lista li::before { content: '•'; position: absolute; left: 2px; color: var(--green); }
 
+/* Ações do popup de recorrência */
+.ag-recorr-actions {
+    display: flex; flex-direction: column; gap: 6px;
+    margin-top: 10px; padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+.ag-recorr-actions[hidden] { display: none; }
+.ag-recorr-btn {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--border-md);
+    border-radius: 9px; background: var(--bg); color: var(--text2);
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    text-align: center; transition: .12s var(--ease);
+}
+.ag-recorr-btn:hover { background: rgba(0,200,83,0.12); border-color: var(--green); color: var(--text); }
+.ag-recorr-btn-perigo { color: #fca5a5; }
+.ag-recorr-btn-perigo:hover { background: rgba(239,68,68,0.12); border-color: var(--red); color: #fff; }
+
 /* ── ÁREA DE TEXTO ÚNICA (estilo bloco de notas / sticky note) ── */
 .ag-nota-area {
     width: 100%;
@@ -407,6 +439,25 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-nota-area:focus {
     border-color: var(--green);
     box-shadow: inset 0 1px 3px rgba(0,0,0,.12), 0 0 0 3px rgba(0,200,83,0.18);
+}
+
+/* ── CONTADOR DE CARACTERES ── */
+.ag-charcount {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text3);
+    margin-top: 6px;
+    text-align: right;
+    transition: color .15s var(--ease);
+    user-select: none;
+}
+.ag-charcount.ideal {
+    color: var(--green-light);
+    font-weight: 800;
+}
+.ag-charcount.excedido {
+    color: var(--red);
+    font-weight: 800;
 }
 
 /* ── LOADING / TOAST ── */

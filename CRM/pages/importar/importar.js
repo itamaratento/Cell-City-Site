@@ -206,39 +206,65 @@ async function importarCategorias(categorias, stats) {
     return catMap;
 }
 
+// Formata o telefone no MESMO padrão usado pela tela de OS (os.js) e pelo Portal,
+// para que clientes importados se fundam com os criados no CRM (mesmo doc-ID).
+function formatPhoneBR(v) {
+    v = (v || '').replace(/\D/g, '');
+    if (v.length > 11) v = v.slice(0, 11);
+    if (v.length > 6) return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
+    if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
+    if (v.length > 0) return `(${v}`;
+    return '';
+}
+
 // ===== CLIENTES =====
+// Grava na coleção "clientes" (mesma lida por os.js e portal.js), usando o
+// telefone formatado como doc-ID — exatamente o padrão do CRM.
 async function importarClientes(clientes, stats) {
     const clienteMap = {};
 
+    // Mapeia clientes já existentes por telefone (só dígitos) → doc-ID, para deduplicar.
     const existentes = {};
     try {
-        const snap = await getDocs(collection(db, "clients"));
+        const snap = await getDocs(collection(db, "clientes"));
         snap.forEach(d => {
             const data = d.data();
-            if (data.phone) existentes[data.phone.replace(/\D/g, '')] = d.id;
+            const digits = (data.phone || '').replace(/\D/g, '');
+            if (digits) existentes[digits] = d.id;
         });
     } catch {}
 
     for (const cl of clientes) {
-        const fixed = fixObj(cl);
-        const nome  = (fixed.name || fixed.nome || '').trim();
-        const fone  = (fixed.phone || fixed.telefone || '').replace(/\D/g, '');
+        const fixed  = fixObj(cl);
+        const nome   = (fixed.name || fixed.nome || '').trim();
+        const digits = (fixed.phone || fixed.telefone || '').replace(/\D/g, '');
+        const fone   = formatPhoneBR(digits); // formato canônico do CRM
         const idOrig = String(fixed.id || '');
 
-        if (!nome && !fone) continue;
+        if (!nome && !digits) continue;
 
-        const docId = fone && existentes[fone] ? existentes[fone] : doc(collection(db, "clients")).id;
-        const isNovo = !existentes[fone];
+        // doc-ID: telefone formatado (igual ao os.js) quando houver; senão, ID automático.
+        const docId  = digits ? (existentes[digits] || fone) : doc(collection(db, "clientes")).id;
+        const isNovo = !digits || !existentes[digits];
+
+        const payload = {
+            name: nome,
+            phone: fone,
+            importadoDe: 'beepstart',
+            importadoEm: new Date().toISOString()
+        };
+        // Não sobrescreve createdAt/history de um cliente já existente no CRM.
+        if (isNovo) {
+            payload.history = [];
+            payload.createdAt = new Date().toISOString();
+        }
 
         try {
-            await setDoc(doc(db, "clients", docId), {
-                id: docId, name: nome, phone: fone,
-                importadoDe: 'beepstart', importadoEm: new Date().toISOString(),
-                createdAt: serverTimestamp()
-            }, { merge: true });
+            await setDoc(doc(db, "clientes", docId), payload, { merge: true });
 
             clienteMap[idOrig] = docId;
-            if (isNovo) { existentes[fone] = docId; stats.clientesNovos++; }
+            if (digits) existentes[digits] = docId;
+            if (isNovo) stats.clientesNovos++;
             else stats.clientesAtualizados++;
         } catch (e) { erros.push(`Cliente "${nome}": ${e.message}`); }
     }
@@ -246,13 +272,16 @@ async function importarClientes(clientes, stats) {
 }
 
 // ===== PRODUTOS =====
+// Grava na coleção "estoque_produtos" (mesma lida por estoque.js e caixa.js),
+// usando o esquema do estoque: nome, categoria, quantidade, quantidadeMinima, venda, custo.
 async function importarProdutos(produtos, catMap, stats) {
     const existentes = {};
     try {
-        const snap = await getDocs(collection(db, "produtos"));
+        const snap = await getDocs(collection(db, "estoque_produtos"));
         snap.forEach(d => {
             const data = d.data();
-            if (data.description) existentes[data.description.toLowerCase()] = d.id;
+            const chave = (data.nome || data.description || '').toLowerCase();
+            if (chave) existentes[chave] = d.id;
         });
     } catch {}
 
@@ -263,27 +292,33 @@ async function importarProdutos(produtos, catMap, stats) {
 
         const fixed = fixObj(prod);
         const desc  = (fixed.description || fixed.descricao || fixed.nome || '').trim();
-        const idOrig = String(fixed.id || '');
-        const catId  = String(fixed.categoriaID || fixed.categoria_id || '');
+        const catId = String(fixed.categoriaID || fixed.categoria_id || '');
 
         if (!desc) continue;
 
-        const isNovo = !existentes[desc.toLowerCase()];
-        const docId  = isNovo ? doc(collection(db, "produtos")).id : existentes[desc.toLowerCase()];
+        const chave  = desc.toLowerCase();
+        const isNovo = !existentes[chave];
+        const docId  = isNovo ? doc(collection(db, "estoque_produtos")).id : existentes[chave];
+
+        const payload = {
+            nome:        desc,                              // estoque.js lê o campo 'nome'
+            categoria:   catMap[catId] || catId || 'Outro',
+            venda:       parseFloat(fixed.venda || fixed.price || 0) || 0,
+            custo:       parseFloat(fixed.custo || fixed.cost  || 0) || 0,
+            categoriaID: catId,
+            importadoDe: 'beepstart'
+        };
+        // Quantidade só é definida em produtos NOVOS — nunca zera um estoque já ajustado no CRM.
+        if (isNovo) {
+            payload.quantidade       = parseFloat(fixed.quantidade || fixed.estoque || 0) || 0;
+            payload.quantidadeMinima = parseFloat(fixed.quantidadeMinima || 1) || 1;
+            payload.createdAt        = serverTimestamp();
+        }
 
         try {
-            await setDoc(doc(db, "produtos", docId), {
-                id: docId,
-                description: desc,
-                custo:       parseFloat(fixed.custo    || fixed.cost  || 0),
-                venda:       parseFloat(fixed.venda    || fixed.price || 0),
-                categoria:   catMap[catId] || catId || '',
-                categoriaID: catId,
-                importadoDe: 'beepstart',
-                createdAt:   serverTimestamp()
-            }, { merge: true });
+            await setDoc(doc(db, "estoque_produtos", docId), payload, { merge: true });
 
-            if (isNovo) { existentes[desc.toLowerCase()] = docId; stats.produtosNovos++; }
+            if (isNovo) { existentes[chave] = docId; stats.produtosNovos++; }
             else stats.produtosAtualizados++;
         } catch (e) { erros.push(`Produto "${desc}": ${e.message}`); }
     }

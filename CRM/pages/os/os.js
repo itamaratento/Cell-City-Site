@@ -374,13 +374,38 @@ function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(scre
 function formatPhone(v) { v = v.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); return v.length > 6 ? `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}` : v.length > 2 ? `(${v.slice(0,2)}) ${v.slice(2)}` : v.length > 0 ? `(${v}` : v; }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
-function getStatusLabel(status) { return { 'em_analise': 'Em análise', 'aguardando_peca': 'Aguardando peça', 'em_reparo': 'Em reparo', 'pronto': 'Pronto', 'entregue': 'Entregue', 'orcamento': 'Orçamento', 'devolvido_orcamento': 'Devolvido' }[status] || status; }
+// ===== FLUXO DE STATUS (8 etapas — padrão Cell City) =====
+const STATUS_FLOW = [
+    { key: 'recebido',             label: 'Recebido',             color: 'var(--blue)' },
+    { key: 'em_analise',           label: 'Em análise',           color: 'var(--blue)' },
+    { key: 'aguardando_aprovacao', label: 'Aguardando aprovação', color: 'var(--yellow)' },
+    { key: 'aprovado',             label: 'Aprovado',             color: 'var(--orange)' },
+    { key: 'em_reparo',            label: 'Em reparo',            color: 'var(--orange)' },
+    { key: 'testes_finais',        label: 'Testes finais',        color: '#a78bfa' },
+    { key: 'concluido',            label: 'Concluído',            color: 'var(--green)' },
+    { key: 'entregue',             label: 'Entregue',             color: 'var(--text3)' }
+];
+// Mapeia status antigos (OS já gravadas) para os rótulos novos, sem migração forçada.
+const STATUS_LEGACY = {
+    aguardando_peca:     'Aguardando peça',
+    orcamento:           'Aguardando aprovação',
+    pronto:              'Concluído',
+    devolvido_orcamento: 'Não aprovado'
+};
+// Status que encerram a OS (saem de "em andamento").
+const STATUS_TERMINAIS = ['entregue', 'devolvido_orcamento'];
+
+function getStatusLabel(status) {
+    const found = STATUS_FLOW.find(s => s.key === status);
+    if (found) return found.label;
+    return STATUS_LEGACY[status] || status || '';
+}
 function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; }
 function formatDateShort(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''; }
 
 // ===== STATS =====
 function updateStats() {
-    const orders = DB.getOS(); const andamento = orders.filter(o => !['entregue','devolvido_orcamento'].includes(o.status)).length; const finalizados = orders.filter(o => ['entregue','devolvido_orcamento'].includes(o.status)).length;
+    const orders = DB.getOS(); const andamento = orders.filter(o => !STATUS_TERMINAIS.includes(o.status)).length; const finalizados = orders.filter(o => STATUS_TERMINAIS.includes(o.status)).length;
     const bar = document.getElementById('statsBar'); if (bar) bar.innerHTML = `<div class="stat-chip"><span class="num">${orders.length}</span><span class="stat-label">Total</span></div><div class="stat-chip"><span class="num">${andamento}</span><span class="stat-label">Em andamento</span></div><div class="stat-chip"><span class="num">${finalizados}</span><span class="stat-label">Finalizados</span></div>`;
     ['andamento', 'finalizados'].forEach(type => { const el = document.getElementById(`badge-${type}`); if (!el) return; el.style.display = (type === 'andamento' ? andamento : finalizados) > 0 ? 'flex' : 'none'; el.textContent = type === 'andamento' ? andamento : finalizados; });
 }
@@ -399,21 +424,23 @@ function removePhoto(i) { tempPhotos.splice(i, 1); renderPhotoPreview(); }
 function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="${src}" style="width:100%;border-radius:8px;">`); }
 
 // ===== CREATE OS =====
-function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); }
+function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); }
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
-    const [nome, telefone, modelo, defeito, senha, obs, lockType] = ['f-nome','f-telefone','f-modelo','f-defeito','f-senha','f-obs','lock-type'].map(getVal);
+    const [nome, telefone, marca, modelo, imei, defeito, tecnico, senha, obs, lockType] = ['f-nome','f-telefone','f-marca','f-modelo','f-imei','f-defeito','f-tecnico','f-senha','f-obs','lock-type'].map(getVal);
+    const valor = parseFloat((document.getElementById('f-valor')?.value || '').replace(',', '.')) || 0;
+    const garantiaDias = parseInt(document.getElementById('f-garantia')?.value, 10) || 90;
     if (!nome || !telefone || !modelo || !defeito) return showToast('⚠️ Preencha todos os campos obrigatórios');
     if (lockType === 'Padrao' && (!window.tempPatternSequence || window.tempPatternSequence.length < 4)) {
         return showToast('⚠️ Registre um padrão com pelo menos 4 pontos');
     }
     const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
     const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
-    const os = { 
-        id: osId, category: currentCategory, clientName: nome, phone: telefone, model: modelo, defect: defeito, observations: obs, technicalObservation: "", 
-        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'em_analise', 
-        timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() 
+    const os = {
+        id: osId, category: currentCategory, clientName: nome, phone: telefone, brand: marca, model: modelo, imei, defect: defeito, valor, technician: tecnico, observations: obs, technicalObservation: "",
+        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
+        timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
     };
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
         os.patternSequence = window.tempPatternSequence;
@@ -439,7 +466,7 @@ function showList(filter) { currentListFilter = filter; renderList(); showScreen
 function renderList() {
     const orders = DB.getOS(); const s = (document.getElementById('list-search')?.value || '').toLowerCase();
     const isFinal = currentListFilter === 'finalizados';
-    let filtered = isFinal ? orders.filter(o => ['entregue','devolvido_orcamento'].includes(o.status)) : orders.filter(o => !['entregue','devolvido_orcamento'].includes(o.status));
+    let filtered = isFinal ? orders.filter(o => STATUS_TERMINAIS.includes(o.status)) : orders.filter(o => !STATUS_TERMINAIS.includes(o.status));
     if (s) filtered = filtered.filter(o => (o.clientName||'').toLowerCase().includes(s) || (o.phone||'').includes(s) || (o.id||'').toLowerCase().includes(s) || (o.model||'').toLowerCase().includes(s));
     const c = document.getElementById('os-list'); if (!c) return;
     if (filtered.length === 0) { c.innerHTML = `<div class="empty-state"><div class="icon">${isFinal ? '✅' : '🔧'}</div><p>${s ? 'Nenhum resultado encontrado' : 'Nenhuma O.S. nesta categoria'}</p></div>`; return; }
@@ -458,10 +485,10 @@ function openDetail(osId) { currentOS = DB.getOS().find(o => o.id === osId); if 
 function renderDetail() {
     const os = currentOS; const c = document.getElementById('detail-content'); if (!os) return;
     hasUnsavedChanges = false;
-    const statuses = [{ key: 'em_analise', label: 'Em análise', color: 'var(--blue)' }, { key: 'aguardando_peca', label: 'Aguardando peça', color: 'var(--yellow)' }, { key: 'em_reparo', label: 'Em reparo', color: 'var(--orange)' }, { key: 'pronto', label: 'Pronto', color: 'var(--green)' }, { key: 'orcamento', label: 'Orçamento', color: '#a78bfa' }, { key: 'entregue', label: 'Entregue', color: 'var(--text3)' }];
+    const statuses = STATUS_FLOW;
     const clients = DB.getClients(); const client = clients.find(cl => cl.phone === os.phone);
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
-    html += `<div class="detail-header" style="position:relative;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div><div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${os.model}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div><div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.technician ? ' • ' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">🛡️ Garantia: ${os.prazoGarantia ?? 90} dias</div></div>`;
     
     html += `<div class="form-section"><div class="form-section-title">📋 Observação Interna</div><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.internalObservation || ''}</textarea></div><div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div></div>`;
 
@@ -488,7 +515,8 @@ function renderDetail() {
         html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;"><div class="form-section-title" style="margin-bottom:8px;">📂 Histórico do Cliente</div>${otherOS.map(hId => { const h = DB.getOS().find(o => o.id === hId); return h ? `<div onclick="openDetail('${h.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div style="font-size:12px;font-weight:800;color:var(--green-light);">${h.id}</div><div style="font-size:11px;color:var(--text3);">${h.model} — ${formatDateShort(h.createdAt)}</div></div><span class="os-card-status status-${(h.status||'').replace(/ /g, '_')}">${getStatusLabel(h.status)}</span></div>` : ''; }).join('')}</div>`;
     }
     
-    const _acaoBtn = os.status === 'orcamento' ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!['entregue','devolvido_orcamento'].includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
+    const aguardandoAprov = os.status === 'aguardando_aprovacao' || os.status === 'orcamento';
+    const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
     html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
@@ -499,7 +527,7 @@ function toggleOSEdit() {
     const os = currentOS;
     const c = document.getElementById('detail-content');
     const header = c.querySelector('.detail-header');
-    header.innerHTML = `<button onclick="renderDetail()" style="margin-bottom:12px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">↩️ Cancelar Edição</button><div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;"><label style="font-size:12px;color:var(--text2);">Nome do Cliente</label><input id="edit-os-name" value="${os.clientName||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Telefone</label><input id="edit-os-phone" value="${os.phone||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Modelo do Aparelho</label><input id="edit-os-model" value="${os.model||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"></div><button onclick="saveOSEdit()" style="margin-top:14px;width:100%;padding:12px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Alterações</button>`;
+    header.innerHTML = `<button onclick="renderDetail()" style="margin-bottom:12px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">↩️ Cancelar Edição</button><div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;"><label style="font-size:12px;color:var(--text2);">Nome do Cliente</label><input id="edit-os-name" value="${os.clientName||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Telefone</label><input id="edit-os-phone" value="${os.phone||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Marca</label><input id="edit-os-brand" value="${os.brand||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Modelo do Aparelho</label><input id="edit-os-model" value="${os.model||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">IMEI / Nº de série</label><input id="edit-os-imei" value="${os.imei||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Valor (R$)</label><input id="edit-os-valor" type="number" step="0.01" min="0" value="${os.valor||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Técnico responsável</label><input id="edit-os-tecnico" value="${os.technician||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"><label style="font-size:12px;color:var(--text2);">Prazo de garantia (dias)</label><input id="edit-os-garantia" type="number" min="0" step="1" value="${os.prazoGarantia ?? 90}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()"></div><button onclick="saveOSEdit()" style="margin-top:14px;width:100%;padding:12px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Alterações</button>`;
     window.markUnsaved();
 }
 
@@ -507,10 +535,16 @@ async function saveOSEdit() {
     const n = document.getElementById('edit-os-name').value.trim();
     const p = document.getElementById('edit-os-phone').value.trim();
     const m = document.getElementById('edit-os-model').value.trim();
+    const brand = document.getElementById('edit-os-brand')?.value.trim() || '';
+    const imei = document.getElementById('edit-os-imei')?.value.trim() || '';
+    const tecnico = document.getElementById('edit-os-tecnico')?.value.trim() || '';
+    const valor = parseFloat((document.getElementById('edit-os-valor')?.value || '').replace(',', '.')) || 0;
+    const prazoGarantia = parseInt(document.getElementById('edit-os-garantia')?.value, 10) || 90;
     if (!n || !p || !m) return showToast("⚠️ Preencha todos os campos");
     try {
-        await updateDoc(doc(db, "os", currentOS.id), { clientName: n, phone: p, model: m, updatedAt: new Date().toISOString() });
-        currentOS.clientName = n; currentOS.phone = p; currentOS.model = m;
+        const updates = { clientName: n, phone: p, brand, model: m, imei, valor, technician: tecnico, prazoGarantia, updatedAt: new Date().toISOString() };
+        await updateDoc(doc(db, "os", currentOS.id), updates);
+        Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
         if (idx >= 0) localOS[idx] = { ...currentOS };
         showToast("✅ OS Atualizada!"); window.markSaved(); renderDetail();
@@ -663,7 +697,7 @@ window._executePrint = function() {
     const w = window.open('', '_blank');
     const statusHtml = os.status === 'entregue' ? `<div class="row"><span class="label">Status:</span><span style="font-weight:bold">ENTREGUE</span></div>` : `<div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div>`;
     const garantiasHtmlAjustado = selecionadas.length ? `<div style="margin-top:14px;border-top:1px dashed #ccc;padding-top:10px"><div style="font-weight:bold;font-size:11px;margin-bottom:8px;text-transform:uppercase">Termos de Garantia</div>${selecionadas.map(g => `<div style="margin-bottom:10px"><b style="font-size:11px">${g.nome}:</b><br><span style="font-size:10px;line-height:1.5">${g.texto.replace(/MAU USO/gi, '<b>MAU USO</b>')}</span></div>`).join('')}</div>` : '';
-    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${os.model}</span></div><div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section">${statusHtml}</div>${garantiasHtmlAjustado}<div class="footer" style="margin-top:30px"><div style="text-align:center;margin-bottom:20px"><p style="margin:0;font-size:10px">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p><p style="margin:30px 0 10px 0;border-top:1px solid #000;padding-top:10px;min-height:40px;font-size:11px;font-weight:bold">Assinatura do Cliente</p><p style="margin-top:15px;font-size:10px">Data da entrega: ___/___/____</p></div><div style="text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;font-size:9px"><p style="margin:0;font-style:italic;color:#333">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p></div></div></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div><div class="row"><span class="label">Aparelho:</span><span>${[os.brand, os.model].filter(Boolean).join(' ')}</span></div>${os.imei?`<div class="row"><span class="label">IMEI:</span><span>${os.imei}</span></div>`:''}<div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.valor?`<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`:''}${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section">${statusHtml}</div>${garantiasHtmlAjustado}<div class="footer" style="margin-top:30px"><div style="text-align:center;margin-bottom:20px"><p style="margin:0;font-size:10px">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p><p style="margin:30px 0 10px 0;border-top:1px solid #000;padding-top:10px;min-height:40px;font-size:11px;font-weight:bold">Assinatura do Cliente</p><p style="margin-top:15px;font-size:10px">Data da entrega: ___/___/____</p></div><div style="text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;font-size:9px"><p style="margin:0;font-style:italic;color:#333">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p></div></div></body></html>`);
     w.document.close();
     w.print();
 };
@@ -697,7 +731,7 @@ function showClientDetail(phone) {
         const c = document.getElementById('client-detail-content');
         
         const totalOS = clientOrders.length;
-        const totalSpent = clientOrders.reduce((sum, o) => sum + (parseFloat(o.totalValue) || 0), 0);
+        const totalSpent = clientOrders.reduce((sum, o) => sum + (parseFloat(o.valor ?? o.totalValue) || 0), 0);
         const lastAttendance = clientOrders.length > 0 ? formatDateShort(clientOrders[0].createdAt) : 'Nunca';
         const activeWarranties = clientOrders.filter(o => {
             if (o.status === 'entregue' && o.updatedAt) {
@@ -1126,7 +1160,8 @@ function verificarConversaoPreOS() {
         const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
         set('f-nome', d.clienteNome);
         set('f-telefone', formatPhone(d.clienteWhatsapp || ''));
-        set('f-modelo', [d.aparelhoMarca, d.aparelhoModelo].filter(Boolean).join(' ').trim());
+        set('f-marca', d.aparelhoMarca);
+        set('f-modelo', d.aparelhoModelo || [d.aparelhoMarca, d.aparelhoModelo].filter(Boolean).join(' ').trim());
         set('f-defeito', d.defeito);
         set('f-obs', d.observacoes);
         if (d.senha) set('f-senha', d.senha);

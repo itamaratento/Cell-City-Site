@@ -704,14 +704,16 @@ class Dashboard {
       let osPronto = 0;
       let osOrcamentoParado = 0;
       osList.forEach(os => {
-        if (os.status === 'orcamento') {
+        // 'aguardando_aprovacao' = novo fluxo; 'orcamento' = OS antigas
+        if (os.status === 'aguardando_aprovacao' || os.status === 'orcamento') {
           osOrcamento++;
           const ref = getDeliveryDate(os) || os.createdAt;
           if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) {
             osOrcamentoParado++;
           }
         }
-        if (os.status === 'pronto') osPronto++;
+        // 'concluido' = novo fluxo; 'pronto' = OS antigas
+        if (os.status === 'concluido' || os.status === 'pronto') osPronto++;
       });
 
       if (osOrcamentoParado > 0) {
@@ -1368,7 +1370,7 @@ class Dashboard {
       'em-breve': '../../pages/em-breve/index.html',
       'minha-semana':   '../../pages/minha-semana/index.html',
       'acaodasemana':   '../../pages/acaodasemana/index.html',
-      'portal-cliente': '../../pages/portal-cliente/index.html'
+      'portal-cliente': '../../pages/portal-cliente/admin.html'
     };
     const url = routes[module];
     if (url) {

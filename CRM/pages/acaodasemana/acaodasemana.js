@@ -16,6 +16,15 @@ const CORES = {
 };
 const ORDEM = ['verde', 'amarelo', 'vermelho', 'azul', 'branco'];
 const COR_PADRAO = 'verde';
+const TEXT_CORES = {
+  preto:    '#1a1a1a',
+  branco:   '#ffffff',
+  verde:    '#22C55E',
+  vermelho: '#EF4444',
+  azul:     '#3B82F6',
+  amarelo:  '#EAB308',
+  roxo:     '#A855F7',
+};
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -26,6 +35,10 @@ let corPorDia = {};             // data -> cor (do calendário / bloco)
 let corDiaSel = COR_PADRAO;     // cor escolhida para o dia aberto no editor
 let alertaPorDia = {};          // data -> { hora, dashboard }
 let recorrenciaPorDia = {};     // data -> 'semanal' | 'mensal' | 'anual'
+let recorrenciaExcluir = {};    // data origem -> [datasISO] (ocorrências a pular)
+let recorrenciaPararEm = {};    // data origem -> dataISO (para futuras a partir daqui)
+let textoCorDia = {};           // data -> nome da cor do texto (ex.: 'branco', 'preto')
+let textCorSel = 'preto';       // cor atual selecionada para o texto
 let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
@@ -84,13 +97,17 @@ function _dataLanda(iso, origem, pattern) {
   if (pattern === 'anual')   return a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   return false;
 }
-// Lembretes recorrentes que "caem" no dia iso (textos)
+// Lembretes recorrentes que "caem" no dia iso
+// Retorna array de { texto, origem }
 function recorrentesNoDia(iso) {
   const out = [];
   for (const origem of Object.keys(recorrenciaPorDia)) {
-    if (_dataLanda(iso, origem, recorrenciaPorDia[origem])) {
-      (notas[origem] || []).forEach(n => out.push(n.texto));
-    }
+    if (!_dataLanda(iso, origem, recorrenciaPorDia[origem])) continue;
+    // Pula ocorrência específica excluída
+    if (recorrenciaExcluir[origem] && recorrenciaExcluir[origem].includes(iso)) continue;
+    // Pula se a recorrência foi encerrada antes deste dia
+    if (recorrenciaPararEm[origem] && iso >= recorrenciaPararEm[origem]) continue;
+    (notas[origem] || []).forEach(n => out.push({ texto: n.texto, origem }));
   }
   return out;
 }
@@ -200,6 +217,7 @@ function carregarEditor() {
   diaTitulo.textContent = fmtDiaLongo(diaSelecionado);
   const arr = notas[diaSelecionado] || [];
   areaEl.value = arr.map(n => n.texto).join('\n');
+  atualizarContador();
   corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
   pintarArea();
   // Alerta opcional do dia
@@ -208,15 +226,36 @@ function carregarEditor() {
   if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
   if (recorrEl) recorrEl.value = recorrenciaPorDia[diaSelecionado] || '';
   aplicarFonteLinhas();   // já chama autoGrow()
+  // Restaura a cor do texto salva (após pintarArea definir bg/fg do dia)
+  const tCor = textoCorDia[diaSelecionado] || 'preto';
+  escolherTextoCor(tCor);
 }
 
 // Popup com a lista de lembretes recorrentes do dia
 function abrirRecorrPop(iso, anchor) {
   const itens = recorrentesNoDia(iso);
   if (!itens.length || !recorrPop) return;
-  recorrPopTit.textContent = `Recorrentes · ${fmtData(iso)}`;
-  recorrPopLista.innerHTML = itens.map(t => `<li>${escHtml(t)}</li>`).join('');
+  // Toggle: se já está aberto para este dia, fecha
+  if (!recorrPop.hidden && recorrPop.dataset.iso === iso) {
+    fecharRecorrPop();
+    return;
+  }
+  recorrPop.dataset.iso = iso;
+  recorrPopTit.textContent = fmtData(iso);
+  // Agrupa textos por origem (cada origem vira um bloco)
+  const origens = [...new Set(itens.map(i => i.origem))];
+  let html = '';
+  for (const o of origens) {
+    const textos = itens.filter(i => i.origem === o).map(i => i.texto);
+    html += textos.map(t => `<li>${escHtml(t)}</li>`).join('');
+  }
+  recorrPopLista.innerHTML = html;
   recorrPop.hidden = false;
+  // Salva as origens no dataset para usar nos botões de ação
+  recorrPop.dataset.origens = origens.join(',');
+  // Mostra/esconde actions
+  const actions = $('ag-recorr-actions');
+  if (actions) actions.hidden = false;
   const r = anchor.getBoundingClientRect();
   const pw = recorrPop.offsetWidth, ph = recorrPop.offsetHeight;
   let left = Math.min(r.right - pw, window.innerWidth - pw - 8);
@@ -226,7 +265,36 @@ function abrirRecorrPop(iso, anchor) {
   recorrPop.style.left = left + 'px';
   recorrPop.style.top = top + 'px';
 }
-function fecharRecorrPop() { if (recorrPop) recorrPop.hidden = true; }
+function fecharRecorrPop() { if (recorrPop) { recorrPop.hidden = true; recorrPop.dataset.iso = ''; } }
+
+// Interrompe a recorrência apenas para esta ocorrência
+async function pararEstaOcorrencia() {
+  const iso = recorrPop?.dataset.iso;
+  const origens = (recorrPop?.dataset.origens || '').split(',').filter(Boolean);
+  if (!iso || !origens.length) return;
+  try {
+    for (const origem of origens) {
+      const excluir = [...(recorrenciaExcluir[origem] || []), iso];
+      await setDoc(doc(db, 'agenda', origem), { recorrenciaExcluir: excluir }, { merge: true });
+    }
+    toast('Ocorrência removida');
+    fecharRecorrPop();
+  } catch (e) { console.error(e); toast('Erro ao remover ocorrência'); }
+}
+
+// Interrompe a recorrência a partir desta data (inclusive)
+async function pararFuturas() {
+  const iso = recorrPop?.dataset.iso;
+  const origens = (recorrPop?.dataset.origens || '').split(',').filter(Boolean);
+  if (!iso || !origens.length) return;
+  try {
+    for (const origem of origens) {
+      await setDoc(doc(db, 'agenda', origem), { recorrenciaPararEm: iso }, { merge: true });
+    }
+    toast('Recorrência futura encerrada');
+    fecharRecorrPop();
+  } catch (e) { console.error(e); toast('Erro ao encerrar recorrência'); }
+}
 
 // ── MINI CALENDÁRIO (atalho do título) ─────────────────────────────
 function renderMini() {
@@ -304,6 +372,23 @@ function escolherCor(cor) {
   corDiaSel = corValida(cor);
   corPorDia[diaSelecionado] = corDiaSel;
   pintarArea();
+  // Reaplica a cor do texto após pintar o fundo do dia
+  const tCor = textoCorDia[diaSelecionado] || 'preto';
+  const hex = TEXT_CORES[tCor];
+  if (hex) areaEl.style.color = hex;
+  agendarSave();
+}
+
+// ── SELETOR DE COR DO TEXTO ────────────────────────────────────────
+function escolherTextoCor(cor) {
+  const hex = TEXT_CORES[cor];
+  if (!hex) return;
+  textCorSel = cor;
+  areaEl.style.color = hex;
+  document.querySelectorAll('.ag-tcor-btn').forEach(b => {
+    b.classList.toggle('ativa', b.dataset.cor === cor);
+  });
+  textoCorDia[diaSelecionado] = cor;
   agendarSave();
 }
 
@@ -320,6 +405,23 @@ function autoGrow() {
   const max = Math.max(180, Math.round(window.innerHeight * 0.5));
   areaEl.style.height = Math.min(areaEl.scrollHeight, max) + 'px';
   areaEl.style.overflowY = areaEl.scrollHeight > max ? 'auto' : 'hidden';
+}
+
+// ── CONTADOR DE CARACTERES ─────────────────────────────────────────
+const CHAR_LIMITE = 88;
+const charCountEl = $('ag-charcount');
+function atualizarContador() {
+  if (!charCountEl) return;
+  const total = areaEl ? areaEl.value.length : 0;
+  charCountEl.textContent = `${total} / ${CHAR_LIMITE} caracteres`;
+  charCountEl.classList.remove('ideal', 'excedido');
+  if (total > CHAR_LIMITE) {
+    charCountEl.classList.add('excedido');
+    charCountEl.textContent += ' (limite excedido)';
+  } else if (total === CHAR_LIMITE) {
+    charCountEl.classList.add('ideal');
+    charCountEl.textContent += ' ✓';
+  }
 }
 
 // ── salvamento automático ──────────────────────────────────────────
@@ -362,11 +464,20 @@ async function salvar() {
       delete corPorDia[data];
       delete alertaPorDia[data];
       delete recorrenciaPorDia[data];
+      delete recorrenciaExcluir[data];
+      delete recorrenciaPararEm[data];
+      delete textoCorDia[data];
     } else {
+      // Preserva campos de interrupção de recorrência (se existirem)
+      const excluir = recorrenciaExcluir[data] || [];
+      const pararEm = recorrenciaPararEm[data] || '';
       // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
       await setDoc(doc(db, 'agenda', data), {
         data, notas: arr, cor: corDiaSel,
         alertaHora, alertaDashboard, recorrencia,
+        recorrenciaExcluir: excluir.length ? excluir : [],
+        recorrenciaPararEm: pararEm || '',
+        textoCor: textoCorDia[data] || 'preto',
         atualizadoEm: serverTimestamp()
       });
       const orfaos = (docIds[data] || []).filter(id => id !== data);
@@ -481,6 +592,9 @@ function iniciar() {
       corPorDia = {};
       alertaPorDia = {};
       recorrenciaPorDia = {};
+      recorrenciaExcluir = {};
+      recorrenciaPararEm = {};
+      textoCorDia = {};
       snap.forEach(d => {
         const dados = d.data();
         const data = dados.data || d.id;
@@ -490,6 +604,15 @@ function iniciar() {
           alertaPorDia[data] = { hora: dados.alertaHora || '', dashboard: !!dados.alertaDashboard };
         }
         if (dados.recorrencia) recorrenciaPorDia[data] = dados.recorrencia;
+        if (Array.isArray(dados.recorrenciaExcluir) && dados.recorrenciaExcluir.length) {
+          recorrenciaExcluir[data] = dados.recorrenciaExcluir;
+        }
+        if (dados.recorrenciaPararEm) {
+          recorrenciaPararEm[data] = dados.recorrenciaPararEm;
+        }
+        if (dados.textoCor) {
+          textoCorDia[data] = dados.textoCor;
+        }
         if (Array.isArray(dados.notas)) {
           arr = dados.notas.filter(n => n && (n.texto || '').trim())
                            .map(n => ({ texto: n.texto, cor: corValida(dados.cor || n.cor) }));
@@ -522,8 +645,8 @@ painelEl.addEventListener('focusout', () => {
   setTimeout(() => { if (!painelEl.contains(document.activeElement)) editando = false; }, 150);
 });
 
-// Área de texto única: salva sozinho e cresce com o conteúdo
-areaEl.addEventListener('input', () => { agendarSave(); autoGrow(); });
+// Área de texto única: salva sozinho, cresce e atualiza contador
+areaEl.addEventListener('input', () => { agendarSave(); autoGrow(); atualizarContador(); });
 areaEl.addEventListener('blur', () => { flushSave(); });
 
 // Seletor de cores do dia (4 cores)
@@ -550,6 +673,15 @@ document.addEventListener('click', (e) => {
   }
 });
 window.addEventListener('scroll', () => fecharRecorrPop(), true);
+
+// Botões de ação do popup de recorrência
+$('ag-recorr-esta')?.addEventListener('click', pararEstaOcorrencia);
+$('ag-recorr-futuras')?.addEventListener('click', pararFuturas);
+
+// Seletor de cor do texto (paleta de 7 cores)
+document.querySelectorAll('.ag-tcor-btn').forEach(b => {
+  b.addEventListener('click', () => escolherTextoCor(b.dataset.cor));
+});
 
 // ── seletor de mês / ano (dropdown) ────────────────────────────────
 function abrirDropdown(tipo, btn) {

@@ -69,6 +69,19 @@
                 <textarea class="ag-nota-area" id="ag-nota-area" spellcheck="true"
                     placeholder="09:00 Buscar películas&#10;14:00 Ligar fornecedor&#10;17:00 Atualizar preços&#10;18:00 Fazer postagem Instagram"></textarea>
 
+                <!-- PALETA DE CORES DO TEXTO -->
+                <div class="ag-text-cores" id="ag-text-cores">
+                    <button type="button" class="ag-tcor-btn" data-cor="preto"    style="--c:#1a1a1a"  title="Preto"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="branco"   style="--c:#ffffff"  title="Branco"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="verde"    style="--c:#22C55E"  title="Verde"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="vermelho" style="--c:#EF4444"  title="Vermelho"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="azul"     style="--c:#3B82F6"  title="Azul"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="amarelo"  style="--c:#EAB308"  title="Amarelo"></button>
+                    <button type="button" class="ag-tcor-btn" data-cor="roxo"     style="--c:#A855F7"  title="Roxo"></button>
+                </div>
+
+                <div class="ag-charcount" id="ag-charcount">0 / 183 caracteres</div>
+
                 <!-- ALERTA OPCIONAL NO DASHBOARD -->
                 <div class="ag-alerta-cfg">
                     <label class="ag-alerta-hora">
@@ -121,8 +134,12 @@
 
     <!-- POPUP: lista de lembretes recorrentes do dia -->
     <div class="ag-recorr-pop" id="ag-recorr-pop" hidden>
-        <div class="ag-recorr-pop-tit" id="ag-recorr-pop-tit">Lembretes recorrentes</div>
+        <div class="ag-recorr-pop-tit" id="ag-recorr-pop-tit">—</div>
         <ul class="ag-recorr-pop-lista" id="ag-recorr-pop-lista"></ul>
+        <div class="ag-recorr-actions" id="ag-recorr-actions" hidden>
+            <button type="button" class="ag-recorr-btn" id="ag-recorr-esta">⏹ Somente esta ocorrência</button>
+            <button type="button" class="ag-recorr-btn ag-recorr-btn-perigo" id="ag-recorr-futuras">⏹ Esta e todas as futuras</button>
+        </div>
     </div>
 
     <div class="ag-toast" id="ag-toast"></div>

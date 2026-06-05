@@ -203,6 +203,12 @@ body {
 .status-em_reparo { background: rgba(249,115,22,0.15); color: #fb923c; }
 .status-pronto { background: rgba(16,185,129,0.15); color: #34d399; }
 .status-entregue { background: rgba(107,114,128,0.15); color: #9ca3af; }
+/* Fluxo oficial de 8 status (Cell City) */
+.status-recebido { background: rgba(33,150,243,0.15); color: #60a5fa; }
+.status-aguardando_aprovacao { background: rgba(245,158,11,0.15); color: #fbbf24; }
+.status-aprovado { background: rgba(249,115,22,0.15); color: #fb923c; }
+.status-testes_finais { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.status-concluido { background: rgba(16,185,129,0.15); color: #34d399; }
 
 /* DETAIL & MODAL */
 .detail-header { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 22px; box-shadow: var(--shadow); }

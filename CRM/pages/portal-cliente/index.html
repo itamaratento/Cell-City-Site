@@ -94,7 +94,7 @@
 
   <!-- ===== BOTÃO WHATSAPP FLUTUANTE ===== -->
   <a id="whatsapp-float"
-     href="https://wa.me/5511949464940?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente"
+     href="https://wa.me/5562981605863?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente"
      target="_blank"
      class="whatsapp-float"
      title="Falar no WhatsApp"
@@ -149,7 +149,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
     import {
       getFirestore,
-      collection, query, where, getDocs, onSnapshot,
+      collection, query, where, getDocs, getDoc, onSnapshot,
       addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion
     } from 'firebase/firestore';
 
@@ -169,7 +169,7 @@
     // Expõe globais para portal.js (não-module)
     window.db = db;
     window.FirebaseModules = {
-      collection, query, where, getDocs, onSnapshot,
+      collection, query, where, getDocs, getDoc, onSnapshot,
       addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion
     };
 

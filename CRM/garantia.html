@@ -397,7 +397,13 @@
                 </div>
             `;
 
-            const statusTexto = os.status === 'entregue' ? 'ENTREGUE' : os.status || 'Em processamento';
+            const STATUS_LABELS = {
+                recebido: 'Recebido', em_analise: 'Em análise', aguardando_aprovacao: 'Aguardando aprovação',
+                aprovado: 'Aprovado', em_reparo: 'Em reparo', testes_finais: 'Testes finais',
+                concluido: 'Concluído', entregue: 'ENTREGUE',
+                aguardando_peca: 'Aguardando peça', orcamento: 'Aguardando aprovação', pronto: 'Concluído', devolvido_orcamento: 'Não aprovado'
+            };
+            const statusTexto = STATUS_LABELS[os.status] || os.status || 'Em processamento';
             const statusStyle = os.status === 'entregue' ? 'style="font-weight:bold;"' : '';
 
             const html = `
