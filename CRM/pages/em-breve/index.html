@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - Em Breve</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#050505;color:#fff;min-height:100dvh;display:flex;flex-direction:column}
+        .header{position:sticky;top:0;z-index:100;background:rgba(10,12,11,.92);border-bottom:1px solid rgba(255,255,255,.08);padding:10px 16px;display:flex;align-items:center;justify-content:center;min-height:54px;backdrop-filter:blur(16px)}
+        .header::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#00C853,transparent);opacity:.6}
+        h1{font-size:18px;font-weight:800}
+        .wip{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px 24px;text-align:center}
+        .wip-icon{font-size:56px}
+        .wip-title{font-size:20px;font-weight:800;color:#fff}
+        .wip-sub{font-size:14px;color:#6b7280;max-width:260px;line-height:1.6}
+        .wip-badge{padding:6px 16px;background:rgba(0,200,83,.1);border:1px solid rgba(0,200,83,.3);border-radius:100px;font-size:12px;font-weight:700;color:#00E676}
+        .btn-voltar{margin-top:8px;padding:12px 24px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:#d1d5db;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}
+    </style>
+</head>
+<body>
+    <header class="header"><h1>Em Breve</h1></header>
+    <div class="wip">
+        <div class="wip-icon">🔧</div>
+        <div class="wip-title">Em Desenvolvimento</div>
+        <div class="wip-sub">Este módulo está sendo construído e será liberado em breve.</div>
+        <div class="wip-badge">Em breve</div>
+        <a href="/CRM/pages/dashboard/index.html" class="btn-voltar">← Voltar ao painel</a>
+    </div>
+    <script src="../../shared/brand-header.js"></script>
+</body>
+</html>

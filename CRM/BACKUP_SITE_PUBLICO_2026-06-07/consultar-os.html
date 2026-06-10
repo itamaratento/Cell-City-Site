@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar OS - Cell City</title>
+    <script src="js/header-component.js" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --cell-green: #00c853; --bg-base: #0a0b0d; --bg-surface: #121418; --bg-elevated: #1a1d23; --border: rgba(255,255,255,0.10); --text-primary: #f5f7fa; --text-secondary: #a1a8b3; --text-muted: #6b7280; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+        .container { max-width: 700px; margin: 30px auto; padding: 30px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .container h1 { color: var(--cell-green); margin-bottom: 10px; text-align: center; font-size: 28px; }
+        .container p { text-align: center; color: var(--text-secondary); margin-bottom: 25px; }
+        .search-box { background: rgba(0, 200, 83, 0.06); padding: 20px; border-radius: 8px; border: 1px solid rgba(0, 200, 83, 0.25); margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; margin-bottom: 10px; transition: border-color 0.3s; background: var(--bg-elevated); color: var(--text-primary); }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box input:focus { outline: none; border-color: var(--cell-green); box-shadow: 0 0 0 1px rgba(0,200,83,0.25); }
+        .search-box button { width: 100%; background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 15px; transition: all 0.3s; }
+        .search-box button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
+        .search-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result-box { background: var(--bg-elevated); padding: 20px; border-radius: 8px; border-left: 4px solid var(--cell-green); margin: 15px 0; box-shadow: 0 4px 16px rgba(0,0,0,0.3); display: none; }
+        .result-box.show { display: block; }
+        .result-box h3 { color: var(--cell-green); margin-bottom: 20px; font-size: 18px; }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .result-item { background: var(--bg-surface); border: 1px solid var(--border); padding: 12px; border-radius: 6px; }
+        .result-label { font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; }
+        .result-value { color: var(--text-primary); font-size: 15px; margin-top: 5px; font-weight: 500; }
+        .result-full { grid-column: 1 / -1; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+        .status-recebido { background: rgba(33,150,243,0.15); color: #80a8ff; }
+        .status-em_analise { background: rgba(33,150,243,0.15); color: #80a8ff; }
+        .status-aguardando_peca { background: rgba(255,160,0,0.15); color: #ffc04d; }
+        .status-em_reparo { background: rgba(233,30,99,0.15); color: #ff80ab; }
+        .status-em_manutencao { background: rgba(233,30,99,0.15); color: #ff80ab; }
+        .status-pronto { background: rgba(0,200,83,0.15); color: #00e676; }
+        .status-pronto_retirada { background: rgba(0,200,83,0.15); color: #00e676; }
+        .status-entregue { background: rgba(255,255,255,0.08); color: #a1a8b3; }
+        .error-box { background: rgba(239,68,68,0.12); color: #ff8080; padding: 15px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 15px 0; display: none; text-align: center; }
+        .error-box.show { display: block; }
+        .loading-box { text-align: center; padding: 20px; display: none; color: var(--text-secondary); }
+        .loading-box.show { display: block; }
+        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--cell-green); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body style="padding-top: 80px;">
+    <div class="container">
+        <h1>Consultar Sua Ordem</h1>
+        <p>Informe o numero da OS ou seu telefone</p>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Ex: 48 ou seu telefone" onkeypress="if(event.key==='Enter')searchOS()">
+            <button onclick="searchOS()" id="btn-search">Pesquisar</button>
+        </div>
+        <div id="loading-box" class="loading-box"><div class="spinner"></div><p>Buscando...</p></div>
+        <div id="error-box" class="error-box"></div>
+        <div id="result-box" class="result-box"></div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script>
+        firebase.initializeApp({apiKey:"AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",authDomain:"cellcity-crm.firebaseapp.com",projectId:"cellcity-crm",storageBucket:"cellcity-crm.firebasestorage.app",messagingSenderId:"645609867368",appId:"1:645609867368:web:b3ee19ccfe3d17c61c53dd"});
+        const db=firebase.firestore();
+        // Auth anônima: necessária para as regras seguras do Firestore (request.auth != null).
+        const authReady=firebase.auth().signInAnonymously().catch(e=>{console.warn('Auth anônima falhou:',e);});
+        async function searchOS(){const inputRaw=document.getElementById('search-input').value.trim();const resultBox=document.getElementById('result-box');const errorBox=document.getElementById('error-box');const loadingBox=document.getElementById('loading-box');const btn=document.getElementById('btn-search');if(!inputRaw){errorBox.textContent='Digite o número da OS ou seu telefone.';errorBox.classList.add('show');resultBox.classList.remove('show');loadingBox.classList.remove('show');return;}errorBox.classList.remove('show');loadingBox.classList.add('show');resultBox.classList.remove('show');btn.disabled=true;try{await authReady;const digits=inputRaw.replace(/\D/g,'');const hasLetters=/[a-z]/i.test(inputRaw);let lista=[];if(!hasLetters&&digits.length>=8){const snap=await db.collection('os').get();snap.forEach(doc=>{const os=doc.data();const st=String(os.phone||'').replace(/\D/g,'');if(st&&(st===digits||(digits.length>=8&&st.endsWith(digits))||(st.length>=8&&digits.endsWith(st))))lista.push(os);});}else{const n=parseInt(digits,10);const osId='OS-'+String(isNaN(n)?digits:n).padStart(4,'0');const snap=await db.collection('os').where('id','==',osId).get();snap.forEach(doc=>lista.push(doc.data()));}loadingBox.classList.remove('show');if(!lista.length){errorBox.textContent='OS não encontrada. Verifique o número ou telefone.';errorBox.classList.add('show');btn.disabled=false;return;}let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatusLabel(os.status||'em_analise');const statusClass=`status-${(os.status||'em_analise').replace(/\s/g,'_')}`;const entryDate=formatDate(os.createdAt);html+=`<div class="result-grid"><div class="result-item"><div class="result-label">Numero</div><div class="result-value"><strong>${os.id||'N/A'}</strong></div></div><div class="result-item"><div class="result-label">Status</div><div class="result-value"><span class="status-badge ${statusClass}">${statusLabel}</span></div></div><div class="result-item"><div class="result-label">Cliente</div><div class="result-value">${os.clientName||'N/A'}</div></div><div class="result-item"><div class="result-label">Telefone</div><div class="result-value">${formatPhone(os.phone||'N/A')}</div></div><div class="result-item"><div class="result-label">Dispositivo</div><div class="result-value">${os.model||'N/A'}</div></div><div class="result-item"><div class="result-label">Categoria</div><div class="result-value">${os.category||'N/A'}</div></div><div class="result-item result-full"><div class="result-label">Problema</div><div class="result-value">${os.defect||'N/A'}</div></div><div class="result-item"><div class="result-label">Data Entrada</div><div class="result-value">${entryDate}</div></div>${os.observations?`<div class="result-item result-full"><div class="result-label">Observacoes</div><div class="result-value">${os.observations}</div></div>`:''}`;});resultBox.innerHTML=html;resultBox.classList.add('show');btn.disabled=false;}catch(error){loadingBox.classList.remove('show');errorBox.textContent=`Erro: ${error.message}`;errorBox.classList.add('show');btn.disabled=false;}}
+        function getStatusLabel(status){const map={'recebido':'Recebido','em_analise':'Em analise','aguardando_aprovacao':'Aguardando aprovacao','aprovado':'Aprovado','em_reparo':'Em reparo','testes_finais':'Testes finais','concluido':'Concluido','entregue':'Entregue','aguardando_peca':'Aguardando peca','em_manutencao':'Em manutencao','orcamento':'Aguardando aprovacao','pronto':'Concluido','pronto_retirada':'Pronto para retirada','devolvido_orcamento':'Nao aprovado'};return map[status]||status||'N/A';}
+        function formatDate(date){if(!date)return 'N/A';try{if(typeof date==='object'&&date.toDate){return date.toDate().toLocaleDateString('pt-BR');}if(typeof date==='string'){return new Date(date).toLocaleDateString('pt-BR');}}catch(e){return 'N/A';}}
+        function formatPhone(phone){if(!phone||phone==='N/A')return phone;const cleaned=phone.replace(/\D/g,'');if(cleaned.length===11){return `(${cleaned.slice(0,2)}) ${cleaned.slice(2,7)}-${cleaned.slice(7)}`;}return phone;}
+        window.addEventListener('load',()=>{document.getElementById('search-input').focus();});
+    </script>
+</body>
+</html>

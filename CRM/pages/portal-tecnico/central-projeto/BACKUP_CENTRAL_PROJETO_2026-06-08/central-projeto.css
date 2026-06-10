@@ -1,0 +1,475 @@
+/* ============================================================
+   CENTRAL DO PROJETO — Portal Técnico Cell City
+   Painel de planejamento, documentação e acompanhamento
+   da evolução do Portal Técnico.
+   ============================================================ */
+
+/* ===== Variáveis (mesmo tema do Portal Técnico) ===== */
+:root {
+    --cp-bg: #0a0b0d;
+    --cp-surface: #121418;
+    --cp-surface2: #1a1d23;
+    --cp-surface3: #22262e;
+    --cp-border: rgba(255, 255, 255, 0.10);
+    --cp-text: #f5f7fa;
+    --cp-text2: #a1a8b3;
+    --cp-text3: #6b7280;
+    --cp-green: #00c853;
+    --cp-green-light: #00e676;
+    --cp-radius: 14px;
+    --cp-radius-sm: 8px;
+    --cp-gold: #ffd54f;
+    --cp-red: #ef4444;
+    --cp-blue: #60a5fa;
+    --cp-purple: #a78bfa;
+}
+
+/* ===== Layout base ===== */
+.cp-screen {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 14px 18px 80px;
+}
+
+/* ===== Cabeçalho ===== */
+.cp-back {
+    color: var(--cp-text2);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: var(--cp-radius-sm);
+    border: 1px solid var(--cp-border);
+    background: var(--cp-surface2);
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+}
+.cp-back:hover { color: var(--cp-green-light); border-color: var(--cp-green); }
+
+.cp-header-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+.cp-header-title {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--cp-text);
+    text-align: center;
+}
+
+/* ===== Seções ===== */
+.cp-section {
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    padding: 18px 20px 20px;
+    margin-bottom: 16px;
+}
+.cp-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cp-border);
+}
+.cp-section-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--cp-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cp-section-title .cp-icon { font-size: 20px; }
+.cp-section-btn {
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    color: var(--cp-text2);
+    border-radius: var(--cp-radius-sm);
+    padding: 7px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+.cp-section-btn:hover {
+    border-color: var(--cp-green);
+    color: var(--cp-green-light);
+    background: var(--cp-surface3);
+}
+
+/* ===== Status Atual ===== */
+.cp-status-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cp-text);
+}
+.cp-status-icon { font-size: 18px; flex: 0 0 auto; }
+.cp-status-label { flex: 1; }
+.cp-status-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-radius: 100px;
+    padding: 3px 9px;
+    white-space: nowrap;
+}
+.cp-status-badge.ok {
+    color: #07140c;
+    background: var(--cp-green);
+}
+.cp-status-badge.pending {
+    color: var(--cp-gold);
+    background: rgba(255, 193, 7, 0.15);
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+.cp-status-badge.locked {
+    color: var(--cp-text3);
+    background: var(--cp-surface3);
+    border: 1px solid var(--cp-border);
+}
+
+/* ===== Banco de Ideias ===== */
+.cp-ideias-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-ideia-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    font-size: 13.5px;
+    color: var(--cp-text2);
+    line-height: 1.5;
+}
+.cp-ideia-text { flex: 1; }
+.cp-ideia-del {
+    background: none;
+    border: none;
+    color: var(--cp-text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    flex: 0 0 auto;
+    transition: color 0.15s;
+}
+.cp-ideia-del:hover { color: var(--cp-red); }
+
+.cp-add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+.cp-add-row input {
+    flex: 1;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    padding: 10px 12px;
+    color: var(--cp-text);
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+}
+.cp-add-row input:focus { border-color: var(--cp-green); }
+.cp-add-row input::placeholder { color: var(--cp-text3); }
+.cp-add-btn {
+    background: var(--cp-green);
+    color: #07140c;
+    border: none;
+    border-radius: var(--cp-radius-sm);
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+}
+.cp-add-btn:hover { filter: brightness(1.08); }
+
+/* ===== Próximas Etapas ===== */
+.cp-etapas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-etapa-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    font-size: 14px;
+    color: var(--cp-text2);
+}
+.cp-etapa-num {
+    font-weight: 800;
+    color: var(--cp-green-light);
+    font-size: 13px;
+    flex: 0 0 24px;
+    text-align: center;
+}
+.cp-etapa-text { flex: 1; }
+.cp-etapa-check {
+    cursor: pointer;
+    font-size: 18px;
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    padding: 2px;
+    transition: transform 0.15s;
+}
+.cp-etapa-check:hover { transform: scale(1.2); }
+
+/* ===== Diário do Projeto ===== */
+.cp-diario-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-diario-item {
+    display: flex;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    align-items: flex-start;
+}
+.cp-diario-data {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cp-green-light);
+    flex: 0 0 80px;
+    padding-top: 1px;
+}
+.cp-diario-text {
+    font-size: 13.5px;
+    color: var(--cp-text2);
+    flex: 1;
+    line-height: 1.5;
+}
+.cp-diario-del {
+    background: none;
+    border: none;
+    color: var(--cp-text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    flex: 0 0 auto;
+    transition: color 0.15s;
+}
+.cp-diario-del:hover { color: var(--cp-red); }
+
+/* ===== Problemas Encontrados ===== */
+.cp-problemas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-problema-item {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--cp-radius-sm);
+    align-items: flex-start;
+}
+.cp-problema-icon { font-size: 16px; flex: 0 0 auto; padding-top: 1px; }
+.cp-problema-content { flex: 1; }
+.cp-problema-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--cp-text);
+    margin-bottom: 3px;
+}
+.cp-problema-desc {
+    font-size: 12.5px;
+    color: var(--cp-text2);
+    line-height: 1.5;
+}
+.cp-problema-del {
+    background: none;
+    border: none;
+    color: var(--cp-text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    flex: 0 0 auto;
+    transition: color 0.15s;
+}
+.cp-problema-del:hover { color: var(--cp-red); }
+
+/* ===== Metas ===== */
+.cp-metas-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.cp-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    font-size: 14px;
+    color: var(--cp-text2);
+}
+.cp-meta-check {
+    cursor: pointer;
+    font-size: 18px;
+    flex: 0 0 auto;
+    background: none;
+    border: none;
+    padding: 2px;
+    transition: transform 0.15s;
+}
+.cp-meta-check:hover { transform: scale(1.2); }
+.cp-meta-text {
+    flex: 1;
+    transition: color 0.2s, text-decoration 0.2s;
+}
+.cp-meta-text.done {
+    color: var(--cp-text3);
+    text-decoration: line-through;
+}
+.cp-meta-del {
+    background: none;
+    border: none;
+    color: var(--cp-text3);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px;
+    flex: 0 0 auto;
+    transition: color 0.15s;
+}
+.cp-meta-del:hover { color: var(--cp-red); }
+
+/* ===== Empty state ===== */
+.cp-empty {
+    text-align: center;
+    color: var(--cp-text3);
+    font-size: 13px;
+    font-style: italic;
+    padding: 16px 0;
+}
+
+/* ===== Toast ===== */
+.cp-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 90px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--cp-surface3);
+    border: 1px solid var(--cp-border);
+    color: var(--cp-text);
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 2000;
+}
+.cp-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== Modal genérico ===== */
+.cp-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 14px;
+    z-index: 3000;
+    overflow-y: auto;
+}
+.cp-modal-overlay.open { display: flex; }
+.cp-modal {
+    width: 100%;
+    max-width: 480px;
+    background: var(--cp-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    margin: auto;
+}
+.cp-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--cp-border);
+    font-size: 16px; font-weight: 800; color: var(--cp-text);
+}
+.cp-modal-close { background: none; border: none; color: var(--cp-text2); font-size: 18px; cursor: pointer; }
+.cp-modal-body { padding: 16px 18px; }
+.cp-modal-body .cp-fg { margin-bottom: 14px; }
+.cp-modal-body label { display: block; font-size: 13px; font-weight: 600; color: var(--cp-text2); margin-bottom: 6px; }
+.cp-modal-body input, .cp-modal-body select, .cp-modal-body textarea {
+    width: 100%;
+    background: var(--cp-surface2);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-sm);
+    padding: 11px 12px;
+    color: var(--cp-text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    box-sizing: border-box;
+}
+.cp-modal-body input:focus, .cp-modal-body textarea:focus { border-color: var(--cp-green); }
+.cp-modal-body textarea { resize: vertical; min-height: 80px; }
+.cp-modal-foot {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 14px 18px;
+    border-top: 1px solid var(--cp-border);
+}
+.cp-btn-cancel { background: var(--cp-surface2); border: 1px solid var(--cp-border); color: var(--cp-text2); border-radius: var(--cp-radius-sm); padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+.cp-btn-save { background: var(--cp-green); color: #07140c; border: none; border-radius: var(--cp-radius-sm); padding: 10px 20px; font-size: 14px; font-weight: 800; cursor: pointer; font-family: inherit; }
+.cp-btn-save:hover { filter: brightness(1.08); }
+
+/* ===== Responsividade ===== */
+@media (max-width: 760px) {
+    .cp-header-title { font-size: 17px; }
+    .cp-section { padding: 14px 16px; }
+    .cp-diario-data { flex: 0 0 70px; }
+}
+@media (max-width: 460px) {
+    .cp-screen { padding: 10px 12px 60px; }
+    .cp-section { padding: 12px 14px; }
+    .cp-header-title { font-size: 15px; }
+    .cp-add-row { flex-direction: column; }
+    .cp-add-btn { width: 100%; text-align: center; }
+    .cp-diario-data { flex: 0 0 60px; font-size: 11px; }
+}

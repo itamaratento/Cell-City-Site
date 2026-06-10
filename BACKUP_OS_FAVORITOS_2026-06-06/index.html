@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - OS</title>
+    <link rel="stylesheet" href="../../styles/global.css">
+    <link rel="stylesheet" href="os.css">
+    <link rel="stylesheet" href="list.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <!-- HEADER: conteúdo migrado para o brand bar por brand-header.js -->
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle"></h1>
+        <button id="btn-os-home" class="btn-os-home" onclick="showScreen('home')" style="display:none">ORDEM DE SERVIÇO</button>
+    </header>
+
+    <main>
+        <!-- TELA HOME -->
+        <div id="screen-home" class="screen active">
+            <div class="home-hero">
+                <img src="../../assets/logo-large.png" alt="Cell City" class="home-logo-official">
+                <p class="hero-subtitle">Gestão Operacional</p>
+            </div>
+            <div class="home-top-search">
+                <div class="premium-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="home-search" placeholder="Buscar OS ou Cliente..." oninput="globalSearch()">
+                </div>
+            </div>
+            <div class="premium-stats" id="statsBar"></div>
+            <div class="premium-cards">
+                <div class="home-card card-nova-os" onclick="showScreen('category')">
+                    <span class="icon">🔧</span>
+                    <div class="label">Nova O.S.</div>
+                </div>
+                <div class="home-card card-andamento" onclick="showList('andamento')">
+                    <span class="icon">📦</span>
+                    <div class="label">Em Andamento</div>
+                    <span class="badge" id="badge-andamento" style="display:none;">0</span>
+                </div>
+                <div class="home-card card-finalizados" onclick="showList('finalizados')">
+                    <span class="icon">✅</span>
+                    <div class="label">Finalizados</div>
+                    <span class="badge" id="badge-finalizados" style="display:none;">0</span>
+                </div>
+                <div class="home-card card-clientes" onclick="showScreen('clientes')">
+                    <span class="icon">👥</span>
+                    <div class="label">Clientes</div>
+                </div>
+                <div class="home-card card-fotos" onclick="openPhotoBank()">
+                    <span class="icon">📸</span>
+                    <div class="label">Fotos</div>
+                    <div style="font-size:10px; color:var(--text3); margin-top:4px;">Banco externo</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA CATEGORIA -->
+        <div id="screen-category" class="screen">
+            <h2 class="form-section-title" style="text-align:center; margin-bottom:20px;">📱 Selecione a categoria</h2>
+            <div class="category-grid">
+                <div class="category-card" onclick="startOS('celular')">
+                    <div class="cat-icon">📱</div>
+                    <div class="cat-info"><h3>Celular</h3><p>Smartphones e tablets</p></div>
+                </div>
+                <div class="category-card" onclick="startOS('notebook')">
+                    <div class="cat-icon">💻</div>
+                    <div class="cat-info"><h3>Notebook</h3><p>Laptops e ultrabooks</p></div>
+                </div>
+                <div class="category-card" onclick="startOS('impressora')">
+                    <div class="cat-icon">🖨️</div>
+                    <div class="cat-info"><h3>Impressora</h3><p>Inkjet, laser e jato de tinta</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA FORMULÁRIO NOVA OS -->
+        <div id="screen-form" class="screen">
+            <div class="form-section">
+                <div class="form-section-title">👤 Dados do Cliente</div>
+                <div class="form-group"><label>Nome <span class="optional">*</span></label><input type="text" id="f-nome" placeholder="Nome completo"></div>
+                <div class="form-group"><label>Telefone <span class="optional">*</span></label><input type="tel" id="f-telefone" placeholder="(00) 00000-0000"></div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">📱 Dados do Aparelho</div>
+                <div class="form-group"><label>Marca <span class="optional">(opcional)</span></label><input type="text" id="f-marca" placeholder="Ex: Apple, Samsung, Motorola"></div>
+                <div class="form-group"><label>Modelo <span class="optional">*</span></label><input type="text" id="f-modelo" placeholder="Ex: iPhone 11"></div>
+                <div class="form-group"><label>IMEI / Nº de série <span class="optional">(opcional)</span></label><input type="text" id="f-imei" placeholder="IMEI ou número de série" inputmode="numeric"></div>
+                <div class="form-group"><label>Defeito relatado <span class="optional">*</span></label><textarea id="f-defeito" rows="3" placeholder="Descreva o problema..."></textarea></div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">🛠️ Serviço</div>
+                <div class="form-group"><label>Valor (R$) <span class="optional">(opcional)</span></label><input type="number" id="f-valor" placeholder="0,00" inputmode="decimal" min="0" step="0.01"></div>
+                <div class="form-group"><label>Técnico responsável <span class="optional">(opcional)</span></label><input type="text" id="f-tecnico" placeholder="Nome do técnico"></div>
+                <div class="form-group"><label>Prazo de garantia (dias)</label><input type="number" id="f-garantia" placeholder="90" inputmode="numeric" min="0" step="1" value="90"></div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">🔒 Senha</div>
+                <div class="form-group"><label>Senha <span class="optional">(opcional)</span></label><input type="text" id="f-senha" placeholder="PIN ou Senha"></div>
+                <div class="form-group">
+                    <label>Tipo de bloqueio</label>
+                    <select id="lock-type" onchange="toggleLockType()">
+                        <option value="Numerica">Numérica</option>
+                        <option value="Padrao">Padrão</option>
+                        <option value="Biometria">Biometria</option>
+                        <option value="Face ID">Face ID</option>
+                        <option value="Digital">Digital</option>
+                        <option value="Sem senha">Sem senha</option>
+                    </select>
+                </div>
+                <div id="pattern-section" style="display:none;">
+                    <button type="button" class="lock-photo-btn" onclick="openPatternModal()" style="width:100%; margin-bottom:10px;">📱 Registrar Padrão</button>
+                    <div id="pattern-summary" style="display:none; background:var(--surface2); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--green-primary); margin-bottom:10px;">
+                        <div style="font-size:12px; color:var(--green-light); font-weight:700; margin-bottom:8px;">✅ Senha padrão registrada</div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" onclick="showPatternDrawing()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">👁️ Ver desenho</button>
+                            <button type="button" onclick="showPatternSequence()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">🔢 Ver sequência</button>
+                            <button type="button" onclick="openPatternModal()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">✏️ Editar</button>
+                            <button type="button" onclick="clearPattern()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--red);">🗑️ Limpar</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="lock-photo-section">
+                    <label>📷 Foto da senha/padrão <span class="optional">(opcional)</span></label>
+                    <div class="lock-photo-container">
+                        <label class="lock-photo-btn"><span>📁 Escolher Arquivo</span><input type="file" id="lock-photo" accept="image/*" onchange="handleLockPhoto(event)"></label>
+                        <label class="lock-photo-btn lock-photo-btn-camera"><span>📷 Tirar Foto</span><input type="file" id="lock-photo-camera" accept="image/*" capture="environment" onchange="handleLockPhoto(event)"></label>
+                    </div>
+                    <div id="lock-photo-preview" style="margin-top:10px;"></div>
+                </div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">📝 Observações</div>
+                <div class="form-group">
+                    <textarea id="f-obs" rows="4" placeholder="Anotações gerais..."></textarea>
+                </div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">📋 Checklist de Entrada</div>
+                <div id="entry-checklist"></div>
+            </div>
+            <div class="form-section">
+                <div class="form-section-title">📷 Fotos do Aparelho</div>
+                <div class="premium-upload" onclick="document.getElementById('os-photos').click()">
+                    <div class="icon">📷</div>
+                    <p>Toque para adicionar fotos do aparelho</p>
+                    <input type="file" id="os-photos" hidden multiple accept="image/*" onchange="handlePhotos(event)">
+                </div>
+                <div id="photo-preview" class="photo-preview"></div>
+            </div>
+            <button class="premium-btn" style="width:100%;" onclick="saveOS()">⚡ Criar Ordem de Serviço</button>
+        </div>
+
+        <!-- TELA LISTA -->
+        <div id="screen-list" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="list-search" placeholder="Buscar na lista..." oninput="filterList()">
+            </div>
+            <div id="os-list" class="premium-list"></div>
+        </div>
+
+        <!-- TELA DETALHES -->
+        <div id="screen-detail" class="screen">
+            <div id="detail-content"></div>
+        </div>
+
+        <!-- TELA CLIENTES -->
+        <div id="screen-clientes" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="client-search" placeholder="Buscar cliente..." oninput="searchClients()">
+            </div>
+            <button class="premium-btn" style="width:100%; margin-bottom:16px;" onclick="toggleClientManagement()">➕ Cadastrar / Gerenciar Cliente</button>
+            <div id="client-management-area"></div>
+            <div id="client-list" class="premium-list"></div>
+        </div>
+
+        <!-- TELA DETALHE CLIENTE -->
+        <div id="screen-client-detail" class="screen">
+            <div id="client-detail-content"></div>
+        </div>
+
+        <!-- TELA PESQUISA GLOBAL -->
+        <div id="screen-pesquisar" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="global-search" placeholder="Pesquisa global..." oninput="globalSearch()">
+            </div>
+            <div id="search-results"></div>
+        </div>
+    </main>
+
+    <!-- MODAL PADRÃO -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="premium-modal" id="modal-content"></div>
+    </div>
+
+    <!-- MODAL PADRÃO DESENHO -->
+    <div class="modal-overlay" id="pattern-overlay" onclick="closePatternModal(event)" style="z-index:300;">
+        <div class="premium-modal" style="max-width:340px; text-align:center;">
+            <div id="pattern-canvas-container">
+                <h3 style="margin-bottom:10px; color:var(--green-light);">📱 Registrar Padrão Android</h3>
+                <p style="font-size:12px; color:var(--text3); margin-bottom:15px;">Arraste para conectar os pontos na ordem desejada</p>
+                <canvas id="pattern-canvas" width="300" height="300" style="background:var(--surface3); border-radius:12px; border:1px solid var(--border); touch-action:none;"></canvas>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button onclick="clearPatternCanvas()" style="flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text);">🗑️ Limpar</button>
+                    <button onclick="savePattern()" style="flex:1; padding:10px; background:var(--green-primary); border:none; border-radius:8px; color:#000; font-weight:700;">💾 Salvar</button>
+                </div>
+                <button onclick="closePatternModal()" style="width:100%; margin-top:10px; padding:8px; background:transparent; border:none; color:var(--text3);">Cancelar</button>
+            </div>
+            <div id="pattern-preview-container" style="display:none;">
+                <h3 style="margin-bottom:10px; color:var(--green-light);">👁️ Visualizar Padrão</h3>
+                <canvas id="pattern-preview-canvas" width="300" height="300" style="background:var(--surface3); border-radius:12px; border:1px solid var(--border);"></canvas>
+                <button onclick="closePatternModal()" style="width:100%; margin-top:15px; padding:10px; background:var(--green-primary); border:none; border-radius:8px; color:#000; font-weight:700;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="premium-toast" id="toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="os.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>

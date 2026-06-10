@@ -1,0 +1,143 @@
+:root {
+    --bg: #050505;
+    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --surface2: rgba(25, 28, 27, 0.8);
+    --surface3: #1c1f1d;
+    --border: rgba(255,255,255,0.08);
+    --text: #ffffff;
+    --text2: #d1d5db;
+    --text3: #6b7280;
+    --green: #00C853;
+    --green-light: #00E676;
+    --red: #EF4444;
+    --yellow: #F59E0B;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:var(--font); background:var(--bg); background-image:var(--bg-gradient); color:var(--text); min-height:100dvh; overflow-x:clip; -webkit-font-smoothing:antialiased; }
+
+/* ── HEADER ── */
+.header {
+    position:sticky; top:0; z-index:100;
+    background:rgba(10,12,11,0.92);
+    border-bottom:1px solid var(--border);
+    padding:10px 16px;
+    display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(16px); min-height:54px;
+}
+.header::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--green),transparent); opacity:.6; }
+#crm-brand-bar .crm-page-title { flex:1 !important; position:static !important; text-align:center !important; font-size:18px !important; font-weight:800 !important; }
+
+/* ── LAYOUT ── */
+.an-content { padding:16px; padding-bottom:100px; max-width:800px; margin:0 auto; }
+
+.an-loading { display:flex; align-items:center; gap:10px; justify-content:center; padding:60px 0; color:var(--text3); }
+.an-spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── HEADER DOS GRÁFICOS ── */
+.an-charts-header {
+    display:flex; align-items:center; gap:10px;
+    flex-wrap:wrap; margin-bottom:14px;
+}
+
+/* ── PERÍODO TABS ── */
+.an-period-tabs {
+    display:flex; gap:4px;
+    background:var(--surface3);
+    border:1px solid var(--border);
+    border-radius:100px; padding:3px;
+}
+.an-period-tab {
+    background:none; border:none; color:var(--text3);
+    font-family:var(--font); font-size:11px; font-weight:700;
+    padding:5px 14px; border-radius:100px;
+    cursor:pointer; transition:all .2s;
+}
+.an-period-tab.active { background:var(--surface2); color:var(--text); }
+
+/* ── ANO TABS ── */
+.an-ano-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-left:auto; }
+.an-ano-tab {
+    padding:4px 10px; border-radius:100px; font-size:11px; font-weight:700;
+    border:1px solid var(--border); background:var(--surface3); color:var(--text3);
+    cursor:pointer; transition:all .2s;
+}
+.an-ano-tab.active { background:rgba(52,211,153,.12); border-color:rgba(52,211,153,.4); color:#34d399; }
+
+/* ── FILTRO MÊS ── */
+.an-mes-filtro {
+    align-items:center; gap:10px; flex-wrap:wrap;
+    margin-bottom:12px;
+}
+.an-mes-label {
+    font-size:10px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.8px; color:var(--text3); white-space:nowrap;
+}
+.an-mes-chips { display:flex; gap:5px; flex-wrap:wrap; }
+.an-mes-chip {
+    background:var(--surface3); border:1px solid var(--border);
+    color:var(--text3); font-family:var(--font); font-size:11px; font-weight:700;
+    padding:4px 10px; border-radius:100px; cursor:pointer; transition:all .18s;
+}
+.an-mes-chip:hover { border-color:rgba(52,211,153,.3); color:var(--text2); }
+.an-mes-chip.active { background:rgba(52,211,153,.12); border-color:rgba(52,211,153,.5); color:#34d399; }
+.an-mes-chip.vazio { opacity:.3; }
+
+/* ── DOIS GRÁFICOS ── */
+.an-dual-charts { display:flex; flex-direction:column; gap:10px; }
+
+.an-chart-block {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:var(--radius);
+    padding:14px 14px 10px;
+}
+
+.an-chart-label {
+    font-size:13px; font-weight:800; letter-spacing:.5px;
+    color:#34d399; margin-bottom:6px;
+}
+.an-chart-label.secondary { color:#60a5fa; }
+
+.an-chart-wrap { width:100%; overflow:hidden; }
+.an-chart-wrap canvas { display:block; width:100% !important; }
+
+.an-chart-subtotal {
+    font-size:11px; color:var(--text3);
+    text-align:right; margin-top:6px; font-weight:600;
+}
+
+/* ── SECTION TITLE ── */
+.an-section-title {
+    font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px;
+    color:var(--green-light); margin-bottom:12px;
+}
+
+/* ── TABELA ── */
+.an-table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); }
+.an-table { width:100%; border-collapse:collapse; font-size:12px; }
+.an-table th { background:var(--surface3); color:var(--text3); font-weight:700; padding:8px 10px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; }
+.an-table th.an-th-ano { text-align:left; color:var(--green-light); min-width:60px; }
+.an-table td { padding:7px 10px; text-align:center; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text2); }
+.an-table td.an-td-ano { font-weight:700; color:var(--text); text-align:left; }
+.an-table td.an-td-total { font-weight:800; color:var(--green-light); }
+.an-table td.an-td-best { color:#34d399; font-weight:700; }
+.an-table td.an-td-zero { color:rgba(255,255,255,.15); }
+.an-table tr:last-child td { border-bottom:none; }
+.an-tag-nd { font-size:9px; font-weight:700; text-transform:uppercase; color:var(--text3); background:var(--surface3); border:1px solid var(--border); border-radius:4px; padding:1px 5px; vertical-align:middle; margin-left:4px; }
+
+/* ── RANKING ── */
+.an-ranking { display:flex; flex-direction:column; gap:8px; }
+.an-rank-item { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; display:grid; grid-template-columns:28px 1fr auto auto; align-items:center; gap:10px; }
+.an-rank-pos { font-size:14px; font-weight:800; color:var(--text3); }
+.an-rank-pos.gold   { color:#FFD700; }
+.an-rank-pos.silver { color:#C0C0C0; }
+.an-rank-pos.bronze { color:#CD7F32; }
+.an-rank-label { font-size:13px; font-weight:600; color:var(--text); }
+.an-rank-ano   { font-size:11px; color:var(--text3); }
+.an-rank-valor { font-size:15px; font-weight:800; color:var(--green-light); text-align:right; }
+.an-empty { text-align:center; padding:32px; color:var(--text3); font-size:13px; }

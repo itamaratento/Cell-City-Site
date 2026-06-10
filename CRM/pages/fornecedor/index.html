@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Fornecedor</title>
+    <link rel="stylesheet" href="fornecedor.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header forn-header-compact" id="mainHeader">
+        <h1>🏭 Fornecedor</h1>
+        <button class="forn-toggle-busca" id="forn-toggle-busca" title="Mostrar/ocultar busca">＋</button>
+    </header>
+
+    <!-- BUSCA GLOBAL (colapsável) -->
+    <div class="forn-busca-wrap forn-busca-collapsed" id="forn-busca-wrap">
+        <div class="forn-busca-row">
+            <button class="forn-btn-listar" id="forn-btn-listar">Limpar Tudo</button>
+            <input type="search" id="forn-busca-global" class="forn-busca-input" placeholder="🔍 Buscar item na lista de compras...">
+        </div>
+    </div>
+
+    <main>
+        <div class="forn-content">
+
+            <!-- ABAS -->
+            <div class="forn-tabs">
+                <button class="forn-tab active" data-tab="compras">🛒 Lista de Compras</button>
+                <button class="forn-tab" data-tab="estoque-baixo">⚠️ Estoque Baixo</button>
+                <button class="forn-tab" data-tab="mercado">📈 Mercado</button>
+            </div>
+
+            <!-- ====== ABA: LISTA DE COMPRAS ====== -->
+            <div class="forn-panel active" id="tab-compras">
+
+                <div class="forn-toolbar">
+                    <button class="forn-btn-nova" id="btn-nova-compra">＋ Adicionar Item</button>
+                </div>
+
+                <!-- FORM NOVA COMPRA -->
+                <div class="forn-form" id="form-compra" style="display:none">
+                    <div class="forn-form-titulo" id="form-compra-titulo">Novo Item para Comprar</div>
+                    <div class="forn-form-grid">
+                        <div class="forn-form-group forn-span2">
+                            <label>Produto / Descrição</label>
+                            <input type="text" id="fc-nome" placeholder="Ex: Cabo USB-C 2m, Capinha iPhone 15..." maxlength="120">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Quantidade desejada</label>
+                            <input type="number" id="fc-qty" min="1" value="1">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Urgência</label>
+                            <select id="fc-urgencia">
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media" selected>🟡 Média</option>
+                                <option value="baixa">🟢 Baixa</option>
+                            </select>
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Fornecedor / Observação</label>
+                            <input type="text" id="fc-obs" placeholder="Nome do fornecedor, link, preço estimado..." maxlength="200">
+                        </div>
+                    </div>
+                    <div class="forn-form-btns">
+                        <button class="forn-btn-salvar" id="fc-salvar">Salvar</button>
+                        <button class="forn-btn-cancelar" id="fc-cancelar">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- LISTA DE COMPRAS -->
+                <div class="forn-loading" id="compras-loading">
+                    <div class="forn-spinner"></div><span>Carregando...</span>
+                </div>
+                <div id="compras-lista"></div>
+                <div class="forn-empty" id="compras-empty" style="display:none">
+                    <div class="forn-empty-icon">🛒</div>
+                    <div class="forn-empty-title">Nenhum item na lista</div>
+                    <div class="forn-empty-sub">Adicione itens que precisa comprar.</div>
+                </div>
+            </div>
+
+            <!-- ====== ABA: ESTOQUE BAIXO ====== -->
+            <div class="forn-panel" id="tab-estoque-baixo">
+                <div class="forn-info-box">
+                    <span>🔗</span>
+                    <span>Itens do <strong>Estoque</strong> com quantidade abaixo do mínimo definido.</span>
+                </div>
+                <div class="forn-loading" id="baixo-loading">
+                    <div class="forn-spinner"></div><span>Verificando estoque...</span>
+                </div>
+                <div id="baixo-lista"></div>
+                <div class="forn-empty" id="baixo-empty" style="display:none">
+                    <div class="forn-empty-icon">✅</div>
+                    <div class="forn-empty-title">Estoque OK!</div>
+                    <div class="forn-empty-sub">Nenhum item abaixo do mínimo no momento.</div>
+                </div>
+            </div>
+
+            <!-- ====== ABA: MERCADO ====== -->
+            <div class="forn-panel" id="tab-mercado">
+                <div class="forn-info-box">
+                    <span>💡</span>
+                    <span>Anote aqui produtos que <strong>vale a pena comprar</strong> — tendências, demanda percebida, oportunidades.</span>
+                </div>
+                <div class="forn-toolbar">
+                    <button class="forn-btn-nova" id="btn-nova-tendencia">＋ Nova Observação</button>
+                </div>
+
+                <!-- FORM TENDENCIA -->
+                <div class="forn-form" id="form-tendencia" style="display:none">
+                    <div class="forn-form-titulo">Nova Observação de Mercado</div>
+                    <div class="forn-form-grid">
+                        <div class="forn-form-group forn-span2">
+                            <label>Produto / Categoria</label>
+                            <input type="text" id="ft-produto" placeholder="Ex: Capinha MagSafe, Cabo 240W..." maxlength="100">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Tendência</label>
+                            <select id="ft-tendencia">
+                                <option value="crescendo">📈 Crescendo</option>
+                                <option value="estavel">➡️ Estável</option>
+                                <option value="caindo">📉 Caindo</option>
+                            </select>
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Prioridade</label>
+                            <select id="ft-prio">
+                                <option value="alta">🔴 Alta</option>
+                                <option value="media" selected>🟡 Média</option>
+                                <option value="baixa">🟢 Baixa</option>
+                            </select>
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Motivo / Observação</label>
+                            <textarea id="ft-obs" rows="2" placeholder="Por que vale a pena? Clientes perguntando? Viu na concorrência?" maxlength="300"></textarea>
+                        </div>
+                    </div>
+                    <div class="forn-form-btns">
+                        <button class="forn-btn-salvar" id="ft-salvar">Salvar</button>
+                        <button class="forn-btn-cancelar" id="ft-cancelar">Cancelar</button>
+                    </div>
+                </div>
+
+                <div class="forn-loading" id="tendencias-loading" style="display:none">
+                    <div class="forn-spinner"></div><span>Carregando...</span>
+                </div>
+                <div id="tendencias-lista"></div>
+                <div class="forn-empty" id="tendencias-empty" style="display:none">
+                    <div class="forn-empty-icon">📈</div>
+                    <div class="forn-empty-title">Nenhuma observação</div>
+                    <div class="forn-empty-sub">Registre produtos em alta no mercado.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="forn-toast" id="forn-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="fornecedor.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>

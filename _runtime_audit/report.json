@@ -1,0 +1,173 @@
+{
+  "mark": "AUDIT_1780829512722",
+  "phases": {
+    "portalBoot": {
+      "loginVisible": true,
+      "dbReady": true,
+      "erros": 3,
+      "detalhe": {
+        "console": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 400 ()"
+          },
+          {
+            "type": "error",
+            "text": "Erro auth anônima: FirebaseError: Firebase: Error (auth/configuration-not-found).\n    at createErrorInternal (https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js:1:28854)\n    at _fail (https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js:1:28177)\n    at _performFetchWithErrorHandling (h"
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:PAINEL] *** ALERTA: currentOS VAZIO! OS serão exibidas como 0."
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:LISTENER] *** ALERTA: listener retornou 0 documentos! telefone usado: \"(22) 22222-2222\""
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:PAINEL] *** ALERTA: currentOS VAZIO! OS serão exibidas como 0."
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:PAINEL] *** ALERTA: currentOS VAZIO! OS serão exibidas como 0."
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:GARANTIAS] *** ALERTA: currentOS VAZIO! Garantias serão exibidas como 0."
+          },
+          {
+            "type": "warning",
+            "text": "[AUDIT:PAINEL] *** ALERTA: currentOS VAZIO! OS serão exibidas como 0."
+          }
+        ],
+        "pageerrors": [],
+        "reqfailed": [],
+        "http4xx": [
+          {
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+            "status": 400
+          }
+        ]
+      }
+    },
+    "portalRotas": {
+      "_login": {
+        "sucesso": true,
+        "sessionTelefone": "(22) 22222-2222",
+        "osCount": 0
+      },
+      "painel": {
+        "ok": true,
+        "contentLen": 3577,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "os": {
+        "ok": true,
+        "contentLen": 359,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "garantias": {
+        "ok": true,
+        "contentLen": 275,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "mensagens": {
+        "ok": true,
+        "contentLen": 1102,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "avaliar": {
+        "ok": true,
+        "contentLen": 365,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "contato": {
+        "ok": true,
+        "contentLen": 4401,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      },
+      "como-chegar": {
+        "ok": true,
+        "contentLen": 2760,
+        "possivelLoadingInfinito": false,
+        "novosErros": 0
+      }
+    },
+    "integracaoWrite": {
+      "ok": true,
+      "ids": {
+        "msg": "K9dYOu0lnEFbyl02hHNM",
+        "av": "X3vSlIkhVUcK2NnBHItB",
+        "sol": "3AGVu3mp4BXVleWq2VIn"
+      }
+    },
+    "admin": {
+      "tabs": {
+        "mensagens": {
+          "contentLen": 5716,
+          "mostraRegistroTeste": true,
+          "novosErros": 0
+        },
+        "avaliacoes": {
+          "contentLen": 1346,
+          "mostraRegistroTeste": true,
+          "novosErros": 0
+        },
+        "solicitacoes": {
+          "contentLen": 4314,
+          "mostraRegistroTeste": true,
+          "novosErros": 0
+        },
+        "estatisticas": {
+          "contentLen": 4216,
+          "mostraRegistroTeste": false,
+          "novosErros": 0
+        }
+      },
+      "firebaseReady": true,
+      "centralCarregada": true,
+      "badges": {
+        "mensagens": "1",
+        "solicitacoes": "1"
+      },
+      "erros": 3,
+      "detalhe": {
+        "console": [
+          {
+            "type": "error",
+            "text": "Failed to load resource: the server responded with a status of 400 ()"
+          },
+          {
+            "type": "error",
+            "text": "[Admin] Erro auth: FirebaseError: Firebase: Error (auth/configuration-not-found).\n    at createErrorInternal (https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js:1:28854)\n    at _fail (https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js:1:28177)\n    at _performFetchWithErrorHandling (h"
+          }
+        ],
+        "pageerrors": [],
+        "reqfailed": [],
+        "http4xx": [
+          {
+            "url": "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+            "status": 400
+          }
+        ]
+      }
+    },
+    "cleanup": {
+      "ok": true,
+      "removidos": 3
+    }
+  },
+  "discovery": {
+    "ok": true,
+    "totalClientes": 21,
+    "phone": "(22) 22222-2222",
+    "name": "teste44",
+    "comHistorico": true
+  }
+}

@@ -1,0 +1,716 @@
+import {
+    db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
+} from "../../scripts/firebase.js";
+
+// ===== GLOBAL EXPOSURE =====
+window.showTab = showTab;
+window.filterHistorico = filterHistorico;
+window.abrirConfiguracoes = abrirConfiguracoes;
+window.fecharConfiguracoes = fecharConfiguracoes;
+window.salvarConfiguracoes = salvarConfiguracoes;
+window.editarAvaliacao = editarAvaliacao;
+
+// ===== STATE =====
+let pendentes = { 5: [], 15: [], 30: [] };
+let historico = [];
+let contatosFeitos = new Set();
+
+// Mensagens PADRÃO — usadas sempre que o Firestore não tiver a mensagem do prazo
+const MENSAGENS_PADRAO = {
+    5: "Olá {{nome}}!\n\nA Cell City Informática agradece pela confiança.\n\nGostaríamos de saber se está tudo funcionando corretamente com seu {{modelo}} após o atendimento realizado.\n\nEstamos à disposição caso precise de qualquer suporte.",
+    15: "Olá {{nome}}!\n\nEsperamos que esteja tudo perfeito com seu {{modelo}}.\n\nCaso tenha qualquer dúvida ou precise de suporte, a Cell City Informática está à disposição.",
+    30: "Olá {{nome}}!\n\nJá faz um mês desde o atendimento do seu {{modelo}}.\n\nA Cell City Informática agradece pela confiança e está à disposição para qualquer manutenção ou suporte que precisar."
+};
+
+// Começa com os padrões; o Firestore só sobrescreve quando tiver mensagem cadastrada
+let mensagensPosvenda = { ...MENSAGENS_PADRAO };
+
+// ===== INIT =====
+async function init() {
+    try {
+        await carregarMensagensPosvenda();
+        window.mensagensPosvenda = mensagensPosvenda; // exposto p/ verificação no console
+        await loadData();
+    } catch (err) {
+        console.error('❌ Pós-venda: erro ao carregar dados', err);
+        document.getElementById('pendentes-container').innerHTML =
+            `<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar. Verifique a conexão.</p></div>`;
+        return;
+    }
+    renderPendentes();
+    renderHistorico();
+    setupEventDelegation();
+}
+
+// ===== CARREGAR DADOS =====
+async function loadData() {
+    // CORREÇÃO: OS são salvas na coleção "os", não "orders"
+    let ordersSnap;
+    try {
+        ordersSnap = await getDocs(query(collection(db, "os"), orderBy("createdAt", "desc")));
+    } catch {
+        // orderBy pode falhar se não houver índice; tenta sem ordenação
+        ordersSnap = await getDocs(collection(db, "os"));
+    }
+    const contatosSnap = await getDocs(collection(db, "posvenda_contatos"));
+
+    const contatos = [];
+    contatosSnap.forEach(d => contatos.push({ id: d.id, ...d.data() }));
+    contatosFeitos = new Set(contatos.map(c => `${c.osId}_${c.prazo}`));
+
+    const now = new Date();
+    pendentes = { futuros: [], 5: [], 15: [], 30: [] };
+
+    ordersSnap.forEach(d => {
+        const os = { firestoreId: d.id, ...d.data() };
+        if (os.status !== 'entregue') return;
+
+        const deliveryDate = getDeliveryDate(os);
+        if (!deliveryDate) return;
+
+        const dias = calcDias(deliveryDate, now);
+        const osId = os.id || os.firestoreId;
+
+        // Futuros: entregue mas ainda não chegou em 5 dias
+        if (dias < 5) {
+            pendentes.futuros.push({ ...os, osId, dias, urgencia: 'futuro', prazo: 5 });
+            return;
+        }
+
+        // Pendentes por prazo — mostra mesmo se passou do prazo (overdue)
+        [5, 15, 30].forEach(prazo => {
+            if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+            // Janela: de prazo até o próximo prazo - 1
+            const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
+            if (dias < prazo || dias >= proxPrazo) return;
+
+            const urgencia = dias <= prazo + 2 ? 'ok' : dias <= prazo + 5 ? 'atencao' : 'urgente';
+            pendentes[prazo].push({ ...os, osId, dias, urgencia, prazo });
+        });
+    });
+
+    historico = contatos.sort((a, b) => {
+        const dateA = a.dataContato ? new Date(a.dataContato) : 0;
+        const dateB = b.dataContato ? new Date(b.dataContato) : 0;
+        return dateB - dateA;
+    });
+}
+
+// ===== CARREGAR MENSAGENS POSVENDA =====
+async function carregarMensagensPosvenda() {
+    // Sempre parte dos padrões — garante que nunca fica vazio
+    mensagensPosvenda = { ...MENSAGENS_PADRAO };
+    try {
+        const snap = await getDocs(collection(db, "posvenda_mensagens"));
+        snap.forEach(d => {
+            const prazo = d.id;
+            const data = d.data();
+            // Só sobrescreve o padrão se o Firestore tiver mensagem com conteúdo real
+            if (data.mensagem && data.mensagem.trim().length > 0) {
+                mensagensPosvenda[prazo] = data.mensagem;
+            }
+        });
+        console.log('✅ Mensagens pós-venda carregadas:', mensagensPosvenda);
+    } catch (err) {
+        // Em caso de erro, os padrões já estão aplicados acima
+        console.warn('⚠️ Erro ao buscar mensagens do Firestore. Usando padrão.', err);
+    }
+}
+
+function getDeliveryDate(os) {
+    if (Array.isArray(os.timeline)) {
+        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
+        if (entry?.date) return entry.date;
+    }
+    const ua = os.updatedAt;
+    if (!ua) return null;
+    if (typeof ua === 'string') return ua;
+    if (ua.toDate) return ua.toDate().toISOString();
+    return null;
+}
+
+function calcDias(dateStr, now) {
+    try {
+        return Math.floor((now - new Date(dateStr)) / 86400000);
+    } catch { return 0; }
+}
+
+// ===== RENDERIZAR PENDENTES =====
+function renderPendentes() {
+    const totalAtivos = [5, 15, 30].reduce((s, p) => s + pendentes[p].length, 0);
+    const totalFuturos = pendentes.futuros.length;
+
+    [5, 15, 30].forEach(p => {
+        const count = pendentes[p].length;
+        const el = document.getElementById(`count-${p}`);
+        const item = document.getElementById(`sum-${p}`);
+        if (el) el.textContent = count;
+        if (item) item.classList.toggle('has-pending', count > 0);
+    });
+
+    const badge = document.getElementById('tab-badge');
+    if (badge) {
+        badge.textContent = totalAtivos;
+        badge.style.display = totalAtivos > 0 ? 'inline-flex' : 'none';
+    }
+
+    const container = document.getElementById('pendentes-container');
+    let html = '';
+
+    // AGENDAMENTOS FUTUROS (entregues < 5 dias)
+    if (totalFuturos > 0) {
+        html += `
+        <div class="pv-grupo pv-grupo-futuros">
+            <div class="pv-grupo-header">
+                <span>📅 Agendamentos Futuros — Entregues recentemente</span>
+                <span class="pv-grupo-badge">${totalFuturos}</span>
+            </div>
+            ${pendentes.futuros.map(os => buildCardFuturo(os)).join('')}
+        </div>`;
+    }
+
+    if (totalAtivos === 0 && totalFuturos === 0) {
+        container.innerHTML = `<div class="empty-state">
+            <div class="icon">🎉</div>
+            <p>Nenhum contato pendente!</p>
+            <p>Todos os clientes foram atendidos.</p>
+        </div>`;
+        saveBadge(0);
+        return;
+    }
+
+    const GRUPO_INFO = {
+        5:  { emoji: '👋', desc: '5 dias — Satisfação do serviço' },
+        15: { emoji: '🔍', desc: '15 dias — Acompanhamento' },
+        30: { emoji: '⭐', desc: '30 dias — Fidelização' }
+    };
+
+    [5, 15, 30].forEach(prazo => {
+        const grupo = pendentes[prazo];
+        if (!grupo.length) return;
+        const info = GRUPO_INFO[prazo];
+        html += `
+        <div class="pv-grupo">
+            <div class="pv-grupo-header">
+                <span>${info.emoji} ${info.desc}</span>
+                <span class="pv-grupo-badge">${grupo.length}</span>
+            </div>
+            ${grupo.map(os => buildCard(os)).join('')}
+        </div>`;
+    });
+
+    container.innerHTML = html;
+    saveBadge(totalAtivos);
+}
+
+function buildCard(os) {
+    const URGENCIA = {
+        ok:      { cls: 'urg-ok',      label: '' },
+        atencao: { cls: 'urg-atencao', label: '<div class="pv-urg-label">🟡 1 dia em atraso</div>' },
+        urgente: { cls: 'urg-urgente', label: '<div class="pv-urg-label">🔴 Contato urgente</div>' }
+    };
+    const u = URGENCIA[os.urgencia] || URGENCIA.ok;
+
+    return `
+    <div class="pv-card ${u.cls}" data-osid="${esc(os.osId)}" data-prazo="${os.prazo}">
+        <div class="pv-card-top">
+            <div class="pv-card-info">
+                <div class="pv-card-id">${esc(os.osId)}</div>
+                <div class="pv-card-name">${esc(os.clientName)}</div>
+                <div class="pv-card-model">${esc(os.model)}</div>
+            </div>
+            <div class="pv-card-days">
+                <span class="days-num">${os.dias}</span>
+                <span class="days-lbl">dias</span>
+            </div>
+        </div>
+        ${u.label}
+        <div class="pv-buttons-row">
+            <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
+            <button class="pv-copy-btn" title="B">💬 Copiar</button>
+            <button class="pv-view-msg-btn" title="Ver">👁 Ver</button>
+            <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
+        </div>
+        <div class="pv-emoji-row">
+            <button class="emoji-btn" data-emoji="😄" data-label="Muito satisfeito" title="Muito satisfeito">😄</button>
+            <button class="emoji-btn" data-emoji="🙂" data-label="Satisfeito" title="Satisfeito">🙂</button>
+            <button class="emoji-btn" data-emoji="😐" data-label="Neutro" title="Neutro">😐</button>
+            <button class="emoji-btn" data-emoji="😟" data-label="Voltou com problema" title="Voltou com problema">😟</button>
+            <button class="emoji-btn" data-emoji="📵" data-label="Não atendeu" title="Não atendeu">📵</button>
+        </div>
+    </div>`;
+}
+
+function buildCardFuturo(os) {
+    const faltam = 5 - os.dias;
+    return `
+    <div class="pv-card pv-card-futuro" data-osid="${esc(os.osId)}" data-prazo="5">
+        <div class="pv-card-top">
+            <div class="pv-card-info">
+                <div class="pv-card-id">${esc(os.osId)}</div>
+                <div class="pv-card-name">${esc(os.clientName)}</div>
+                <div class="pv-card-model">${esc(os.model)}</div>
+            </div>
+            <div class="pv-card-days">
+                <span class="days-num">${faltam}</span>
+                <span class="days-lbl">dias p/ contato</span>
+            </div>
+        </div>
+        <div class="pv-urg-label" style="color:#6b7280;">⏳ Entregue há ${os.dias} dia${os.dias !== 1 ? 's' : ''} — aguardando prazo</div>
+    </div>`;
+}
+
+// ===== RENDERIZAR HISTÓRICO =====
+function renderHistorico(list) {
+    const data = list !== undefined ? list : historico;
+    const container = document.getElementById('historico-container');
+    if (!data.length) {
+        container.innerHTML = `<div class="empty-state"><div class="icon">📋</div><p>Nenhum contato registrado ainda</p></div>`;
+        return;
+    }
+    container.innerHTML = data.map((c, i) => buildHistCard(c, i)).join('');
+}
+
+function buildHistCard(c, index) {
+    const prazoLabel = { 5: '5 dias', 15: '15 dias', 30: '30 dias' }[c.prazo] || `${c.prazo} dias`;
+    const data = c.dataContato
+        ? new Date(c.dataContato).toLocaleDateString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+        })
+        : '';
+    const dataAtualizacao = c.dataAtualizacao
+        ? ' · Editado: ' + new Date(c.dataAtualizacao).toLocaleDateString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: '2-digit',
+            hour: '2-digit', minute: '2-digit'
+          })
+        : '';
+    const historicoId = c.id || `${c.osId}_${c.prazo}`;
+    return `
+    <div class="pv-hist-card" data-historico-id="${esc(historicoId)}">
+        <div class="pv-hist-top">
+            <div>
+                <div class="pv-card-name">${esc(c.clientName)}</div>
+                <div class="pv-card-model">${esc(c.model)} · ${prazoLabel}</div>
+                <div class="pv-card-id">${esc(c.osId)}</div>
+            </div>
+            <div class="pv-hist-emoji">
+                ${c.emoji || ''}
+                <button class="pv-hist-edit-btn" title="Editar avaliação">✏️</button>
+            </div>
+        </div>
+        <div class="pv-hist-footer">
+            <span class="pv-hist-result">${esc(c.resultado)}</span>
+            <span class="pv-hist-date">${data}${dataAtualizacao}</span>
+        </div>
+    </div>`;
+}
+
+// ===== COPIAR MENSAGEM =====
+function copiarMensagem(prazo, nome, modelo) {
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    navigator.clipboard.writeText(msg).then(() => {
+        showToast('✅ Mensagem copiada');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
+// ===== COPIAR TELEFONE =====
+function copiarTelefone(phone) {
+    if (!phone || phone.trim() === '') {
+        showToast('⚠️ Telefone não cadastrado');
+        return;
+    }
+
+    navigator.clipboard.writeText(phone).then(() => {
+        showToast('✅ Telefone copiado');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
+// ===== COPIAR TUDO (NOME + TELEFONE + MENSAGEM) =====
+function copiarTudo(prazo, nome, telefone, modelo) {
+    if (!nome || !telefone) {
+        showToast('⚠️ Dados incompletos');
+        return;
+    }
+
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    const textoCompleto = `${nome}\n${telefone}\n\n${msg}`;
+
+    navigator.clipboard.writeText(textoCompleto).then(() => {
+        showToast('✅ Telefone + mensagem copiados');
+    }).catch(() => {
+        showToast('❌ Erro ao copiar. Tente novamente.');
+    });
+}
+
+
+// ===== EVENT DELEGATION =====
+function setupEventDelegation() {
+    // Pendentes
+    const container = document.getElementById('pendentes-container');
+    container.addEventListener('click', async (e) => {
+        const card = e.target.closest('.pv-card');
+        if (!card) return;
+
+        const osId = card.dataset.osid;
+        const prazo = parseInt(card.dataset.prazo);
+        const os = pendentes[prazo]?.find(o => o.osId === osId);
+        if (!os) return;
+
+        if (e.target.closest('.pv-copy-phone-btn')) {
+            copiarTelefone(os.phone);
+            return;
+        }
+
+        if (e.target.closest('.pv-copy-btn')) {
+            copiarMensagem(prazo, os.clientName, os.model);
+            return;
+        }
+
+        if (e.target.closest('.pv-view-msg-btn')) {
+            verMensagem(prazo, os.clientName, os.model);
+            return;
+        }
+
+        if (e.target.closest('.pv-copy-all-btn')) {
+            copiarTudo(prazo, os.clientName, os.phone, os.model);
+            return;
+        }
+
+        const emojiBtn = e.target.closest('.emoji-btn');
+        if (emojiBtn) {
+            await registrarResultado(osId, os, prazo, emojiBtn.dataset.emoji, emojiBtn.dataset.label);
+        }
+    });
+
+    // Histórico — botão editar avaliação
+    const histContainer = document.getElementById('historico-container');
+    histContainer.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.pv-hist-edit-btn');
+        if (!editBtn) return;
+
+        const card = editBtn.closest('.pv-hist-card');
+        if (!card) return;
+
+        const historicoId = card.dataset.historicoId;
+        const contato = historico.find(c => (c.id || `${c.osId}_${c.prazo}`) === historicoId);
+        if (contato) {
+            editarAvaliacao(contato);
+        }
+    });
+}
+
+// ===== WHATSAPP =====
+function openWhatsApp(phone, name, model, prazo) {
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!cleanPhone) { showToast('⚠️ Telefone não cadastrado'); return; }
+    const msgs = {
+        5:  `Olá ${name}, como está o funcionamento do ${model}? Precisa de ajuda?`,
+        15: `Olá ${name}, estamos com uma oferta especial para você. Gostaria de saber?`,
+        30: `Olá ${name}, sua garantia está perto do fim. Agende uma revisão.`
+    };
+    const msg = msgs[prazo] || msgs[5];
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ===== REGISTRAR RESULTADO =====
+async function registrarResultado(osId, os, prazo, emoji, resultado) {
+    const key = `${osId}_${prazo}`;
+    if (contatosFeitos.has(key)) return;
+
+    const data = {
+        osId,
+        clientName: os.clientName || '',
+        phone: os.phone || '',
+        model: os.model || '',
+        prazo,
+        emoji,
+        resultado,
+        dataContato: new Date().toISOString(),
+        createdAt: serverTimestamp()
+    };
+
+    try {
+        await setDoc(doc(db, "posvenda_contatos", key), data);
+        contatosFeitos.add(key);
+        pendentes[prazo] = pendentes[prazo].filter(o => o.osId !== osId);
+        historico.unshift({ ...data, id: key });
+        showToast(`${emoji} ${resultado} — registrado!`);
+        renderPendentes();
+    } catch (err) {
+        console.error('❌ Erro ao registrar resultado:', err);
+        showToast('❌ Erro ao salvar. Tente novamente.');
+    }
+}
+
+// ===== EDITAR AVALIAÇÃO =====
+function editarAvaliacao(contato) {
+    const popover = document.createElement('div');
+    popover.className = 'pv-edit-popover';
+    popover.innerHTML = `
+        <div class="pv-edit-content">
+            <div class="pv-edit-header">
+                <span>✏️ Editar Avaliação</span>
+                <button class="pv-edit-close" onclick="this.closest('.pv-edit-popover').remove()">✕</button>
+            </div>
+            <div class="pv-edit-body">
+                <div class="pv-edit-client">
+                    <strong>${esc(contato.clientName)}</strong> — ${esc(contato.model)}
+                    <span class="pv-edit-osid">${esc(contato.osId)}</span>
+                </div>
+                <p class="pv-edit-label">Selecione a nova avaliação:</p>
+                <div class="pv-edit-emoji-row">
+                    <button class="pv-edit-emoji-btn" data-emoji="😄" data-label="Muito satisfeito">
+                        <span class="pv-edit-emoji-icon">😄</span>
+                        <span class="pv-edit-emoji-label">Muito satisfeito</span>
+                    </button>
+                    <button class="pv-edit-emoji-btn" data-emoji="🙂" data-label="Satisfeito">
+                        <span class="pv-edit-emoji-icon">🙂</span>
+                        <span class="pv-edit-emoji-label">Satisfeito</span>
+                    </button>
+                    <button class="pv-edit-emoji-btn" data-emoji="😐" data-label="Neutro">
+                        <span class="pv-edit-emoji-icon">😐</span>
+                        <span class="pv-edit-emoji-label">Neutro</span>
+                    </button>
+                    <button class="pv-edit-emoji-btn" data-emoji="😟" data-label="Voltou com problema">
+                        <span class="pv-edit-emoji-icon">😟</span>
+                        <span class="pv-edit-emoji-label">Voltou c/ problema</span>
+                    </button>
+                    <button class="pv-edit-emoji-btn" data-emoji="📵" data-label="Não atendeu">
+                        <span class="pv-edit-emoji-icon">📵</span>
+                        <span class="pv-edit-emoji-label">Não atendeu</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Destacar a avaliação atual
+    const currentEmoji = contato.emoji || '';
+    popover.querySelectorAll('.pv-edit-emoji-btn').forEach(btn => {
+        if (btn.dataset.emoji === currentEmoji) {
+            btn.classList.add('current');
+        }
+        btn.addEventListener('click', async () => {
+            const novoEmoji = btn.dataset.emoji;
+            const novoResultado = btn.dataset.label;
+            await atualizarAvaliacao(contato, novoEmoji, novoResultado);
+            popover.remove();
+        });
+    });
+
+    popover.addEventListener('click', (e) => {
+        if (e.target === popover) popover.remove();
+    });
+
+    document.body.appendChild(popover);
+}
+
+async function atualizarAvaliacao(contato, novoEmoji, novoResultado) {
+    const key = contato.id || `${contato.osId}_${contato.prazo}`;
+
+    const updates = {
+        emoji: novoEmoji,
+        resultado: novoResultado,
+        dataAtualizacao: new Date().toISOString(),
+        updatedAt: serverTimestamp()
+    };
+
+    try {
+        await updateDoc(doc(db, "posvenda_contatos", key), updates);
+
+        // Atualizar in-memory
+        const idx = historico.findIndex(c => (c.id || `${c.osId}_${c.prazo}`) === key);
+        if (idx !== -1) {
+            historico[idx].emoji = novoEmoji;
+            historico[idx].resultado = novoResultado;
+            historico[idx].dataAtualizacao = updates.dataAtualizacao;
+        }
+
+        showToast(`${novoEmoji} Avaliação atualizada para "${novoResultado}"`);
+        renderHistorico();
+    } catch (err) {
+        console.error('❌ Erro ao atualizar avaliação:', err);
+        showToast('❌ Erro ao atualizar. Tente novamente.');
+    }
+}
+
+// ===== TABS =====
+function showTab(tab) {
+    document.querySelectorAll('.pv-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pv-screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    document.getElementById(`screen-${tab}`).classList.add('active');
+    if (tab === 'historico') renderHistorico();
+}
+
+function filterHistorico() {
+    const term = (document.getElementById('hist-search')?.value || '').toLowerCase();
+    const filtered = term
+        ? historico.filter(c =>
+            (c.clientName || '').toLowerCase().includes(term) ||
+            (c.osId || '').toLowerCase().includes(term) ||
+            (c.model || '').toLowerCase().includes(term))
+        : historico;
+    renderHistorico(filtered);
+}
+
+// ===== UTILS =====
+function saveBadge(count) {
+    localStorage.setItem('pv_pending_count', count);
+}
+
+function esc(str) {
+    const d = document.createElement('div');
+    d.textContent = str || '';
+    return d.innerHTML;
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// ===== CONFIGURAÇÕES =====
+function abrirConfiguracoes() {
+    const overlay = document.getElementById('configOverlay');
+    const modal = document.getElementById('configModal');
+
+    // Carregar mensagens atuais
+    document.getElementById('msg-5').value = mensagensPosvenda[5] || '';
+    document.getElementById('msg-15').value = mensagensPosvenda[15] || '';
+    document.getElementById('msg-30').value = mensagensPosvenda[30] || '';
+
+    atualizarContadores();
+
+    overlay.classList.add('active');
+    modal.classList.add('active');
+}
+
+function fecharConfiguracoes(event) {
+    if (event && event.target.id !== 'configOverlay') return;
+
+    const overlay = document.getElementById('configOverlay');
+    const modal = document.getElementById('configModal');
+
+    overlay.classList.remove('active');
+    modal.classList.remove('active');
+}
+
+async function salvarConfiguracoes() {
+    const msg5 = document.getElementById('msg-5').value.trim();
+    const msg15 = document.getElementById('msg-15').value.trim();
+    const msg30 = document.getElementById('msg-30').value.trim();
+
+    if (!msg5 || !msg15 || !msg30) {
+        showToast('❌ Todas as mensagens são obrigatórias');
+        return;
+    }
+
+    try {
+        await setDoc(doc(db, "posvenda_mensagens", "5"), { mensagem: msg5, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "15"), { mensagem: msg15, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "30"), { mensagem: msg30, updatedAt: new Date() }, { merge: true });
+
+        mensagensPosvenda[5] = msg5;
+        mensagensPosvenda[15] = msg15;
+        mensagensPosvenda[30] = msg30;
+
+        showToast('✅ Configurações salvas com sucesso');
+        fecharConfiguracoes();
+    } catch (err) {
+        console.error('❌ Erro ao salvar configurações:', err);
+        showToast('❌ Erro ao salvar. Tente novamente.');
+    }
+}
+
+function atualizarContadores() {
+    ['5', '15', '30'].forEach(prazo => {
+        const textarea = document.getElementById(`msg-${prazo}`);
+        const counter = document.getElementById(`count-${prazo}-chars`);
+        if (textarea && counter) {
+            counter.textContent = textarea.value.length;
+            textarea.oninput = function() {
+                counter.textContent = this.value.length;
+            };
+        }
+    });
+}
+
+// ===== VER MENSAGEM =====
+function verMensagem(prazo, nome, modelo) {
+    let msg = mensagensPosvenda[prazo] || mensagensPosvenda[5];
+    msg = msg.replace('{{nome}}', nome).replace('{{modelo}}', modelo);
+
+    const popover = document.createElement('div');
+    popover.className = 'pv-msg-popover';
+    popover.innerHTML = `
+        <div class="pv-msg-content">
+            <div class="pv-msg-header">
+                <span>👁 Visualizar Mensagem</span>
+                <button class="pv-msg-close" onclick="this.closest('.pv-msg-popover').remove()">✕</button>
+            </div>
+            <div class="pv-msg-body">
+                ${msg}
+            </div>
+            <div class="pv-msg-footer">
+                <button class="pv-msg-copy-btn" onclick="navigator.clipboard.writeText('${msg.replace(/'/g, "\\'")}').then(() => { showToast('✅ Mensagem copiada'); this.closest('.pv-msg-popover').remove(); }).catch(() => showToast('❌ Erro ao copiar'))">📋 Copiar</button>
+                <button class="pv-msg-close-btn" onclick="this.closest('.pv-msg-popover').remove()">✕ Fechar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(popover);
+
+    popover.addEventListener('click', (e) => {
+        if (e.target === popover) popover.remove();
+    });
+}
+
+// ===== ATALHOS DE TECLADO =====
+window.atalhos = atalhos;
+function atalhos(event) {
+    const key = event.key.toUpperCase();
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement.tagName === 'INPUT' ||
+                          activeElement.tagName === 'TEXTAREA' ||
+                          activeElement.contentEditable === 'true';
+
+    if (isInputFocused) return;
+
+    const cardAtivo = document.querySelector('.pv-card:hover');
+    if (!cardAtivo) return;
+
+    const osId = cardAtivo.dataset.osid;
+    const prazo = parseInt(cardAtivo.dataset.prazo);
+    const os = pendentes[prazo]?.find(o => o.osId === osId);
+
+    if (!os) return;
+
+    if (key === 'V') {
+        event.preventDefault();
+        copiarTelefone(os.phone);
+    } else if (key === 'B') {
+        event.preventDefault();
+        copiarMensagem(prazo, os.clientName, os.model);
+    } else if (key === 'N') {
+        event.preventDefault();
+        copiarTudo(prazo, os.clientName, os.phone, os.model);
+    }
+}
+
+document.addEventListener('keydown', atalhos);
+
+// ===== START =====
+document.addEventListener('DOMContentLoaded', init);

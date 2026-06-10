@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="pt-casos-bancada" data-fav-label="Casos da Bancada" data-fav-icon="🔧">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soluções Técnicas - Portal Técnico</title>
+    <link rel="stylesheet" href="../portal-tecnico.css">
+    <link rel="stylesheet" href="solucoes-tecnicas.css">
+    <link rel="stylesheet" href="../../../shared/dock.css">
+    <!-- Google Drive Backup (OAuth) — só age após configurar Client ID + link da pasta -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <style>
+      .gd-cfg{max-width:760px;margin:18px auto 40px;background:#121418;border:1px solid rgba(255,255,255,.08);border-radius:12px;color:#f5f7fa;}
+      .gd-cfg>summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:14px;list-style:none;}
+      .gd-cfg>summary::-webkit-details-marker{display:none}
+      .gd-cfg-body{padding:4px 16px 16px;}
+      .gd-cfg-body p{font-size:12px;color:#a1a8b3;line-height:1.55;margin:0 0 12px}
+      .gd-cfg-body label{display:block;font-size:12px;color:#a1a8b3;margin:10px 0 4px}
+      .gd-cfg-body input{width:100%;background:#0a0b0d;border:1px solid rgba(255,255,255,.12);color:#f5f7fa;padding:10px 12px;border-radius:9px;font-size:13px;outline:none;box-sizing:border-box}
+      .gd-cfg-body input:focus{border-color:#00c853}
+      .gd-cfg-info{font-size:13px;color:#a1a8b3;margin:8px 0}
+      .gd-cfg-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+      .gd-cfg-btns button{background:#1a1d23;border:1px solid rgba(255,255,255,.12);color:#f5f7fa;padding:9px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
+      .gd-cfg-btns button:first-child{background:#00c853;color:#05210f;border:none}
+      .gd-msg{margin-top:10px;font-size:12.5px;min-height:1em}
+      .gd-msg.ok{color:#00e676}.gd-msg.erro{color:#fca5a5}
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a class="cb-back" href="../index.html" title="Voltar ao Portal Técnico">‹ Portal Técnico</a>
+        <span class="header-title">📖 Soluções Técnicas</span>
+        <span class="cb-header-spacer"></span>
+    </header>
+
+    <div class="pt-screen">
+        <!-- BUSCA (logo abaixo do título, para ganhar espaço útil) -->
+        <div class="pt-search" role="search">
+            <span class="pt-search-icon">🔍</span>
+            <input type="text" id="cb-busca" placeholder="Pesquisar: chip, A15, oxidação, não liga..." oninput="cbBuscar()" autocomplete="off" aria-label="Pesquisar casos da bancada">
+        </div>
+        <div id="cb-view"></div>
+
+        <!-- CONFIG: Google Drive Backup (automático ao salvar) -->
+        <details class="gd-cfg" id="sg-config">
+            <summary>☁ Google Drive — Backup automático</summary>
+            <div class="gd-cfg-body">
+                <p>Configure uma vez: cole o <strong>OAuth Client ID</strong> (Google Cloud, vale para todos os módulos)
+                   e o <strong>link da pasta</strong> de destino (CELLCITY_BACKUP › PortalTecnico › Soluções Técnicas).
+                   Clique em <strong>Conectar</strong> e <strong>Testar conexão</strong>. Depois, cada caso salvo
+                   gera/atualiza o TXT automaticamente.</p>
+                <label>OAuth Client ID (vale para todos os módulos)</label>
+                <input type="text" id="sg-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+                <label>Link da pasta (PortalTecnico › Soluções Técnicas)</label>
+                <input type="text" id="sg-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+                <label>📛 Apelido deste dispositivo (aparece nos logs de exclusão)</label>
+                <input type="text" id="sg-apelido" placeholder="Ex: Bancada 1, Notebook do Itamar">
+                <div class="gd-cfg-info">Status: <span id="sg-status">—</span></div>
+                <div class="gd-cfg-info">Pasta vinculada: PortalTecnico › Soluções Técnicas</div>
+                <div class="gd-cfg-info">Última sincronização: <span id="sg-ultima-sync">—</span></div>
+                <div class="gd-cfg-btns">
+                    <button type="button" id="sg-btn-salvar">Salvar configuração</button>
+                    <button type="button" id="sg-btn-conectar">Conectar Google Drive</button>
+                    <button type="button" id="sg-btn-testar">Testar conexão</button>
+                </div>
+                <div class="gd-msg" id="sg-msg"></div>
+            </div>
+        </details>
+    </div>
+
+    <!-- MODAL: CABEÇALHO DO CASO (criar / editar) -->
+    <div class="cb-modal-overlay" id="cb-modal" aria-hidden="true">
+        <div class="cb-modal">
+            <div class="cb-modal-head">
+                <span id="cb-modal-title">➕ Novo Caso</span>
+                <button class="cb-modal-close" onclick="cbFecharForm()" aria-label="Fechar">✕</button>
+            </div>
+            <div class="cb-modal-body">
+                <input type="hidden" id="f-id">
+                <input type="hidden" id="f-os-id">
+                <div class="cb-fg"><label>Defeito / Título do caso *</label><input type="text" id="f-defeito" placeholder="Ex: Não reconhece chip"></div>
+
+                <!-- OS VINCULADA (busca automática) -->
+                <div class="cb-fg cb-os-field">
+                    <label>OS Vinculada <span class="cb-opt">(opcional — integra com a Ordem de Serviço e o Portal)</span></label>
+                    <div id="f-os-chip" class="cb-os-chip" style="display:none"></div>
+                    <input type="text" id="f-os-busca" placeholder="Buscar OS: 0074, Renato, Redmi..." autocomplete="off" oninput="cbBuscarOS()">
+                    <div id="f-os-results" class="cb-os-results"></div>
+                </div>
+
+                <div class="cb-fg-row">
+                    <div class="cb-fg"><label>Marca</label><input type="text" id="f-marca" placeholder="Ex: Samsung"></div>
+                    <div class="cb-fg"><label>Modelo</label><input type="text" id="f-modelo" placeholder="Ex: A15"></div>
+                </div>
+                <div class="cb-fg"><label>Cliente</label><input type="text" id="f-cliente" placeholder="Ex: João Silva"></div>
+                <div class="cb-fg-row">
+                    <div class="cb-fg"><label>Técnico</label><input type="text" id="f-tecnico" placeholder="Ex: João Silva"></div>
+                    <div class="cb-fg"><label>Data</label><input type="date" id="f-data"></div>
+                </div>
+                <div class="cb-fg"><label>Status</label><select id="f-status">
+                    <option value="Resolvido">✅ Resolvido</option>
+                    <option value="Não resolvido">❌ Não resolvido</option>
+                </select></div>
+                <label class="cb-check"><input type="checkbox" id="f-portal"> 🌐 Exibir Relatório no Portal do Cliente</label>
+                <div class="cb-portal-hint" id="f-portal-hint">Quando marcado, o cliente verá este relatório na página da OS dentro do Portal do Cliente. Requer uma OS vinculada.</div>
+            </div>
+            <div class="cb-modal-foot">
+                <button class="cb-btn-cancel" onclick="cbFecharForm()">Cancelar</button>
+                <button class="cb-btn-save" onclick="cbSalvar()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cb-toast" id="cb-toast"></div>
+
+    <script src="../../../shared/brand-header.js"></script>
+    <script type="module" src="../../../shared/dock.js"></script>
+
+    <!-- Ponte com o Firestore: busca de OS e gravação do relatório no documento da OS -->
+    <script type="module">
+    import { db, collection, getDocs, doc, updateDoc } from '../../../scripts/firebase.js';
+    let _osCache = null;
+    async function _loadOS() {
+        if (_osCache) return _osCache;
+        const snap = await getDocs(collection(db, 'os'));
+        _osCache = [];
+        snap.forEach(d => {
+            const x = d.data() || {};
+            _osCache.push({ id: x.id || d.id, clientName: x.clientName || '', model: x.model || '', brand: x.brand || '' });
+        });
+        return _osCache;
+    }
+    window.CCRel = {
+        async buscarOS(termo) {
+            const t = (termo || '').trim().toLowerCase();
+            if (!t) return [];
+            const list = await _loadOS();
+            return list.filter(o =>
+                (o.id || '').toLowerCase().includes(t) ||
+                (o.clientName || '').toLowerCase().includes(t) ||
+                (o.model || '').toLowerCase().includes(t) ||
+                (o.brand || '').toLowerCase().includes(t)
+            ).slice(0, 8);
+        },
+        async getOS(id) {
+            const list = await _loadOS();
+            return list.find(o => o.id === id) || null;
+        },
+        async salvarNaOS(osId, payload) {
+            try {
+                await updateDoc(doc(db, 'os', osId), { relatorioTecnico: payload, updatedAt: new Date().toISOString() });
+                return true;
+            } catch (e) {
+                console.warn('⚠️ Falha ao gravar relatório técnico na OS', osId, e);
+                return false;
+            }
+        }
+    };
+    window.dispatchEvent(new CustomEvent('ccrel-ready'));
+    </script>
+
+    <script>
+    (function () {
+        'use strict';
+
+        var STORAGE_KEY = 'cc_pt_casos_bancada';
+
+        function hojeBR() { return new Date().toLocaleDateString('pt-BR'); }
+        function hojeISO() { return new Date().toISOString().slice(0, 10); }
+        function isoParaBR(iso) {
+            if (!iso) return '';
+            var p = iso.split('-');
+            if (p.length !== 3) return iso;
+            return p[2] + '/' + p[1] + '/' + p[0];
+        }
+
+        var SEED = [
+            {
+                id: 'cb1',
+                cliente: 'João Silva',
+                marca: 'Samsung',
+                modelo: 'A15',
+                tecnico: '',
+                osVinculada: '',
+                exibirPortal: false,
+                defeito: 'Não reconhece chip',
+                resultado: 'Resolvido',
+                data: '2026-06-08',
+                defeitoInformado: 'Cliente relatou que o aparelho parou de reconhecer o chip.',
+                diagnostico: 'Identificado problema no setor de chip. Realizada limpeza e teste; defeito persistiu.',
+                solucaoAplicada: 'Realizada ressolda do setor. Aparelho voltou a reconhecer o chip e foi testado.',
+                observacoes: 'Cliente avisado. Serviço concluído.'
+            }
+        ];
+
+        // Campos do relatório estruturado (ordem de exibição)
+        var SECOES = [
+            ['defeitoInformado', 'DEFEITO INFORMADO PELO CLIENTE', 'O que o cliente relatou ao trazer o aparelho...'],
+            ['diagnostico',      'DIAGNÓSTICO TÉCNICO',           'O que foi identificado na análise técnica...'],
+            ['solucaoAplicada',  'SOLUÇÃO APLICADA',              'O que foi feito para resolver o problema...'],
+            ['observacoes',      'OBSERVAÇÕES',                   'Aparelho oxidado/molhado, peças trocadas, recomendações, avisos ao cliente...']
+        ];
+
+        var view, busca, toast, modal;
+        var state = { termo: '' };
+        var autoTimer = null;
+
+        // ===== Migração: registros antigos (procedimentos/obs) viram "relatorio" =====
+        function migrar(c) {
+            // Registros bem antigos (procedimentos/obs) → campo único "relatorio"
+            if (typeof c.relatorio === 'undefined' && (c.procedimentos || c.obs)) {
+                var partes = [];
+                if (c.procedimentos) partes.push(c.procedimentos);
+                if (c.obs) partes.push('Observações: ' + c.obs);
+                c.relatorio = partes.join('\n\n');
+            }
+            // Campo único "relatorio" → seções padronizadas (texto vai para Diagnóstico)
+            if (typeof c.diagnostico === 'undefined' && typeof c.defeitoInformado === 'undefined' &&
+                typeof c.solucaoAplicada === 'undefined' && typeof c.observacoes === 'undefined') {
+                c.defeitoInformado = '';
+                c.diagnostico = c.relatorio || '';
+                c.solucaoAplicada = '';
+                c.observacoes = '';
+            }
+            // Defaults dos novos campos de integração
+            if (typeof c.osVinculada === 'undefined') c.osVinculada = '';
+            if (typeof c.exibirPortal === 'undefined') c.exibirPortal = false;
+            if (typeof c.tecnico === 'undefined') c.tecnico = '';
+            return c;
+        }
+
+        function load() {
+            var list;
+            try {
+                var raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) { var a = JSON.parse(raw); if (Array.isArray(a)) list = a; }
+            } catch (e) {}
+            if (!list) { save(SEED); return SEED.slice(); }
+            return list.map(migrar);
+        }
+        function save(list) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {} }
+
+        function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+        function toastMsg(m) { if (!toast) return; toast.textContent = m; toast.classList.add('show'); clearTimeout(window.__cb); window.__cb = setTimeout(function () { toast.classList.remove('show'); }, 2500); }
+
+        function resultadoCls(r) {
+            var t = (r || '').toLowerCase();
+            if (t.indexOf('não resolv') >= 0 || t.indexOf('nao resolv') >= 0) return 'cb-res-err';
+            if (t.indexOf('resolv') >= 0 || t.indexOf('conclu') >= 0) return 'cb-res-ok';
+            if (t.indexOf('andamento') >= 0 || t.indexOf('aguard') >= 0 || t.indexOf('parcial') >= 0) return 'cb-res-warn';
+            return 'cb-res-neutral';
+        }
+
+        function filtrados() {
+            var list = load();
+            var t = (state.termo || '').toLowerCase();
+            var arr = list.slice().sort(function (a, b) { return (b.data || '').localeCompare(a.data || ''); });
+            if (!t) return arr;
+            return arr.filter(function (x) {
+                var blob = [x.cliente, x.marca, x.modelo, x.defeito, x.resultado, x.osVinculada, x.tecnico, x.defeitoInformado, x.diagnostico, x.solucaoAplicada, x.observacoes, x.relatorio].join(' ').toLowerCase();
+                return blob.indexOf(t) >= 0;
+            });
+        }
+
+        // ===== HOME (lista) =====
+        function renderHome() {
+            var total = load().length;
+            var itens = filtrados();
+            var lista = itens.length
+                ? itens.map(itemHTML).join('')
+                : '<div class="cb-empty">' + (state.termo ? 'Nenhum caso encontrado para "' + esc(state.termo) + '".' : 'Nenhum caso registrado ainda. Clique em "➕ Novo Caso" para começar.') + '</div>';
+            view.innerHTML =
+                '<div class="cb-toolbar">'
+                + '<span class="cb-count">🔧 Casos da Bancada • ' + (state.termo ? itens.length + ' de ' + total : total + ' registro' + (total === 1 ? '' : 's')) + '</span>'
+                + '<button class="cb-novo-btn" onclick="cbNovo()">➕ Novo Caso</button>'
+                + '</div>'
+                + '<div class="cb-list">' + lista + '</div>';
+        }
+
+        function itemHTML(c) {
+            var aparelho = [c.marca, c.modelo].filter(Boolean).join(' ') || '—';
+            var res = c.resultado ? '<span class="cb-res ' + resultadoCls(c.resultado) + '">' + esc(c.resultado) + '</span>' : '';
+            var osTag = c.osVinculada ? '<span class="cb-res cb-res-neutral">📋 ' + esc(c.osVinculada) + '</span>' : '';
+            var portalTag = (c.osVinculada && c.exibirPortal) ? '<span class="cb-res cb-res-ok">🌐 Portal</span>' : '';
+            var tagrow = res + osTag + portalTag;
+            return '<button class="cb-list-item" onclick="cbAbrir(\'' + c.id + '\')">'
+                + '<div class="cb-li-main">'
+                + '<div class="cb-li-titulo">' + esc(c.defeito || '(sem título)') + '</div>'
+                + '<div class="cb-li-meta">📱 ' + esc(aparelho) + (c.cliente ? ' • 👤 ' + esc(c.cliente) : '') + (c.data ? ' • 📅 ' + esc(isoParaBR(c.data)) : '') + '</div>'
+                + (tagrow ? '<div class="cb-li-tagrow">' + tagrow + '</div>' : '')
+                + '</div><span class="cb-li-chevron">›</span></button>';
+        }
+
+        // ===== DETALHE (diário técnico) =====
+        function renderDetail(id) {
+            var c = load().find(function (x) { return x.id === id; });
+            if (!c) { renderHome(); return; }
+            var aparelho = [c.marca, c.modelo].filter(Boolean).join(' ') || '—';
+
+            var badges = '<span class="cb-badge">📱 ' + esc(aparelho) + '</span>'
+                + (c.osVinculada ? '<span class="cb-badge cb-badge-os">📋 ' + esc(c.osVinculada) + '</span>' : '')
+                + (c.cliente ? '<span class="cb-badge">👤 ' + esc(c.cliente) + '</span>' : '')
+                + (c.tecnico ? '<span class="cb-badge">🛠️ ' + esc(c.tecnico) + '</span>' : '')
+                + (c.data ? '<span class="cb-badge">📅 ' + esc(isoParaBR(c.data)) + '</span>' : '')
+                + (c.resultado ? '<span class="cb-res ' + resultadoCls(c.resultado) + '">' + esc(c.resultado) + '</span>' : '')
+                + ((c.osVinculada && c.exibirPortal) ? '<span class="cb-res cb-res-ok">🌐 No Portal do Cliente</span>' : '');
+
+            var secHTML = SECOES.map(function (s) {
+                return '<div class="cb-sec-block"><label class="cb-sec-label">' + s[1] + '</label>'
+                    + '<textarea class="cb-sec-area" id="sec-' + s[0] + '" data-campo="' + s[0] + '" placeholder="' + s[2] + '">' + esc(c[s[0]] || '') + '</textarea></div>';
+            }).join('');
+
+            var nota = c.osVinculada
+                ? '<div class="cb-os-note">📋 Vinculado à <strong>' + esc(c.osVinculada) + '</strong>' + (c.exibirPortal ? ' • <strong>visível no Portal do Cliente</strong>' : ' • interno (não aparece no Portal)') + '. As alterações são enviadas automaticamente para a Ordem de Serviço.</div>'
+                : '<div class="cb-os-note cb-os-note-warn">⚠️ Sem OS vinculada — este relatório fica apenas interno na bancada. Use "✏️ Editar cabeçalho" para vincular a uma OS.</div>';
+
+            var html = '<div class="cb-back-row">'
+                + '<button class="cb-voltar" onclick="cbHome()">‹ Voltar</button>'
+                + '<span class="cb-detail-actions"><button class="cb-mini-btn" onclick="cbEditar(\'' + c.id + '\')">✏️ Editar cabeçalho</button><button class="cb-mini-btn cb-mini-del" onclick="cbExcluir(\'' + c.id + '\')">🗑️</button></span>'
+                + '</div>'
+                + '<div class="cb-detail">'
+                + '<h2 class="cb-detail-title">🔧 ' + esc(c.defeito || '(sem título)') + '</h2>'
+                + '<div class="cb-badges">' + badges + '</div>'
+                + '<div class="cb-relatorio-head">'
+                + '<span class="cb-sec-title">📝 Relatório Técnico</span>'
+                + '<span class="cb-autosave" id="cb-autosave">salvamento automático</span>'
+                + '</div>'
+                + secHTML
+                + nota
+                + '</div>';
+
+            view.innerHTML = html;
+
+            SECOES.forEach(function (s) {
+                var ta = document.getElementById('sec-' + s[0]);
+                if (ta) ta.addEventListener('input', function () { agendarAutosave(c.id, s[0], ta.value); });
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== Integração com a Ordem de Serviço (Firestore) =====
+        function buildPayload(c) {
+            return {
+                defeitoInformado: c.defeitoInformado || '',
+                diagnostico: c.diagnostico || '',
+                solucaoAplicada: c.solucaoAplicada || '',
+                observacoes: c.observacoes || '',
+                tecnico: c.tecnico || '',
+                status: c.resultado || '',
+                data: c.data || '',
+                exibirPortal: !!c.exibirPortal,
+                origemCasoId: c.id,
+                atualizadoEm: new Date().toISOString()
+            };
+        }
+        function syncOS(c) {
+            if (c && c.osVinculada && window.CCRel) {
+                window.CCRel.salvarNaOS(c.osVinculada, buildPayload(c));
+            }
+        }
+
+        // ===== Backup automático no Google Drive (mesmo núcleo dos Tutoriais) =====
+        // Gera/atualiza um TXT na pasta do Drive e grava o backupDriveId no caso,
+        // mantendo o vínculo Firebase ↔ Drive para que as edições atualizem o
+        // mesmo documento (sem duplicar).
+        var backupTimer = null;
+        function backupDrive(id) {
+            var c = load().find(function (x) { return x.id === id; });
+            if (!c) return;
+            if (!(window.ccSolBackupConfigurado && window.ccSolBackupConfigurado())) return;
+            var rec = {
+                id: c.id, defeito: c.defeito, cliente: c.cliente, marca: c.marca, modelo: c.modelo,
+                tecnico: c.tecnico, data: c.data, resultado: c.resultado,
+                osVinculada: c.osVinculada, exibirPortal: c.exibirPortal,
+                defeitoInformado: c.defeitoInformado, diagnostico: c.diagnostico,
+                solucaoAplicada: c.solucaoAplicada, observacoes: c.observacoes,
+                backupDriveId: c.backupDriveId
+            };
+            window.ccSolBackup(rec).then(function (res) {
+                if (res && res.ok) {
+                    var l2 = load(); var j = l2.findIndex(function (x) { return x.id === id; });
+                    if (j >= 0) {
+                        l2[j].backupDriveId = res.fileId;
+                        l2[j].backupDriveLink = res.link || '';
+                        l2[j].backupSyncEm = new Date().toISOString();
+                        save(l2);
+                    }
+                }
+            });
+        }
+        function agendarBackup(id) {
+            clearTimeout(backupTimer);
+            backupTimer = setTimeout(function () { backupDrive(id); }, 2500);
+        }
+
+        // ===== Autosave do relatório (por seção) =====
+        function agendarAutosave(id, campo, valor) {
+            var ind = document.getElementById('cb-autosave');
+            if (ind) { ind.textContent = 'salvando…'; ind.className = 'cb-autosave saving'; }
+            clearTimeout(autoTimer);
+            autoTimer = setTimeout(function () {
+                var list = load();
+                var i = list.findIndex(function (x) { return x.id === id; });
+                if (i >= 0) {
+                    list[i][campo] = valor;
+                    list[i].ultimaAtualizacao = hojeBR();
+                    save(list);
+                    syncOS(list[i]);
+                    agendarBackup(id);
+                }
+                var ind2 = document.getElementById('cb-autosave');
+                if (ind2) {
+                    ind2.textContent = list[i] && list[i].osVinculada ? '✓ salvo (local + OS)' : '✓ salvo automaticamente';
+                    ind2.className = 'cb-autosave saved';
+                }
+            }, 500);
+        }
+
+        // ===== FORM (cabeçalho) =====
+        function abrirForm(c) {
+            document.getElementById('cb-modal-title').textContent = c ? '✏️ Editar Cabeçalho' : '➕ Novo Caso';
+            document.getElementById('f-id').value = c ? c.id : '';
+            document.getElementById('f-defeito').value = c ? (c.defeito || '') : '';
+            document.getElementById('f-marca').value = c ? (c.marca || '') : '';
+            document.getElementById('f-modelo').value = c ? (c.modelo || '') : '';
+            document.getElementById('f-cliente').value = c ? (c.cliente || '') : '';
+            document.getElementById('f-tecnico').value = c ? (c.tecnico || '') : '';
+            document.getElementById('f-data').value = c ? (c.data || hojeISO()) : hojeISO();
+            document.getElementById('f-status').value = (c && c.resultado === 'Não resolvido') ? 'Não resolvido' : 'Resolvido';
+            document.getElementById('f-portal').checked = !!(c && c.exibirPortal);
+            // OS vinculada
+            limparVinculoOS();
+            if (c && c.osVinculada) {
+                aplicarVinculoOS({ id: c.osVinculada, clientName: c.cliente || '', model: c.modelo || '', brand: c.marca || '' });
+            }
+            modal.classList.add('open');
+            setTimeout(function () { document.getElementById('f-defeito').focus(); }, 50);
+        }
+        function fecharForm() { modal.classList.remove('open'); }
+
+        function salvar() {
+            var id = document.getElementById('f-id').value;
+            var defeito = document.getElementById('f-defeito').value.trim();
+            if (!defeito) { toastMsg('⚠️ Informe o defeito / título do caso.'); document.getElementById('f-defeito').focus(); return; }
+            var osVinculada = document.getElementById('f-os-id').value || '';
+            var exibirPortal = document.getElementById('f-portal').checked;
+            if (exibirPortal && !osVinculada) { toastMsg('⚠️ Para exibir no Portal, vincule uma OS.'); return; }
+            var dados = {
+                defeito: defeito,
+                marca: document.getElementById('f-marca').value.trim(),
+                modelo: document.getElementById('f-modelo').value.trim(),
+                cliente: document.getElementById('f-cliente').value.trim(),
+                tecnico: document.getElementById('f-tecnico').value.trim(),
+                data: document.getElementById('f-data').value || hojeISO(),
+                resultado: document.getElementById('f-status').value,
+                osVinculada: osVinculada,
+                exibirPortal: exibirPortal
+            };
+            var list = load();
+            if (id) {
+                var i = list.findIndex(function (x) { return x.id === id; });
+                if (i >= 0) list[i] = Object.assign({}, list[i], dados, { ultimaAtualizacao: hojeBR() });
+                id = list[i].id;
+            } else {
+                dados.id = 'cb' + Date.now();
+                dados.dataCadastro = hojeBR();
+                dados.defeitoInformado = '';
+                dados.diagnostico = '';
+                dados.solucaoAplicada = '';
+                dados.observacoes = '';
+                list.push(dados);
+                id = dados.id;
+            }
+            save(list);
+            var salvo = list.find(function (x) { return x.id === id; });
+            if (salvo) syncOS(salvo);
+            fecharForm();
+            // Backup automático no Google Drive (não bloqueia o salvamento local)
+            if (salvo && window.ccSolBackupConfigurado && window.ccSolBackupConfigurado()) {
+                toastMsg('✓ Caso salvo · ⏳ Backup Google Drive...');
+                var rec = {
+                    id: salvo.id, defeito: salvo.defeito, cliente: salvo.cliente, marca: salvo.marca, modelo: salvo.modelo,
+                    tecnico: salvo.tecnico, data: salvo.data, resultado: salvo.resultado,
+                    osVinculada: salvo.osVinculada, exibirPortal: salvo.exibirPortal,
+                    defeitoInformado: salvo.defeitoInformado, diagnostico: salvo.diagnostico,
+                    solucaoAplicada: salvo.solucaoAplicada, observacoes: salvo.observacoes,
+                    backupDriveId: salvo.backupDriveId
+                };
+                window.ccSolBackup(rec).then(function (res) {
+                    if (res && res.ok) {
+                        var l2 = load(); var j = l2.findIndex(function (x) { return x.id === id; });
+                        if (j >= 0) { l2[j].backupDriveId = res.fileId; l2[j].backupDriveLink = res.link || ''; l2[j].backupSyncEm = new Date().toISOString(); save(l2); }
+                        toastMsg('✓ Caso salvo · ✓ Backup Google Drive concluído');
+                    } else {
+                        toastMsg('⚠ Caso salvo · ⚠ Falha no backup Google Drive');
+                    }
+                });
+            } else {
+                toastMsg(osVinculada ? '✅ Caso salvo e vinculado à ' + osVinculada + '!' : '✅ Caso salvo!');
+            }
+            renderDetail(id);
+        }
+
+        // ===== Busca / vínculo de OS =====
+        var osBuscaTimer = null;
+        function cbBuscarOS() {
+            var inp = document.getElementById('f-os-busca');
+            var box = document.getElementById('f-os-results');
+            var termo = (inp.value || '').trim();
+            clearTimeout(osBuscaTimer);
+            if (!termo) { box.innerHTML = ''; box.classList.remove('open'); return; }
+            if (!window.CCRel) { box.innerHTML = '<div class="cb-os-loading">Conectando ao banco de dados…</div>'; box.classList.add('open'); return; }
+            osBuscaTimer = setTimeout(function () {
+                box.innerHTML = '<div class="cb-os-loading">Buscando…</div>'; box.classList.add('open');
+                window.CCRel.buscarOS(termo).then(function (res) {
+                    if (!res || !res.length) { box.innerHTML = '<div class="cb-os-loading">Nenhuma OS encontrada.</div>'; return; }
+                    box.innerHTML = res.map(function (o) {
+                        var ap = [o.brand, o.model].filter(Boolean).join(' ');
+                        return '<button type="button" class="cb-os-opt" onclick="cbSelecionarOS(\'' + esc(o.id) + '\')">'
+                            + '<span class="cb-os-opt-id">' + esc(o.id) + '</span>'
+                            + '<span class="cb-os-opt-meta">' + esc(o.clientName || '(sem nome)') + (ap ? ' • ' + esc(ap) : '') + '</span></button>';
+                    }).join('');
+                }).catch(function () { box.innerHTML = '<div class="cb-os-loading">Erro ao buscar. Tente novamente.</div>'; });
+            }, 250);
+        }
+        function cbSelecionarOS(osId) {
+            if (!window.CCRel) return;
+            window.CCRel.getOS(osId).then(function (o) { if (o) aplicarVinculoOS(o); });
+        }
+        function aplicarVinculoOS(o) {
+            document.getElementById('f-os-id').value = o.id;
+            var chip = document.getElementById('f-os-chip');
+            chip.innerHTML = '📋 <strong>' + esc(o.id) + '</strong> — ' + esc([o.clientName, o.model].filter(Boolean).join(' / ') || '—')
+                + '<button type="button" class="cb-os-clear" onclick="cbDesvincularOS()" title="Desvincular">✕</button>';
+            chip.style.display = 'flex';
+            var b = document.getElementById('f-os-busca'); b.style.display = 'none'; b.value = '';
+            document.getElementById('f-os-results').classList.remove('open');
+            // Auto-preenchimento (somente leitura quando vindo da OS)
+            var cli = document.getElementById('f-cliente'); if (o.clientName) cli.value = o.clientName; cli.readOnly = true;
+            var mod = document.getElementById('f-modelo'); if (o.model) mod.value = o.model; mod.readOnly = true;
+            var mar = document.getElementById('f-marca'); if (o.brand) mar.value = o.brand; mar.readOnly = true;
+        }
+        function cbDesvincularOS() {
+            document.getElementById('f-os-id').value = '';
+            document.getElementById('f-os-chip').style.display = 'none';
+            var b = document.getElementById('f-os-busca'); b.style.display = ''; b.value = '';
+            document.getElementById('f-os-results').classList.remove('open');
+            document.getElementById('f-cliente').readOnly = false;
+            document.getElementById('f-modelo').readOnly = false;
+            document.getElementById('f-marca').readOnly = false;
+            document.getElementById('f-portal').checked = false;
+        }
+        function limparVinculoOS() { cbDesvincularOS(); }
+
+        function excluir(id) {
+            if (!confirm('Excluir este caso da bancada?\n\nO arquivo correspondente no Google Drive também será excluído. O item vai para a Lixeira e pode ser restaurado por 30 dias.')) return;
+            var registro = load().find(function (x) { return x.id === id; });
+            // Exclusão em cascata: Drive + Lixeira + Log (CRM é a fonte MASTER).
+            if (registro && window.ccSolExcluirCascata) {
+                toastMsg('⏳ Excluindo e sincronizando com o Google Drive...');
+                window.ccSolExcluirCascata(registro).then(function (res) {
+                    var okDrive = res && res.drive && res.drive.ok;
+                    toastMsg(okDrive ? '🗑️ Caso excluído (Drive + Lixeira)' : '🗑️ Caso excluído · ⚠ Drive não sincronizado');
+                });
+            }
+            save(load().filter(function (x) { return x.id !== id; }));
+            if (!(registro && window.ccSolExcluirCascata)) toastMsg('🗑️ Caso excluído.');
+            // ===== GRAVAÇÃO DIRETA NO FIRESTORE =====
+            // Garante que a exclusão persista mesmo se o portal-sync falhar.
+            if (window.FirebaseFirestore && window.dbFirestore) {
+                var listaAtualizada = load();
+                FirebaseFirestore.setDoc(
+                    FirebaseFirestore.doc(window.dbFirestore, 'usuarios', 'loja-cellcity', 'portal-tecnico', 'casos-bancada'),
+                    { valor: listaAtualizada, atualizadoEm: FirebaseFirestore.serverTimestamp() }
+                ).catch(function (e) {
+                    console.warn('⚠️ Falha ao gravar exclusão diretamente no Firestore (solucoes):', e);
+                });
+            }
+            renderHome();
+        }
+
+        // ===== Navegação / API global =====
+        function cbHome() { if (busca) busca.value = ''; state.termo = ''; renderHome(); }
+        function cbAbrir(id) { renderDetail(id); }
+        function cbBuscar() { state.termo = (busca.value || '').trim(); renderHome(); }
+        function cbNovo() { abrirForm(null); }
+        function cbEditar(id) { var c = load().find(function (x) { return x.id === id; }); abrirForm(c || null); }
+        window.cbHome = cbHome; window.cbAbrir = cbAbrir; window.cbBuscar = cbBuscar;
+        window.cbNovo = cbNovo; window.cbEditar = cbEditar; window.cbExcluir = excluir;
+        window.cbSalvar = salvar; window.cbFecharForm = fecharForm;
+        window.cbBuscarOS = cbBuscarOS; window.cbSelecionarOS = cbSelecionarOS; window.cbDesvincularOS = cbDesvincularOS;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            view = document.getElementById('cb-view');
+            busca = document.getElementById('cb-busca');
+            toast = document.getElementById('cb-toast');
+            modal = document.getElementById('cb-modal');
+            modal.addEventListener('click', function (e) { if (e.target === modal) fecharForm(); });
+            renderHome();
+        });
+
+        // Re-render ao receber sincronização de outro dispositivo
+        window.addEventListener('cc-portal-synced', function () {
+            try {
+                if (typeof state !== 'undefined' && state && state.openId) renderDetail(state.openId);
+                else renderHome();
+            } catch (e) { console.warn(e); }
+        });
+    })();
+    </script>
+    <!-- Sincronização multidispositivo (Firestore por conta) -->
+    <script type="module">
+        import { syncPortalKeys } from '../../../shared/portal-sync.js';
+        syncPortalKeys([
+            { key: 'cc_pt_casos_bancada', docId: 'casos-bancada' }
+        ]);
+    </script>
+
+    <!-- Integração de backup no Google Drive (núcleo compartilhado) -->
+    <script type="module">
+    import { criarBackup } from '../../../shared/gdrive-backup.js';
+    import { excluirEmCascata, detectarAusentes, getApelido, setApelido } from '../../../shared/cc-sync.js';
+    const pad = n => String(n).padStart(2, '0');
+    function sanitizeNomeArquivo(titulo) {
+        // Remove caracteres proibidos em nomes de arquivo Windows: \ / : * ? " < > |
+        return (titulo || '').replace(/[\\\/:*?"<>|]/g, '').trim();
+    }
+    function isoDe(r) {
+        // O caso já guarda a data em ISO (YYYY-MM-DD); aceita também BR como fallback
+        if (/^\d{4}-\d{2}-\d{2}$/.test(r.data || '')) return r.data;
+        const m = String(r.data || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        const d = m ? new Date(+m[3], +m[2] - 1, +m[1]) : new Date();
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+    function dataBR(r) {
+        const iso = isoDe(r); const p = iso.split('-');
+        return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+    }
+    function buildNomeBase(r) {
+        // Padrão idêntico ao de Tutoriais: YYYY-MM-DD_Título
+        const tituloLimpo = sanitizeNomeArquivo(r.defeito || 'sem-titulo');
+        return `${isoDe(r)}_${tituloLimpo}`;
+    }
+    function buildConteudo(r) {
+        const aparelho = [r.marca, r.modelo].filter(Boolean).join(' ') || '-';
+        return [
+            'DEFEITO / TÍTULO:', r.defeito || '', '',
+            'APARELHO:', aparelho, '',
+            'CLIENTE:', r.cliente || '-', '',
+            'TÉCNICO:', r.tecnico || '-', '',
+            'DATA:', dataBR(r), '',
+            'STATUS:', r.resultado || '-', '',
+            'OS VINCULADA:', r.osVinculada || '-', '',
+            'EXIBIR NO PORTAL DO CLIENTE:', (r.osVinculada && r.exibirPortal) ? 'Sim' : 'Não', '',
+            '---', '',
+            'DEFEITO INFORMADO PELO CLIENTE', '', r.defeitoInformado || '-', '',
+            'DIAGNÓSTICO TÉCNICO', '', r.diagnostico || '-', '',
+            'SOLUÇÃO APLICADA', '', r.solucaoAplicada || '-', '',
+            'OBSERVAÇÕES', '', r.observacoes || '-', '',
+            '---', ''
+        ].join('\n');
+    }
+    const backup = criarBackup({
+        moduleKey: 'solucoes-tecnicas',
+        folderLabel: 'CELLCITY_BACKUP › PortalTecnico › Soluções Técnicas',
+        defaultFolderLink: '',
+        buildNomeBase, buildConteudo
+    });
+    window.ccSolBackupConfigurado = () => backup.configurado();
+    window.ccSolBackup = (rec) => backup.backup(rec);
+    // Exclusão em cascata (Drive + Lixeira + Log) e detecção de ausência
+    window.ccSolExcluirCascata = (registro) => excluirEmCascata({ backup, modulo: 'solucoes-tecnicas', registro });
+    window.ccSolDetectarAusentes = (registros) => detectarAusentes({ backup, registros });
+    backup.initConfigUI({
+        clientId: 'sg-client-id', folderLink: 'sg-folder-link', status: 'sg-status',
+        ultimaSync: 'sg-ultima-sync', msg: 'sg-msg',
+        btnSalvar: 'sg-btn-salvar', btnConectar: 'sg-btn-conectar', btnTestar: 'sg-btn-testar'
+    });
+    // Apelido do dispositivo (global; usado nos logs de exclusão e na lixeira)
+    (function () {
+        var inp = document.getElementById('sg-apelido');
+        if (!inp) return;
+        inp.value = getApelido();
+        inp.addEventListener('change', function () { setApelido(inp.value); });
+    })();
+    </script>
+</body>
+</html>

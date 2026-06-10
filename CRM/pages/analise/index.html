@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - Análise</title>
+    <link rel="stylesheet" href="analise.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle">Análise</h1>
+    </header>
+
+    <main>
+        <div class="an-content">
+
+            <!-- LOADING -->
+            <div class="an-loading" id="an-loading">
+                <div class="an-spinner"></div>
+                <span>Carregando dados...</span>
+            </div>
+
+            <div id="an-body" style="display:none">
+
+                <!-- ── SEÇÃO 1: GRÁFICOS COMPARATIVOS ── -->
+                <div class="an-charts-header">
+                    <div class="an-period-tabs">
+                        <button class="an-period-tab active" data-period="mensal">Mensal</button>
+                        <button class="an-period-tab" data-period="semanal">Semanal</button>
+                        <button class="an-period-tab" data-period="anual">Anual</button>
+                    </div>
+                    <div class="an-ano-tabs" id="an-ano-tabs"></div>
+                </div>
+
+                <!-- Filtro de mês (só visível no modo Semanal) -->
+                <div class="an-mes-filtro" id="an-mes-filtro" style="display:none">
+                    <div class="an-mes-label">Filtrar por mês:</div>
+                    <div class="an-mes-chips" id="an-mes-chips"></div>
+                </div>
+
+                <div class="an-dual-charts">
+                    <div class="an-chart-block">
+                        <div class="an-chart-label" id="an-label-topo">2026</div>
+                        <div class="an-chart-wrap"><canvas id="an-chart-topo"></canvas></div>
+                        <div class="an-chart-subtotal" id="an-subtotal-topo">—</div>
+                    </div>
+                    <div class="an-chart-block">
+                        <div class="an-chart-label secondary" id="an-label-baixo">2025</div>
+                        <div class="an-chart-wrap"><canvas id="an-chart-baixo"></canvas></div>
+                        <div class="an-chart-subtotal" id="an-subtotal-baixo">—</div>
+                    </div>
+                </div>
+
+                <!-- ── SEÇÃO 2: TABELA COMPARATIVO ANUAL ── -->
+                <div class="an-section-title" style="margin-top:28px">Comparativo Anual</div>
+                <div class="an-table-wrap">
+                    <table class="an-table" id="an-tabela"></table>
+                </div>
+
+                <!-- ── SEÇÃO 3: RANKING ── -->
+                <div class="an-section-title" style="margin-top:28px">🏆 Melhores Meses</div>
+                <div class="an-ranking" id="an-ranking"></div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="analise.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>

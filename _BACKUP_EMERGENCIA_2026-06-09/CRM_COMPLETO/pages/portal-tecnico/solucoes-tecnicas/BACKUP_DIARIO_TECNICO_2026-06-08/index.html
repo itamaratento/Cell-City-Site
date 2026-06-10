@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Soluções Técnicas - Portal Técnico</title>
+    <link rel="stylesheet" href="../portal-tecnico.css">
+    <link rel="stylesheet" href="solucoes-tecnicas.css">
+    <link rel="stylesheet" href="../../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <a class="cb-back" href="../index.html" title="Voltar ao Portal Técnico">‹ Portal Técnico</a>
+        <span class="header-title">📖 Soluções Técnicas</span>
+        <span class="cb-header-spacer"></span>
+    </header>
+
+    <div class="pt-screen">
+        <div class="cb-intro">
+            <span class="cb-intro-icon">🔧</span>
+            <div>
+                <div class="cb-intro-title">Casos da Bancada</div>
+                <div class="cb-intro-desc">Biblioteca de experiências reais da bancada. Pesquise um defeito, marca ou modelo e veja o que já foi feito.</div>
+            </div>
+        </div>
+
+        <div class="pt-search" role="search">
+            <span class="pt-search-icon">🔍</span>
+            <input type="text" id="cb-busca" placeholder="Pesquisar: chip, A15, oxidação, não liga..." oninput="cbBuscar()" autocomplete="off" aria-label="Pesquisar casos da bancada">
+        </div>
+        <div id="cb-view"></div>
+    </div>
+
+    <!-- MODAL: CADASTRO / EDIÇÃO -->
+    <div class="cb-modal-overlay" id="cb-modal" aria-hidden="true">
+        <div class="cb-modal">
+            <div class="cb-modal-head">
+                <span id="cb-modal-title">➕ Novo Caso</span>
+                <button class="cb-modal-close" onclick="cbFecharForm()" aria-label="Fechar">✕</button>
+            </div>
+            <div class="cb-modal-body">
+                <input type="hidden" id="f-id">
+                <div class="cb-fg"><label>Cliente</label><input type="text" id="f-cliente" placeholder="Ex: João Silva"></div>
+                <div class="cb-fg-row">
+                    <div class="cb-fg"><label>Marca</label><input type="text" id="f-marca" placeholder="Ex: Samsung"></div>
+                    <div class="cb-fg"><label>Modelo</label><input type="text" id="f-modelo" placeholder="Ex: A15"></div>
+                </div>
+                <div class="cb-fg"><label>Defeito *</label><textarea id="f-defeito" rows="2" placeholder="Ex: Não reconhece chip"></textarea></div>
+                <div class="cb-fg"><label>Procedimentos Realizados</label><textarea id="f-procedimentos" rows="3" placeholder="Ex: Atualização de software e limpeza de conectores"></textarea></div>
+                <div class="cb-fg"><label>Resultado Final</label><input type="text" id="f-resultado" placeholder="Ex: Resolvido"></div>
+                <div class="cb-fg"><label>Observações</label><textarea id="f-obs" rows="2" placeholder="Detalhes adicionais, histórico do cliente, alertas..."></textarea></div>
+                <div class="cb-fg"><label>Data</label><input type="date" id="f-data"></div>
+            </div>
+            <div class="cb-modal-foot">
+                <button class="cb-btn-cancel" onclick="cbFecharForm()">Cancelar</button>
+                <button class="cb-btn-save" onclick="cbSalvar()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cb-toast" id="cb-toast"></div>
+
+    <script src="../../../shared/brand-header.js"></script>
+    <script type="module" src="../../../shared/dock.js"></script>
+    <script>
+    (function () {
+        'use strict';
+
+        var STORAGE_KEY = 'cc_pt_casos_bancada';
+
+        function hojeBR() { return new Date().toLocaleDateString('pt-BR'); }
+        function hojeISO() { return new Date().toISOString().slice(0, 10); }
+        function isoParaBR(iso) {
+            if (!iso) return '';
+            var p = iso.split('-');
+            if (p.length !== 3) return iso;
+            return p[2] + '/' + p[1] + '/' + p[0];
+        }
+
+        var SEED = [
+            {
+                id: 'cb1',
+                cliente: 'João Silva',
+                marca: 'Samsung',
+                modelo: 'A15',
+                defeito: 'Não reconhece chip',
+                procedimentos: 'Atualização de software e limpeza de conectores',
+                resultado: 'Resolvido',
+                obs: 'Cliente informou que o problema começou após atualização.',
+                data: '2026-06-08'
+            }
+        ];
+
+        var view, busca, toast, modal;
+        var state = { termo: '' };
+
+        function load() {
+            try {
+                var raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) { var a = JSON.parse(raw); if (Array.isArray(a)) return a; }
+            } catch (e) {}
+            save(SEED);
+            return SEED.slice();
+        }
+        function save(list) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {} }
+
+        function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+        function toastMsg(m) { if (!toast) return; toast.textContent = m; toast.classList.add('show'); clearTimeout(window.__cb); window.__cb = setTimeout(function () { toast.classList.remove('show'); }, 2500); }
+
+        function resultadoCls(r) {
+            var t = (r || '').toLowerCase();
+            if (t.indexOf('resolv') >= 0 || t.indexOf('conclu') >= 0 || t.indexOf('ok') >= 0) return 'cb-res-ok';
+            if (t.indexOf('não') >= 0 || t.indexOf('nao') >= 0 || t.indexOf('sem reparo') >= 0 || t.indexOf('inviáv') >= 0 || t.indexOf('inviav') >= 0) return 'cb-res-err';
+            if (t.indexOf('andamento') >= 0 || t.indexOf('aguard') >= 0 || t.indexOf('parcial') >= 0) return 'cb-res-warn';
+            return 'cb-res-neutral';
+        }
+
+        function filtrados() {
+            var list = load();
+            var t = (state.termo || '').toLowerCase();
+            var arr = list.slice().sort(function (a, b) { return (b.data || '').localeCompare(a.data || ''); });
+            if (!t) return arr;
+            return arr.filter(function (x) {
+                var blob = [x.cliente, x.marca, x.modelo, x.defeito, x.procedimentos, x.resultado, x.obs].join(' ').toLowerCase();
+                return blob.indexOf(t) >= 0;
+            });
+        }
+
+        // ===== HOME =====
+        function renderHome() {
+            var total = load().length;
+            var itens = filtrados();
+            var lista = itens.length
+                ? itens.map(itemHTML).join('')
+                : '<div class="cb-empty">' + (state.termo ? 'Nenhum caso encontrado para "' + esc(state.termo) + '".' : 'Nenhum caso registrado ainda. Clique em "➕ Novo Caso" para começar.') + '</div>';
+            view.innerHTML =
+                '<div class="cb-toolbar">'
+                + '<span class="cb-count">' + (state.termo ? itens.length + ' de ' + total : total + ' caso' + (total === 1 ? '' : 's')) + '</span>'
+                + '<button class="cb-novo-btn" onclick="cbNovo()">➕ Novo Caso</button>'
+                + '</div>'
+                + '<div class="cb-list">' + lista + '</div>';
+        }
+
+        function itemHTML(c) {
+            var aparelho = [c.marca, c.modelo].filter(Boolean).join(' ') || '—';
+            var res = c.resultado ? '<span class="cb-res ' + resultadoCls(c.resultado) + '">' + esc(c.resultado) + '</span>' : '';
+            return '<button class="cb-list-item" onclick="cbAbrir(\'' + c.id + '\')">'
+                + '<div class="cb-li-main">'
+                + '<div class="cb-li-titulo">' + esc(c.defeito || '(sem defeito informado)') + '</div>'
+                + '<div class="cb-li-meta">📱 ' + esc(aparelho) + (c.cliente ? ' • 👤 ' + esc(c.cliente) : '') + (c.data ? ' • 📅 ' + esc(isoParaBR(c.data)) : '') + '</div>'
+                + (res ? '<div class="cb-li-tagrow">' + res + '</div>' : '')
+                + '</div><span class="cb-li-chevron">›</span></button>';
+        }
+
+        // ===== DETALHE =====
+        function renderDetail(id) {
+            var c = load().find(function (x) { return x.id === id; });
+            if (!c) { renderHome(); return; }
+            var aparelho = [c.marca, c.modelo].filter(Boolean).join(' ') || '—';
+
+            var html = '<div class="cb-back-row">'
+                + '<button class="cb-voltar" onclick="cbHome()">‹ Voltar</button>'
+                + '<span class="cb-detail-actions"><button class="cb-mini-btn" onclick="cbEditar(\'' + c.id + '\')">✏️ Editar</button><button class="cb-mini-btn cb-mini-del" onclick="cbExcluir(\'' + c.id + '\')">🗑️</button></span>'
+                + '</div>'
+                + '<div class="cb-detail">'
+                + '<h2 class="cb-detail-title">🔧 ' + esc(c.defeito || '(sem defeito informado)') + '</h2>'
+                + '<div class="cb-badges">'
+                + '<span class="cb-badge">📱 ' + esc(aparelho) + '</span>'
+                + (c.cliente ? '<span class="cb-badge">👤 ' + esc(c.cliente) + '</span>' : '')
+                + (c.data ? '<span class="cb-badge">📅 ' + esc(isoParaBR(c.data)) + '</span>' : '')
+                + (c.resultado ? '<span class="cb-res ' + resultadoCls(c.resultado) + '">' + esc(c.resultado) + '</span>' : '')
+                + '</div>'
+                + '<div class="cb-sec-title">🛠 Procedimentos Realizados</div>'
+                + '<div class="cb-bloco">' + (c.procedimentos ? esc(c.procedimentos).replace(/\n/g, '<br>') : '<span class="cb-muted">—</span>') + '</div>'
+                + '<div class="cb-sec-title">✅ Resultado Final</div>'
+                + '<div class="cb-bloco">' + (c.resultado ? esc(c.resultado) : '<span class="cb-muted">—</span>') + '</div>'
+                + '<div class="cb-sec-title">📝 Observações</div>'
+                + '<div class="cb-bloco">' + (c.obs ? esc(c.obs).replace(/\n/g, '<br>') : '<span class="cb-muted">—</span>') + '</div>'
+                + '<div class="cb-rodape">Registrado em ' + esc(isoParaBR(c.data) || c.dataCadastro || '—') + (c.ultimaAtualizacao ? ' • Atualizado: ' + esc(c.ultimaAtualizacao) : '') + '</div>'
+                + '</div>';
+
+            view.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ===== FORM =====
+        function abrirForm(c) {
+            document.getElementById('cb-modal-title').textContent = c ? '✏️ Editar Caso' : '➕ Novo Caso';
+            document.getElementById('f-id').value = c ? c.id : '';
+            document.getElementById('f-cliente').value = c ? (c.cliente || '') : '';
+            document.getElementById('f-marca').value = c ? (c.marca || '') : '';
+            document.getElementById('f-modelo').value = c ? (c.modelo || '') : '';
+            document.getElementById('f-defeito').value = c ? (c.defeito || '') : '';
+            document.getElementById('f-procedimentos').value = c ? (c.procedimentos || '') : '';
+            document.getElementById('f-resultado').value = c ? (c.resultado || '') : '';
+            document.getElementById('f-obs').value = c ? (c.obs || '') : '';
+            document.getElementById('f-data').value = c ? (c.data || hojeISO()) : hojeISO();
+            modal.classList.add('open');
+        }
+        function fecharForm() { modal.classList.remove('open'); }
+
+        function salvar() {
+            var id = document.getElementById('f-id').value;
+            var defeito = document.getElementById('f-defeito').value.trim();
+            if (!defeito) { toastMsg('⚠️ Informe ao menos o defeito.'); document.getElementById('f-defeito').focus(); return; }
+            var dados = {
+                cliente: document.getElementById('f-cliente').value.trim(),
+                marca: document.getElementById('f-marca').value.trim(),
+                modelo: document.getElementById('f-modelo').value.trim(),
+                defeito: defeito,
+                procedimentos: document.getElementById('f-procedimentos').value.trim(),
+                resultado: document.getElementById('f-resultado').value.trim(),
+                obs: document.getElementById('f-obs').value.trim(),
+                data: document.getElementById('f-data').value || hojeISO()
+            };
+            var list = load();
+            if (id) {
+                var i = list.findIndex(function (x) { return x.id === id; });
+                if (i >= 0) list[i] = Object.assign({}, list[i], dados, { ultimaAtualizacao: hojeBR() });
+            } else {
+                dados.id = 'cb' + Date.now();
+                dados.dataCadastro = hojeBR();
+                list.push(dados);
+                id = dados.id;
+            }
+            save(list);
+            fecharForm();
+            toastMsg('✅ Caso salvo!');
+            renderDetail(id);
+        }
+
+        function excluir(id) {
+            if (!confirm('Excluir este caso da bancada? Esta ação não pode ser desfeita.')) return;
+            save(load().filter(function (x) { return x.id !== id; }));
+            toastMsg('🗑️ Caso excluído.');
+            renderHome();
+        }
+
+        // ===== Navegação / API global =====
+        function cbHome() { if (busca) busca.value = ''; state.termo = ''; renderHome(); }
+        function cbAbrir(id) { renderDetail(id); }
+        function cbBuscar() { state.termo = (busca.value || '').trim(); renderHome(); }
+        function cbNovo() { abrirForm(null); }
+        function cbEditar(id) { var c = load().find(function (x) { return x.id === id; }); abrirForm(c || null); }
+        window.cbHome = cbHome; window.cbAbrir = cbAbrir; window.cbBuscar = cbBuscar;
+        window.cbNovo = cbNovo; window.cbEditar = cbEditar; window.cbExcluir = excluir;
+        window.cbSalvar = salvar; window.cbFecharForm = fecharForm;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            view = document.getElementById('cb-view');
+            busca = document.getElementById('cb-busca');
+            toast = document.getElementById('cb-toast');
+            modal = document.getElementById('cb-modal');
+            modal.addEventListener('click', function (e) { if (e.target === modal) fecharForm(); });
+            renderHome();
+        });
+
+    })();
+    </script>
+</body>
+</html>

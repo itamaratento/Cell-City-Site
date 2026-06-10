@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cell City — CRM Operacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<link rel="stylesheet" href="dashboard.css">
+<link rel="manifest" href="/CRM/manifest.json">
+<meta name="theme-color" content="#00C853">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cell City">
+<link rel="apple-touch-icon" href="/CRM/assets/logo.png">
+</head>
+<body>
+
+<!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
+<header class="top-bar">
+  <div class="top-meta-left">
+    <!-- LOGO INSTITUCIONAL (RESTAURADA) -->
+    <div class="brand-header" id="brand-header" title="Cell City Informática">
+      <div class="brand-header-text">
+        <div class="brand-header-title">Cell City Informática</div>
+        <div class="brand-header-divider"></div>
+        <div class="brand-header-subtitle">CRM Operacional</div>
+      </div>
+    </div>
+
+    <!-- DATA COMPLETA -->
+    <button class="meta-date" id="date-display" title="Abrir calendário">
+      <span id="date-text">--/--/----</span>
+    </button>
+
+    <!-- RELÓGIO (REPOSICIONADO - entre data e busca) -->
+    <span class="meta-clock" id="clock-display">--:--</span>
+
+    <!-- DIA DO ANO -->
+    <span class="meta-day-of-year" id="day-of-year-display" title="Dia do ano">---</span>
+  </div>
+
+  <!-- BUSCA GLOBAL -->
+  <div class="global-search-wrapper">
+    <div class="global-search" id="global-search">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="global-search-input" placeholder="Buscar OS, clientes, produtos, módulos..." autocomplete="off">
+      <kbd class="search-kbd">⌘K</kbd>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+
+  <!-- STATUS ONLINE + MODO COMPACTO -->
+  <div class="top-meta-right">
+    <button class="compact-toggle" id="compact-mode-toggle" title="Alternar para modo compacto">▢ Compactar</button>
+    <span class="status-pill online">Online</span>
+  </div>
+</header>
+
+<!-- ========== MINI CALENDÁRIO POPUP ========== -->
+<div class="calendar-popup" id="calendar-popup">
+  <div class="calendar-header">
+    <button class="cal-nav" id="cal-prev">‹</button>
+    <div class="cal-title" id="cal-title">Mês Ano</div>
+    <button class="cal-nav" id="cal-next">›</button>
+  </div>
+  <div class="cal-weekdays">
+    <span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+  <div class="cal-note-area" id="cal-note-area" style="display:none;">
+    <div class="cal-note-label">Nota para <span id="cal-note-date">--/--</span>:</div>
+    <textarea id="cal-note-input" rows="2" placeholder="Escreva uma anotação..."></textarea>
+  </div>
+</div>
+
+<!-- ========== WORKSPACE PRINCIPAL ========== -->
+<main class="workspace">
+
+  <!-- ========== CONTINUAR DE ONDE PAREI ========== -->
+  <button id="continuar-btn" class="continuar-btn" type="button" style="display:none" title="Continuar de onde parei"></button>
+
+  <!-- ========== GRID 3x3 APROVADO ========== -->
+  <section class="ops-block">
+
+    <!-- LINHA 1 -->
+    <div class="module-card" data-module="os">
+      <div class="module-icon">📦</div>
+      <div class="module-info">
+        <h3>Ordem de Serviço</h3>
+        <p class="module-sub">Gestão técnica</p>
+      </div>
+      <div class="module-indicator live"></div>
+    </div>
+
+    <!-- PAINEL DE ALERTAS -->
+    <div class="module-card alerts-card" id="alerts-card">
+      <div class="alerts-main" id="alerts-main">
+        <div class="alert-header-row">
+          <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
+          <div class="alert-title" id="alert-title-el">DICA DO CRM</div>
+        </div>
+        <div class="alert-subtitle">Aguardando integração com dados reais</div>
+        <div class="alert-detail">Nenhum alerta operacional pendente</div>
+      </div>
+      <div class="alert-progress-track">
+        <div class="alert-progress-bar" id="alert-progress-bar"></div>
+      </div>
+    </div>
+
+    <!-- META SEMANAL -->
+    <div class="module-card meta-card">
+      <div class="meta-top">
+        <span class="meta-label">📈 Meta Semanal</span>
+        <span class="meta-percent" id="meta-percent">0%</span>
+      </div>
+      <div class="meta-value-row">
+        <span class="meta-current" id="meta-current">R$ 0</span>
+        <span class="meta-divider">/</span>
+        <span class="meta-goal" id="meta-goal">R$ 0</span>
+      </div>
+      <div class="meta-progress-track">
+        <div class="meta-progress-fill" id="meta-progress" style="width: 0%"></div>
+      </div>
+      <div class="meta-footer">
+        ⚠ Faltam <span class="meta-remaining" id="meta-remaining">R$ 0</span>
+      </div>
+    </div>
+
+    <!-- LINHA 2 -->
+    <div class="module-card" data-module="caixa">
+      <div class="module-icon">💰</div>
+      <div class="module-info">
+        <h3>Caixa</h3>
+        <p class="module-sub">Fluxo financeiro</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="acaodasemana">
+      <div class="module-icon">🎯</div>
+      <div class="module-info">
+        <h3>Ação da Semana</h3>
+        <p class="module-sub">Agenda Inteligente</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="pos-venda">
+      <div class="module-icon">📦</div>
+      <div class="module-info">
+        <h3>Pós-venda</h3>
+        <p class="module-sub">Fidelização & Garantia</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <!-- LINHA 3 -->
+    <div class="module-card" data-module="clientes">
+      <div class="module-icon">🖨️</div>
+      <div class="module-info">
+        <h3>Impressora</h3>
+        <p class="module-sub">Config. de impressão</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="analise">
+      <div class="module-icon">📊</div>
+      <div class="module-info">
+        <h3>Análise</h3>
+        <p class="module-sub">Desempenho operacional</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <!-- LINHA 4 -->
+    <div class="module-card" data-module="fornecedor">
+      <div class="module-icon">🏭</div>
+      <div class="module-info">
+        <h3>Fornecedor</h3>
+        <p class="module-sub">Gestão de fornecedores</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="financeiro">
+      <div class="module-icon">💹</div>
+      <div class="module-info">
+        <h3>Financeiro</h3>
+        <p class="module-sub">Controle financeiro</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="campanhas">
+      <div class="module-icon">📣</div>
+      <div class="module-info">
+        <h3>Campanhas</h3>
+        <p class="module-sub">Automação & Robôs</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="estoque">
+      <div class="module-icon">📱</div>
+      <div class="module-info">
+        <h3>Estoque</h3>
+        <p class="module-sub">Peças e produtos</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <div class="module-card" data-module="autoatendimento">
+      <div class="module-icon">🤖</div>
+      <div class="module-info">
+        <h3>Autoatendimento</h3>
+        <p class="module-sub">Pré-OS online</p>
+      </div>
+      <div class="module-indicator" id="auto-indicator">
+        <span class="badge-contador" id="auto-badge">0</span>
+      </div>
+    </div>
+
+    <div class="module-card" data-module="central-informacoes">
+      <div class="module-icon">📚</div>
+      <div class="module-info">
+        <h3>Central de Informações</h3>
+        <p class="module-sub">Comandos, sites, senhas e mais</p>
+      </div>
+      <div class="module-indicator"></div>
+    </div>
+
+    <!-- PORTAL DO CLIENTE -->
+    <div class="module-card" data-module="portal-cliente">
+      <div class="module-icon">🔷</div>
+      <div class="module-info">
+        <h3>Portal do Cliente</h3>
+        <p class="module-sub">Acesso do cliente</p>
+      </div>
+      <div class="module-indicator" id="portal-indicator">
+        <span class="badge-contador" id="portal-badge" style="display:none;">0</span>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ========== BLOCO DE NOTAS ========== -->
+<div class="nota-panel" id="nota-panel" style="display:none">
+  <div class="nota-header">
+    <span class="nota-title">📋 Minhas Notas</span>
+    <div class="nota-status" id="nota-status"></div>
+    <button class="nota-close" id="nota-close">✕</button>
+  </div>
+  <textarea class="nota-textarea" id="nota-textarea" placeholder="Digite suas notas aqui...&#10;Salva automaticamente em todos os dispositivos."></textarea>
+</div>
+
+<!-- ========== PAINEL DE ALARME ========== -->
+<div class="alarme-panel" id="alarme-panel" style="display:none">
+  <div class="alarme-header">
+    <span class="alarme-title">🔔 Alarme para OS Nova</span>
+    <button class="alarme-close" id="alarme-close">✕</button>
+  </div>
+  <div class="alarme-body">
+    <div class="alarme-aviso" style="background: rgba(0,200,83,0.1); border: 1px solid rgba(0,200,83,0.3); border-radius: 6px; padding: 8px; margin-bottom: 10px; font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+      ✓ <strong>Múltiplos Alarmes + Firebase!</strong>
+      <br>• Adicione quantos alarmes quiser
+      <br>• Sincroniza PC ↔ Celular em tempo real
+      <br>• Service Worker monitora todos 24/7
+    </div>
+
+    <!-- LISTA DE ALARMES -->
+    <div id="alarmes-lista" style="min-height: 80px; max-height: 300px; overflow-y: auto; margin-bottom: 12px; border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-surface);"></div>
+
+    <!-- BOTÃO ADICIONAR ALARME + TOGGLE ATIVO -->
+    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+      <button class="alarme-btn" onclick="console.log('🖱️ CLIQUE NO BOTÃO'); if(window.adicionarAlarme) { console.log('✅ Função existe'); window.adicionarAlarme(); } else { console.error('❌ Função NÃO existe no window'); } return false;" style="flex: 1; background: rgba(0,200,83,0.2); border-color: rgba(0,200,83,0.4); color: var(--cell-green);">
+        ➕ Adicionar Alarme
+      </button>
+      <label style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: rgba(0,200,83,0.1); border: 1px solid rgba(0,200,83,0.3); border-radius: 6px; cursor: pointer; color: var(--text-primary);">
+        <input type="checkbox" id="alarme-ativo" style="width: 18px; height: 18px; cursor: pointer;">
+        <span style="font-size: 12px; font-weight: 500;">Ativo</span>
+      </label>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">⏰ Horário</label>
+      <div class="alarme-time-inputs">
+        <input type="time" id="alarme-hora-inicio" value="09:00" class="alarme-time-input">
+        <span class="alarme-time-sep">até</span>
+        <input type="time" id="alarme-hora-fim" value="18:00" class="alarme-time-input">
+      </div>
+      <div style="font-size:10px; color: var(--text-tertiary); margin-top: 4px;">
+        Horário do dispositivo: <span id="alarme-hora-dispositivo">--:--</span>
+      </div>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">📅 Dias da Semana</label>
+      <div class="alarme-dias-grid">
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="1" checked> Seg
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="2" checked> Ter
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="3" checked> Qua
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="4" checked> Qui
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="5" checked> Sex
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="0"> Sab
+        </label>
+        <label class="alarme-dia-label">
+          <input type="checkbox" class="alarme-dia-check" value="6"> Dom
+        </label>
+      </div>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">🔁 Repetição (segundos)</label>
+      <select id="alarme-repeticao" class="alarme-time-input" style="flex: 1;">
+        <option value="0">Desativado (toca uma vez)</option>
+        <option value="5">A cada 5 segundos</option>
+        <option value="10">A cada 10 segundos</option>
+        <option value="15">A cada 15 segundos</option>
+        <option value="20">A cada 20 segundos</option>
+        <option value="30">A cada 30 segundos</option>
+        <option value="60">A cada 1 minuto</option>
+        <option value="300">A cada 5 minutos</option>
+      </select>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">🔊 Volume</label>
+      <input type="range" id="alarme-volume" min="10" max="100" value="80" class="alarme-slider">
+      <span class="alarme-volume-label" id="alarme-volume-label">80%</span>
+    </div>
+
+    <div class="alarme-section">
+      <label class="alarme-label">📝 Anotação</label>
+      <textarea id="alarme-anotacao" class="alarme-anotacao" placeholder="Ex: Alarme para OS urgentes..." rows="2"></textarea>
+    </div>
+
+    <div class="alarme-status-debug" id="alarme-status-debug" style="font-size:11px; color: var(--text-tertiary); padding: 8px; background: var(--bg-surface); border-radius: 6px; margin-top: 8px;">
+      <div id="alarme-debug-info">Aguardando ativação...</div>
+    </div>
+
+    <div class="alarme-actions">
+      <button id="alarme-testar-btn" class="alarme-btn alarme-btn-testar">🔊 Testar Som</button>
+      <button id="alarme-salvar-btn" class="alarme-btn alarme-btn-salvar">✓ Salvar Config</button>
+    </div>
+
+    <div class="alarme-actions" style="margin-top: 8px;">
+      <button id="alarme-pip-btn" class="alarme-btn alarme-btn-testar" style="font-size: 11px;">📺 Janela Flutuante</button>
+      <button id="alarme-notif-btn" class="alarme-btn alarme-btn-testar" style="font-size: 11px;">📌 Notif. Ativa</button>
+    </div>
+
+    <div style="text-align: center; margin-top: 12px;">
+      <button id="alarme-atalho-btn" class="alarme-btn" style="width: 100%; background: rgba(0,200,83,0.15); border-color: rgba(0,200,83,0.3); color: var(--cell-green); font-size: 11px;">
+        ⚡ Info Atalho (Android)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== DOCK LATERAL DIREITA ========== -->
+<aside class="dock">
+  <button class="dock-item" id="dock-alarme" data-tooltip="Alarme OS Nova" onclick="openAlarmePanel()">
+    <span class="dock-icon">🔔</span>
+  </button>
+  <button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas">
+    <span class="dock-icon">📋</span>
+  </button>
+  <a href="../autoatendimento/index.html" class="dock-item" data-tooltip="Autoatendimento (Pré-OS Online)">
+    <span class="dock-icon">🤖</span>
+  </a>
+  <a href="../central-informacoes/index.html" class="dock-item" data-tooltip="Central de Informações">
+    <span class="dock-icon">📚</span>
+  </a>
+  <a href="../portal-cliente/admin.html" class="dock-item" data-tooltip="Portal do Cliente">
+    <span class="dock-icon">👤</span>
+  </a>
+  <a href="#" class="dock-item dock-item-separator" id="dock-ferramentas" data-tooltip="Ferramentas">
+    <span class="dock-icon">⚙️</span>
+  </a>
+</aside>
+
+<script type="module" src="dashboard.js"></script>
+<script type="module" src="../../shared/favoritos.js"></script>
+<script src="../../shared/brand-header.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' }).then(r => {
+      r.onupdatefound = () => {
+        const i = r.installing;
+        if (i) {
+          i.onstatechange = () => {
+            if (i.state === 'installed' && navigator.serviceWorker.controller) {
+              location.reload();
+            }
+          };
+        }
+      };
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+
+/* Premium Enhancements - Cell City */
+html{
+    scroll-behavior:smooth;
+}
+body{
+    overflow-x:hidden;
+}
+header{
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.logo img{
+    filter: drop-shadow(0 0 10px rgba(0,255,120,.18));
+    transition: transform .3s ease, filter .3s ease;
+}
+.logo img:hover{
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 18px rgba(0,255,120,.28));
+}
+section{
+    scroll-margin-top:90px;
+}
+.hero,
+.services,
+.testimonials,
+footer{
+    animation: fadeUp .7s ease both;
+}
+@keyframes fadeUp{
+    from{
+        opacity:0;
+        transform:translateY(16px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+button,
+.btn,
+a{
+    transition: all .25s ease;
+}
+button:hover,
+.btn:hover{
+    transform: translateY(-2px);
+}
+iframe{
+    border-radius:18px;
+    overflow:hidden;
+}
+.garantia img,
+.garantia-img{
+    max-width:180px !important;
+}
+footer{
+    padding-bottom:90px;
+}
+.whatsapp-float,
+.whatsapp-button,
+.btn-whatsapp{
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+@media (max-width:768px){
+    .garantia img,
+    .garantia-img{
+        max-width:140px !important;
+    }
+
+    nav, .nav-menu, .menu{
+        gap:10px !important;
+        flex-wrap:wrap !important;
+        justify-content:center !important;
+    }
+
+    footer{
+        padding-bottom:110px;
+    }
+
+    .whatsapp-float,
+    .whatsapp-button,
+    .btn-whatsapp{
+        right:14px !important;
+        bottom:16px !important;
+        width:54px !important;
+        height:54px !important;
+    }
+}
+
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}

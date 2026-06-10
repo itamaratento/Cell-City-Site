@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Base de Conhecimento - Portal Técnico</title>
+    <link rel="stylesheet" href="../portal-tecnico.css">
+    <link rel="stylesheet" href="tutorials.css">
+    <link rel="stylesheet" href="../../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <a class="tut-back" href="../index.html" title="Voltar ao Portal Técnico">‹ Portal Técnico</a>
+        <a class="tut-gdrive" href="https://drive.google.com/drive/folders/1s-o7IItbqlVAQa5XwoZDn_BuA-dc8dS4" target="_blank" rel="noopener" title="Abrir Google Drive (repositório técnico)">☁️ Google Drive</a>
+        <span class="header-title">🎥 Tutoriais</span>
+        <span class="tut-header-spacer"></span>
+    </header>
+
+    <div class="pt-screen">
+        <div class="pt-search" role="search">
+            <span class="pt-search-icon">🔍</span>
+            <input type="text" id="tut-busca" placeholder="Pesquisar: A04e, FRP, Android 13, Samsung..." oninput="tutBuscar()" autocomplete="off" aria-label="Pesquisar na base de conhecimento">
+        </div>
+        <div id="tut-view"></div>
+    </div>
+
+    <!-- MODAL: CADASTRO / EDIÇÃO -->
+    <div class="tut-modal-overlay" id="tut-modal" aria-hidden="true">
+        <div class="tut-modal">
+            <div class="tut-modal-head">
+                <span id="tut-modal-title">➕ Novo Tutorial</span>
+                <button class="tut-modal-close" onclick="tutFecharForm()" aria-label="Fechar">✕</button>
+            </div>
+            <div class="tut-modal-body">
+                <input type="hidden" id="f-id">
+                <div class="tut-fg"><label>Título *</label><input type="text" id="f-titulo" placeholder="Ex: FRP Samsung A04e Android 13"></div>
+                <div class="tut-fg-row">
+                    <div class="tut-fg"><label>Categoria *</label><select id="f-categoria"></select></div>
+                    <div class="tut-fg"><label>Status</label><select id="f-status"></select></div>
+                </div>
+                <div class="tut-fg-row">
+                    <div class="tut-fg"><label>Marca</label><input type="text" id="f-marca" placeholder="Ex: Samsung"></div>
+                    <div class="tut-fg"><label>Modelo</label><input type="text" id="f-modelo" placeholder="Ex: A04e"></div>
+                </div>
+                <div class="tut-fg-row">
+                    <div class="tut-fg"><label>Dificuldade</label><select id="f-dificuldade"></select></div>
+                    <div class="tut-fg"><label>Tags (separadas por vírgula)</label><input type="text" id="f-tags" placeholder="frp, conta google, android 13"></div>
+                </div>
+                <div class="tut-fg"><label>Link do Vídeo (YouTube)</label><input type="text" id="f-video" placeholder="https://youtu.be/..."></div>
+                <div class="tut-fg"><label>☁️ Link do Google Drive</label><input type="text" id="f-drive" placeholder="https://drive.google.com/..."></div>
+                <div class="tut-fg"><label>🔗 Link Adicional</label><input type="text" id="f-linkadicional" placeholder="Link complementar..."></div>
+                <div class="tut-fg"><label>🔗 Link Reserva</label><input type="text" id="f-linkreserva" placeholder="Link de backup..."></div>
+                <div class="tut-fg"><label>Resumo do Procedimento</label><textarea id="f-resumo" rows="3" placeholder="Passo a passo resumido..."></textarea></div>
+                <div class="tut-fg"><label>⚠️ Observações Técnicas</label><textarea id="f-obs" rows="3" placeholder="Cuidados, riscos, versões compatíveis, problemas e soluções..."></textarea></div>
+                <div class="tut-fg tut-fg-aprendi"><label>💡 O Que Aprendi <span class="tut-fg-hint">(experiência prática — campo mais importante)</span></label><textarea id="f-aprendi" rows="4" placeholder="Ex: Método 1 não funcionou. Método 2 funcionou. Necessário Wi-Fi ativo. APK atualizado obrigatório. Compatível apenas com Android 13."></textarea></div>
+                <div class="tut-fg"><label>🧰 Ferramentas Utilizadas <span class="tut-fg-hint">(separadas por vírgula)</span></label><input type="text" id="f-ferramentas" placeholder="SamFW, Chimera, Odin, Z3X, Multímetro, Fonte Assimétrica..."></div>
+            </div>
+            <div class="tut-modal-foot">
+                <button class="tut-btn-cancel" onclick="tutFecharForm()">Cancelar</button>
+                <button class="tut-btn-save" onclick="tutSalvar()">💾 Salvar Tutorial</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="pt-toast" id="pt-toast"></div>
+
+    <script src="../../../shared/brand-header.js"></script>
+    <script type="module" src="../../../shared/dock.js"></script>
+    <script>
+    (function () {
+        var STORAGE_KEY = 'cc_pt_tutoriais';
+        var CATS = [
+            { key: 'frp',         icon: '📱', label: 'FRP e Contas' },
+            { key: 'tela',        icon: '📱', label: 'Troca de Tela' },
+            { key: 'bateria',     icon: '🔋', label: 'Troca de Bateria' },
+            { key: 'conector',    icon: '🔌', label: 'Conector de Carga' },
+            { key: 'audio',       icon: '🎧', label: 'Áudio e Microfone' },
+            { key: 'cameras',     icon: '📷', label: 'Câmeras' },
+            { key: 'molhados',    icon: '💧', label: 'Aparelhos Molhados' },
+            { key: 'desmontagem', icon: '🛠️', label: 'Desmontagem' },
+            { key: 'softwares',   icon: '💻', label: 'Softwares e Ferramentas' },
+            { key: 'solucoes',    icon: '📚', label: 'Soluções Técnicas' }
+        ];
+        var STATUS = [
+            { v: 'aprovado', label: '✅ Testado e Aprovado', cls: 'st-ok' },
+            { v: 'parcial',  label: '⚠ Parcialmente Testado', cls: 'st-warn' },
+            { v: 'naofunc',  label: '❌ Não Funcionou', cls: 'st-err' },
+            { v: 'emteste',  label: '🔄 Em Teste', cls: 'st-test' }
+        ];
+        var DIFF = ['', '⭐ Fácil', '⭐⭐ Médio', '⭐⭐⭐ Difícil', '⭐⭐⭐⭐ Avançado', '⭐⭐⭐⭐⭐ Especialista'];
+
+        function hoje() { return new Date().toLocaleDateString('pt-BR'); }
+
+        var SEED = [
+            { id: 's1', titulo: 'FRP Samsung A04e Android 13', categoria: 'frp', marca: 'Samsung', modelo: 'A04e',
+              video: 'https://youtu.be/dQw4w9WgXcQ', resumo: 'Bypass de conta Google (FRP) no Galaxy A04e com Android 13.',
+              obs: 'Necessário Wi-Fi ativo durante todo o processo. Risco baixo, mas não interrompa na metade.',
+              aprendi: 'Método 1 (Alliance Shield) não funcionou. Método 2 (atalho de acessibilidade + APK atualizado) funcionou. APK atualizado obrigatório. Compatível apenas com Android 13.',
+              ferramentas: ['SamFW', 'ODIN', 'USB Debug'],
+              dificuldade: 3, status: 'aprovado', tags: ['frp', 'conta google', 'android 13', 'a04e'],
+              dataCadastro: '08/06/2026', ultimaAtualizacao: '08/06/2026',
+              historico: [{ data: '08/06/2026', texto: 'Tutorial criado.' }] },
+            { id: 's2', titulo: 'Troca de Tela — Moto G54', categoria: 'tela', marca: 'Motorola', modelo: 'Moto G54',
+              video: 'https://youtu.be/dQw4w9WgXcQ', resumo: 'Substituição do display do Moto G54 5G.',
+              obs: 'Aquecer bordas ~80°C. Testar touch e brilho antes de colar.',
+              aprendi: 'A cola original é forte — paciência ao abrir. Vale testar a tela nova ligada antes de fechar.',
+              ferramentas: ['Estação de Solda', 'Multímetro', 'Microscópio'],
+              dificuldade: 2, status: 'aprovado', tags: ['tela', 'display', 'moto g54'],
+              dataCadastro: '08/06/2026', ultimaAtualizacao: '08/06/2026',
+              historico: [{ data: '08/06/2026', texto: 'Tutorial criado.' }] },
+            { id: 's3', titulo: 'Conector de Carga — iPhone 11', categoria: 'conector', marca: 'Apple', modelo: 'iPhone 11',
+              video: 'https://youtu.be/dQw4w9WgXcQ', resumo: 'Troca do flex do conector de carga do iPhone 11.',
+              obs: 'Refazer a vedação ao fechar. Testar carga e microfone inferior.',
+              aprendi: 'Parafusos pentalobe diferentes — organizar por posição. Antena inferior solta fácil.',
+              ferramentas: ['Estação de Solda', 'Microscópio', 'Fonte Assimétrica', 'Multímetro'],
+              dificuldade: 4, status: 'emteste', tags: ['conector', 'carga', 'iphone 11'],
+              dataCadastro: '08/06/2026', ultimaAtualizacao: '08/06/2026',
+              historico: [{ data: '08/06/2026', texto: 'Tutorial criado.' }] }
+        ];
+
+        var view, busca, toast, modal;
+        var state = { cat: '', termo: '' };
+
+        function load() {
+            try {
+                var raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) { var a = JSON.parse(raw); if (Array.isArray(a)) return a; }
+            } catch (e) {}
+            // primeira vez: semeia os demos
+            save(SEED);
+            return SEED.slice();
+        }
+        function save(list) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch (e) {} }
+
+        // ── Anotações Rápidas (auto-save, por tutorial) ─────────────
+        var ANOT_KEY = 'cc_pt_anotacoes';
+        var anotDeb = {};
+        function loadAnotacoes() {
+            try { var r = localStorage.getItem(ANOT_KEY); return r ? JSON.parse(r) : {}; } catch (e) { return {}; }
+        }
+        function saveAnotacoes(m) { try { localStorage.setItem(ANOT_KEY, JSON.stringify(m)); } catch (e) {} }
+        function loadAnotacao(id) { return loadAnotacoes()[id] || ''; }
+        function salvarAnotacaoAgora(id) {
+            var ta = document.getElementById('tut-anotacoes-' + id);
+            if (!ta) return;
+            var map = loadAnotacoes();
+            if (ta.value) { map[id] = ta.value; } else { delete map[id]; }
+            saveAnotacoes(map);
+        }
+        function agendarSalvarAnotacao(id) {
+            if (anotDeb[id]) clearTimeout(anotDeb[id]);
+            anotDeb[id] = setTimeout(function () { salvarAnotacaoAgora(id); }, 2000);
+        }
+
+        function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+        function catMeta(k) { return CATS.find(function (c) { return c.key === k; }) || { icon: '📌', label: k }; }
+        function statusMeta(v) { return STATUS.find(function (s) { return s.v === v; }) || { label: v, cls: '' }; }
+        function ytId(url) { if (!url) return ''; var m = String(url).match(/(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{6,})/); if (m) return m[1]; return /^[A-Za-z0-9_-]{6,}$/.test(url) ? url : ''; }
+        function toastMsg(m) { if (!toast) return; toast.textContent = m; toast.classList.add('show'); clearTimeout(window.__t); window.__t = setTimeout(function () { toast.classList.remove('show'); }, 2500); }
+
+        function filtrados() {
+            var list = load();
+            var t = (state.termo || '').toLowerCase();
+            return list.filter(function (x) {
+                if (state.cat && x.categoria !== state.cat) return false;
+                if (!t) return true;
+                var blob = [x.titulo, x.marca, x.modelo, (x.tags || []).join(' '), x.obs, x.aprendi, (x.ferramentas || []).join(' '), catMeta(x.categoria).label, x.drive || '', x.linkAdicional || '', x.linkReserva || ''].join(' ').toLowerCase();
+                return blob.indexOf(t) >= 0;
+            });
+        }
+
+        // ===== HOME =====
+        function renderHome() {
+            var list = load();
+            var chips = '<button class="tut-chip' + (!state.cat ? ' active' : '') + '" onclick="tutFiltro(\'\')">Todas (' + list.length + ')</button>';
+            CATS.forEach(function (c) {
+                var n = list.filter(function (x) { return x.categoria === c.key; }).length;
+                chips += '<button class="tut-chip' + (state.cat === c.key ? ' active' : '') + '" onclick="tutFiltro(\'' + c.key + '\')">' + c.icon + ' ' + esc(c.label) + ' (' + n + ')</button>';
+            });
+            var itens = filtrados();
+            var lista = itens.length
+                ? itens.map(itemHTML).join('')
+                : '<div class="tut-empty">Nenhum tutorial encontrado.</div>';
+            view.innerHTML =
+                '<div class="tut-toolbar">'
+                + '<div class="tut-chips">' + chips + '</div>'
+                + '<button class="tut-novo-btn" onclick="tutNovo()">➕ Novo Tutorial</button>'
+                + '</div>'
+                + '<div class="tut-list">' + lista + '</div>';
+        }
+
+        function itemHTML(t) {
+            var st = statusMeta(t.status);
+            return '<button class="tut-list-item" onclick="tutAbrir(\'' + t.id + '\')">'
+                + '<div class="tut-li-main">'
+                + '<div class="tut-li-titulo">' + esc(t.titulo) + '</div>'
+                + '<div class="tut-li-meta">' + esc(t.marca || '—') + ' • ' + esc(t.modelo || '—') + ' • ' + esc(t.dataCadastro || '') + '</div>'
+                + '<div class="tut-li-tagrow">'
+                + '<span class="tut-cat-badge">' + catMeta(t.categoria).icon + ' ' + esc(catMeta(t.categoria).label) + '</span>'
+                + '<span class="tut-status ' + st.cls + '">' + st.label + '</span>'
+                + '<span class="tut-diff">' + esc(DIFF[t.dificuldade] || '') + '</span>'
+                + '</div>'
+                + '</div><span class="tut-li-chevron">›</span></button>';
+        }
+
+        // ===== DETALHE =====
+        function renderDetail(id) {
+            var t = load().find(function (x) { return x.id === id; });
+            if (!t) { renderHome(); return; }
+            var st = statusMeta(t.status);
+            var vid = ytId(t.video);
+            var tags = (t.tags || []).map(function (x) { return '<span class="tut-tag">#' + esc(x) + '</span>'; }).join('');
+            var hist = (t.historico || []).slice().reverse().map(function (h) {
+                return '<div class="tut-hist-item"><span class="tut-hist-data">' + esc(h.data) + '</span><span class="tut-hist-txt">' + esc(h.texto) + '</span></div>';
+            }).join('') || '<div class="tut-obs-muted">Sem registros.</div>';
+
+            var html = '<div class="tut-back-row">'
+                + '<button class="tut-voltar" onclick="tutHome()">‹ Voltar</button>'
+                + '<span class="tut-cat-titulo">' + catMeta(t.categoria).icon + ' ' + esc(catMeta(t.categoria).label) + '</span>'
+                + '<span class="tut-detail-actions"><button class="tut-mini-btn" onclick="tutEditar(\'' + t.id + '\')">✏️ Editar</button><button class="tut-mini-btn tut-mini-del" onclick="tutExcluir(\'' + t.id + '\')">🗑️</button></span>'
+                + '</div>'
+                + '<div class="tut-detail">'
+                + '<h2 class="tut-detail-title">' + esc(t.titulo) + '</h2>'
+                + '<div class="tut-badges">'
+                + '<span class="tut-badge">🏷️ ' + esc(t.marca || '—') + '</span>'
+                + '<span class="tut-badge">📱 ' + esc(t.modelo || '—') + '</span>'
+                + '<span class="tut-status ' + st.cls + '">' + st.label + '</span>'
+                + '<span class="tut-badge">' + esc(DIFF[t.dificuldade] || '—') + '</span>'
+                + '</div>';
+
+            if (vid) {
+                html += '<div class="tut-sec-title">🎥 Vídeo</div>'
+                    + '<div class="tut-video"><iframe src="https://www.youtube.com/embed/' + encodeURIComponent(vid) + '" title="' + esc(t.titulo) + '" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe></div>';
+            }
+            // LINKS ADICIONAIS
+            if (t.drive) html += '<div class="tut-sec-title">☁️ Google Drive</div><div class="tut-obs"><a href="' + esc(t.drive) + '" target="_blank" rel="noopener" class="tut-link">' + esc(t.drive) + '</a></div>';
+            if (t.linkAdicional) html += '<div class="tut-sec-title">🔗 Link Adicional</div><div class="tut-obs"><a href="' + esc(t.linkAdicional) + '" target="_blank" rel="noopener" class="tut-link">' + esc(t.linkAdicional) + '</a></div>';
+            if (t.linkReserva) html += '<div class="tut-sec-title">🔗 Link Reserva</div><div class="tut-obs"><a href="' + esc(t.linkReserva) + '" target="_blank" rel="noopener" class="tut-link">' + esc(t.linkReserva) + '</a></div>';
+
+            // 📝 ANOTAÇÕES RÁPIDAS (auto-save)
+            html += '<div class="tut-sec-title">📝 Anotações Rápidas</div>'
+                + '<textarea class="tut-anotacoes" id="tut-anotacoes-' + id + '" data-tut-id="' + id + '" placeholder="Digite suas anotações enquanto assiste ao vídeo...&#10;&#10;Ex:&#10;• Desligar aparelho&#10;• Conectar cabo novamente&#10;• Não precisa entrar em Download Mode&#10;• Funcionou Android 13">' + esc(loadAnotacao(id)) + '</textarea>';
+
+            if (t.resumo) html += '<div class="tut-sec-title">📝 Resumo do Procedimento</div><div class="tut-obs">' + esc(t.resumo) + '</div>';
+            if (t.obs) html += '<div class="tut-sec-title">⚠️ Observações Técnicas</div><div class="tut-obs">' + esc(t.obs) + '</div>';
+
+            // O QUE APRENDI — destaque
+            html += '<div class="tut-sec-title">💡 O Que Aprendi</div>'
+                + '<div class="tut-aprendi">' + (t.aprendi ? esc(t.aprendi) : '<span class="tut-obs-muted">Nenhum aprendizado registrado ainda.</span>') + '</div>';
+
+            // FERRAMENTAS UTILIZADAS — chips
+            var ferramentas = (t.ferramentas || []).filter(Boolean).map(function (f) {
+                return '<span class="tut-ferramenta-chip">🔧 ' + esc(f) + '</span>';
+            }).join('');
+            if (ferramentas) {
+                html += '<div class="tut-sec-title">🧰 Ferramentas Utilizadas</div>'
+                    + '<div class="tut-ferramentas">' + ferramentas + '</div>';
+            }
+
+            if (tags) html += '<div class="tut-sec-title">🔖 Tags</div><div class="tut-tags">' + tags + '</div>';
+
+            html += '<div class="tut-sec-title">🔄 Histórico de Atualizações</div><div class="tut-hist">' + hist + '</div>'
+                + '<div class="tut-rodape">Cadastrado em ' + esc(t.dataCadastro || '—') + ' • Última atualização: ' + esc(t.ultimaAtualizacao || '—') + '</div>'
+                + '</div>';
+
+            view.innerHTML = html;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            // ── Auto-save: Anotações Rápidas ─────────────────────────
+            var ta = document.getElementById('tut-anotacoes-' + id);
+            if (ta) {
+                ta.addEventListener('input', function () { agendarSalvarAnotacao(id); });
+                ta.addEventListener('blur', function () { salvarAnotacaoAgora(id); });
+            }
+        }
+
+        // ===== FORM (cadastro/edição) =====
+        function preencherSelects() {
+            document.getElementById('f-categoria').innerHTML = CATS.map(function (c) { return '<option value="' + c.key + '">' + c.icon + ' ' + esc(c.label) + '</option>'; }).join('');
+            document.getElementById('f-status').innerHTML = STATUS.map(function (s) { return '<option value="' + s.v + '">' + s.label + '</option>'; }).join('');
+            document.getElementById('f-dificuldade').innerHTML = [1, 2, 3, 4, 5].map(function (n) { return '<option value="' + n + '">' + DIFF[n] + '</option>'; }).join('');
+        }
+        function abrirForm(t) {
+            preencherSelects();
+            document.getElementById('tut-modal-title').textContent = t ? '✏️ Editar Tutorial' : '➕ Novo Tutorial';
+            document.getElementById('f-id').value = t ? t.id : '';
+            document.getElementById('f-titulo').value = t ? (t.titulo || '') : '';
+            document.getElementById('f-categoria').value = t ? t.categoria : (state.cat || CATS[0].key);
+            document.getElementById('f-status').value = t ? t.status : 'emteste';
+            document.getElementById('f-marca').value = t ? (t.marca || '') : '';
+            document.getElementById('f-modelo').value = t ? (t.modelo || '') : '';
+            document.getElementById('f-dificuldade').value = t ? (t.dificuldade || 1) : 1;
+            document.getElementById('f-tags').value = t ? (t.tags || []).join(', ') : '';
+            document.getElementById('f-video').value = t ? (t.video || '') : '';
+            document.getElementById('f-drive').value = t ? (t.drive || '') : '';
+            document.getElementById('f-linkadicional').value = t ? (t.linkAdicional || '') : '';
+            document.getElementById('f-linkreserva').value = t ? (t.linkReserva || '') : '';
+            document.getElementById('f-resumo').value = t ? (t.resumo || '') : '';
+            document.getElementById('f-obs').value = t ? (t.obs || '') : '';
+            document.getElementById('f-aprendi').value = t ? (t.aprendi || '') : '';
+            document.getElementById('f-ferramentas').value = t ? (t.ferramentas || []).join(', ') : '';
+            modal.classList.add('open');
+        }
+        function fecharForm() { modal.classList.remove('open'); }
+
+        function salvar() {
+            var id = document.getElementById('f-id').value;
+            var titulo = document.getElementById('f-titulo').value.trim();
+            if (!titulo) { toastMsg('⚠️ Informe o título.'); document.getElementById('f-titulo').focus(); return; }
+            var tags = document.getElementById('f-tags').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+            var dados = {
+                titulo: titulo,
+                categoria: document.getElementById('f-categoria').value,
+                status: document.getElementById('f-status').value,
+                marca: document.getElementById('f-marca').value.trim(),
+                modelo: document.getElementById('f-modelo').value.trim(),
+                dificuldade: parseInt(document.getElementById('f-dificuldade').value, 10) || 1,
+                tags: tags,
+                video: document.getElementById('f-video').value.trim(),
+                drive: document.getElementById('f-drive').value.trim(),
+                linkAdicional: document.getElementById('f-linkadicional').value.trim(),
+                linkReserva: document.getElementById('f-linkreserva').value.trim(),
+                resumo: document.getElementById('f-resumo').value.trim(),
+                obs: document.getElementById('f-obs').value.trim(),
+                aprendi: document.getElementById('f-aprendi').value.trim(),
+                ferramentas: document.getElementById('f-ferramentas').value.split(',').map(function (x) { return x.trim(); }).filter(Boolean)
+            };
+            var list = load();
+            if (id) {
+                var i = list.findIndex(function (x) { return x.id === id; });
+                if (i >= 0) {
+                    var orig = list[i];
+                    list[i] = Object.assign({}, orig, dados, { ultimaAtualizacao: hoje() });
+                    list[i].historico = (orig.historico || []).concat([{ data: hoje(), texto: 'Tutorial atualizado.' }]);
+                }
+            } else {
+                dados.id = 't' + Date.now();
+                dados.dataCadastro = hoje();
+                dados.ultimaAtualizacao = hoje();
+                dados.historico = [{ data: hoje(), texto: 'Tutorial criado.' }];
+                list.push(dados);
+                id = dados.id;
+            }
+            save(list);
+            fecharForm();
+            toastMsg('✅ Tutorial salvo!');
+            renderDetail(id);
+        }
+
+        function excluir(id) {
+            if (!confirm('Excluir este tutorial? Esta ação não pode ser desfeita.')) return;
+            save(load().filter(function (x) { return x.id !== id; }));
+            toastMsg('🗑️ Tutorial excluído.');
+            renderHome();
+        }
+
+        // ===== Navegação / API global =====
+        function tutHome() { state.cat = ''; if (busca) busca.value = ''; state.termo = ''; renderHome(); }
+        function tutFiltro(k) { state.cat = k; renderHome(); }
+        function tutAbrir(id) { renderDetail(id); }
+        function tutBuscar() { state.termo = (busca.value || '').trim(); renderHome(); }
+        function tutNovo() { abrirForm(null); }
+        function tutEditar(id) { var t = load().find(function (x) { return x.id === id; }); abrirForm(t || null); }
+        window.tutHome = tutHome; window.tutFiltro = tutFiltro; window.tutAbrir = tutAbrir; window.tutBuscar = tutBuscar;
+        window.tutNovo = tutNovo; window.tutEditar = tutEditar; window.tutExcluir = excluir;
+        window.tutSalvar = salvar; window.tutFecharForm = fecharForm;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            view = document.getElementById('tut-view');
+            busca = document.getElementById('tut-busca');
+            toast = document.getElementById('pt-toast');
+            modal = document.getElementById('tut-modal');
+            modal.addEventListener('click', function (e) { if (e.target === modal) fecharForm(); });
+            renderHome();
+        });
+    })();
+    </script>
+</body>
+</html>

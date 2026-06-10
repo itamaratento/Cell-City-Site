@@ -1,0 +1,198 @@
+/* ============ DOCK LATERAL COMPARTILHADO ============ */
+:root {
+  --dock-green: #00c853;
+  --dock-bg: rgba(18, 20, 24, 0.92);
+  --dock-border: rgba(255, 255, 255, 0.06);
+  --dock-elevated: #1a1d23;
+  --dock-text: #f5f7fa;
+  --dock-radius-lg: 16px;
+  --dock-radius-sm: 8px;
+  --dock-radius-md: 12px;
+  --dock-transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dock {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--dock-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--dock-border);
+  border-radius: var(--dock-radius-lg);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  z-index: 9000;
+}
+
+.dock-item {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--dock-radius-sm);
+  text-decoration: none;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  transition: all var(--dock-transition);
+  filter: grayscale(0.3) brightness(0.9);
+}
+
+.dock-item:hover {
+  background: rgba(0, 200, 83, 0.12);
+  filter: grayscale(0) brightness(1.15);
+  transform: translateX(-3px) scale(1.08);
+  box-shadow: 0 0 20px rgba(0, 200, 83, 0.2);
+}
+
+.dock-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.dock-item::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: calc(100% + 14px);
+  top: 50%;
+  transform: translateY(-50%) translateX(6px);
+  padding: 6px 12px;
+  background: var(--dock-elevated);
+  color: var(--dock-text);
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: var(--dock-radius-sm);
+  border: 1px solid var(--dock-border);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--dock-transition);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.dock-item:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+
+.dock-item-separator {
+  margin-top: 6px;
+  border-top: 1px solid var(--dock-border);
+  padding-top: 6px;
+}
+
+.dock-item-back {
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--dock-border);
+  padding-bottom: 6px;
+}
+
+/* ========== PAINEL DE NOTAS ========== */
+.nota-panel {
+  position: fixed;
+  bottom: 80px;
+  right: 72px;
+  width: 320px;
+  background: #1a1d23;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  display: none;
+  flex-direction: column;
+  z-index: 9100;
+  overflow: hidden;
+}
+
+.nota-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.nota-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #f5f7fa;
+  flex: 1;
+}
+
+.nota-status {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.nota-close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: all 200ms;
+}
+
+.nota-close:hover {
+  background: rgba(255,255,255,0.06);
+  color: #f5f7fa;
+}
+
+.nota-textarea {
+  flex: 1;
+  min-height: 200px;
+  padding: 14px;
+  background: transparent;
+  border: none;
+  color: #f5f7fa;
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  outline: none;
+  line-height: 1.6;
+}
+
+.nota-textarea::placeholder { color: #4b5563; }
+
+/* ========== RESPONSIVO ========== */
+@media (max-width: 900px) {
+  .dock {
+    top: auto;
+    bottom: 16px;
+    right: 50%;
+    transform: translateX(50%);
+    flex-direction: row;
+    padding: 8px 12px;
+    border-radius: var(--dock-radius-md);
+  }
+  .dock-item-separator {
+    margin-top: 0;
+    margin-left: 6px;
+    border-top: none;
+    border-left: 1px solid var(--dock-border);
+    padding-top: 0;
+    padding-left: 6px;
+  }
+  .dock-item-back {
+    margin-bottom: 0;
+    margin-right: 6px;
+    border-bottom: none;
+    border-right: 1px solid var(--dock-border);
+    padding-bottom: 0;
+    padding-right: 6px;
+  }
+  .dock-item::after { display: none; }
+  .dock-item:hover { transform: translateY(-3px) scale(1.08); }
+  .nota-panel { right: 16px; bottom: 90px; width: calc(100vw - 32px); }
+}

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Administrativo — Portal do Cliente</title>
+  <link rel="stylesheet" href="admin.css?v=2.4">
+
+  <!-- Firebase SDK (compat) v10.8.0 → carregamento lazy via defer -->
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+    }
+  }
+  </script>
+  <style>
+    /* ⚡ OTIMIZAÇÃO: oculta conteúdo até JS carregar (evita flash) */
+    .admin-content > *:not(.admin-loading) { display: none; }
+    .admin-content.carregado .admin-loading { display: none; }
+    .admin-content.carregado > *:not(.admin-loading) { display: block; }
+  </style>
+</head>
+<body>
+
+  <!-- ===== BRAND HEADER (CELL CITY — verde, igual ao CRM) ===== -->
+  <header class="admin-brand-bar" id="admin-brand-bar">
+    <!-- ⚡ OTIMIZAÇÃO #1: Logo clicável → volta ao Dashboard Principal do CRM -->
+    <div class="admin-brand-header" id="admin-brand-logo" title="Voltar ao Dashboard Principal" style="cursor:pointer;">
+      <div class="admin-brand-header-text">
+        <div class="admin-brand-header-title">Cell City Informática</div>
+        <div class="admin-brand-header-divider"></div>
+        <div class="admin-brand-header-subtitle">CRM Operacional</div>
+      </div>
+    </div>
+    <div class="admin-brand-page-title">🔷 Portal do Cliente / Painel Administrativo</div>
+    <div class="admin-brand-right">
+      <a href="../../index.html" class="admin-home-btn" title="Voltar ao CRM">
+        <span class="home-btn-icon">🏠</span>
+        <span class="home-btn-label">Voltar ao CRM</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== TOP BAR (simplificado) ===== -->
+  <header class="admin-topbar">
+    <div class="admin-topbar-left">
+      <button class="admin-topbar-btn" id="btn-refresh" title="Atualizar dados">🔄</button>
+    </div>
+    <div class="admin-topbar-center">
+      <span class="admin-topbar-title">Painel Administrativo</span>
+    </div>
+    <div class="admin-topbar-right">
+      <a href="../../index.html" class="admin-topbar-btn admin-topbar-btn-home" title="Voltar ao CRM">🏠</a>
+    </div>
+  </header>
+
+  <!-- ===== ABAS ===== -->
+  <nav class="admin-tabs" id="admin-tabs">
+    <button class="admin-tab active" data-action="navegar" data-tab="central">
+      <span class="tab-icon">🏠</span>
+      <span class="tab-label">Central</span>
+    </button>
+    <button class="admin-tab" data-action="navegar" data-tab="mensagens">
+      <span class="tab-icon">💬</span>
+      <span class="tab-label">Mensagens</span>
+      <span class="tab-badge" id="badge-mensagens" style="display:none;">0</span>
+    </button>
+    <button class="admin-tab" data-action="navegar" data-tab="avaliacoes">
+      <span class="tab-icon">⭐</span>
+      <span class="tab-label">Avaliações</span>
+    </button>
+    <button class="admin-tab" data-action="navegar" data-tab="solicitacoes">
+      <span class="tab-icon">🔧</span>
+      <span class="tab-label">Solicitações</span>
+      <span class="tab-badge" id="badge-solicitacoes" style="display:none;">0</span>
+    </button>
+    <button class="admin-tab" data-action="navegar" data-tab="agendamentos">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">Agenda</span>
+      <span class="tab-badge" id="badge-agendamentos" style="display:none;">0</span>
+    </button>
+    <button class="admin-tab" data-action="navegar" data-tab="estatisticas">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">Estatísticas</span>
+    </button>
+  </nav>
+
+  <!-- ===== CONTEÚDO ===== -->
+  <main class="admin-content" id="admin-content">
+    <div class="admin-loading">
+      <span class="spinner"></span>
+      <p>Carregando Painel Administrativo...</p>
+    </div>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="admin-footer">
+    <span>Cell City Informática © <span id="admin-year">2026</span></span>
+    <span class="admin-footer-sep">|</span>
+    <span>Portal do Cliente — v2.4</span>
+    <span class="admin-footer-sep">|</span>
+    <span class="admin-footer-otimizado">⚡ Carregamento otimizado</span>
+  </footer>
+
+  <script type="module">
+    // ===== FIREBASE INIT (OTIMIZADO) =====
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+    import {
+      getFirestore,
+      collection, query, where, getDocs, onSnapshot,
+      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
+    } from 'firebase/firestore';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+      authDomain: "cellcity-crm.firebaseapp.com",
+      projectId: "cellcity-crm",
+      storageBucket: "cellcity-crm.firebasestorage.app",
+      messagingSenderId: "645609867368",
+      appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
+    };
+
+    // ⚡ OTIMIZAÇÃO #2: Inicialização única, evita recriação
+    if (!window._adminFirebaseInit) {
+      window._adminFirebaseInit = true;
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      window.db = db;
+      window.FirebaseModules = {
+        collection, query, where, getDocs, onSnapshot,
+        addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
+      };
+
+      window.authReady = false;
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          try {
+            await signInAnonymously(auth);
+          } catch (err) {
+            console.error('[Admin] Erro auth:', err);
+          }
+        }
+        window.authReady = true;
+        window.dispatchEvent(new Event('admin-firebase-ready'));
+      });
+    }
+  </script>
+
+  <script src="admin.js?v=2.5"></script>
+</body>
+</html>

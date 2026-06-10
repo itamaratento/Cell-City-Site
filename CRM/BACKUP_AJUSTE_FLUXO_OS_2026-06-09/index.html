@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - OS</title>
+    <!-- Homologação 07/06/2026: removidos 2 <link> mortos (../../styles/global.css e list.css —
+         arquivos inexistentes, geravam 404 no console). Estilo provido por os.css + dock.css. -->
+    <link rel="stylesheet" href="os.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <!-- HEADER: conteúdo migrado para o brand bar por brand-header.js -->
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle"></h1>
+        <button id="btn-os-home" class="btn-os-home" onclick="showScreen('home')" style="display:none">ORDEM DE SERVIÇO</button>
+    </header>
+
+    <main>
+        <!-- TELA HOME -->
+        <div id="screen-home" class="screen active">
+            <div class="home-hero">
+                <img src="../../assets/logo-large.png" alt="Cell City" class="home-logo-official">
+                <p class="hero-subtitle">Gestão Operacional</p>
+            </div>
+            <div class="home-top-search">
+                <div class="premium-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="home-search" placeholder="Buscar OS ou Cliente..." oninput="globalSearch()">
+                </div>
+            </div>
+            <div class="home-stats-block" id="home-stats-block">
+                <button type="button" class="home-stats-toggle" onclick="toggleHomeStats()" aria-expanded="false">
+                    <span>📊 Estatísticas</span>
+                    <span class="home-stats-arrow">▶ Ver Estatísticas</span>
+                </button>
+                <div class="premium-stats" id="statsBar"></div>
+            </div>
+            <div class="premium-cards">
+                <div class="home-card card-nova-os" onclick="showScreen('category')">
+                    <span class="icon">🔧</span>
+                    <div class="label">Nova O.S.</div>
+                </div>
+                <div class="home-card card-andamento" onclick="showList('andamento')">
+                    <button class="fav-star" data-fav="andamento" onclick="toggleFav('andamento', event)" title="Favoritar">☆</button>
+                    <span class="icon">📦</span>
+                    <div class="label">Em Andamento</div>
+                    <span class="badge" id="badge-andamento" style="display:none;">0</span>
+                </div>
+                <div class="home-card card-finalizados" onclick="showList('finalizados')">
+                    <button class="fav-star" data-fav="finalizados" onclick="toggleFav('finalizados', event)" title="Favoritar">☆</button>
+                    <span class="icon">✅</span>
+                    <div class="label">Finalizados</div>
+                    <span class="badge" id="badge-finalizados" style="display:none;">0</span>
+                </div>
+                <div class="home-card card-clientes" onclick="showScreen('clientes')">
+                    <button class="fav-star" data-fav="clientes" onclick="toggleFav('clientes', event)" title="Favoritar">☆</button>
+                    <span class="icon">👥</span>
+                    <div class="label">Clientes</div>
+                </div>
+                <div class="home-card card-fotos" onclick="openPhotoBank()">
+                    <span class="icon">📸</span>
+                    <div class="label">Fotos</div>
+                    <div style="font-size:10px; color:var(--text3); margin-top:4px;">Banco externo</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA CATEGORIA -->
+        <div id="screen-category" class="screen">
+            <h2 class="form-section-title" style="text-align:center; margin-bottom:20px;">📱 Selecione a categoria</h2>
+            <div class="category-grid">
+                <div class="category-card" onclick="startOS('celular')">
+                    <div class="cat-icon">📱</div>
+                    <div class="cat-info"><h3>Celular</h3><p>Smartphones e tablets</p></div>
+                </div>
+                <div class="category-card" onclick="startOS('notebook')">
+                    <div class="cat-icon">💻</div>
+                    <div class="cat-info"><h3>Notebook</h3><p>Laptops e ultrabooks</p></div>
+                </div>
+                <div class="category-card" onclick="startOS('impressora')">
+                    <div class="cat-icon">🖨️</div>
+                    <div class="cat-info"><h3>Impressora</h3><p>Inkjet, laser e jato de tinta</p></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TELA FORMULÁRIO NOVA OS -->
+        <div id="screen-form" class="screen">
+            <!-- ===== Accordion (Nova OS) — abertos por padrão ===== -->
+            <div class="form-section accordion">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>👤 Dados do Cliente</span><span class="accordion-arrow">▼</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group"><label>Nome <span class="optional">*</span></label><input type="text" id="f-nome" placeholder="Nome completo"></div>
+                    <div class="form-group"><label>Telefone <span class="optional">*</span></label><input type="tel" id="f-telefone" placeholder="(00) 00000-0000"></div>
+                    <div class="form-group"><label>CPF <span class="optional">(opcional)</span></label><input type="text" id="f-cpf" placeholder="000.000.000-00" maxlength="14" oninput="cpfMask(this)"></div>
+                </div></div>
+            </div>
+            <div class="form-section accordion">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>📱 Dados do Aparelho</span><span class="accordion-arrow">▼</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group"><label>Modelo <span class="optional">*</span></label><input type="text" id="f-modelo" placeholder="Ex: iPhone 11"></div>
+                    <div class="form-group"><label>Defeito relatado <span class="optional">*</span></label><textarea id="f-defeito" rows="3" placeholder="Descreva o problema..."></textarea></div>
+                    <div class="accordion accordion-sub collapsed">
+                        <button type="button" class="accordion-header accordion-subheader" onclick="toggleAccordion(this)" aria-expanded="false"><span>Mais informações</span><span class="accordion-arrow">▶</span></button>
+                        <div class="accordion-content"><div class="accordion-content-inner">
+                            <div class="form-group"><label>Marca <span class="optional">(opcional)</span></label><input type="text" id="f-marca" placeholder="Ex: Apple, Samsung, Motorola"></div>
+                            <div class="form-group"><label>IMEI / Nº de série <span class="optional">(opcional)</span></label><input type="text" id="f-imei" placeholder="IMEI ou número de série" inputmode="numeric"></div>
+                        </div></div>
+                    </div>
+                </div></div>
+            </div>
+            <div class="form-section accordion">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>🔒 Senha</span><span class="accordion-arrow">▼</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group"><label>Senha <span class="optional">(opcional)</span></label><input type="text" id="f-senha" placeholder="PIN ou Senha"></div>
+                    <div class="form-group">
+                        <label>Tipo de bloqueio</label>
+                        <select id="lock-type" onchange="toggleLockType()">
+                            <option value="Numerica">Numérica</option>
+                            <option value="Padrao">Padrão</option>
+                            <option value="Biometria">Biometria</option>
+                            <option value="Face ID">Face ID</option>
+                            <option value="Digital">Digital</option>
+                            <option value="Sem senha">Sem senha</option>
+                        </select>
+                    </div>
+                    <div id="pattern-section" style="display:none;">
+                        <button type="button" class="lock-photo-btn" onclick="openPatternModal()" style="width:100%; margin-bottom:10px;">📱 Registrar Padrão</button>
+                        <div id="pattern-summary" style="display:none; background:var(--surface2); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--green-primary); margin-bottom:10px;">
+                            <div style="font-size:12px; color:var(--green-light); font-weight:700; margin-bottom:8px;">✅ Senha padrão registrada</div>
+                            <div style="display:flex; gap:6px;">
+                                <button type="button" onclick="showPatternDrawing()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">👁️ Ver desenho</button>
+                                <button type="button" onclick="showPatternSequence()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">🔢 Ver sequência</button>
+                                <button type="button" onclick="openPatternModal()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--text);">✏️ Editar</button>
+                                <button type="button" onclick="clearPattern()" style="flex:1; font-size:11px; padding:6px; background:var(--surface3); border:1px solid var(--border); border-radius:4px; color:var(--red);">🗑️ Limpar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div></div>
+            </div>
+            <div class="form-section accordion">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>📋 Checklist de Entrada</span><span class="accordion-arrow">▼</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div id="entry-checklist"></div>
+                </div></div>
+            </div>
+
+            <!-- ===== Accordion (Nova OS) — recolhidos por padrão ===== -->
+            <div class="form-section accordion collapsed">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📍 Endereço</span><span class="accordion-arrow">▶</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group"><label>CEP <span class="optional">(opcional)</span></label><input type="text" id="f-cep" placeholder="00000-000" maxlength="9" oninput="cepMask(this)" onblur="buscarCEP(this.value)"></div>
+                    <div class="form-group" style="display:flex;gap:8px;flex-wrap:wrap;"><div style="flex:2;min-width:180px;"><label>Endereço <span class="optional">(opcional)</span></label><input type="text" id="f-endereco" placeholder="Rua, Avenida..."></div><div style="flex:0 0 80px;"><label>Nº</label><input type="text" id="f-numero" placeholder="Nº"></div></div>
+                    <div class="form-group"><label>Complemento <span class="optional">(opcional)</span></label><input type="text" id="f-complemento" placeholder="Apto, Bloco..."></div>
+                    <div class="form-group" style="display:flex;gap:8px;flex-wrap:wrap;"><div style="flex:1;min-width:140px;"><label>Bairro <span class="optional">(opcional)</span></label><input type="text" id="f-bairro" placeholder="Bairro"></div><div style="flex:1;min-width:140px;"><label>Cidade <span class="optional">(opcional)</span></label><input type="text" id="f-cidade" placeholder="Cidade"></div><div style="flex:0 0 70px;"><label>UF</label><input type="text" id="f-estado" placeholder="UF" maxlength="2"></div></div>
+                </div></div>
+            </div>
+            <div class="form-section accordion collapsed">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛠️ Serviço</span><span class="accordion-arrow">▶</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group"><label>Valor do Orçamento (à vista / PIX) <span class="optional">(opcional)</span></label><input type="number" id="f-valor" placeholder="0,00" inputmode="decimal" min="0" step="0.01"></div>
+                    <div class="form-group" id="f-valor-cartao-group" style="display:none;"><label>Valor Cartão <span class="optional">(opcional, preparado p/ futura implementação)</span></label><input type="number" id="f-valor-cartao" placeholder="0,00" inputmode="decimal" min="0" step="0.01" disabled></div>
+                    <div class="form-group"><label>Técnico responsável <span class="optional">(opcional)</span></label><input type="text" id="f-tecnico" placeholder="Nome do técnico"></div>
+                    <div class="form-group"><label>IMEI 1 <span class="optional">(opcional)</span></label><input type="text" id="f-imei1" placeholder="IMEI 1 (até 15 dígitos)" inputmode="numeric" maxlength="15"></div>
+                    <div class="form-group"><label>IMEI 2 <span class="optional">(opcional)</span></label><input type="text" id="f-imei2" placeholder="IMEI 2 (até 15 dígitos)" inputmode="numeric" maxlength="15"></div>
+                    <div class="form-group"><label>Prazo de garantia (dias)</label><input type="number" id="f-garantia" placeholder="90" inputmode="numeric" min="0" step="1" value="90"></div>
+                    <div class="form-group"><label>Modelo de Garantia <span class="optional">(opcional)</span></label><select id="f-garantia-modelo"><option value="">Padrão (configurado no sistema)</option></select></div>
+                </div></div>
+            </div>
+            <div class="form-section accordion collapsed">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📝 Observações</span><span class="accordion-arrow">▶</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div class="form-group">
+                        <textarea id="f-obs" rows="4" placeholder="Anotações gerais..."></textarea>
+                    </div>
+                </div></div>
+            </div>
+            <div class="form-section accordion collapsed">
+                <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📷 Fotos</span><span class="accordion-arrow">▶</span></button>
+                <div class="accordion-content"><div class="accordion-content-inner">
+                    <div id="lock-photo-section">
+                        <label>📷 Foto da senha/padrão <span class="optional">(opcional)</span></label>
+                        <div class="lock-photo-container">
+                            <label class="lock-photo-btn"><span>📁 Escolher Arquivo</span><input type="file" id="lock-photo" accept="image/*" onchange="handleLockPhoto(event)"></label>
+                            <label class="lock-photo-btn lock-photo-btn-camera"><span>📷 Tirar Foto</span><input type="file" id="lock-photo-camera" accept="image/*" capture="environment" onchange="handleLockPhoto(event)"></label>
+                        </div>
+                        <div id="lock-photo-preview" style="margin-top:10px;"></div>
+                    </div>
+                    <label style="margin-top:14px; display:block;">📷 Fotos do Aparelho <span class="optional">(opcional)</span></label>
+                    <div class="premium-upload" onclick="document.getElementById('os-photos').click()">
+                        <div class="icon">📷</div>
+                        <p>Toque para adicionar fotos do aparelho</p>
+                        <input type="file" id="os-photos" hidden multiple accept="image/*" onchange="handlePhotos(event)">
+                    </div>
+                    <div id="photo-preview" class="photo-preview"></div>
+                </div></div>
+            </div>
+            <button class="premium-btn" style="width:100%;" onclick="saveOS()">⚡ Criar Ordem de Serviço</button>
+        </div>
+
+        <!-- TELA LISTA -->
+        <div id="screen-list" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="list-search" placeholder="Buscar na lista..." oninput="filterList()">
+            </div>
+            <div id="os-list" class="premium-list"></div>
+        </div>
+
+        <!-- TELA DETALHES -->
+        <div id="screen-detail" class="screen">
+            <div id="detail-content"></div>
+        </div>
+
+        <!-- TELA CLIENTES -->
+        <div id="screen-clientes" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="client-search" placeholder="Buscar cliente..." oninput="searchClients()">
+            </div>
+            <button class="premium-btn" style="width:100%; margin-bottom:16px;" onclick="toggleClientManagement()">➕ Cadastrar / Gerenciar Cliente</button>
+            <div id="client-management-area"></div>
+            <div id="client-list" class="premium-list"></div>
+        </div>
+
+        <!-- TELA DETALHE CLIENTE -->
+        <div id="screen-client-detail" class="screen">
+            <div id="client-detail-content"></div>
+        </div>
+
+        <!-- TELA PESQUISA GLOBAL -->
+        <div id="screen-pesquisar" class="screen">
+            <div class="premium-search" style="margin-bottom:16px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="global-search" placeholder="Pesquisa global..." oninput="globalSearch()">
+            </div>
+            <div id="search-results"></div>
+        </div>
+    </main>
+
+    <!-- MODAL PADRÃO -->
+    <div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+        <div class="premium-modal" id="modal-content"></div>
+    </div>
+
+    <!-- MODAL PADRÃO DESENHO -->
+    <div class="modal-overlay" id="pattern-overlay" onclick="closePatternModal(event)" style="z-index:300;">
+        <div class="premium-modal" style="max-width:340px; text-align:center;">
+            <div id="pattern-canvas-container">
+                <h3 style="margin-bottom:10px; color:var(--green-light);">📱 Registrar Padrão Android</h3>
+                <p style="font-size:12px; color:var(--text3); margin-bottom:15px;">Arraste para conectar os pontos na ordem desejada</p>
+                <canvas id="pattern-canvas" width="300" height="300" style="background:var(--surface3); border-radius:12px; border:1px solid var(--border); touch-action:none;"></canvas>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button onclick="clearPatternCanvas()" style="flex:1; padding:10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; color:var(--text);">🗑️ Limpar</button>
+                    <button onclick="savePattern()" style="flex:1; padding:10px; background:var(--green-primary); border:none; border-radius:8px; color:#000; font-weight:700;">💾 Salvar</button>
+                </div>
+                <button onclick="closePatternModal()" style="width:100%; margin-top:10px; padding:8px; background:transparent; border:none; color:var(--text3);">Cancelar</button>
+            </div>
+            <div id="pattern-preview-container" style="display:none;">
+                <h3 style="margin-bottom:10px; color:var(--green-light);">👁️ Visualizar Padrão</h3>
+                <canvas id="pattern-preview-canvas" width="300" height="300" style="background:var(--surface3); border-radius:12px; border:1px solid var(--border);"></canvas>
+                <button onclick="closePatternModal()" style="width:100%; margin-top:15px; padding:10px; background:var(--green-primary); border:none; border-radius:8px; color:#000; font-weight:700;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div class="premium-toast" id="toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="os.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script>
+function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }
+window.toggleAccordion = toggleAccordion;
+function toggleHomeStats() { var b = document.getElementById('home-stats-block'); if (!b) return; var open = b.classList.toggle('open'); var btn = b.querySelector('.home-stats-toggle'); if (btn) btn.setAttribute('aria-expanded', String(open)); var a = b.querySelector('.home-stats-arrow'); if (a) a.textContent = open ? '▼ Ocultar Estatísticas' : '▶ Ver Estatísticas'; }
+window.toggleHomeStats = toggleHomeStats;
+function cpfMask(el) { var v = el.value.replace(/\D/g, '').slice(0, 11); if (v.length > 9) v = v.replace(/^(\d{3})(\d{3})(\d{3})(\d{1,2})$/, '$1.$2.$3-$4'); else if (v.length > 6) v = v.replace(/^(\d{3})(\d{3})(\d{1,3})$/, '$1.$2.$3'); else if (v.length > 3) v = v.replace(/^(\d{3})(\d{1,3})$/, '$1.$2'); el.value = v; }
+function cepMask(el) { var v = el.value.replace(/\D/g, '').slice(0, 8); if (v.length > 5) v = v.replace(/^(\d{5})(\d{1,3})$/, '$1-$2'); el.value = v; }
+function buscarCEP(valor) { var cep = valor.replace(/\D/g, ''); if (cep.length !== 8) return; var url = 'https://viacep.com.br/ws/' + cep + '/json/'; var xhr = new XMLHttpRequest(); xhr.open('GET', url, true); xhr.onreadystatechange = function () { if (xhr.readyState === 4) { if (xhr.status === 200) { try { var d = JSON.parse(xhr.responseText); if (d.erro) { showToast && showToast('⚠️ CEP não localizado.'); return; } var fE = document.getElementById('f-endereco'); var fB = document.getElementById('f-bairro'); var fC = document.getElementById('f-cidade'); var fEs = document.getElementById('f-estado'); if (fE) fE.value = d.logradouro || ''; if (fB) fB.value = d.bairro || ''; if (fC) fC.value = d.localidade || ''; if (fEs) fEs.value = d.uf || ''; } catch(e) { showToast && showToast('⚠️ Erro ao processar CEP.'); } } else { showToast && showToast('⚠️ CEP não localizado.'); } } }; xhr.send(); }
+</script>
+<!-- DEEP-LINK DE FAVORITOS (não altera os.js — apenas chama funções globais já existentes) -->
+<script>
+(function () {
+  function applyFav() {
+    var h = location.hash || '';
+    if (h.indexOf('fav-') < 0) return false;
+    if (h.indexOf('fav-andamento')   >= 0 && window.showList)   { window.showList('andamento');   return true; }
+    if (h.indexOf('fav-finalizados') >= 0 && window.showList)   { window.showList('finalizados'); return true; }
+    if (h.indexOf('fav-clientes')    >= 0 && window.showScreen) { window.showScreen('clientes');  return true; }
+    return false;
+  }
+  function boot() {
+    if ((location.hash || '').indexOf('fav-') < 0) return;
+    var tries = 0;
+    var t = setInterval(function () {
+      tries++;
+      if (window.showList && window.showScreen) applyFav(); // re-aplica p/ vencer o showScreen('home') assíncrono do init
+      if (tries >= 10) clearInterval(t);
+    }, 300);
+  }
+  window.addEventListener('load', boot);
+  window.addEventListener('hashchange', applyFav);
+})();
+</script>
+</body>
+</html>

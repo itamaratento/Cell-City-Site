@@ -1,0 +1,207 @@
+/* ============================================================
+   PORTAL TÉCNICO — Cell City CRM
+   Hub de consulta técnica rápida. Tema padrão (escuro + verde),
+   responsivo (desktop → mobile). Integra com favoritos via dock.js.
+   ============================================================ */
+:root {
+    --pt-bg: #0a0b0d;
+    --pt-surface: #121418;
+    --pt-surface2: #1a1d23;
+    --pt-surface3: #22262e;
+    --pt-border: rgba(255, 255, 255, 0.10);
+    --pt-text: #f5f7fa;
+    --pt-text2: #a1a8b3;
+    --pt-text3: #6b7280;
+    --pt-green: #00c853;
+    --pt-green-light: #00e676;
+    --pt-radius: 14px;
+    --pt-radius-sm: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background:
+        radial-gradient(1200px 400px at 50% -120px, rgba(0, 200, 83, 0.10), transparent 70%),
+        var(--pt-bg);
+    color: var(--pt-text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    padding-bottom: 100px;
+}
+
+/* ===== Header ===== */
+.header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--pt-border);
+    background: var(--pt-surface);
+}
+.header-title { font-size: 17px; font-weight: 800; color: var(--pt-text); }
+
+.pt-screen {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 14px 18px 22px;
+}
+
+/* ===== Busca (topo, direto) ===== */
+.pt-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: 620px;
+    margin: 0 auto 16px;
+    background: var(--pt-surface2);
+    border: 1px solid var(--pt-border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.pt-search:focus-within {
+    border-color: var(--pt-green);
+    box-shadow: 0 8px 28px rgba(0, 200, 83, 0.18);
+}
+.pt-search-icon { font-size: 17px; color: var(--pt-text3); flex: 0 0 auto; }
+.pt-search input {
+    flex: 1 1 auto;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--pt-text);
+    font-size: 15px;
+    font-family: inherit;
+}
+.pt-search input::placeholder { color: var(--pt-text3); }
+.pt-search-kbd {
+    flex: 0 0 auto;
+    font-size: 11px;
+    color: var(--pt-text3);
+    border: 1px solid var(--pt-border);
+    border-radius: 6px;
+    padding: 2px 7px;
+    background: var(--pt-surface3);
+}
+
+/* ===== Cabeçalho de seção ===== */
+.pt-section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin: 0 2px 12px;
+}
+.pt-section-title {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--pt-green-light);
+}
+.pt-section-hint { font-size: 11px; color: var(--pt-text3); }
+
+/* ===== Grid de cards ===== */
+.pt-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
+.pt-card {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    text-align: left;
+    padding: 20px 18px;
+    border-radius: var(--pt-radius);
+    border: 1px solid var(--pt-border);
+    background: linear-gradient(180deg, var(--pt-surface2), var(--pt-surface));
+    color: var(--pt-text);
+    cursor: pointer;
+    font-family: inherit;
+    overflow: hidden;
+    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.pt-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--pt-green);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.pt-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--pt-green);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.pt-card:hover::before { opacity: 1; }
+.pt-card:active { transform: translateY(0); }
+.pt-card-icon { font-size: 30px; line-height: 1; flex: 0 0 auto; }
+.pt-card-body { display: flex; flex-direction: column; gap: 4px; }
+.pt-card-title { font-size: 15px; font-weight: 700; }
+.pt-card-desc { font-size: 12px; color: var(--pt-text2); line-height: 1.4; }
+.pt-card-tag {
+    position: absolute;
+    top: 12px; right: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--pt-text3);
+    background: var(--pt-surface3);
+    border: 1px solid var(--pt-border);
+    border-radius: 100px;
+    padding: 3px 8px;
+}
+.pt-card-tag-on {
+    color: #07140c;
+    background: var(--pt-green);
+    border-color: var(--pt-green);
+}
+
+.pt-empty {
+    text-align: center;
+    color: var(--pt-text3);
+    font-size: 13px;
+    font-style: italic;
+    padding: 28px 0;
+}
+
+/* ===== Toast "Em desenvolvimento" ===== */
+.pt-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 90px;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--pt-surface3);
+    border: 1px solid var(--pt-border);
+    color: var(--pt-text);
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 2000;
+}
+.pt-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ===== Responsividade ===== */
+@media (max-width: 760px) {
+    .pt-grid { grid-template-columns: repeat(2, 1fr); }
+    .pt-hero-title { font-size: 22px; }
+    .pt-search-kbd { display: none; }
+}
+@media (max-width: 460px) {
+    .pt-grid { grid-template-columns: 1fr; }
+    .pt-header-spacer { display: none; }
+    .pt-card { padding: 16px 14px; }
+}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Estoque</title>
+    <link rel="stylesheet" href="estoque.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header" id="mainHeader">
+        <h1 style="flex: 1; text-align: center; transform: translateX(-80px);">📦 Estoque</h1>
+        <button class="est-toggle-busca" id="est-toggle-busca" title="Mostrar/ocultar busca">＋</button>
+    </header>
+
+    <main>
+        <div class="est-content">
+
+            <div style="color: #e60000; font-weight: bold; text-align: center; padding: 8px; font-size: 16px; background: #fff0f0; border-radius: 6px; margin-bottom: 12px;">
+                TESTE CRM FUNCIONANDO
+            </div>
+
+            <!-- RESUMO -->
+            <div class="est-resumo" id="est-resumo">
+                <div class="est-resumo-item">
+                    <span class="est-resumo-num" id="est-total-produtos">—</span>
+                    <span class="est-resumo-label">Produtos</span>
+                </div>
+                <div class="est-resumo-div"></div>
+                <div class="est-resumo-item">
+                    <span class="est-resumo-num est-vermelho" id="est-total-baixo">—</span>
+                    <span class="est-resumo-label">Estoque Baixo</span>
+                </div>
+                <div class="est-resumo-div"></div>
+                <div class="est-resumo-item">
+                    <span class="est-resumo-num" id="est-total-cats">—</span>
+                    <span class="est-resumo-label">Categorias</span>
+                </div>
+            </div>
+
+            <!-- TOOLBAR: BUSCA (colapsável) + BOTÃO NOVO (sempre visível) -->
+            <div class="est-toolbar-wrapper">
+                <div class="est-toolbar est-toolbar-collapsed" id="est-toolbar">
+                    <input type="search" id="est-search" class="est-search" placeholder="🔍 Buscar produto ou categoria...">
+                </div>
+                <button class="est-btn-nova" id="est-btn-novo">＋ Novo Produto</button>
+            </div>
+
+            <!-- FORMULÁRIO -->
+            <div class="est-form" id="est-form" style="display:none">
+                <div class="est-form-titulo" id="est-form-titulo">Novo Produto</div>
+                <div class="est-form-grid">
+                    <div class="est-form-group est-span2">
+                        <label>Nome do produto</label>
+                        <input type="text" id="est-inp-nome" placeholder="Ex: Cabo USB-C, Película, Capinha..." maxlength="100">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Categoria</label>
+                        <select id="est-inp-cat">
+                            <option value="Cabo">🔌 Cabo</option>
+                            <option value="Capinha">📱 Capinha</option>
+                            <option value="Película">🛡️ Película</option>
+                            <option value="Carregador">⚡ Carregador</option>
+                            <option value="Fone">🎧 Fone</option>
+                            <option value="Bateria">🔋 Bateria</option>
+                            <option value="Tela">📺 Tela</option>
+                            <option value="Peça">🔧 Peça</option>
+                            <option value="Acessório">✨ Acessório</option>
+                            <option value="Outro">📌 Outro</option>
+                        </select>
+                    </div>
+                    <div class="est-form-group">
+                        <label>Qtd. atual</label>
+                        <input type="number" id="est-inp-qty" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Qtd. mínima</label>
+                        <input type="number" id="est-inp-min" min="0" value="1" placeholder="1">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Preço de venda (R$)</label>
+                        <input type="number" id="est-inp-venda" min="0" step="0.01" placeholder="0,00">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Preço de custo (R$)</label>
+                        <input type="number" id="est-inp-custo" min="0" step="0.01" placeholder="0,00">
+                    </div>
+                </div>
+                <div class="est-form-btns">
+                    <button class="est-btn-salvar" id="est-btn-salvar">Salvar</button>
+                    <button class="est-btn-cancelar" id="est-btn-cancelar">Cancelar</button>
+                </div>
+            </div>
+
+            <!-- LOADING -->
+            <div class="est-loading" id="est-loading">
+                <div class="est-spinner"></div>
+                <span>Carregando estoque...</span>
+            </div>
+
+            <!-- TOGGLE LISTA PRODUTOS -->
+            <div class="est-lista-header">
+                <button class="est-lista-toggle" id="est-lista-toggle">＋</button>
+                <span class="est-lista-titulo">Produtos</span>
+            </div>
+
+            <!-- CATEGORIAS -->
+            <div id="est-cats-container" class="est-cats-container-expanded"></div>
+
+            <!-- VAZIO -->
+            <div class="est-empty" id="est-empty" style="display:none">
+                <div class="est-empty-icon">📦</div>
+                <div class="est-empty-title">Estoque vazio</div>
+                <div class="est-empty-sub">Clique em <strong>＋ Novo Produto</strong> para começar.</div>
+            </div>
+
+        </div>
+    </main>
+
+    <div class="est-toast" id="est-toast"></div>
+
+    <!-- MODAL SAÍDA/ENTRADA -->
+    <div class="est-modal-overlay" id="est-modal-overlay" style="display:none">
+        <div class="est-modal">
+            <div class="est-modal-titulo" id="est-modal-titulo">Movimentar Estoque</div>
+            <div class="est-modal-body">
+                <div class="est-form-group">
+                    <label id="est-modal-label">Quantidade</label>
+                    <input type="number" id="est-modal-qty" min="1" value="1">
+                </div>
+            </div>
+            <div class="est-form-btns">
+                <button class="est-btn-salvar" id="est-modal-confirmar">Confirmar</button>
+                <button class="est-btn-cancelar" id="est-modal-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="estoque.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>

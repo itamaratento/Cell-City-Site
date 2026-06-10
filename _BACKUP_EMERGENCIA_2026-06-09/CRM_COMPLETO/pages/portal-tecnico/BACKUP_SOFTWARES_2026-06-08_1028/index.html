@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Portal Técnico - Cell City CRM</title>
+    <link rel="stylesheet" href="portal-tecnico.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <span class="header-title">🔓 Portal Técnico</span>
+    </header>
+
+    <div class="pt-screen">
+
+        <!-- BUSCA -->
+        <div class="pt-search" role="search">
+            <span class="pt-search-icon">🔍</span>
+            <input type="text" id="pt-busca" placeholder="Pesquisar no Portal Técnico..." oninput="ptFiltrar()" autocomplete="off" aria-label="Pesquisar no Portal Técnico">
+            <kbd class="pt-search-kbd">/</kbd>
+        </div>
+
+        <div class="pt-grid" id="pt-grid">
+            <button class="pt-card" data-nome="celulares smartphones tablets marcas modelos esquemas" onclick="ptEmBreve('📱 Celulares')">
+                <span class="pt-card-icon">📱</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Celulares</span>
+                    <span class="pt-card-desc">Modelos, esquemas e procedimentos por marca</span>
+                </span>
+                <span class="pt-card-tag">Em breve</span>
+            </button>
+            <button class="pt-card" data-nome="frp contas google icloud bypass conta bloqueio" onclick="ptEmBreve('🔓 FRP e Contas')">
+                <span class="pt-card-icon">🔓</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">FRP e Contas</span>
+                    <span class="pt-card-desc">Remoção de FRP, contas Google/iCloud e bypass</span>
+                </span>
+                <span class="pt-card-tag">Em breve</span>
+            </button>
+            <button class="pt-card" data-nome="softwares programas ferramentas flash drivers utilitarios" onclick="ptEmBreve('🛠️ Softwares')">
+                <span class="pt-card-icon">🛠️</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Softwares</span>
+                    <span class="pt-card-desc">Ferramentas de flash, drivers e utilitários</span>
+                </span>
+                <span class="pt-card-tag">Em breve</span>
+            </button>
+            <button class="pt-card" data-nome="firmwares roms stock oficiais modelo" onclick="ptEmBreve('📂 Firmwares')">
+                <span class="pt-card-icon">📂</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Firmwares</span>
+                    <span class="pt-card-desc">ROMs oficiais e stock organizadas por modelo</span>
+                </span>
+                <span class="pt-card-tag">Em breve</span>
+            </button>
+            <button class="pt-card" data-nome="solucoes tecnicas reparo conhecimento base correcoes" onclick="ptEmBreve('📖 Soluções Técnicas')">
+                <span class="pt-card-icon">📖</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Soluções Técnicas</span>
+                    <span class="pt-card-desc">Base de conhecimento e correções comprovadas</span>
+                </span>
+                <span class="pt-card-tag">Em breve</span>
+            </button>
+            <button class="pt-card" data-nome="tutoriais videos aulas passo a passo" onclick="location.href='tutorials/index.html'">
+                <span class="pt-card-icon">🎥</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Tutoriais</span>
+                    <span class="pt-card-desc">Vídeos e guias passo a passo</span>
+                </span>
+                <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+            </button>
+            <button class="pt-card" data-nome="central do projeto planejamento documentacao ideias evolucao" onclick="location.href='central-projeto/index.html'">
+                <span class="pt-card-icon">🗺️</span>
+                <span class="pt-card-body">
+                    <span class="pt-card-title">Central do Projeto</span>
+                    <span class="pt-card-desc">Planejamento, documentação, ideias e evolução do Portal Técnico</span>
+                </span>
+                <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+            </button>
+        </div>
+        <div class="pt-empty" id="pt-empty" style="display:none;">Nenhum item encontrado para a busca.</div>
+    </div>
+
+    <div class="pt-toast" id="pt-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <!-- dock.js importa favoritos.js → o botão "📌 Fixar nos Favoritos" aparece automaticamente -->
+    <script type="module" src="../../shared/dock.js"></script>
+    <script>
+        function ptEmBreve(nome) {
+            var t = document.getElementById('pt-toast');
+            if (!t) return;
+            t.textContent = '🚧 ' + nome + ' — Em desenvolvimento';
+            t.classList.add('show');
+            clearTimeout(window.__ptToast);
+            window.__ptToast = setTimeout(function () { t.classList.remove('show'); }, 2500);
+        }
+        function ptFiltrar() {
+            var termo = (document.getElementById('pt-busca').value || '').toLowerCase().trim();
+            var cards = document.querySelectorAll('.pt-card');
+            var visiveis = 0;
+            cards.forEach(function (c) {
+                var texto = ((c.dataset.nome || '') + ' ' + (c.textContent || '')).toLowerCase();
+                var ok = !termo || texto.indexOf(termo) >= 0;
+                c.style.display = ok ? '' : 'none';
+                if (ok) visiveis++;
+            });
+            var empty = document.getElementById('pt-empty');
+            if (empty) empty.style.display = visiveis ? 'none' : 'block';
+        }
+        // Atalho de teclado "/" foca a busca (consulta rápida, desktop)
+        document.addEventListener('keydown', function (e) {
+            if (e.key === '/' && document.activeElement && document.activeElement.id !== 'pt-busca') {
+                var i = document.getElementById('pt-busca');
+                if (i) { e.preventDefault(); i.focus(); }
+            }
+        });
+        window.ptEmBreve = ptEmBreve;
+        window.ptFiltrar = ptFiltrar;
+    </script>
+</body>
+</html>

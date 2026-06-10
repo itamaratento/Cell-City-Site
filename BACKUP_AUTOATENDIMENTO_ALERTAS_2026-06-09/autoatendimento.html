@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abrir Atendimento - Cell City</title>
+    <script src="js/header-component.js" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --cell-green: #00c853; --cell-green-dark: #00b248; --bg-base: #0a0b0d; --bg-surface: #121418; --bg-elevated: #1a1d23; --bg-hover: #22262e; --border: rgba(255,255,255,0.10); --text-primary: #f5f7fa; --text-secondary: #a1a8b3; --text-muted: #6b7280; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+        .container { max-width: 700px; margin: 30px auto; padding: 30px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .container h1 { color: var(--cell-green); margin-bottom: 25px; text-align: center; font-size: 28px; }
+        .form-section { margin-bottom: 25px; }
+        .form-section h3 { color: var(--cell-green); font-size: 14px; font-weight: 600; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); text-transform: uppercase; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
+        .form-row.full { grid-template-columns: 1fr; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text-secondary); }
+        .form-group input, .form-group select, .form-group textarea { padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; font-family: inherit; transition: border-color 0.3s; background: var(--bg-elevated); color: var(--text-primary); }
+        .form-group input::placeholder, .form-group textarea::placeholder { color: var(--text-muted); }
+        .form-group select option { background: var(--bg-elevated); color: var(--text-primary); }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--cell-green); box-shadow: 0 0 0 1px rgba(0,200,83,0.25); }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+        .pattern-section { background: rgba(0, 200, 83, 0.06); padding: 20px; border-radius: 8px; border: 2px dashed rgba(0, 200, 83, 0.3); margin: 15px 0; display: none; }
+        .pattern-section.active { display: block; }
+        .btn-pattern { background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%); color: white; padding: 12px; width: 100%; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 10px; transition: all 0.3s; }
+        .btn-pattern:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3); }
+        .pattern-info { display: none; background: rgba(0, 200, 83, 0.08); padding: 15px; border-radius: 6px; border-left: 4px solid var(--cell-green); margin: 10px 0; }
+        .pattern-info.show { display: block; }
+        .pattern-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+        .pattern-buttons button { padding: 8px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 12px; transition: all 0.3s; }
+        .btn-view { background: #00C853; color: white; }
+        .btn-view:hover { background: #00b248; }
+        .btn-edit { background: #2196F3; color: white; }
+        .btn-edit:hover { background: #0b7dda; }
+        .btn-clear { background: #f44336; color: white; }
+        .btn-clear:hover { background: #da190b; }
+        .btn-submit { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 14px; width: 100%; border: none; border-radius: 6px; font-weight: 600; font-size: 16px; cursor: pointer; margin-top: 10px; transition: all 0.3s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
+        .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal.active { display: flex; }
+        .modal-content { background: var(--bg-elevated); border: 1px solid var(--border); padding: 25px; border-radius: 12px; text-align: center; max-width: 400px; width: 90%; color: var(--text-primary); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .modal-content h3 { color: var(--cell-green); margin-bottom: 10px; }
+        #pattern-canvas { border: 1px solid var(--border); border-radius: 8px; display: block; margin: 15px auto; background: var(--bg-surface); cursor: crosshair; touch-action: none; }
+        .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .modal-buttons button { padding: 10px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .success-message { background: rgba(0, 200, 83, 0.08); color: var(--cell-green); padding: 15px; border-radius: 6px; margin-top: 15px; display: none; text-align: center; }
+        .success-message.show { display: block; }
+        @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } .pattern-buttons { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body style="padding-top: 80px;">
+    <div class="container">
+        <h1>Abrir Ordem de Servico</h1>
+        <form id="autoatendimento-form">
+            <div class="form-section">
+                <h3>Seus Dados</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Nome Completo *</label><input type="text" id="cliente-nome" required></div>
+                    <div class="form-group"><label>WhatsApp *</label><input type="tel" id="cliente-whatsapp" placeholder="11999999999" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>CPF</label><input type="text" id="cliente-cpf"></div>
+                    <div class="form-group"><label>Email</label><input type="email" id="cliente-email"></div>
+                </div>
+            </div>
+            <div class="form-section">
+                <h3>Seu Equipamento</h3>
+                <div class="form-row">
+                    <div class="form-group"><label>Marca *</label><select id="aparelho-marca" required><option value="">Selecione...</option><option value="iPhone">iPhone</option><option value="Samsung">Samsung</option><option value="Xiaomi">Xiaomi</option><option value="Motorola">Motorola</option><option value="LG">LG</option><option value="Outro">Outro</option></select></div>
+                    <div class="form-group"><label>Modelo *</label><input type="text" id="aparelho-modelo" placeholder="Ex: 13 Pro" required></div>
+                </div>
+            </div>
+            <div class="form-section">
+                <h3>Descricao do Problema</h3>
+                <div class="form-row full"><div class="form-group"><label>Qual eh o problema? *</label><textarea id="problema-descricao" placeholder="Descreva o problema..." required></textarea></div></div>
+            </div>
+            <div class="form-section">
+                <h3>Seguranca do Aparelho</h3>
+                <div class="form-row full"><div class="form-group"><label>Tipo de Bloqueio</label><select id="lock-type" onchange="toggleLockType()"><option value="">Sem bloqueio</option><option value="Senha">Senha</option><option value="PIN">PIN</option><option value="Padrao">Padrao Android</option></select></div></div>
+                <div id="pattern-section" class="pattern-section">
+                    <button type="button" class="btn-pattern" onclick="openPatternModal()">Registrar Padrao</button>
+                    <div id="pattern-summary" class="pattern-info"><p><strong>Padrao Registrado!</strong></p><div class="pattern-buttons"><button type="button" class="btn-view" onclick="showPatternDrawing()">Ver</button><button type="button" class="btn-view" onclick="showPatternSequence()">Seq</button><button type="button" class="btn-edit" onclick="openPatternModal()">Editar</button><button type="button" class="btn-clear" onclick="clearPattern()">Limpar</button></div></div>
+                </div>
+                <div class="form-row full"><div class="form-group"><label>Senha/PIN</label><input type="text" id="lock-password"></div></div>
+            </div>
+            <button type="submit" class="btn-submit">ENVIAR</button>
+            <div id="success-message" class="success-message"><p><strong>Enviado!</strong> Voce sera contatado em breve.</p></div>
+        </form>
+    </div>
+    <div id="pattern-overlay" class="modal">
+        <div class="modal-content">
+            <h3>Registrar Padrao</h3>
+            <p style="font-size:12px;color:#666;margin-bottom:10px;">Arraste para conectar 4+ pontos</p>
+            <canvas id="pattern-canvas" width="300" height="300"></canvas>
+            <div class="modal-buttons">
+                <button type="button" onclick="clearPatternCanvas()" style="background:#f44336;color:white;">Limpar</button>
+                <button type="button" onclick="savePattern()" style="background:#00C853;color:white;">Salvar</button>
+            </div>
+            <button type="button" onclick="closePatternModal()" style="width:100%;margin-top:10px;padding:10px;border:none;background:#666;color:white;border-radius:6px;cursor:pointer;">Fechar</button>
+        </div>
+    </div>
+    <div id="success-overlay" class="modal">
+        <div class="modal-content">
+            <div style="font-size:56px;line-height:1;margin-bottom:8px;">✅</div>
+            <h3>Solicitação enviada com sucesso!</h3>
+            <p style="color:#a1a8b3;margin:10px 0 0;font-size:14px;line-height:1.5;">Obrigado por entrar em contato com a Cell City. Seu atendimento foi recebido com sucesso. Agora é só aguardar nossa análise — entraremos em contato o mais breve possível.</p>
+            <button type="button" onclick="closeSuccess()" style="width:100%;margin-top:18px;padding:12px;border:none;background:linear-gradient(135deg,#00C853 0%,#00A040 100%);color:white;border-radius:6px;font-weight:600;font-size:15px;cursor:pointer;">OK</button>
+        </div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script>
+        firebase.initializeApp({apiKey:"AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",authDomain:"cellcity-crm.firebaseapp.com",projectId:"cellcity-crm",storageBucket:"cellcity-crm.firebasestorage.app",messagingSenderId:"645609867368",appId:"1:645609867368:web:b3ee19ccfe3d17c61c53dd"});
+        const db=firebase.firestore();
+        let pCv,pCtx,pPts=[],isD=false,cPath=[];
+        window.tempPatternSequence=null;
+        function toggleLockType(){document.getElementById('pattern-section').classList.toggle('active',document.getElementById('lock-type').value==='Padrao');}
+        function openPatternModal(){document.getElementById('pattern-overlay').classList.add('active');initPatternCanvas();}
+        function closePatternModal(){document.getElementById('pattern-overlay').classList.remove('active');}
+        function initPatternCanvas(){pCv=document.getElementById('pattern-canvas');pCtx=pCv.getContext('2d');const p=50,s=100;pPts=[{x:p,y:p},{x:p+s,y:p},{x:p+2*s,y:p},{x:p,y:p+s},{x:p+s,y:p+s},{x:p+2*s,y:p+s},{x:p,y:p+2*s},{x:p+s,y:p+2*s},{x:p+2*s,y:p+2*s}];if(!pCv.dataset.bound){pCv.style.touchAction='none';pCv.addEventListener('pointerdown',sD);pCv.addEventListener('pointermove',dw);pCv.addEventListener('pointerup',sUp);pCv.addEventListener('pointercancel',sUp);pCv.dataset.bound='1';}cPath=[];drawD();}
+        function getE(e){const r=pCv.getBoundingClientRect();return{x:(e.clientX-r.left)*(pCv.width/r.width),y:(e.clientY-r.top)*(pCv.height/r.height)};}
+        function getCP(x,y){for(let i=0;i<pPts.length;i++){const d=Math.sqrt(Math.pow(pPts[i].x-x,2)+Math.pow(pPts[i].y-y,2));if(d<30)return i;}return -1;}
+        function sD(e){e.preventDefault();isD=true;cPath=[];if(pCv.setPointerCapture&&e.pointerId!=null){try{pCv.setPointerCapture(e.pointerId);}catch(_){}}const pt=getE(e),i=getCP(pt.x,pt.y);if(i!==-1)cPath.push(i);drawD(pt.x,pt.y);}
+        function dw(e){if(!isD)return;e.preventDefault();const p=getE(e),i=getCP(p.x,p.y);if(i!==-1&&!cPath.includes(i))cPath.push(i);drawD(p.x,p.y);}
+        function sUp(e){if(!isD)return;isD=false;if(e&&pCv.releasePointerCapture&&e.pointerId!=null){try{pCv.releasePointerCapture(e.pointerId);}catch(_){}}drawD();}
+        function drawD(cx,cy){pCtx.clearRect(0,0,300,300);pCtx.strokeStyle='#00C853';pCtx.lineWidth=3;pCtx.lineCap='round';if(cPath.length>0){pCtx.beginPath();pCtx.moveTo(pPts[cPath[0]].x,pPts[cPath[0]].y);for(let i=1;i<cPath.length;i++){pCtx.lineTo(pPts[cPath[i]].x,pPts[cPath[i]].y);}if(cx&&cy)pCtx.lineTo(cx,cy);pCtx.stroke();}for(let i=0;i<pPts.length;i++){const sel=cPath.includes(i);pCtx.fillStyle=cPath[cPath.length-1]===i?'#00E676':(sel?'#00C853':'#ccc');pCtx.beginPath();pCtx.arc(pPts[i].x,pPts[i].y,sel?14:10,0,Math.PI*2);pCtx.fill();}}
+        function clearPatternCanvas(){cPath=[];drawD();}
+        function savePattern(){if(cPath.length<4){alert('Conecte pelo menos 4 pontos para registrar o padrão.');return;}window.tempPatternSequence=[...cPath];document.getElementById('pattern-summary').classList.add('show');closePatternModal();}
+        function showPatternDrawing(){if(!window.tempPatternSequence)return;openPatternModal();cPath=[...window.tempPatternSequence];drawD();}
+        function showPatternSequence(){if(!window.tempPatternSequence)return;alert('Padrao: '+window.tempPatternSequence.map((p,i)=>i+1).join(' -> '));}
+        function clearPattern(){if(confirm('Limpar padrao?')){window.tempPatternSequence=null;document.getElementById('pattern-summary').classList.remove('show');}}
+        document.getElementById('autoatendimento-form').addEventListener('submit',async(e)=>{e.preventDefault();const btn=document.querySelector('.btn-submit');if(btn.dataset.sending==='1')return;btn.dataset.sending='1';btn.disabled=true;btn.textContent='Enviando...';try{await db.collection('pre_os').add({id:`PRE-${new Date().getTime()}`,cliente:{nome:document.getElementById('cliente-nome').value,whatsapp:document.getElementById('cliente-whatsapp').value.replace(/\D/g,''),cpf:document.getElementById('cliente-cpf').value,email:document.getElementById('cliente-email').value},aparelho:{marca:document.getElementById('aparelho-marca').value,modelo:document.getElementById('aparelho-modelo').value},problema:document.getElementById('problema-descricao').value,lockType:document.getElementById('lock-type').value||'Nenhum',password:document.getElementById('lock-password').value,patternSequence:window.tempPatternSequence||null,status:'AGUARDANDO_CONVERSAO',origem:'Autoatendimento',criadoEm:new Date(),criadoEmISO:new Date().toISOString(),osId:null});btn.textContent='Enviado com sucesso';document.getElementById('success-overlay').classList.add('active');}catch(error){alert('Erro ao enviar: '+error.message);btn.disabled=false;btn.textContent='ENVIAR';btn.dataset.sending='0';}});
+        function closeSuccess(){document.getElementById('success-overlay').classList.remove('active');document.getElementById('autoatendimento-form').reset();window.tempPatternSequence=null;const ps=document.getElementById('pattern-summary');if(ps)ps.classList.remove('show');const sec=document.getElementById('pattern-section');if(sec)sec.classList.remove('active');const btn=document.querySelector('.btn-submit');btn.disabled=false;btn.textContent='ENVIAR';btn.dataset.sending='0';}
+    </script>
+</body>
+</html>
