@@ -211,12 +211,16 @@
                 <!-- COMANDO -->
                 <div id="info-form-comando" class="info-form-type" style="display:none;">
                     <div class="info-form-group">
-                        <label>Conteúdo do comando *</label>
-                        <textarea id="info-f-conteudo" rows="7" placeholder="Cole aqui o comando/prompt completo..."></textarea>
-                    </div>
-                    <div class="info-form-group">
                         <label>Tags</label>
                         <input type="text" id="info-f-tags" placeholder="Ex: git, terminal, linux (separadas por vírgula)">
+                    </div>
+                    <div class="info-form-group info-cmds-section">
+                        <label>Comandos *</label>
+                        <div id="info-cmds-list"></div>
+                        <div class="info-cmds-actions">
+                            <button type="button" class="info-add-cmd-btn" onclick="adicionarLinhaComando()">➕ Adicionar Linha</button>
+                            <button type="button" class="info-add-group-btn" onclick="adicionarGrupoComando()">📁 Adicionar Grupo</button>
+                        </div>
                     </div>
                     <div class="info-form-group">
                         <label>Sistema / Local de uso</label>

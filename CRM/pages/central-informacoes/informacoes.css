@@ -1229,3 +1229,199 @@ body {
     width: 100%;
   }
 }
+
+/* ===== COMANDO: GERENCIADOR DE LINHAS ===== */
+
+#info-cmds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.info-cmd-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-cmd-num {
+    min-width: 18px;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.info-cmd-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-base);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    transition: border-color var(--transition-fast);
+}
+
+.info-cmd-input:focus {
+    outline: none;
+    border-color: var(--cell-green);
+}
+
+.info-cmd-group-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}
+
+.info-cmd-group-dash {
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.info-cmd-group-input {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed var(--border-medium);
+    border-radius: 0;
+    color: var(--text-secondary);
+    padding: 3px 4px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: border-color var(--transition-fast);
+}
+
+.info-cmd-group-input:focus {
+    outline: none;
+    border-color: var(--cell-green);
+}
+
+.info-cmd-group-input::placeholder {
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 400;
+}
+
+.info-cmd-btn {
+    padding: 5px 7px !important;
+    min-width: unset !important;
+    font-size: 12px !important;
+    flex-shrink: 0;
+}
+
+.info-cmds-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.info-add-cmd-btn,
+.info-add-group-btn {
+    flex: 1;
+    background: transparent;
+    border: 1px dashed var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    padding: 7px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.info-add-cmd-btn:hover {
+    border-color: var(--cell-green);
+    color: var(--cell-green);
+    background: rgba(0, 200, 83, 0.05);
+}
+
+.info-add-group-btn:hover {
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+/* ===== COMANDO: VISUALIZAÇÃO COMPACTA ===== */
+
+.info-cmds-compact {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.info-cmds-compact-linha {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 24px;
+}
+
+.info-cmds-compact-code {
+    flex: 1;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 12px;
+    color: var(--cell-green-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.info-cmds-copy-btn {
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    min-width: unset !important;
+    flex-shrink: 0;
+    opacity: 0.55;
+    transition: opacity var(--transition-fast);
+}
+
+.info-cmds-copy-btn:hover {
+    opacity: 1;
+}
+
+.info-cmds-group-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 0 2px;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: 4px;
+}
+
+.info-cmds-group-label:first-child {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.info-cmd-empty {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.info-lista-item-comando {
+    align-items: flex-start;
+}
+
+.info-lista-item-comando .info-lista-item-actions {
+    margin-top: 2px;
+    flex-shrink: 0;
+}

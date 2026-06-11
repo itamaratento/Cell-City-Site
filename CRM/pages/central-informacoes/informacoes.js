@@ -68,6 +68,11 @@ window.abrirNaCentralComandos = abrirNaCentralComandos;
 
 window.adicionarUrl = adicionarUrl;
 window.removerUrl = removerUrl;
+window.adicionarLinhaComando = adicionarLinhaComando;
+window.adicionarGrupoComando = adicionarGrupoComando;
+window.removerLinhaComando = removerLinhaComando;
+window.copiarLinhaCmd = copiarLinhaCmd;
+window.copiarLinhaRender = copiarLinhaRender;
 window.toggleUrlsCollapse = toggleUrlsCollapse;
 window.toggleSiteSection = toggleSiteSection;
 
@@ -239,6 +244,9 @@ function render() {
             const descricao = (i.descricao || '').toLowerCase();
             const urls = (Array.isArray(i.urls) ? i.urls.join(' ') : (i.url || '')).toLowerCase();
             const tags = (i.tags || '').toLowerCase();
+            const cmdTexto = Array.isArray(i.linhas)
+                ? i.linhas.filter(l => l.cmd).map(l => l.cmd).join(' ').toLowerCase()
+                : '';
 
             return titulo.includes(termoBusca) ||
                    categoria.includes(termoBusca) ||
@@ -247,7 +255,8 @@ function render() {
                    siteServico.includes(termoBusca) ||
                    descricao.includes(termoBusca) ||
                    urls.includes(termoBusca) ||
-                   tags.includes(termoBusca);
+                   tags.includes(termoBusca) ||
+                   cmdTexto.includes(termoBusca);
         });
     }
 
@@ -278,15 +287,18 @@ function render() {
 
 function renderItemLista(info) {
     const icone = getIconoTipo(info.tipo);
-    const badge = `<span class="info-card-badge ${info.tipo}">${getTituloTipo(info.tipo)}</span>`;
     const estrela = info.favorito ? '⭐' : '☆';
+    const cmdsHtml = info.tipo === 'comando'
+        ? `<div class="info-cmds-compact">${renderComandosCompacto(info)}</div>`
+        : '';
 
     return `
-        <div class="info-lista-item">
+        <div class="info-lista-item${info.tipo === 'comando' ? ' info-lista-item-comando' : ''}">
             <span class="info-lista-item-icon">${icone}</span>
             <div class="info-lista-item-content">
                 <div class="info-lista-item-titulo info-titulo-clicavel" data-id="${info.id}" data-tipo="${info.tipo}">${escapeHtml(info.titulo)}</div>
                 <div class="info-lista-item-meta">${escapeHtml(info.categoria)}</div>
+                ${cmdsHtml}
             </div>
             <div class="info-lista-item-actions">
                 ${renderAcoesPorTipo(info)}
@@ -304,7 +316,9 @@ function renderItemCard(info) {
     const estrela = info.favorito ? '⭐' : '☆';
     let conteudo = '';
 
-    if (info.tipo === 'comando' || info.tipo === 'anotacao') {
+    if (info.tipo === 'comando') {
+        conteudo = renderComandosCompacto(info);
+    } else if (info.tipo === 'anotacao') {
         conteudo = escapeHtml((info.conteudo || '').substring(0, 100));
     } else if (info.tipo === 'site') {
         const totalUrls = Array.isArray(info.urls) ? info.urls.length : (info.url ? 1 : 0);
@@ -392,7 +406,8 @@ async function copiarTitulo(id, tipo) {
     let conteudoCopiar = '';
 
     if (tipo === 'comando') {
-        conteudoCopiar = info.conteudo || '';
+        const linhas = getLinhasData(info);
+        conteudoCopiar = linhas.filter(l => l.cmd).map(l => l.cmd).join('\n');
     } else if (tipo === 'site') {
         conteudoCopiar = info.url || '';
     } else if (tipo === 'senha') {
@@ -424,11 +439,14 @@ async function copiarTitulo(id, tipo) {
 
 async function copiarComando(id) {
     const info = informacoes.find(x => x.id === id);
-    if (!info || !info.conteudo) return;
-    await navigator.clipboard.writeText(info.conteudo).catch(() => {
-        document.execCommand('copy', false, info.conteudo);
+    if (!info) return;
+    const linhas = getLinhasData(info);
+    const texto = linhas.filter(l => l.cmd).map(l => l.cmd).join('\n');
+    if (!texto) return;
+    await navigator.clipboard.writeText(texto).catch(() => {
+        document.execCommand('copy', false, texto);
     });
-    toast('✅ Comando copiado!');
+    toast('✅ Comandos copiados!');
 }
 
 async function duplicarComando(id) {
@@ -449,6 +467,131 @@ async function duplicarComando(id) {
 
 function abrirNaCentralComandos() {
     window.location.href = '../central-comandos/index.html';
+}
+
+// ===== COMANDO: GERENCIADOR DE LINHAS =====
+
+function getLinhasData(info) {
+    if (Array.isArray(info.linhas) && info.linhas.length) return info.linhas;
+    if (info.conteudo) return [{ cmd: info.conteudo }];
+    return [{ cmd: '' }];
+}
+
+function setLinhasComando(linhas) {
+    const list = document.getElementById('info-cmds-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const items = Array.isArray(linhas) && linhas.length ? linhas : [{ cmd: '' }];
+    items.forEach(item => {
+        if (item.grupo !== undefined) addGroupRow(item.grupo);
+        else addCmdRow(item.cmd || '');
+    });
+    atualizarCmdsUI();
+}
+
+function addCmdRow(value = '') {
+    const list = document.getElementById('info-cmds-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'info-cmd-row';
+    row.innerHTML = `
+        <span class="info-cmd-num"></span>
+        <input type="text" class="info-cmd-input" placeholder="Ex: sudo apt update">
+        <button type="button" class="info-card-btn copy info-cmd-btn" onclick="copiarLinhaCmd(this)" title="Copiar este comando">📋</button>
+        <button type="button" class="info-card-btn delete info-cmd-btn" onclick="removerLinhaComando(this)" title="Remover">🗑️</button>
+    `;
+    row.querySelector('.info-cmd-input').value = value;
+    list.appendChild(row);
+    atualizarCmdsUI();
+}
+
+function addGroupRow(label = '') {
+    const list = document.getElementById('info-cmds-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'info-cmd-group-row';
+    row.innerHTML = `
+        <span class="info-cmd-group-dash">──</span>
+        <input type="text" class="info-cmd-group-input" placeholder="Nome do grupo...">
+        <button type="button" class="info-card-btn delete info-cmd-btn" onclick="removerLinhaComando(this)" title="Remover grupo">🗑️</button>
+    `;
+    row.querySelector('.info-cmd-group-input').value = label;
+    list.appendChild(row);
+    atualizarCmdsUI();
+}
+
+function atualizarCmdsUI() {
+    const rows = document.querySelectorAll('#info-cmds-list .info-cmd-row');
+    rows.forEach((r, i) => {
+        const num = r.querySelector('.info-cmd-num');
+        if (num) num.textContent = i + 1;
+    });
+}
+
+function adicionarLinhaComando() {
+    addCmdRow('');
+    const inputs = document.querySelectorAll('#info-cmds-list .info-cmd-input');
+    inputs[inputs.length - 1]?.focus();
+}
+
+function adicionarGrupoComando() {
+    addGroupRow('');
+    const inputs = document.querySelectorAll('#info-cmds-list .info-cmd-group-input');
+    inputs[inputs.length - 1]?.focus();
+}
+
+function removerLinhaComando(btn) {
+    const cmdRows = document.querySelectorAll('#info-cmds-list .info-cmd-row');
+    if (btn.closest('.info-cmd-row') && cmdRows.length <= 1) {
+        cmdRows[0].querySelector('.info-cmd-input').value = '';
+        return;
+    }
+    btn.closest('.info-cmd-row, .info-cmd-group-row')?.remove();
+    atualizarCmdsUI();
+}
+
+async function copiarLinhaCmd(btn) {
+    const input = btn.closest('.info-cmd-row')?.querySelector('.info-cmd-input');
+    if (!input || !input.value.trim()) return toast('⚠️ Linha vazia.');
+    const v = input.value.trim();
+    await navigator.clipboard.writeText(v).catch(() => { document.execCommand('copy', false, v); });
+    toast('✅ Copiado!');
+}
+
+async function copiarLinhaRender(btn) {
+    const cmd = btn.dataset.cmd || '';
+    if (!cmd) return toast('⚠️ Linha vazia.');
+    await navigator.clipboard.writeText(cmd).catch(() => { document.execCommand('copy', false, cmd); });
+    toast('✅ Copiado!');
+}
+
+function getLinhasComando() {
+    const rows = document.querySelectorAll('#info-cmds-list > div');
+    return Array.from(rows).map(row => {
+        if (row.classList.contains('info-cmd-group-row')) {
+            return { grupo: row.querySelector('.info-cmd-group-input')?.value.trim() || '' };
+        }
+        return { cmd: row.querySelector('.info-cmd-input')?.value.trim() || '' };
+    });
+}
+
+function renderComandosCompacto(info) {
+    const linhas = getLinhasData(info);
+    if (!linhas.length || (linhas.length === 1 && !linhas[0].cmd)) {
+        return '<span class="info-cmd-empty">Nenhum comando</span>';
+    }
+    return linhas.map(item => {
+        if (item.grupo !== undefined) {
+            return `<div class="info-cmds-group-label">── ${escapeHtml(item.grupo || 'Grupo')} ──</div>`;
+        }
+        if (!item.cmd) return '';
+        return `
+            <div class="info-cmds-compact-linha">
+                <code class="info-cmds-compact-code">${escapeHtml(item.cmd)}</code>
+                <button class="info-card-btn copy info-cmds-copy-btn" onclick="copiarLinhaRender(this)" data-cmd="${escapeHtml(item.cmd)}" title="Copiar">📋</button>
+            </div>
+        `;
+    }).join('');
 }
 
 async function abrirSite(id) {
@@ -642,7 +785,7 @@ function abrirFormEditarInterno(tipo, titulo) {
 
     // Limpar campos específicos
     if (tipo === 'comando') {
-        document.getElementById('info-f-conteudo').value = '';
+        setLinhasComando([{ cmd: '' }]);
         document.getElementById('info-f-tags').value = '';
         document.getElementById('info-f-sistema').value = '';
         document.getElementById('info-f-observacoes-cmd').value = '';
@@ -785,7 +928,7 @@ function editarInformacao(id) {
 
     // Preencher campos tipo-específicos
     if (tipo === 'comando') {
-        document.getElementById('info-f-conteudo').value = info.conteudo || '';
+        setLinhasComando(getLinhasData(info));
         document.getElementById('info-f-tags').value = info.tags || '';
         document.getElementById('info-f-sistema').value = info.sistema || '';
         document.getElementById('info-f-observacoes-cmd').value = info.observacoes || '';
@@ -831,12 +974,12 @@ async function salvarInformacao() {
 
     // Validar e adicionar campos específicos
     if (tipo === 'comando') {
-        const conteudo = document.getElementById('info-f-conteudo').value.trim();
+        const linhas = getLinhasComando();
         const tags = document.getElementById('info-f-tags').value.trim();
         const sistema = document.getElementById('info-f-sistema').value.trim();
         const observacoes = document.getElementById('info-f-observacoes-cmd').value.trim();
-        if (!conteudo) return toast('⚠️ Informe o conteúdo do comando.');
-        dados.conteudo = conteudo;
+        if (!linhas.some(l => l.cmd && l.cmd.trim())) return toast('⚠️ Adicione pelo menos um comando.');
+        dados.linhas = linhas;
         dados.tags = tags;
         dados.sistema = sistema;
         dados.observacoes = observacoes;
