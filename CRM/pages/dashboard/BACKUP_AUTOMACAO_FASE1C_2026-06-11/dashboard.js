@@ -5,7 +5,6 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
-import { registrarAutomacao, jaExecutouAutomacao } from "../../shared/automacao.js";
 
 
 class Dashboard {
@@ -71,8 +70,6 @@ class Dashboard {
     this.monitorarCardAcaoSemana();
     this.setupAlarmeOS();
     this.setupCompactMode();
-    // FASE 1-C: verifica pós-venda 7d com delay para não bloquear render inicial
-    setTimeout(() => this.verificarPosvenda7d(), 4000);
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -2933,96 +2930,6 @@ class Dashboard {
       const alvo = !document.body.classList.contains('modo-compacto');
       aplicar(alvo);
     });
-  }
-
-  // ===== AUTOMAÇÃO: PÓS-VENDA 7 DIAS (FASE 1-C) =====
-  async verificarPosvenda7d() {
-    const AUTOMATION_ID   = 'posvenda_7d';
-    const LIMITE_POR_CICLO = 3;
-    const DIAS_MIN = 7;
-    const DIAS_MAX = 30;
-
-    try {
-      const snap = await getDocs(
-        query(collection(db, 'os'), where('status', '==', 'entregue'))
-      );
-
-      let despachados = 0;
-
-      for (const docSnap of snap.docs) {
-        if (despachados >= LIMITE_POR_CICLO) break;
-
-        const os   = { id: docSnap.id, ...docSnap.data() };
-        const tel  = (os.phone || os.telefone || '').replace(/\D/g, '');
-        if (!tel) continue;
-
-        // Busca data de entrega no array timeline
-        const timeline  = Array.isArray(os.timeline) ? os.timeline : [];
-        const entrega   = timeline.find(e =>
-          typeof e.status === 'string' &&
-          e.status.toLowerCase().includes('entregue')
-        );
-        if (!entrega?.date && !entrega?.createdAt) continue;
-
-        const dataEntrega = entrega.date?.toDate?.()
-          || (entrega.date instanceof Date ? entrega.date : null)
-          || entrega.createdAt?.toDate?.()
-          || null;
-        if (!dataEntrega) continue;
-
-        const diasDesdeEntrega = Math.floor(
-          (Date.now() - dataEntrega.getTime()) / 86_400_000
-        );
-
-        // OS muito antiga — marcar ignorado e seguir
-        if (diasDesdeEntrega > DIAS_MAX) {
-          if (!(await jaExecutouAutomacao(AUTOMATION_ID, os.id))) {
-            await registrarAutomacao({
-              automationId: AUTOMATION_ID,
-              osId:     os.id,
-              cliente:  os.clientName || os.nome || '',
-              telefone: tel,
-              status:   'ignorado',
-              detalhes: `OS com ${diasDesdeEntrega} dias desde entrega — fora da janela de ativação`,
-              erro:     null
-            });
-          }
-          continue;
-        }
-
-        // Ainda dentro da janela mas não atingiu 7 dias
-        if (diasDesdeEntrega < DIAS_MIN) continue;
-
-        // Janela válida: 7–30 dias
-        if (await jaExecutouAutomacao(AUTOMATION_ID, os.id)) continue;
-
-        const primeiroNome = (os.clientName || os.nome || 'cliente').split(' ')[0];
-        const msg = `Olá ${primeiroNome}, tudo bem?\n\nPassando para saber se seu aparelho está funcionando corretamente após o serviço realizado pela Cell City.\n\nSe precisar de qualquer suporte, estamos à disposição. 😊`;
-
-        window.open(
-          `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`,
-          '_blank'
-        );
-
-        await registrarAutomacao({
-          automationId: AUTOMATION_ID,
-          osId:     os.id,
-          cliente:  os.clientName || os.nome || '',
-          telefone: tel,
-          status:   'executado',
-          detalhes: msg,
-          erro:     null
-        });
-
-        despachados++;
-      }
-
-      if (despachados > 0) {
-        console.log(`✅ [Automação] Pós-venda 7d: ${despachados} WhatsApp(s) enviado(s) neste ciclo.`);
-      }
-    } catch (e) {
-      console.warn('⚠️ [Automação] verificarPosvenda7d falhou:', e);
-    }
   }
 }
 
