@@ -1,4 +1,4 @@
-import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc } from "../../scripts/firebase.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -472,7 +472,6 @@ async function saveOS() {
         os.patternSequence = window.tempPatternSequence;
     }
     await DB.addOS(os); await updateClientHistory(telefone, nome, osId);
-    runAutomacoesOS(os);
     if (preOSPendente) {
         try {
             await updateDoc(doc(db, 'pre_os', preOSPendente), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() });
@@ -495,59 +494,6 @@ async function saveOS() {
 }
 
 async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
-
-// ===== AUTOMAÇÕES PÓS-CRIAÇÃO DE OS =====
-async function runAutomacoesOS(os) {
-    // Etapa 3 — WhatsApp automático
-    const waMsgEntrada = `*Cell City — Entrada de aparelho* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n🔧 ${os.defect}\n📅 ${formatDate(os.createdAt)}\n\nSeu aparelho foi recebido e já está em análise. Te avisamos quando estiver pronto! 😊`;
-    window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(waMsgEntrada)}`, '_blank');
-
-    // Etapa 4 — Lembrete de retorno na Ação da Semana (3 dias)
-    try {
-        const dataRetorno = new Date();
-        dataRetorno.setDate(dataRetorno.getDate() + 3);
-        const dataKey = dataRetorno.toISOString().slice(0, 10);
-        const agRef = doc(db, 'agenda', dataKey);
-        const snap = await getDoc(agRef);
-        const notasExist = snap.exists() ? (snap.data().notas || []) : [];
-        const textoNote = `09:00 🔔 Retorno OS: ${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`;
-        const jaExiste = notasExist.some(n => (n.texto || n) === textoNote);
-        if (!jaExiste) {
-            const base = snap.exists() ? snap.data() : {};
-            const novaNote = { texto: textoNote, concluido: false };
-            await setDoc(agRef, {
-                data: dataKey,
-                notas: [...notasExist, novaNote],
-                cor: base.cor || 'amarelo',
-                alertaHora: base.alertaHora || '09:00',
-                alertaDashboard: true,
-                recorrencia: base.recorrencia || '',
-                recorrenciaExcluir: base.recorrenciaExcluir || [],
-                recorrenciaPararEm: base.recorrenciaPararEm || '',
-                textoCor: base.textoCor || 'preto',
-                atualizadoEm: serverTimestamp()
-            });
-        }
-    } catch (e) { console.warn('⚠️ [Automação] Lembrete não criado:', e); }
-
-    // Etapa 7 — Registro no financeiro (só se houver valor)
-    const valorTotal = (os.valor || 0) + (os.valorCartao || 0);
-    if (valorTotal > 0) {
-        try {
-            const finId = `os_${os.id}_${Date.now()}`;
-            await setDoc(doc(db, 'financeiro_receber', finId), {
-                descricao: `${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`,
-                vencimento: new Date().toISOString().slice(0, 10),
-                valor: valorTotal,
-                status: 'pendente',
-                obs: `OS criada automaticamente`,
-                origem: 'os',
-                osId: os.id,
-                atualizadoEm: serverTimestamp()
-            });
-        } catch (e) { console.warn('⚠️ [Automação] Financeiro não registrado:', e); }
-    }
-}
 
 // ===== LISTS =====
 function showList(filter) {
