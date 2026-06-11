@@ -13,7 +13,7 @@ const RECENTES_KEY = 'cc_informacoes_recentes';
 const CACHE_CAT_KEY = 'cc_categorias_informacoes_cache';
 const VIEWMODE_KEY = 'cc_informacoes_viewmode';
 
-const TIPOS_REGISTRO = ['Todos', 'Site', 'Senha', 'Anotação', 'Documento'];
+const TIPOS_REGISTRO = ['Todos', 'Comando', 'Site', 'Senha', 'Anotação', 'Documento'];
 const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
 const CRIPTOGRAFIA_KEY = 'cellcity-2026'; // Chave para criptografia local (não é seguro, apenas ofuscação)
 
@@ -38,6 +38,7 @@ window.setViewMode = setViewMode;
 window.abrirFormNovaInfo = abrirFormNovaInfo;
 window.fecharFormNovaInfo = fecharFormNovaInfo;
 window.fecharFormEditar = fecharFormEditar;
+window.abrirFormComando = abrirFormComando;
 window.abrirFormSite = abrirFormSite;
 window.abrirFormSenha = abrirFormSenha;
 window.abrirFormAnotacao = abrirFormAnotacao;
@@ -61,6 +62,9 @@ window.limparArquivo = limparArquivo;
 
 window.copiarTitulo = copiarTitulo;
 window.visualizarSenha = visualizarSenha;
+window.copiarComando = copiarComando;
+window.duplicarComando = duplicarComando;
+window.abrirNaCentralComandos = abrirNaCentralComandos;
 
 window.adicionarUrl = adicionarUrl;
 window.removerUrl = removerUrl;
@@ -212,7 +216,7 @@ function render() {
     const contador = document.getElementById('info-contador');
     if (!lista) return;
 
-    let filtrados = informacoes.filter(i => i.tipo !== 'comando');
+    let filtrados = informacoes.slice();
 
     // Filtrar por tipo
     if (tipoFiltro !== 'Todos') {
@@ -234,6 +238,7 @@ function render() {
             const siteServico = (i.site_servico || '').toLowerCase();
             const descricao = (i.descricao || '').toLowerCase();
             const urls = (Array.isArray(i.urls) ? i.urls.join(' ') : (i.url || '')).toLowerCase();
+            const tags = (i.tags || '').toLowerCase();
 
             return titulo.includes(termoBusca) ||
                    categoria.includes(termoBusca) ||
@@ -241,7 +246,8 @@ function render() {
                    usuario.includes(termoBusca) ||
                    siteServico.includes(termoBusca) ||
                    descricao.includes(termoBusca) ||
-                   urls.includes(termoBusca);
+                   urls.includes(termoBusca) ||
+                   tags.includes(termoBusca);
         });
     }
 
@@ -298,7 +304,7 @@ function renderItemCard(info) {
     const estrela = info.favorito ? '⭐' : '☆';
     let conteudo = '';
 
-    if (info.tipo === 'anotacao') {
+    if (info.tipo === 'comando' || info.tipo === 'anotacao') {
         conteudo = escapeHtml((info.conteudo || '').substring(0, 100));
     } else if (info.tipo === 'site') {
         const totalUrls = Array.isArray(info.urls) ? info.urls.length : (info.url ? 1 : 0);
@@ -332,7 +338,13 @@ function renderItemCard(info) {
 }
 
 function renderAcoesPorTipo(info) {
-    if (info.tipo === 'site') {
+    if (info.tipo === 'comando') {
+        return `
+            <button class="info-card-btn copy" onclick="copiarComando('${info.id}')">📋 Copiar</button>
+            <button class="info-card-btn" onclick="duplicarComando('${info.id}')" title="Duplicar comando">📄 Duplicar</button>
+            <button class="info-card-btn" onclick="abrirNaCentralComandos()" title="Abrir na Central de Comandos">🗂️ Central</button>
+        `;
+    } else if (info.tipo === 'site') {
         return `
             <button class="info-card-btn copy" onclick="abrirSite('${info.id}')">🌐 Abrir</button>
             ${info.usuario ? `<button class="info-card-btn copy" onclick="copiarUsuario('${info.id}')">👤 User</button>` : ''}
@@ -352,6 +364,7 @@ function renderAcoesPorTipo(info) {
 
 function getIconoTipo(tipo) {
     const ícones = {
+        'comando': '📝',
         'site': '🌐',
         'senha': '🔐',
         'anotacao': '📌',
@@ -362,6 +375,7 @@ function getIconoTipo(tipo) {
 
 function getTituloTipo(tipo) {
     const títulos = {
+        'comando': 'Comando',
         'site': 'Site',
         'senha': 'Senha',
         'anotacao': 'Anotação',
@@ -377,7 +391,9 @@ async function copiarTitulo(id, tipo) {
 
     let conteudoCopiar = '';
 
-    if (tipo === 'site') {
+    if (tipo === 'comando') {
+        conteudoCopiar = info.conteudo || '';
+    } else if (tipo === 'site') {
         conteudoCopiar = info.url || '';
     } else if (tipo === 'senha') {
         if (info.senhaOculta) {
@@ -404,6 +420,35 @@ async function copiarTitulo(id, tipo) {
         document.execCommand('copy', false, conteudoCopiar);
     });
     toast('✅ Conteúdo copiado com sucesso.');
+}
+
+async function copiarComando(id) {
+    const info = informacoes.find(x => x.id === id);
+    if (!info || !info.conteudo) return;
+    await navigator.clipboard.writeText(info.conteudo).catch(() => {
+        document.execCommand('copy', false, info.conteudo);
+    });
+    toast('✅ Comando copiado!');
+}
+
+async function duplicarComando(id) {
+    const orig = informacoes.find(x => x.id === id);
+    if (!orig) return;
+    try {
+        const agoraISO = new Date().toISOString();
+        const novoRef = doc(collection(db, COL));
+        const dados = { ...orig, id: novoRef.id, titulo: 'Cópia de ' + orig.titulo, favorito: false, criadoEm: serverTimestamp(), criadoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO };
+        await setDoc(novoRef, dados);
+        toast('✅ Comando duplicado!');
+        await carregarInformacoes();
+    } catch (err) {
+        console.error(err);
+        toast('❌ Erro ao duplicar.');
+    }
+}
+
+function abrirNaCentralComandos() {
+    window.location.href = '../central-comandos/index.html';
 }
 
 async function abrirSite(id) {
@@ -568,6 +613,11 @@ function abrirFormDocumento() {
     abrirFormEditarInterno('documento', '📄 Novo Documento');
 }
 
+function abrirFormComando() {
+    fecharFormNovaInfo();
+    abrirFormEditarInterno('comando', '📝 Novo Comando');
+}
+
 function abrirFormEditarInterno(tipo, titulo) {
     currentEditType = tipo;
     currentEditFile = null;
@@ -581,7 +631,7 @@ function abrirFormEditarInterno(tipo, titulo) {
     document.getElementById('info-f-favorito').checked = false;
 
     // Limpar campos tipo-específicos
-    ['site', 'senha', 'anotacao', 'documento'].forEach(t => {
+    ['comando', 'site', 'senha', 'anotacao', 'documento'].forEach(t => {
         const el = document.getElementById(`info-form-${t}`);
         if (el) el.style.display = 'none';
     });
@@ -591,7 +641,12 @@ function abrirFormEditarInterno(tipo, titulo) {
     if (formTipo) formTipo.style.display = 'block';
 
     // Limpar campos específicos
-    if (tipo === 'site') {
+    if (tipo === 'comando') {
+        document.getElementById('info-f-conteudo').value = '';
+        document.getElementById('info-f-tags').value = '';
+        document.getElementById('info-f-sistema').value = '';
+        document.getElementById('info-f-observacoes-cmd').value = '';
+    } else if (tipo === 'site') {
         setUrls(['']);
         document.getElementById('info-f-usuario').value = '';
         document.getElementById('info-f-senha-site').value = '';
@@ -716,7 +771,7 @@ function editarInformacao(id) {
     document.getElementById('info-edit-tipo').value = tipo;
     document.getElementById('info-modal-titulo').textContent = `✏️ Editar ${titulo}`;
 
-    ['site', 'senha', 'anotacao', 'documento'].forEach(t => {
+    ['comando', 'site', 'senha', 'anotacao', 'documento'].forEach(t => {
         const el = document.getElementById(`info-form-${t}`);
         if (el) el.style.display = 'none';
     });
@@ -729,7 +784,12 @@ function editarInformacao(id) {
     document.getElementById('info-f-favorito').checked = info.favorito === true;
 
     // Preencher campos tipo-específicos
-    if (tipo === 'site') {
+    if (tipo === 'comando') {
+        document.getElementById('info-f-conteudo').value = info.conteudo || '';
+        document.getElementById('info-f-tags').value = info.tags || '';
+        document.getElementById('info-f-sistema').value = info.sistema || '';
+        document.getElementById('info-f-observacoes-cmd').value = info.observacoes || '';
+    } else if (tipo === 'site') {
         // Compat: registros antigos têm só `url` (string); novos têm `urls` (array).
         const urls = Array.isArray(info.urls) && info.urls.length ? info.urls : (info.url ? [info.url] : ['']);
         setUrls(urls);
@@ -770,7 +830,17 @@ async function salvarInformacao() {
     let dados = { titulo, categoria, favorito, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO, tipo };
 
     // Validar e adicionar campos específicos
-    if (tipo === 'site') {
+    if (tipo === 'comando') {
+        const conteudo = document.getElementById('info-f-conteudo').value.trim();
+        const tags = document.getElementById('info-f-tags').value.trim();
+        const sistema = document.getElementById('info-f-sistema').value.trim();
+        const observacoes = document.getElementById('info-f-observacoes-cmd').value.trim();
+        if (!conteudo) return toast('⚠️ Informe o conteúdo do comando.');
+        dados.conteudo = conteudo;
+        dados.tags = tags;
+        dados.sistema = sistema;
+        dados.observacoes = observacoes;
+    } else if (tipo === 'site') {
         const urls = getUrls();
         const usuario = document.getElementById('info-f-usuario').value.trim();
         const senha = document.getElementById('info-f-senha-site').value.trim();
