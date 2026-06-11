@@ -89,11 +89,11 @@ body {
 .screen.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-/* HOME HERO + LOGO */
-.home-hero { text-align: center; padding: 12px 0 20px; }
-.home-logo-official { width: 150px; max-width: 75%; height: auto; object-fit: contain; margin: 0 auto 12px auto; display: block; filter: drop-shadow(0 4px 20px rgba(0, 200, 83, 0.2)); animation: logoIn 0.6s var(--ease); }
+/* HOME HERO + LOGO — REMOVIDO CONFORME REQUISIÇÃO 2026-06-11 */
+.home-hero { display: none !important; }
+.home-logo-official { display: none !important; }
 @keyframes logoIn { from { opacity: 0; transform: scale(0.85) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-.hero-subtitle { color: var(--text3); font-size: 13px; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+.hero-subtitle { display: none !important; }
 
 /* SEARCH PREMIUM */
 .home-top-search { margin: 0 0 22px; }
@@ -438,7 +438,6 @@ body {
     .home-card { padding: 18px 14px; }
     .form-row { grid-template-columns: 1fr; }
     .header-logo-img { width: 100px; }
-    .home-logo-official { width: 130px; }
     .detail-actions { flex-direction: column; }
     .btn { min-width: auto; width: 100%; }
 }

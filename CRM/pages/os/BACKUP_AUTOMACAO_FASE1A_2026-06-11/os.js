@@ -549,26 +549,6 @@ async function runAutomacoesOS(os) {
     }
 }
 
-// ===== AUTOMAÇÃO: PRONTO PARA RETIRADA (FASE 1-A) =====
-async function runAutomacaoConcluido(os) {
-    const msg = `*Cell City — Aparelho Pronto!* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n\nSeu aparelho está pronto para retirada.\nAguardamos você na loja! 😊`;
-    window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-    try {
-        await setDoc(doc(db, 'automacao_logs', `pronto_retirada_${os.id}_${Date.now()}`), {
-            automationId:  'pronto_retirada',
-            osId:          os.id,
-            clientName:    os.clientName || '',
-            telefone:      (os.phone || '').replace(/\D/g, ''),
-            mensagem:      msg,
-            status:        'executado',
-            executadoEm:   serverTimestamp(),
-            erro:          null,
-            reenvio:       false,
-            reenvioOrigem: null
-        });
-    } catch (e) { console.warn('⚠️ [Automação] Log não registrado:', e); }
-}
-
 // ===== LISTS =====
 function showList(filter) {
     currentListFilter = filter; renderList(); showScreen('list');
@@ -949,7 +929,7 @@ async function saveOSEdit() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); if (newStatus === 'concluido') runAutomacaoConcluido(currentOS); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
+async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 

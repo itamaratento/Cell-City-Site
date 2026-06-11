@@ -2,15 +2,40 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City - OS</title>
     <!-- Homologação 07/06/2026: removidos 2 <link> mortos (../../styles/global.css e list.css —
          arquivos inexistentes, geravam 404 no console). Estilo provido por os.css + dock.css. -->
-    <link rel="stylesheet" href="os.css?v=20260611-os-header-v3">
-<link rel="stylesheet" href="../../shared/dock.css?v=20260611-os-header-v3">
+    <link rel="stylesheet" href="os.css?v=20260611-os-header-v4-logo-removed">
+<link rel="stylesheet" href="../../shared/dock.css?v=20260611-os-header-v4-logo-removed">
 </head>
 <body>
+<script>
+// SEGURANÇA: Remove qualquer tentativa de renderizar a logo/hero
+(function() {
+  // Remove no carregamento do DOM
+  var removeHero = function() {
+    var els = document.querySelectorAll('.home-hero, .home-logo-official, .hero-subtitle, [src*="logo-large"]');
+    for (var i = 0; i < els.length; i++) {
+      els[i].style.display = 'none !important';
+      els[i].parentNode && els[i].parentNode.removeChild(els[i]);
+    }
+  };
+  
+  // Executa imediatamente
+  removeHero();
+  
+  // Monitora mutações contínuas
+  if (window.MutationObserver) {
+    var obs = new MutationObserver(function() { removeHero(); });
+    obs.observe(document.body, { childList: true, subtree: true });
+  }
+})();
+</script>
 
     <!-- HEADER: conteúdo migrado para o brand bar por brand-header.js -->
     <header class="header" id="mainHeader">
@@ -21,10 +46,6 @@
     <main>
         <!-- TELA HOME -->
         <div id="screen-home" class="screen active">
-            <div class="home-hero">
-                <img src="../../assets/logo-large.png" alt="Cell City" class="home-logo-official">
-                <p class="hero-subtitle">Gestão Operacional</p>
-            </div>
             <div class="home-top-search">
                 <div class="premium-search">
                     <span class="search-icon">🔍</span>
@@ -280,9 +301,9 @@
     <!-- TOAST -->
     <div class="premium-toast" id="toast"></div>
 
-    <script src="../../shared/brand-header.js?v=20260611-os-header-v3"></script>
-    <script type="module" src="os.js?v=20260611-os-header-v3"></script>
-<script type="module" src="../../shared/dock.js?v=20260611-os-header-v3"></script>
+    <script src="../../shared/brand-header.js?v=20260611-os-header-v4-logo-removed"></script>
+    <script type="module" src="os.js?v=20260611-os-header-v4-logo-removed"></script>
+<script type="module" src="../../shared/dock.js?v=20260611-os-header-v4-logo-removed"></script>
 <script>
 function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }
 window.toggleAccordion = toggleAccordion;

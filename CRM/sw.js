@@ -1,12 +1,11 @@
 // Cell City CRM — Service Worker v1.5 (PIN como acesso principal)
-const CACHE = 'cellcity-crm-v8';
+const CACHE = 'cellcity-crm-v10';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
   '/CRM/',
   '/CRM/index.html',
   '/CRM/assets/logo.png',
-  '/CRM/assets/logo-large.png',
   '/CRM/shared/brand-header.js',
   '/CRM/pages/dashboard/index.html',
   '/CRM/pages/dashboard/dashboard.css',
