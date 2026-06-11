@@ -62,6 +62,10 @@ body {
     transition: var(--duration) var(--ease);
     min-height: 54px;
 }
+
+#crm-brand-bar #ccfav-launcher {
+    margin-left: auto;
+}
 .header::before {
     content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
     background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;

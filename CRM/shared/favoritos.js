@@ -193,6 +193,7 @@ function injectStyles() {
   /* Lançador (páginas de módulo) — integrado no brand-bar por padrão */
   .ccfav-launcher{position:relative;display:flex;gap:6px;align-items:center;
     flex:0 0 auto;font-family:'Inter',system-ui,sans-serif;}
+  .ccfav-launcher.ccfav-os-top{margin-left:auto;}
   .ccfav-launcher.ccfav-floating{position:fixed;top:10px;right:14px;z-index:10000;align-items:flex-start;}
   .ccfav-pin-btn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;
     padding:7px 12px;border-radius:9px;font-size:12.5px;font-weight:600;
@@ -379,15 +380,20 @@ function renderLauncher() {
       <div class="ccfav-dropdown"></div>`;
 
     // Prefere encaixar dentro do brand-bar (header do topo) p/ não sobrepor nada.
-    // Posição padrão: à ESQUERDA, logo após o logo institucional (#brand-header),
-    // respeitando qualquer botão já existente à extrema esquerda.
+    // Na OS, o botão fica no extremo direito da barra; nos demais módulos,
+    // segue logo após o logo institucional (#brand-header).
     // Fallback: flutuante fixo no topo, caso a barra não exista.
     const mount = (attempt) => {
       const bar = document.getElementById('crm-brand-bar');
       if (bar) {
-        const logo = bar.querySelector('#brand-header');
-        if (logo && logo.nextSibling) bar.insertBefore(launcher, logo.nextSibling);
-        else bar.appendChild(launcher);
+        if (current.key === 'os') {
+          launcher.classList.add('ccfav-os-top');
+          bar.appendChild(launcher);
+        } else {
+          const logo = bar.querySelector('#brand-header');
+          if (logo && logo.nextSibling) bar.insertBefore(launcher, logo.nextSibling);
+          else bar.appendChild(launcher);
+        }
       } else if (attempt < 20) {
         return setTimeout(() => mount(attempt + 1), 100);
       } else {

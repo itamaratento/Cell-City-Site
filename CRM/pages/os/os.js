@@ -369,9 +369,9 @@ async function showScreen(id) {
         else { if (!screenHistory.includes(id)) screenHistory.push(id); }
         const osBtn = document.getElementById('btn-os-home'); if (osBtn) osBtn.style.display = id === 'home' ? 'none' : 'block';
         
-        // ✅ AJUSTE FINAL 1: REMOÇÃO DOS TÍTULOS "NOVA O.S." E "CLIENTES"
+        // Título central do menu superior.
         const titleEl = document.getElementById('headerTitle');
-        const titles = { pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
+        const titles = { home: 'Nova O.S.', pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
         if (titleEl) { 
             titleEl.textContent = titles[id] || ''; 
             if (id === 'clientes') { renderClients(); salvarUltimaTela('clientes', 'Clientes', '', '#fav-clientes'); }
@@ -542,6 +542,11 @@ function updateFavStars() {
         btn.classList.toggle('active', isFav);
         btn.title = isFav ? 'Abre direto aqui (clique para remover)' : 'Favoritar para abrir direto';
     });
+}
+
+function ensureMenuTitle() {
+    const titleEl = document.getElementById('headerTitle');
+    if (titleEl && !titleEl.textContent.trim()) titleEl.textContent = 'Nova O.S.';
 }
 
 function renderList() {
@@ -1705,6 +1710,7 @@ function verificarConversaoPortalOS() {
 async function init() {
     if (appInitialized) return; appInitialized = true;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
+    ensureMenuTitle();
     const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
     const logoEl = document.querySelector('.header-logo');
     if (logoEl && !logoEl.dataset.logoHandler) {
