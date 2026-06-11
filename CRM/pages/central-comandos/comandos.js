@@ -3,7 +3,7 @@
 // Versão com blocos modulares de comando
 // ============================================
 import {
-    db, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, serverTimestamp
+    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp
 } from "../../scripts/firebase.js";
 
 const COL = 'comandos';
@@ -14,6 +14,107 @@ const CACHE_CAT_KEY = 'cc_categorias_cache';
 
 const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
 const VIEWMODE_KEY = 'cc_comandos_viewmode';
+
+// ===== MIGRAÇÃO v1: informacoes(tipo=comando) → comandos =====
+// Executa uma única vez. Transfere registros legados da coleção `informacoes`
+// (tipo:'comando', campo `conteudo`) para `comandos` (campo `blocos`).
+// Os originais NÃO são apagados — recebem o campo `migracao:'comandos_v1'`
+// como marcador de soft-delete, garantindo rastreabilidade.
+async function executarMigracao() {
+    const flagDoc = doc(db, 'config', 'migracao_comandos_v1');
+
+    // Verifica se já foi executada
+    try {
+        const snap = await getDoc(flagDoc);
+        if (snap.exists() && snap.data().concluida) return;
+    } catch {
+        return; // offline: não tenta migrar agora
+    }
+
+    let migrados = 0;
+    let ignorados = 0;
+    let erros = 0;
+    const log = [];
+
+    try {
+        const snap = await getDocs(query(
+            collection(db, 'informacoes'),
+            where('tipo', '==', 'comando')
+        ));
+
+        if (!snap.empty) {
+            const agora = new Date().toISOString();
+
+            for (const d of snap.docs) {
+                const orig = { id: d.id, ...d.data() };
+
+                // Pula registros já migrados em execuções anteriores parciais
+                if (orig.migracao === 'comandos_v1') {
+                    ignorados++;
+                    log.push({ id: orig.id, status: 'ja_migrado', titulo: orig.titulo || '' });
+                    continue;
+                }
+
+                try {
+                    const novoRef = doc(collection(db, 'comandos'));
+                    await setDoc(novoRef, {
+                        id: novoRef.id,
+                        titulo: orig.titulo || '(sem título)',
+                        categoria: orig.categoria || 'Outros',
+                        blocos: [orig.conteudo || ''],
+                        conteudo: orig.conteudo || '',
+                        favorito: orig.favorito === true,
+                        criadoEmISO: orig.criadoEmISO || agora,
+                        atualizadoEmISO: agora,
+                        criadoEm: serverTimestamp(),
+                        atualizadoEm: serverTimestamp(),
+                        migradoDe: orig.id
+                    });
+
+                    await updateDoc(doc(db, 'informacoes', orig.id), {
+                        migracao: 'comandos_v1',
+                        migracaoDestinoId: novoRef.id,
+                        migracaoEm: serverTimestamp()
+                    });
+
+                    migrados++;
+                    log.push({ id: orig.id, novoId: novoRef.id, status: 'ok', titulo: orig.titulo || '' });
+                } catch (e) {
+                    erros++;
+                    log.push({ id: orig.id, status: 'erro', titulo: orig.titulo || '', erro: e.message });
+                    console.error('⚠️ Migração: erro ao migrar registro', orig.id, e);
+                }
+            }
+        }
+
+        // Grava relatório no Firestore
+        await setDoc(flagDoc, {
+            concluida: true,
+            executadaEm: serverTimestamp(),
+            migrados,
+            ignorados,
+            erros,
+            log
+        });
+
+        // Salva no localStorage para diagnóstico offline
+        localStorage.setItem('cc_migracao_v1_log', JSON.stringify({
+            data: new Date().toISOString(),
+            migrados, ignorados, erros, log
+        }));
+
+        if (migrados > 0) {
+            console.log(`✅ Migração concluída: ${migrados} comando(s) migrado(s).`);
+            toast(`✅ Migração: ${migrados} comando(s) importado(s) da Central de Informações.`);
+            await carregarComandos();
+        } else {
+            console.log('✅ Migração: nenhum registro legado encontrado.');
+        }
+
+    } catch (e) {
+        console.error('⚠️ Migração: erro geral', e);
+    }
+}
 
 // ===== STATE =====
 let comandos = [];
@@ -48,7 +149,8 @@ async function init() {
     montarCategorias();
     montarSelectCategorias();
     aplicarBotoesView();
-    carregarComandos();
+    await carregarComandos();
+    executarMigracao(); // roda em background; recarrega lista se houver migração
     document.getElementById('cmd-modal')?.addEventListener('click', e => {
         if (e.target.id === 'cmd-modal') fecharFormComando();
     });

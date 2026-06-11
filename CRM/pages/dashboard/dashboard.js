@@ -1681,7 +1681,7 @@ class Dashboard {
   navigateTo(module) {
     const routes = {
       os: '../../pages/os/index.html',
-      'central-comandos': '../../pages/central-informacoes/index.html',
+      'central-comandos': '../../pages/central-comandos/index.html',
       'central-informacoes': '../../pages/central-informacoes/index.html',
       autoatendimento: '../../pages/autoatendimento/index.html',
       clientes: '../../pages/clientes/index.html',

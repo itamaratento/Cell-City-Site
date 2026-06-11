@@ -24,6 +24,7 @@ const DOCK_ITEMS = [
   { id: 'notas',     html: `<button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas"><span class="dock-icon">📋</span></button>` },
   { id: 'autoatendimento', html: `<a href="../autoatendimento/index.html" class="dock-item" data-tooltip="Autoatendimento (Pré-OS Online)"><span class="dock-icon">🤖</span></a>` },
   { id: 'site',      html: `<a href="https://www.cellcityinformatica.com.br" class="dock-item" data-tooltip="Site Cell City"><span class="dock-icon">🌐</span></a>` },
+  { id: 'comandos',  html: `<a href="../central-comandos/index.html" class="dock-item" data-tooltip="Central de Comandos"><span class="dock-icon">⚡</span></a>` },
   { id: 'central',   html: `<a href="../central-informacoes/index.html" class="dock-item" data-tooltip="Central de Informações"><span class="dock-icon">📚</span></a>` },
   { id: 'portal',    html: `<a href="../portal-cliente/admin.html" class="dock-item" data-tooltip="Portal do Cliente"><span class="dock-icon">👤</span></a>` },
   { id: 'ferramentas', html: `<a href="../config/index.html" class="dock-item dock-item-separator" id="dock-ferramentas" data-tooltip="Ferramentas"><span class="dock-icon">⚙️</span></a>` }
@@ -38,6 +39,7 @@ const DASHBOARD_ITENS = [
   { id: 'notas',     html: `<button class="dock-item" id="dock-notas" data-tooltip="Bloco de Notas"><span class="dock-icon">📋</span></button>` },
   { id: 'autoatendimento', html: `<a href="../autoatendimento/index.html" class="dock-item" data-tooltip="Autoatendimento (Pré-OS Online)"><span class="dock-icon">🤖</span></a>` },
   { id: 'site',      html: `<a href="https://www.cellcityinformatica.com.br" class="dock-item" data-tooltip="Site Cell City"><span class="dock-icon">🌐</span></a>` },
+  { id: 'comandos',  html: `<a href="../central-comandos/index.html" class="dock-item" data-tooltip="Central de Comandos"><span class="dock-icon">⚡</span></a>` },
   { id: 'central',   html: `<a href="../central-informacoes/index.html" class="dock-item" data-tooltip="Central de Informações"><span class="dock-icon">📚</span></a>` },
   { id: 'portal',    html: `<a href="../portal-cliente/admin.html" class="dock-item" data-tooltip="Portal do Cliente"><span class="dock-icon">👤</span></a>` },
   { id: 'ferramentas', html: `<a href="../config/index.html" class="dock-item dock-item-separator" id="dock-ferramentas" data-tooltip="Ferramentas"><span class="dock-icon">⚙️</span></a>` }
@@ -274,6 +276,7 @@ function mapearItemParaId(iconText, tooltip) {
     '📋': 'notas',
     '🤖': 'autoatendimento',
     '🌐': 'site',
+    '⚡': 'comandos',
     '📚': 'central',
     '👤': 'portal',
     '⚙️': 'ferramentas'
