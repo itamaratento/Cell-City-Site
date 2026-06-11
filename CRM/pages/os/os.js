@@ -496,13 +496,67 @@ async function saveOS() {
 
 async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
-// ===== AUTOMAÇÕES PÓS-CRIAÇÃO DE OS =====
-async function runAutomacoesOS(os) {
-    // Etapa 3 — WhatsApp automático
-    const waMsgEntrada = `*Cell City — Entrada de aparelho* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n🔧 ${os.defect}\n📅 ${formatDate(os.createdAt)}\n\nSeu aparelho foi recebido e já está em análise. Te avisamos quando estiver pronto! 😊`;
-    window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(waMsgEntrada)}`, '_blank');
+// ===== AUTOMAÇÃO: INFRAESTRUTURA DE LOGS (FASE 1-B) =====
 
-    // Etapa 4 — Lembrete de retorno na Ação da Semana (3 dias)
+// Grava um registro em automacao_logs e, se status='executado',
+// marca o flag de deduplicação em automacao_execucoes.
+async function registrarAutomacao({ automationId, osId, cliente, telefone, status, detalhes, erro }) {
+    const logId = `${automationId}_${osId}_${Date.now()}`;
+    try {
+        await setDoc(doc(db, 'automacao_logs', logId), {
+            automationId,
+            osId,
+            cliente:     cliente  || '',
+            telefone:    (telefone || '').replace(/\D/g, ''),
+            status,                           // 'executado' | 'erro' | 'ignorado'
+            executadoEm: serverTimestamp(),
+            detalhes:    detalhes || null,
+            erro:        erro     || null
+        });
+        // Flag de deduplicação — ID estável para consulta O(1) por jaExecutouAutomacao
+        if (status === 'executado') {
+            await setDoc(doc(db, 'automacao_execucoes', `${automationId}_${osId}`), {
+                automationId,
+                osId,
+                executadoEm: serverTimestamp()
+            });
+        }
+    } catch (e) {
+        console.warn(`⚠️ [Automação] Log "${automationId}/${osId}" não gravado:`, e);
+    }
+}
+
+// Verifica se uma automação já foi executada com sucesso para esta OS.
+// Retorna true → não executar novamente. Retorna false → executar.
+// Em caso de erro de leitura, retorna false (fail-open: melhor executar duas vezes que não executar).
+async function jaExecutouAutomacao(automationId, osId) {
+    try {
+        const snap = await getDoc(doc(db, 'automacao_execucoes', `${automationId}_${osId}`));
+        return snap.exists();
+    } catch (e) {
+        console.warn(`⚠️ [Automação] jaExecutouAutomacao falhou — permitindo execução:`, e);
+        return false;
+    }
+}
+
+// ===== AUTOMAÇÃO: ENTRADA DE OS =====
+async function runAutomacoesOS(os) {
+    // ── WhatsApp de entrada ────────────────────────────────────────────────────
+    if (!(await jaExecutouAutomacao('entrada_os', os.id))) {
+        const msg = `*Cell City — Entrada de aparelho* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n🔧 ${os.defect}\n📅 ${formatDate(os.createdAt)}\n\nSeu aparelho foi recebido e já está em análise. Te avisamos quando estiver pronto! 😊`;
+        window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        await registrarAutomacao({
+            automationId: 'entrada_os',
+            osId:         os.id,
+            cliente:      os.clientName,
+            telefone:     os.phone,
+            status:       'executado',
+            detalhes:     msg,
+            erro:         null
+        });
+    }
+
+    // ── Lembrete de retorno na agenda (+3 dias) ────────────────────────────────
     try {
         const dataRetorno = new Date();
         dataRetorno.setDate(dataRetorno.getDate() + 3);
@@ -511,62 +565,55 @@ async function runAutomacoesOS(os) {
         const snap = await getDoc(agRef);
         const notasExist = snap.exists() ? (snap.data().notas || []) : [];
         const textoNote = `09:00 🔔 Retorno OS: ${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`;
-        const jaExiste = notasExist.some(n => (n.texto || n) === textoNote);
-        if (!jaExiste) {
+        if (!notasExist.some(n => (n.texto || n) === textoNote)) {
             const base = snap.exists() ? snap.data() : {};
-            const novaNote = { texto: textoNote, concluido: false };
             await setDoc(agRef, {
-                data: dataKey,
-                notas: [...notasExist, novaNote],
-                cor: base.cor || 'amarelo',
-                alertaHora: base.alertaHora || '09:00',
-                alertaDashboard: true,
-                recorrencia: base.recorrencia || '',
-                recorrenciaExcluir: base.recorrenciaExcluir || [],
-                recorrenciaPararEm: base.recorrenciaPararEm || '',
-                textoCor: base.textoCor || 'preto',
-                atualizadoEm: serverTimestamp()
+                data:                dataKey,
+                notas:               [...notasExist, { texto: textoNote, concluido: false }],
+                cor:                 base.cor || 'amarelo',
+                alertaHora:          base.alertaHora || '09:00',
+                alertaDashboard:     true,
+                recorrencia:         base.recorrencia || '',
+                recorrenciaExcluir:  base.recorrenciaExcluir || [],
+                recorrenciaPararEm:  base.recorrenciaPararEm || '',
+                textoCor:            base.textoCor || 'preto',
+                atualizadoEm:        serverTimestamp()
             });
         }
     } catch (e) { console.warn('⚠️ [Automação] Lembrete não criado:', e); }
 
-    // Etapa 7 — Registro no financeiro (só se houver valor)
+    // ── Registro no financeiro (só se houver valor) ────────────────────────────
     const valorTotal = (os.valor || 0) + (os.valorCartao || 0);
     if (valorTotal > 0) {
         try {
-            const finId = `os_${os.id}_${Date.now()}`;
-            await setDoc(doc(db, 'financeiro_receber', finId), {
-                descricao: `${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`,
+            await setDoc(doc(db, 'financeiro_receber', `os_${os.id}_${Date.now()}`), {
+                descricao:  `${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`,
                 vencimento: new Date().toISOString().slice(0, 10),
-                valor: valorTotal,
-                status: 'pendente',
-                obs: `OS criada automaticamente`,
-                origem: 'os',
-                osId: os.id,
+                valor:      valorTotal,
+                status:     'pendente',
+                obs:        'OS criada automaticamente',
+                origem:     'os',
+                osId:       os.id,
                 atualizadoEm: serverTimestamp()
             });
         } catch (e) { console.warn('⚠️ [Automação] Financeiro não registrado:', e); }
     }
 }
 
-// ===== AUTOMAÇÃO: PRONTO PARA RETIRADA (FASE 1-A) =====
+// ===== AUTOMAÇÃO: PRONTO PARA RETIRADA =====
 async function runAutomacaoConcluido(os) {
+    if (await jaExecutouAutomacao('pronto_retirada', os.id)) return;
     const msg = `*Cell City — Aparelho Pronto!* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n\nSeu aparelho está pronto para retirada.\nAguardamos você na loja! 😊`;
     window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-    try {
-        await setDoc(doc(db, 'automacao_logs', `pronto_retirada_${os.id}_${Date.now()}`), {
-            automationId:  'pronto_retirada',
-            osId:          os.id,
-            clientName:    os.clientName || '',
-            telefone:      (os.phone || '').replace(/\D/g, ''),
-            mensagem:      msg,
-            status:        'executado',
-            executadoEm:   serverTimestamp(),
-            erro:          null,
-            reenvio:       false,
-            reenvioOrigem: null
-        });
-    } catch (e) { console.warn('⚠️ [Automação] Log não registrado:', e); }
+    await registrarAutomacao({
+        automationId: 'pronto_retirada',
+        osId:         os.id,
+        cliente:      os.clientName,
+        telefone:     os.phone,
+        status:       'executado',
+        detalhes:     msg,
+        erro:         null
+    });
 }
 
 // ===== LISTS =====
