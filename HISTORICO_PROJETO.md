@@ -319,6 +319,53 @@ Cada registro deve conter:
 
 ## HISTÓRICO DE ALTERAÇÕES
 
+### 12/06/2026 — Central de Retorno na O.S.
+
+**Tarefa:** Adicionar controle de retorno ao cliente dentro da própria tela da O.S., sem criar novo módulo.
+
+**O que foi feito:**
+- Botão 🔔 Retorno adicionado ao cabeçalho da OS (ao lado de 👤 Cliente e 🏭 Fornecedor)
+- Painel Central de Retorno com: checkboxes de status, mensagens prontas configuráveis, próximo retorno com atalhos (+1/+3/+7 dias) e histórico de retornos
+- Ao clicar nos botões de mensagem: copia o texto E marca o checkbox automaticamente com data, hora e operador
+- Mensagens editáveis via modal ⚙️ (salvas em `config/retorno_mensagens` no Firestore)
+- Nome do operador salvo em `localStorage('cc_operador_nome')` com prompt na primeira vez
+
+**Arquivos alterados:** `CRM/pages/os/os.js`, `CRM/pages/os/os.css`
+**Backup:** `CRM/pages/os/BACKUP_RETORNO_OS_2026-06-12/`
+**Coleção nova:** nenhuma — dados de retorno em `os/{id}.retorno`; mensagens em `config/retorno_mensagens` (já coberto pelas Rules)
+
+---
+
+### 12/06/2026 — Módulo Catálogo (FASE 1)
+
+**Tarefa:** Criar o módulo Catálogo com link público, painel administrativo completo, integração WhatsApp e cadastro total de produtos sem alterar código.
+
+**O que foi feito:**
+- Criado `CRM/pages/catalogo/public/index.html` — catálogo público (sem login)
+- Criado `CRM/pages/catalogo/public/catalogo-publico.js` — busca, filtros, modal de detalhes, botão WhatsApp
+- Criado `CRM/pages/catalogo/public/catalogo-publico.css` — visual padrão Cell City dark
+- Criado `CRM/pages/catalogo/index.html` — painel administrativo (requer login CRM)
+- Criado `CRM/pages/catalogo/catalogo.js` — CRUD completo: adicionar, editar, duplicar, ocultar, excluir, upload de fotos, reordenar, destaque
+- Criado `CRM/pages/catalogo/catalogo.css` — estilos do painel admin
+- `firebase.json` — +2 rewrites: `/catalogo` e `/catalogo/**` → catálogo público
+- `CRM/firestore.rules` — leitura pública de `catalogo_produtos` e `catalogo_config`
+- `CRM/pages/dashboard/index.html` — +card `📦 Catálogo`
+- `CRM/pages/dashboard/dashboard.js` — +rota `catalogo`
+- `CRM/shared/favoritos.js` — +entrada `catalogo` no mapa MODULES
+
+**Coleções Firestore criadas pelo painel (não existiam antes):**
+- `catalogo_produtos/{id}` — nome, categoria, preco, precoPromo, descricao, fotos[], fotoPrincipal, ativo, destaque, ordem, criadoEm, atualizadoEm
+- `catalogo_config/geral` — whatsapp, mensagemTemplate
+
+**URL pública:** `https://cellcity-crm.web.app/catalogo`
+
+**Arquivos alterados:** `firebase.json`, `CRM/firestore.rules`, `CRM/pages/dashboard/index.html`, `CRM/pages/dashboard/dashboard.js`, `CRM/shared/favoritos.js`
+**Backup:** `CRM/pages/catalogo/BACKUP_CATALOGO_2026-06-12/`
+
+**Pendente — FASE 2 (futuro):** integração CRM Operacional, Controle de Estoque, Promoções automáticas, analytics de cliques.
+
+---
+
 ### 06/06/2026 — Continuar de onde parei
 
 **Tarefa:** Permitir que o Dashboard reabra exatamente a última tela importante usada no módulo OS.

@@ -150,35 +150,6 @@ h1 { font-size:17px; font-weight:800; }
 }
 .btn-delete:hover { color:var(--red); }
 
-/* ── CAMPOS DINÂMICOS (e-mails e senhas múltiplos) ── */
-.dynamic-fields { display: flex; flex-direction: column; gap: 6px; }
-.field-row { display: flex; align-items: center; gap: 6px; }
-.field-row .field { flex: 1; }
-
-.btn-add-row {
-    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
-    color: var(--text2); font-size: 20px; font-weight: 700;
-    border-radius: var(--radius-sm); padding: 4px 12px; line-height: 1;
-    cursor: pointer; font-family: inherit; flex-shrink: 0;
-    transition: background 180ms, border-color 180ms, color 180ms;
-}
-.btn-add-row:hover {
-    background: rgba(0,200,83,0.12); border-color: var(--green-border); color: var(--green-light);
-}
-
-/* ── AÇÕES DO CARD (editar + excluir) ── */
-.item-actions {
-    display: flex; flex-direction: column; gap: 4px;
-    align-items: center; flex-shrink: 0;
-}
-.btn-edit {
-    background: none; border: none; color: var(--text3);
-    font-size: 15px; cursor: pointer; padding: 2px 4px;
-    border-radius: 6px; flex-shrink: 0; line-height: 1;
-    transition: color 180ms;
-}
-.btn-edit:hover { color: var(--green-light); }
-
 /* ── ESTADO VAZIO ── */
 .empty {
     text-align:center; color:var(--text3); font-size:13px;

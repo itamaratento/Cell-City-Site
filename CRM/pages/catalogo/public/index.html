@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo — Cell City Informática</title>
+  <meta name="description" content="Catálogo de produtos Cell City Informática — Carregadores, Cabos, Fones, Power Banks, Películas, Capinhas e muito mais.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="catalogo-publico.css">
+</head>
+<body>
+
+<!-- ===== CABEÇALHO ===== -->
+<header class="cat-header">
+  <div class="cat-logo-area">
+    <div class="cat-logo-nome">Cell City Informática</div>
+    <div class="cat-logo-sub">Catálogo Online</div>
+  </div>
+
+  <div class="cat-header-title">📦 Catálogo de Produtos</div>
+
+  <a class="cat-header-wpp" id="cat-wpp-header" href="#" target="_blank" rel="noopener" style="display:none;">
+    🟢 WhatsApp
+  </a>
+</header>
+
+<!-- ===== BUSCA ===== -->
+<div class="cat-search-bar">
+  <div class="cat-search-wrap">
+    <span class="cat-search-icon">🔍</span>
+    <input type="text" id="cat-busca" placeholder="Pesquisar produto..." autocomplete="off"
+           oninput="catBuscar(this.value)">
+  </div>
+</div>
+
+<!-- ===== CATEGORIAS ===== -->
+<div class="cat-categorias">
+  <div class="cat-section-label">Categorias</div>
+  <div class="cat-cats-scroll" id="cat-cats">
+    <!-- preenchido por JS -->
+  </div>
+</div>
+
+<!-- ===== DESTAQUES ===== -->
+<div class="cat-destaques" id="cat-destaques-sec">
+  <div class="cat-section-label" style="margin-top:8px;">⭐ Destaques</div>
+  <div class="cat-grid" id="cat-grid-destaques"></div>
+</div>
+
+<!-- ===== GRID PRINCIPAL ===== -->
+<div class="cat-produtos-wrap">
+  <div class="cat-produtos-header">
+    <div class="cat-section-label" style="margin:0;">Todos os Produtos</div>
+    <div class="cat-produtos-count" id="cat-count">—</div>
+  </div>
+  <div class="cat-grid" id="cat-grid">
+    <div class="cat-loading">
+      <div class="cat-spinner"></div>
+      Carregando produtos...
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DETALHES ===== -->
+<div class="cat-modal-overlay" id="cat-modal" onclick="if(event.target===this)catFecharModal()">
+  <div class="cat-modal">
+    <div class="cat-modal-fechar">
+      <button onclick="catFecharModal()" title="Fechar">✕</button>
+    </div>
+    <div id="cat-modal-body"></div>
+  </div>
+</div>
+
+<script type="module" src="catalogo-publico.js"></script>
+</body>
+</html>

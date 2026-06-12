@@ -43,8 +43,7 @@ const MODULES = {
   'central-organizacao': { icon: '📋', label: 'Central de Organização' },
   'portal-tecnico':      { icon: '🔓', label: 'Portal Técnico' },
   'importar':            { icon: '📥', label: 'Importar' },
-  'config':             { icon: '⚙️', label: 'Ferramentas' },
-  'catalogo':           { icon: '📦', label: 'Catálogo' }
+  'config':             { icon: '⚙️', label: 'Ferramentas' }
 };
 
 /* Views fixáveis do módulo OS (piloto) — abrem via deep-link (#fav-...) que o

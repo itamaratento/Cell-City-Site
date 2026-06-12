@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo — Cell City CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="catalogo.css">
+  <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header>
+  <span class="header-title">📦 Catálogo</span>
+</header>
+
+<!-- ===== LINK PÚBLICO ===== -->
+<div style="padding: 0 24px; margin-top: 20px;">
+  <div class="link-publico-card">
+    <div>
+      <div class="link-publico-url" id="link-publico-url"></div>
+      <div class="link-publico-hint">Link público do catálogo — compartilhe com os clientes</div>
+    </div>
+    <a class="btn btn-primary" id="link-publico-href" href="#" target="_blank" rel="noopener">🔗 Abrir catálogo</a>
+  </div>
+</div>
+
+<!-- ===== TABS ===== -->
+<div class="adm-tabs">
+  <button class="adm-tab ativo" data-tab="produtos" onclick="admTab('produtos')">📦 Produtos</button>
+  <button class="adm-tab" data-tab="config" onclick="admTab('config')">⚙️ Configurações</button>
+</div>
+
+<!-- ===== SEÇÃO: PRODUTOS ===== -->
+<section class="adm-section ativo" id="sec-produtos">
+
+  <div class="adm-toolbar">
+    <button class="btn btn-primary" onclick="admAbrirForm()">➕ Adicionar produto</button>
+
+    <div class="adm-search-wrap">
+      <span class="adm-search-icon">🔍</span>
+      <input type="text" placeholder="Buscar produto..." oninput="admBuscar(this.value)">
+    </div>
+
+    <select class="adm-filter-select" id="adm-filtro-cat" onchange="admFiltrarCat(this.value)">
+      <option value="todos">Todas as categorias</option>
+    </select>
+
+    <span id="adm-count" style="font-size:12px;color:#8b949e;margin-left:auto;"></span>
+  </div>
+
+  <div class="adm-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Produto</th>
+          <th>Categoria</th>
+          <th>Preço</th>
+          <th>Promoção</th>
+          <th>Status</th>
+          <th>Ordem</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="adm-tbody">
+        <tr>
+          <td colspan="8" class="adm-vazio">
+            <div class="adm-spinner"></div>
+            Carregando...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ===== SEÇÃO: CONFIGURAÇÕES ===== -->
+<section class="adm-section" id="sec-config">
+  <div class="config-card">
+    <h3>📱 WhatsApp</h3>
+
+    <div class="form-group">
+      <label>Número do WhatsApp</label>
+      <input type="text" id="cfg-wpp" placeholder="Ex: 5511999999999 (com código do país)">
+    </div>
+
+    <div class="form-group">
+      <label>Mensagem automática ao clicar em "Comprar"</label>
+      <textarea id="cfg-msg" rows="3" placeholder="Olá! Tenho interesse no produto: {produto}"></textarea>
+      <span style="font-size:11px;color:#8b949e;">Use <code style="color:#00e676">{produto}</code> para inserir o nome do produto automaticamente.</span>
+    </div>
+
+    <button class="btn btn-primary" id="btn-salvar-cfg" onclick="admSalvarConfig()">Salvar configurações</button>
+  </div>
+</section>
+
+<!-- ===== MODAL: FORM PRODUTO ===== -->
+<div class="modal-overlay" id="modal-produto" onclick="if(event.target===this)admFecharForm()">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="form-modal-title">Novo Produto</h2>
+      <button class="modal-close" onclick="admFecharForm()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-row">
+        <div class="form-group full">
+          <label>Nome do produto *</label>
+          <input type="text" id="form-nome" placeholder="Ex: Carregador USB-C 65W">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="form-cat">
+            <option>Carregadores</option>
+            <option>Cabos</option>
+            <option>Fones Bluetooth</option>
+            <option>Power Banks</option>
+            <option>Películas</option>
+            <option>Capinhas</option>
+            <option>Informática</option>
+            <option>Outros</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ordem de exibição</label>
+          <input type="number" id="form-ordem" min="0" placeholder="0">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Preço (R$)</label>
+          <input type="number" id="form-preco" min="0" step="0.01" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label>Preço promocional (opcional)</label>
+          <input type="number" id="form-promo" min="0" step="0.01" placeholder="0,00">
+        </div>
+      </div>
+
+      <div class="form-group full">
+        <label>Descrição</label>
+        <textarea id="form-desc" rows="3" placeholder="Detalhes, especificações, compatibilidade..."></textarea>
+      </div>
+
+      <div class="form-check-row">
+        <label class="form-check">
+          <input type="checkbox" id="form-ativo" checked>
+          Produto ativo (visível no catálogo)
+        </label>
+        <label class="form-check">
+          <input type="checkbox" id="form-destaque">
+          ⭐ Produto em destaque
+        </label>
+      </div>
+
+      <div class="form-group full">
+        <label>Fotos</label>
+        <div class="fotos-lista" id="form-fotos-lista"></div>
+        <button type="button" class="foto-add-btn" onclick="admEscolherFotos()" title="Adicionar fotos">＋</button>
+        <div class="foto-hint">Clique na foto para definir como principal. Toque ✕ para remover.</div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="admFecharForm()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar" onclick="admSalvar()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/dock.js" type="module"></script>
+<script type="module" src="catalogo.js"></script>
+</body>
+</html>

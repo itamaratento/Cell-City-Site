@@ -23,14 +23,6 @@ service cloud.firestore {
       allow create: if true;
     }
 
-    // Catálogo público — leitura de produtos ativos e configurações (sem login)
-    match /catalogo_produtos/{docId} {
-      allow read: if true;
-    }
-    match /catalogo_config/{docId} {
-      allow read: if true;
-    }
-
     // ─────────────────────────────────────────────
     // SINCRONIZAÇÃO CRM ↔ GOOGLE DRIVE
     // Coleções de suporte usadas pelos módulos Tutoriais, Soluções Técnicas,

@@ -64,13 +64,6 @@ window.togglePasswordVisibility = togglePasswordVisibility;
 window.copyPasswordToClipboard = copyPasswordToClipboard;
 window.toggleRelatorioTecnico = toggleRelatorioTecnico;
 window.copyMessageToClipboard = copyMessageToClipboard;
-window.toggleRetornoPanel = toggleRetornoPanel;
-window.marcarRetorno = marcarRetorno;
-window.salvarProximoRetorno = salvarProximoRetorno;
-window.addDiasRetorno = addDiasRetorno;
-window.copiarMensagemRetorno = copiarMensagemRetorno;
-window.abrirEditarMensagensRetorno = abrirEditarMensagensRetorno;
-window.salvarMensagensRetorno = salvarMensagensRetorno;
 
 function toggleRelatorioTecnico() {
     const body = document.getElementById('rel-tec-body');
@@ -301,7 +294,6 @@ function showOSPatternSequence(osId) {
 let currentOS = null, currentCategory = '', tempPhotos = [], currentLockPhoto = null;
 let screenHistory = [], currentListFilter = '', currentClientPhone = '', appInitialized = false;
 let hasUnsavedChanges = false;
-let retornoMensagens = {};
 
 function updateSaveUI() {
     const el = document.getElementById('save-status');
@@ -635,11 +627,10 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;padding-bottom:28px;overflow:hidden;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;padding-bottom:28px;overflow:hidden;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id" style="display:inline-flex;align-items:center;gap:8px;">${os.id}<button onclick="copyMessageToClipboard()" title="Copiar mensagem para o cliente via WhatsApp" style="background:var(--green-primary);border:none;padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-weight:700;color:#000;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">👤 Cliente</button><button onclick="copySupplierMessage()" title="Copiar mensagem de cotação para fornecedor" style="background:#3b82f6;border:none;padding:4px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;font-weight:700;color:#fff;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;">🏭 Fornecedor</button></div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
-    html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
-
+    
     // Destaque: resposta do cliente ao orçamento (Consulta OS / Portal do Cliente). Somente leitura.
     const _orcResp = os.orcamentoResposta || (os.status === 'orcamento_aprovado' ? 'aprovado' : (os.status === 'orcamento_recusado' ? 'recusado' : ''));
     if (_orcResp === 'aprovado' || _orcResp === 'recusado') {
@@ -1138,228 +1129,6 @@ function copySupplierMessage() {
     }
 }
 window.copySupplierMessage = copySupplierMessage;
-
-// ===== CENTRAL DE RETORNO =====
-
-function getOperadorNome() {
-    let nome = localStorage.getItem('cc_operador_nome');
-    if (!nome) {
-        nome = prompt('Seu nome (será registrado nos retornos):') || 'Responsável';
-        if (nome !== 'Responsável') localStorage.setItem('cc_operador_nome', nome);
-    }
-    return nome;
-}
-
-async function loadRetornoMensagens() {
-    try {
-        const snap = await getDoc(doc(db, 'config', 'retorno_mensagens'));
-        retornoMensagens = snap.exists() ? snap.data() : _retornoMensagensPadrao();
-    } catch(e) {
-        retornoMensagens = _retornoMensagensPadrao();
-    }
-}
-
-function _retornoMensagensPadrao() {
-    return {
-        orcamento: 'Olá, {nome}! 👋\n\nO orçamento do seu {aparelho} está pronto para sua avaliação.\n\nQualquer dúvida, estamos à disposição!\nCell City Informática',
-        retorno1:  'Olá, {nome}! 👋\n\nPassando para verificar se você teve a oportunidade de avaliar o orçamento do seu {aparelho}.\n\nEstamos à disposição!\nCell City Informática',
-        retorno2:  'Olá, {nome}! 👋\n\nEste é nosso segundo contato sobre o orçamento do seu {aparelho}.\n\nPor favor, nos informe se deseja prosseguir com o serviço.\nCell City Informática',
-        retorno3:  'Olá, {nome}! 👋\n\nTerceiro contato sobre o orçamento do seu {aparelho}.\n\nAguardamos seu retorno para darmos continuidade ao serviço.\nCell City Informática',
-        retorno4:  'Olá, {nome}! 👋\n\nEste é nosso último contato sobre o orçamento do seu {aparelho}.\n\nCaso não haja retorno, o aparelho ficará disponível para retirada.\nCell City Informática'
-    };
-}
-
-function renderRetornoPanelHTML(os) {
-    console.log('🔔 Central de Retorno carregada — OS:', os.id);
-    const r = os.retorno || {};
-    const status = r.status || {};
-    const historico = r.historico || [];
-    const proximoRetorno = r.proximoRetorno || '';
-
-    const TIPOS = [
-        { key: 'orcamentoEnviado', label: '📋 Orçamento enviado' },
-        { key: 'retorno1',         label: '🔄 Retorno 1 enviado' },
-        { key: 'retorno2',         label: '🔄 Retorno 2 enviado' },
-        { key: 'retorno3',         label: '🔄 Retorno 3 enviado' },
-        { key: 'retorno4',         label: '🔄 Retorno 4 enviado' },
-        { key: 'aprovado',         label: '✅ Cliente aprovou'    },
-        { key: 'recusado',         label: '❌ Cliente recusou'    }
-    ];
-
-    const checkboxesHtml = TIPOS.map(t => {
-        const checked = !!status[t.key];
-        const h = historico.find(e => e.tipo === t.key);
-        const meta = h ? `<span class="retorno-checkbox-meta">${h.data} ${h.hora} — ${h.operador}</span>` : '';
-        return `<div class="retorno-checkbox-item" onclick="marcarRetorno('${t.key}')">
-            <input type="checkbox" ${checked ? 'checked' : ''} style="pointer-events:none;width:15px;height:15px;flex-shrink:0;accent-color:#f59e0b;">
-            <span>${t.label}</span>${meta}
-        </div>`;
-    }).join('');
-
-    const historicoHtml = historico.length
-        ? historico.map(h => `<div class="retorno-hist-item"><strong>${h.data}</strong> — ${h.label || h.tipo}</div>`).join('')
-        : `<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum retorno registrado ainda.</div>`;
-
-    return `<div id="retorno-panel" class="retorno-panel" style="display:none;">
-        <div class="retorno-panel-title">🔔 CENTRAL DE RETORNO</div>
-        <div class="retorno-section-label">STATUS DE RETORNO</div>
-        <div class="retorno-checkboxes">${checkboxesHtml}</div>
-        <div class="retorno-section-label" style="margin-top:14px;">MENSAGENS PRONTAS</div>
-        <div class="retorno-msg-btns">
-            <button onclick="copiarMensagemRetorno('orcamento')" class="retorno-msg-btn">📋 Orçamento</button>
-            <button onclick="copiarMensagemRetorno('retorno1')" class="retorno-msg-btn">🔄 Retorno 1</button>
-            <button onclick="copiarMensagemRetorno('retorno2')" class="retorno-msg-btn">🔄 Retorno 2</button>
-            <button onclick="copiarMensagemRetorno('retorno3')" class="retorno-msg-btn">🔄 Retorno 3</button>
-            <button onclick="copiarMensagemRetorno('retorno4')" class="retorno-msg-btn">🔄 Retorno 4</button>
-        </div>
-        <div class="retorno-section-label" style="margin-top:14px;">PRÓXIMO RETORNO</div>
-        <div class="retorno-proximo">
-            <input type="date" id="retorno-data" value="${proximoRetorno}" onchange="salvarProximoRetorno(this.value)">
-            <button onclick="addDiasRetorno(1)" class="retorno-dias-btn">+1 dia</button>
-            <button onclick="addDiasRetorno(3)" class="retorno-dias-btn">+3 dias</button>
-            <button onclick="addDiasRetorno(7)" class="retorno-dias-btn">+7 dias</button>
-        </div>
-        <div class="retorno-section-label" style="margin-top:14px;">HISTÓRICO DE RETORNOS</div>
-        <div class="retorno-historico">${historicoHtml}</div>
-        <div style="margin-top:10px;text-align:right;">
-            <button onclick="abrirEditarMensagensRetorno()" style="background:var(--surface3);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;">⚙️ Editar Mensagens</button>
-        </div>
-    </div>`;
-}
-
-function toggleRetornoPanel() {
-    const panel = document.getElementById('retorno-panel');
-    const btn = document.getElementById('btn-retorno');
-    if (!panel) return;
-    const open = panel.style.display !== 'none';
-    panel.style.display = open ? 'none' : 'block';
-    if (btn) btn.style.background = open ? '#f59e0b' : '#d97706';
-    if (!open && !Object.keys(retornoMensagens).length) loadRetornoMensagens();
-}
-
-async function marcarRetorno(tipo) {
-    if (!currentOS) return;
-    const r = JSON.parse(JSON.stringify(currentOS.retorno || {}));
-    r.status = r.status || {};
-    r.historico = r.historico || [];
-    r.proximoRetorno = r.proximoRetorno || '';
-
-    if (r.status[tipo]) {
-        if (!confirm('Deseja desmarcar este item?')) return;
-        r.status[tipo] = false;
-    } else {
-        const operador = getOperadorNome();
-        const now = new Date();
-        const LABELS = {
-            orcamentoEnviado: 'Orçamento enviado',
-            retorno1: 'Retorno 1 enviado', retorno2: 'Retorno 2 enviado',
-            retorno3: 'Retorno 3 enviado', retorno4: 'Retorno 4 enviado',
-            aprovado: 'Cliente aprovou',   recusado: 'Cliente recusou'
-        };
-        r.status[tipo] = true;
-        r.historico.push({
-            tipo, label: LABELS[tipo] || tipo,
-            data: now.toLocaleDateString('pt-BR'),
-            hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-            operador
-        });
-    }
-
-    currentOS.retorno = r;
-    try {
-        await updateDoc(doc(db, 'os', currentOS.id), { retorno: r, updatedAt: new Date().toISOString() });
-        renderDetail();
-        setTimeout(() => { const p = document.getElementById('retorno-panel'); if (p) p.style.display = 'block'; }, 50);
-        showToast('✅ Retorno atualizado');
-        window.markSaved();
-    } catch(e) { console.error(e); showToast('❌ Erro ao salvar'); }
-}
-
-async function salvarProximoRetorno(dataStr) {
-    if (!currentOS) return;
-    const r = JSON.parse(JSON.stringify(currentOS.retorno || {}));
-    r.status = r.status || {};
-    r.historico = r.historico || [];
-    r.proximoRetorno = dataStr;
-    currentOS.retorno = r;
-    try {
-        await updateDoc(doc(db, 'os', currentOS.id), { retorno: r, updatedAt: new Date().toISOString() });
-        showToast('📅 Próximo retorno salvo');
-        window.markSaved();
-    } catch(e) { console.error(e); showToast('❌ Erro ao salvar data'); }
-}
-
-function addDiasRetorno(dias) {
-    const input = document.getElementById('retorno-data');
-    if (!input) return;
-    const base = input.value ? new Date(input.value + 'T12:00:00') : new Date();
-    base.setDate(base.getDate() + dias);
-    const nova = base.toISOString().slice(0, 10);
-    input.value = nova;
-    salvarProximoRetorno(nova);
-}
-
-async function copiarMensagemRetorno(chave) {
-    if (!currentOS) return;
-    if (!Object.keys(retornoMensagens).length) await loadRetornoMensagens();
-    const os = currentOS;
-    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
-    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho';
-    let msg = (retornoMensagens[chave] || `Retorno — OS ${os.id} — ${os.clientName}`)
-        .replace(/\{nome\}/g, nome).replace(/\{aparelho\}/g, aparelho).replace(/\{os\}/g, os.id);
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(msg).then(() => showToast('✅ Mensagem copiada!')).catch(() => fallbackCopyMessage(msg));
-    } else { fallbackCopyMessage(msg); }
-
-    const MAPA = { orcamento: 'orcamentoEnviado', retorno1: 'retorno1', retorno2: 'retorno2', retorno3: 'retorno3', retorno4: 'retorno4' };
-    const tipoStatus = MAPA[chave];
-    if (tipoStatus) {
-        const r = JSON.parse(JSON.stringify(currentOS.retorno || {}));
-        r.status = r.status || {};
-        r.historico = r.historico || [];
-        r.proximoRetorno = r.proximoRetorno || '';
-        if (!r.status[tipoStatus]) {
-            const operador = getOperadorNome();
-            const now = new Date();
-            const LABELS = { orcamentoEnviado: 'Orçamento enviado', retorno1: 'Retorno 1 enviado', retorno2: 'Retorno 2 enviado', retorno3: 'Retorno 3 enviado', retorno4: 'Retorno 4 enviado' };
-            r.status[tipoStatus] = true;
-            r.historico.push({ tipo: tipoStatus, label: LABELS[tipoStatus], data: now.toLocaleDateString('pt-BR'), hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), operador });
-            currentOS.retorno = r;
-            try {
-                await updateDoc(doc(db, 'os', currentOS.id), { retorno: r, updatedAt: new Date().toISOString() });
-                renderDetail();
-                setTimeout(() => { const p = document.getElementById('retorno-panel'); if (p) p.style.display = 'block'; }, 50);
-                window.markSaved();
-            } catch(e) { console.warn('Status não marcado:', e); }
-        }
-    }
-}
-
-async function abrirEditarMensagensRetorno() {
-    if (!Object.keys(retornoMensagens).length) await loadRetornoMensagens();
-    const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const CHAVES = ['orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
-    const NOMES  = { orcamento: '📋 Mensagem de Orçamento', retorno1: '🔄 Retorno 1', retorno2: '🔄 Retorno 2', retorno3: '🔄 Retorno 3', retorno4: '🔄 Retorno 4' };
-    const campos = CHAVES.map(k => `<div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${NOMES[k]}</label><textarea id="rm-${k}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${esc(retornoMensagens[k] || '')}</textarea></div>`).join('');
-    openModal(`<div class="modal-handle"></div>
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">⚙️ Editar Mensagens de Retorno</h3>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{os}</strong></div>
-        ${campos}
-        <button onclick="salvarMensagensRetorno()" style="width:100%;padding:12px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">💾 Salvar Mensagens</button>`);
-}
-
-async function salvarMensagensRetorno() {
-    const CHAVES = ['orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
-    const msgs = {};
-    for (const k of CHAVES) { const el = document.getElementById(`rm-${k}`); if (el) msgs[k] = el.value; }
-    try {
-        await setDoc(doc(db, 'config', 'retorno_mensagens'), { ...msgs, updatedAt: new Date().toISOString() });
-        retornoMensagens = msgs;
-        closeModal();
-        showToast('✅ Mensagens salvas com sucesso!');
-    } catch(e) { console.error(e); showToast('❌ Erro ao salvar mensagens'); }
-}
 
 function fallbackCopyMessage(text) {
     var textarea = document.createElement('textarea');

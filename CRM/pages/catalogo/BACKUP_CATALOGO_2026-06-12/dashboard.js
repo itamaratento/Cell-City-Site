@@ -1771,8 +1771,7 @@ class Dashboard {
       'portal-tecnico': '../../pages/portal-tecnico/index.html',
       'diario':               '../../pages/diario/index.html',
       'central-organizacao':  '../../pages/central-organizacao/index.html',
-      'contas':               '../../pages/contas/index.html',
-      'catalogo':             '../../pages/catalogo/index.html'
+      'contas':               '../../pages/contas/index.html'
     };
     const url = routes[module];
     if (url) {

@@ -72,6 +72,64 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
+## ✅ ETAPA CONCLUÍDA — Módulo Catálogo FASE 1 (12/06/2026)
+
+**O que foi feito:**
+- Catálogo público em `/catalogo` — busca, categorias, destaques, modal de detalhes, botão WhatsApp
+- Painel administrativo em `CRM/pages/catalogo/` — CRUD completo com upload de fotos
+- Botões: Adicionar, Editar, Duplicar, Ocultar, Excluir
+- Tudo editável sem tocar em código: nome, categoria, preço, promoção, descrição, fotos, ordem, destaque, WhatsApp, mensagem automática
+- Firebase Hosting: rewrites `/catalogo` e `/catalogo/**` adicionados
+- Firestore Rules: leitura pública de `catalogo_produtos` e `catalogo_config`
+- Card `📦 Catálogo` adicionado ao Dashboard; rota e favorito registrados
+
+**Coleções novas:** `catalogo_produtos`, `catalogo_config`
+**URL pública:** `https://cellcity-crm.web.app/catalogo`
+**Backup:** `CRM/pages/catalogo/BACKUP_CATALOGO_2026-06-12/`
+
+> ⚠️ **Pendente: `firebase deploy`** — publicar o módulo em produção.
+> ⚠️ Antes do deploy: configurar número do WhatsApp no painel (Configurações → WhatsApp).
+
+---
+
+## ✅ ETAPA CONCLUÍDA — Central de Organização: WhatsApp + Cabeçalho Universal (12/06/2026)
+
+**O que foi feito:**
+- Formulário WhatsApp agora suporta múltiplos e-mails e senhas (arrays dinâmicos com botão `+`)
+- Campos na ordem: Nome → Número → E-mails → Senhas → Observação
+- Estrutura de dados: `{ nome, numero, emails: [], senhas: [], obs }`
+- Botão **✏️ Editar** em cada card WhatsApp (carrega todos os dados para edição sem excluir e recadastrar)
+- Cabeçalho próprio substituído pelo **cabeçalho universal** (`brand-header.js`): logo Cell City + título centralizado + Fixar nos Favoritos
+- `central-organizacao` registrado no mapa de módulos de `favoritos.js`
+- Compatível com registros antigos (sem `emails`/`senhas`)
+
+**Arquivos alterados:** `central-organizacao/index.html`, `central-organizacao/central.js`, `central-organizacao/central.css`, `shared/favoritos.js`
+**Backup:** `CRM/pages/central-organizacao/BACKUP_WHATSAPP_CENTRAL_2026-06-12/`
+
+---
+
+## ✅ ETAPA CONCLUÍDA — Central de Retorno na O.S. (12/06/2026)
+
+**O que foi feito:**
+- Botão **🔔 Retorno** adicionado ao cabeçalho da OS ao lado de 👤 Cliente e 🏭 Fornecedor
+- Mini painel "Central de Retorno" (toggle, oculto por padrão) com:
+  - **Status de Retorno**: 7 checkboxes (Orçamento enviado, Retorno 1–4, Aprovado, Recusado)
+  - Ao marcar: registra data, hora e nome do operador automaticamente
+  - **Mensagens Prontas**: botões que copiam mensagem configurável E marcam o checkbox automaticamente
+  - **Próximo Retorno**: campo de data + botões +1/+3/+7 dias (salvo no Firestore)
+  - **Histórico de Retornos**: lista cronológica dos registros
+  - **⚙️ Editar Mensagens**: modal para editar as 5 mensagens (salvas em `config/retorno_mensagens`)
+- Nome do operador: salvo em `localStorage('cc_operador_nome')` com prompt na primeira vez
+- Dados salvos em `os/{id}.retorno` (campo no documento existente — sem nova coleção)
+- Mensagens configuráveis em `config/retorno_mensagens` (coleção já coberta pelas Firestore Rules)
+
+**Arquivos alterados:** `CRM/pages/os/os.js`, `CRM/pages/os/os.css`
+**Backup:** `CRM/pages/os/BACKUP_RETORNO_OS_2026-06-12/`
+
+> ⚠️ **Pendente: `firebase deploy`** — publicar em produção.
+
+---
+
 ## 🔧 ETAPA ATUAL
 
 **Portal Técnico (Etapas 1 e 2) — PUBLICADO EM PRODUÇÃO (08/06/2026).**
@@ -225,7 +283,20 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ## 🎯 PRÓXIMA TAREFA
 
-### 🔎 Auditoria de Runtime completa
+### 🚀 Deploy do Catálogo
+
+1. Executar `firebase deploy` no diretório do projeto
+2. Configurar número do WhatsApp no painel: CRM → Catálogo → ⚙️ Configurações
+3. Cadastrar os primeiros produtos pelo painel administrativo
+4. Testar o link público: `https://cellcity-crm.web.app/catalogo`
+
+**Depois do deploy:**
+- FASE 2 Portal Admin
+- Auditoria de Runtime completa
+
+---
+
+### 🔎 Auditoria de Runtime completa (aguardando)
 
 Verificação de erros/avisos de runtime em todos os módulos (console, listeners, falhas de carregamento) antes de avançar no plano oficial. *(Diretório `_runtime_audit/` em andamento por frente paralela.)*
 

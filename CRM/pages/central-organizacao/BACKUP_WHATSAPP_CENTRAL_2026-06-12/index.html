@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Cell City — Central de Organização</title>
     <link rel="stylesheet" href="central.css">
-    <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
 
-    <!-- O brand-header.js migra este header para a barra universal -->
-    <header>
-        <span class="header-title">📋 Central de Organização</span>
+    <header class="header">
+        <button class="back-btn" onclick="history.back()">←</button>
+        <div class="header-center">
+            <h1>📋 Central de Organização</h1>
+            <p class="header-sub">Organização da operação e documentação do projeto.</p>
+        </div>
     </header>
 
     <main class="content">
@@ -36,23 +37,6 @@
             <div class="form-box hidden" id="form-whatsapp">
                 <input class="field" id="wpp-nome" placeholder="Nome (ex: WhatsApp Principal)" maxlength="60">
                 <input class="field" id="wpp-numero" placeholder="Número (ex: 11999999999)" maxlength="20" type="tel">
-
-                <!-- E-mails dinâmicos -->
-                <div id="wpp-emails-container" class="dynamic-fields">
-                    <div class="field-row">
-                        <input class="field" placeholder="E-mail (opcional)" maxlength="120" type="email">
-                        <button class="btn-add-row" type="button" onclick="Central.addEmailRow()" title="Adicionar e-mail">+</button>
-                    </div>
-                </div>
-
-                <!-- Senhas dinâmicas -->
-                <div id="wpp-senhas-container" class="dynamic-fields">
-                    <div class="field-row">
-                        <input class="field" placeholder="Senha (opcional)" maxlength="120" type="text">
-                        <button class="btn-add-row" type="button" onclick="Central.addSenhaRow()" title="Adicionar senha">+</button>
-                    </div>
-                </div>
-
                 <input class="field" id="wpp-obs" placeholder="Observação (opcional)" maxlength="120">
                 <div class="form-actions">
                     <button class="btn-save" onclick="Central.salvar('whatsapp')">Salvar</button>
@@ -147,7 +131,6 @@
 
     <div class="toast hidden" id="toast"></div>
 
-    <script src="../../shared/brand-header.js"></script>
     <script type="module" src="central.js"></script>
 </body>
 </html>

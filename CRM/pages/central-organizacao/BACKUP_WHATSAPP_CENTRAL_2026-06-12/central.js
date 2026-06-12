@@ -2,75 +2,30 @@ import { db, doc, getDoc, setDoc, serverTimestamp, authReady } from '../../scrip
 
 // ── Estrutura por seção ──────────────────────────────────────────────────────
 // Cada seção é um documento em `central_organizacao/{secao}` com campo `itens: []`
+// IDs dos documentos: 'whatsapp' | 'robos' | 'programas' | 'historico' | 'links'
 
 const SECAO_DOC = 'central_organizacao';
 
-// ── Estado de edição ──────────────────────────────────────────────────────────
-// null = novo registro; número = índice do item sendo editado
-const _editIdx = { whatsapp: null, robos: null, programas: null, historico: null, links: null };
-
-// ── Helpers de campos dinâmicos (WhatsApp) ────────────────────────────────────
-function _resetDynFields(containerId, placeholder, type) {
-    const c = document.getElementById(containerId);
-    if (!c) return;
-    while (c.children.length > 1) c.removeChild(c.lastChild);
-    const inp = c.querySelector('input');
-    if (inp) { inp.value = ''; inp.placeholder = placeholder; inp.type = type; }
-}
-
-function _addDynRow(containerId, placeholder, type, value = '') {
-    const c = document.getElementById(containerId);
-    if (!c) return;
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    const inp = document.createElement('input');
-    inp.className = 'field';
-    inp.placeholder = placeholder;
-    inp.maxLength = 120;
-    inp.type = type;
-    inp.value = value;
-    row.appendChild(inp);
-    c.appendChild(row);
-    inp.focus();
-}
-
-function _collectDynValues(containerId) {
-    const c = document.getElementById(containerId);
-    if (!c) return [];
-    return [...c.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
-}
-
-// ── Configuração de cada seção ────────────────────────────────────────────────
+// Configuração de cada seção: campos do formulário e como renderizar o card
 const SECOES = {
     whatsapp: {
         campos: ['wpp-nome', 'wpp-numero', 'wpp-obs'],
-        montar: (_campos) => ({
-            nome:   document.getElementById('wpp-nome')?.value.trim() || '',
-            numero: (document.getElementById('wpp-numero')?.value || '').replace(/\D/g, ''),
-            emails: _collectDynValues('wpp-emails-container'),
-            senhas: _collectDynValues('wpp-senhas-container'),
-            obs:    document.getElementById('wpp-obs')?.value.trim() || '',
+        montar: (campos) => ({
+            nome:   campos['wpp-nome'],
+            numero: campos['wpp-numero'].replace(/\D/g, ''),
+            obs:    campos['wpp-obs'],
         }),
         validar: (d) => d.nome && d.numero,
         erroValidacao: 'Preencha nome e número.',
-        renderItem: (item, idx) => {
-            const emails = (item.emails || []).filter(Boolean);
-            const senhas = (item.senhas || []).filter(Boolean);
-            return `
+        renderItem: (item, idx) => `
             <div class="item-card">
                 <div class="item-body">
                     <div class="item-name">${esc(item.nome)}</div>
                     <div class="item-sub">📞 ${esc(item.numero)}</div>
-                    ${emails.map(e => `<div class="item-sub">📧 ${esc(e)}</div>`).join('')}
-                    ${senhas.map(s => `<div class="item-sub">🔑 ${esc(s)}</div>`).join('')}
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
-                <div class="item-actions">
-                    <button class="btn-edit" onclick="Central.editar('whatsapp', ${idx})" title="Editar">✏️</button>
-                    <button class="btn-delete" onclick="Central.remover('whatsapp', ${idx})" title="Remover">🗑</button>
-                </div>
-            </div>`;
-        },
+                <button class="btn-delete" onclick="Central.remover('whatsapp', ${idx})" title="Remover">🗑</button>
+            </div>`,
     },
     robos: {
         campos: ['robos-nome', 'robos-funcao', 'robos-obs'],
@@ -180,7 +135,7 @@ async function carregar(secao) {
 
 async function persistir(secao) {
     await setDoc(doc(db, SECAO_DOC, secao), {
-        itens:        estado[secao],
+        itens:       estado[secao],
         atualizadoEm: serverTimestamp(),
     });
 }
@@ -204,8 +159,8 @@ function renderLista(secao) {
 // ── API pública ───────────────────────────────────────────────────────────────
 window.Central = {
     abrirForm(secao) {
-        _editIdx[secao] = null;
         document.getElementById(`form-${secao}`)?.classList.remove('hidden');
+        // Preencher data de hoje no histórico
         if (secao === 'historico') {
             const campo = document.getElementById('historico-data');
             if (campo && !campo.value) campo.value = new Date().toISOString().slice(0, 10);
@@ -220,11 +175,6 @@ window.Central = {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
-        if (secao === 'whatsapp') {
-            _resetDynFields('wpp-emails-container', 'E-mail (opcional)', 'email');
-            _resetDynFields('wpp-senhas-container', 'Senha (opcional)', 'text');
-        }
-        _editIdx[secao] = null;
     },
 
     async salvar(secao) {
@@ -238,34 +188,16 @@ window.Central = {
         const dado = cfg.montar(campos);
         if (!cfg.validar(dado)) { toast(`⚠️ ${cfg.erroValidacao}`); return; }
 
-        const editIdx = _editIdx[secao];
-        const isEdit  = editIdx !== null && editIdx >= 0;
-
-        if (isEdit) {
-            const anterior = estado[secao][editIdx];
-            estado[secao][editIdx] = dado;
-            try {
-                await persistir(secao);
-                renderLista(secao);
-                Central.fecharForm(secao);
-                toast('✅ Atualizado');
-            } catch (e) {
-                estado[secao][editIdx] = anterior;
-                toast('❌ Erro ao atualizar');
-                console.error(e);
-            }
-        } else {
-            estado[secao].push(dado);
-            try {
-                await persistir(secao);
-                renderLista(secao);
-                Central.fecharForm(secao);
-                toast('✅ Salvo');
-            } catch (e) {
-                estado[secao].pop();
-                toast('❌ Erro ao salvar');
-                console.error(e);
-            }
+        estado[secao].push(dado);
+        try {
+            await persistir(secao);
+            renderLista(secao);
+            Central.fecharForm(secao);
+            toast('✅ Salvo');
+        } catch (e) {
+            estado[secao].pop();
+            toast('❌ Erro ao salvar');
+            console.error(e);
         }
     },
 
@@ -281,47 +213,6 @@ window.Central = {
             toast('❌ Erro ao remover');
             console.error(e);
         }
-    },
-
-    editar(secao, idx) {
-        if (secao !== 'whatsapp') return;
-        const item = estado[secao][idx];
-        if (!item) return;
-
-        _editIdx[secao] = idx;
-
-        document.getElementById('wpp-nome').value   = item.nome   || '';
-        document.getElementById('wpp-numero').value = item.numero || '';
-        document.getElementById('wpp-obs').value    = item.obs    || '';
-
-        // Preenche e-mails
-        const emails = item.emails || [];
-        _resetDynFields('wpp-emails-container', 'E-mail (opcional)', 'email');
-        const firstEmailInp = document.querySelector('#wpp-emails-container input');
-        if (firstEmailInp) firstEmailInp.value = emails[0] || '';
-        for (let i = 1; i < emails.length; i++) {
-            _addDynRow('wpp-emails-container', 'E-mail (opcional)', 'email', emails[i]);
-        }
-
-        // Preenche senhas
-        const senhas = item.senhas || [];
-        _resetDynFields('wpp-senhas-container', 'Senha (opcional)', 'text');
-        const firstSenhaInp = document.querySelector('#wpp-senhas-container input');
-        if (firstSenhaInp) firstSenhaInp.value = senhas[0] || '';
-        for (let i = 1; i < senhas.length; i++) {
-            _addDynRow('wpp-senhas-container', 'Senha (opcional)', 'text', senhas[i]);
-        }
-
-        document.getElementById('form-whatsapp')?.classList.remove('hidden');
-        document.getElementById('wpp-nome')?.focus();
-    },
-
-    addEmailRow() {
-        _addDynRow('wpp-emails-container', 'E-mail (opcional)', 'email');
-    },
-
-    addSenhaRow() {
-        _addDynRow('wpp-senhas-container', 'Senha (opcional)', 'text');
     },
 };
 
