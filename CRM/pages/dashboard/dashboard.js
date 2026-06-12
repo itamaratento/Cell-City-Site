@@ -1082,6 +1082,65 @@ class Dashboard {
       console.warn('Central de Alertas — erro ao gerar:', e);
     }
 
+    // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
+    try {
+      const prontoSnap = await getDocs(
+        query(collection(db, 'os'), where('status', '==', 'concluido'))
+      );
+      const prontos = [];
+      prontoSnap.forEach(d => {
+        const os = { id: d.id, ...d.data() };
+        let dataConcluido = null;
+        if (Array.isArray(os.timeline)) {
+          const entry = [...os.timeline].reverse().find(t =>
+            typeof t.text === 'string' && t.text.includes('→ Concluído')
+          );
+          if (entry?.date) dataConcluido = entry.date;
+        }
+        if (!dataConcluido) dataConcluido = os.updatedAt;
+        if (!dataConcluido) return;
+        const dias = calcDias(dataConcluido);
+        if (dias > 3) prontos.push({ ...os, _dias: dias });
+      });
+      if (prontos.length > 0) {
+        prontos.sort((a, b) => b._dias - a._dias);
+        alertas.push({
+          icon: '📦', cat: 'atencao', cor: 'atencao',
+          title: 'APARELHOS NÃO RETIRADOS',
+          sub: `${prontos.length} aparelho(s) pronto(s) há mais de 3 dias`,
+          detail: `Toque para ver a lista. Ex.: ${prontos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
+          _osData: prontos,
+          _tipo: 'pronto_nao_retirado',
+          _titulo: 'Aparelhos Prontos — Não Retirados',
+        });
+      }
+    } catch (e) { console.warn('Central de Alertas — OS prontas:', e); }
+
+    // ===== ORÇAMENTOS SEM RESPOSTA =====
+    try {
+      const orcSnap = await getDocs(
+        query(collection(db, 'os'), where('status', 'in', ['orcamento', 'orcamento_enviado']))
+      );
+      const orcamentos = [];
+      orcSnap.forEach(d => {
+        const os = { id: d.id, ...d.data() };
+        const dias = calcDias(os.updatedAt);
+        if (dias > 2) orcamentos.push({ ...os, _dias: dias });
+      });
+      if (orcamentos.length > 0) {
+        orcamentos.sort((a, b) => b._dias - a._dias);
+        alertas.push({
+          icon: '💬', cat: 'atencao', cor: 'atencao',
+          title: 'ORÇAMENTOS SEM RESPOSTA',
+          sub: `${orcamentos.length} orçamento(s) sem resposta há mais de 2 dias`,
+          detail: `Toque para ver a lista. Ex.: ${orcamentos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
+          _osData: orcamentos,
+          _tipo: 'orcamento_abandonado',
+          _titulo: 'Orçamentos Sem Resposta',
+        });
+      }
+    } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
+
     return alertas;
   }
 
@@ -1127,6 +1186,9 @@ class Dashboard {
     };
 
     const mostrar = (dica, animacao) => {
+      this._alertaAtual = dica;
+      const card = document.getElementById('alerts-card');
+      if (card) card.style.cursor = dica._osData?.length ? 'pointer' : '';
       if (animacao) {
         [titleEl, subtitleEl, detailEl].forEach(el => {
           el.style.transition = 'opacity 0.4s ease';
@@ -1148,6 +1210,14 @@ class Dashboard {
         aplicarCategoria(dica);
       }
     };
+
+    // Click no card de alertas abre lista quando for alerta de OS
+    const alertsCard = document.getElementById('alerts-card');
+    if (alertsCard) {
+      alertsCard.addEventListener('click', () => {
+        if (this._alertaAtual?._osData?.length) this.mostrarAlertaOS(this._alertaAtual);
+      });
+    }
 
     mostrar(DICAS[0], false);
 
@@ -1700,7 +1770,8 @@ class Dashboard {
       'portal-cliente': '../../pages/portal-cliente/admin.html',
       'portal-tecnico': '../../pages/portal-tecnico/index.html',
       'diario':               '../../pages/diario/index.html',
-      'central-organizacao':  '../../pages/central-organizacao/index.html'
+      'central-organizacao':  '../../pages/central-organizacao/index.html',
+      'contas':               '../../pages/contas/index.html'
     };
     const url = routes[module];
     if (url) {
@@ -2931,6 +3002,27 @@ class Dashboard {
       const alvo = !document.body.classList.contains('modo-compacto');
       aplicar(alvo);
     });
+  }
+
+  // ===== MODAL: LISTA DE OS DO ALERTA =====
+  mostrarAlertaOS(alerta) {
+    const modal   = document.getElementById('os-alerta-modal');
+    const titleEl = document.getElementById('os-modal-title');
+    const listEl  = document.getElementById('os-modal-list');
+    if (!modal || !titleEl || !listEl) return;
+
+    titleEl.textContent = alerta._titulo || alerta.title;
+    const labelDias = alerta._tipo === 'pronto_nao_retirado' ? 'aguardando retirada' : 'sem resposta';
+
+    listEl.innerHTML = alerta._osData.map(os => `
+      <div style="background:#1a1d1b;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">
+        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${os.id}</span>
+        <span style="font-size:14px;font-weight:700;color:#fff;">${os.clientName || '—'}</span>
+        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + os.phone : 'Sem telefone'}</span>
+        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${os._dias} dia(s) ${labelDias}</span>
+      </div>`).join('');
+
+    modal.style.display = 'flex';
   }
 }
 

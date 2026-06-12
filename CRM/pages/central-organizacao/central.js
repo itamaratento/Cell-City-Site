@@ -1,4 +1,4 @@
-import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, doc, getDoc, setDoc, serverTimestamp, authReady } from '../../scripts/firebase.js';
 
 // ── Estrutura por seção ──────────────────────────────────────────────────────
 // Cada seção é um documento em `central_organizacao/{secao}` com campo `itens: []`
@@ -226,5 +226,7 @@ document.querySelectorAll('.tab').forEach(btn => {
     });
 });
 
-// ── Init: carrega todas as seções ─────────────────────────────────────────────
-Object.keys(estado).forEach(secao => carregar(secao).catch(console.error));
+// ── Init: aguarda auth antes de acessar o Firestore ──────────────────────────
+authReady.then(() => {
+    Object.keys(estado).forEach(secao => carregar(secao).catch(console.error));
+});
