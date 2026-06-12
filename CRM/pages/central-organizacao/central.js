@@ -1,76 +1,52 @@
 import { db, doc, getDoc, setDoc, serverTimestamp, authReady } from '../../scripts/firebase.js';
 
-// ── Estrutura por seção ──────────────────────────────────────────────────────
-// Cada seção é um documento em `central_organizacao/{secao}` com campo `itens: []`
-
 const SECAO_DOC = 'central_organizacao';
 
-// ── Estado de edição ──────────────────────────────────────────────────────────
-// null = novo registro; número = índice do item sendo editado
-const _editIdx = { whatsapp: null, robos: null, programas: null, historico: null, links: null };
-
-// ── Helpers de campos dinâmicos (WhatsApp) ────────────────────────────────────
-function _resetDynFields(containerId, placeholder, type) {
-    const c = document.getElementById(containerId);
-    if (!c) return;
-    while (c.children.length > 1) c.removeChild(c.lastChild);
-    const inp = c.querySelector('input');
-    if (inp) { inp.value = ''; inp.placeholder = placeholder; inp.type = type; }
+// ── Avatar ────────────────────────────────────────────────────────────────────
+const _PAL = ['#2563eb','#7c3aed','#db2777','#dc2626','#d97706','#059669','#0891b2','#4f46e5','#9333ea','#0f766e','#b45309','#16a34a'];
+function _hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+function _initials(nome) {
+    if (!nome) return '?';
+    const caps = nome.match(/[A-Z]/g) || [];
+    if (caps.length >= 2) return caps[0] + caps[caps.length - 1];
+    const ws = nome.trim().split(/\s+/);
+    if (ws.length >= 2) return (ws[0][0] + ws[ws.length - 1][0]).toUpperCase();
+    return nome.slice(0, 2).toUpperCase();
+}
+function av(nome) {
+    const bg = _PAL[_hash(nome || '') % _PAL.length];
+    return `<div class="item-avatar" style="background:${bg}">${_initials(nome)}</div>`;
 }
 
-function _addDynRow(containerId, placeholder, type, value = '') {
-    const c = document.getElementById(containerId);
-    if (!c) return;
-    const row = document.createElement('div');
-    row.className = 'field-row';
-    const inp = document.createElement('input');
-    inp.className = 'field';
-    inp.placeholder = placeholder;
-    inp.maxLength = 120;
-    inp.type = type;
-    inp.value = value;
-    row.appendChild(inp);
-    c.appendChild(row);
-    inp.focus();
-}
-
-function _collectDynValues(containerId) {
-    const c = document.getElementById(containerId);
-    if (!c) return [];
-    return [...c.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
-}
-
-// ── Configuração de cada seção ────────────────────────────────────────────────
+// ── Seções ────────────────────────────────────────────────────────────────────
 const SECOES = {
     whatsapp: {
         campos: ['wpp-nome', 'wpp-numero', 'wpp-obs'],
-        montar: (_campos) => ({
-            nome:   document.getElementById('wpp-nome')?.value.trim() || '',
-            numero: (document.getElementById('wpp-numero')?.value || '').replace(/\D/g, ''),
-            emails: _collectDynValues('wpp-emails-container'),
-            senhas: _collectDynValues('wpp-senhas-container'),
-            obs:    document.getElementById('wpp-obs')?.value.trim() || '',
+        montar: (campos) => ({
+            nome:   campos['wpp-nome'],
+            numero: campos['wpp-numero'].replace(/\D/g, ''),
+            obs:    campos['wpp-obs'],
         }),
+        preencher: (item) => {
+            document.getElementById('wpp-nome').value   = item.nome   || '';
+            document.getElementById('wpp-numero').value = item.numero || '';
+            document.getElementById('wpp-obs').value    = item.obs    || '';
+        },
         validar: (d) => d.nome && d.numero,
         erroValidacao: 'Preencha nome e número.',
-        renderItem: (item, idx) => {
-            const emails = (item.emails || []).filter(Boolean);
-            const senhas = (item.senhas || []).filter(Boolean);
-            return `
+        renderItem: (item, idx) => `
             <div class="item-card">
+                ${av(item.nome)}
                 <div class="item-body">
                     <div class="item-name">${esc(item.nome)}</div>
                     <div class="item-sub">📞 ${esc(item.numero)}</div>
-                    ${emails.map(e => `<div class="item-sub">📧 ${esc(e)}</div>`).join('')}
-                    ${senhas.map(s => `<div class="item-sub">🔑 ${esc(s)}</div>`).join('')}
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
                 <div class="item-actions">
-                    <button class="btn-edit" onclick="Central.editar('whatsapp', ${idx})" title="Editar">✏️</button>
-                    <button class="btn-delete" onclick="Central.remover('whatsapp', ${idx})" title="Remover">🗑</button>
+                    <button class="btn-edit"   onclick="Central.editar('whatsapp',${idx})"  title="Editar">✏️</button>
+                    <button class="btn-delete" onclick="Central.remover('whatsapp',${idx})" title="Remover">🗑️</button>
                 </div>
-            </div>`;
-        },
+            </div>`,
     },
     robos: {
         campos: ['robos-nome', 'robos-funcao', 'robos-obs'],
@@ -79,16 +55,25 @@ const SECOES = {
             funcao: campos['robos-funcao'],
             obs:    campos['robos-obs'],
         }),
+        preencher: (item) => {
+            document.getElementById('robos-nome').value   = item.nome   || '';
+            document.getElementById('robos-funcao').value = item.funcao || '';
+            document.getElementById('robos-obs').value    = item.obs    || '';
+        },
         validar: (d) => d.nome,
         erroValidacao: 'Preencha o nome.',
         renderItem: (item, idx) => `
             <div class="item-card">
+                ${av(item.nome)}
                 <div class="item-body">
                     <div class="item-name">${esc(item.nome)}</div>
                     ${item.funcao ? `<div class="item-sub">🔧 ${esc(item.funcao)}</div>` : ''}
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
-                <button class="btn-delete" onclick="Central.remover('robos', ${idx})" title="Remover">🗑</button>
+                <div class="item-actions">
+                    <button class="btn-edit"   onclick="Central.editar('robos',${idx})"  title="Editar">✏️</button>
+                    <button class="btn-delete" onclick="Central.remover('robos',${idx})" title="Remover">🗑️</button>
+                </div>
             </div>`,
     },
     programas: {
@@ -98,25 +83,39 @@ const SECOES = {
             link: campos['programas-link'],
             obs:  campos['programas-obs'],
         }),
+        preencher: (item) => {
+            document.getElementById('programas-nome').value = item.nome || '';
+            document.getElementById('programas-link').value = item.link || '';
+            document.getElementById('programas-obs').value  = item.obs  || '';
+        },
         validar: (d) => d.nome,
         erroValidacao: 'Preencha o nome.',
         renderItem: (item, idx) => `
             <div class="item-card">
+                ${av(item.nome)}
                 <div class="item-body">
                     <div class="item-name">${esc(item.nome)}</div>
                     ${item.link ? `<div class="item-sub"><a class="item-link" href="${esc(item.link)}" target="_blank" rel="noopener">${esc(item.link)}</a></div>` : ''}
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
-                <button class="btn-delete" onclick="Central.remover('programas', ${idx})" title="Remover">🗑</button>
+                <div class="item-actions">
+                    <button class="btn-edit"   onclick="Central.editar('programas',${idx})"  title="Editar">✏️</button>
+                    <button class="btn-delete" onclick="Central.remover('programas',${idx})" title="Remover">🗑️</button>
+                </div>
             </div>`,
     },
     historico: {
         campos: ['historico-data', 'historico-descricao', 'historico-responsavel'],
         montar: (campos) => ({
-            data:         campos['historico-data'] || new Date().toISOString().slice(0, 10),
-            descricao:    campos['historico-descricao'],
-            responsavel:  campos['historico-responsavel'],
+            data:        campos['historico-data'] || new Date().toISOString().slice(0, 10),
+            descricao:   campos['historico-descricao'],
+            responsavel: campos['historico-responsavel'],
         }),
+        preencher: (item) => {
+            document.getElementById('historico-data').value         = item.data        || '';
+            document.getElementById('historico-descricao').value    = item.descricao   || '';
+            document.getElementById('historico-responsavel').value  = item.responsavel || '';
+        },
         validar: (d) => d.descricao,
         erroValidacao: 'Preencha a descrição.',
         renderItem: (item, idx) => `
@@ -126,7 +125,10 @@ const SECOES = {
                     <div class="item-name">${esc(item.descricao)}</div>
                     ${item.responsavel ? `<div class="item-sub">👤 ${esc(item.responsavel)}</div>` : ''}
                 </div>
-                <button class="btn-delete" onclick="Central.remover('historico', ${idx})" title="Remover">🗑</button>
+                <div class="item-actions">
+                    <button class="btn-edit"   onclick="Central.editar('historico',${idx})"  title="Editar">✏️</button>
+                    <button class="btn-delete" onclick="Central.remover('historico',${idx})" title="Remover">🗑️</button>
+                </div>
             </div>`,
         ordenar: (itens) => [...itens].sort((a, b) => (b.data || '').localeCompare(a.data || '')),
     },
@@ -137,22 +139,31 @@ const SECOES = {
             url:  campos['links-url'],
             obs:  campos['links-obs'],
         }),
+        preencher: (item) => {
+            document.getElementById('links-nome').value = item.nome || '';
+            document.getElementById('links-url').value  = item.url  || '';
+            document.getElementById('links-obs').value  = item.obs  || '';
+        },
         validar: (d) => d.nome && d.url,
         erroValidacao: 'Preencha nome e URL.',
         renderItem: (item, idx) => `
             <div class="item-card">
+                ${av(item.nome)}
                 <div class="item-body">
                     <div class="item-name">${esc(item.nome)}</div>
                     <div class="item-sub"><a class="item-link" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.url)}</a></div>
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
-                <button class="btn-delete" onclick="Central.remover('links', ${idx})" title="Remover">🗑</button>
+                <div class="item-actions">
+                    <button class="btn-edit"   onclick="Central.editar('links',${idx})"  title="Editar">✏️</button>
+                    <button class="btn-delete" onclick="Central.remover('links',${idx})" title="Remover">🗑️</button>
+                </div>
             </div>`,
     },
 };
 
-// ── Estado em memória ─────────────────────────────────────────────────────────
-const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [] };
+// ── Estado ────────────────────────────────────────────────────────────────────
+const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [], _edit: null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function esc(str) {
@@ -190,10 +201,8 @@ function renderLista(secao) {
     const cfg   = SECOES[secao];
     const lista = document.getElementById(`list-${secao}`);
     if (!lista) return;
-
     let itens = estado[secao];
     if (cfg.ordenar) itens = cfg.ordenar(itens);
-
     if (!itens.length) {
         lista.innerHTML = `<div class="empty">Nenhum item cadastrado ainda.</div>`;
         return;
@@ -204,7 +213,6 @@ function renderLista(secao) {
 // ── API pública ───────────────────────────────────────────────────────────────
 window.Central = {
     abrirForm(secao) {
-        _editIdx[secao] = null;
         document.getElementById(`form-${secao}`)?.classList.remove('hidden');
         if (secao === 'historico') {
             const campo = document.getElementById('historico-data');
@@ -220,11 +228,16 @@ window.Central = {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
-        if (secao === 'whatsapp') {
-            _resetDynFields('wpp-emails-container', 'E-mail (opcional)', 'email');
-            _resetDynFields('wpp-senhas-container', 'Senha (opcional)', 'text');
-        }
-        _editIdx[secao] = null;
+        if (estado._edit?.secao === secao) estado._edit = null;
+    },
+
+    editar(secao, idx) {
+        const item = estado[secao][idx];
+        if (!item) return;
+        estado._edit = { secao, idx };
+        Central.abrirForm(secao);
+        SECOES[secao].preencher(item);
+        document.getElementById(`form-${secao}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
 
     async salvar(secao) {
@@ -238,23 +251,23 @@ window.Central = {
         const dado = cfg.montar(campos);
         if (!cfg.validar(dado)) { toast(`⚠️ ${cfg.erroValidacao}`); return; }
 
-        const editIdx = _editIdx[secao];
-        const isEdit  = editIdx !== null && editIdx >= 0;
-
-        if (isEdit) {
-            const anterior = estado[secao][editIdx];
-            estado[secao][editIdx] = dado;
+        const editando = estado._edit;
+        if (editando && editando.secao === secao) {
+            const anterior = estado[secao][editando.idx];
+            estado[secao][editando.idx] = dado;
+            estado._edit = null;
             try {
                 await persistir(secao);
                 renderLista(secao);
                 Central.fecharForm(secao);
                 toast('✅ Atualizado');
             } catch (e) {
-                estado[secao][editIdx] = anterior;
-                toast('❌ Erro ao atualizar');
+                estado[secao][editando.idx] = anterior;
+                toast('❌ Erro ao salvar');
                 console.error(e);
             }
         } else {
+            estado._edit = null;
             estado[secao].push(dado);
             try {
                 await persistir(secao);
@@ -283,45 +296,22 @@ window.Central = {
         }
     },
 
-    editar(secao, idx) {
-        if (secao !== 'whatsapp') return;
-        const item = estado[secao][idx];
-        if (!item) return;
-
-        _editIdx[secao] = idx;
-
-        document.getElementById('wpp-nome').value   = item.nome   || '';
-        document.getElementById('wpp-numero').value = item.numero || '';
-        document.getElementById('wpp-obs').value    = item.obs    || '';
-
-        // Preenche e-mails
-        const emails = item.emails || [];
-        _resetDynFields('wpp-emails-container', 'E-mail (opcional)', 'email');
-        const firstEmailInp = document.querySelector('#wpp-emails-container input');
-        if (firstEmailInp) firstEmailInp.value = emails[0] || '';
-        for (let i = 1; i < emails.length; i++) {
-            _addDynRow('wpp-emails-container', 'E-mail (opcional)', 'email', emails[i]);
-        }
-
-        // Preenche senhas
-        const senhas = item.senhas || [];
-        _resetDynFields('wpp-senhas-container', 'Senha (opcional)', 'text');
-        const firstSenhaInp = document.querySelector('#wpp-senhas-container input');
-        if (firstSenhaInp) firstSenhaInp.value = senhas[0] || '';
-        for (let i = 1; i < senhas.length; i++) {
-            _addDynRow('wpp-senhas-container', 'Senha (opcional)', 'text', senhas[i]);
-        }
-
-        document.getElementById('form-whatsapp')?.classList.remove('hidden');
-        document.getElementById('wpp-nome')?.focus();
-    },
-
     addEmailRow() {
-        _addDynRow('wpp-emails-container', 'E-mail (opcional)', 'email');
+        const c = document.getElementById('wpp-emails-container');
+        if (!c) return;
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        row.innerHTML = `<input class="field" placeholder="E-mail (opcional)" maxlength="120" type="email"><button class="btn-add-row" type="button" onclick="this.parentElement.remove()" title="Remover">−</button>`;
+        c.appendChild(row);
     },
 
     addSenhaRow() {
-        _addDynRow('wpp-senhas-container', 'Senha (opcional)', 'text');
+        const c = document.getElementById('wpp-senhas-container');
+        if (!c) return;
+        const row = document.createElement('div');
+        row.className = 'field-row';
+        row.innerHTML = `<input class="field" placeholder="Senha (opcional)" maxlength="120" type="text"><button class="btn-add-row" type="button" onclick="this.parentElement.remove()" title="Remover">−</button>`;
+        c.appendChild(row);
     },
 };
 
@@ -335,7 +325,7 @@ document.querySelectorAll('.tab').forEach(btn => {
     });
 });
 
-// ── Init: aguarda auth antes de acessar o Firestore ──────────────────────────
+// ── Init ──────────────────────────────────────────────────────────────────────
 authReady.then(() => {
-    Object.keys(estado).forEach(secao => carregar(secao).catch(console.error));
+    Object.keys(estado).filter(k => k !== '_edit').forEach(secao => carregar(secao).catch(console.error));
 });

@@ -40,7 +40,7 @@ const MODULES = {
   'autoatendimento':     { icon: '🤖', label: 'Autoatendimento' },
   'central-informacoes':  { icon: '📚', label: 'Central de Informações' },
   'central-comandos':    { icon: '📚', label: 'Central de Comandos' },
-  'central-organizacao': { icon: '📋', label: 'Central de Organização' },
+  'central-organizacao': { icon: '⚡', label: 'Central Automação' },
   'portal-tecnico':      { icon: '🔓', label: 'Portal Técnico' },
   'importar':            { icon: '📥', label: 'Importar' },
   'config':             { icon: '⚙️', label: 'Ferramentas' },
