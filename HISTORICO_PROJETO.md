@@ -758,4 +758,148 @@ Cada registro deve conter:
 
 ---
 
+### 12/06/2026 — Central de Informações: Refinamento da Expansão Inline — CONCLUÍDA
+
+**Tarefa:** Melhorar ergonomia da expansão inline, removendo botões do meio da leitura e refinando a apresentação do texto.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_REFINO_EXPANSAO_INLINE_2026-06-12/`.
+- Botões originais do card/lista ficam ocultos enquanto o item está expandido.
+- Ações foram movidas para um rodapé ao final da anotação expandida.
+- Rodapé contém ações do tipo, Favoritar, Editar, Copiar, Imprimir, Excluir e Restaurar.
+- Conteúdo de leitura vem antes dos botões, evitando interrupção visual no meio do texto.
+- Largura máxima do texto aumentada para `1080px`.
+- Margens internas, espaçamento entre títulos/parágrafos/listas e comandos foram refinados.
+- Impressão esconde o rodapé de botões e prioriza a leitura expandida.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/informacoes.css`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** `git diff --check` sem erros. Teste visual em navegador ainda recomendado.
+
+---
+
+### 12/06/2026 — Central de Informações: Expansão Inline do Card — CONCLUÍDA
+
+**Tarefa:** Trocar o conceito de tela cheia para expansão do próprio card/item, evitando mudança de contexto e conteúdo deslocado para baixo.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_EXPANSAO_INLINE_2026-06-12/`.
+- Modal separado removido da tela ativa.
+- Botão **⛶ Tela Cheia** agora expande o próprio card/list item no mesmo local da lista.
+- Segundo clique restaura o tamanho normal e o botão vira **↙ Restaurar** durante a expansão.
+- Em modo cards, o card expandido ocupa a largura total da grade.
+- Em modo lista, o item expandido abre o conteúdo completo logo abaixo da linha original.
+- Conteúdo expandido usa scroll interno e altura proporcional à área disponível do viewport.
+- Ações mantidas dentro da expansão: Editar, Copiar, Imprimir e Restaurar.
+- Mantida a formatação melhorada de textos longos em títulos, listas e parágrafos.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/informacoes.css`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** `git diff --check` sem erros. Teste visual em navegador ainda recomendado.
+
+---
+
+### 12/06/2026 — Central de Informações: Auditoria e Fix Real da Tela Cheia — CONCLUÍDA
+
+**Tarefa:** Auditar a função de tela cheia porque o modal ainda aparecia deslocado para baixo.
+
+**Diagnóstico:** O posicionamento ainda dependia demais do fluxo/viewport calculado da página, o que podia deslocar o painel em cenários com container alto, iframe/painel principal ou rolagem interna.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_AUDITORIA_TELA_CHEIA_FIX_2026-06-12/`.
+- Overlay de leitura passou a usar `position: fixed !important`, `inset: 0`, `100vw` e `100dvh`.
+- Painel passou a ser fixo no viewport, com `top: 16px`, `left: 50%`, largura quase total e altura `100dvh - 32px`.
+- Removida dependência da centralização vertical por `flex`, evitando o deslocamento para baixo.
+- `html` e `body` são travados durante a leitura.
+- A posição de scroll anterior é restaurada apenas ao fechar o modal.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/informacoes.css`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** `git diff --check` sem erros. Teste visual em navegador ainda recomendado.
+
+---
+
+### 12/06/2026 — Central de Informações: Ajuste Tela Cheia + Legibilidade — CONCLUÍDA
+
+**Tarefa:** Corrigir a abertura da tela cheia para não rolar a página e melhorar a leitura de textos longos.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_AJUSTE_TELA_CHEIA_LEITURA_2026-06-12/`.
+- Botão **⛶ Tela Cheia** passou a usar `type="button"`, bloquear default/propagação e preservar a posição de rolagem.
+- Removido foco automático no painel, evitando que o navegador role até a posição do modal no fim do HTML.
+- Modal abre sobre a tela atual, centralizado, sem levar o usuário para a parte inferior da página.
+- Textos longos ganharam formatação semântica:
+  - linhas em caixa alta viram títulos/seções;
+  - linhas iniciadas por `*`, `-`, `✓`, `•` ou numeração viram listas;
+  - linhas em branco separam parágrafos;
+  - observações também usam a nova renderização.
+- CSS ajustado para maior espaçamento entre linhas, margens internas, contraste e legibilidade.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/informacoes.css`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** `git diff --check` sem erros. Teste visual em navegador ainda recomendado.
+
+---
+
+### 12/06/2026 — Central de Informações: Restauração + Tela Cheia sem Split — CONCLUÍDA
+
+**Tarefa:** Reverter a Central de Informações para o estado anterior ao painel dividido e manter somente uma melhoria de leitura em tela cheia.
+
+**Motivo:** O painel dividido reduziu a área útil em notebooks e piorou a leitura diária de conteúdos longos.
+
+**Entregue:**
+- Backup solicitado criado em `CRM/pages/central-informacoes/BACKUP_RESTAURACAO_TELA_CHEIA_2026-06-12/`.
+- `index.html`, `informacoes.css` e `informacoes.js` restaurados a partir de `BACKUP_VISUALIZACAO_SPLIT_2026-06-12/`.
+- Arquivos ativos `visualizacao.css` e `visualizacao.js` removidos da Central de Informações.
+- Interface original preservada:
+  - clique simples no título copia o conteúdo;
+  - duplo clique no título abre edição;
+  - lista/cards voltam a ocupar a tela como antes.
+- Nova melhoria isolada: botão **⛶ Tela Cheia** em cada registro.
+- Modal grande (~90% da tela) com título, categoria/tipo, conteúdo completo e scroll próprio.
+- Ações no modal: Editar, Copiar, Imprimir e Fechar.
+- Fechamento por `ESC`, botão Fechar ou clique no fundo escuro.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/informacoes.css`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** `git diff --check` sem erros; inspeção confirmou ausência de referências ativas a `info-split`, `visualizacao` e `abrirViewer`. Teste visual em navegador ainda recomendado.
+
+---
+
+### 12/06/2026 — Central de Informações: Tela Cheia de Leitura — CONCLUÍDA
+
+**Tarefa:** Melhorar a leitura de conteúdos longos na Central de Informações sem remover o painel dividido já implementado.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_TELA_CHEIA_2026-06-12/`.
+- Botão **⛶ Tela Cheia** adicionado ao header do viewer.
+- Modal de leitura com aproximadamente 90% da tela, fundo escuro, conteúdo centralizado e scroll próprio.
+- Tipografia ampliada para leitura de processos, comandos, procedimentos técnicos, scripts, senhas, documentação interna e textos extensos.
+- Botões dentro da tela cheia: Editar, Copiar, Imprimir e Fechar.
+- Fechamento por `ESC`, botão Fechar/X ou clique no fundo escuro.
+- O comportamento anterior foi preservado: clique simples abre o painel dividido; duplo clique abre edição.
+- Ao acionar Editar pela tela cheia, o modal fecha antes de abrir o formulário.
+- Impressão com a tela cheia aberta prioriza o conteúdo do modal.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/visualizacao.css`, `CRM/pages/central-informacoes/visualizacao.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** revisão de diff e inspeção manual dos trechos HTML/CSS/JS. Validação visual em navegador permanece recomendada.
+
+---
+
+### 12/06/2026 — Central de Informações: Visualização Split — CONCLUÍDA
+
+**Tarefa:** Transformar a Central de Informações em layout de leitura com lista à esquerda e painel de visualização à direita.
+
+**Entregue:**
+- Backup criado em `CRM/pages/central-informacoes/BACKUP_VISUALIZACAO_SPLIT_2026-06-12/`.
+- `index.html` recebeu o container split, painel esquerdo para a biblioteca e painel direito para leitura.
+- Criados `visualizacao.css` e `visualizacao.js` para o viewer.
+- Clique simples no título abre o registro no painel; duplo clique mantém o fluxo de edição.
+- Viewer renderiza conteúdos por tipo: comando, site, senha, anotação e documento.
+- Ações do painel: editar, copiar, imprimir, fechar, abrir URL, copiar usuário/senha e download de documento.
+- `informacoes.js` agora expõe `window._informacoes` ao carregar do cache e ao receber snapshot do Firestore.
+- Compatibilidade melhorada para sites com múltiplas URLs.
+- Viewer atualiza o item aberto após renderização/snapshot e fecha quando o item é excluído ou some dos filtros.
+
+**Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Arquivos criados:** `CRM/pages/central-informacoes/visualizacao.css`, `CRM/pages/central-informacoes/visualizacao.js`.
+**Validação:** revisão de diff e inspeção manual dos trechos críticos. Checagem automática com `node --check` não executada porque `node` não está instalado no ambiente.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

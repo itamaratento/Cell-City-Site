@@ -479,12 +479,6 @@ function renderLeituraInline(info) {
                     </div>
                     <h2>${escapeHtml(info.titulo || '(sem título)')}</h2>
                 </div>
-                <div class="info-leitura-header-acoes">
-                    ${renderAcoesPorTipo(info)}
-                    <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favoritar">⭐</button>
-                    <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()" title="Editar">✏️</button>
-                    <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()" title="Restaurar">↙</button>
-                </div>
             </header>
             <div class="info-leitura-corpo">${renderTelaCheiaConteudo(info)}</div>
             <footer class="info-leitura-rodape">

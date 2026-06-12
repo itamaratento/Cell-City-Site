@@ -28,7 +28,6 @@ let termoBusca = '';
 let viewMode = localStorage.getItem(VIEWMODE_KEY) || 'lista';
 let currentEditType = null;
 let currentEditFile = null;
-let infoLeituraIdAtivo = null;
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.filtrarInformacoes = filtrarInformacoes;
@@ -76,11 +75,7 @@ window.copiarLinhaCmd = copiarLinhaCmd;
 window.copiarLinhaRender = copiarLinhaRender;
 window.toggleUrlsCollapse = toggleUrlsCollapse;
 window.toggleSiteSection = toggleSiteSection;
-window.abrirTelaCheiaInfo = abrirTelaCheiaInfo;
-window.fecharTelaCheiaInfo = fecharTelaCheiaInfo;
-window.editarTelaCheiaInfo = editarTelaCheiaInfo;
-window.copiarTelaCheiaInfo = copiarTelaCheiaInfo;
-window.imprimirTelaCheiaInfo = imprimirTelaCheiaInfo;
+window.toast = toast;
 
 // ===== INIT =====
 async function init() {
@@ -100,9 +95,6 @@ async function init() {
     });
     document.getElementById('info-modal-cat')?.addEventListener('click', e => {
         if (e.target.id === 'info-modal-cat') fecharFormCategoria();
-    });
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && infoLeituraIdAtivo) fecharTelaCheiaInfo();
     });
 
     // Event delegation para títulos clicáveis
@@ -126,7 +118,11 @@ async function init() {
         } else {
             lastClickTime = now;
             pendingClickTimer = setTimeout(() => {
-                copiarTitulo(id, tipo);
+                if (window.abrirViewer) {
+                    window.abrirViewer(id);
+                } else {
+                    copiarTitulo(id, tipo);
+                }
                 pendingClickTimer = null;
             }, doubleClickDelay);
         }
@@ -171,12 +167,19 @@ function carregarCategorias() {
 function carregarInformacoes() {
     // Pinta imediatamente a partir do cache
     try { informacoes = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch { informacoes = []; }
+    window._informacoes = informacoes;
     if (_unsubInformacoes) { _unsubInformacoes(); _unsubInformacoes = null; }
     _unsubInformacoes = onSnapshot(query(collection(db, COL), orderBy('criadoEm', 'desc')), (snap) => {
         informacoes = [];
         snap.forEach(d => informacoes.push({ id: d.id, ...d.data() }));
+        window._informacoes = informacoes;
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
         render();
+        // Atualiza viewer se o item aberto sofreu alteração
+        if (window._viewerIdAtivo && window.abrirViewer) {
+            const ainda = informacoes.find(x => x.id === window._viewerIdAtivo);
+            if (ainda) window.abrirViewer(window._viewerIdAtivo);
+        }
     }, (e) => {
         console.warn('⚠️ onSnapshot informações:', e);
         render();
@@ -292,6 +295,15 @@ function render() {
     } else {
         lista.innerHTML = filtrados.map(renderItemCard).join('');
     }
+
+    if (window._viewerIdAtivo && window.abrirViewer) {
+        const aindaVisivel = filtrados.some(i => i.id === window._viewerIdAtivo);
+        if (aindaVisivel) {
+            window.abrirViewer(window._viewerIdAtivo);
+        } else if (window.fecharViewer) {
+            window.fecharViewer();
+        }
+    }
 }
 
 function renderItemLista(info) {
@@ -311,7 +323,6 @@ function renderItemLista(info) {
             </div>
             <div class="info-lista-item-actions">
                 ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}', event)" title="Tela cheia">⛶ Tela Cheia</button>
                 <button class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favorito">${estrela}</button>
                 <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
                 <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
@@ -331,9 +342,10 @@ function renderItemCard(info) {
     } else if (info.tipo === 'anotacao') {
         conteudo = escapeHtml((info.conteudo || '').substring(0, 100));
     } else if (info.tipo === 'site') {
-        const totalUrls = Array.isArray(info.urls) ? info.urls.length : (info.url ? 1 : 0);
+        const urls = getUrlsInfo(info);
+        const totalUrls = urls.length;
         const urlLabel = totalUrls > 1 ? `URLs (${totalUrls})` : 'URL';
-        conteudo = `<strong>${urlLabel}:</strong> ${escapeHtml(info.url || '-')}<br><strong>Usuário:</strong> ${escapeHtml(info.usuario || '-')}`;
+        conteudo = `<strong>${urlLabel}:</strong> ${escapeHtml(urls[0] || '-')}<br><strong>Usuário:</strong> ${escapeHtml(info.usuario || '-')}`;
     } else if (info.tipo === 'senha') {
         conteudo = `<strong>Serviço:</strong> ${escapeHtml(info.site_servico)}<br><strong>Usuário:</strong> ${escapeHtml(info.usuario)}`;
     } else if (info.tipo === 'documento') {
@@ -353,7 +365,6 @@ function renderItemCard(info) {
             <div class="info-card-content">${conteudo}</div>
             <div class="info-card-actions" style="margin-top: 12px;">
                 ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}', event)">⛶ Tela Cheia</button>
                 <button class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐</button>
                 <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
                 <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
@@ -409,246 +420,6 @@ function getTituloTipo(tipo) {
     return títulos[tipo] || tipo;
 }
 
-// ===== LEITURA EM TELA CHEIA =====
-function abrirTelaCheiaInfo(id, event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-
-    const info = informacoes.find(x => x.id === id);
-    if (!info) return;
-
-    const item = event?.target?.closest?.('.info-lista-item, .info-card');
-    if (!item) return;
-
-    if (infoLeituraIdAtivo === id && item.classList.contains('info-expandido')) {
-        fecharTelaCheiaInfo();
-        return;
-    }
-
-    fecharTelaCheiaInfo();
-    infoLeituraIdAtivo = id;
-    item.classList.add('info-expandido');
-    item.insertAdjacentHTML('beforeend', renderLeituraInline(info));
-    const btn = item.querySelector('.info-card-btn.leitura');
-    if (btn) btn.textContent = '↙ Restaurar';
-}
-
-function fecharTelaCheiaInfo() {
-    document.querySelectorAll('.info-leitura-inline').forEach(el => el.remove());
-    document.querySelectorAll('.info-expandido').forEach(el => el.classList.remove('info-expandido'));
-    document.querySelectorAll('.info-card-btn.leitura').forEach(btn => { btn.textContent = '⛶ Tela Cheia'; });
-    infoLeituraIdAtivo = null;
-}
-
-function editarTelaCheiaInfo() {
-    if (!infoLeituraIdAtivo) return;
-    const id = infoLeituraIdAtivo;
-    fecharTelaCheiaInfo();
-    editarInformacao(id);
-}
-
-async function copiarTelaCheiaInfo() {
-    const info = informacoes.find(x => x.id === infoLeituraIdAtivo);
-    if (!info) return;
-    let texto = '';
-    try {
-        texto = obterTextoCopiavel(info);
-    } catch {
-        return toast('❌ Erro ao descriptografar senha');
-    }
-    if (!texto) return toast('⚠️ Nenhum conteúdo para copiar');
-    await navigator.clipboard.writeText(texto).catch(() => {
-        document.execCommand('copy', false, texto);
-    });
-    toast('✅ Conteúdo copiado!');
-}
-
-function imprimirTelaCheiaInfo() {
-    window.print();
-}
-
-function renderLeituraInline(info) {
-    return `
-        <section class="info-leitura-inline" data-id="${info.id}">
-            <header class="info-leitura-header">
-                <div class="info-leitura-titulo-wrap">
-                    <div class="info-leitura-kicker">
-                        <span>${getIconoTipo(info.tipo)}</span>
-                        <span>${escapeHtml(info.categoria || 'Sem categoria')}</span>
-                        <span>${escapeHtml(getTituloTipo(info.tipo))}</span>
-                    </div>
-                    <h2>${escapeHtml(info.titulo || '(sem título)')}</h2>
-                </div>
-                <div class="info-leitura-header-acoes">
-                    ${renderAcoesPorTipo(info)}
-                    <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favoritar">⭐</button>
-                    <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()" title="Editar">✏️</button>
-                    <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()" title="Restaurar">↙</button>
-                </div>
-            </header>
-            <div class="info-leitura-corpo">${renderTelaCheiaConteudo(info)}</div>
-            <footer class="info-leitura-rodape">
-                ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐ Favoritar</button>
-                <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()">✏️ Editar</button>
-                <button type="button" class="info-card-btn copy" onclick="copiarTelaCheiaInfo()">📋 Copiar</button>
-                <button type="button" class="info-card-btn" onclick="imprimirTelaCheiaInfo()">🖨️ Imprimir</button>
-                <button type="button" class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️ Excluir</button>
-                <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()">↙ Restaurar</button>
-            </footer>
-        </section>
-    `;
-}
-
-function renderTelaCheiaConteudo(info) {
-    if (info.tipo === 'comando') return renderTelaCheiaComando(info);
-    if (info.tipo === 'site') return renderTelaCheiaSite(info);
-    if (info.tipo === 'senha') return renderTelaCheiaSenha(info);
-    if (info.tipo === 'documento') return renderTelaCheiaDocumento(info);
-    return `<div class="info-leitura-texto">${formatarTextoLeitura(info.conteudo || '(vazio)')}</div>`;
-}
-
-function renderTelaCheiaComando(info) {
-    const linhas = getLinhasData(info);
-    let html = '';
-    if (info.sistema || info.tags) {
-        html += '<div class="info-leitura-dados">';
-        if (info.sistema) html += `<div><strong>Sistema:</strong> ${escapeHtml(info.sistema)}</div>`;
-        if (info.tags) html += `<div><strong>Tags:</strong> ${escapeHtml(info.tags)}</div>`;
-        html += '</div>';
-    }
-    html += '<div class="info-leitura-comandos">';
-    let num = 0;
-    linhas.forEach(item => {
-        if (item.grupo !== undefined) {
-            html += `<div class="info-leitura-grupo">── ${escapeHtml(item.grupo || 'Grupo')} ──</div>`;
-        } else if (item.cmd) {
-            num++;
-            html += `
-                <div class="info-leitura-cmd-linha">
-                    <span>${num}</span>
-                    <code>${escapeHtml(item.cmd)}</code>
-                </div>
-            `;
-        }
-    });
-    html += '</div>';
-    if (info.observacoes) {
-        html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
-    }
-    return html;
-}
-
-function renderTelaCheiaSite(info) {
-    const urls = getUrlsInfo(info);
-    let html = '<div class="info-leitura-dados">';
-    html += `<div><strong>URL${urls.length > 1 ? 's' : ''}:</strong> ${urls.length ? urls.map(u => `<a href="${escapeHtml(u)}" target="_blank" rel="noopener">${escapeHtml(u)}</a>`).join('<br>') : '-'}</div>`;
-    if (info.usuario) html += `<div><strong>Usuário:</strong> ${escapeHtml(info.usuario)}</div>`;
-    if (info.senhaOculta) html += `<div><strong>Senha:</strong> ••••••••••</div>`;
-    html += '</div>';
-    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
-    return html;
-}
-
-function renderTelaCheiaSenha(info) {
-    let html = '<div class="info-leitura-dados">';
-    if (info.site_servico) html += `<div><strong>Site / Serviço:</strong> ${escapeHtml(info.site_servico)}</div>`;
-    html += `<div><strong>Usuário:</strong> ${escapeHtml(info.usuario || '-')}</div>`;
-    html += '<div><strong>Senha:</strong> ••••••••••</div>';
-    html += '</div>';
-    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
-    return html;
-}
-
-function renderTelaCheiaDocumento(info) {
-    let html = '<div class="info-leitura-dados">';
-    html += `<div><strong>Documento:</strong> ${escapeHtml(info.titulo || '-')}${info.extensao ? '.' + escapeHtml(info.extensao) : ''}</div>`;
-    if (info.descricao) html += `<div><strong>Descrição:</strong> ${escapeHtml(info.descricao)}</div>`;
-    html += '</div>';
-    if (info.storageUrl) {
-        html += `<button class="info-card-btn copy info-leitura-download" onclick="downloadDocumento('${info.id}')">📥 Download</button>`;
-    }
-    return html;
-}
-
-function obterTextoCopiavel(info) {
-    if (info.tipo === 'comando') {
-        return getLinhasData(info).filter(l => l.cmd).map(l => l.cmd).join('\n');
-    }
-    if (info.tipo === 'site') {
-        return getUrlsInfo(info).join('\n');
-    }
-    if (info.tipo === 'senha') {
-        return info.senhaOculta ? descriptografarSenha(info.senhaOculta) : '';
-    }
-    if (info.tipo === 'documento') {
-        return info.descricao || info.titulo || '';
-    }
-    return info.conteudo || '';
-}
-
-function formatarTextoLeitura(texto) {
-    const linhas = String(texto || '')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .split('\n');
-
-    let html = '';
-    let paragrafo = [];
-    let listaAberta = false;
-
-    const flushParagrafo = () => {
-        if (!paragrafo.length) return;
-        html += `<p>${paragrafo.join('<br>')}</p>`;
-        paragrafo = [];
-    };
-
-    const fecharLista = () => {
-        if (!listaAberta) return;
-        html += '</ul>';
-        listaAberta = false;
-    };
-
-    linhas.forEach(linhaOriginal => {
-        const linha = linhaOriginal.trim();
-
-        if (!linha) {
-            flushParagrafo();
-            fecharLista();
-            return;
-        }
-
-        const bullet = linha.match(/^([*•✓-])\s+(.+)$/);
-        const numerado = linha.match(/^(\d+[.)])\s+(.+)$/);
-
-        if (bullet || numerado) {
-            flushParagrafo();
-            if (!listaAberta) {
-                html += '<ul>';
-                listaAberta = true;
-            }
-            html += `<li>${escapeHtml((bullet?.[2] || numerado?.[2] || '').trim())}</li>`;
-            return;
-        }
-
-        const ehTitulo = /^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9\s:()/-]{4,}$/.test(linha) && linha.length <= 80;
-        if (ehTitulo) {
-            flushParagrafo();
-            fecharLista();
-            html += `<h3>${escapeHtml(linha)}</h3>`;
-            return;
-        }
-
-        fecharLista();
-        paragrafo.push(escapeHtml(linha));
-    });
-
-    flushParagrafo();
-    fecharLista();
-
-    return html || '<p>(vazio)</p>';
-}
-
 // ===== AÇÕES POR TIPO =====
 async function copiarTitulo(id, tipo) {
     const info = informacoes.find(x => x.id === id);
@@ -660,7 +431,7 @@ async function copiarTitulo(id, tipo) {
         const linhas = getLinhasData(info);
         conteudoCopiar = linhas.filter(l => l.cmd).map(l => l.cmd).join('\n');
     } else if (tipo === 'site') {
-        conteudoCopiar = info.url || '';
+        conteudoCopiar = getUrlsInfo(info).join('\n');
     } else if (tipo === 'senha') {
         if (info.senhaOculta) {
             try {
@@ -847,8 +618,9 @@ function renderComandosCompacto(info) {
 
 async function abrirSite(id) {
     const info = informacoes.find(x => x.id === id);
-    if (!info || !info.url) return;
-    window.open(info.url, '_blank');
+    const url = getUrlsInfo(info)[0];
+    if (!url) return;
+    window.open(url, '_blank');
 }
 
 async function copiarUsuario(id) {
@@ -1339,8 +1111,10 @@ async function excluirInformacao(id) {
 
         await deleteDoc(doc(db, COL, id));
         informacoes = informacoes.filter(x => x.id !== id);
+        window._informacoes = informacoes;
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
         render();
+        if (window._viewerIdAtivo === id && window.fecharViewer) window.fecharViewer();
         toast('✅ Informação excluída.');
     } catch (err) {
         console.error('Delete error:', err);

@@ -102,7 +102,9 @@ async function init() {
         if (e.target.id === 'info-modal-cat') fecharFormCategoria();
     });
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && infoLeituraIdAtivo) fecharTelaCheiaInfo();
+        if (e.key === 'Escape' && document.getElementById('info-modal-tela-cheia')?.classList.contains('active')) {
+            fecharTelaCheiaInfo();
+        }
     });
 
     // Event delegation para títulos clicáveis
@@ -311,7 +313,7 @@ function renderItemLista(info) {
             </div>
             <div class="info-lista-item-actions">
                 ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}', event)" title="Tela cheia">⛶ Tela Cheia</button>
+                <button class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}')" title="Tela cheia">⛶ Tela Cheia</button>
                 <button class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favorito">${estrela}</button>
                 <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
                 <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
@@ -353,7 +355,7 @@ function renderItemCard(info) {
             <div class="info-card-content">${conteudo}</div>
             <div class="info-card-actions" style="margin-top: 12px;">
                 ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}', event)">⛶ Tela Cheia</button>
+                <button class="info-card-btn leitura" onclick="abrirTelaCheiaInfo('${info.id}')">⛶ Tela Cheia</button>
                 <button class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐</button>
                 <button class="info-card-btn edit" onclick="editarInformacao('${info.id}')">✏️</button>
                 <button class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️</button>
@@ -410,34 +412,31 @@ function getTituloTipo(tipo) {
 }
 
 // ===== LEITURA EM TELA CHEIA =====
-function abrirTelaCheiaInfo(id, event) {
-    event?.preventDefault?.();
-    event?.stopPropagation?.();
-
+function abrirTelaCheiaInfo(id) {
     const info = informacoes.find(x => x.id === id);
     if (!info) return;
 
-    const item = event?.target?.closest?.('.info-lista-item, .info-card');
-    if (!item) return;
-
-    if (infoLeituraIdAtivo === id && item.classList.contains('info-expandido')) {
-        fecharTelaCheiaInfo();
-        return;
-    }
-
-    fecharTelaCheiaInfo();
     infoLeituraIdAtivo = id;
-    item.classList.add('info-expandido');
-    item.insertAdjacentHTML('beforeend', renderLeituraInline(info));
-    const btn = item.querySelector('.info-card-btn.leitura');
-    if (btn) btn.textContent = '↙ Restaurar';
+    document.getElementById('info-leitura-icone').textContent = getIconoTipo(info.tipo);
+    document.getElementById('info-leitura-categoria').textContent = info.categoria || 'Sem categoria';
+    document.getElementById('info-leitura-tipo').textContent = getTituloTipo(info.tipo);
+    document.getElementById('info-leitura-titulo').textContent = info.titulo || '(sem título)';
+    document.getElementById('info-leitura-corpo').innerHTML = renderTelaCheiaConteudo(info);
+
+    const modal = document.getElementById('info-modal-tela-cheia');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('info-leitura-lock');
+    document.querySelector('.info-leitura-painel')?.focus?.();
+    document.getElementById('info-leitura-corpo').scrollTop = 0;
 }
 
 function fecharTelaCheiaInfo() {
-    document.querySelectorAll('.info-leitura-inline').forEach(el => el.remove());
-    document.querySelectorAll('.info-expandido').forEach(el => el.classList.remove('info-expandido'));
-    document.querySelectorAll('.info-card-btn.leitura').forEach(btn => { btn.textContent = '⛶ Tela Cheia'; });
-    infoLeituraIdAtivo = null;
+    const modal = document.getElementById('info-modal-tela-cheia');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('info-leitura-lock');
 }
 
 function editarTelaCheiaInfo() {
@@ -467,45 +466,12 @@ function imprimirTelaCheiaInfo() {
     window.print();
 }
 
-function renderLeituraInline(info) {
-    return `
-        <section class="info-leitura-inline" data-id="${info.id}">
-            <header class="info-leitura-header">
-                <div class="info-leitura-titulo-wrap">
-                    <div class="info-leitura-kicker">
-                        <span>${getIconoTipo(info.tipo)}</span>
-                        <span>${escapeHtml(info.categoria || 'Sem categoria')}</span>
-                        <span>${escapeHtml(getTituloTipo(info.tipo))}</span>
-                    </div>
-                    <h2>${escapeHtml(info.titulo || '(sem título)')}</h2>
-                </div>
-                <div class="info-leitura-header-acoes">
-                    ${renderAcoesPorTipo(info)}
-                    <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favoritar">⭐</button>
-                    <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()" title="Editar">✏️</button>
-                    <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()" title="Restaurar">↙</button>
-                </div>
-            </header>
-            <div class="info-leitura-corpo">${renderTelaCheiaConteudo(info)}</div>
-            <footer class="info-leitura-rodape">
-                ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐ Favoritar</button>
-                <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()">✏️ Editar</button>
-                <button type="button" class="info-card-btn copy" onclick="copiarTelaCheiaInfo()">📋 Copiar</button>
-                <button type="button" class="info-card-btn" onclick="imprimirTelaCheiaInfo()">🖨️ Imprimir</button>
-                <button type="button" class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️ Excluir</button>
-                <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()">↙ Restaurar</button>
-            </footer>
-        </section>
-    `;
-}
-
 function renderTelaCheiaConteudo(info) {
     if (info.tipo === 'comando') return renderTelaCheiaComando(info);
     if (info.tipo === 'site') return renderTelaCheiaSite(info);
     if (info.tipo === 'senha') return renderTelaCheiaSenha(info);
     if (info.tipo === 'documento') return renderTelaCheiaDocumento(info);
-    return `<div class="info-leitura-texto">${formatarTextoLeitura(info.conteudo || '(vazio)')}</div>`;
+    return `<div class="info-leitura-texto">${escapeHtml(info.conteudo || '(vazio)')}</div>`;
 }
 
 function renderTelaCheiaComando(info) {
@@ -534,7 +500,7 @@ function renderTelaCheiaComando(info) {
     });
     html += '</div>';
     if (info.observacoes) {
-        html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
+        html += `<div class="info-leitura-bloco"><strong>Observações</strong><p>${escapeHtml(info.observacoes)}</p></div>`;
     }
     return html;
 }
@@ -546,7 +512,7 @@ function renderTelaCheiaSite(info) {
     if (info.usuario) html += `<div><strong>Usuário:</strong> ${escapeHtml(info.usuario)}</div>`;
     if (info.senhaOculta) html += `<div><strong>Senha:</strong> ••••••••••</div>`;
     html += '</div>';
-    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
+    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><p>${escapeHtml(info.observacoes)}</p></div>`;
     return html;
 }
 
@@ -556,7 +522,7 @@ function renderTelaCheiaSenha(info) {
     html += `<div><strong>Usuário:</strong> ${escapeHtml(info.usuario || '-')}</div>`;
     html += '<div><strong>Senha:</strong> ••••••••••</div>';
     html += '</div>';
-    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><div>${formatarTextoLeitura(info.observacoes)}</div></div>`;
+    if (info.observacoes) html += `<div class="info-leitura-bloco"><strong>Observações</strong><p>${escapeHtml(info.observacoes)}</p></div>`;
     return html;
 }
 
@@ -585,68 +551,6 @@ function obterTextoCopiavel(info) {
         return info.descricao || info.titulo || '';
     }
     return info.conteudo || '';
-}
-
-function formatarTextoLeitura(texto) {
-    const linhas = String(texto || '')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n')
-        .split('\n');
-
-    let html = '';
-    let paragrafo = [];
-    let listaAberta = false;
-
-    const flushParagrafo = () => {
-        if (!paragrafo.length) return;
-        html += `<p>${paragrafo.join('<br>')}</p>`;
-        paragrafo = [];
-    };
-
-    const fecharLista = () => {
-        if (!listaAberta) return;
-        html += '</ul>';
-        listaAberta = false;
-    };
-
-    linhas.forEach(linhaOriginal => {
-        const linha = linhaOriginal.trim();
-
-        if (!linha) {
-            flushParagrafo();
-            fecharLista();
-            return;
-        }
-
-        const bullet = linha.match(/^([*•✓-])\s+(.+)$/);
-        const numerado = linha.match(/^(\d+[.)])\s+(.+)$/);
-
-        if (bullet || numerado) {
-            flushParagrafo();
-            if (!listaAberta) {
-                html += '<ul>';
-                listaAberta = true;
-            }
-            html += `<li>${escapeHtml((bullet?.[2] || numerado?.[2] || '').trim())}</li>`;
-            return;
-        }
-
-        const ehTitulo = /^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ0-9\s:()/-]{4,}$/.test(linha) && linha.length <= 80;
-        if (ehTitulo) {
-            flushParagrafo();
-            fecharLista();
-            html += `<h3>${escapeHtml(linha)}</h3>`;
-            return;
-        }
-
-        fecharLista();
-        paragrafo.push(escapeHtml(linha));
-    });
-
-    flushParagrafo();
-    fecharLista();
-
-    return html || '<p>(vazio)</p>';
 }
 
 // ===== AÇÕES POR TIPO =====

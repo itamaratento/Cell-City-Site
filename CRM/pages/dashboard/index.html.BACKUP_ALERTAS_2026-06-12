@@ -761,10 +761,9 @@
 
     // ---- Aprovações de orçamento ----
     var aprovPend = osDocs.filter(function (os) {
-      return (os.orcamentoResposta === 'aprovado' || os.orcamentoResposta === 'recusado'
-          || os.status === 'orcamento_aprovado' || os.status === 'orcamento_recusado')
-          && !os.orcamentoVisto; // orcamentoVisto salvo no Firestore → permanente
-    }).filter(function (os) { return vistos.indexOf(keyOf(os)) < 0; }); // localStorage: fallback legado
+      return os.orcamentoResposta === 'aprovado' || os.orcamentoResposta === 'recusado'
+          || os.status === 'orcamento_aprovado' || os.status === 'orcamento_recusado';
+    }).filter(function (os) { return vistos.indexOf(keyOf(os)) < 0; });
     aprovPend.sort(function (a, b) {
       var ta = a.orcamentoTimestamp || a.updatedAt || ''; var tb = b.orcamentoTimestamp || b.updatedAt || '';
       return tb > ta ? 1 : (tb < ta ? -1 : 0);
@@ -855,33 +854,8 @@
     footer.style.display = (aprovPend.length || pvPend.length || preOSPend.length) ? '' : 'none';
   }
 
-  function salvarVistoFirestore(key) {
-    var db = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!db || !FB || !FB.setDoc) return;
-    if (key.indexOf('pv|') === 0) {
-      // Pós-venda: salvar em posvenda_contatos (mesma coleção do módulo, mesmo filtro)
-      var parts = key.split('|'); var osId = parts[1]; var prazo = parseInt(parts[2], 10);
-      var it = ultimosPv.find(function (x) { return String(x.osId) === String(osId) && String(x.prazo) === String(prazo); });
-      var fkey = osId + '_' + prazo;
-      if (contatosFeitos.has(fkey)) return;
-      FB.setDoc(FB.doc(db, 'posvenda_contatos', fkey), {
-        osId: osId, clientName: (it && it.clientName) || '', phone: (it && it.phone) || '',
-        model: (it && it.model) || '', prazo: prazo, emoji: '👁️',
-        resultado: 'Visualizado (sem ação imediata)',
-        dataContato: new Date().toISOString(), createdAt: FB.serverTimestamp()
-      }).catch(function (e) { console.warn('[Alertas] erro ao salvar pv visto:', e && e.message); });
-    } else {
-      // OS aprovação/recusa: marcar orcamentoVisto:true no documento da OS
-      var osId2 = key.split('|')[0];
-      if (!osId2) return;
-      FB.setDoc(FB.doc(db, 'os', osId2), { orcamentoVisto: true }, { merge: true })
-        .catch(function (e) { console.warn('[Alertas] erro ao salvar os visto:', e && e.message); });
-    }
-  }
-
   function marcarVisto(key) {
     var v = getVistos(); if (v.indexOf(key) < 0) { v.push(key); setVistos(v); }
-    salvarVistoFirestore(key); // persistência permanente no Firestore
     recompute();
   }
 
@@ -899,18 +873,12 @@
       if (panel.classList.contains('open') && !panel.contains(e.target) && e.target !== sino) panel.classList.remove('open');
     });
     body.addEventListener('click', function (e) {
-      // Pré-OS: "Marcar como visualizado" — localStorage imediato + Firestore permanente
+      // Pré-OS: "Marcar como visualizado" usa localStorage próprio
       var visto = e.target.closest('.aprov-item-visto');
       if (visto && visto.dataset.key && visto.dataset.key.indexOf('preos|') === 0) {
         var vv = getPreOSVistos();
         if (vv.indexOf(visto.dataset.key) < 0) { vv.push(visto.dataset.key); setPreOSVistos(vv); }
         recompute();
-        var preOSId = visto.dataset.key.replace('preos|', '');
-        var dbx = window.dbFirestore, FBx = window.FirebaseFirestore;
-        if (dbx && FBx && FBx.setDoc && preOSId) {
-          FBx.setDoc(FBx.doc(dbx, 'pre_os', preOSId), { status: 'VISUALIZADO' }, { merge: true })
-            .catch(function (e) { console.warn('[Alertas] erro ao salvar pré-OS visto:', e && e.message); });
-        }
         return;
       }
       // Aprovações/Pós-venda: "Marcar como visualizado"
@@ -934,17 +902,10 @@
     });
     document.getElementById('aprov-marcar-todos').addEventListener('click', function () {
       var v = getVistos();
-      ultimosAprov.forEach(function (os) { var k = keyOf(os); if (v.indexOf(k) < 0) { v.push(k); salvarVistoFirestore(k); } });
-      ultimosPv.forEach(function (it) { var k = pvKey(it); if (v.indexOf(k) < 0) { v.push(k); salvarVistoFirestore(k); } });
+      ultimosAprov.forEach(function (os) { var k = keyOf(os); if (v.indexOf(k) < 0) v.push(k); });
+      ultimosPv.forEach(function (it) { var k = pvKey(it); if (v.indexOf(k) < 0) v.push(k); });
       var pv = getPreOSVistos();
-      var dbx = window.dbFirestore, FBx = window.FirebaseFirestore;
-      ultimosPreOS.forEach(function (p) {
-        var k = preOSKey(p); if (pv.indexOf(k) < 0) pv.push(k);
-        var pid = p._id || p.id || '';
-        if (dbx && FBx && FBx.setDoc && pid)
-          FBx.setDoc(FBx.doc(dbx, 'pre_os', pid), { status: 'VISUALIZADO' }, { merge: true })
-            .catch(function (e) { console.warn('[Alertas] erro ao salvar pré-OS visto (todos):', e && e.message); });
-      });
+      ultimosPreOS.forEach(function (p) { var k = preOSKey(p); if (pv.indexOf(k) < 0) pv.push(k); });
       setPreOSVistos(pv);
       setVistos(v); recompute();
     });

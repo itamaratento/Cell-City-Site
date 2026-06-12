@@ -382,13 +382,13 @@ function renderLauncher() {
       <div class="ccfav-dropdown"></div>`;
 
     // Prefere encaixar dentro do brand-bar (header do topo) p/ não sobrepor nada.
-    // Na OS, o botão fica no extremo direito da barra; nos demais módulos,
-    // segue logo após o logo institucional (#brand-header).
+    // Na OS e no Fornecedor, o botão fica no extremo direito da barra;
+    // nos demais módulos, segue logo após o logo institucional (#brand-header).
     // Fallback: flutuante fixo no topo, caso a barra não exista.
     const mount = (attempt) => {
       const bar = document.getElementById('crm-brand-bar');
       if (bar) {
-        if (current.key === 'os') {
+        if (current.key === 'os' || current.key === 'fornecedor') {
           launcher.classList.add('ccfav-os-top');
           bar.appendChild(launcher);
         } else {

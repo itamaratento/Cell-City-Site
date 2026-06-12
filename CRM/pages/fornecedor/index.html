@@ -163,5 +163,27 @@
     <script src="../../shared/brand-header.js"></script>
     <script type="module" src="fornecedor.js"></script>
     <script type="module" src="../../shared/dock.js"></script>
+    <script>
+      // Garante que o launcher de favoritos fique à direita no Fornecedor
+      (function() {
+        function posicionarLauncher() {
+          var launcher = document.getElementById('ccfav-launcher');
+          var bar = document.getElementById('crm-brand-bar');
+          if (launcher && bar) {
+            launcher.style.marginLeft = 'auto';
+            launcher.style.marginRight = '';
+            bar.appendChild(launcher);
+            return true;
+          }
+          return false;
+        }
+        if (!posicionarLauncher()) {
+          var t = setInterval(function() {
+            if (posicionarLauncher()) clearInterval(t);
+          }, 50);
+          setTimeout(function() { clearInterval(t); }, 5000);
+        }
+      })();
+    </script>
 </body>
 </html>

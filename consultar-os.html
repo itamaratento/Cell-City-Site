@@ -53,6 +53,21 @@
         .garantia-btn.visualizar { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; }
         .garantia-btn.baixar { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); }
         @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
+        .result-obs { white-space: pre-wrap; word-wrap: break-word; text-align: left; line-height: 1.6; font-size: 14px; }
+        .garantia-section { background: rgba(0,200,83,0.06); border: 1px solid rgba(0,200,83,0.25); border-radius: 10px; padding: 20px 16px; margin-top: 4px; grid-column: 1 / -1; text-align: center; }
+        .garantia-section .garantia-shield { font-size: 42px; line-height: 1; margin-bottom: 8px; }
+        .garantia-section .garantia-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .garantia-section .garantia-nome { font-size: 17px; font-weight: 700; color: #00e676; margin: 6px 0 4px; }
+        .garantia-section .garantia-dias { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+        .garantia-section .garantia-dias.expirada { color: #ff8080; }
+        .timeline-section { grid-column: 1 / -1; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+        .timeline-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+        .tl-item { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 12px; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-item:not(:last-child)::before { content: ''; position: absolute; left: 7px; top: 18px; bottom: 0; width: 2px; background: var(--border); }
+        .tl-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--cell-green); flex-shrink: 0; margin-top: 2px; box-shadow: 0 0 6px rgba(0,200,83,0.4); }
+        .tl-text { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
+        .tl-date { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
     </style>
 </head>
 <body style="padding-top: 80px;">
@@ -77,10 +92,54 @@
         const authReady=firebase.auth().signInAnonymously().catch(e=>{console.warn('Auth anônima falhou:',e);});
         async function searchOS(){const inputRaw=document.getElementById('search-input').value.trim();const resultBox=document.getElementById('result-box');const errorBox=document.getElementById('error-box');const loadingBox=document.getElementById('loading-box');const btn=document.getElementById('btn-search');if(!inputRaw){errorBox.textContent='Digite o número da OS ou seu telefone.';errorBox.classList.add('show');resultBox.classList.remove('show');loadingBox.classList.remove('show');return;}errorBox.classList.remove('show');loadingBox.classList.add('show');resultBox.classList.remove('show');btn.disabled=true;try{await authReady;const digits=inputRaw.replace(/\D/g,'');const hasLetters=/[a-z]/i.test(inputRaw);let lista=[];if(!hasLetters&&digits.length>=8){const snap=await db.collection('os').get();snap.forEach(doc=>{const os=doc.data();const st=String(os.phone||'').replace(/\D/g,'');if(st&&(st===digits||(digits.length>=8&&st.endsWith(digits))||(st.length>=8&&digits.endsWith(st))))lista.push({_docId:doc.id,...os});});}else{const n=parseInt(digits,10);const osId='OS-'+String(isNaN(n)?digits:n).padStart(4,'0');const snap=await db.collection('os').where('id','==',osId).get();snap.forEach(doc=>lista.push({_docId:doc.id,...doc.data()}));}loadingBox.classList.remove('show');if(!lista.length){errorBox.textContent='OS não encontrada. Verifique o número ou telefone.';errorBox.classList.add('show');btn.disabled=false;return;}// Carrega config de garantias — tenta Firestore primeiro, fallback localStorage
 let garantias=[];try{const cfgSnap=await db.collection('config').doc('impressao').get();if(cfgSnap.exists()){const cfgData=cfgSnap.data();garantias=Array.isArray(cfgData.garantias)?cfgData.garantias:[];}}catch(e){console.warn('Erro ao carregar garantias do Firestore:',e);try{const c=localStorage.getItem('cc_config_impressao');if(c){const cfgData=JSON.parse(c);garantias=Array.isArray(cfgData.garantias)?cfgData.garantias:[];}}catch(e2){console.warn('Fallback localStorage falhou:',e2);}}
-let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatusLabel(os.status||'em_analise');const statusClass=`status-${(os.status||'em_analise').replace(/\s/g,'_')}`;const entryDate=formatDate(os.createdAt);const garantia=garantias.find(g=>String(g.id)===String(os.garantiaId));const garantiaNome=garantia?garantia.nome:null;const osId=os.id||'N/A';html+=`<div class="result-grid"><div class="result-item"><div class="result-label">Numero</div><div class="result-value"><strong>${osId}</strong></div></div><div class="result-item"><div class="result-label">Status</div><div class="result-value"><span class="status-badge ${statusClass}">${statusLabel}</span></div></div><div class="result-item"><div class="result-label">Cliente</div><div class="result-value">${os.clientName||'N/A'}</div></div><div class="result-item"><div class="result-label">Telefone</div><div class="result-value">${formatPhone(os.phone||'N/A')}</div></div>${os.cpf?`<div class="result-item"><div class="result-label">CPF</div><div class="result-value">${os.cpf}</div></div>`:''}<div class="result-item"><div class="result-label">Dispositivo</div><div class="result-value">${os.model||'N/A'}</div></div><div class="result-item"><div class="result-label">Categoria</div><div class="result-value">${os.category||'N/A'}</div></div><div class="result-item result-full"><div class="result-label">Problema</div><div class="result-value">${os.defect||'N/A'}</div></div><div class="result-item"><div class="result-label">Data Entrada</div><div class="result-value">${entryDate}</div></div>${os.valor?`<div class="result-item"><div class="result-label">Valor (a vista/PIX)</div><div class="result-value">R$ ${Number(os.valor).toFixed(2)}</div></div>`:''}${os.valorCartao?`<div class="result-item"><div class="result-label">Valor (cartao)</div><div class="result-value">R$ ${Number(os.valorCartao).toFixed(2)}</div></div>`:''}${os.observations?`<div class="result-item result-full"><div class="result-label">Observacoes</div><div class="result-value">${os.observations}</div></div>`:''}${garantiaNome?`<div class="garantia-section"><div class="garantia-label">Garantia</div><div class="garantia-nome">🛡️ ${garantiaNome}</div><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"><a href="/CRM/garantia.html?id=${osId}" target="_blank" class="garantia-btn visualizar">👁️ Visualizar Garantia</a><a href="/CRM/garantia.html?id=${osId}" download class="garantia-btn baixar">📥 Baixar Garantia</a></div></div>`:''}${orcamentoBlocoConsulta(os)}`;});resultBox.innerHTML=html;resultBox.classList.add('show');btn.disabled=false;}catch(error){loadingBox.classList.remove('show');errorBox.textContent=`Erro: ${error.message}`;errorBox.classList.add('show');btn.disabled=false;}}
+let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatusLabel(os.status||'em_analise');const statusClass=`status-${(os.status||'em_analise').replace(/\s/g,'_')}`;const entryDate=formatDate(os.createdAt);const garantia=garantias.find(g=>String(g.id)===String(os.garantiaId));const garantiaNome=garantia?garantia.nome:null;const osId=os.id||'N/A';html+=`<div class="result-grid"><div class="result-item"><div class="result-label">📋 Número</div><div class="result-value"><strong>${osId}</strong></div></div><div class="result-item"><div class="result-label">🔄 Status</div><div class="result-value"><span class="status-badge ${statusClass}">${statusLabel}</span></div></div><div class="result-item"><div class="result-label">👤 Cliente</div><div class="result-value">${os.clientName||'N/A'}</div></div><div class="result-item"><div class="result-label">📞 Telefone</div><div class="result-value">${formatPhone(os.phone||'N/A')}</div></div>${os.cpf?`<div class="result-item"><div class="result-label">🪪 CPF</div><div class="result-value">${os.cpf}</div></div>`:''}<div class="result-item"><div class="result-label">📱 Dispositivo</div><div class="result-value">${os.model||'N/A'}</div></div><div class="result-item"><div class="result-label">🏷️ Categoria</div><div class="result-value">${os.category||'N/A'}</div></div><div class="result-item result-full"><div class="result-label">🔧 Problema</div><div class="result-value">${os.defect||'N/A'}</div></div><div class="result-item"><div class="result-label">📅 Data de Entrada</div><div class="result-value">${entryDate}</div></div>${os.valor?`<div class="result-item"><div class="result-label">💰 Valor (à vista/PIX)</div><div class="result-value">R$ ${Number(os.valor).toFixed(2)}</div></div>`:''}${os.valorCartao?`<div class="result-item"><div class="result-label">💳 Valor (cartão)</div><div class="result-value">R$ ${Number(os.valorCartao).toFixed(2)}</div></div>`:''}${os.observations?`<div class="result-item result-full"><div class="result-label">📝 Observações</div><div class="result-value result-obs">${os.observations}</div></div>`:''}${garantiaNome?garantiaBloco(os,garantia,osId):''}${orcamentoBlocoConsulta(os)}${timelineBloco(os)}`;});resultBox.innerHTML=html;resultBox.classList.add('show');btn.disabled=false;}catch(error){loadingBox.classList.remove('show');errorBox.textContent=`Erro: ${error.message}`;errorBox.classList.add('show');btn.disabled=false;}}
         function getStatusLabel(status){const map={'recebido':'Recebido','em_analise':'Em analise','aguardando_aprovacao':'Aguardando aprovacao','aprovado':'Aprovado','em_reparo':'Em reparo','testes_finais':'Testes finais','concluido':'Concluido','entregue':'Entregue','aguardando_peca':'Aguardando peca','em_manutencao':'Em manutencao','orcamento':'Aguardando aprovacao','orcamento_enviado':'Orcamento enviado','orcamento_aprovado':'Orcamento aprovado','orcamento_recusado':'Orcamento recusado','pronto':'Concluido','pronto_retirada':'Pronto para retirada','devolvido_orcamento':'Nao aprovado'};return map[status]||status||'N/A';}
         function formatDate(date){if(!date)return 'N/A';try{if(typeof date==='object'&&date.toDate){return date.toDate().toLocaleDateString('pt-BR');}if(typeof date==='string'){return new Date(date).toLocaleDateString('pt-BR');}}catch(e){return 'N/A';}}
         function formatPhone(phone){if(!phone||phone==='N/A')return phone;const cleaned=phone.replace(/\D/g,'');if(cleaned.length===11){return `(${cleaned.slice(0,2)}) ${cleaned.slice(2,7)}-${cleaned.slice(7)}`;}return phone;}
+        function garantiaBloco(os, garantia, osId) {
+            var nome = garantia ? garantia.nome : '';
+            var diasInfo = '';
+            if (garantia && garantia.dias) {
+                var startRaw = os.deliveredAt || os.updatedAt;
+                var start = null;
+                if (startRaw) {
+                    if (typeof startRaw === 'object' && startRaw.toDate) start = startRaw.toDate();
+                    else if (typeof startRaw === 'string') start = new Date(startRaw);
+                }
+                if (start && !isNaN(start)) {
+                    var fim = new Date(start.getTime() + garantia.dias * 86400000);
+                    var restantes = Math.ceil((fim - new Date()) / 86400000);
+                    if (restantes > 0) {
+                        diasInfo = '<div class="garantia-dias">⏳ ' + restantes + ' dia' + (restantes !== 1 ? 's' : '') + ' restante' + (restantes !== 1 ? 's' : '') + '</div>';
+                    } else {
+                        diasInfo = '<div class="garantia-dias expirada">Garantia expirada</div>';
+                    }
+                }
+            }
+            return '<div class="garantia-section">'
+                + '<div class="garantia-shield">🛡️</div>'
+                + '<div class="garantia-label">Garantia Incluída</div>'
+                + '<div class="garantia-nome">' + nome + '</div>'
+                + diasInfo
+                + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center;">'
+                + '<a href="/CRM/garantia.html?id=' + osId + '" target="_blank" class="garantia-btn visualizar">👁️ Visualizar Garantia</a>'
+                + '<a href="/CRM/garantia.html?id=' + osId + '" download class="garantia-btn baixar">📥 Baixar Garantia</a>'
+                + '</div></div>';
+        }
+        function timelineBloco(os) {
+            if (!os.timeline || !os.timeline.length) return '';
+            var sorted = os.timeline.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+            var html = '<div class="timeline-section"><div class="timeline-title">📋 Histórico</div>';
+            sorted.forEach(function(item) {
+                html += '<div class="tl-item">'
+                    + '<div class="tl-dot"></div>'
+                    + '<div><div class="tl-text">' + item.text + '</div>'
+                    + '<div class="tl-date">' + formatDate(item.date) + '</div>'
+                    + '</div></div>';
+            });
+            html += '</div>';
+            return html;
+        }
         // ===== APROVAÇÃO/RECUSA DE ORÇAMENTO PELO CLIENTE (Consulta OS) =====
         function orcamentoBlocoConsulta(os){
             var v = os.valor ? ('R$ ' + Number(os.valor).toFixed(2)) : '';

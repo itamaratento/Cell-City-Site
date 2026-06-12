@@ -12,7 +12,7 @@ import {
 import { getUid, onUid } from './session.js';
 
 // Barra de favoritos — injeta o lançador flutuante em cada módulo
-import './favoritos.js?v=20260611-os-header-v3';
+import './favoritos.js?v=20260612-fornecedor-fix';
 
 const isDashboard = window.location.pathname.includes('/dashboard/');
 const DOCK_ORDEM_KEY = 'cc_dock_ordem';

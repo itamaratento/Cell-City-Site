@@ -102,7 +102,9 @@ async function init() {
         if (e.target.id === 'info-modal-cat') fecharFormCategoria();
     });
     document.addEventListener('keydown', e => {
-        if (e.key === 'Escape' && infoLeituraIdAtivo) fecharTelaCheiaInfo();
+        if (e.key === 'Escape' && document.getElementById('info-modal-tela-cheia')?.classList.contains('active')) {
+            fecharTelaCheiaInfo();
+        }
     });
 
     // Event delegation para títulos clicáveis
@@ -414,30 +416,31 @@ function abrirTelaCheiaInfo(id, event) {
     event?.preventDefault?.();
     event?.stopPropagation?.();
 
+    const scrollAtual = { x: window.scrollX, y: window.scrollY };
     const info = informacoes.find(x => x.id === id);
     if (!info) return;
 
-    const item = event?.target?.closest?.('.info-lista-item, .info-card');
-    if (!item) return;
-
-    if (infoLeituraIdAtivo === id && item.classList.contains('info-expandido')) {
-        fecharTelaCheiaInfo();
-        return;
-    }
-
-    fecharTelaCheiaInfo();
     infoLeituraIdAtivo = id;
-    item.classList.add('info-expandido');
-    item.insertAdjacentHTML('beforeend', renderLeituraInline(info));
-    const btn = item.querySelector('.info-card-btn.leitura');
-    if (btn) btn.textContent = '↙ Restaurar';
+    document.getElementById('info-leitura-icone').textContent = getIconoTipo(info.tipo);
+    document.getElementById('info-leitura-categoria').textContent = info.categoria || 'Sem categoria';
+    document.getElementById('info-leitura-tipo').textContent = getTituloTipo(info.tipo);
+    document.getElementById('info-leitura-titulo').textContent = info.titulo || '(sem título)';
+    document.getElementById('info-leitura-corpo').innerHTML = renderTelaCheiaConteudo(info);
+
+    const modal = document.getElementById('info-modal-tela-cheia');
+    modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('info-leitura-lock');
+    document.getElementById('info-leitura-corpo').scrollTop = 0;
+    requestAnimationFrame(() => window.scrollTo(scrollAtual.x, scrollAtual.y));
 }
 
 function fecharTelaCheiaInfo() {
-    document.querySelectorAll('.info-leitura-inline').forEach(el => el.remove());
-    document.querySelectorAll('.info-expandido').forEach(el => el.classList.remove('info-expandido'));
-    document.querySelectorAll('.info-card-btn.leitura').forEach(btn => { btn.textContent = '⛶ Tela Cheia'; });
-    infoLeituraIdAtivo = null;
+    const modal = document.getElementById('info-modal-tela-cheia');
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('info-leitura-lock');
 }
 
 function editarTelaCheiaInfo() {
@@ -465,39 +468,6 @@ async function copiarTelaCheiaInfo() {
 
 function imprimirTelaCheiaInfo() {
     window.print();
-}
-
-function renderLeituraInline(info) {
-    return `
-        <section class="info-leitura-inline" data-id="${info.id}">
-            <header class="info-leitura-header">
-                <div class="info-leitura-titulo-wrap">
-                    <div class="info-leitura-kicker">
-                        <span>${getIconoTipo(info.tipo)}</span>
-                        <span>${escapeHtml(info.categoria || 'Sem categoria')}</span>
-                        <span>${escapeHtml(getTituloTipo(info.tipo))}</span>
-                    </div>
-                    <h2>${escapeHtml(info.titulo || '(sem título)')}</h2>
-                </div>
-                <div class="info-leitura-header-acoes">
-                    ${renderAcoesPorTipo(info)}
-                    <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')" title="Favoritar">⭐</button>
-                    <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()" title="Editar">✏️</button>
-                    <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()" title="Restaurar">↙</button>
-                </div>
-            </header>
-            <div class="info-leitura-corpo">${renderTelaCheiaConteudo(info)}</div>
-            <footer class="info-leitura-rodape">
-                ${renderAcoesPorTipo(info)}
-                <button type="button" class="info-card-btn" onclick="toggleFavorito('${info.id}')">⭐ Favoritar</button>
-                <button type="button" class="info-card-btn edit" onclick="editarTelaCheiaInfo()">✏️ Editar</button>
-                <button type="button" class="info-card-btn copy" onclick="copiarTelaCheiaInfo()">📋 Copiar</button>
-                <button type="button" class="info-card-btn" onclick="imprimirTelaCheiaInfo()">🖨️ Imprimir</button>
-                <button type="button" class="info-card-btn delete" onclick="excluirInformacao('${info.id}')">🗑️ Excluir</button>
-                <button type="button" class="info-card-btn leitura" onclick="fecharTelaCheiaInfo()">↙ Restaurar</button>
-            </footer>
-        </section>
-    `;
 }
 
 function renderTelaCheiaConteudo(info) {
