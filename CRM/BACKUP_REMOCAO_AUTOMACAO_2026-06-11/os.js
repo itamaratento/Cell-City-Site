@@ -1,4 +1,5 @@
 import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { registrarAutomacao, jaExecutouAutomacao } from "../../shared/automacao.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -29,6 +30,7 @@ window.toggleOSEdit = toggleOSEdit;
 window.saveOSEdit = saveOSEdit;
 window.saveObservation = saveObservation;
 window.shareWhatsApp = shareWhatsApp;
+window.reenviarAutomacao = reenviarAutomacao;
 window.printOS = printOS;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
@@ -496,8 +498,23 @@ async function saveOS() {
 
 async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
-// ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
+// ===== AUTOMAÇÃO: ENTRADA DE OS =====
 async function runAutomacoesOS(os) {
+    // ── WhatsApp de entrada ────────────────────────────────────────────────────
+    if (!(await jaExecutouAutomacao('entrada_os', os.id))) {
+        const msg = `*Cell City — Entrada de aparelho* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n🔧 ${os.defect}\n📅 ${formatDate(os.createdAt)}\n\nSeu aparelho foi recebido e já está em análise. Te avisamos quando estiver pronto! 😊`;
+        window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+        await registrarAutomacao({
+            automationId: 'entrada_os',
+            osId:         os.id,
+            cliente:      os.clientName,
+            telefone:     os.phone,
+            status:       'executado',
+            detalhes:     msg,
+            erro:         null
+        });
+    }
+
     // ── Lembrete de retorno na agenda (+3 dias) ────────────────────────────────
     try {
         const dataRetorno = new Date();
@@ -542,6 +559,48 @@ async function runAutomacoesOS(os) {
     }
 }
 
+// ===== AUTOMAÇÃO: PRONTO PARA RETIRADA =====
+async function runAutomacaoConcluido(os) {
+    if (await jaExecutouAutomacao('pronto_retirada', os.id)) return;
+    const msg = `*Cell City — Aparelho Pronto!* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n\nSeu aparelho está pronto para retirada.\nAguardamos você na loja! 😊`;
+    window.open(`https://wa.me/55${(os.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+    await registrarAutomacao({
+        automationId: 'pronto_retirada',
+        osId:         os.id,
+        cliente:      os.clientName,
+        telefone:     os.phone,
+        status:       'executado',
+        detalhes:     msg,
+        erro:         null
+    });
+}
+
+// ===== AUTOMAÇÃO: REENVIO MANUAL (FASE 2-C) =====
+async function reenviarAutomacao(automationId) {
+    if (!currentOS) return;
+    const os = currentOS;
+    const tel = (os.phone || '').replace(/\D/g, '');
+    if (!tel) { showToast('⚠️ Sem telefone cadastrado'); return; }
+
+    const msgs = {
+        entrada_os:      `*Cell City — Entrada de aparelho* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n🔧 ${os.defect}\n📅 ${formatDate(os.createdAt)}\n\nSeu aparelho foi recebido e já está em análise. Te avisamos quando estiver pronto! 😊`,
+        pronto_retirada: `*Cell City — Aparelho Pronto!* ✅\n\n📋 *${os.id}*\n👤 ${os.clientName}\n📱 ${[os.brand, os.model].filter(Boolean).join(' ')}\n\nSeu aparelho está pronto para retirada.\nAguardamos você na loja! 😊`,
+    };
+    const msg = msgs[automationId];
+    if (!msg) return;
+
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    await registrarAutomacao({
+        automationId,
+        osId:     os.id,
+        cliente:  os.clientName,
+        telefone: os.phone,
+        status:   'executado',
+        detalhes: `[REENVIO MANUAL] ${msg}`,
+        erro:     null
+    });
+    showToast('✅ WhatsApp aberto — reenvio registrado');
+}
 
 // ===== LISTS =====
 function showList(filter) {
@@ -735,7 +794,7 @@ function renderDetail() {
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
     const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="reenviarAutomacao('entrada_os')" style="color:#f59e0b" title="Reenvia a mensagem de entrada da OS via WhatsApp">🔄 Reenviar Entrada</button>${['concluido','entregue'].includes(os.status) ? `<button class="btn btn-ghost" onclick="reenviarAutomacao('pronto_retirada')" style="color:#f59e0b" title="Reenvia a mensagem de pronto para retirada via WhatsApp">🔄 Reenviar Pronto</button>` : ''}<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -923,7 +982,7 @@ async function saveOSEdit() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
+async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); if (newStatus === 'concluido') runAutomacaoConcluido(currentOS); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 

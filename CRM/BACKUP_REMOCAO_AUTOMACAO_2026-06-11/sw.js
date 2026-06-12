@@ -29,6 +29,7 @@ const SHELL = [
   '/CRM/pages/config/config.js',
   '/CRM/pages/config/config.css',
   '/CRM/scripts/firebase.js',
+  '/CRM/shared/automacao.js',
 ];
 
 // ── Install: pré-carrega o shell
