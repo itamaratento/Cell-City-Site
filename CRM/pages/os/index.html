@@ -10,8 +10,8 @@
     <title>Cell City - OS</title>
     <!-- Homologação 07/06/2026: removidos 2 <link> mortos (../../styles/global.css e list.css —
          arquivos inexistentes, geravam 404 no console). Estilo provido por os.css + dock.css. -->
-    <link rel="stylesheet" href="os.css?v=20260611-os-header-v4-logo-removed">
-<link rel="stylesheet" href="../../shared/dock.css?v=20260611-os-header-v4-logo-removed">
+    <link rel="stylesheet" href="os.css?v=20260612-accordion-obs-v4">
+<link rel="stylesheet" href="../../shared/dock.css?v=20260612-accordion-obs-v3">
 </head>
 <body>
 <script>
@@ -301,9 +301,10 @@
     <!-- TOAST -->
     <div class="premium-toast" id="toast"></div>
 
-    <script src="../../shared/brand-header.js?v=20260612-retorno-v2"></script>
-    <script type="module" src="os.js?v=20260612-retorno-v2"></script>
-<script type="module" src="../../shared/dock.js?v=20260612-retorno-v2"></script>
+    <script src="../../shared/brand-header.js?v=20260612-accordion-obs-v3"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+<script type="module" src="os.js?v=20260612-accordion-obs-v4"></script>
+<script type="module" src="../../shared/dock.js?v=20260612-accordion-obs-v3"></script>
 <script>
 function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }
 window.toggleAccordion = toggleAccordion;

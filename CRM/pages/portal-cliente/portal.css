@@ -468,6 +468,30 @@ html, body {
 .os-detail-label { font-size:13px; color:var(--text-secondary); white-space:nowrap; }
 .os-detail-value { font-size:13px; color:var(--text-primary); text-align:right; flex:1; }
 
+/* Bloco de observações formatado */
+.obs-block {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin: 10px 0 4px;
+}
+.obs-block-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+.obs-block-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
 /* Orçamento */
 .orcamento-card {
   background: rgba(0,200,83,0.06);
@@ -1716,7 +1740,9 @@ html { -webkit-tap-highlight-color: transparent; }
   font-size: 12px;
   color: var(--text-secondary);
   margin-bottom: 4px;
-  line-height: 1.4;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 .orcamento-opcao-valor {
   font-size: 16px;

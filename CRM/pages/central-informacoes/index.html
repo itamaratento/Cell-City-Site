@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Central de Informações - Cell City CRM</title>
-    <link rel="stylesheet" href="informacoes.css">
+    <link rel="stylesheet" href="informacoes.css?v=20260612-ux-v1">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -23,6 +23,7 @@
             </div>
             <button class="info-btn-novo" onclick="abrirFormNovaInfo()">➕ Novo Registro</button>
         </section>
+        <div id="info-resultado-count" class="info-resultado-count"></div>
 
         <!-- FILTRO DE TIPO -->
         <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px; margin-bottom: 8px; overflow-x: auto; padding: 0 48px 0 0;">
@@ -38,7 +39,10 @@
         <!-- LISTA DE INFORMAÇÕES -->
         <section class="info-lista-sec">
             <div class="info-sec-titulo info-lista-header">
-                <span>📖 Biblioteca <span class="info-contador" id="info-contador">0</span></span>
+                <div class="info-biblioteca-label">
+                    <span class="info-biblioteca-titulo">📖 Biblioteca</span>
+                    <span class="info-biblioteca-sub"><span id="info-contador">0</span> registros</span>
+                </div>
                 <div class="info-view-toggle">
                     <button class="info-view-btn" id="info-view-lista" onclick="setViewMode('lista')" title="Modo Lista">☰</button>
                     <button class="info-view-btn" id="info-view-cards" onclick="setViewMode('cards')" title="Modo Cards">▦</button>
@@ -272,7 +276,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="informacoes.js"></script>
+    <script type="module" src="informacoes.js?v=20260612-ux-v1"></script>
     <script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
 </html>

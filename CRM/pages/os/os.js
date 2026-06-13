@@ -865,13 +865,13 @@ async function toggleOSEdit() {
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Orçamento 1 — Descrição</label>
-<textarea id="edit-os-orc1-desc" rows="2" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.orc1Desc||''}</textarea>
+<textarea id="edit-os-orc1-desc" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.orc1Desc||''}</textarea>
 
 <label style="font-size:12px;color:var(--text2);">Orçamento 1 — Valor (R$)</label>
 <input id="edit-os-orc1-valor" type="number" step="0.01" min="0" value="${os.orc1Valor||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">Orçamento 2 — Descrição</label>
-<textarea id="edit-os-orc2-desc" rows="2" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.orc2Desc||''}</textarea>
+<textarea id="edit-os-orc2-desc" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.orc2Desc||''}</textarea>
 
 <label style="font-size:12px;color:var(--text2);">Orçamento 2 — Valor (R$)</label>
 <input id="edit-os-orc2-valor" type="number" step="0.01" min="0" value="${os.orc2Valor||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">

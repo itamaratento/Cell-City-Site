@@ -274,6 +274,18 @@ function render() {
 
     if (contador) contador.textContent = filtrados.length;
 
+    const countEl = document.getElementById('info-resultado-count');
+    if (countEl) {
+        const ativo = termoBusca || tipoFiltro !== 'Todos' || categoriaFiltro !== 'Todas';
+        if (ativo) {
+            const n = filtrados.length;
+            countEl.textContent = n === 1 ? '1 registro encontrado' : `${n} registros encontrados`;
+            countEl.style.display = 'block';
+        } else {
+            countEl.style.display = 'none';
+        }
+    }
+
     lista.classList.toggle('modo-lista', viewMode === 'lista');
     lista.classList.toggle('modo-cards', viewMode === 'cards');
 
