@@ -18,41 +18,106 @@
   <span class="header-title">📊 Relatórios</span>
 </header>
 
-<!-- ===== FILTRO DE PERÍODO ===== -->
-<div class="periodo-bar">
-  <span class="periodo-label">Período:</span>
-  <div class="periodo-btns">
-    <button class="periodo-btn" data-meses="1">1 mês</button>
-    <button class="periodo-btn ativo" data-meses="3">3 meses</button>
-    <button class="periodo-btn" data-meses="6">6 meses</button>
-    <button class="periodo-btn" data-meses="12">12 meses</button>
+<!-- ===== TOOLBAR ===== -->
+<div class="toolbar-bar">
+  <div class="periodo-wrap">
+    <span class="periodo-label">Período:</span>
+    <div class="periodo-btns">
+      <button class="periodo-btn" data-meses="1">1 mês</button>
+      <button class="periodo-btn ativo" data-meses="3">3 meses</button>
+      <button class="periodo-btn" data-meses="6">6 meses</button>
+      <button class="periodo-btn" data-meses="12">12 meses</button>
+    </div>
+  </div>
+  <div class="toolbar-acoes">
+    <button class="toggle-comparar" id="btn-comparar" title="Comparar com o mesmo período do ano anterior">
+      📅 vs Ano Anterior
+    </button>
+    <button class="btn-metas" id="btn-abrir-metas">
+      🎯 Metas
+    </button>
+  </div>
+</div>
+
+<!-- ===== METAS ===== -->
+<div class="metas-section" id="metas-section">
+  <div class="metas-secao-header">
+    <span class="metas-secao-titulo">🎯 Metas do Mês Atual</span>
+    <button class="metas-editar-btn" id="btn-editar-metas">✏️ Editar metas</button>
+  </div>
+  <div class="metas-grid">
+
+    <div class="meta-card" id="meta-fat-card">
+      <div class="meta-card-topo">
+        <div class="meta-card-info">
+          <span class="meta-card-icone">💰</span>
+          <div>
+            <div class="meta-card-titulo">Faturamento</div>
+            <div class="meta-card-sub">Meta mensal</div>
+          </div>
+        </div>
+        <div class="meta-pct-badge" id="meta-fat-pct">—</div>
+      </div>
+      <div class="meta-valores">
+        <span class="meta-realizado" id="meta-fat-realizado">R$ 0</span>
+        <span class="meta-sep">de</span>
+        <span class="meta-alvo" id="meta-fat-alvo">—</span>
+      </div>
+      <div class="meta-barra-wrap">
+        <div class="meta-barra-fill" id="meta-fat-barra" style="width:0%"></div>
+      </div>
+      <div class="meta-faltando" id="meta-fat-faltando"></div>
+    </div>
+
+    <div class="meta-card" id="meta-os-card">
+      <div class="meta-card-topo">
+        <div class="meta-card-info">
+          <span class="meta-card-icone">📦</span>
+          <div>
+            <div class="meta-card-titulo">OS Concluídas</div>
+            <div class="meta-card-sub">Meta mensal</div>
+          </div>
+        </div>
+        <div class="meta-pct-badge" id="meta-os-pct">—</div>
+      </div>
+      <div class="meta-valores">
+        <span class="meta-realizado" id="meta-os-realizado">0</span>
+        <span class="meta-sep">de</span>
+        <span class="meta-alvo" id="meta-os-alvo">—</span>
+      </div>
+      <div class="meta-barra-wrap">
+        <div class="meta-barra-fill" id="meta-os-barra" style="width:0%"></div>
+      </div>
+      <div class="meta-faltando" id="meta-os-faltando"></div>
+    </div>
+
   </div>
 </div>
 
 <!-- ===== CARDS DE RESUMO ===== -->
-<div class="resumo-grid" id="resumo-grid">
-  <div class="resumo-card" id="res-total-os">
+<div class="resumo-grid">
+  <div class="resumo-card">
     <div class="resumo-icon">📦</div>
     <div class="resumo-info">
       <div class="resumo-valor" id="res-val-os">—</div>
       <div class="resumo-label">OS no período</div>
     </div>
   </div>
-  <div class="resumo-card" id="res-concluidas">
+  <div class="resumo-card">
     <div class="resumo-icon">✅</div>
     <div class="resumo-info">
       <div class="resumo-valor" id="res-val-concluidas">—</div>
       <div class="resumo-label">Concluídas / Entregues</div>
     </div>
   </div>
-  <div class="resumo-card" id="res-faturamento">
+  <div class="resumo-card">
     <div class="resumo-icon">💰</div>
     <div class="resumo-info">
       <div class="resumo-valor" id="res-val-fat">—</div>
       <div class="resumo-label">Entradas no período</div>
     </div>
   </div>
-  <div class="resumo-card" id="res-ticket">
+  <div class="resumo-card">
     <div class="resumo-icon">🎯</div>
     <div class="resumo-info">
       <div class="resumo-valor" id="res-val-ticket">—</div>
@@ -94,6 +159,29 @@
 
 </div>
 
+<!-- ===== MODAL METAS ===== -->
+<div class="modal-overlay" id="modal-metas">
+  <div class="modal-box">
+    <div class="modal-titulo">🎯 Definir Metas Mensais</div>
+    <div class="modal-corpo">
+      <label class="modal-label">
+        Meta de faturamento (R$ por mês)
+        <input type="number" id="input-meta-fat" min="0" step="100" placeholder="Ex: 5000">
+      </label>
+      <label class="modal-label">
+        Meta de OS concluídas (por mês)
+        <input type="number" id="input-meta-os" min="0" step="1" placeholder="Ex: 30">
+      </label>
+      <p class="modal-hint">As metas aparecem como linha tracejada nos gráficos e mostram o progresso do mês atual.</p>
+    </div>
+    <div class="modal-acoes">
+      <button class="btn-modal-cancelar" id="btn-modal-cancelar">Cancelar</button>
+      <button class="btn-modal-salvar" id="btn-modal-salvar">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOADING ===== -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-texto">Carregando dados...</div>

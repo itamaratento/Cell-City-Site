@@ -1778,6 +1778,7 @@ class Dashboard {
       'central-organizacao': '../../pages/central-organizacao/index.html',
       'contas':              '../../pages/contas/index.html',
       'catalogo':            '../../pages/catalogo/index.html',
+      'relatorios':          '../../pages/relatorios/index.html',
       'crm-comercial':       '../../pages/crm-comercial/index.html',
       'compras':             '../../pages/compras/index.html',
       'auditoria':           '../../pages/auditoria/index.html'
