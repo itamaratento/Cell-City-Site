@@ -4,7 +4,6 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
-import { getUid, onUid } from "../../shared/session.js";
 
 
 class Dashboard {
@@ -44,8 +43,7 @@ class Dashboard {
           { id: 'ferramentas', title: 'Ferramentas', sub: 'Módulo' },
           { id: 'fornecedor',  title: 'Fornecedor',  sub: 'Módulo' },
           { id: 'financeiro',  title: 'Financeiro',  sub: 'Módulo' },
-          { id: 'em-breve',    title: 'Em Breve',    sub: 'Módulo' },
-          { id: 'diario',      title: 'Diário',      sub: 'Módulo' }
+          { id: 'em-breve',    title: 'Em Breve',    sub: 'Módulo' }
         ]
       }
     };
@@ -58,15 +56,11 @@ class Dashboard {
     this.setupClock();
     this.setupMetaSemanal();
     this.setupAutoatendimento();
-    this.setupDiarioBadge();
     this.setupAlerts();
     this.setupGlobalSearch();
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
-    this.setupSidebar();
-    this.setupPanelRight();
-    this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupAvisoAcoes();
@@ -151,26 +145,28 @@ class Dashboard {
     const statusEl  = document.getElementById('nota-status');
     if (!btnNotas || !panel || !textarea) return;
 
-    // Identidade ESTÁVEL da conta (substitui o antigo cc_nota_uid aleatório).
-    let docRef = doc(db, 'notas_usuarios', getUid());
+    // ID do dispositivo/usuário — persistente no localStorage
+    let userId = localStorage.getItem('cc_nota_uid');
+    if (!userId) {
+      userId = 'user_' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('cc_nota_uid', userId);
+    }
+
+    const docRef = doc(db, 'notas_usuarios', userId);
     let saveTimer = null;
-    let notaUnsub = null;
 
     const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
 
-    // Sincronização em tempo real — aplica valor remoto quando não está digitando
-    const assinarNota = () => {
-      if (notaUnsub) { notaUnsub(); notaUnsub = null; }
-      docRef = doc(db, 'notas_usuarios', getUid());
-      notaUnsub = onSnapshot(docRef, (snap) => {
-        const remoto = snap.exists() ? (snap.data().conteudo || '') : '';
-        if (document.activeElement !== textarea && textarea.value !== remoto) {
-          textarea.value = remoto;
+    // Carrega nota do Firestore
+    const carregarNota = async () => {
+      try {
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          textarea.value = snap.data().conteudo || '';
         }
         setStatus('✓ sincronizado');
-      }, () => setStatus(''));
+      } catch { setStatus(''); }
     };
-    onUid(() => assinarNota());
 
     // Salva nota no Firestore (debounce 1s)
     const salvarNota = () => {
@@ -182,7 +178,7 @@ class Dashboard {
           await setDoc(docRef, {
             conteudo:    textarea.value,
             atualizadoEm: serverTimestamp(),
-            userId: getUid()
+            userId
           });
           setStatus('✓ salvo');
         } catch { setStatus('⚠ erro ao salvar'); }
@@ -193,7 +189,7 @@ class Dashboard {
     btnNotas.addEventListener('click', () => {
       const aberto = panel.style.display !== 'none';
       panel.style.display = aberto ? 'none' : 'flex';
-      if (!aberto) textarea.focus();
+      if (!aberto) { carregarNota(); textarea.focus(); }
     });
 
     btnClose.addEventListener('click', () => { panel.style.display = 'none'; });
@@ -327,35 +323,6 @@ class Dashboard {
     }
   }
 
-  // ===== DIÁRIO — alerta de revisões vencidas (coleção isolada diario_registros) =====
-  // Lê apenas diario_registros; não toca em módulos operacionais.
-  async setupDiarioBadge() {
-    const badge = document.getElementById('diario-badge');
-    if (!badge) return;
-    const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
-    try {
-      onSnapshot(collection(db, 'diario_registros'), snap => {
-        let vencidas = 0;
-        snap.forEach(d => {
-          const r = d.data();
-          if (!r || !r.dataRevisao) return;
-          if (r.status === 'concluido' || r.status === 'arquivado') return;
-          const rev = new Date(r.dataRevisao + 'T00:00:00');
-          if (!isNaN(rev.getTime()) && rev < hoje0) vencidas++;
-        });
-        if (vencidas > 0) {
-          badge.textContent = vencidas;
-          badge.style.display = '';
-          badge.classList.remove('empty');
-        } else {
-          badge.style.display = 'none';
-        }
-      });
-    } catch (e) {
-      console.warn('Erro ao carregar revisões do Diário:', e);
-    }
-  }
-
   // ===== AGENDA INTELIGENTE — lê as notas (sticky notes) e extrai os horários =====
   // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
@@ -390,10 +357,8 @@ class Dashboard {
         const notas = notasDe(dados);
 
         // Helper para gerar evento individual
-        // ⚠ REGRA: a Ação da Semana só conta tarefas com HORÁRIO VÁLIDO (HH:MM).
-        //    Notas sem horário definido NÃO entram na contagem/alerta do painel.
         const gerarEvento = (dataAlvo, hora, titulo, concluido, recorrente) => {
-          if (!/^\d{1,2}:\d{2}$/.test(hora || '')) return; // sem horário válido → não alerta
+          if (!hora) return;
           const desc = semHora(titulo) || titulo;
           const rotulo = recorrente
             ? `🔄 ${['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][new Date(dataAlvo + 'T00:00:00').getDay()]} ${hora} ${desc}`
@@ -401,19 +366,15 @@ class Dashboard {
           eventos.push({
             data: dataAlvo, hora, titulo: desc,
             concluido: !!concluido, alerta: true,
-            recorrente: !!recorrente, rotulo,
-            // 🐛 DEBUG TEMPORÁRIO — origem do evento (remover após investigação)
-            _docId: d.id, _colecao: 'agenda',
-            _recorrencia: dados.recorrencia || '(nenhuma)',
-            _alertaDashboard: dados.alertaDashboard === true
+            recorrente: !!recorrente, rotulo
           });
         };
 
-        // Helper para gerar eventos de todas as notas de um dia.
-        // (gerarEvento já descarta notas sem horário válido.)
+        // Helper para gerar eventos de todas as notas de um dia
         const gerarEventosDoDia = (dataAlvo, horaPadrao) => {
           notas.forEach(n => {
             const hora = horaDoTexto(n.texto) || horaPadrao;
+            if (!hora) return;
             gerarEvento(dataAlvo, hora, n.texto, n.concluido, !!dados.recorrencia);
           });
         };
@@ -424,27 +385,15 @@ class Dashboard {
 
         if (dados.recorrencia) {
           // ===== TAREFA RECORRENTE =====
-          // Só gera alerta no Dashboard se "Exibir alerta no painel" estiver marcado.
-          // (Mesma regra das tarefas não-recorrentes — antes esse ramo ignorava o flag,
-          //  gerando alertas-fantasma de tarefas que não aparecem na Ação da Semana.)
-          if (dados.alertaDashboard !== true) return;
-
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
-          // Respeita as mesmas exclusões/encerramento que o módulo Ação da Semana:
-          //  - recorrenciaExcluir: ocorrências individuais que o usuário removeu
-          //  - recorrenciaPararEm: recorrência encerrada a partir desta data
-          const excluir = Array.isArray(dados.recorrenciaExcluir) ? dados.recorrenciaExcluir : [];
-          const pararEm = dados.recorrenciaPararEm || '';
-          const ocorrenciaValida = (iso) => !excluir.includes(iso) && !(pararEm && iso >= pararEm);
-
           // 1. Gera evento para a DATA ORIGINAL se for passado (para aparecer como atrasada)
-          if (dia < hojeISO && temPendente && ocorrenciaValida(dia)) {
+          if (dia < hojeISO && temPendente) {
             gerarEventosDoDia(dia, horaPadrao);
           }
 
           // 2. Gera evento para HOJE se o padrão de recorrência bater
-          if (recCai(hojeISO, dia, dados.recorrencia) && ocorrenciaValida(hojeISO)) {
+          if (recCai(hojeISO, dia, dados.recorrencia)) {
             // Evita duplicar quando a data original é hoje
             if (dia === hojeISO) {
               gerarEventosDoDia(hojeISO, horaPadrao);
@@ -458,11 +407,10 @@ class Dashboard {
           }
         } else {
           // ===== TAREFA NÃO RECORRENTE =====
-          // Só gera eventos se o usuário ativou explicitamente o alerta no Dashboard.
-          // Caso contrário, a tarefa é apenas um lembrete local no calendário
-          // e NÃO deve aparecer na Central de Alertas / Ação da Semana.
-          if (dados.alertaDashboard !== true) return;
-
+          // Gera eventos para TODAS as tarefas com horário definido,
+          // independentemente da flag alertaDashboard.
+          // Tarefas atrasadas (dias anteriores) SEMPRE aparecerão no Dashboard
+          // até serem marcadas como concluídas.
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
           // Gera evento para a DATA ORIGINAL (passada, hoje ou futura)
@@ -990,159 +938,9 @@ class Dashboard {
         console.warn('Central de Alertas — erro ao buscar solicitações:', e);
       }
 
-      // ===== AGENDAMENTOS DO PORTAL (aguardando confirmação) =====
-      // Centraliza no Painel de Alertas todo novo pedido de agendamento, evitando
-      // que a equipe precise abrir o módulo Portal/Painel Administrativo para vê-los.
-      try {
-        const agendamentosSnap = await getDocs(
-          query(collection(db, 'agendamentos'), where('status', '==', 'aguardando'))
-        );
-        const agPendentes = [];
-        agendamentosSnap.forEach(d => agPendentes.push({ id: d.id, ...d.data() }));
-
-        // "YYYY-MM-DD" → "DD/MM/YYYY" (sem conversão de fuso)
-        const fmtDataAg = (data) =>
-          (data && /^\d{4}-\d{2}-\d{2}$/.test(data)) ? data.split('-').reverse().join('/') : (data || 'Sem data');
-
-        if (agPendentes.length > 0) {
-          // Ordena pela data desejada (mais próxima primeiro)
-          agPendentes.sort((a, b) => (a.data || '9999-99-99') < (b.data || '9999-99-99') ? -1 : 1);
-
-          const badge = document.getElementById('agendamentos-badge');
-          if (badge) {
-            badge.textContent = agPendentes.length;
-            badge.style.display = '';
-          }
-
-          // Alerta-resumo
-          alertas.push({
-            icon: '📅', cat: 'atencao', cor: 'atencao',
-            title: 'AGENDAMENTOS PENDENTES',
-            sub: `${agPendentes.length} agendamento(s) aguardando confirmação`,
-            detail: `${agPendentes.length} cliente(s) solicitaram horário de atendimento pelo Portal. Acesse o Painel Administrativo do Portal para confirmar, reagendar ou cancelar.`
-          });
-
-          // Alertas individuais (até 3) — formato pedido pela equipe
-          agPendentes.slice(0, 3).forEach(a => {
-            alertas.push({
-              icon: '🔔', cat: 'crm', cor: null,
-              title: `🔔 Novo Agendamento · ${a.clientName || a.nome || 'Cliente'}`,
-              sub: `📅 ${fmtDataAg(a.data)}${a.horario ? ' · ⏰ ' + a.horario : ''}`,
-              detail: `Cliente: ${a.clientName || a.nome || 'Cliente'} · Data: ${fmtDataAg(a.data)}${a.horario ? ' · Horário: ' + a.horario : ''} · Status: Aguardando Confirmação. Confirme, reagende ou cancele no Painel Administrativo do Portal.`
-            });
-          });
-        } else {
-          const badge = document.getElementById('agendamentos-badge');
-          if (badge) badge.style.display = 'none';
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar agendamentos:', e);
-      }
-
-      // ===== SOLICITAÇÕES DE DIAGNÓSTICO DO PORTAL (aguardando atendimento) =====
-      // Centraliza no Painel de Alertas todo novo pedido de diagnóstico/orçamento
-      // enviado pelo módulo "🔧 Solicitar Diagnóstico Gratuito" do Portal do Cliente.
-      try {
-        const TIPO_EQUIP = { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora', outro: '🔧 Outro' };
-        const diagSnap = await getDocs(
-          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
-        );
-        const diagPend = [];
-        diagSnap.forEach(d => diagPend.push({ id: d.id, ...d.data() }));
-
-        const equipDe = (s) => {
-          const partes = [s.marca, s.modelo].filter(Boolean).join(' ').trim();
-          return partes || TIPO_EQUIP[s.tipoEquipamento] || (s.tipoEquipamento || 'Equipamento não informado');
-        };
-
-        if (diagPend.length > 0) {
-          // Mais recentes primeiro
-          diagPend.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
-
-          // Alerta-resumo
-          alertas.push({
-            icon: '🔧', cat: 'atencao', cor: 'atencao',
-            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
-            sub: `${diagPend.length} solicitação(ões) aguardando atendimento`,
-            detail: `${diagPend.length} cliente(s) solicitaram diagnóstico/orçamento pelo Portal. Abra o Painel de Alertas (🔔) para atender ou descartar.`
-          });
-
-          // Alertas individuais (até 3) — formato pedido pela equipe
-          diagPend.slice(0, 3).forEach(s => {
-            alertas.push({
-              icon: '🔔', cat: 'crm', cor: null,
-              title: `🔔 Nova Solicitação de Diagnóstico · ${s.clientName || 'Cliente'}`,
-              sub: `🔧 ${equipDe(s)}${s.descricao ? ' · 📝 ' + s.descricao : ''}`,
-              detail: `Cliente: ${s.clientName || 'Cliente'} · Equipamento: ${equipDe(s)}${s.descricao ? ' · Motivo: ' + s.descricao : ''} · Status: Aguardando Atendimento.`
-            });
-          });
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
-      }
-
     } catch (e) {
       console.warn('Central de Alertas — erro ao gerar:', e);
     }
-
-    // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
-    try {
-      const prontoSnap = await getDocs(
-        query(collection(db, 'os'), where('status', '==', 'concluido'))
-      );
-      const prontos = [];
-      prontoSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        let dataConcluido = null;
-        if (Array.isArray(os.timeline)) {
-          const entry = [...os.timeline].reverse().find(t =>
-            typeof t.text === 'string' && t.text.includes('→ Concluído')
-          );
-          if (entry?.date) dataConcluido = entry.date;
-        }
-        if (!dataConcluido) dataConcluido = os.updatedAt;
-        if (!dataConcluido) return;
-        const dias = calcDias(dataConcluido);
-        if (dias > 3) prontos.push({ ...os, _dias: dias });
-      });
-      if (prontos.length > 0) {
-        prontos.sort((a, b) => b._dias - a._dias);
-        alertas.push({
-          icon: '📦', cat: 'atencao', cor: 'atencao',
-          title: 'APARELHOS NÃO RETIRADOS',
-          sub: `${prontos.length} aparelho(s) pronto(s) há mais de 3 dias`,
-          detail: `Toque para ver a lista. Ex.: ${prontos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
-          _osData: prontos,
-          _tipo: 'pronto_nao_retirado',
-          _titulo: 'Aparelhos Prontos — Não Retirados',
-        });
-      }
-    } catch (e) { console.warn('Central de Alertas — OS prontas:', e); }
-
-    // ===== ORÇAMENTOS SEM RESPOSTA =====
-    try {
-      const orcSnap = await getDocs(
-        query(collection(db, 'os'), where('status', 'in', ['orcamento', 'orcamento_enviado']))
-      );
-      const orcamentos = [];
-      orcSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        const dias = calcDias(os.updatedAt);
-        if (dias > 2) orcamentos.push({ ...os, _dias: dias });
-      });
-      if (orcamentos.length > 0) {
-        orcamentos.sort((a, b) => b._dias - a._dias);
-        alertas.push({
-          icon: '💬', cat: 'atencao', cor: 'atencao',
-          title: 'ORÇAMENTOS SEM RESPOSTA',
-          sub: `${orcamentos.length} orçamento(s) sem resposta há mais de 2 dias`,
-          detail: `Toque para ver a lista. Ex.: ${orcamentos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
-          _osData: orcamentos,
-          _tipo: 'orcamento_abandonado',
-          _titulo: 'Orçamentos Sem Resposta',
-        });
-      }
-    } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
 
     return alertas;
   }
@@ -1189,9 +987,6 @@ class Dashboard {
     };
 
     const mostrar = (dica, animacao) => {
-      this._alertaAtual = dica;
-      const card = document.getElementById('alerts-card');
-      if (card) card.style.cursor = dica._osData?.length ? 'pointer' : '';
       if (animacao) {
         [titleEl, subtitleEl, detailEl].forEach(el => {
           el.style.transition = 'opacity 0.4s ease';
@@ -1213,14 +1008,6 @@ class Dashboard {
         aplicarCategoria(dica);
       }
     };
-
-    // Click no card de alertas abre lista quando for alerta de OS
-    const alertsCard = document.getElementById('alerts-card');
-    if (alertsCard) {
-      alertsCard.addEventListener('click', () => {
-        if (this._alertaAtual?._osData?.length) this.mostrarAlertaOS(this._alertaAtual);
-      });
-    }
 
     mostrar(DICAS[0], false);
 
@@ -1598,7 +1385,7 @@ class Dashboard {
     const JS_DIA = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
     const diaHoje = JS_DIA[new Date().getDay()];
 
-    const userId = getUid();
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
     const ref = doc(db, 'tarefas_semana', userId);
     let tarefas = {};
 
@@ -1725,7 +1512,7 @@ class Dashboard {
     const statusEl = document.getElementById('sidebar-notas-status');
     if (!area) return;
 
-    const userId = getUid();
+    const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
     const ref    = doc(db, 'notas_usuarios', userId);
     let saveTimer = null;
 
@@ -1754,7 +1541,7 @@ class Dashboard {
   navigateTo(module) {
     const routes = {
       os: '../../pages/os/index.html',
-      'central-comandos': '../../pages/central-comandos/index.html',
+      'central-comandos': '../../pages/central-informacoes/index.html',
       'central-informacoes': '../../pages/central-informacoes/index.html',
       autoatendimento: '../../pages/autoatendimento/index.html',
       clientes: '../../pages/clientes/index.html',
@@ -1762,25 +1549,15 @@ class Dashboard {
       estoque: '../../pages/estoque/index.html',
       campanhas: '../../pages/campanhas/index.html',
       analise: '../../pages/analise/index.html',
-      relatorios: '../../pages/analise/index.html',
       'pos-venda': '../../pages/pos-venda/index.html',
       config: '../../pages/config/index.html',
       ferramentas: '../../pages/config/index.html',
-      impressora: '../../pages/config/index.html',
       fornecedor: '../../pages/fornecedor/index.html',
       financeiro: '../../pages/financeiro/index.html',
       'em-breve': '../../pages/em-breve/index.html',
-      'minha-semana':        '../../pages/minha-semana/index.html',
-      'acaodasemana':        '../../pages/acaodasemana/index.html',
-      'portal-cliente':      '../../pages/portal-cliente/admin.html',
-      'portal-tecnico':      '../../pages/portal-tecnico/index.html',
-      'diario':              '../../pages/diario/index.html',
-      'central-organizacao': '../../pages/central-organizacao/index.html',
-      'contas':              '../../pages/contas/index.html',
-      'catalogo':            '../../pages/catalogo/index.html',
-      'crm-comercial':       '../../pages/crm-comercial/index.html',
-      'compras':             '../../pages/compras/index.html',
-      'auditoria':           '../../pages/auditoria/index.html'
+      'minha-semana':   '../../pages/minha-semana/index.html',
+      'acaodasemana':   '../../pages/acaodasemana/index.html',
+      'portal-cliente': '../../pages/portal-cliente/admin.html'
     };
     const url = routes[module];
     if (url) {
@@ -2051,7 +1828,7 @@ class Dashboard {
     // Envia config para Service Worker
     const enviarConfigSW = (config) => {
       if (navigator.serviceWorker.controller) {
-        const userId = getUid();
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         navigator.serviceWorker.controller.postMessage({
           tipo: 'iniciarRelogio',
           config: config,
@@ -2278,7 +2055,7 @@ class Dashboard {
       // Salva no Firebase
       try {
         const { setDoc } = await import('../../scripts/firebase.js');
-        const userId = getUid();
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         const docRef = doc(db, 'alarme_config', userId);
 
         // Inclui informação de dispositivo para rastrear sincronização
@@ -2410,7 +2187,7 @@ class Dashboard {
         }
 
         const { onSnapshot } = await import('../../scripts/firebase.js');
-        const userId = getUid();
+        const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
         const docRef = doc(db, 'alarme_config', userId);
 
         if (unsubscribeFirebase) unsubscribeFirebase();
@@ -2631,7 +2408,7 @@ class Dashboard {
 
     // DEBUG: Função para ver status de sincronização
     window.statusAlarme = () => {
-      const userId = getUid();
+      const userId = localStorage.getItem('cc_nota_uid') || 'user_default';
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
       console.log('=== STATUS DO ALARME ===');
       console.log('User ID:', userId);
@@ -3011,196 +2788,6 @@ class Dashboard {
       const alvo = !document.body.classList.contains('modo-compacto');
       aplicar(alvo);
     });
-  }
-
-  // ===== MODAL: LISTA DE OS DO ALERTA =====
-  mostrarAlertaOS(alerta) {
-    const modal   = document.getElementById('os-alerta-modal');
-    const titleEl = document.getElementById('os-modal-title');
-    const listEl  = document.getElementById('os-modal-list');
-    if (!modal || !titleEl || !listEl) return;
-
-    titleEl.textContent = alerta._titulo || alerta.title;
-    const labelDias = alerta._tipo === 'pronto_nao_retirado' ? 'aguardando retirada' : 'sem resposta';
-
-    listEl.innerHTML = alerta._osData.map(os => `
-      <div style="background:#1a1d1b;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">
-        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${os.id}</span>
-        <span style="font-size:14px;font-weight:700;color:#fff;">${os.clientName || '—'}</span>
-        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + os.phone : 'Sem telefone'}</span>
-        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${os._dias} dia(s) ${labelDias}</span>
-      </div>`).join('');
-
-    modal.style.display = 'flex';
-  }
-
-  // ===== SIDEBAR ESQUERDA — RECOLHER/EXPANDIR =====
-  setupSidebar() {
-    const sidebar = document.getElementById('sidebar-left');
-    const btn     = document.getElementById('sidebar-toggle');
-    if (!sidebar || !btn) return;
-
-    const KEY = 'cc_sidebar_state';
-    const aplicar = (collapsed) => {
-      sidebar.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    btn.addEventListener('click', () => {
-      aplicar(!sidebar.classList.contains('collapsed'));
-    });
-  }
-
-  // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====
-  setupPanelRight() {
-    const panel   = document.getElementById('panel-right');
-    const btnOpen = document.getElementById('panel-right-open-btn');
-    const btnClose= document.getElementById('panel-right-close-btn');
-    if (!panel) return;
-
-    const KEY = 'cc_panel_right_state';
-    const aplicar = (collapsed) => {
-      panel.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo (default: expandido)
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    if (btnOpen)  btnOpen.addEventListener('click',  () => aplicar(false));
-    if (btnClose) btnClose.addEventListener('click', () => aplicar(true));
-
-    // Toggle das seções internas (metas / alertas)
-    const _bindToggle = (btnId, bodyId) => {
-      const btn  = document.getElementById(btnId);
-      const body = document.getElementById(bodyId);
-      if (!btn || !body) return;
-      const KEY2 = 'cc_pr_' + btnId;
-      if (localStorage.getItem(KEY2) === '1') { body.classList.add('collapsed-body'); btn.textContent = '+'; }
-      btn.addEventListener('click', () => {
-        const col = body.classList.toggle('collapsed-body');
-        btn.textContent = col ? '+' : '−';
-        localStorage.setItem(KEY2, col ? '1' : '0');
-      });
-    };
-    _bindToggle('metas-toggle', 'metas-body');
-    _bindToggle('alertas-toggle', 'alertas-body');
-  }
-
-  // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  setupExecutivePanel() {
-    const fmt    = (v) => Number(v).toLocaleString('pt-BR');
-    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const setDelta = (id, val, prefix = '') => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = prefix + val;
-      el.className = 'exec-card-delta' + (String(val).startsWith('-') ? ' down' : ' up');
-    };
-
-    const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
-                           'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
-    const STATUS_ANDAMENTO = ['em_andamento', 'aguardando', 'diagnostico'];
-    const STATUS_AGUARDANDO_APROV = ['orcamento_enviado'];
-
-    const hojeISO = new Date().toISOString().slice(0, 10);
-    const inicioSemana = (() => {
-      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-    })();
-    const ha30dias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-
-    const atualizarOS = (snap) => {
-      let abertas = 0, andamento = 0, aguardAprov = 0, bancada = 0;
-      const clientesSet = new Set();
-      let somaValorEntregue = 0, countEntregue = 0;
-      let temposTotais = 0, countTempo = 0;
-      let orcamentosHoje = 0;
-
-      snap.forEach(d => {
-        const os = d.data();
-        const status = os.status || '';
-
-        if (STATUS_ABERTO.includes(status)) abertas++;
-        if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
-        if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
-
-        // Ticket médio: OS entregues este mês
-        if (status === 'entregue' && os.valor) {
-          somaValorEntregue += Number(os.valor);
-          countEntregue++;
-        }
-
-        // Tempo médio: OS entregues com datas
-        if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
-          const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
-          if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
-        }
-
-        // Clientes ativos (30 dias)
-        if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
-          clientesSet.add(os.phone);
-        }
-
-        // Orçamentos enviados hoje
-        if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
-          orcamentosHoje++;
-        }
-      });
-
-      set('kpi-os-abertas', fmt(abertas));
-      set('kpi-os-andamento', fmt(andamento));
-      set('kpi-aguardando-aprov', fmt(aguardAprov));
-      set('kpi-bancada', fmt(bancada));
-      set('kpi-ticket-medio', countEntregue > 0 ? fmtBRL(somaValorEntregue / countEntregue) : '—');
-      set('kpi-tempo-entrega', countTempo > 0 ? `${(temposTotais / countTempo).toFixed(1)} dias` : '—');
-      set('kpi-clientes-ativos', fmt(clientesSet.size));
-      set('kpi-orcamentos-enviados', fmt(orcamentosHoje));
-    };
-
-    const atualizarCaixa = (snap) => {
-      let fatHoje = 0, lucroSemana = 0;
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        const val = Number(l.valor || 0);
-        const lucro = Number(l.lucro || 0);
-        if (iso.startsWith(hojeISO) && l.tipo !== 'saida') fatHoje += val;
-        if (iso >= inicioSemana) lucroSemana += lucro;
-      });
-      set('kpi-faturamento-hoje', fmtBRL(fatHoje));
-      set('kpi-lucro-semana', fmtBRL(lucroSemana));
-    };
-
-    const atualizarEstoque = (snap) => {
-      let pecasFalta = 0;
-      snap.forEach(d => {
-        const p = d.data();
-        const qty = Number(p.quantidade || p.estoque || 0);
-        const min = Number(p.estoqueMinimo || p.minimo || 1);
-        if (qty < min) pecasFalta++;
-      });
-      set('kpi-pecas-falta', fmt(pecasFalta));
-    };
-
-    // Inicia listeners quando Firestore estiver pronto
-    const iniciar = () => {
-      try {
-        onSnapshot(collection(db, 'os'), atualizarOS,
-          err => console.warn('[KPI] os:', err && err.message));
-        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
-          err => console.warn('[KPI] caixa:', err && err.message));
-        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
-          err => console.warn('[KPI] estoque:', err && err.message));
-      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
-    };
-
-    // Aguarda firebase-ready se necessário (db vem do módulo importado no topo)
-    if (db) iniciar();
-    else window.addEventListener('firebase-ready', iniciar, { once: true });
   }
 }
 

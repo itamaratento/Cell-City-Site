@@ -64,9 +64,6 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
-    this.setupSidebar();
-    this.setupPanelRight();
-    this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupAvisoAcoes();
@@ -1762,25 +1759,20 @@ class Dashboard {
       estoque: '../../pages/estoque/index.html',
       campanhas: '../../pages/campanhas/index.html',
       analise: '../../pages/analise/index.html',
-      relatorios: '../../pages/analise/index.html',
       'pos-venda': '../../pages/pos-venda/index.html',
       config: '../../pages/config/index.html',
       ferramentas: '../../pages/config/index.html',
-      impressora: '../../pages/config/index.html',
       fornecedor: '../../pages/fornecedor/index.html',
       financeiro: '../../pages/financeiro/index.html',
       'em-breve': '../../pages/em-breve/index.html',
-      'minha-semana':        '../../pages/minha-semana/index.html',
-      'acaodasemana':        '../../pages/acaodasemana/index.html',
-      'portal-cliente':      '../../pages/portal-cliente/admin.html',
-      'portal-tecnico':      '../../pages/portal-tecnico/index.html',
-      'diario':              '../../pages/diario/index.html',
-      'central-organizacao': '../../pages/central-organizacao/index.html',
-      'contas':              '../../pages/contas/index.html',
-      'catalogo':            '../../pages/catalogo/index.html',
-      'crm-comercial':       '../../pages/crm-comercial/index.html',
-      'compras':             '../../pages/compras/index.html',
-      'auditoria':           '../../pages/auditoria/index.html'
+      'minha-semana':   '../../pages/minha-semana/index.html',
+      'acaodasemana':   '../../pages/acaodasemana/index.html',
+      'portal-cliente': '../../pages/portal-cliente/admin.html',
+      'portal-tecnico': '../../pages/portal-tecnico/index.html',
+      'diario':               '../../pages/diario/index.html',
+      'central-organizacao':  '../../pages/central-organizacao/index.html',
+      'contas':               '../../pages/contas/index.html',
+      'catalogo':             '../../pages/catalogo/index.html'
     };
     const url = routes[module];
     if (url) {
@@ -3032,175 +3024,6 @@ class Dashboard {
       </div>`).join('');
 
     modal.style.display = 'flex';
-  }
-
-  // ===== SIDEBAR ESQUERDA — RECOLHER/EXPANDIR =====
-  setupSidebar() {
-    const sidebar = document.getElementById('sidebar-left');
-    const btn     = document.getElementById('sidebar-toggle');
-    if (!sidebar || !btn) return;
-
-    const KEY = 'cc_sidebar_state';
-    const aplicar = (collapsed) => {
-      sidebar.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    btn.addEventListener('click', () => {
-      aplicar(!sidebar.classList.contains('collapsed'));
-    });
-  }
-
-  // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====
-  setupPanelRight() {
-    const panel   = document.getElementById('panel-right');
-    const btnOpen = document.getElementById('panel-right-open-btn');
-    const btnClose= document.getElementById('panel-right-close-btn');
-    if (!panel) return;
-
-    const KEY = 'cc_panel_right_state';
-    const aplicar = (collapsed) => {
-      panel.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo (default: expandido)
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    if (btnOpen)  btnOpen.addEventListener('click',  () => aplicar(false));
-    if (btnClose) btnClose.addEventListener('click', () => aplicar(true));
-
-    // Toggle das seções internas (metas / alertas)
-    const _bindToggle = (btnId, bodyId) => {
-      const btn  = document.getElementById(btnId);
-      const body = document.getElementById(bodyId);
-      if (!btn || !body) return;
-      const KEY2 = 'cc_pr_' + btnId;
-      if (localStorage.getItem(KEY2) === '1') { body.classList.add('collapsed-body'); btn.textContent = '+'; }
-      btn.addEventListener('click', () => {
-        const col = body.classList.toggle('collapsed-body');
-        btn.textContent = col ? '+' : '−';
-        localStorage.setItem(KEY2, col ? '1' : '0');
-      });
-    };
-    _bindToggle('metas-toggle', 'metas-body');
-    _bindToggle('alertas-toggle', 'alertas-body');
-  }
-
-  // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  setupExecutivePanel() {
-    const fmt    = (v) => Number(v).toLocaleString('pt-BR');
-    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const setDelta = (id, val, prefix = '') => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = prefix + val;
-      el.className = 'exec-card-delta' + (String(val).startsWith('-') ? ' down' : ' up');
-    };
-
-    const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
-                           'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
-    const STATUS_ANDAMENTO = ['em_andamento', 'aguardando', 'diagnostico'];
-    const STATUS_AGUARDANDO_APROV = ['orcamento_enviado'];
-
-    const hojeISO = new Date().toISOString().slice(0, 10);
-    const inicioSemana = (() => {
-      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-    })();
-    const ha30dias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-
-    const atualizarOS = (snap) => {
-      let abertas = 0, andamento = 0, aguardAprov = 0, bancada = 0;
-      const clientesSet = new Set();
-      let somaValorEntregue = 0, countEntregue = 0;
-      let temposTotais = 0, countTempo = 0;
-      let orcamentosHoje = 0;
-
-      snap.forEach(d => {
-        const os = d.data();
-        const status = os.status || '';
-
-        if (STATUS_ABERTO.includes(status)) abertas++;
-        if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
-        if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
-
-        // Ticket médio: OS entregues este mês
-        if (status === 'entregue' && os.valor) {
-          somaValorEntregue += Number(os.valor);
-          countEntregue++;
-        }
-
-        // Tempo médio: OS entregues com datas
-        if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
-          const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
-          if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
-        }
-
-        // Clientes ativos (30 dias)
-        if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
-          clientesSet.add(os.phone);
-        }
-
-        // Orçamentos enviados hoje
-        if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
-          orcamentosHoje++;
-        }
-      });
-
-      set('kpi-os-abertas', fmt(abertas));
-      set('kpi-os-andamento', fmt(andamento));
-      set('kpi-aguardando-aprov', fmt(aguardAprov));
-      set('kpi-bancada', fmt(bancada));
-      set('kpi-ticket-medio', countEntregue > 0 ? fmtBRL(somaValorEntregue / countEntregue) : '—');
-      set('kpi-tempo-entrega', countTempo > 0 ? `${(temposTotais / countTempo).toFixed(1)} dias` : '—');
-      set('kpi-clientes-ativos', fmt(clientesSet.size));
-      set('kpi-orcamentos-enviados', fmt(orcamentosHoje));
-    };
-
-    const atualizarCaixa = (snap) => {
-      let fatHoje = 0, lucroSemana = 0;
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        const val = Number(l.valor || 0);
-        const lucro = Number(l.lucro || 0);
-        if (iso.startsWith(hojeISO) && l.tipo !== 'saida') fatHoje += val;
-        if (iso >= inicioSemana) lucroSemana += lucro;
-      });
-      set('kpi-faturamento-hoje', fmtBRL(fatHoje));
-      set('kpi-lucro-semana', fmtBRL(lucroSemana));
-    };
-
-    const atualizarEstoque = (snap) => {
-      let pecasFalta = 0;
-      snap.forEach(d => {
-        const p = d.data();
-        const qty = Number(p.quantidade || p.estoque || 0);
-        const min = Number(p.estoqueMinimo || p.minimo || 1);
-        if (qty < min) pecasFalta++;
-      });
-      set('kpi-pecas-falta', fmt(pecasFalta));
-    };
-
-    // Inicia listeners quando Firestore estiver pronto
-    const iniciar = () => {
-      try {
-        onSnapshot(collection(db, 'os'), atualizarOS,
-          err => console.warn('[KPI] os:', err && err.message));
-        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
-          err => console.warn('[KPI] caixa:', err && err.message));
-        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
-          err => console.warn('[KPI] estoque:', err && err.message));
-      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
-    };
-
-    // Aguarda firebase-ready se necessário (db vem do módulo importado no topo)
-    if (db) iniciar();
-    else window.addEventListener('firebase-ready', iniciar, { once: true });
   }
 }
 

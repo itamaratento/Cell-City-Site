@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios — Cell City CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="relatorios.css">
+  <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header>
+  <span class="header-title">📊 Relatórios</span>
+</header>
+
+<!-- ===== FILTRO DE PERÍODO ===== -->
+<div class="periodo-bar">
+  <span class="periodo-label">Período:</span>
+  <div class="periodo-btns">
+    <button class="periodo-btn" data-meses="1">1 mês</button>
+    <button class="periodo-btn ativo" data-meses="3">3 meses</button>
+    <button class="periodo-btn" data-meses="6">6 meses</button>
+    <button class="periodo-btn" data-meses="12">12 meses</button>
+  </div>
+</div>
+
+<!-- ===== CARDS DE RESUMO ===== -->
+<div class="resumo-grid" id="resumo-grid">
+  <div class="resumo-card" id="res-total-os">
+    <div class="resumo-icon">📦</div>
+    <div class="resumo-info">
+      <div class="resumo-valor" id="res-val-os">—</div>
+      <div class="resumo-label">OS no período</div>
+    </div>
+  </div>
+  <div class="resumo-card" id="res-concluidas">
+    <div class="resumo-icon">✅</div>
+    <div class="resumo-info">
+      <div class="resumo-valor" id="res-val-concluidas">—</div>
+      <div class="resumo-label">Concluídas / Entregues</div>
+    </div>
+  </div>
+  <div class="resumo-card" id="res-faturamento">
+    <div class="resumo-icon">💰</div>
+    <div class="resumo-info">
+      <div class="resumo-valor" id="res-val-fat">—</div>
+      <div class="resumo-label">Entradas no período</div>
+    </div>
+  </div>
+  <div class="resumo-card" id="res-ticket">
+    <div class="resumo-icon">🎯</div>
+    <div class="resumo-info">
+      <div class="resumo-valor" id="res-val-ticket">—</div>
+      <div class="resumo-label">Ticket médio (OS)</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== GRÁFICOS ===== -->
+<div class="graficos-grid">
+
+  <div class="grafico-card grafico-largo">
+    <div class="grafico-titulo">OS por mês — abertas vs. concluídas</div>
+    <div class="grafico-wrap">
+      <canvas id="chart-os-mes"></canvas>
+    </div>
+  </div>
+
+  <div class="grafico-card grafico-largo">
+    <div class="grafico-titulo">Faturamento mensal — entradas vs. saídas</div>
+    <div class="grafico-wrap">
+      <canvas id="chart-caixa-mes"></canvas>
+    </div>
+  </div>
+
+  <div class="grafico-card">
+    <div class="grafico-titulo">OS por status atual</div>
+    <div class="grafico-wrap grafico-wrap-rosca">
+      <canvas id="chart-os-status"></canvas>
+    </div>
+  </div>
+
+  <div class="grafico-card">
+    <div class="grafico-titulo">Ticket médio mensal (OS concluídas)</div>
+    <div class="grafico-wrap">
+      <canvas id="chart-ticket-medio"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-texto">Carregando dados...</div>
+</div>
+
+<script type="module" src="relatorios.js"></script>
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/dock.js" type="module"></script>
+</body>
+</html>

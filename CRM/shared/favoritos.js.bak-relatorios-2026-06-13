@@ -44,11 +44,7 @@ const MODULES = {
   'portal-tecnico':      { icon: '🔓', label: 'Portal Técnico' },
   'importar':            { icon: '📥', label: 'Importar' },
   'config':             { icon: '⚙️', label: 'Ferramentas' },
-  'catalogo':           { icon: '🛍️', label: 'Catálogo' },
-  'crm-comercial':      { icon: '🎯', label: 'CRM Comercial' },
-  'compras':            { icon: '🛒', label: 'Compras' },
-  'auditoria':          { icon: '🔍', label: 'Auditoria' },
-  'relatorios':         { icon: '📊', label: 'Relatórios' }
+  'catalogo':           { icon: '📦', label: 'Catálogo' }
 };
 
 /* Views fixáveis do módulo OS (piloto) — abrem via deep-link (#fav-...) que o
