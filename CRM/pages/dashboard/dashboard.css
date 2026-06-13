@@ -799,8 +799,8 @@ body {
 /* ============ BLOCO DE NOTAS ============ */
 .nota-panel {
   position: fixed;
-  bottom: 80px;
-  right: 72px;
+  top: 68px;
+  left: 4px;
   width: 320px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-medium);
@@ -863,10 +863,10 @@ body {
 
 @media (max-width: 600px) {
   .nota-panel {
-    right: 8px;
-    left: 8px;
+    top: 68px;
+    left: 4px;
+    right: 4px;
     width: auto;
-    bottom: 70px;
   }
 }
 
