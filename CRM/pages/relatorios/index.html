@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Relatórios — Cell City CRM</title>
+  <title>Meta &amp; Evolução — Cell City CRM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -14,181 +14,121 @@
 </head>
 <body>
 
+<!-- brand-header.js migra este header para #crm-brand-bar e centraliza .header-title -->
 <header>
-  <span class="header-title">📊 Relatórios</span>
+  <span class="header-title">📊 Meta &amp; Evolução</span>
 </header>
 
-<!-- ===== TOOLBAR ===== -->
-<div class="toolbar-bar">
-  <div class="periodo-wrap">
-    <span class="periodo-label">Período:</span>
-    <div class="periodo-btns">
-      <button class="periodo-btn" data-meses="1">1 mês</button>
-      <button class="periodo-btn ativo" data-meses="3">3 meses</button>
-      <button class="periodo-btn" data-meses="6">6 meses</button>
-      <button class="periodo-btn" data-meses="12">12 meses</button>
+<!-- ============================================================
+     PAINEL GERENCIAL — SEMPRE VISÍVEL
+     ============================================================ -->
+<div class="painel" id="painel">
+
+  <!-- Mês / Ano -->
+  <div class="painel-mes-header" id="painel-mes-header">Carregando...</div>
+
+  <!-- CRESCIMENTO — número principal, maior destaque -->
+  <div class="painel-cresc-bloco">
+    <div class="painel-cresc-num" id="painel-cresc-num">—</div>
+    <div class="painel-cresc-label">crescimento</div>
+  </div>
+
+  <!-- Comparação lado a lado -->
+  <div class="painel-vs">
+    <div class="painel-vs-item painel-vs-ant">
+      <div class="painel-vs-label" id="vs-ant-label">—</div>
+      <div class="painel-vs-valor" id="vs-ant-valor">—</div>
+    </div>
+    <div class="painel-vs-sep">vs</div>
+    <div class="painel-vs-item painel-vs-atual">
+      <div class="painel-vs-label" id="vs-atual-label">—</div>
+      <div class="painel-vs-valor" id="vs-atual-valor">—</div>
     </div>
   </div>
-  <div class="toolbar-acoes">
-    <button class="toggle-comparar" id="btn-comparar" title="Comparar com o mesmo período do ano anterior">
-      📅 vs Ano Anterior
-    </button>
-    <button class="btn-metas" id="btn-abrir-metas">
-      🎯 Metas
-    </button>
+
+  <!-- Divisor -->
+  <div class="painel-divisor"></div>
+
+  <!-- Meta automática -->
+  <div class="painel-meta" id="painel-meta">
+
+    <div class="meta-top">
+      <div class="meta-top-left">
+        <span class="meta-badge">🤖 Meta automática</span>
+        <span class="meta-num" id="meta-num">—</span>
+      </div>
+      <span class="meta-base" id="meta-base">—</span>
+    </div>
+
+    <div class="meta-barra-wrap">
+      <div class="meta-barra-track">
+        <div class="meta-barra-fill" id="meta-barra-fill" style="width:0%"></div>
+      </div>
+      <span class="meta-barra-pct" id="meta-barra-pct">0%</span>
+    </div>
+
+    <div class="meta-rodape">
+      <span class="meta-status" id="meta-status"></span>
+      <span class="meta-pdia"  id="meta-pdia"></span>
+    </div>
+
+  </div>
+
+  <!-- Sem dados -->
+  <div class="painel-sem-dados" id="painel-sem-dados" style="display:none">
+    ⚠️ Dados insuficientes — continue usando o sistema para gerar histórico
+  </div>
+
+</div>
+
+<!-- ============================================================
+     TOOLBAR: seleção de anos para os gráficos
+     ============================================================ -->
+<div class="charts-toolbar">
+  <span class="charts-toolbar-label">Comparar anos:</span>
+  <div class="anos-lista" id="anos-lista">
+    <span class="anos-loading">carregando...</span>
   </div>
 </div>
 
-<!-- ===== METAS ===== -->
-<div class="metas-section" id="metas-section">
-  <div class="metas-secao-header">
-    <span class="metas-secao-titulo">🎯 Metas do Mês Atual</span>
-    <button class="metas-editar-btn" id="btn-editar-metas">✏️ Editar metas</button>
-  </div>
-  <div class="metas-grid">
+<!-- ============================================================
+     GRÁFICOS — janela 6 meses com mês atual centralizado
+     ============================================================ -->
+<div class="graficos-area">
 
-    <div class="meta-card" id="meta-fat-card">
-      <div class="meta-card-topo">
-        <div class="meta-card-info">
-          <span class="meta-card-icone">💰</span>
-          <div>
-            <div class="meta-card-titulo">Faturamento</div>
-            <div class="meta-card-sub">Meta mensal</div>
-          </div>
-        </div>
-        <div class="meta-pct-badge" id="meta-fat-pct">—</div>
-      </div>
-      <div class="meta-valores">
-        <span class="meta-realizado" id="meta-fat-realizado">R$ 0</span>
-        <span class="meta-sep">de</span>
-        <span class="meta-alvo" id="meta-fat-alvo">—</span>
-      </div>
-      <div class="meta-barra-wrap">
-        <div class="meta-barra-fill" id="meta-fat-barra" style="width:0%"></div>
-      </div>
-      <div class="meta-faltando" id="meta-fat-faltando"></div>
+  <div class="grafico-card">
+    <div class="grafico-card-top">
+      <span class="grafico-titulo">Faturamento — 6 meses</span>
+      <div class="grafico-legenda" id="legenda-fat"></div>
     </div>
-
-    <div class="meta-card" id="meta-os-card">
-      <div class="meta-card-topo">
-        <div class="meta-card-info">
-          <span class="meta-card-icone">📦</span>
-          <div>
-            <div class="meta-card-titulo">OS Concluídas</div>
-            <div class="meta-card-sub">Meta mensal</div>
-          </div>
-        </div>
-        <div class="meta-pct-badge" id="meta-os-pct">—</div>
-      </div>
-      <div class="meta-valores">
-        <span class="meta-realizado" id="meta-os-realizado">0</span>
-        <span class="meta-sep">de</span>
-        <span class="meta-alvo" id="meta-os-alvo">—</span>
-      </div>
-      <div class="meta-barra-wrap">
-        <div class="meta-barra-fill" id="meta-os-barra" style="width:0%"></div>
-      </div>
-      <div class="meta-faltando" id="meta-os-faltando"></div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ===== CARDS DE RESUMO ===== -->
-<div class="resumo-grid">
-  <div class="resumo-card">
-    <div class="resumo-icon">📦</div>
-    <div class="resumo-info">
-      <div class="resumo-valor" id="res-val-os">—</div>
-      <div class="resumo-label">OS no período</div>
-    </div>
-  </div>
-  <div class="resumo-card">
-    <div class="resumo-icon">✅</div>
-    <div class="resumo-info">
-      <div class="resumo-valor" id="res-val-concluidas">—</div>
-      <div class="resumo-label">Concluídas / Entregues</div>
-    </div>
-  </div>
-  <div class="resumo-card">
-    <div class="resumo-icon">💰</div>
-    <div class="resumo-info">
-      <div class="resumo-valor" id="res-val-fat">—</div>
-      <div class="resumo-label">Entradas no período</div>
-    </div>
-  </div>
-  <div class="resumo-card">
-    <div class="resumo-icon">🎯</div>
-    <div class="resumo-info">
-      <div class="resumo-valor" id="res-val-ticket">—</div>
-      <div class="resumo-label">Ticket médio (OS)</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== GRÁFICOS ===== -->
-<div class="graficos-grid">
-
-  <div class="grafico-card grafico-largo">
-    <div class="grafico-titulo">OS por mês — abertas vs. concluídas</div>
+    <div class="grafico-destaque" id="grafico-destaque-fat"></div>
     <div class="grafico-wrap">
-      <canvas id="chart-os-mes"></canvas>
-    </div>
-  </div>
-
-  <div class="grafico-card grafico-largo">
-    <div class="grafico-titulo">Faturamento mensal — entradas vs. saídas</div>
-    <div class="grafico-wrap">
-      <canvas id="chart-caixa-mes"></canvas>
+      <canvas id="chart-fat"></canvas>
     </div>
   </div>
 
   <div class="grafico-card">
-    <div class="grafico-titulo">OS por status atual</div>
-    <div class="grafico-wrap grafico-wrap-rosca">
-      <canvas id="chart-os-status"></canvas>
+    <div class="grafico-card-top">
+      <span class="grafico-titulo">OS abertas — 6 meses</span>
+      <div class="grafico-legenda" id="legenda-os"></div>
     </div>
-  </div>
-
-  <div class="grafico-card">
-    <div class="grafico-titulo">Ticket médio mensal (OS concluídas)</div>
+    <div class="grafico-destaque" id="grafico-destaque-os"></div>
     <div class="grafico-wrap">
-      <canvas id="chart-ticket-medio"></canvas>
+      <canvas id="chart-os"></canvas>
     </div>
   </div>
 
 </div>
 
-<!-- ===== MODAL METAS ===== -->
-<div class="modal-overlay" id="modal-metas">
-  <div class="modal-box">
-    <div class="modal-titulo">🎯 Definir Metas Mensais</div>
-    <div class="modal-corpo">
-      <label class="modal-label">
-        Meta de faturamento (R$ por mês)
-        <input type="number" id="input-meta-fat" min="0" step="100" placeholder="Ex: 5000">
-      </label>
-      <label class="modal-label">
-        Meta de OS concluídas (por mês)
-        <input type="number" id="input-meta-os" min="0" step="1" placeholder="Ex: 30">
-      </label>
-      <p class="modal-hint">As metas aparecem como linha tracejada nos gráficos e mostram o progresso do mês atual.</p>
-    </div>
-    <div class="modal-acoes">
-      <button class="btn-modal-cancelar" id="btn-modal-cancelar">Cancelar</button>
-      <button class="btn-modal-salvar" id="btn-modal-salvar">💾 Salvar</button>
-    </div>
-  </div>
-</div>
-
-<!-- ===== LOADING ===== -->
+<!-- LOADING -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner"></div>
-  <div class="loading-texto">Carregando dados...</div>
+  <div class="loading-txt">Carregando dados...</div>
 </div>
 
 <script type="module" src="relatorios.js"></script>
 <script src="../../shared/brand-header.js"></script>
+<script src="../../shared/favoritos.js"></script>
 <script src="../../shared/dock.js" type="module"></script>
 </body>
 </html>

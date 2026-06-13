@@ -1,453 +1,453 @@
 /* ============================================================
-   RELATÓRIOS — Cell City CRM
+   META & EVOLUÇÃO — Cell City CRM
    ============================================================ */
 
 import { db } from '../../scripts/firebase.js';
-import {
-  collection, getDocs, doc, getDoc, setDoc
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-// ─── Paleta ───────────────────────────────────────────────────
-const C = {
-  green:       'rgba(0, 230, 118, 0.85)',
-  greenFill:   'rgba(0, 230, 118, 0.15)',
-  greenGhost:  'rgba(0, 230, 118, 0.25)',
-  blue:        'rgba(88, 166, 255, 0.85)',
-  blueFill:    'rgba(88, 166, 255, 0.15)',
-  blueGhost:   'rgba(88, 166, 255, 0.25)',
-  red:         'rgba(248, 81, 73, 0.85)',
-  redFill:     'rgba(248, 81, 73, 0.15)',
-  yellow:      'rgba(210, 153, 34, 0.85)',
-  yellowFill:  'rgba(210, 153, 34, 0.15)',
-  purple:      'rgba(188, 128, 240, 0.85)',
-  gray:        'rgba(139, 148, 158, 0.85)',
-  metaFat:     'rgba(88, 166, 255, 1)',
-  metaOS:      'rgba(0, 230, 118, 1)',
-  grid:        'rgba(255,255,255,0.05)',
-};
+// ===== PALETA =====
+const PALETA = [
+  { solid: 'rgba(0,230,118,0.80)',  hex: '#00e676' },
+  { solid: 'rgba(88,166,255,0.80)', hex: '#58a6ff' },
+  { solid: 'rgba(240,180,41,0.80)', hex: '#f0b429' },
+  { solid: 'rgba(188,128,240,0.80)',hex: '#bc80f0' },
+];
 
-Chart.defaults.color = '#8b949e';
-Chart.defaults.borderColor = C.grid;
-Chart.defaults.font.family = "'Inter', sans-serif";
-Chart.defaults.font.size = 11;
+const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MESES_NOME  = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                     'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-// ─── Estado ───────────────────────────────────────────────────
-let periodoMeses = 3;
-let comparar     = false;
-let metas        = { faturamento: 0, os: 0 };
-let chartOsMes, chartCaixaMes, chartOsStatus, chartTicket;
-let _os = [], _caixa = [];
+// Índice do mês atual dentro da janela de 6 meses (posição 3 = índice 2)
+const CURRENT_IDX = 2;
 
-const STATUS_TERMINAIS = ['concluido', 'entregue', 'devolvido_orcamento', 'orcamento_recusado'];
+// ===== ESTADO =====
+let _os    = [];
+let _caixa = [];
+let anosDisponiveis  = [];
+let anosSelecionados = [];
+let chartFat = null;
+let chartOs  = null;
 
-const STATUS_LABEL = {
-  recebido: 'Recebido', orcamento: 'Orçamento',
-  orcamento_enviado: 'Orç. Enviado', orcamento_aprovado: 'Orç. Aprovado',
-  orcamento_recusado: 'Recusado', concluido: 'Concluído',
-  entregue: 'Entregue', devolvido_orcamento: 'Devolvido',
-};
+// ===== UTILITÁRIOS =====
+const R$ = v => 'R$ ' + (v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const STATUS_CORES = [C.blue, C.yellow, C.yellow, C.green, C.red, C.green, 'rgba(0,230,118,0.5)', C.gray];
-
-// ─── Utilitários de data ──────────────────────────────────────
-function mesKey(dateStr) {
-  if (!dateStr) return null;
-  const d = new Date(dateStr);
+function extrairAnoMes(valor) {
+  if (!valor) return null;
+  let d;
+  if (valor?.seconds) d = new Date(valor.seconds * 1000);
+  else if (typeof valor === 'string') d = new Date(valor.includes('T') ? valor : valor + 'T12:00:00');
+  else d = new Date(valor);
   if (isNaN(d)) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  return { ano: d.getFullYear(), mes: d.getMonth() };
 }
 
-function mesLabel(key) {
-  const [ano, mes] = key.split('-');
-  const n = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  return `${n[parseInt(mes,10)-1]}/${ano.slice(2)}`;
+function somaCaixaMes(ano, mes) {
+  return _caixa
+    .filter(l => { const am = extrairAnoMes(l.dataISO); return am && am.ano === ano && am.mes === mes; })
+    .reduce((s, l) => s + (parseFloat(l.valor) || 0), 0);
 }
 
-function gerarMeses(qtd, anosAtras = 0) {
+function contaOSMes(ano, mes) {
+  return _os.filter(o => {
+    const am = extrairAnoMes(o.createdAt);
+    return am && am.ano === ano && am.mes === mes;
+  }).length;
+}
+
+// ===== JANELA DESLIZANTE 6 MESES =====
+// Layout: [mes-2] [mes-1] [ATUAL] [mes+1] [mes+2] [mes+3]
+// Mês atual fica fixo no índice CURRENT_IDX (2), visualmente centralizado.
+function janela6Meses() {
   const hoje = new Date();
-  const meses = [];
-  for (let i = qtd - 1; i >= 0; i--) {
-    const d = new Date(hoje.getFullYear() - anosAtras, hoje.getMonth() - i, 1);
-    meses.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
-  }
-  return meses;
-}
-
-function dataCorte(meses, anosAtras = 0) {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - anosAtras);
-  d.setMonth(d.getMonth() - meses);
-  d.setDate(1);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function dataFimCorte(anosAtras = 0) {
-  const d = new Date();
-  if (anosAtras > 0) {
-    d.setFullYear(d.getFullYear() - anosAtras);
-    d.setDate(d.getDate() + 1);
-  }
-  return d;
-}
-
-function fmtBRL(v) {
-  return 'R$ ' + Number(v||0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function mesAtualKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-}
-
-// ─── Fetch ────────────────────────────────────────────────────
-async function fetchOS() {
-  const snap = await getDocs(collection(db, 'os'));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-async function fetchCaixa() {
-  const snap = await getDocs(collection(db, 'caixa_lancamentos'));
-  return snap.docs.map(d => d.data())
-    .filter(l => l.dataISO && ['entrada','saida','servico'].includes(l.tipo));
-}
-
-async function fetchMetas() {
-  try {
-    const snap = await getDoc(doc(db, 'config', 'relatorios_metas'));
-    if (snap.exists()) metas = { faturamento: snap.data().faturamento || 0, os: snap.data().os || 0 };
-  } catch (e) { console.warn('[Relatórios] Sem metas salvas'); }
-}
-
-async function salvarMetas(fat, os) {
-  await setDoc(doc(db, 'config', 'relatorios_metas'), { faturamento: fat, os });
-  metas = { faturamento: fat, os };
-}
-
-// ─── Cards de metas (mês atual) ───────────────────────────────
-function atualizarCardsMetas() {
-  const secao = document.getElementById('metas-section');
-  if (!metas.faturamento && !metas.os) { secao.classList.remove('visivel'); return; }
-  secao.classList.add('visivel');
-
-  const mesKey_ = mesAtualKey();
-
-  // Faturamento do mês atual
-  const fatAtual = _caixa
-    .filter(l => mesKey(l.dataISO) === mesKey_ && (l.tipo === 'entrada' || l.tipo === 'servico'))
-    .reduce((s, l) => s + (l.valor || 0), 0);
-
-  // OS concluídas no mês atual
-  const osAtual = _os.filter(o => mesKey(o.createdAt) === mesKey_ &&
-    (o.status === 'concluido' || o.status === 'entregue')).length;
-
-  _renderMetaCard('fat', fatAtual, metas.faturamento, fmtBRL(fatAtual), fmtBRL(metas.faturamento),
-    v => `Faltam ${fmtBRL(v)}`);
-  _renderMetaCard('os', osAtual, metas.os, String(osAtual), String(metas.os),
-    v => `Faltam ${v} OS`);
-}
-
-function _renderMetaCard(id, realizado, meta, labelReal, labelMeta, labelFaltando) {
-  if (!meta) return;
-  const pct = Math.min(Math.round((realizado / meta) * 100), 100);
-  const estado = pct >= 80 ? 'verde' : pct >= 50 ? 'amarelo' : 'vermelho';
-
-  const card   = document.getElementById(`meta-${id}-card`);
-  const badge  = document.getElementById(`meta-${id}-pct`);
-  const barra  = document.getElementById(`meta-${id}-barra`);
-  const falt   = document.getElementById(`meta-${id}-faltando`);
-
-  card.className  = `meta-card ${estado}`;
-  badge.className = `meta-pct-badge ${estado}`;
-  barra.className = `meta-barra-fill ${estado}`;
-
-  badge.textContent = `${pct}%`;
-  document.getElementById(`meta-${id}-realizado`).textContent = labelReal;
-  document.getElementById(`meta-${id}-alvo`).textContent = labelMeta;
-  barra.style.width = `${pct}%`;
-
-  const faltaQtd = meta - realizado;
-  falt.textContent = pct >= 100 ? '✅ Meta atingida!' : (faltaQtd > 0 ? labelFaltando(
-    id === 'fat' ? faltaQtd : Math.ceil(faltaQtd)
-  ) : '');
-}
-
-// ─── Gráfico 1: OS por mês ────────────────────────────────────
-function renderOsMes(meses, mesesAnt) {
-  const abertas = {}, concluidas = {};
-  meses.forEach(m => { abertas[m] = 0; concluidas[m] = 0; });
-  _os.forEach(o => {
-    const m = mesKey(o.createdAt); if (!m || !(m in abertas)) return;
-    abertas[m]++;
-    if (STATUS_TERMINAIS.includes(o.status)) concluidas[m]++;
-  });
-
-  const labels = meses.map(mesLabel);
-  const datasets = [
-    { label: 'Total abertas', data: meses.map(m => abertas[m]),
-      backgroundColor: C.blueFill, borderColor: C.blue, borderWidth: 2, borderRadius: 6 },
-    { label: 'Concluídas/Entregues', data: meses.map(m => concluidas[m]),
-      backgroundColor: C.greenFill, borderColor: C.green, borderWidth: 2, borderRadius: 6 },
-  ];
-
-  if (comparar && mesesAnt) {
-    const abAnt = {}, concAnt = {};
-    mesesAnt.forEach(m => { abAnt[m] = 0; concAnt[m] = 0; });
-    _os.forEach(o => {
-      const m = mesKey(o.createdAt); if (!m || !(m in abAnt)) return;
-      abAnt[m]++;
-      if (STATUS_TERMINAIS.includes(o.status)) concAnt[m]++;
+  const mesAtual = hoje.getMonth();
+  const anoAtual = hoje.getFullYear();
+  const result = [];
+  // offsets: -2, -1, 0 (atual), +1, +2, +3
+  for (let offset = -2; offset <= 3; offset++) {
+    let m = mesAtual + offset;
+    let a = anoAtual;
+    while (m < 0)  { m += 12; a -= 1; }
+    while (m > 11) { m -= 12; a += 1; }
+    result.push({
+      mes: m,
+      ano: a,
+      label: MESES_ABREV[m],
+      isCurrent: offset === 0,
+      isFuture: offset > 0,
     });
-    const anoAnt = new Date().getFullYear() - 1;
-    datasets.push(
-      { label: `Total abertas ${anoAnt}`, data: mesesAnt.map(m => abAnt[m]),
-        backgroundColor: 'rgba(88,166,255,0.05)', borderColor: 'rgba(88,166,255,0.4)',
-        borderWidth: 1.5, borderRadius: 6, borderDash: [4,4] },
-      { label: `Concluídas ${anoAnt}`, data: mesesAnt.map(m => concAnt[m]),
-        backgroundColor: 'rgba(0,230,118,0.05)', borderColor: 'rgba(0,230,118,0.35)',
-        borderWidth: 1.5, borderRadius: 6, borderDash: [4,4] }
+  }
+  return result;
+}
+
+// ===== META AUTOMÁTICA =====
+// Prioridade 1: mesmo mês do ano anterior × 1,20 (+20%)
+// Prioridade 2: média dos últimos 6 meses × 1,10 (+10%)
+// Arredondado para cima em múltiplos de R$ 500
+function calcularMetaInteligente(anoAtual, mesAtual) {
+  const anoAnt   = anoAtual - 1;
+  const refAnoAnt = somaCaixaMes(anoAnt, mesAtual);
+
+  let soma6 = 0, n6 = 0;
+  for (let i = 1; i <= 6; i++) {
+    let m = mesAtual - i, a = anoAtual;
+    if (m < 0) { m += 12; a -= 1; }
+    const v = somaCaixaMes(a, m);
+    if (v > 0) { soma6 += v; n6++; }
+  }
+  const media6 = n6 > 0 ? soma6 / n6 : 0;
+
+  if (refAnoAnt > 0) {
+    const v1 = refAnoAnt * 1.20;
+    const v2 = media6 > 0 ? media6 * 1.10 : 0;
+    const valor = Math.ceil(Math.max(v1, v2) / 500) * 500;
+    const base  = v1 >= v2
+      ? `+20% sobre ${MESES_ABREV[mesAtual]}/${anoAnt}`
+      : '+10% sobre média 6 meses';
+    return { valor, base, ok: true };
+  }
+
+  if (media6 > 0) {
+    return {
+      valor: Math.ceil(media6 * 1.10 / 500) * 500,
+      base: '+10% sobre média 6 meses',
+      ok: true,
+    };
+  }
+
+  return { valor: 0, base: '', ok: false };
+}
+
+// ===== PAINEL GERENCIAL =====
+function renderPainel() {
+  const hoje     = new Date();
+  const anoAtual = hoje.getFullYear();
+  const mesAtual = hoje.getMonth();
+  const anoAnt   = anoAtual - 1;
+
+  const realizado = somaCaixaMes(anoAtual, mesAtual);
+  const antAno    = somaCaixaMes(anoAnt, mesAtual);
+
+  // Título
+  document.getElementById('painel-mes-header').innerHTML =
+    `<strong>${MESES_NOME[mesAtual].toUpperCase()} ${anoAtual}</strong>`;
+
+  // --- Crescimento (número herói) ---
+  const crescEl = document.getElementById('painel-cresc-num');
+  if (antAno > 0) {
+    const diff = (realizado - antAno) / antAno * 100;
+    const pos  = diff >= 0;
+    crescEl.textContent = (pos ? '+' : '') + diff.toFixed(1) + '%';
+    crescEl.className = 'painel-cresc-num' + (pos ? '' : ' neg');
+  } else if (realizado > 0) {
+    crescEl.textContent = 'Novo mês';
+    crescEl.className = 'painel-cresc-num neutro';
+  } else {
+    crescEl.textContent = '—';
+    crescEl.className = 'painel-cresc-num neutro';
+  }
+
+  // --- Comparação ---
+  document.getElementById('vs-ant-label').textContent  = `${MESES_ABREV[mesAtual]}/${anoAnt}`;
+  document.getElementById('vs-ant-valor').textContent  = antAno > 0 ? R$(antAno) : 'Sem dados';
+  document.getElementById('vs-atual-label').textContent = `${MESES_ABREV[mesAtual]}/${anoAtual}`;
+  document.getElementById('vs-atual-valor').textContent = R$(realizado);
+
+  // --- Meta automática ---
+  const { valor: meta, base, ok } = calcularMetaInteligente(anoAtual, mesAtual);
+
+  if (!ok) {
+    document.getElementById('painel-meta').style.display  = 'none';
+    document.getElementById('painel-sem-dados').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('painel-meta').style.display     = 'flex';
+  document.getElementById('painel-sem-dados').style.display = 'none';
+  document.getElementById('meta-num').textContent  = R$(meta);
+  document.getElementById('meta-base').textContent = base;
+
+  const pctMeta = meta > 0 ? (realizado / meta * 100) : 0;
+  const falta   = Math.max(0, meta - realizado);
+  const diasRest = (() => {
+    const h = new Date();
+    return new Date(h.getFullYear(), h.getMonth() + 1, 0).getDate() - h.getDate() + 1;
+  })();
+
+  const barra = document.getElementById('meta-barra-fill');
+  barra.style.width = Math.min(pctMeta, 100).toFixed(1) + '%';
+  barra.className = 'meta-barra-fill' +
+    (pctMeta >= 100 ? '' : pctMeta >= 65 ? ' amarelo' : ' vermelho');
+  document.getElementById('meta-barra-pct').textContent = pctMeta.toFixed(0) + '%';
+
+  const statusEl = document.getElementById('meta-status');
+  const pdiaEl   = document.getElementById('meta-pdia');
+
+  if (pctMeta >= 100) {
+    statusEl.textContent = `✅ Meta superada! +${R$(realizado - meta)}`;
+    statusEl.className   = 'meta-status';
+    pdiaEl.textContent   = '';
+  } else if (falta > 0 && diasRest > 0) {
+    statusEl.textContent = `Faltam ${R$(falta)}`;
+    statusEl.className   = 'meta-status warn';
+    pdiaEl.textContent   = `${R$(falta / diasRest)}/dia — ${diasRest} dias restantes`;
+  } else {
+    statusEl.textContent = `Faltam ${R$(falta)}`;
+    statusEl.className   = 'meta-status neg';
+    pdiaEl.textContent   = '';
+  }
+}
+
+// ===== CHIPS DE ANOS =====
+function detectarAnos() {
+  const set = new Set();
+  _os.forEach(o => { const am = extrairAnoMes(o.createdAt); if (am) set.add(am.ano); });
+  _caixa.forEach(l => { const am = extrairAnoMes(l.dataISO); if (am) set.add(am.ano); });
+  anosDisponiveis  = Array.from(set).sort((a, b) => b - a);
+  anosSelecionados = anosDisponiveis.slice(0, 2);
+}
+
+function renderChips() {
+  const container = document.getElementById('anos-lista');
+  container.innerHTML = '';
+  if (!anosDisponiveis.length) {
+    container.innerHTML = '<span class="anos-loading">Sem dados</span>';
+    return;
+  }
+  anosDisponiveis.forEach((ano, idx) => {
+    const chip = document.createElement('button');
+    chip.className  = 'ano-chip' + (anosSelecionados.includes(ano) ? ' ativo' : '');
+    chip.dataset.cor = idx % 4;
+    chip.textContent = ano;
+    chip.addEventListener('click', () => {
+      if (anosSelecionados.includes(ano)) {
+        if (anosSelecionados.length <= 1) return;
+        anosSelecionados = anosSelecionados.filter(a => a !== ano);
+        chip.classList.remove('ativo');
+      } else {
+        anosSelecionados.push(ano);
+        chip.classList.add('ativo');
+      }
+      renderGraficos();
+    });
+    container.appendChild(chip);
+  });
+}
+
+// ===== PLUGIN: DESTAQUE VISUAL NO MÊS ATUAL =====
+// O mês atual está SEMPRE no índice CURRENT_IDX (2) da janela de 6 meses.
+const pluginDestaqueAtual = {
+  id: 'destaqueAtual',
+  beforeDraw(chart) {
+    const { ctx, chartArea: ca, data } = chart;
+    if (!ca || !data.labels?.length) return;
+    const n = data.labels.length;
+    if (n === 0) return;
+    const w = (ca.right - ca.left) / n;
+    const x = ca.left + w * CURRENT_IDX;
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,230,118,0.06)';
+    ctx.fillRect(x, ca.top, w, ca.bottom - ca.top);
+    // Linha superior destacada
+    ctx.fillStyle = 'rgba(0,230,118,0.35)';
+    ctx.fillRect(x, ca.top, w, 2);
+    ctx.restore();
+  }
+};
+
+// ===== GRÁFICOS =====
+function buildDatasets(tipo, janela) {
+  const anos = [...anosSelecionados].sort((a, b) => a - b);
+  return anos.map(ano => {
+    const idx = anosDisponiveis.indexOf(ano) % 4;
+    const cor  = PALETA[idx];
+    const data = janela.map(({ mes }) =>
+      tipo === 'fat' ? somaCaixaMes(ano, mes) : contaOSMes(ano, mes)
     );
+    return {
+      label: String(ano),
+      data,
+      backgroundColor: cor.solid,
+      hoverBackgroundColor: cor.hex,
+      borderRadius: 5,
+      borderSkipped: false,
+      minBarLength: 6,
+      _hex: cor.hex,
+    };
+  });
+}
+
+function renderLegenda(id, datasets) {
+  const el = document.getElementById(id);
+  el.innerHTML = '';
+  datasets.forEach(ds => {
+    const item = document.createElement('div');
+    item.className = 'leg-item';
+    item.innerHTML = `<span class="leg-dot" style="background:${ds._hex}"></span><span>${ds.label}</span>`;
+    el.appendChild(item);
+  });
+}
+
+// Linha de resumo do mês atual exibida acima das barras
+function renderDestaque(containerId, janela, datasets, tipo) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (datasets.length < 2) { el.innerHTML = ''; return; }
+
+  const { mes } = janela[CURRENT_IDX];
+  const mesNome  = MESES_NOME[mes];
+  const vals     = datasets.map(ds => ({ label: ds.label, val: ds.data[CURRENT_IDX] || 0, hex: ds._hex }));
+  const [ant, atu] = [vals[0], vals[vals.length - 1]];
+  const fmt = tipo === 'fat' ? v => R$(v) : v => `${v} OS`;
+
+  let crescTxt = '';
+  if (ant.val > 0) {
+    const d   = (atu.val - ant.val) / ant.val * 100;
+    const pos = d >= 0;
+    crescTxt = ` — <span class="${pos ? 'g-verde' : 'g-neg'}">${pos ? '+' : ''}${d.toFixed(1)}%</span>`;
   }
 
-  if (metas.os > 0) {
-    datasets.push({ label: `Meta (${metas.os} OS)`, data: meses.map(() => metas.os),
-      type: 'line', borderColor: C.metaOS, borderWidth: 2, borderDash: [6, 4],
-      pointRadius: 0, fill: false, tension: 0 });
-  }
+  el.innerHTML =
+    `<strong>${mesNome}:</strong>` +
+    ` <span class="g-azul">${ant.label}: ${fmt(ant.val)}</span>` +
+    ` <span class="g-dim">→</span>` +
+    ` <span class="g-verde">${atu.label}: ${fmt(atu.val)}</span>` +
+    crescTxt;
+}
 
-  const ctx = document.getElementById('chart-os-mes').getContext('2d');
-  if (chartOsMes) chartOsMes.destroy();
-  chartOsMes = new Chart(ctx, {
-    type: 'bar', data: { labels, datasets },
+// Cores do eixo X: mês atual em branco, futuro em cinza escuro, passado em cinza médio
+function xTickColor(janela) {
+  return janela.map(j =>
+    j.isCurrent ? '#e8e8e8' : j.isFuture ? '#3a3a3a' : '#555'
+  );
+}
+
+const BASE_OPTIONS = {
+  responsive: true,
+  maintainAspectRatio: false,
+  animation: { duration: 350 },
+  plugins: {
+    legend: { display: false },
+    tooltip: {
+      backgroundColor: '#1e1e1e',
+      borderColor: '#383838',
+      borderWidth: 1,
+      titleColor: '#e8e8e8',
+      bodyColor: '#909090',
+      padding: 10,
+      cornerRadius: 8,
+    },
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: {
+        color: '#555',
+        font: { size: 12, family: 'Inter', weight: '600' },
+      },
+    },
+    y: {
+      grid: { color: 'rgba(255,255,255,0.04)' },
+      ticks: { color: '#505050', font: { size: 11, family: 'Inter' } },
+      beginAtZero: true,
+    },
+  },
+};
+
+function renderGraficos() {
+  const janela = janela6Meses();
+  const labels  = janela.map(j => j.label);
+  const tickColors = xTickColor(janela);
+
+  // Opções de escala X com cores por posição
+  const xScaleOpts = {
+    grid: { display: false },
+    ticks: {
+      color: ctx => tickColors[ctx.index] || '#555',
+      font: ctx => ({
+        size: 12,
+        family: 'Inter',
+        weight: janela[ctx.index]?.isCurrent ? '800' : '500',
+      }),
+    },
+  };
+
+  // ---- FATURAMENTO ----
+  const dsFat = buildDatasets('fat', janela);
+  renderLegenda('legenda-fat', dsFat);
+  renderDestaque('grafico-destaque-fat', janela, dsFat, 'fat');
+
+  if (chartFat) chartFat.destroy();
+  chartFat = new Chart(document.getElementById('chart-fat'), {
+    type: 'bar',
+    data: { labels, datasets: dsFat },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } } },
+      ...BASE_OPTIONS,
+      plugins: {
+        ...BASE_OPTIONS.plugins,
+        tooltip: {
+          ...BASE_OPTIONS.plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${R$(ctx.parsed.y)}` },
+        },
+      },
       scales: {
-        x: { grid: { color: C.grid } },
-        y: { grid: { color: C.grid }, beginAtZero: true, ticks: { precision: 0 } },
+        x: xScaleOpts,
+        y: {
+          ...BASE_OPTIONS.scales.y,
+          ticks: {
+            ...BASE_OPTIONS.scales.y.ticks,
+            callback: v => v >= 1000 ? 'R$' + (v / 1000).toFixed(0) + 'k' : v === 0 ? '' : 'R$' + v,
+          },
+        },
       },
     },
-  });
-}
-
-// ─── Gráfico 2: Caixa por mês ─────────────────────────────────
-function renderCaixaMes(meses, mesesAnt) {
-  const entradas = {}, saidas = {};
-  meses.forEach(m => { entradas[m] = 0; saidas[m] = 0; });
-  _caixa.forEach(l => {
-    const m = mesKey(l.dataISO); if (!m || !(m in entradas)) return;
-    if (l.tipo === 'entrada' || l.tipo === 'servico') entradas[m] += l.valor || 0;
-    else if (l.tipo === 'saida') saidas[m] += l.valor || 0;
+    plugins: [pluginDestaqueAtual],
   });
 
-  const labels = meses.map(mesLabel);
-  const datasets = [
-    { label: 'Entradas', data: meses.map(m => Math.round(entradas[m]*100)/100),
-      borderColor: C.green, backgroundColor: C.greenFill,
-      borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: C.green },
-    { label: 'Saídas', data: meses.map(m => Math.round(saidas[m]*100)/100),
-      borderColor: C.red, backgroundColor: C.redFill,
-      borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: 4, pointBackgroundColor: C.red },
-  ];
+  // ---- OS ----
+  const dsOS = buildDatasets('os', janela);
+  renderLegenda('legenda-os', dsOS);
+  renderDestaque('grafico-destaque-os', janela, dsOS, 'os');
 
-  if (comparar && mesesAnt) {
-    const entAnt = {}, saiAnt = {};
-    mesesAnt.forEach(m => { entAnt[m] = 0; saiAnt[m] = 0; });
-    _caixa.forEach(l => {
-      const m = mesKey(l.dataISO); if (!m || !(m in entAnt)) return;
-      if (l.tipo === 'entrada' || l.tipo === 'servico') entAnt[m] += l.valor || 0;
-      else if (l.tipo === 'saida') saiAnt[m] += l.valor || 0;
-    });
-    const anoAnt = new Date().getFullYear() - 1;
-    datasets.push(
-      { label: `Entradas ${anoAnt}`, data: mesesAnt.map(m => Math.round(entAnt[m]*100)/100),
-        borderColor: 'rgba(0,230,118,0.4)', backgroundColor: 'transparent',
-        borderWidth: 1.5, borderDash: [6,4], fill: false, tension: 0.35,
-        pointRadius: 3, pointBackgroundColor: 'rgba(0,230,118,0.4)' },
-      { label: `Saídas ${anoAnt}`, data: mesesAnt.map(m => Math.round(saiAnt[m]*100)/100),
-        borderColor: 'rgba(248,81,73,0.4)', backgroundColor: 'transparent',
-        borderWidth: 1.5, borderDash: [6,4], fill: false, tension: 0.35,
-        pointRadius: 3, pointBackgroundColor: 'rgba(248,81,73,0.4)' },
-    );
-  }
-
-  if (metas.faturamento > 0) {
-    datasets.push({ label: `Meta R$ ${Number(metas.faturamento).toLocaleString('pt-BR')}`,
-      data: meses.map(() => metas.faturamento), type: 'line',
-      borderColor: C.metaFat, borderWidth: 2, borderDash: [6, 4],
-      pointRadius: 0, fill: false, tension: 0 });
-  }
-
-  const ctx = document.getElementById('chart-caixa-mes').getContext('2d');
-  if (chartCaixaMes) chartCaixaMes.destroy();
-  chartCaixaMes = new Chart(ctx, {
-    type: 'line', data: { labels, datasets },
+  if (chartOs) chartOs.destroy();
+  chartOs = new Chart(document.getElementById('chart-os'), {
+    type: 'bar',
+    data: { labels, datasets: dsOS },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14 } } },
+      ...BASE_OPTIONS,
+      plugins: {
+        ...BASE_OPTIONS.plugins,
+        tooltip: {
+          ...BASE_OPTIONS.plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.parsed.y} OS` },
+        },
+      },
       scales: {
-        x: { grid: { color: C.grid } },
-        y: { grid: { color: C.grid }, beginAtZero: true,
-          ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } },
+        x: xScaleOpts,
+        y: { ...BASE_OPTIONS.scales.y },
       },
     },
+    plugins: [pluginDestaqueAtual],
   });
 }
 
-// ─── Gráfico 3: OS por status ─────────────────────────────────
-function renderOsStatus(meses) {
-  const corte = new Date(meses[0] + '-01');
-  const filtradas = _os.filter(o => { const d = new Date(o.createdAt); return !isNaN(d) && d >= corte; });
-  const contagem = {};
-  filtradas.forEach(o => { const s = o.status||'recebido'; contagem[s] = (contagem[s]||0)+1; });
-  const chaves = Object.keys(contagem).sort((a,b) => contagem[b]-contagem[a]);
-
-  const ctx = document.getElementById('chart-os-status').getContext('2d');
-  if (chartOsStatus) chartOsStatus.destroy();
-  chartOsStatus = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: chaves.map(k => STATUS_LABEL[k]||k),
-      datasets: [{ data: chaves.map(k => contagem[k]),
-        backgroundColor: chaves.map((_,i) => STATUS_CORES[i%STATUS_CORES.length]),
-        borderColor: 'rgba(13,17,23,0.8)', borderWidth: 3, hoverOffset: 6 }],
-    },
-    options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
-      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 10, font: { size: 11 } } } } },
-  });
-}
-
-// ─── Gráfico 4: Ticket médio ──────────────────────────────────
-function renderTicketMedio(meses) {
-  const corte = new Date(meses[0] + '-01');
-  const soma = {}, qtd = {};
-  meses.forEach(m => { soma[m] = 0; qtd[m] = 0; });
-  _os.filter(o => { const d = new Date(o.createdAt); return !isNaN(d) && d >= corte && STATUS_TERMINAIS.includes(o.status); })
-    .forEach(o => {
-      const m = mesKey(o.createdAt); if (!m || !(m in soma)) return;
-      const v = (o.valor||0) + (o.valorCartao||0);
-      if (v > 0) { soma[m] += v; qtd[m]++; }
-    });
-
-  const ctx = document.getElementById('chart-ticket-medio').getContext('2d');
-  if (chartTicket) chartTicket.destroy();
-  chartTicket = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: meses.map(mesLabel),
-      datasets: [{ label: 'Ticket médio', data: meses.map(m => qtd[m] > 0 ? Math.round(soma[m]/qtd[m]*100)/100 : null),
-        borderColor: C.yellow, backgroundColor: C.yellowFill,
-        borderWidth: 2.5, fill: true, tension: 0.35, pointRadius: 5,
-        pointBackgroundColor: C.yellow, spanGaps: true }],
-    },
-    options: { responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { color: C.grid } },
-        y: { grid: { color: C.grid }, beginAtZero: true,
-          ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } },
-      },
-    },
-  });
-}
-
-// ─── Cards de resumo ──────────────────────────────────────────
-function atualizarResumo(meses) {
-  const corte = new Date(meses[0] + '-01');
-
-  const osPeriodo = _os.filter(o => { const d = new Date(o.createdAt); return !isNaN(d) && d >= corte; });
-  const concluidas = osPeriodo.filter(o => o.status === 'concluido' || o.status === 'entregue');
-  const entradas = _caixa
-    .filter(l => { const d = new Date(l.dataISO); return !isNaN(d) && d >= corte && (l.tipo==='entrada'||l.tipo==='servico'); })
-    .reduce((s, l) => s + (l.valor||0), 0);
-  const comValor = concluidas.filter(o => (o.valor||0)+(o.valorCartao||0) > 0);
-  const ticket = comValor.length > 0 ? comValor.reduce((s,o) => s+(o.valor||0)+(o.valorCartao||0), 0) / comValor.length : 0;
-
-  document.getElementById('res-val-os').textContent = osPeriodo.length;
-  document.getElementById('res-val-concluidas').textContent = concluidas.length;
-  document.getElementById('res-val-fat').textContent = fmtBRL(entradas);
-  document.getElementById('res-val-ticket').textContent = ticket > 0 ? fmtBRL(ticket) : '—';
-}
-
-// ─── Render principal ─────────────────────────────────────────
-function renderTodos() {
-  const meses    = gerarMeses(periodoMeses, 0);
-  const mesesAnt = gerarMeses(periodoMeses, 1);
-  atualizarResumo(meses);
-  atualizarCardsMetas();
-  renderOsMes(meses, mesesAnt);
-  renderCaixaMes(meses, mesesAnt);
-  renderOsStatus(meses);
-  renderTicketMedio(meses);
-}
-
-// ─── Modal metas ──────────────────────────────────────────────
-function abrirModal() {
-  document.getElementById('input-meta-fat').value = metas.faturamento || '';
-  document.getElementById('input-meta-os').value  = metas.os || '';
-  document.getElementById('modal-metas').classList.remove('oculto');
-}
-
-function fecharModal() {
-  document.getElementById('modal-metas').classList.add('oculto');
-}
-
-// ─── Init ─────────────────────────────────────────────────────
+// ===== INICIALIZAÇÃO =====
 async function init() {
-  document.getElementById('loading-overlay').classList.remove('oculto');
-  document.getElementById('modal-metas').classList.add('oculto');
-
   try {
-    [_os, _caixa] = await Promise.all([fetchOS(), fetchCaixa(), fetchMetas()]);
-    await fetchMetas();
-    renderTodos();
-  } catch (e) {
-    console.error('[Relatórios] Erro:', e);
+    const [snapOS, snapCaixa] = await Promise.all([
+      getDocs(collection(db, 'os')),
+      getDocs(collection(db, 'caixa_lancamentos')),
+    ]);
+    _os    = snapOS.docs.map(d => d.data());
+    _caixa = snapCaixa.docs.map(d => d.data());
+    detectarAnos();
+    renderPainel();
+    renderChips();
+    renderGraficos();
+  } catch (err) {
+    console.error('Erro ao carregar dados:', err);
   } finally {
-    document.getElementById('loading-overlay').classList.add('oculto');
+    document.getElementById('loading-overlay').style.display = 'none';
   }
 }
-
-// Período
-document.querySelectorAll('.periodo-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.periodo-btn').forEach(b => b.classList.remove('ativo'));
-    btn.classList.add('ativo');
-    periodoMeses = parseInt(btn.dataset.meses, 10);
-    renderTodos();
-  });
-});
-
-// Comparar
-document.getElementById('btn-comparar').addEventListener('click', () => {
-  comparar = !comparar;
-  document.getElementById('btn-comparar').classList.toggle('ativo', comparar);
-  const meses    = gerarMeses(periodoMeses, 0);
-  const mesesAnt = gerarMeses(periodoMeses, 1);
-  renderOsMes(meses, mesesAnt);
-  renderCaixaMes(meses, mesesAnt);
-});
-
-// Abrir modal
-document.getElementById('btn-abrir-metas').addEventListener('click', abrirModal);
-document.getElementById('btn-editar-metas').addEventListener('click', abrirModal);
-document.getElementById('btn-modal-cancelar').addEventListener('click', fecharModal);
-document.getElementById('modal-metas').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModal(); });
-
-// Salvar metas
-document.getElementById('btn-modal-salvar').addEventListener('click', async () => {
-  const fat = parseFloat(document.getElementById('input-meta-fat').value) || 0;
-  const os  = parseInt(document.getElementById('input-meta-os').value, 10) || 0;
-  document.getElementById('btn-modal-salvar').textContent = '⏳ Salvando...';
-  try {
-    await salvarMetas(fat, os);
-    fecharModal();
-    renderTodos();
-  } catch (e) {
-    console.error('[Metas] Erro ao salvar:', e);
-  } finally {
-    document.getElementById('btn-modal-salvar').textContent = '💾 Salvar';
-  }
-});
 
 init();

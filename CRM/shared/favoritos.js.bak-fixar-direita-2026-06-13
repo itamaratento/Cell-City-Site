@@ -396,8 +396,8 @@ function renderLauncher() {
           launcher.classList.add('ccfav-os-top');
           bar.appendChild(launcher);
         } else {
-          const spacer = bar.querySelector('.crm-bar-spacer');
-          if (spacer) bar.insertBefore(launcher, spacer.nextSibling);
+          const logo = bar.querySelector('#brand-header');
+          if (logo && logo.nextSibling) bar.insertBefore(launcher, logo.nextSibling);
           else bar.appendChild(launcher);
         }
       } else if (attempt < 20) {
@@ -434,8 +434,8 @@ function renderLauncher() {
   const fixado = isFavorito(current.key);
   pinBtn.classList.toggle('active', fixado);
   pinBtn.innerHTML = fixado
-    ? `<span>⭐</span><span>Fixado</span>`
-    : `<span>⭐</span><span>Favoritar</span>`;
+    ? `<span>✓</span><span>Fixado</span>`
+    : `<span>📌</span><span>Fixar nos Favoritos</span>`;
 
   // Se o dropdown estiver aberto, re-renderiza
   const dd = launcher.querySelector('.ccfav-dropdown');
