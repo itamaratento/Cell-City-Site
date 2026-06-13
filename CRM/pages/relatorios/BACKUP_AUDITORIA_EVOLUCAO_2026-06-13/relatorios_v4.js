@@ -117,53 +117,51 @@ function diasRestantesNaSemana() {
 }
 
 // ===== META AUTOMÁTICA MENSAL =====
-// Busca o Resultado Líquido do mesmo mês nos anos anteriores (até 5 anos).
-// Calcula a média histórica e gera 3 níveis: Mínima (0%), Alvo (+20%), Superação (+40%).
-// Arredondado para cima em múltiplos de R$ 100.
+// P1: mesmo mês do ano anterior × 1,20
+// P2: média dos últimos 6 meses × 1,10
+// Arredondado para cima em múltiplos de R$500
 function calcularMetaMensal(anoAtual, mesAtual) {
-  const historico = [];
-  for (let a = anoAtual - 1; a >= anoAtual - 5; a--) {
-    const v = somaCaixaMes(a, mesAtual);
-    if (v > 0) historico.push({ ano: a, valor: v });
-  }
-  if (!historico.length) {
-    return { ok: false, valor: 0, metaMin: 0, metaAlvo: 0, metaSup: 0, base: '', historico: [], anos: [] };
-  }
+  const anoAnt   = anoAtual - 1;
+  const refAnter = somaCaixaMes(anoAnt, mesAtual); // mês completo do ano anterior
 
-  const media    = historico.reduce((s, h) => s + h.valor, 0) / historico.length;
-  const anos     = historico.map(h => h.ano);
-  const ceil100  = v => Math.ceil(v / 100) * 100;
-  const metaMin  = ceil100(media);
-  const metaAlvo = ceil100(media * 1.20);
-  const metaSup  = ceil100(media * 1.40);
+  let soma6 = 0, n6 = 0;
+  for (let i = 1; i <= 6; i++) {
+    let m = mesAtual - i, a = anoAtual;
+    if (m < 0) { m += 12; a--; }
+    const v = somaCaixaMes(a, m);
+    if (v > 0) { soma6 += v; n6++; }
+  }
+  const media6 = n6 ? soma6 / n6 : 0;
 
-  return {
-    ok: true, media, historico, anos,
-    metaMin, metaAlvo, metaSup,
-    valor: metaAlvo, // meta principal (barra e barra semanal)
-    base: `Média ${MESES_ABREV[mesAtual]}/${anos.join('+')} + 20%`,
-  };
+  if (refAnter > 0) {
+    const v1   = refAnter * 1.20;
+    const v2   = media6 > 0 ? media6 * 1.10 : 0;
+    const bruto = Math.max(v1, v2);
+    const valor = Math.ceil(bruto / 500) * 500;
+    const regra = v1 >= v2 ? 'anual' : 'media6';
+    return {
+      valor, ok: true, regra, anoAnt, refAnter, v1, media6, n6, v2, bruto,
+      base: regra === 'anual' ? `+20% sobre ${MESES_ABREV[mesAtual]}/${anoAnt}` : '+10% sobre média 6 meses',
+    };
+  }
+  if (media6 > 0) {
+    const v2    = media6 * 1.10;
+    const valor = Math.ceil(v2 / 500) * 500;
+    return { valor, ok: true, regra: 'media6', anoAnt, refAnter: 0, v1: 0, media6, n6, v2, bruto: v2,
+             base: '+10% sobre média 6 meses' };
+  }
+  return { valor: 0, base: '', ok: false };
 }
 
 // ===== META SEMANAL =====
-// Meta mensal ÷ (dias no mês / 7) — propaga os três níveis → arredondado em R$100
+// Meta mensal ÷ (dias no mês / 7) → arredondado em R$100
 function calcularMetaSemanal(anoAtual, mesAtual) {
-  const mensal = calcularMetaMensal(anoAtual, mesAtual);
-  if (!mensal.ok) return { ok: false, valor: 0, metaMin: 0, metaAlvo: 0, metaSup: 0, base: '', historico: [], anos: [] };
-  const diasMes    = new Date(anoAtual, mesAtual + 1, 0).getDate();
+  const { valor: mensal, ok } = calcularMetaMensal(anoAtual, mesAtual);
+  if (!ok || !mensal) return { valor: 0, base: '', ok: false };
+  const diasMes = new Date(anoAtual, mesAtual + 1, 0).getDate();
   const semanasMes = diasMes / 7;
-  const ceil100    = v => Math.ceil(v / 100) * 100;
-  return {
-    ok: true,
-    valor:     ceil100(mensal.metaAlvo / semanasMes),
-    metaMin:   ceil100(mensal.metaMin  / semanasMes),
-    metaAlvo:  ceil100(mensal.metaAlvo / semanasMes),
-    metaSup:   ceil100(mensal.metaSup  / semanasMes),
-    media:     mensal.media / semanasMes,
-    historico: mensal.historico,
-    anos:      mensal.anos,
-    base:      `Meta mensal ÷ ${semanasMes.toFixed(1)} sem.`,
-  };
+  const valor = Math.ceil((mensal / semanasMes) / 100) * 100;
+  return { valor, base: `Meta mensal ÷ ${semanasMes.toFixed(1)} sem.`, ok: true };
 }
 
 // ===== PREENCHIMENTO DO PAINEL (elementos comuns) =====
@@ -232,49 +230,6 @@ function preencherCrescimento(realizado, comparacao, labelCompar) {
   document.getElementById('painel-cresc-label').textContent = labelCompar;
 }
 
-// ===== TRÊS NÍVEIS DE META =====
-function renderNiveisMeta(realizado, meta) {
-  const el = document.getElementById('meta-niveis');
-  if (!el) return;
-  if (!meta.ok) { el.innerHTML = ''; return; }
-
-  const niveis = [
-    { icon: '🟢', label: 'Meta Mínima',   valor: meta.metaMin,  pct: '+0%'  },
-    { icon: '🔵', label: 'Meta Alvo',      valor: meta.metaAlvo, pct: '+20%' },
-    { icon: '🏆', label: 'Meta Superação', valor: meta.metaSup,  pct: '+40%' },
-  ];
-
-  el.innerHTML = niveis.map(n => {
-    const progPct  = n.valor > 0 ? Math.min(realizado / n.valor * 100, 999) : 0;
-    const atingido = progPct >= 100;
-    const pctTxt   = `${progPct.toFixed(0)}%${atingido ? ' ✅' : ''}`;
-    return `<div class="meta-nivel${atingido ? ' atingido' : ''}">` +
-      `<span class="nivel-icon">${n.icon}</span>` +
-      `<span class="nivel-label">${n.label} <small class="nivel-pct-label">(${n.pct})</small></span>` +
-      `<span class="nivel-valor">${R$(n.valor)}</span>` +
-      `<span class="nivel-pct${atingido ? ' verde' : ''}">${pctTxt}</span>` +
-      `</div>`;
-  }).join('');
-}
-
-function renderStatusMeta3(realizado, meta) {
-  if (!meta.ok) return;
-  const el = document.getElementById('meta-status');
-  if (realizado >= meta.metaSup) {
-    el.textContent = `🏆 Meta Superação atingida! +${R$(realizado - meta.metaSup)} acima`;
-    el.className   = 'meta-status';
-  } else if (realizado >= meta.metaAlvo) {
-    el.textContent = `✅ Meta Alvo atingida! Faltam ${R$(meta.metaSup - realizado)} para Superação`;
-    el.className   = 'meta-status';
-  } else if (realizado >= meta.metaMin) {
-    el.textContent = `🟢 Meta Mínima atingida! Faltam ${R$(meta.metaAlvo - realizado)} para o Alvo`;
-    el.className   = 'meta-status warn';
-  } else {
-    el.textContent = `Faltam ${R$(meta.metaAlvo - realizado)} para a Meta Alvo`;
-    el.className   = realizado / (meta.metaAlvo || 1) > 0.7 ? 'meta-status warn' : 'meta-status neg';
-  }
-}
-
 // ===== PAINEL MODO MÊS =====
 function renderPainelMes() {
   const hoje     = new Date();
@@ -306,9 +261,9 @@ function renderPainelMes() {
   document.getElementById('vs-atual-sub').textContent   = `01 a ${diaAtual}/${MESES_ABREV[mesAtual]}/${anoAtual}`;
 
   // Meta mensal
-  const meta = calcularMetaMensal(anoAtual, mesAtual);
+  const { valor: meta, base, ok } = calcularMetaMensal(anoAtual, mesAtual);
 
-  if (!meta.ok) {
+  if (!ok) {
     document.getElementById('painel-meta').style.display      = 'none';
     document.getElementById('painel-sem-dados').style.display = 'block';
     return;
@@ -316,13 +271,11 @@ function renderPainelMes() {
   document.getElementById('painel-meta').style.display      = 'flex';
   document.getElementById('painel-sem-dados').style.display = 'none';
   document.getElementById('meta-badge-txt').textContent     = '🤖 Meta mensal automática';
-  document.getElementById('meta-num').textContent           = R$(meta.metaAlvo);
-  document.getElementById('meta-base').textContent          = meta.base;
+  document.getElementById('meta-num').textContent           = R$(meta);
+  document.getElementById('meta-base').textContent          = base;
 
-  const { pct, falta } = preencherProgressoMeta(realizadoAtual, meta.metaAlvo);
-  preencherStatusMeta(pct, realizadoAtual, meta.metaAlvo, falta, diasRestantesNoMes(), 'Dias no mês');
-  renderNiveisMeta(realizadoAtual, meta);
-  renderStatusMeta3(realizadoAtual, meta);
+  const { pct, falta } = preencherProgressoMeta(realizadoAtual, meta);
+  preencherStatusMeta(pct, realizadoAtual, meta, falta, diasRestantesNoMes(), 'Dias no mês');
 }
 
 // ===== PAINEL MODO SEMANA =====
@@ -369,10 +322,10 @@ function renderPainelSemana() {
   document.getElementById('vs-atual-valor').textContent = R$(realizadoSemana);
   document.getElementById('vs-atual-sub').textContent   = `dias ${inicioSem} a ${diaAtual} (em andamento)`;
 
-  // Meta semanal (três níveis — proporcional à mensal)
-  const meta = calcularMetaSemanal(anoAtual, mesAtual);
+  // Meta semanal
+  const { valor: meta, base, ok } = calcularMetaSemanal(anoAtual, mesAtual);
 
-  if (!meta.ok) {
+  if (!ok) {
     document.getElementById('painel-meta').style.display      = 'none';
     document.getElementById('painel-sem-dados').style.display = 'block';
     return;
@@ -380,13 +333,11 @@ function renderPainelSemana() {
   document.getElementById('painel-meta').style.display      = 'flex';
   document.getElementById('painel-sem-dados').style.display = 'none';
   document.getElementById('meta-badge-txt').textContent     = '🤖 Meta semanal automática';
-  document.getElementById('meta-num').textContent           = R$(meta.metaAlvo);
-  document.getElementById('meta-base').textContent          = meta.base;
+  document.getElementById('meta-num').textContent           = R$(meta);
+  document.getElementById('meta-base').textContent          = base;
 
-  const { pct, falta } = preencherProgressoMeta(realizadoSemana, meta.metaAlvo);
-  preencherStatusMeta(pct, realizadoSemana, meta.metaAlvo, falta, diasRestantesNaSemana(), 'Dias na semana');
-  renderNiveisMeta(realizadoSemana, meta);
-  renderStatusMeta3(realizadoSemana, meta);
+  const { pct, falta } = preencherProgressoMeta(realizadoSemana, meta);
+  preencherStatusMeta(pct, realizadoSemana, meta, falta, diasRestantesNaSemana(), 'Dias na semana');
 }
 
 // ===== DISPATCHER DO PAINEL =====
@@ -767,39 +718,46 @@ function renderAuditoria() {
 
   let metaHtml = '';
   if (meta.ok) {
-    const histRows = meta.historico.map(h =>
-      `<div class="audit-row audit-info">` +
-      `<span>${MESES_NOME[mesAtual]}/${h.ano} (Resultado Líquido)</span>` +
-      `<span>${R$(h.valor)}</span></div>`
-    ).join('');
+    const anual    = meta.regra === 'anual';
+    const labelAno = `${MESES_ABREV[mesAtual]}/${meta.anoAnt} × 1,20`;
+    const labelMed = `Média ${meta.n6} mês${meta.n6 !== 1 ? 'es' : ''} × 1,10`;
+
+    const linhaAno = meta.refAnter > 0 ? `
+      <div class="audit-meta-row ${anual ? 'audit-winner' : 'audit-loser'}">
+        <span>${anual ? '✓' : '✗'} ${labelAno}</span>
+        <span>${R$(meta.v1)}</span>
+      </div>` : '';
+
+    const linhaMedia = meta.media6 > 0 ? `
+      <div class="audit-meta-row ${!anual ? 'audit-winner' : 'audit-loser'}">
+        <span>${!anual ? '✓' : '✗'} ${labelMed}</span>
+        <span>${R$(meta.v2)}</span>
+      </div>` : '';
 
     metaHtml = `
       <div class="audit-section">Regra da meta automática</div>
-      ${histRows}
-      <div class="audit-row">
-        <span>Média histórica (${meta.historico.length} ano${meta.historico.length > 1 ? 's' : ''})</span>
-        <span>${R$(meta.media)}</span>
-      </div>
       <div class="audit-meta-calc">
-        <div class="audit-meta-row">
-          <span>🟢 Meta Mínima (média histórica)</span>
-          <span>${R$(meta.metaMin)}</span>
-        </div>
-        <div class="audit-meta-row audit-winner">
-          <span>🔵 Meta Alvo (média + 20%)</span>
-          <span>${R$(meta.metaAlvo)}</span>
-        </div>
-        <div class="audit-meta-row">
-          <span>🏆 Meta Superação (média + 40%)</span>
-          <span>${R$(meta.metaSup)}</span>
-        </div>
+        ${linhaAno}
+        ${linhaMedia}
+      </div>
+      <div class="audit-row">
+        <span>Regra vencedora</span>
+        <span class="audit-win-label">✓ ${anual ? labelAno : labelMed}</span>
+      </div>
+      <div class="audit-row audit-info">
+        <span>Antes do arredondamento</span>
+        <span>${R$(meta.bruto)}</span>
+      </div>
+      <div class="audit-row audit-total">
+        <span>Meta final (múltiplo de R$ 500)</span>
+        <span>${R$(meta.valor)}</span>
       </div>`;
   } else {
     metaHtml = `
       <div class="audit-section">Regra da meta automática</div>
       <div class="audit-row audit-info">
         <span>Status</span>
-        <span>⚠️ Sem histórico do mesmo mês para calcular meta</span>
+        <span>⚠️ Dados insuficientes para calcular meta</span>
       </div>`;
   }
 

@@ -275,6 +275,41 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
+## ✅ ETAPA CONCLUÍDA — Dashboard V2 (13/06/2026)
+
+**Modernização completa do layout do Dashboard — implementado.**
+
+### O que foi feito
+- **Sidebar esquerda retrátil:** 240px expandida / 72px recolhida, animação 200ms, estado salvo em `localStorage('cc_sidebar_state')`
+- **Painel direito retrátil:** 350px expandido / 48px recolhido, animação 200ms, estado salvo em `localStorage('cc_panel_right_state')`
+- **Painel Executivo (KPIs):** 2 linhas — OS Abertas, OS em Andamento, Aguardando Aprovação, Faturamento Hoje, Ticket Médio, Peças em Falta / Bancada, Tempo Médio, Lucro da Semana, Clientes Ativos, Orçamentos Enviados — todos via `onSnapshot` Firestore
+- **Metas da Semana** movida para o painel direito (mesmos IDs, mesmo `updateMeta()`)
+- **Central de Alertas** no painel direito: aprovações, agendamentos, diagnósticos, pré-OS, OS prontas, OS aguardando peça — com ícone, cor, contador e link direto
+- **Grid de módulos:** 5 colunas, 140px/card, 16px gap, 16px radius. OS: 168px e destaque verde
+- **Novos módulos shells:** CRM Comercial (`pages/crm-comercial/`), Compras (`pages/compras/`), Auditoria (`pages/auditoria/`) — todos com página "em desenvolvimento"
+- **Rotas adicionadas:** `crm-comercial`, `compras`, `auditoria`, `relatorios` (→ analise), `impressora` (→ config)
+- **favoritos.js:** CRM Comercial, Compras, Auditoria, Relatórios registrados no mapa de módulos
+- **Removido:** dock.js do dashboard (dock substituído pela sidebar footer)
+- **Módulos removidos da grade:** Ação da Semana (alertas integrados na Central), Análise (renomeada Relatórios)
+
+### Arquivos alterados
+- `CRM/pages/dashboard/index.html` — reescrita completa (V2)
+- `CRM/pages/dashboard/dashboard.css` — novo bloco V2 ao final (layout sidebar/painel/exec/grid)
+- `CRM/pages/dashboard/dashboard.js` — `setupSidebar()`, `setupPanelRight()`, `setupExecutivePanel()` adicionados; rotas novas; chamada no `init()`
+- `CRM/shared/favoritos.js` — 4 novos módulos no mapa `MODULES`
+
+### Arquivos criados
+- `CRM/pages/crm-comercial/index.html`
+- `CRM/pages/compras/index.html`
+- `CRM/pages/auditoria/index.html`
+
+**Backup:** `CRM/BACKUP_DASHBOARD_V2_2026-06-13/`
+
+> ⚠️ **Pendente: `firebase deploy`** — publicar em produção.
+> ⚠️ **Validação visual** necessária no navegador (layout responsivo, sidebar, painel direito, KPIs).
+
+---
+
 ## 🔧 ETAPA ATUAL
 
 **Portal Técnico (Etapas 1 e 2) — PUBLICADO EM PRODUÇÃO (08/06/2026).**
@@ -423,6 +458,26 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 > ✅ Corrigido bug pré-existente: `escapeHtml()` usado mas inexistente.
 > ✅ Sem alteração em Firebase, Firestore, Rules, Auth ou schema. Validado (Playwright 5/5 + dados reais).
 > ✅ Arquivo: [`dashboard/dashboard.js`](CRM/pages/dashboard/dashboard.js) (backup [`BACKUP_BUSCA_GLOBAL_2026-06-06/`](CRM/pages/dashboard/BACKUP_BUSCA_GLOBAL_2026-06-06/)). Commits `71610f8` (feature) + `0c3112e` (limpeza de evidências).
+
+---
+
+## ✅ ETAPA CONCLUÍDA — Módulo Meta & Evolução: Ajustes Finais (13/06/2026)
+
+**O que foi feito:**
+- **Auditoria completa:** seções "Fontes de dados" e "Regra da meta automática"; mostra origem (Caixa, OS, Financeiro, Recebimentos), registros do mês, soma, última atualização com hora
+- **Regra da meta:** exibe ambas as opções calculadas (`Mês/ano × 1,20` e `Média × 1,10`), marca a vencedora em verde, a descartada com tachado, mostra valor bruto antes do arredondamento e meta final (múltiplo de R$500)
+- **Evolução com hierarquia correta:** valor financeiro (`+R$ 3.600`) é agora o herói (3,4rem); percentual (`+339,9%`) passou para posição secundária (1,5rem)
+- **Destaque visual do mês atual:** rótulo do mês no gráfico agora verde (#00e676) + tamanho 13px (demais: 11px cinza)
+- **Meta semanal confirmada como funcionando:** usa os mesmos indicadores da mensal (barra, faltante, por dia, dias restantes, crescimento vs semana anterior)
+- **`_lastRefresh`:** rastreia horário exato de cada atualização dos dados via onSnapshot
+
+**Arquivos alterados:** `CRM/pages/relatorios/relatorios.js`, `CRM/pages/relatorios/relatorios.css`
+**Backup:** `CRM/pages/relatorios/BACKUP_AUDITORIA_EVOLUCAO_2026-06-13/`
+**Coleções lidas:** `os`, `caixa_lancamentos`
+**Sem novas coleções criadas. Sem alteração em Firestore Rules.**
+
+> ⚠️ **Validação pendente:** teste visual no navegador (auditoria expandida, troca Mês/Semana, herói R$).
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
 
 ---
 

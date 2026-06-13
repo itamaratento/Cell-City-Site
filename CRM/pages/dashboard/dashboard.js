@@ -1762,7 +1762,7 @@ class Dashboard {
       estoque: '../../pages/estoque/index.html',
       campanhas: '../../pages/campanhas/index.html',
       analise: '../../pages/analise/index.html',
-      relatorios: '../../pages/analise/index.html',
+      relatorios: '../../pages/relatorios/index.html',
       'pos-venda': '../../pages/pos-venda/index.html',
       config: '../../pages/config/index.html',
       ferramentas: '../../pages/config/index.html',
