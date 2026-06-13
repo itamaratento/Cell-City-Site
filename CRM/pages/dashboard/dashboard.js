@@ -3038,19 +3038,80 @@ class Dashboard {
   setupSidebar() {
     const sidebar = document.getElementById('sidebar-left');
     const btn     = document.getElementById('sidebar-toggle');
+    const navEl   = document.getElementById('sidebar-nav');
     if (!sidebar || !btn) return;
 
-    const KEY = 'cc_sidebar_state';
+    // ----- colapsar / expandir -----
+    const COLLAPSE_KEY = 'cc_sidebar_state';
     const aplicar = (collapsed) => {
       sidebar.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+    };
+    aplicar(localStorage.getItem(COLLAPSE_KEY) === '1');
+    btn.addEventListener('click', () => aplicar(!sidebar.classList.contains('collapsed')));
+
+    // ----- drag-and-drop reordering -----
+    if (!navEl) return;
+
+    const ORDER_KEY = 'cc_sidebar_order';
+
+    const saveOrder = () => {
+      const sids = [...navEl.querySelectorAll('.sidebar-item[data-sid]')].map(el => el.dataset.sid);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(sids));
     };
 
-    // Restaura estado salvo
-    aplicar(localStorage.getItem(KEY) === '1');
+    const restoreOrder = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+        if (!saved.length) return;
+        saved.forEach(sid => {
+          const el = navEl.querySelector(`[data-sid="${sid}"]`);
+          if (el) navEl.appendChild(el);
+        });
+      } catch (_) {}
+    };
 
-    btn.addEventListener('click', () => {
-      aplicar(!sidebar.classList.contains('collapsed'));
+    restoreOrder();
+
+    let dragSrc = null;
+
+    navEl.addEventListener('dragstart', e => {
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (!item) return;
+      dragSrc = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    navEl.addEventListener('dragend', () => {
+      if (dragSrc) dragSrc.classList.remove('dragging');
+      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+
+    navEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (!item || item === dragSrc) return;
+      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    navEl.addEventListener('dragleave', e => {
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (item) item.classList.remove('drag-over');
+    });
+
+    navEl.addEventListener('drop', e => {
+      e.preventDefault();
+      const target = e.target.closest('.sidebar-item[data-sid]');
+      if (!target || !dragSrc || target === dragSrc) return;
+      target.classList.remove('drag-over');
+      const rect = target.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
+      saveOrder();
     });
   }
 
