@@ -151,6 +151,7 @@ window.PortalAdmin = {
         case 'solicitacoes': this.renderSolicitacoes(); break;
         case 'agendamentos': this.renderAgendamentos(); break;
         case 'estatisticas': this.renderEstatisticas(); break;
+        case 'config': this.renderConfig(); break;
       }
     });
   },
@@ -801,16 +802,31 @@ window.PortalAdmin = {
     const pendentes = this.agendamentos.filter(a => a.status === 'aguardando').length;
 
     // Ordena: data desejada crescente; agendamentos sem data ao final.
-    const lista = [...this.agendamentos].sort((a, b) => {
+    let lista = [...this.agendamentos].sort((a, b) => {
       const da = a.data || '9999-99-99';
       const db_ = b.data || '9999-99-99';
       if (da !== db_) return da < db_ ? -1 : 1;
       return (a.horario || '') < (b.horario || '') ? -1 : 1;
     });
 
+    // Aplica filtro por data (se ativado pelo calendário)
+    let filtroTexto = '';
+    if (this._dataFiltro) {
+      lista = lista.filter(a => a.data === this._dataFiltro);
+      const dataFmt = this._dataFiltro.split('-').reverse().join('/');
+      filtroTexto = `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:8px 12px;background:rgba(88,166,255,0.1);border:1px solid rgba(88,166,255,0.3);border-radius:var(--radius-sm);">
+          <span>📅 Filtrando: <strong>${dataFmt}</strong> — ${lista.length} agendamento(s)</span>
+          <button class="admin-btn admin-btn-sm" onclick="PortalAdmin._dataFiltro=null;PortalAdmin.renderAgendamentos();" style="margin-left:auto;">✕ Limpar filtro</button>
+        </div>
+      `;
+    }
+
     let html = `
       <h2 class="admin-section-title">📅 Agenda de Atendimentos</h2>
       <p class="admin-section-subtitle">${pendentes} aguardando confirmação de ${this.agendamentos.length} total</p>
+      ${this._renderMiniCalendario()}
+      ${filtroTexto}
       <div class="admin-list">
     `;
 
@@ -955,6 +971,184 @@ window.PortalAdmin = {
       status: 'cancelado',
       observacaoAdmin: motivo ? `Cancelado: ${motivo}` : 'Agendamento cancelado pela loja.'
     }, '❌ Agendamento cancelado');
+  },
+
+  // ===== MINI CALENDÁRIO =====
+  _renderMiniCalendario() {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+    const diasNoMes = ultimoDia.getDate();
+    const inicioSemana = primeiroDia.getDay();
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    const agPorData = {};
+    this.agendamentos.forEach(a => {
+      if (a.status === 'cancelado' || a.status === 'atendido') return;
+      if (!a.data) return;
+      const partes = a.data.split('-');
+      if (partes.length !== 3) return;
+      const dataObj = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+      if (dataObj.getMonth() !== mes || dataObj.getFullYear() !== ano) return;
+      if (!agPorData[a.data]) agPorData[a.data] = [];
+      agPorData[a.data].push(a);
+    });
+
+    let html = `
+      <div class="calendario-container">
+        <div class="calendario-header">
+          <span class="calendario-mes">${hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
+        </div>
+        <div class="calendario-grid">
+          ${diasSemana.map(d => `<div class="calendario-dia-nome">${d}</div>`).join('')}
+    `;
+
+    for (let i = 0; i < inicioSemana; i++) {
+      html += '<div class="calendario-dia calendario-dia-vazio"></div>';
+    }
+
+    for (let d = 1; d <= diasNoMes; d++) {
+      const dataISO = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const agDia = agPorData[dataISO] || [];
+      const isHoje = d === hoje.getDate();
+      const isFiltro = this._dataFiltro === dataISO;
+      const pendentes = agDia.filter(a => a.status === 'aguardando').length;
+      html += `
+        <div class="calendario-dia ${isHoje ? 'calendario-dia-hoje' : ''} ${agDia.length > 0 ? 'calendario-dia-com-agenda' : ''} ${isFiltro ? 'calendario-dia-filtro' : ''}"
+             onclick="PortalAdmin._filtrarPorData('${dataISO}')"
+             title="${agDia.length} agendamento(s)">
+          <span class="calendario-dia-numero">${d}</span>
+          ${pendentes > 0 ? `<span class="calendario-dia-badge">${pendentes}</span>` : ''}
+        </div>
+      `;
+    }
+
+    html += '</div></div>';
+    return html;
+  },
+
+  _filtrarPorData(dataISO) {
+    if (this._dataFiltro === dataISO) {
+      this._dataFiltro = null;
+    } else {
+      this._dataFiltro = dataISO;
+    }
+    this.currentTab = ''; // força re-render
+    this.navegar('agendamentos');
+  },
+
+  // ===== CONFIG DE HORÁRIOS =====
+  renderConfig() {
+    const el = document.getElementById('admin-content');
+    if (!el) return;
+
+    el.innerHTML = `
+      <h2 class="admin-section-title">⚙️ Configuração de Horários</h2>
+      <p class="admin-section-subtitle">Defina os horários de funcionamento para controle de agendamentos</p>
+
+      <div class="config-card">
+        <h3>📅 Dias de Semana (Seg–Sex)</h3>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <div><label class="modal-label">Abertura</label><input type="time" id="config-seg-sex-inicio" class="modal-textarea" style="height:auto;" value="08:00"></div>
+          <div><label class="modal-label">Fechamento</label><input type="time" id="config-seg-sex-fim" class="modal-textarea" style="height:auto;" value="18:00"></div>
+          <div><label class="modal-label">Intervalo (min)</label><input type="number" id="config-seg-sex-intervalo" class="modal-textarea" style="height:auto;max-width:80px;" value="30" min="15" max="120" step="15"></div>
+        </div>
+      </div>
+
+      <div class="config-card">
+        <h3>📅 Sábado</h3>
+        <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap;">
+          <div><label class="modal-label">Abertura</label><input type="time" id="config-sab-inicio" class="modal-textarea" style="height:auto;" value="08:00"></div>
+          <div><label class="modal-label">Fechamento</label><input type="time" id="config-sab-fim" class="modal-textarea" style="height:auto;" value="14:00"></div>
+          <div><label class="modal-label">Intervalo (min)</label><input type="number" id="config-sab-intervalo" class="modal-textarea" style="height:auto;max-width:80px;" value="30" min="15" max="120" step="15"></div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;">
+          <input type="checkbox" id="config-sab-fechado"> Sábado fechado
+        </label>
+      </div>
+
+      <div class="config-card">
+        <h3>📅 Domingo</h3>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="config-dom-fechado" checked> Domingo fechado
+        </label>
+      </div>
+
+      <div class="config-card">
+        <h3>🔢 Vagas por Horário</h3>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">Quantos clientes podem ser agendados no mesmo horário?</p>
+        <input type="number" id="config-vagas" class="modal-textarea" style="height:auto;max-width:100px;" value="2" min="1" max="10">
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+        <button class="admin-btn admin-btn-primary" onclick="PortalAdmin._salvarConfigHorarios()">💾 Salvar</button>
+        <button class="admin-btn" onclick="PortalAdmin._carregarConfigHorarios()">🔄 Recarregar</button>
+      </div>
+      <div id="config-status" style="margin-top:8px;font-size:13px;min-height:20px;"></div>
+    `;
+    el.classList.add('carregado');
+    this._carregarConfigHorarios();
+  },
+
+  async _carregarConfigHorarios() {
+    try {
+      const db = window.db;
+      const { doc, getDoc } = window.FirebaseModules;
+      const snap = await getDoc(doc(db, 'config', 'horarios'));
+      if (snap.exists()) {
+        const d = snap.data();
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        const chk = (id, val) => { const el = document.getElementById(id); if (el) el.checked = !!val; };
+        set('config-seg-sex-inicio', d.segSex?.inicio || '08:00');
+        set('config-seg-sex-fim', d.segSex?.fim || '18:00');
+        set('config-seg-sex-intervalo', d.segSex?.intervalo || 30);
+        set('config-sab-inicio', d.sabado?.inicio || '08:00');
+        set('config-sab-fim', d.sabado?.fim || '14:00');
+        set('config-sab-intervalo', d.sabado?.intervalo || 30);
+        chk('config-sab-fechado', d.sabado?.fechado);
+        chk('config-dom-fechado', d.domingo?.fechado !== false);
+        set('config-vagas', d.vagasPorHorario || 2);
+      }
+    } catch (e) {
+      console.warn('[Admin] Erro ao carregar config horários:', e);
+    }
+  },
+
+  async _salvarConfigHorarios() {
+    const status = document.getElementById('config-status');
+    if (status) status.textContent = '💾 Salvando...';
+    try {
+      const db = window.db;
+      const { doc, setDoc } = window.FirebaseModules;
+      const get = (id) => document.getElementById(id)?.value;
+      const chk = (id) => document.getElementById(id)?.checked;
+      await setDoc(doc(db, 'config', 'horarios'), {
+        segSex: {
+          inicio: get('config-seg-sex-inicio') || '08:00',
+          fim: get('config-seg-sex-fim') || '18:00',
+          intervalo: parseInt(get('config-seg-sex-intervalo')) || 30
+        },
+        sabado: {
+          inicio: get('config-sab-inicio') || '08:00',
+          fim: get('config-sab-fim') || '14:00',
+          intervalo: parseInt(get('config-sab-intervalo')) || 30,
+          fechado: chk('config-sab-fechado') || false
+        },
+        domingo: {
+          fechado: chk('config-dom-fechado') !== false
+        },
+        vagasPorHorario: parseInt(get('config-vagas')) || 2,
+        updatedAt: new Date().toISOString()
+      });
+      if (status) status.textContent = '✅ Configurações salvas com sucesso!';
+      this._toast('✅ Horários configurados!', 'success');
+    } catch (e) {
+      console.error('[Admin] Erro ao salvar config:', e);
+      if (status) status.textContent = '❌ Erro ao salvar. Tente novamente.';
+      this._toast('Erro ao salvar configuração', 'error');
+    }
   },
 
   // ===== RENDER: ESTATÍSTICAS =====

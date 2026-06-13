@@ -81,6 +81,14 @@ window.Portal = {
   unsubscribeMsgs: null, // Listener em tempo real das mensagens
   unsubscribeAgendamentos: null, // Listener em tempo real dos agendamentos
 
+  // Config de horários (fallback; sobrescrita ao carregar do Firestore config/horarios)
+  _horariosConfig: {
+    diasSemana: { inicio: '08:00', fim: '18:00', intervaloMin: 30 },
+    sabado:     { inicio: '08:00', fim: '14:00', intervaloMin: 30 },
+    domingo:    null, // Fechado
+    vagasPorHorario: 2
+  },
+
   // ===== INIT =====
   async init() {
     console.log('[Portal] init() chamado, authReady:', window.authReady);
@@ -1825,6 +1833,112 @@ window.Portal = {
     `;
   },
 
+  // ===== AGENDAMENTO — HELPERS DE HORÁRIO =====
+
+  async _buscarHorariosOcupados(dataISO) {
+    try {
+      const db = window.db;
+      const { collection, query, where, getDocs } = window.FirebaseModules;
+      const q = query(
+        collection(db, 'agendamentos'),
+        where('data', '==', dataISO),
+        where('status', 'in', ['confirmado', 'aguardando'])
+      );
+      const snap = await getDocs(q);
+      const ocupados = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (d.horario) ocupados.push(d.horario.slice(0, 5));
+      });
+      return ocupados;
+    } catch (e) {
+      console.warn('[Portal] Erro ao buscar horários ocupados:', e);
+      return [];
+    }
+  },
+
+  _gerarHorariosDisponiveis(dataISO, horariosOcupados = []) {
+    if (!dataISO) return [];
+    const data = new Date(dataISO + 'T12:00:00');
+    const diaSemana = data.getDay(); // 0=domingo, 6=sábado
+    const cfg = this._horariosConfig;
+    const config = diaSemana === 0
+      ? cfg.domingo
+      : (diaSemana === 6 ? cfg.sabado : cfg.diasSemana);
+    if (!config || config.fechado) return [];
+    const [hInicio, mInicio] = config.inicio.split(':').map(Number);
+    const [hFim, mFim] = config.fim.split(':').map(Number);
+    const intervalo = config.intervaloMin || 30;
+    const inicio = hInicio * 60 + mInicio;
+    const fim = hFim * 60 + mFim;
+    const ocupadosSet = new Set(horariosOcupados);
+    const slots = [];
+    for (let min = inicio; min < fim; min += intervalo) {
+      const h = String(Math.floor(min / 60)).padStart(2, '0');
+      const m = String(min % 60).padStart(2, '0');
+      const horario = `${h}:${m}`;
+      slots.push({ valor: horario, disponivel: !ocupadosSet.has(horario) });
+    }
+    return slots;
+  },
+
+  async _atualizarHorariosDisponiveis() {
+    const dataInput = document.getElementById('ag-data');
+    const horarioSelect = document.getElementById('ag-horario-select');
+    if (!dataInput || !horarioSelect) return;
+    const dataISO = dataInput.value;
+    if (!dataISO) return;
+
+    horarioSelect.innerHTML = '<option value="">Carregando...</option>';
+    horarioSelect.disabled = true;
+
+    // Tenta carregar config do Firestore (Feature #3); usa fallback local se falhar
+    try {
+      const db = window.db;
+      const { doc, getDoc } = window.FirebaseModules;
+      if (db && getDoc) {
+        const snap = await getDoc(doc(db, 'config', 'horarios'));
+        if (snap.exists()) {
+          const d = snap.data();
+          this._horariosConfig = {
+            diasSemana: { inicio: d.segSex?.inicio || '08:00', fim: d.segSex?.fim || '18:00', intervaloMin: d.segSex?.intervalo || 30 },
+            sabado:     { inicio: d.sabado?.inicio || '08:00', fim: d.sabado?.fim || '14:00', intervaloMin: d.sabado?.intervalo || 30, fechado: d.sabado?.fechado || false },
+            domingo:    { fechado: d.domingo?.fechado !== false },
+            vagasPorHorario: d.vagasPorHorario || 2
+          };
+        }
+      }
+    } catch (e) { /* usa config local */ }
+
+    const ocupados = await this._buscarHorariosOcupados(dataISO);
+    const slots = this._gerarHorariosDisponiveis(dataISO, ocupados);
+
+    if (slots.length === 0) {
+      horarioSelect.innerHTML = '<option value="">🚫 Loja fechada nesta data</option>';
+      horarioSelect.disabled = true;
+      return;
+    }
+
+    const vagasMax = this._horariosConfig.vagasPorHorario || 2;
+    const ocupadosCount = {};
+    ocupados.forEach(h => { ocupadosCount[h] = (ocupadosCount[h] || 0) + 1; });
+
+    let html = '<option value="">Selecione um horário...</option>';
+    slots.forEach(s => {
+      const qtd = ocupadosCount[s.valor] || 0;
+      const cheio = qtd >= vagasMax;
+      if (cheio) {
+        html += `<option value="${s.valor}" disabled>${s.label || s.valor} — 🔴 Lotado</option>`;
+      } else {
+        const vagas = vagasMax - qtd;
+        html += `<option value="${s.valor}">${s.valor}${qtd > 0 ? ` — ⚡ ${vagas} vaga(s)` : ''}</option>`;
+      }
+    });
+
+    horarioSelect.innerHTML = html;
+    horarioSelect.disabled = false;
+  },
+
   // ===== AGENDAR ATENDIMENTO =====
   // Reserva de horário para atendimento inicial / avaliação / recebimento.
   // NÃO representa prazo de conclusão do reparo (aviso obrigatório no form).
@@ -1905,7 +2019,9 @@ window.Portal = {
             </div>
             <div style="flex:1;">
               <label class="msg-label">Horário desejado *</label>
-              <input type="time" id="ag-horario" class="msg-input">
+              <select id="ag-horario-select" class="solicitacao-select" disabled>
+                <option value="">Selecione uma data primeiro...</option>
+              </select>
             </div>
           </div>
           <div class="msg-form-group">
@@ -1964,13 +2080,19 @@ window.Portal = {
         e.target.value = v;
       });
     }
+
+    // Listener: ao mudar a data, carrega os horários disponíveis
+    const dataInput = document.getElementById('ag-data');
+    if (dataInput) {
+      dataInput.addEventListener('change', () => this._atualizarHorariosDisponiveis());
+    }
   },
 
   async _enviarAgendamento() {
     const nome = document.getElementById('ag-nome')?.value.trim();
     const telefone = document.getElementById('ag-telefone')?.value.trim();
     const data = document.getElementById('ag-data')?.value;
-    const horario = document.getElementById('ag-horario')?.value;
+    const horario = document.getElementById('ag-horario-select')?.value;
     const tipoEquipamento = document.getElementById('ag-equipamento')?.value;
     const motivo = document.getElementById('ag-motivo')?.value;
     const observacoes = document.getElementById('ag-observacoes')?.value.trim();
@@ -1984,7 +2106,7 @@ window.Portal = {
     if (!nome) return fail('📝 Digite seu nome', 'ag-nome');
     if (!telefone || telefone.replace(/\D/g, '').length < 10) return fail('📞 Digite um telefone válido com DDD', 'ag-telefone');
     if (!data) return fail('📅 Selecione a data desejada', 'ag-data');
-    if (!horario) return fail('⏰ Selecione o horário desejado', 'ag-horario');
+    if (!horario) return fail('⏰ Selecione o horário desejado', 'ag-horario-select');
     if (!tipoEquipamento) return fail('🔧 Selecione o tipo de equipamento', 'ag-equipamento');
     if (!motivo) return fail('🔍 Selecione o motivo do atendimento', 'ag-motivo');
 
@@ -2014,8 +2136,10 @@ window.Portal = {
       });
       this._toast('Agendamento solicitado! Aguarde a confirmação da loja.', 'success');
       // Limpa os campos editáveis (mantém nome/telefone da sessão)
-      ['ag-data', 'ag-horario', 'ag-observacoes'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      ['ag-data', 'ag-observacoes'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       ['ag-equipamento', 'ag-motivo'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
+      const selHorario = document.getElementById('ag-horario-select');
+      if (selHorario) { selHorario.innerHTML = '<option value="">Selecione uma data primeiro...</option>'; selHorario.disabled = true; }
     } catch (err) {
       console.error('[Portal] Erro ao enviar agendamento:', err);
       if (errorEl) errorEl.textContent = '❌ Erro ao enviar. Tente novamente.';

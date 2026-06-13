@@ -86,6 +86,10 @@
       <span class="tab-icon">📊</span>
       <span class="tab-label">Estatísticas</span>
     </button>
+    <button class="admin-tab" data-action="navegar" data-tab="config">
+      <span class="tab-icon">⚙️</span>
+      <span class="tab-label">Config</span>
+    </button>
   </nav>
 
   <!-- ===== CONTEÚDO ===== -->
@@ -111,8 +115,8 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
     import {
       getFirestore,
-      collection, query, where, getDocs, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
+      collection, query, where, getDocs, getDoc, onSnapshot,
+      addDoc, doc, updateDoc, deleteDoc, setDoc, orderBy, serverTimestamp, limit
     } from 'firebase/firestore';
 
     const firebaseConfig = {
@@ -133,8 +137,8 @@
 
       window.db = db;
       window.FirebaseModules = {
-        collection, query, where, getDocs, onSnapshot,
-        addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, limit
+        collection, query, where, getDocs, getDoc, onSnapshot,
+        addDoc, doc, updateDoc, deleteDoc, setDoc, orderBy, serverTimestamp, limit
       };
 
       window.authReady = false;
