@@ -664,8 +664,7 @@ function renderDetail() {
     }
 
     // ===== SEÇÃO DEDICADA: ORÇAMENTO =====
-    html += `<div class="form-section" style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:16px;background:var(--surface2);">`;
-    html += `<div class="form-section-title" style="margin-bottom:10px;">💰 Orçamento</div>`;
+    html += `<div class="form-section accordion collapsed" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px;background:var(--surface2);"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>💰 Orçamento</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">`;
     const temOrc1 = os.orc1Desc || os.orc1Valor;
     const temOrc2 = os.orc2Desc || os.orc2Valor;
     if (temOrc1) {
@@ -685,32 +684,32 @@ function renderDetail() {
     if (!temOrc1 && !temOrc2) {
         html += `<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhum orçamento cadastrado.</div>`;
     }
-    html += `</div>`;
+    html += `</div></div></div>`;
 
-    html += `<div class="form-section"><div class="form-section-title">📋 Observação Interna</div><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.internalObservation || ''}</textarea></div><div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Observação Interna</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.internalObservation || ''}</textarea></div><div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div></div></div></div>`;
 
     if (os.patternSequence && os.patternSequence.length > 0) {
-        html += `<div class="form-section"><div class="form-section-title">📱 Senha Padrão Android</div><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div>`;
+        html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📱 Senha Padrão Android</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div></div></div>`;
     }
     
-    html += `<div class="form-section"><div class="form-section-title">Alterar Status</div><div class="status-selector">${statuses.map(s => `<div class="status-option ${os.status === s.key ? 'selected' : ''}" onclick="changeStatus('${s.key}')"><span class="dot" style="background:${s.color}"></span>${s.label}</div>`).join('')}</div></div>`;
+    html += `<div class="form-section accordion"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>🔄 Alterar Status</span><span class="accordion-arrow">▼</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="status-selector">${statuses.map(s => `<div class="status-option ${os.status === s.key ? 'selected' : ''}" onclick="changeStatus('${s.key}')"><span class="dot" style="background:${s.color}"></span>${s.label}</div>`).join('')}</div></div></div></div>`;
     
-    html += `<div class="checklist-section"><div class="checklist-title">📋 Checklist de Entrada</div>${renderChecklistHTML('entry', getChecklistTemplate(os.category), os.entryChecklist||[], true)}</div><div class="checklist-section"><div class="checklist-title">✅ Checklist de Saída</div>${renderChecklistHTML('exit', getChecklistTemplate(os.category), os.exitChecklist||[], false)}</div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Checklists</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="checklist-section"><div class="checklist-title">📋 Checklist de Entrada</div>${renderChecklistHTML('entry', getChecklistTemplate(os.category), os.entryChecklist||[], true)}</div><div class="checklist-section"><div class="checklist-title">✅ Checklist de Saída</div>${renderChecklistHTML('exit', getChecklistTemplate(os.category), os.exitChecklist||[], false)}</div></div></div></div>`;
     
     if (os.lockPhoto || os.lockType || os.password) {
-        let lockBlock = `<div class="form-section"><div class="form-section-title">🔒 Senha/Padrão</div><div style="margin-top:8px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);">`;
+        let lockBlock = `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🔒 Senha/Padrão</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="margin-top:8px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);">`;
         if (os.lockType) lockBlock += `<span style="font-size:12px;color:var(--text2)">Tipo: <strong style="color:var(--text)">${getLockTypeLabel(os.lockType)}</strong></span>`;
         if (os.password) lockBlock += `<span style="font-size:12px;color:var(--text2);margin-left:10px;">Senha: <strong style="color:var(--yellow)">${os.password}</strong></span>`;
         if (os.lockPhoto) lockBlock += `<br><img src="${os.lockPhoto}" style="width:100%;max-width:280px;height:auto;border-radius:8px;border:1px solid var(--border);cursor:pointer;margin-top:8px;" onclick="viewPhoto('${os.lockPhoto}')"><p style="font-size:10px;color:var(--text3);margin-top:6px;">Toque para ampliar</p>`;
-        lockBlock += `</div></div>`;
+        lockBlock += `</div></div></div></div>`;
         html += lockBlock;
     }
     
-    if (os.photos?.length > 0) html += `<div class="form-section"><div class="form-section-title">📷 Fotos (${os.photos.length})</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${os.photos.map(p => `<img src="${p}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${p}')">`).join('')}</div><div class="premium-upload" onclick="addPhotoToOS()" style="margin-top:8px"><div class="icon">➕</div><p>Adicionar mais fotos</p></div></div>`;
+    if (os.photos?.length > 0) html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📷 Fotos (${os.photos.length})</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${os.photos.map(p => `<img src="${p}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${p}')">`).join('')}</div><div class="premium-upload" onclick="addPhotoToOS()" style="margin-top:8px"><div class="icon">➕</div><p>Adicionar mais fotos</p></div></div></div></div>`;
     
-    html += `<div class="form-section"><div class="form-section-title">📝 Observações</div><textarea id="os-observations" rows="4" oninput="window.markUnsaved()" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.observations || ''}</textarea><div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveObservation()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📝 Observações</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-observations" rows="4" oninput="window.markUnsaved()" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.observations || ''}</textarea><div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveObservation()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button></div></div></div></div>`;
     
-    html += `<div class="form-section"><div class="form-section-title">🛠️ Obs. Técnica (Interna)</div><textarea id="os-tech-obs" rows="3" oninput="window.markUnsaved()" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">${os.technicalObservation || ''}</textarea><div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveTechObservation()" style="flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Técnica</button></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛠️ Obs. Técnica (Interna)</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-tech-obs" rows="3" oninput="window.markUnsaved()" style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">${os.technicalObservation || ''}</textarea><div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveTechObservation()" style="flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Técnica</button></div></div></div></div>`;
     
     // ===== RELATÓRIO TÉCNICO (vinculado pela tela Soluções Técnicas — somente leitura) =====
     const rel = os.relatorioTecnico;
@@ -725,21 +724,18 @@ function renderDetail() {
             ['🛠️ Solução aplicada', rel.solucaoAplicada],
             ['📌 Observações', rel.observacoes]
         ].filter(s => s[1]).map(s => `<div style="margin-bottom:12px;"><div style="font-size:11px;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:var(--green-light);margin-bottom:4px;">${s[0]}</div><div style="font-size:14px;color:var(--text);line-height:1.6;white-space:pre-wrap;">${s[1]}</div></div>`).join('');
-        html += `<div class="form-section" style="border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;background:var(--surface2);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-                <div class="form-section-title" style="margin:0;">📋 Relatório Técnico</div>${portalTag}
-            </div>
+        html += `<div class="form-section accordion collapsed" style="border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;background:var(--surface2);"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Relatório Técnico</span><span style="margin-left:6px;">${portalTag}</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">
             <div style="font-size:13px;color:var(--text2);margin-bottom:10px;">${[os.brand, os.model].filter(Boolean).join(' ')}${relData ? ' • 📅 ' + relData : ''}${relStatus ? ` • <strong style="color:${relCls};">${relStatus}</strong>` : ''}${rel.tecnico ? ' • 🛠️ ' + rel.tecnico : ''}</div>
             <button id="rel-tec-toggle" onclick="toggleRelatorioTecnico()" style="background:var(--surface3);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:600;">📖 Abrir Relatório</button>
             <div id="rel-tec-body" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">${secoesRel}</div>
-        </div>`;
+        </div></div></div>`;
     }
 
-    html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;"><div class="form-section-title" style="margin-bottom:8px;">📜 Histórico</div>${(os.timeline||[]).map(t => `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${formatDate(t.date)}</div><div>${t.text || ''}</div></div>`).join('')}</div>`;
+    html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📜 Histórico</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${(os.timeline||[]).map(t => `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${formatDate(t.date)}</div><div>${t.text || ''}</div></div>`).join('')}</div></div></div>`;
     
     if (client?.history.length > 1) {
         const otherOS = client.history.filter(h => h !== os.id);
-        html += `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:20px;"><div class="form-section-title" style="margin-bottom:8px;">📂 Histórico do Cliente</div>${otherOS.map(hId => { const h = DB.getOS().find(o => o.id === hId); return h ? `<div onclick="openDetail('${h.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div style="font-size:12px;font-weight:800;color:var(--green-light);">${h.id}</div><div style="font-size:11px;color:var(--text3);">${h.model} — ${formatDateShort(h.createdAt)}</div></div><span class="os-card-status status-${(h.status||'').replace(/ /g, '_')}">${getStatusLabel(h.status)}</span></div>` : ''; }).join('')}</div>`;
+        html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📂 Histórico do Cliente</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${otherOS.map(hId => { const h = DB.getOS().find(o => o.id === hId); return h ? `<div onclick="openDetail('${h.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div style="font-size:12px;font-weight:800;color:var(--green-light);">${h.id}</div><div style="font-size:11px;color:var(--text3);">${h.model} — ${formatDateShort(h.createdAt)}</div></div><span class="os-card-status status-${(h.status||'').replace(/ /g, '_')}">${getStatusLabel(h.status)}</span></div>` : ''; }).join('')}</div></div></div>`;
     }
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
@@ -757,9 +753,11 @@ async function toggleOSEdit() {
     const catLabel = getCategoryLabel(os.category);
     header.innerHTML = `
 <button onclick="renderDetail()" style="margin-bottom:12px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">↩️ Cancelar Edição</button>
-<div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
-
-<div class="form-section-title" style="margin-top:6px;">👤 Dados do Cliente</div>
+<!-- ===== Seção recolhível: Dados do Cliente (inicia aberta) ===== -->
+<div class="form-section accordion" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>👤 Dados do Cliente</span><span class="accordion-arrow">▼</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Nome do Cliente</label>
 <input id="edit-os-name" value="${os.clientName||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
@@ -770,7 +768,15 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">CPF <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
 <input id="edit-os-cpf" value="${os.cpf||''}" maxlength="14" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="cpfMask(this);window.markUnsaved()">
 
-<div class="form-section-title" style="margin-top:14px;">📱 Dados do Aparelho</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Dados do Aparelho (inicia aberta) ===== -->
+<div class="form-section accordion" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>📱 Dados do Aparelho</span><span class="accordion-arrow">▼</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Marca</label>
 <input id="edit-os-brand" value="${os.brand||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
@@ -784,7 +790,15 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">IMEI 2</label>
 <input id="edit-os-imei2" maxlength="15" inputmode="numeric" value="${os.imei2||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
-<div class="form-section-title" style="margin-top:14px;">🛠️ Serviço</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Serviço (inicia aberta) ===== -->
+<div class="form-section accordion" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>🛠️ Serviço</span><span class="accordion-arrow">▼</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Defeito relatado</label>
 <textarea id="edit-os-defect" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.defect||''}</textarea>
@@ -798,7 +812,15 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">Técnico responsável</label>
 <input id="edit-os-tecnico" value="${os.technician||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
-<div class="form-section-title" style="margin-top:14px;">🛡️ Garantia</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Garantia (inicia recolhida) ===== -->
+<div class="form-section accordion collapsed" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛡️ Garantia</span><span class="accordion-arrow">▶</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Prazo de garantia (dias)</label>
 <input id="edit-os-garantia" type="number" min="0" step="1" value="${os.prazoGarantia ?? 90}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
@@ -806,17 +828,41 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">Modelo de Garantia</label>
 <select id="edit-os-garantia-modelo" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" onchange="window.markUnsaved()"></select>
 
-<div class="form-section-title" style="margin-top:14px;">🔒 Segurança</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Segurança (inicia recolhida) ===== -->
+<div class="form-section accordion collapsed" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🔒 Segurança</span><span class="accordion-arrow">▶</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Senha do aparelho</label>
 <input id="edit-os-password" value="${os.password||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
-<div class="form-section-title" style="margin-top:14px;">📝 Observações</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Observações (inicia recolhida) ===== -->
+<div class="form-section accordion collapsed" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📝 Observações</span><span class="accordion-arrow">▶</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Observações</label>
 <textarea id="edit-os-observations" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.observations||''}</textarea>
 
-<div class="form-section-title" style="margin-top:14px;">💰 Orçamentos</div>
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Orçamentos (inicia recolhida) ===== -->
+<div class="form-section accordion collapsed" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>💰 Orçamentos</span><span class="accordion-arrow">▶</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Orçamento 1 — Descrição</label>
 <textarea id="edit-os-orc1-desc" rows="2" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.orc1Desc||''}</textarea>
@@ -830,6 +876,8 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">Orçamento 2 — Valor (R$)</label>
 <input id="edit-os-orc2-valor" type="number" step="0.01" min="0" value="${os.orc2Valor||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
+    </div>
+  </div></div>
 </div>
 
 <!-- ===== Seção recolhível: Endereço do Cliente (inicia recolhida) ===== -->
