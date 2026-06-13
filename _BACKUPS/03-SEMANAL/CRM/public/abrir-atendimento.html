@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autoatendimento - Cell City</title>
+    <style>
+        :root {
+            --green-primary: #00C853;
+            --green-light: #00E676;
+            --green-dark: #00A040;
+            --bg: #08090a;
+            --surface: #141618;
+            --text: #f1f3f5;
+            --text2: #c7cdd2;
+            --border: rgba(255, 255, 255, 0.06);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--green-light);
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text2);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--green-primary);
+            margin-top: 24px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        .label-optional {
+            font-size: 11px;
+            color: var(--text2);
+            font-weight: 400;
+            margin-left: 4px;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 13px;
+            transition: border-color 200ms;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--green-primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .error {
+            font-size: 12px;
+            color: #ef4444;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--green-primary);
+            border: none;
+            border-radius: var(--radius);
+            color: #000;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 200ms;
+            margin-top: 24px;
+            font-family: inherit;
+        }
+
+        .btn-submit:hover {
+            background: var(--green-light);
+        }
+
+        .btn-submit:disabled {
+            background: rgba(0, 200, 83, 0.5);
+            cursor: not-allowed;
+        }
+
+        .success-message {
+            display: none;
+            padding: 16px;
+            background: rgba(0, 200, 83, 0.15);
+            border: 1px solid var(--green-primary);
+            border-radius: var(--radius);
+            color: var(--green-light);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: var(--text2);
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .checkbox-group, .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .checkbox-item, .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .checkbox-item input, .radio-item input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--green-primary);
+        }
+
+        .checkbox-item label, .radio-item label {
+            margin: 0;
+            font-weight: 400;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .checkbox-group-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 480px) {
+            .checkbox-group-2col {
+                grid-template-columns: 1fr;
+            }
+            .row {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 16px;
+            }
+
+            .title {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📱</div>
+            <h1 class="title">Cell City</h1>
+            <p class="subtitle">Abra sua Ordem de Serviço em segundos</p>
+        </div>
+
+        <div class="success-message" id="successMsg">
+            ✅ Sua solicitação foi recebida! Em breve nosso time entrará em contato.
+        </div>
+
+        <form id="formAutoatendimento" class="form">
+            <!-- DADOS DO CLIENTE -->
+            <div class="section-title">📝 Dados Pessoais</div>
+
+            <div class="form-group">
+                <label for="nome">Nome Completo *</label>
+                <input type="text" id="nome" name="nome" placeholder="Ex: João Silva" required>
+                <div class="error" id="nomeError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="whatsapp">WhatsApp *</label>
+                <input type="text" id="whatsapp" name="whatsapp" placeholder="(11) 9999-9999" required>
+                <div class="error" id="whatsappError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="cpf">CPF <span class="label-optional">(Opcional)</span></label>
+                <input type="text" id="cpf" name="cpf" placeholder="123.456.789-00">
+                <div class="error" id="cpfError"></div>
+            </div>
+
+            <!-- DADOS DO APARELHO -->
+            <div class="section-title">📱 Aparelho</div>
+
+            <div class="row">
+                <div class="form-group">
+                    <label for="marca">Marca *</label>
+                    <input type="text" id="marca" name="marca" placeholder="Ex: iPhone" required>
+                    <div class="error" id="marcaError"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="modelo">Modelo *</label>
+                    <input type="text" id="modelo" name="modelo" placeholder="Ex: 13 Pro" required>
+                    <div class="error" id="modeloError"></div>
+                </div>
+            </div>
+
+            <!-- PROBLEMA -->
+            <div class="section-title">⚠️ Problema</div>
+
+            <div class="form-group">
+                <label for="problema">Descrição do Problema *</label>
+                <textarea id="problema" name="problema" placeholder="Descreva o problema que está tendo com seu aparelho..." required></textarea>
+                <div class="error" id="problemaError"></div>
+            </div>
+
+            <!-- ESTADO DO APARELHO -->
+            <div class="section-title">🔍 Estado do Aparelho</div>
+
+            <div class="form-group">
+                <div class="checkbox-group-2col">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_tela_quebrada" name="estado" value="tela_quebrada">
+                        <label for="estado_tela_quebrada">Tela quebrada</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_tampa_quebrada" name="estado" value="tampa_quebrada">
+                        <label for="estado_tampa_quebrada">Tampa quebrada</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_marcas_uso" name="estado" value="marcas_uso">
+                        <label for="estado_marcas_uso">Marcas de uso</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_amassados" name="estado" value="amassados">
+                        <label for="estado_amassados">Amassados</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_arranhoes" name="estado" value="arranhoes">
+                        <label for="estado_arranhoes">Arranhões</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_nao_liga" name="estado" value="nao_liga">
+                        <label for="estado_nao_liga">Aparelho não liga</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_foi_aberto" name="estado" value="foi_aberto">
+                        <label for="estado_foi_aberto">Já foi aberto</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_sem_riscos" name="estado" value="sem_riscos">
+                        <label for="estado_sem_riscos">Sem riscos aparentes</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="estado_outros" name="estado" value="outros">
+                        <label for="estado_outros">Outros</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ACESSÓRIOS -->
+            <div class="section-title">📦 Acessórios</div>
+
+            <div class="form-group">
+                <label style="margin-bottom: 10px;">Qual acompanha o aparelho?</label>
+                <div class="checkbox-group-2col">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_capa" name="acessorio" value="capa">
+                        <label for="acessorio_capa">Capa</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_pelicula" name="acessorio" value="pelicula">
+                        <label for="acessorio_pelicula">Película</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_chip" name="acessorio" value="chip">
+                        <label for="acessorio_chip">Chip</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_cartao" name="acessorio" value="cartao">
+                        <label for="acessorio_cartao">Cartão de Memória</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_carregador" name="acessorio" value="carregador">
+                        <label for="acessorio_carregador">Carregador</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_caixa" name="acessorio" value="caixa">
+                        <label for="acessorio_caixa">Caixa</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="acessorio_outros" name="acessorio" value="outros">
+                        <label for="acessorio_outros">Outros</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ORIGEM DO CLIENTE -->
+            <div class="section-title">🌐 Como nos conheceu?</div>
+
+            <div class="form-group">
+                <div class="radio-group">
+                    <div class="radio-item">
+                        <input type="radio" id="origem_google" name="origem" value="google">
+                        <label for="origem_google">Google</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="origem_instagram" name="origem" value="instagram">
+                        <label for="origem_instagram">Instagram</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="origem_whatsapp" name="origem" value="whatsapp">
+                        <label for="origem_whatsapp">WhatsApp</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="origem_indicacao" name="origem" value="indicacao">
+                        <label for="origem_indicacao">Indicação</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="origem_cliente_antigo" name="origem" value="cliente_antigo">
+                        <label for="origem_cliente_antigo">Cliente Antigo</label>
+                    </div>
+                    <div class="radio-item">
+                        <input type="radio" id="origem_outro" name="origem" value="outro">
+                        <label for="origem_outro">Outro</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INFORMAÇÕES ADICIONAIS -->
+            <div class="section-title">🔍 Informações Adicionais</div>
+
+            <div class="form-group">
+                <label for="senha">Senha do Aparelho <span class="label-optional">(Opcional)</span></label>
+                <input type="password" id="senha" name="senha" placeholder="Se houver uma senha ou padrão">
+            </div>
+
+            <div class="form-group">
+                <label for="imei">IMEI <span class="label-optional">(Opcional)</span></label>
+                <input type="text" id="imei" name="imei" placeholder="Código IMEI do aparelho">
+            </div>
+
+            <div class="form-group">
+                <label for="observacoes">Observações <span class="label-optional">(Opcional)</span></label>
+                <textarea id="observacoes" name="observacoes" placeholder="Qualquer outra informação importante..." style="min-height: 60px;"></textarea>
+            </div>
+
+            <!-- BOTÃO -->
+            <button type="submit" class="btn-submit" id="btnSubmit">📤 ENVIAR</button>
+
+            <div class="loading" id="loadingMsg">
+                ⏳ Processando seu formulário...
+            </div>
+        </form>
+    </div>
+
+    <script type="module">
+        import {
+            db,
+            collection,
+            doc,
+            setDoc,
+            serverTimestamp
+        } from "../scripts/firebase.js";
+
+        const form = document.getElementById('formAutoatendimento');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const successMsg = document.getElementById('successMsg');
+        const loadingMsg = document.getElementById('loadingMsg');
+
+        // Validação de CPF
+        function validarCPF(cpf) {
+            if (!cpf) return true; // opcional
+            cpf = cpf.replace(/\D/g, '');
+            if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+
+            let soma = 0, resto;
+            for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            if (resto !== parseInt(cpf.substring(9, 10))) return false;
+
+            soma = 0;
+            for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+            resto = (soma * 10) % 11;
+            if (resto === 10 || resto === 11) resto = 0;
+            return resto === parseInt(cpf.substring(10, 11));
+        }
+
+        // Validação de WhatsApp
+        function validarWhatsApp(whatsapp) {
+            const cleaned = whatsapp.replace(/\D/g, '');
+            return cleaned.length === 11 && cleaned.startsWith('55') === false;
+        }
+
+        // Mostrar erro
+        function mostrarErro(fieldId, msg) {
+            const errorEl = document.getElementById(fieldId + 'Error');
+            if (errorEl) {
+                errorEl.textContent = msg;
+                errorEl.classList.add('show');
+            }
+        }
+
+        // Limpar erros
+        function limparErros() {
+            document.querySelectorAll('.error').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+        }
+
+        // Submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            limparErros();
+
+            const nome = document.getElementById('nome').value.trim();
+            const whatsapp = document.getElementById('whatsapp').value.trim();
+            const cpf = document.getElementById('cpf').value.trim();
+            const marca = document.getElementById('marca').value.trim();
+            const modelo = document.getElementById('modelo').value.trim();
+            const problema = document.getElementById('problema').value.trim();
+            const senha = document.getElementById('senha').value.trim();
+            const imei = document.getElementById('imei').value.trim();
+            const observacoes = document.getElementById('observacoes').value.trim();
+
+            // Novos campos
+            const estadoAparelho = Array.from(document.querySelectorAll('input[name="estado"]:checked')).map(e => e.value);
+            const acessorios = Array.from(document.querySelectorAll('input[name="acessorio"]:checked')).map(e => e.value);
+            const origem = document.querySelector('input[name="origem"]:checked')?.value || null;
+
+            let temErro = false;
+
+            if (!nome) {
+                mostrarErro('nome', 'Nome é obrigatório');
+                temErro = true;
+            }
+
+            if (!whatsapp) {
+                mostrarErro('whatsapp', 'WhatsApp é obrigatório');
+                temErro = true;
+            } else if (!validarWhatsApp(whatsapp)) {
+                mostrarErro('whatsapp', 'WhatsApp inválido. Use: (11) 99999-9999');
+                temErro = true;
+            }
+
+            if (cpf && !validarCPF(cpf)) {
+                mostrarErro('cpf', 'CPF inválido');
+                temErro = true;
+            }
+
+            if (!marca) {
+                mostrarErro('marca', 'Marca é obrigatória');
+                temErro = true;
+            }
+
+            if (!modelo) {
+                mostrarErro('modelo', 'Modelo é obrigatório');
+                temErro = true;
+            }
+
+            if (!problema) {
+                mostrarErro('problema', 'Descreva o problema');
+                temErro = true;
+            }
+
+            if (temErro) return;
+
+            btnSubmit.disabled = true;
+            loadingMsg.classList.add('show');
+
+            try {
+                const agoraISO = new Date().toISOString();
+                const docRef = doc(collection(db, 'pre_os'));
+                const dados = {
+                    id: docRef.id,
+                    cliente: { nome, whatsapp, cpf: cpf || null },
+                    aparelho: { marca, modelo },
+                    problema,
+                    estado_aparelho: estadoAparelho.length > 0 ? estadoAparelho : null,
+                    acessorios: acessorios.length > 0 ? acessorios : null,
+                    origem_cliente: origem,
+                    senha: senha || null,
+                    imei: imei || null,
+                    observacoes: observacoes || null,
+                    status: 'AGUARDANDO_CONVERSAO',
+                    origem: 'Autoatendimento',
+                    criadoEm: serverTimestamp(),
+                    criadoEmISO: agoraISO,
+                    osId: null
+                };
+
+                await setDoc(docRef, dados);
+
+                form.style.display = 'none';
+                loadingMsg.classList.remove('show');
+                successMsg.classList.add('show');
+
+                setTimeout(() => {
+                    form.reset();
+                    form.style.display = 'block';
+                    successMsg.classList.remove('show');
+                    btnSubmit.disabled = false;
+                }, 5000);
+
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                mostrarErro('nome', 'Erro ao enviar. Tente novamente.');
+                loadingMsg.classList.remove('show');
+                btnSubmit.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

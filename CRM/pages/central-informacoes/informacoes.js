@@ -14,6 +14,15 @@ const CACHE_CAT_KEY = 'cc_categorias_informacoes_cache';
 const VIEWMODE_KEY = 'cc_informacoes_viewmode';
 
 const TIPOS_REGISTRO = ['Todos', 'Comando', 'Site', 'Senha', 'Anotação', 'Documento'];
+// Mapeamento do nome de exibição → valor armazenado no Firestore (sem acento, minúsculo)
+const TIPO_PARA_VALOR = {
+    'Todos':    null,
+    'Comando':  'comando',
+    'Site':     'site',
+    'Senha':    'senha',
+    'Anotação': 'anotacao',
+    'Documento':'documento'
+};
 const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
 const CRIPTOGRAFIA_KEY = 'cellcity-2026'; // Chave para criptografia local (não é seguro, apenas ofuscação)
 
@@ -234,7 +243,8 @@ function render() {
 
     // Filtrar por tipo
     if (tipoFiltro !== 'Todos') {
-        filtrados = filtrados.filter(i => i.tipo === tipoFiltro.toLowerCase());
+        const tipoValor = TIPO_PARA_VALOR[tipoFiltro] ?? tipoFiltro.toLowerCase();
+        filtrados = filtrados.filter(i => i.tipo === tipoValor);
     }
 
     // Filtrar por categoria

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Cell City — Minha Semana</title>
+<link rel="stylesheet" href="minha-semana.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header class="ms-header">
+  <button class="ms-back" onclick="history.back()">‹</button>
+  <h1 class="ms-titulo">📅 Minha Semana</h1>
+  <div></div>
+</header>
+
+<main class="ms-main">
+
+  <!-- BARRA DE DIAS -->
+  <div class="ms-dias-wrap">
+    <div class="ms-dias" id="ms-dias"></div>
+  </div>
+
+  <!-- FORMULÁRIO -->
+  <div class="ms-form" id="ms-form" style="display:none">
+    <div class="ms-form-titulo" id="ms-form-titulo">Nova tarefa</div>
+    <div class="ms-form-row">
+      <select id="ms-prioridade">
+        <option value="alta">🔴 Alta</option>
+        <option value="media" selected>🟡 Média</option>
+        <option value="baixa">🟢 Baixa</option>
+      </select>
+    </div>
+    <div class="ms-form-row">
+      <input type="text" id="ms-descricao" placeholder="Descrição da tarefa..." maxlength="120" autocomplete="off">
+    </div>
+    <div class="ms-form-row ms-form-btns">
+      <button class="ms-btn-add" id="ms-adicionar">＋ Adicionar</button>
+      <button class="ms-btn-cancel" id="ms-cancelar">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- LISTA DE TAREFAS -->
+  <div class="ms-lista" id="ms-lista"></div>
+
+</main>
+
+<script src="../../shared/brand-header.js"></script>
+<script type="module" src="minha-semana.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+:root {
+    --bg: #050505;
+    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --surface2: rgba(25, 28, 27, 0.8);
+    --surface3: #1c1f1d;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #ffffff;
+    --text2: #d1d5db;
+    --text3: #6b7280;
+    --green-primary: #00C853;
+    --green-light: #00E676;
+    --green-dark: #009624;
+    --green-glow: rgba(0, 200, 83, 0.25);
+    --red: #EF4444;
+    --yellow: #F59E0B;
+    --radius-sm: 10px;
+    --radius: 14px;
+    --radius-lg: 18px;
+    --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --duration: 0.25s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    font-family: var(--font-main);
+    background: var(--bg);
+    background-image: var(--bg-gradient);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: clip;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+.header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10, 12, 11, 0.92);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(16px);
+    min-height: 54px;
+}
+.header::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;
+}
+
+#crm-brand-bar { position: relative; }
+#crm-brand-bar .crm-page-title {
+    flex: 1 !important; position: static !important;
+    text-align: center !important; font-size: 18px !important; font-weight: 800 !important;
+}
+
+.imp-content {
+    padding: 20px;
+    padding-bottom: 100px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.imp-section {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-bottom: 16px;
+}
+.imp-section-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--green-light);
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+.imp-hint { font-size: 13px; color: var(--text3); margin-bottom: 14px; }
+
+.imp-upload-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 20px;
+    background: rgba(0,200,83,0.08);
+    border: 1px solid rgba(0,200,83,0.3);
+    border-radius: var(--radius);
+    color: var(--green-light); font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all var(--duration) var(--ease);
+}
+.imp-upload-btn:hover { background: rgba(0,200,83,0.15); border-color: var(--green-primary); }
+.imp-upload-btn input { display: none; }
+
+.imp-filename {
+    margin-top: 10px; padding: 10px 14px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text2);
+    font-family: 'SF Mono', monospace;
+}
+
+.imp-preview-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-bottom: 12px;
+}
+.imp-preview-item {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 8px; text-align: center;
+}
+.imp-preview-num {
+    display: block; font-size: 22px; font-weight: 800;
+    color: var(--green-light); line-height: 1; margin-bottom: 4px;
+}
+.imp-preview-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+
+.imp-filter-info { font-size: 12px; color: var(--text3); line-height: 1.6; }
+.imp-filter-info span { color: var(--yellow); font-weight: 600; }
+
+.imp-btn-start {
+    width: 100%; padding: 16px;
+    background: linear-gradient(135deg, var(--green-primary), var(--green-dark));
+    border: none; border-radius: var(--radius);
+    color: white; font-size: 16px; font-weight: 700;
+    font-family: var(--font-main); cursor: pointer;
+    box-shadow: 0 6px 20px var(--green-glow);
+    transition: all var(--duration) var(--ease);
+    margin-bottom: 16px;
+}
+.imp-btn-start:hover { transform: translateY(-2px); }
+.imp-btn-start:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.imp-progress-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 18px; margin-bottom: 16px;
+}
+.imp-progress-label { font-size: 13px; color: var(--text2); margin-bottom: 10px; font-weight: 600; }
+.imp-progress-track {
+    background: var(--surface3); border-radius: 100px;
+    height: 8px; overflow: hidden; margin-bottom: 6px;
+}
+.imp-progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--green-primary), var(--green-light));
+    border-radius: 100px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px var(--green-glow);
+}
+.imp-progress-pct { font-size: 12px; color: var(--text3); text-align: right; }
+
+.imp-summary {
+    background: rgba(0,200,83,0.06);
+    border: 1px solid rgba(0,200,83,0.3);
+    border-radius: var(--radius-lg);
+    padding: 18px; margin-bottom: 16px;
+}
+.imp-summary-title {
+    font-size: 16px; font-weight: 800; color: var(--green-light);
+    margin-bottom: 14px;
+}
+.imp-summary-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    font-size: 14px; color: var(--text2);
+}
+.imp-summary-row:last-child { border-bottom: none; }
+.imp-summary-val { font-weight: 700; color: var(--green-light); }
+
+.imp-errors {
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.25);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+}
+.imp-errors-title { font-size: 13px; font-weight: 700; color: var(--yellow); margin-bottom: 10px; }
+.imp-error-item { font-size: 12px; color: var(--text3); padding: 3px 0; }
+
+@media (max-width: 480px) {
+    .imp-preview-grid { grid-template-columns: repeat(2, 1fr); }
+    .imp-content { padding: 14px; }
+}

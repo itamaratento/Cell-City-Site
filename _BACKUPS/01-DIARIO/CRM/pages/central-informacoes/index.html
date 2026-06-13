@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Informações - Cell City CRM</title>
+    <link rel="stylesheet" href="informacoes.css?v=20260612-ux-v1">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <span class="header-title">📚 Central de Informações</span>
+    </header>
+
+    <div class="info-screen">
+
+        <!-- PESQUISA + NOVO -->
+        <section class="info-topo">
+            <div class="info-search">
+                <span class="info-search-icon">🔍</span>
+                <input type="text" id="info-busca" placeholder="Pesquisar informações..." oninput="filtrarInformacoes()" autocomplete="off">
+            </div>
+            <button class="info-btn-novo" onclick="abrirFormNovaInfo()">➕ Novo Registro</button>
+        </section>
+        <div id="info-resultado-count" class="info-resultado-count"></div>
+
+        <!-- FILTRO DE TIPO -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-top: 10px; margin-bottom: 8px; overflow-x: auto; padding: 0 48px 0 0;">
+            <section class="info-tipo-chips" id="info-tipo-chips" style="flex: 1; margin-bottom: 0; display: flex; gap: 8px;"></section>
+        </div>
+
+        <!-- FILTRO DE CATEGORIAS -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+            <section class="info-categorias" id="info-categorias" style="flex: 1; margin-bottom: 0;"></section>
+            <button class="info-btn-nova-cat" onclick="abrirFormCategoria()" title="Adicionar categoria">➕</button>
+        </div>
+
+        <!-- LISTA DE INFORMAÇÕES -->
+        <section class="info-lista-sec">
+            <div class="info-sec-titulo info-lista-header">
+                <div class="info-biblioteca-label">
+                    <span class="info-biblioteca-titulo">📖 Biblioteca</span>
+                    <span class="info-biblioteca-sub"><span id="info-contador">0</span> registros</span>
+                </div>
+                <div class="info-view-toggle">
+                    <button class="info-view-btn" id="info-view-lista" onclick="setViewMode('lista')" title="Modo Lista">☰</button>
+                    <button class="info-view-btn" id="info-view-cards" onclick="setViewMode('cards')" title="Modo Cards">▦</button>
+                </div>
+            </div>
+            <div class="info-lista" id="info-lista">
+                <div class="info-empty">
+                    <div class="info-empty-icon">📚</div>
+                    <p>Nenhuma informação ainda. Clique em <strong>➕ Novo Registro</strong> para começar.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL: ESCOLHER TIPO -->
+    <div id="info-modal-tipo" class="info-modal">
+        <div class="info-modal-content">
+            <div class="info-modal-header">
+                <h3>📋 Qual tipo de registro?</h3>
+                <button class="info-modal-close" onclick="fecharFormNovaInfo()">✕</button>
+            </div>
+            <div class="info-modal-body">
+                <div class="info-tipo-grid">
+                    <button class="info-tipo-btn" onclick="abrirFormComando()" data-icon="📝">
+                        <span class="info-tipo-icon">📝</span>
+                        <span>Comando</span>
+                    </button>
+                    <button class="info-tipo-btn" onclick="abrirFormSite()" data-icon="🌐">
+                        <span class="info-tipo-icon">🌐</span>
+                        <span>Site</span>
+                    </button>
+                    <button class="info-tipo-btn" onclick="abrirFormSenha()" data-icon="🔐">
+                        <span class="info-tipo-icon">🔐</span>
+                        <span>Senha</span>
+                    </button>
+                    <button class="info-tipo-btn" onclick="abrirFormAnotacao()" data-icon="📌">
+                        <span class="info-tipo-icon">📌</span>
+                        <span>Anotação</span>
+                    </button>
+                    <button class="info-tipo-btn" onclick="abrirFormDocumento()" data-icon="📄">
+                        <span class="info-tipo-icon">📄</span>
+                        <span>Documento</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: EDITAR/NOVO REGISTRO -->
+    <div id="info-modal-editar" class="info-modal">
+        <div class="info-modal-content" style="max-height: 90vh; overflow-y: auto;">
+            <div class="info-modal-header">
+                <h3 id="info-modal-titulo">Novo Registro</h3>
+                <button class="info-modal-close" onclick="fecharFormEditar()">✕</button>
+            </div>
+            <div class="info-modal-body">
+                <input type="hidden" id="info-edit-id">
+                <input type="hidden" id="info-edit-tipo">
+
+                <!-- Campos comuns -->
+                <div class="info-form-group">
+                    <label>Título *</label>
+                    <input type="text" id="info-f-titulo" placeholder="Ex: Gmail" autocomplete="off">
+                </div>
+
+                <div class="info-form-group">
+                    <label>Categoria *</label>
+                    <select id="info-f-categoria"></select>
+                </div>
+
+                <!-- SITE -->
+                <div id="info-form-site" class="info-form-type" style="display:none;">
+                    <!-- URLs (múltiplas, recolhível) -->
+                    <div class="info-form-group info-collapsible" id="info-urls-wrap">
+                        <div class="info-collapse-header" onclick="toggleUrlsCollapse()">
+                            <span class="info-collapse-arrow">▼</span>
+                            <span>URLs (<span id="info-urls-count">1</span>)</span>
+                        </div>
+                        <div class="info-collapse-body">
+                            <div id="info-urls-list"></div>
+                            <button type="button" class="info-add-url-btn" onclick="adicionarUrl()">➕ Adicionar URL</button>
+                        </div>
+                    </div>
+
+                    <!-- Usuário (recolhível) -->
+                    <div class="info-form-group info-collapsible collapsed" id="info-site-sec-usuario">
+                        <div class="info-collapse-header" onclick="toggleSiteSection('usuario')">
+                            <span class="info-collapse-arrow">▼</span>
+                            <span>Usuário</span>
+                        </div>
+                        <div class="info-collapse-body">
+                            <input type="text" id="info-f-usuario" placeholder="user@email.com">
+                        </div>
+                    </div>
+
+                    <!-- Senha (recolhível) -->
+                    <div class="info-form-group info-collapsible collapsed" id="info-site-sec-senha">
+                        <div class="info-collapse-header" onclick="toggleSiteSection('senha')">
+                            <span class="info-collapse-arrow">▼</span>
+                            <span>Senha</span>
+                        </div>
+                        <div class="info-collapse-body">
+                            <div class="info-senha-group">
+                                <input type="password" id="info-f-senha-site" placeholder="••••••••" style="flex: 1;">
+                                <button type="button" class="info-btn-olho" onclick="toggleSenhaVisibility('info-f-senha-site', this)">👁️</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observações (recolhível) -->
+                    <div class="info-form-group info-collapsible collapsed" id="info-site-sec-observacoes">
+                        <div class="info-collapse-header" onclick="toggleSiteSection('observacoes')">
+                            <span class="info-collapse-arrow">▼</span>
+                            <span>Observações</span>
+                        </div>
+                        <div class="info-collapse-body">
+                            <textarea id="info-f-observacoes-site" rows="3" placeholder="Ex: Acesso ao painel de controle"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SENHA -->
+                <div id="info-form-senha" class="info-form-type" style="display:none;">
+                    <div class="info-form-group">
+                        <label>Site/Serviço *</label>
+                        <input type="text" id="info-f-site-servico" placeholder="Ex: Gmail, GitHub, Firebase">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Usuário *</label>
+                        <input type="text" id="info-f-usuario-senha" placeholder="user@email.com">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Senha *</label>
+                        <div class="info-senha-group">
+                            <input type="password" id="info-f-senha" placeholder="••••••••" style="flex: 1;">
+                            <button type="button" class="info-btn-olho" onclick="toggleSenhaVisibility('info-f-senha', this)">👁️</button>
+                        </div>
+                    </div>
+                    <div class="info-form-group">
+                        <label>Observações</label>
+                        <textarea id="info-f-observacoes-senha" rows="3" placeholder="Ex: Senha da conta principal"></textarea>
+                    </div>
+                </div>
+
+                <!-- ANOTAÇÃO -->
+                <div id="info-form-anotacao" class="info-form-type" style="display:none;">
+                    <div class="info-form-group">
+                        <label>Conteúdo *</label>
+                        <textarea id="info-f-conteudo-anotacao" rows="7" placeholder="Suas anotações aqui..."></textarea>
+                    </div>
+                </div>
+
+                <!-- DOCUMENTO -->
+                <div id="info-form-documento" class="info-form-type" style="display:none;">
+                    <div class="info-form-group">
+                        <label>Arquivo *</label>
+                        <input type="file" id="info-f-arquivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg">
+                        <small>Máximo 5MB (PDF, Word, Excel, texto, imagens)</small>
+                    </div>
+                    <div class="info-form-group">
+                        <label>Descrição</label>
+                        <textarea id="info-f-descricao-doc" rows="3" placeholder="Ex: Contrato de serviço"></textarea>
+                    </div>
+                    <div id="info-arquivo-carregado" style="display:none;" class="info-arquivo-status">
+                        <span id="info-arquivo-nome"></span>
+                        <button type="button" onclick="limparArquivo()">🗑️</button>
+                    </div>
+                </div>
+
+                <!-- COMANDO -->
+                <div id="info-form-comando" class="info-form-type" style="display:none;">
+                    <div class="info-form-group">
+                        <label>Tags</label>
+                        <input type="text" id="info-f-tags" placeholder="Ex: git, terminal, linux (separadas por vírgula)">
+                    </div>
+                    <div class="info-form-group info-cmds-section">
+                        <label>Comandos *</label>
+                        <div id="info-cmds-list"></div>
+                        <div class="info-cmds-actions">
+                            <button type="button" class="info-add-cmd-btn" onclick="adicionarLinhaComando()">➕ Adicionar Linha</button>
+                            <button type="button" class="info-add-group-btn" onclick="adicionarGrupoComando()">📁 Adicionar Grupo</button>
+                        </div>
+                    </div>
+                    <div class="info-form-group">
+                        <label>Sistema / Local de uso</label>
+                        <input type="text" id="info-f-sistema" placeholder="Ex: Linux, VS Code, Terminal">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Observações</label>
+                        <textarea id="info-f-observacoes-cmd" rows="3" placeholder="Notas adicionais sobre este comando..."></textarea>
+                    </div>
+                </div>
+
+                <!-- FAVORITO (comum a todos) -->
+                <label class="info-fav-check">
+                    <input type="checkbox" id="info-f-favorito">
+                    <span>⭐ Marcar como favorito</span>
+                </label>
+            </div>
+            <div class="info-modal-footer">
+                <button class="info-btn-cancelar" onclick="fecharFormEditar()">Cancelar</button>
+                <button class="info-btn-salvar" onclick="salvarInformacao()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: NOVA CATEGORIA -->
+    <div id="info-modal-cat" class="info-modal">
+        <div class="info-modal-content">
+            <div class="info-modal-header">
+                <h3>➕ Nova Categoria</h3>
+                <button class="info-modal-close" onclick="fecharFormCategoria()">✕</button>
+            </div>
+            <div class="info-modal-body">
+                <div class="info-form-group">
+                    <label>Nome da categoria *</label>
+                    <input type="text" id="info-f-cat-nome" placeholder="Ex: DevOps" autocomplete="off">
+                </div>
+            </div>
+            <div class="info-modal-footer">
+                <button class="info-btn-cancelar" onclick="fecharFormCategoria()">Cancelar</button>
+                <button class="info-btn-salvar" onclick="salvarCategoria()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="info-toast" class="info-toast"></div>
+
+    <!-- CRYPTO-JS (para criptografia local de senhas) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="informacoes.js?v=20260612-ux-v1"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

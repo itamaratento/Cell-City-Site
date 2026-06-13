@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta &amp; Evolução — Cell City CRM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="relatorios.css">
+  <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header>
+  <span class="header-title">📊 Meta &amp; Evolução</span>
+</header>
+
+<!-- ============================================================
+     TOOLBAR: modo Mês / Semana + badge ao vivo
+     ============================================================ -->
+<div class="toolbar-modo">
+  <div class="modo-toggle">
+    <button class="modo-btn ativo" id="btn-modo-mes"   data-modo="mes">Mês</button>
+    <button class="modo-btn"        id="btn-modo-semana" data-modo="semana">Semana</button>
+  </div>
+  <span class="live-badge" id="live-badge" style="display:none">
+    <span class="live-dot"></span>ao vivo
+  </span>
+</div>
+
+<!-- ============================================================
+     PAINEL GERENCIAL — atualização em tempo real
+     ============================================================ -->
+<div class="painel" id="painel">
+
+  <!-- Cabeçalho: período atual + status em andamento -->
+  <div class="painel-top">
+    <div class="painel-periodo-wrap">
+      <span class="painel-periodo-nome" id="painel-periodo-nome">Carregando...</span>
+      <span class="badge-andamento" id="badge-andamento" style="display:none">em andamento</span>
+    </div>
+    <div class="painel-periodo-detalhe" id="painel-periodo-detalhe"></div>
+  </div>
+
+  <!-- CRESCIMENTO — número herói -->
+  <div class="painel-cresc-bloco">
+    <div class="painel-cresc-num" id="painel-cresc-num">—</div>
+    <div class="painel-cresc-diff" id="painel-cresc-diff"></div>
+    <div class="painel-cresc-label" id="painel-cresc-label">crescimento no mesmo período</div>
+  </div>
+
+  <!-- Comparação lado a lado: período anterior vs período atual -->
+  <div class="painel-vs">
+    <div class="painel-vs-item painel-vs-ant">
+      <div class="painel-vs-label" id="vs-ant-label">—</div>
+      <div class="painel-vs-valor" id="vs-ant-valor">—</div>
+      <div class="painel-vs-sub"   id="vs-ant-sub"></div>
+    </div>
+    <div class="painel-vs-sep">vs</div>
+    <div class="painel-vs-item painel-vs-atual">
+      <div class="painel-vs-label" id="vs-atual-label">—</div>
+      <div class="painel-vs-valor" id="vs-atual-valor">—</div>
+      <div class="painel-vs-sub"   id="vs-atual-sub"></div>
+    </div>
+  </div>
+
+  <!-- Divisor -->
+  <div class="painel-divisor"></div>
+
+  <!-- Meta + barra + indicadores -->
+  <div class="painel-meta" id="painel-meta">
+
+    <div class="meta-top">
+      <div class="meta-top-left">
+        <span class="meta-badge" id="meta-badge-txt">🤖 Meta automática</span>
+        <span class="meta-num" id="meta-num">—</span>
+      </div>
+      <span class="meta-base" id="meta-base">—</span>
+    </div>
+
+    <div class="meta-barra-wrap">
+      <div class="meta-barra-track">
+        <div class="meta-barra-fill" id="meta-barra-fill" style="width:0%"></div>
+      </div>
+      <span class="meta-barra-pct" id="meta-barra-pct">0%</span>
+    </div>
+
+    <div id="meta-niveis" class="meta-niveis"></div>
+
+    <div class="meta-indicadores">
+      <div class="ind-item">
+        <span class="ind-label">Realizado</span>
+        <span class="ind-valor ind-verde" id="ind-realizado">—</span>
+      </div>
+      <div class="ind-item">
+        <span class="ind-label">Faltam</span>
+        <span class="ind-valor" id="ind-falta">—</span>
+      </div>
+      <div class="ind-item">
+        <span class="ind-label">Por dia</span>
+        <span class="ind-valor ind-amarelo" id="ind-pdia">—</span>
+      </div>
+      <div class="ind-item">
+        <span class="ind-label" id="ind-dias-label">Dias restantes</span>
+        <span class="ind-valor ind-sec" id="ind-dias">—</span>
+      </div>
+    </div>
+
+    <div class="meta-status-row">
+      <span class="meta-status" id="meta-status"></span>
+    </div>
+
+  </div>
+
+  <!-- Sem dados suficientes -->
+  <div class="painel-sem-dados" id="painel-sem-dados" style="display:none">
+    ⚠️ Dados insuficientes para gerar meta automática — continue registrando lançamentos no Caixa
+  </div>
+
+</div>
+
+<!-- ============================================================
+     AUDITORIA DE DADOS (temporária — confirmar integração)
+     ============================================================ -->
+<div class="auditoria-wrap">
+  <button class="auditoria-toggle" id="auditoria-toggle">🔍 Auditoria de dados — toque para expandir</button>
+  <div class="auditoria-corpo" id="auditoria-corpo" style="display:none"></div>
+</div>
+
+<!-- ============================================================
+     TOOLBAR GRÁFICOS
+     ============================================================ -->
+<div class="charts-toolbar">
+  <span class="charts-toolbar-label">Comparar anos:</span>
+  <div class="anos-lista" id="anos-lista">
+    <span class="anos-loading">carregando...</span>
+  </div>
+</div>
+
+<!-- ============================================================
+     GRÁFICOS — janela 6 meses, mês atual centralizado
+     ============================================================ -->
+<div class="graficos-area">
+
+  <div class="grafico-card">
+    <div class="grafico-card-top">
+      <span class="grafico-titulo" id="titulo-fat">Faturamento — últimos 6 meses</span>
+      <div class="grafico-legenda" id="legenda-fat"></div>
+    </div>
+    <div class="grafico-destaque" id="grafico-destaque-fat"></div>
+    <div class="grafico-wrap">
+      <canvas id="chart-fat"></canvas>
+    </div>
+  </div>
+
+  <div class="grafico-card">
+    <div class="grafico-card-top">
+      <span class="grafico-titulo" id="titulo-os">OS abertas — últimos 6 meses</span>
+      <div class="grafico-legenda" id="legenda-os"></div>
+    </div>
+    <div class="grafico-destaque" id="grafico-destaque-os"></div>
+    <div class="grafico-wrap">
+      <canvas id="chart-os"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-txt">Conectando ao banco de dados...</div>
+</div>
+
+<script type="module" src="relatorios.js"></script>
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/favoritos.js" type="module"></script>
+<script src="../../shared/dock.js" type="module"></script>
+</body>
+</html>

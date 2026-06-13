@@ -184,11 +184,11 @@
 
     </div><!-- /sidebar-nav -->
 
-    <!-- Rodapé fixo: Alarme (não reordenável) -->
+    <!-- Rodapé fixo -->
     <div class="sidebar-footer">
-      <button class="sidebar-util" onclick="openAlarmePanel()" title="Alarme OS" data-tip="Alarme">
-        <span class="sidebar-icon">🔔</span>
-        <span class="sidebar-label">Alarme</span>
+      <button class="sidebar-util" onclick="openBackupModal()" title="Backup dos dados" data-tip="Backup">
+        <span class="sidebar-icon">💾</span>
+        <span class="sidebar-label">Backup</span>
       </button>
     </div>
 
@@ -1193,5 +1193,195 @@
   }
 </script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+
+<!-- ========== MODAL BACKUP ========== -->
+<style>
+  #backup-modal { display:none; position:fixed; inset:0; z-index:99999;
+    background:rgba(0,0,0,0.72); backdrop-filter:blur(4px);
+    align-items:center; justify-content:center; }
+  #backup-modal-box { background:#111217; border:1px solid rgba(0,200,83,0.28);
+    border-radius:16px; padding:28px 24px; max-width:370px; width:90%;
+    box-shadow:0 0 48px rgba(0,200,83,0.12); }
+  #backup-modal-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+  #backup-modal-hdr h3 { margin:0; font-size:1.08rem; color:#e0e0e0; }
+  #backup-modal-close { background:none; border:none; color:#666; font-size:1.5rem;
+    cursor:pointer; line-height:1; padding:0 4px; transition:color 150ms; }
+  #backup-modal-close:hover { color:#ccc; }
+  .bk-desc { color:#666; font-size:0.8rem; margin:0 0 18px; line-height:1.5; }
+  .bk-slot-info { color:#555; font-size:0.75rem; margin-bottom:14px; }
+  .bk-slot-info span { color:#00c853; font-weight:600; }
+  .bk-tipo-btn { display:flex; align-items:center; gap:10px; width:100%;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.09);
+    border-radius:10px; color:#c0c0c0; padding:13px 16px; font-size:0.88rem;
+    font-weight:500; cursor:pointer; text-align:left;
+    transition:background 200ms, border-color 200ms, color 200ms; margin-bottom:8px; }
+  .bk-tipo-btn:hover { background:rgba(0,200,83,0.1); border-color:rgba(0,200,83,0.32); color:#e8e8e8; }
+  .bk-tipo-btn:disabled { opacity:0.45; cursor:not-allowed; }
+  .bk-grande { border-color:rgba(255,193,7,0.18); color:#c8b840; }
+  .bk-grande:hover { background:rgba(255,193,7,0.08) !important; border-color:rgba(255,193,7,0.38) !important; color:#e0d060 !important; }
+  .bk-tipo-btn .bk-sub { font-size:0.72rem; color:#555; display:block; margin-top:2px; }
+  #backup-status { margin-top:14px; font-size:0.8rem; color:#666; min-height:20px;
+    text-align:center; line-height:1.5; }
+</style>
+
+<div id="backup-modal">
+  <div id="backup-modal-box">
+    <div id="backup-modal-hdr">
+      <h3>💾 Criar Backup</h3>
+      <button id="backup-modal-close" onclick="closeBackupModal()" title="Fechar">×</button>
+    </div>
+    <p class="bk-desc">Exporta todos os dados do Firestore como arquivo JSON. Selecione o tipo de backup:</p>
+    <div id="bk-slot-preview" class="bk-slot-info"></div>
+    <button class="bk-tipo-btn" onclick="runBackup('DIARIO')">
+      <span>📅</span>
+      <span>Backup Diário<small class="bk-sub">Slots 01 e 02 — rotação automática</small></span>
+    </button>
+    <button class="bk-tipo-btn" onclick="runBackup('SEMANAL')">
+      <span>🗓️</span>
+      <span>Backup Semanal<small class="bk-sub">Slots 03 e 04 — rotação automática</small></span>
+    </button>
+    <button class="bk-tipo-btn" onclick="runBackup('MENSAL')">
+      <span>📆</span>
+      <span>Backup Mensal<small class="bk-sub">Slots 05 e 06 — rotação automática</small></span>
+    </button>
+    <button class="bk-tipo-btn bk-grande" onclick="runBackup('GRANDE_MUDANCA')">
+      <span>⚠️</span>
+      <span>Grande Mudança<small class="bk-sub">Slots 07 e 08 — antes de mudanças críticas</small></span>
+    </button>
+    <div id="backup-status"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var SLOTS = {
+    DIARIO:         ['01-DIARIO',        '02-DIARIO'],
+    SEMANAL:        ['03-SEMANAL',       '04-SEMANAL'],
+    MENSAL:         ['05-MENSAL',        '06-MENSAL'],
+    GRANDE_MUDANCA: ['07-GRANDE-MUDANCA','08-GRANDE-MUDANCA'],
+  };
+  var COLECOES = [
+    'os','caixa_lancamentos','clientes','agendamentos','pre_os',
+    'estoque_produtos','posvenda_contatos','solicitacoes_diagnostico',
+    'produtos','diario_registros','informacoes','backup_logs',
+  ];
+
+  function nextSlot(tipo) {
+    var slots = SLOTS[tipo];
+    var last  = localStorage.getItem('cc_bk_' + tipo);
+    return last === slots[0] ? slots[1] : slots[0];
+  }
+
+  function setStatus(msg, state) {
+    var el = document.getElementById('backup-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = state === 'ok' ? '#00c853' : state === 'err' ? '#f44336' : '#888';
+  }
+
+  function setBtns(disabled) {
+    document.querySelectorAll('.bk-tipo-btn').forEach(function (b) { b.disabled = disabled; });
+  }
+
+  function updateSlotPreview() {
+    var el = document.getElementById('bk-slot-preview');
+    if (!el) return;
+    var parts = Object.keys(SLOTS).map(function (t) {
+      return '<b>' + t.replace('_', ' ') + '</b>: próximo slot → <span>' + nextSlot(t) + '</span>';
+    });
+    el.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+  }
+
+  window.openBackupModal = function () {
+    var m = document.getElementById('backup-modal');
+    if (m) { m.style.display = 'flex'; setStatus(''); setBtns(false); updateSlotPreview(); }
+  };
+
+  window.closeBackupModal = function () {
+    var m = document.getElementById('backup-modal');
+    if (m) m.style.display = 'none';
+  };
+
+  window.runBackup = async function (tipo) {
+    var db = window.dbFirestore, FB = window.FirebaseFirestore;
+    if (!db || !FB || !FB.getDocs || !FB.collection) {
+      setStatus('Firestore não disponível. Aguarde a conexão.', 'err'); return;
+    }
+    setBtns(true);
+    setStatus('⏳ Exportando dados do Firestore...');
+
+    var slot  = nextSlot(tipo);
+    var agora = new Date();
+    var data  = {};
+
+    try {
+      for (var i = 0; i < COLECOES.length; i++) {
+        var col = COLECOES[i];
+        try {
+          var snap = await FB.getDocs(FB.collection(db, col));
+          data[col] = [];
+          snap.forEach(function (d) { var obj = d.data(); obj._id = d.id; data[col].push(obj); });
+        } catch (e) {
+          data[col] = { _erro: e.message };
+        }
+      }
+
+      var totalDocs = Object.values(data).reduce(function (s, v) {
+        return s + (Array.isArray(v) ? v.length : 0);
+      }, 0);
+
+      var meta = {
+        tipo: tipo, slot: slot,
+        dataISO: agora.toISOString(),
+        data: agora.toLocaleDateString('pt-BR'),
+        hora: agora.toLocaleTimeString('pt-BR'),
+        totalDocs: totalDocs, versao: '2.0', sistema: 'Cell City CRM',
+      };
+
+      var payload = { __meta: meta };
+      Object.keys(data).forEach(function (k) { payload[k] = data[k]; });
+
+      var json = JSON.stringify(payload, null, 2);
+      var blob = new Blob([json], { type: 'application/json' });
+      var url  = URL.createObjectURL(blob);
+      var nome = 'backup_' + tipo + '.json';
+
+      var a = document.createElement('a');
+      a.href = url; a.download = nome;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+
+      localStorage.setItem('cc_bk_' + tipo, slot);
+
+      try {
+        await FB.addDoc(FB.collection(db, 'backup_logs'), {
+          tipo: tipo, slot: slot,
+          dataISO: agora.toISOString(),
+          data: agora.toLocaleDateString('pt-BR'),
+          hora: agora.toLocaleTimeString('pt-BR'),
+          totalDocs: totalDocs, arquivo: nome,
+          colecoes: COLECOES,
+        });
+      } catch (e) { console.warn('[Backup] log Firestore falhou:', e.message); }
+
+      setStatus('✅ ' + nome + '\n' + totalDocs + ' documentos exportados', 'ok');
+      updateSlotPreview();
+
+    } catch (e) {
+      setStatus('❌ Erro: ' + e.message, 'err');
+    } finally {
+      setBtns(false);
+    }
+  };
+
+  document.addEventListener('click', function (e) {
+    if (e.target === document.getElementById('backup-modal')) closeBackupModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeBackupModal();
+  });
+})();
+</script>
+
 </body>
 </html>

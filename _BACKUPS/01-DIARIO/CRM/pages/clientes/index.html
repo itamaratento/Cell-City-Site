@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - Configurações de Impressão</title>
+    <link rel="stylesheet" href="clientes.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle">Impressora</h1>
+    </header>
+
+    <main>
+        <div class="cfg-content">
+
+            <!-- DADOS DA LOJA -->
+            <div class="cfg-section">
+                <div class="cfg-section-title">🏪 Dados da Loja</div>
+                <div class="cfg-form-group">
+                    <label>Nome</label>
+                    <input type="text" id="loja-nome" placeholder="Ex: Cell City Informática" value="Cell City Informática">
+                </div>
+                <div class="cfg-form-group">
+                    <label>Endereço</label>
+                    <input type="text" id="loja-endereco" placeholder="Rua, número, bairro, cidade" value="Rua 6.455, Setor Central - Goiânia">
+                </div>
+                <div class="cfg-form-group">
+                    <label>WhatsApp</label>
+                    <input type="text" id="loja-whatsapp" placeholder="(62) 99999-9999" value="(62) 98160-5863">
+                </div>
+                <div class="cfg-form-group">
+                    <label>CNPJ</label>
+                    <input type="text" id="loja-cnpj" placeholder="00.000.000/0001-00">
+                </div>
+            </div>
+
+            <!-- LOGO -->
+            <div class="cfg-section">
+                <div class="cfg-section-title">🖼️ Logo da Loja</div>
+                <div class="cfg-logo-area">
+                    <div class="cfg-logo-preview" id="logo-preview">
+                        <span class="cfg-logo-placeholder">Sem logo</span>
+                    </div>
+                    <div class="cfg-logo-actions">
+                        <label class="cfg-btn-upload">
+                            📁 Escolher imagem
+                            <input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)">
+                        </label>
+                        <button class="cfg-btn-remove" id="btn-remove-logo" onclick="removeLogo()" style="display:none">🗑️ Remover</button>
+                    </div>
+                    <p class="cfg-hint">Recomendado: PNG com fundo transparente · Máximo 500kb</p>
+                </div>
+            </div>
+
+            <!-- TERMOS DE GARANTIA -->
+            <div class="cfg-section">
+                <div class="cfg-section-title">📋 Termos de Garantia</div>
+                <p class="cfg-hint" style="margin-bottom:16px">Edite os textos que aparecerão na impressão. Na hora de imprimir você escolhe quais incluir.</p>
+                <div id="garantias-list"></div>
+                <button class="cfg-btn-add" onclick="addGarantia()">+ Adicionar nova garantia</button>
+            </div>
+
+            <!-- SALVAR -->
+            <button class="cfg-btn-save" id="btn-save" onclick="saveConfig()">💾 Salvar Configurações</button>
+
+        </div>
+    </main>
+
+    <div class="cfg-toast" id="toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="clientes.js"></script>
+    <script>
+    window.addEventListener('load', function() {
+        if (window.innerWidth <= 768) {
+            var bar = document.getElementById('crm-brand-bar');
+            var title = bar && bar.querySelector('.crm-page-title');
+            if (bar && title) {
+                bar.style.flexWrap = 'wrap';
+                bar.style.paddingBottom = '10px';
+                title.style.cssText = 'position:static !important; flex:1 1 100% !important; text-align:center !important; font-size:16px !important; font-weight:800 !important; margin-top:4px !important; left:auto !important; right:auto !important;';
+            }
+        }
+    });
+    </script>
+<script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

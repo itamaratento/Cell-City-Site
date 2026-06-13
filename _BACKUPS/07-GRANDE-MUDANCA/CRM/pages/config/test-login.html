@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Login — Cell City CRM</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #e0e0e0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .card {
+            background: #161616;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 32px 28px;
+            width: 100%;
+            max-width: 420px;
+        }
+        h1 {
+            font-size: 20px;
+            text-align: center;
+            margin-bottom: 4px;
+            color: #00C853;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 24px;
+        }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #222;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: #00C853; }
+        .error {
+            color: #EF4444;
+            font-size: 13px;
+            margin: 8px 0;
+            min-height: 20px;
+            font-weight: 600;
+        }
+        .success {
+            color: #00C853;
+            font-size: 13px;
+            margin: 8px 0;
+            min-height: 20px;
+            font-weight: 600;
+        }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-primary { background: #00C853; color: #fff; }
+        .btn-primary:hover:not(:disabled) { background: #00E676; }
+        .btn-secondary { background: #333; color: #ccc; }
+        .btn-secondary:hover:not(:disabled) { background: #444; }
+        .btn-danger { background: #EF4444; color: #fff; }
+        .btn-danger:hover:not(:disabled) { background: #DC2626; }
+        .log-box {
+            margin-top: 16px;
+            background: #0d0d0d;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 11px;
+            line-height: 1.6;
+            max-height: 320px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .log-box .info  { color: #60A5FA; }
+        .log-box .ok    { color: #34D399; }
+        .log-box .err   { color: #F87171; }
+        .log-box .warn  { color: #FBBF24; }
+        .log-box .step  { color: #A78BFA; font-weight: 700; }
+        .sep { border: 0; border-top: 1px solid #222; margin: 12px 0; }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+        .badge-green  { background: rgba(0,200,83,0.15); color: #00C853; }
+        .badge-red    { background: rgba(239,68,68,0.15); color: #EF4444; }
+        .badge-yellow { background: rgba(251,191,36,0.15); color: #FBBF24; }
+        .badge-blue   { background: rgba(96,165,250,0.15); color: #60A5FA; }
+        .status-bar {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .status-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-green  { background: #00C853; }
+        .dot-red    { background: #EF4444; }
+        .dot-gray   { background: #555; }
+        .dot-yellow { background: #FBBF24; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔐 Teste de Login</h1>
+        <p class="subtitle">Diagnóstico completo do fluxo de autenticação</p>
+
+        <!-- Status Bar -->
+        <div class="status-bar" id="statusBar">
+            <span class="status-dot dot-gray" id="statusDot"></span>
+            <span style="font-size:12px;color:#888;" id="statusText">Aguardando...</span>
+        </div>
+
+        <label for="user">Usuário</label>
+        <input type="text" id="user" placeholder="admin" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false">
+
+        <label for="pass">Senha</label>
+        <input type="password" id="pass" placeholder="cellcity" autocomplete="off">
+
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+
+        <div class="btn-row">
+            <button class="btn-primary" id="btnLogin" onclick="fazerLogin()">Entrar</button>
+            <button class="btn-secondary" onclick="testarFallback()">Testar Fallback</button>
+        </div>
+        <div class="btn-row">
+            <button class="btn-danger" onclick="limparLog()" style="flex:0.4">Limpar</button>
+            <button class="btn-secondary" onclick="testarFirestore()" style="flex:0.6">Testar Firestore</button>
+        </div>
+
+        <hr class="sep">
+        <div style="font-size:11px;color:#666;margin-bottom:6px;">📋 Depuração (console + tela):</div>
+        <div class="log-box" id="log">
+<span class="info">🧪 Página de teste carregada.</span>
+<span class="info">📌 Service Worker: NÃO utilizado nesta página.</span>
+<span class="info">📌 Script: <i>type="text/javascript"</i> (NÃO é módulo ES6 — onclick funciona).</span>
+        </div>
+    </div>
+
+    <!-- ===== FIREBASE SDK via CDN (global, sem módulo ES6) ===== -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════
+    // CONFIGURAÇÃO
+    // ═══════════════════════════════════════════════════════════
+
+    const FALLBACK_USER = 'admin';
+    const FALLBACK_SALT = 'cellcity_emergency_fallback_salt_2024';
+    const SESSION_KEY   = 'cc_acesso';
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+        authDomain: "cellcity-crm.firebaseapp.com",
+        projectId: "cellcity-crm",
+        storageBucket: "cellcity-crm.firebasestorage.app",
+        messagingSenderId: "645609867368",
+        appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
+    };
+
+    let firebaseApp = null;
+    let firestore   = null;
+    let fbInicializado = false;
+
+    // ═══════════════════════════════════════════════════════════
+    // HELPERS
+    // ═══════════════════════════════════════════════════════════
+
+    function $(id) { return document.getElementById(id); }
+
+    async function sha256(str) {
+        const data = new TextEncoder().encode(str);
+        const buf  = await crypto.subtle.digest('SHA-256', data);
+        return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function log(msg, tipo) {
+        const el = $('log');
+        if (!el) return;
+        const cor = tipo === 'ok'   ? 'ok'   :
+                    tipo === 'err'  ? 'err'  :
+                    tipo === 'warn' ? 'warn' :
+                    tipo === 'step' ? 'step' : 'info';
+        el.innerHTML += `<span class="${cor}">${msg}</span>\n`;
+        el.scrollTop = el.scrollHeight;
+        console.log(msg.replace(/<[^>]*>/g, ''));
+    }
+
+    function limparLog() {
+        $('log').innerHTML = '';
+        $('error').textContent = '';
+        $('success').textContent = '';
+        setStatus('ocioso', 'gray');
+        log('🧹 Log limpo.', 'info');
+    }
+
+    function setStatus(texto, cor) {
+        const dot = $('statusDot');
+        const txt = $('statusText');
+        dot.className = 'status-dot dot-' + (cor || 'gray');
+        txt.textContent = texto;
+    }
+
+    function mostrarErro(msg) {
+        $('error').textContent = msg;
+        $('success').textContent = '';
+        setStatus('falha', 'red');
+        log('❌ ' + msg, 'err');
+    }
+
+    function mostrarSucesso(msg) {
+        $('success').textContent = msg;
+        $('error').textContent = '';
+        setStatus('sucesso', 'green');
+        log('✅ ' + msg, 'ok');
+    }
+
+    function desabilitarBotoes(desabilitar) {
+        document.querySelectorAll('button').forEach(b => b.disabled = desabilitar);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // INICIALIZAÇÃO
+    // ═══════════════════════════════════════════════════════════
+
+    async function inicializarFirebase() {
+        log('--- ETAPA 0: Inicializar Firebase ---', 'step');
+        try {
+            log('🔧 Criando app Firebase...', 'info');
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            log('✅ App Firebase criado.', 'ok');
+
+            log('🔧 Conectando Firestore...', 'info');
+            firestore = firebase.firestore(firebaseApp);
+            log('✅ Firestore conectado.', 'ok');
+
+            // Teste rápido de conectividade
+            log('🔧 Testando conectividade (ping)...', 'info');
+            try {
+                await firestore.doc('config/test').get({ source: 'server' });
+                log('✅ Firestore online (leitura OK).', 'ok');
+            } catch (e) {
+                log('⚠️  Firestore offline? Usando cache local.', 'warn');
+                log('   Erro: ' + e.message, 'warn');
+            }
+
+            fbInicializado = true;
+            log('✅ Firebase pronto para uso.', 'ok');
+            return true;
+        } catch (e) {
+            log('❌ Falha ao inicializar Firebase: ' + e.message, 'err');
+            fbInicializado = false;
+            return false;
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // FLUXO COMPLETO DE LOGIN
+    // ═══════════════════════════════════════════════════════════
+
+    async function fazerLogin() {
+        $('error').textContent = '';
+        $('success').textContent = '';
+        desabilitarBotoes(true);
+        $('btnLogin').textContent = '⏳ Entrando...';
+
+        log('═══════════════════════════════════════════', 'step');
+        log('🚀 INICIANDO FLUXO COMPLETO DE LOGIN', 'step');
+        log('═══════════════════════════════════════════', 'step');
+
+        // ── ETAPA 1: LER CAMPOS ──
+        log('--- ETAPA 1: Leitura dos campos ---', 'step');
+        const usuario = $('user').value.trim().toLowerCase();
+        const senha   = $('pass').value;
+        log('📝 Usuário digitado: "' + usuario + '"', 'info');
+        log('📝 Senha digitada: ' + (senha ? '*** (oculta, ' + senha.length + ' caracteres)' : '*** (vazia)'), 'info');
+        if (senha) log('   Senha (debug): "' + senha + '"', 'warn');
+
+        if (!usuario) { mostrarErro('Preencha o usuário.'); desabilitarBotoes(false); $('btnLogin').textContent = 'Entrar'; return; }
+        if (!senha)   { mostrarErro('Preencha a senha.');   desabilitarBotoes(false); $('btnLogin').textContent = 'Entrar'; return; }
+
+        // ── ETAPA 2: VERIFICAR FALLBACK (admin/cellcity) ──
+        log('--- ETAPA 2: Verificar fallback de emergência ---', 'step');
+        log('🔍 Comparando com usuário fallback: "' + FALLBACK_USER + '"', 'info');
+
+        if (usuario === FALLBACK_USER) {
+            log('✅ Usuário corresponde ao fallback! Calculando hash...', 'ok');
+            
+            const hashEsperado = await sha256(FALLBACK_SALT + 'cellcity');
+            const hashDigitado = await sha256(FALLBACK_SALT + senha);
+            
+            log('   Salt usado: "' + FALLBACK_SALT + '"', 'info');
+            log('   Hash esperado (admin+cellcity): ' + hashEsperado, 'info');
+            log('   Hash calculado (admin+' + senha + '): ' + hashDigitado, 'info');
+
+            if (hashDigitado === hashEsperado) {
+                log('✅ FALLBACK ACEITO! Credenciais de emergência válidas.', 'ok');
+                log('--- ETAPA 3: Saltada (fallback não precisa de Firestore) ---', 'step');
+                log('--- ETAPA 4: Validação OK via fallback ---', 'step');
+                setStatus('fallback ativo', 'yellow');
+
+                // ── ETAPA 5: Sessão + Redirect ──
+                log('--- ETAPA 5: Gravar sessão ---', 'step');
+                sessionStorage.setItem(SESSION_KEY, 'ok');
+                log('✅ sessionStorage["' + SESSION_KEY + '"] = "ok"', 'ok');
+                
+                log('--- ETAPA 6: Redirecionar ---', 'step');
+                mostrarSucesso('Fallback aceito! Redirecionando...');
+                log('➡️  Redirecionando para /CRM/pages/dashboard/index.html', 'step');
+                
+                setTimeout(() => {
+                    window.location.href = '/CRM/pages/dashboard/index.html';
+                }, 800);
+                return;
+            } else {
+                log('❌ Fallback: hash não confere (senha incorreta para admin).', 'err');
+                log('   Dica: A senha do fallback é "cellcity" (tudo minúsculo).', 'warn');
+            }
+        } else {
+            log('ℹ️  Usuário "' + usuario + '" não é o fallback "' + FALLBACK_USER + '".', 'info');
+            log('   Prosseguindo com verificação no Firestore...', 'info');
+        }
+
+        // ── ETAPA 3: LER DADOS DO FIRESTORE ──
+        log('--- ETAPA 3: Leitura dos dados do Firestore ---', 'step');
+
+        if (!fbInicializado) {
+            log('⚠️  Firebase não inicializado. Inicializando agora...', 'warn');
+            const ok = await inicializarFirebase();
+            if (!ok) {
+                mostrarErro('Firebase offline. Use o fallback: admin / cellcity');
+                desabilitarBotoes(false);
+                $('btnLogin').textContent = 'Entrar';
+                return;
+            }
+        }
+
+        let acessoDoc = null;
+        try {
+            log('📡 Lendo documento: config/acesso do Firestore...', 'info');
+            const snap = await firestore.doc('config/acesso').get();
+            
+            if (snap.exists) {
+                acessoDoc = snap.data();
+                log('✅ Documento config/acesso ENCONTRADO no Firestore.', 'ok');
+                log('   Dados: usuario="' + (acessoDoc.usuario || '(vazio)') + '", salt="' + (acessoDoc.salt || '(vazio)') + '", hash="' + ((acessoDoc.senhaHash || '').substring(0, 16) + '...') + '"', 'info');
+            } else {
+                log('❌ Documento config/acesso NÃO EXISTE no Firestore.', 'err');
+                log('   O acesso precisa ser configurado primeiro (criar conta).', 'warn');
+                log('   Dica: Use o fallback admin / cellcity para entrar enquanto configura.', 'warn');
+                mostrarErro('Acesso não configurado no Firestore. Use admin / cellcity como fallback.');
+                desabilitarBotoes(false);
+                $('btnLogin').textContent = 'Entrar';
+                return;
+            }
+        } catch (e) {
+            log('❌ ERRO ao ler Firestore: ' + e.message, 'err');
+            log('   Nome: ' + e.name + ' | Código: ' + (e.code || 'N/A'), 'err');
+            log('⚠️  Firestore indisponível. Fallback "' + FALLBACK_USER + '" só funciona se o usuário for "' + FALLBACK_USER + '".', 'warn');
+            mostrarErro('Erro de conexão com Firestore. Use admin / cellcity como fallback.');
+            desabilitarBotoes(false);
+            $('btnLogin').textContent = 'Entrar';
+            return;
+        }
+
+        // ── ETAPA 4: VALIDAÇÃO DA SENHA ──
+        log('--- ETAPA 4: Validação da senha ---', 'step');
+
+        if (usuario !== acessoDoc.usuario) {
+            log('❌ Usuário não confere. Digitado: "' + usuario + '", Esperado: "' + acessoDoc.usuario + '"', 'err');
+            mostrarErro('Usuário ou senha incorretos.');
+            desabilitarBotoes(false);
+            $('btnLogin').textContent = 'Entrar';
+            return;
+        }
+
+        const hashCalculado = await sha256((acessoDoc.salt || '') + senha);
+        log('🔐 Hash calculado: ' + hashCalculado, 'info');
+        log('🔐 Hash esperado:  ' + (acessoDoc.senhaHash || ''), 'info');
+
+        if (hashCalculado !== acessoDoc.senhaHash) {
+            log('❌ SENHA INCORRETA. Hashes não conferem.', 'err');
+            mostrarErro('Usuário ou senha incorretos.');
+            desabilitarBotoes(false);
+            $('btnLogin').textContent = 'Entrar';
+            return;
+        }
+
+        log('✅ SENHA VÁLIDA! Credenciais conferem com o Firestore.', 'ok');
+
+        // ── ETAPA 5: GRAVAR SESSÃO ──
+        log('--- ETAPA 5: Gravar sessão e preparar redirect ---', 'step');
+        sessionStorage.setItem(SESSION_KEY, 'ok');
+        log('✅ sessionStorage["' + SESSION_KEY + '"] = "ok"', 'ok');
+
+        // ── ETAPA 6: REDIRECIONAR ──
+        log('--- ETAPA 6: Redirecionamento para Dashboard ---', 'step');
+        log('➡️  window.location.href = "/CRM/pages/dashboard/index.html"', 'step');
+        mostrarSucesso('Login OK! Redirecionando para o Dashboard...');
+
+        setTimeout(() => {
+            log('🚀 Redirecionando agora.', 'step');
+            window.location.href = '/CRM/pages/dashboard/index.html';
+        }, 800);
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TESTE INDIVIDUAL: FALLBACK
+    // ═══════════════════════════════════════════════════════════
+
+    async function testarFallback() {
+        $('error').textContent = '';
+        $('success').textContent = '';
+        log('═══════════════════════════════════════════', 'step');
+        log('🧪 TESTE ISOLADO: FALLBACK DE EMERGÊNCIA', 'step');
+        log('═══════════════════════════════════════════', 'step');
+
+        log('--- ETAPA 1: Calcular hash esperado ---', 'step');
+        const hashEsperado = await sha256(FALLBACK_SALT + 'cellcity');
+        log('   Salt: "' + FALLBACK_SALT + '"', 'info');
+        log('   Senha: "cellcity"', 'info');
+        log('   Hash resultante: ' + hashEsperado, 'ok');
+
+        log('--- ETAPA 2: Simular login admin/cellcity ---', 'step');
+        const hashTeste = await sha256(FALLBACK_SALT + 'cellcity');
+        const match = hashTeste === hashEsperado;
+        log('   Hash calculado: ' + hashTeste, 'info');
+        log('   Hash esperado:  ' + hashEsperado, 'info');
+        log('   ✅ CONFEREM: ' + match, match ? 'ok' : 'err');
+
+        if (match) {
+            mostrarSucesso('Fallback admin/cellcity funciona! Hash SHA-256 OK.');
+        } else {
+            mostrarErro('Fallback quebrado! Hashes não conferem.');
+        }
+
+        log('--- ETAPA 3: Testar sessionStorage ---', 'step');
+        sessionStorage.setItem(SESSION_KEY, 'ok');
+        const lido = sessionStorage.getItem(SESSION_KEY);
+        log('   Gravado: cc_acesso = "ok"', 'info');
+        log('   Lido:    cc_acesso = "' + lido + '"', 'info');
+        log('   ✅ sessionStorage funcional: ' + (lido === 'ok' ? 'SIM' : 'NÃO'), lido === 'ok' ? 'ok' : 'err');
+
+        log('═══════════════════════════════════════════', 'step');
+        log('✅ Teste de fallback concluído.', 'ok');
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // TESTE ISOLADO: FIRESTORE
+    // ═══════════════════════════════════════════════════════════
+
+    async function testarFirestore() {
+        $('error').textContent = '';
+        $('success').textContent = '';
+        log('═══════════════════════════════════════════', 'step');
+        log('🧪 TESTE ISOLADO: CONECTIVIDADE FIRESTORE', 'step');
+        log('═══════════════════════════════════════════', 'step');
+
+        if (!fbInicializado) {
+            log('⚠️  Firebase não inicializado. Inicializando...', 'warn');
+            const ok = await inicializarFirebase();
+            if (!ok) {
+                mostrarErro('Firebase não pôde ser inicializado.');
+                return;
+            }
+        }
+
+        log('--- Teste 1: Ler config/acesso ---', 'step');
+        try {
+            const snap = await firestore.doc('config/acesso').get({ source: 'server' });
+            if (snap.exists) {
+                const d = snap.data();
+                log('✅ Documento ENCONTRADO (fonte: servidor)', 'ok');
+                log('   usuário: "' + (d.usuario || '—') + '"', 'info');
+                log('   salt:    "' + (d.salt || '—') + '"', 'info');
+                log('   hash:    "' + ((d.senhaHash || '').substring(0, 20) + '...') + '"', 'info');
+                if (d.updatedAt) {
+                    log('   updatedAt: ' + JSON.stringify(d.updatedAt), 'info');
+                }
+            } else {
+                log('❌ Documento NÃO EXISTE (fonte: servidor)', 'err');
+                log('   Tentando cache...', 'warn');
+                const snapCache = await firestore.doc('config/acesso').get({ source: 'cache' });
+                if (snapCache.exists) {
+                    log('⚠️  Encontrado no CACHE local (não no servidor).', 'warn');
+                    log('   Isso indica que o documento foi removido do Firestore.', 'err');
+                } else {
+                    log('❌ Também não está no cache. O documento nunca foi criado.', 'err');
+                }
+            }
+        } catch (e) {
+            log('❌ ERRO: ' + e.message, 'err');
+            log('   Código: ' + (e.code || 'N/A'), 'err');
+        }
+
+        log('--- Teste 2: Ler config/pin ---', 'step');
+        try {
+            const snap = await firestore.doc('config/pin').get();
+            if (snap.exists) {
+                log('✅ Documento config/pin ENCONTRADO.', 'ok');
+            } else {
+                log('ℹ️  Documento config/pin não existe (normal se PIN nunca foi criado).', 'info');
+            }
+        } catch (e) {
+            log('❌ Erro ao ler config/pin: ' + e.message, 'err');
+        }
+
+        log('--- Teste 3: Listar coleções (ping) ---', 'step');
+        try {
+            const snap = await firestore.collection('config').limit(1).get();
+            log('✅ Coleção "config" acessível. Documentos: ' + snap.size, 'ok');
+        } catch (e) {
+            log('❌ Erro ao listar config: ' + e.message, 'err');
+        }
+
+        log('═══════════════════════════════════════════', 'step');
+        log('✅ Teste de Firestore concluído.', 'ok');
+        if (!fbInicializado) {
+            mostrarErro('Firebase não inicializado. Verifique sua conexão.');
+        } else {
+            mostrarSucesso('Teste de Firestore concluído. Veja os detalhes no log.');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // INICIALIZAÇÃO AUTOMÁTICA
+    // ═══════════════════════════════════════════════════════════
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        log('🧪 Ambiente: ' + navigator.userAgent.substring(0, 80) + '...', 'info');
+        log('🔒 HTTPS: ' + (window.isSecureContext ? 'SIM' : 'NÃO (pode causar problemas com SW e crypto)'), window.isSecureContext ? 'ok' : 'warn');
+        log('🔧 Inicializando Firebase em background...', 'info');
+        
+        try {
+            await inicializarFirebase();
+            log('✅ Firebase pronto para consultas.', 'ok');
+            setStatus('Firebase OK', 'green');
+        } catch (e) {
+            log('⚠️  Firebase não inicializou em background: ' + e.message, 'warn');
+            log('   O fallback admin/cellcity ainda funciona sem Firebase.', 'warn');
+            setStatus('Firebase offline (fallback disponível)', 'yellow');
+        }
+    });
+    </script>
+</body>
+</html>

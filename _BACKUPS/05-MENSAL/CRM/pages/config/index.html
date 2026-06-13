@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City - Acesso</title>
+    <link rel="stylesheet" href="config.css">
+    <link rel="manifest" href="/CRM/manifest.json">
+    <meta name="theme-color" content="#00C853">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Cell City">
+    <link rel="apple-touch-icon" href="/CRM/assets/logo.png">
+    <script>if ('serviceWorker' in navigator) { const reg=navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' }); reg.then(r=>{ r.onupdatefound=()=>{ const i=r.installing; if(i){ i.onstatechange=()=>{ if(i.state==='installed'&&navigator.serviceWorker.controller) location.reload(); }; } }; }); }</script>
+</head>
+<body>
+
+    <main>
+        <div class="pin-wrapper">
+
+            <div class="pin-logo">
+                <div class="pin-logo-icon">🔐</div>
+                <div class="pin-logo-title">Cell City CRM</div>
+                <div class="pin-logo-sub">Acesso Seguro</div>
+            </div>
+
+            <!-- MODO: LOGIN USUÁRIO + SENHA (em desenvolvimento — não bloqueia) -->
+            <div id="screen-login" class="pin-screen">
+                <p class="pin-label">Entrar no CRM</p>
+                <div class="cc-field">
+                    <label for="login-user">Usuário</label>
+                    <input type="text" id="login-user" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="usuário">
+                </div>
+                <div class="cc-field">
+                    <label for="login-pass">Senha</label>
+                    <input type="password" id="login-pass" autocomplete="current-password" placeholder="senha">
+                </div>
+                <label class="cc-check">
+                    <input type="checkbox" id="login-lembrar">
+                    <span>Lembrar este dispositivo por 90 dias</span>
+                </label>
+                <div class="pin-error" id="login-error"></div>
+                <button class="pin-btn-entrar" id="btn-login">Entrar</button>
+                <button class="pin-link" id="btn-debug" style="margin-top:0;font-size:10px;color:#555;" onclick="toggleDebug()">🔍 Debug</button>
+                <button class="pin-link" onclick="showScreen('pin')">Entrar com PIN</button>
+
+                <!-- WebAuthn preservado, porém oculto (substituído pelo token de dispositivo) -->
+                <button class="pin-btn-device" id="btn-device" onclick="entrarComDispositivo()" style="display:none">
+                    🔐 Usar senha do dispositivo
+                </button>
+            </div>
+
+            <!-- MODO: CRIAR ACESSO (1º uso — define usuário e senha) -->
+            <div id="screen-criar-acesso" class="pin-screen">
+                <p class="pin-label">Criar acesso do CRM</p>
+                <div class="cc-field">
+                    <label for="ca-user">Usuário</label>
+                    <input type="text" id="ca-user" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="defina um usuário">
+                </div>
+                <div class="cc-field">
+                    <label for="ca-pass">Senha</label>
+                    <input type="password" id="ca-pass" placeholder="defina uma senha">
+                </div>
+                <div class="cc-field">
+                    <label for="ca-pass2">Confirmar senha</label>
+                    <input type="password" id="ca-pass2" placeholder="repita a senha">
+                </div>
+                <div class="pin-error" id="ca-error"></div>
+                <button class="pin-btn-entrar" onclick="criarAcesso()">Criar acesso</button>
+            </div>
+
+            <!-- MODO: DIGITAR PIN (acesso principal) -->
+            <div id="screen-pin" class="pin-screen active">
+                <p class="pin-label" id="pin-label">Digite seu PIN</p>
+                <div class="pin-dots" id="pin-dots">
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                </div>
+                <div class="pin-error" id="pin-error"></div>
+                <div class="pin-pad" id="pin-pad">
+                    <button class="pin-btn" onclick="pinPress('1')">1</button>
+                    <button class="pin-btn" onclick="pinPress('2')">2</button>
+                    <button class="pin-btn" onclick="pinPress('3')">3</button>
+                    <button class="pin-btn" onclick="pinPress('4')">4</button>
+                    <button class="pin-btn" onclick="pinPress('5')">5</button>
+                    <button class="pin-btn" onclick="pinPress('6')">6</button>
+                    <button class="pin-btn" onclick="pinPress('7')">7</button>
+                    <button class="pin-btn" onclick="pinPress('8')">8</button>
+                    <button class="pin-btn" onclick="pinPress('9')">9</button>
+                    <button class="pin-btn" onclick="pinPress('0')">0</button>
+                    <button class="pin-btn pin-btn-del" onclick="pinDelete()">⌫</button>
+                    <button class="pin-btn pin-btn-empty"></button>
+                </div>
+                <button class="pin-link" onclick="showScreen('login')">← Voltar ao login</button>
+                <button class="pin-link" id="btn-alterar" onclick="showScreen('alterar')" style="display:none">Alterar PIN</button>
+                <button class="pin-link pin-link-sair" id="btn-redefinir" onclick="redefinirPin()" style="display:none">Redefinir PIN</button>
+            </div>
+
+            <!-- MODO: CONFIGURAR / ALTERAR PIN -->
+            <div id="screen-alterar" class="pin-screen">
+                <p class="pin-label" id="pin-novo-label">Criar novo PIN</p>
+                <div class="pin-dots" id="pin-novo-dots">
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                    <span class="pin-dot"></span>
+                </div>
+                <div class="pin-error" id="pin-novo-error"></div>
+                <div class="pin-pad">
+                    <button class="pin-btn" onclick="pinNovoPress('1')">1</button>
+                    <button class="pin-btn" onclick="pinNovoPress('2')">2</button>
+                    <button class="pin-btn" onclick="pinNovoPress('3')">3</button>
+                    <button class="pin-btn" onclick="pinNovoPress('4')">4</button>
+                    <button class="pin-btn" onclick="pinNovoPress('5')">5</button>
+                    <button class="pin-btn" onclick="pinNovoPress('6')">6</button>
+                    <button class="pin-btn" onclick="pinNovoPress('7')">7</button>
+                    <button class="pin-btn" onclick="pinNovoPress('8')">8</button>
+                    <button class="pin-btn" onclick="pinNovoPress('9')">9</button>
+                    <button class="pin-btn" onclick="pinNovoPress('0')">0</button>
+                    <button class="pin-btn pin-btn-del" onclick="pinNovoDelete()">⌫</button>
+                    <button class="pin-btn pin-btn-empty"></button>
+                </div>
+                <button class="pin-link" onclick="showScreen('login')">← Voltar</button>
+            </div>
+
+            <!-- MODO: LOGADO -->
+            <div id="screen-logado" class="pin-screen">
+                <div class="pin-success">✅</div>
+                <p class="pin-label">Acesso liberado</p>
+                <a href="/CRM/pages/dashboard/index.html" class="pin-btn-entrar">Abrir CRM</a>
+                <button class="pin-link" onclick="showScreen('dispositivos')" style="margin-top:12px">📱 Dispositivos autorizados</button>
+
+                <!-- SEGURANÇA: Usar senha do dispositivo -->
+                <div class="seg-device-row" id="seg-device-row" style="display:none" onclick="toggleDispositivo()">
+                    <div class="seg-device-info">
+                        <div class="seg-device-title">🔐 Usar senha do dispositivo</div>
+                        <div class="seg-device-status" id="seg-device-status">Desativado — usa o PIN do CRM.</div>
+                    </div>
+                    <div class="seg-device-toggle" id="seg-device-toggle"><span class="seg-device-knob"></span></div>
+                </div>
+
+                <!-- DIAGNÓSTICO WebAuthn (preenchido só ao tocar o switch) -->
+                <pre class="seg-device-diag" id="seg-device-diag" style="display:none"></pre>
+
+                <button class="pin-link" onclick="showScreen('conta')" style="margin-top:12px">☁️ Conta de Sincronização</button>
+                <button class="pin-link" onclick="showScreen('alterar')" style="margin-top:12px">🔑 Alterar PIN</button>
+                <button class="pin-link pin-link-sair" onclick="sair()">Sair</button>
+            </div>
+
+            <!-- MODO: CONTA DE SINCRONIZAÇÃO (Firebase Auth) -->
+            <div id="screen-conta" class="pin-screen">
+                <p class="pin-label">Conta de Sincronização</p>
+                <p style="font-size:12.5px;color:#8b93a1;line-height:1.5;margin:0 0 10px;">
+                    Faça login com a <b>conta única da loja</b> em cada aparelho
+                    (notebook, PC e celular) para que todos compartilhem exatamente
+                    os mesmos dados em tempo real.
+                </p>
+                <div class="pin-error" id="conta-error"></div>
+                <div id="conta-status" style="margin:8px 0;font-size:13px;color:#9aa3b2;">Verificando…</div>
+
+                <div id="conta-login" style="display:none;flex-direction:column;gap:8px;margin-top:6px;">
+                    <button class="pin-btn-entrar" id="btn-google" type="button">Entrar com Google</button>
+                    <div style="text-align:center;color:#6b7280;font-size:12px;margin:2px 0;">— ou —</div>
+                    <input id="conta-email" type="email" placeholder="E-mail" autocomplete="username"
+                        style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#10131a;color:#f5f7fa;font-size:14px;">
+                    <input id="conta-senha" type="password" placeholder="Senha" autocomplete="current-password"
+                        style="padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:#10131a;color:#f5f7fa;font-size:14px;">
+                    <button class="pin-btn-entrar" id="btn-email" type="button">Entrar com E-mail/Senha</button>
+                    <button class="pin-link" id="btn-criar" type="button">Criar conta com este e-mail</button>
+                </div>
+
+                <button class="pin-btn-danger" id="btn-logout" type="button" style="display:none">Sair da conta de sincronização</button>
+                <button class="pin-link" onclick="showScreen('logado')" style="margin-top:8px">← Voltar</button>
+            </div>
+
+            <!-- MODO: DISPOSITIVOS AUTORIZADOS -->
+            <div id="screen-dispositivos" class="pin-screen">
+                <p class="pin-label">Dispositivos autorizados</p>
+                <div class="pin-error" id="disp-error"></div>
+                <div class="cc-dev-list" id="disp-lista">
+                    <div class="cc-dev-empty">Carregando…</div>
+                </div>
+                <button class="pin-btn-danger" onclick="desconectarTodos()">Desconectar todos os dispositivos</button>
+                <button class="pin-link" onclick="showScreen('logado')">← Voltar</button>
+            </div>
+
+        </div>
+    </main>
+
+    <script type="module" src="config.js"></script>
+
+    <!-- Conta de Sincronização (Firebase Auth — Google + E-mail/Senha) -->
+    <script type="module">
+        import { onUid, getUser, loginGoogle, loginEmail, criarContaEmail, logout, STORE_KEY }
+            from '../../shared/session.js';
+
+        const $ = (id) => document.getElementById(id);
+        const statusEl = () => $('conta-status');
+        const errEl = () => $('conta-error');
+        const setErr = (m) => { if (errEl()) errEl().textContent = m || ''; };
+
+        function renderConta(uid) {
+            const user = getUser();
+            const logado = !!user;
+            $('conta-login').style.display = logado ? 'none' : 'flex';
+            $('btn-logout').style.display = logado ? 'block' : 'none';
+            if (logado) {
+                statusEl().innerHTML = '✅ Conectado como <b>' + (user.email || user.displayName || user.uid) +
+                    '</b><br><span style="color:#6b7280;font-size:11px;">uid: ' + user.uid + '</span>';
+            } else {
+                statusEl().innerHTML = '⚠️ Sem login — usando a chave compartilhada da loja' +
+                    ' (<code>' + STORE_KEY + '</code>).<br>Os dados já sincronizam entre aparelhos,' +
+                    ' mas recomenda-se entrar na conta da loja.';
+            }
+        }
+
+        onUid((uid) => renderConta(uid));
+
+        const wrap = (fn) => async () => {
+            setErr('');
+            try { await fn(); } catch (e) { setErr(traduzErro(e)); }
+        };
+
+        function traduzErro(e) {
+            const c = (e && e.code) || '';
+            if (c.includes('operation-not-allowed')) return 'Provedor não habilitado no Firebase Console (Authentication → Sign-in method).';
+            if (c.includes('invalid-credential') || c.includes('wrong-password')) return 'E-mail ou senha inválidos.';
+            if (c.includes('user-not-found')) return 'Conta não encontrada — use “Criar conta”.';
+            if (c.includes('email-already-in-use')) return 'Este e-mail já tem conta — use “Entrar”.';
+            if (c.includes('weak-password')) return 'Senha muito fraca (mínimo 6 caracteres).';
+            if (c.includes('popup-closed')) return 'Janela do Google fechada antes de concluir.';
+            return (e && e.message) || 'Falha ao autenticar.';
+        }
+
+        $('btn-google').addEventListener('click', wrap(() => loginGoogle()));
+        $('btn-email').addEventListener('click', wrap(() => loginEmail($('conta-email').value.trim(), $('conta-senha').value)));
+        $('btn-criar').addEventListener('click', wrap(() => criarContaEmail($('conta-email').value.trim(), $('conta-senha').value)));
+        $('btn-logout').addEventListener('click', wrap(() => logout()));
+    </script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

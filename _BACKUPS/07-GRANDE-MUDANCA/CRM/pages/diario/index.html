@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="diario" data-fav-label="Diário" data-fav-icon="📔" data-fav-url="/CRM/pages/diario/index.html">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Diário</title>
+    <link rel="stylesheet" href="diario.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+    <!-- Google Drive Backup (OAuth). Carrega de forma assíncrona;
+         a integração só age quando o usuário configura o Client ID + link da pasta. -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <!-- Título limpo: o brand-header.js move este <h1> para a barra superior
+         padrão e o centraliza. Não inserir [id]/botões aqui dentro, senão a
+         centralização automática é desativada. -->
+    <header class="header" id="mainHeader">
+        <h1>📔 Diário</h1>
+    </header>
+
+    <main>
+        <div class="dia-content">
+
+            <!-- ===== ALERTA DISCRETO DE REVISÕES VENCIDAS (sem pop-up) ===== -->
+            <button class="dia-alerta-revisoes" id="dia-alerta-revisoes" style="display:none"></button>
+
+            <!-- ===== 2. BUSCA INTELIGENTE (1º elemento funcional) ===== -->
+            <div class="dia-busca-wrap">
+                <input type="search" id="dia-search" class="dia-search" autocomplete="off"
+                       placeholder="🔍 Buscar em título, conteúdo e tags...">
+                <div class="dia-search-results" id="dia-search-results" style="display:none"></div>
+            </div>
+
+            <!-- ===== 3. NOVO REGISTRO ===== -->
+            <button class="dia-btn-nova dia-btn-novo-full" id="dia-btn-novo">＋ Novo Registro</button>
+
+            <!-- ===== FORMULÁRIO / EDITOR (abre ao criar/editar) ===== -->
+            <!-- Foco na escrita: Título → Conteúdo → Detalhes (recolhível). -->
+            <div class="dia-form dia-editor" id="dia-form" style="display:none">
+                <div class="dia-form-titulo" id="dia-form-titulo">Novo Registro</div>
+
+                <!-- 1. Título -->
+                <div class="dia-form-group dia-editor-titulo">
+                    <input type="text" id="dia-inp-titulo" class="dia-titulo-input" placeholder="Título do registro..." maxlength="200">
+                </div>
+
+                <!-- 2. Conteúdo (área principal de escrita) -->
+                <div class="dia-form-group dia-editor-conteudo">
+                    <textarea id="dia-inp-conteudo" class="dia-conteudo-big" placeholder="Comece a escrever..."></textarea>
+                </div>
+
+                <!-- 3. Detalhes do Registro (recolhível — recolhido por padrão) -->
+                <div class="dia-detalhes" id="dia-detalhes">
+                    <button type="button" class="dia-detalhes-head" id="dia-detalhes-head">
+                        <span class="dia-detalhes-arrow">▶</span>
+                        <span class="dia-detalhes-titulo">Detalhes do Registro</span>
+                    </button>
+                    <div class="dia-detalhes-body">
+                        <div class="dia-form-grid">
+                            <div class="dia-form-group">
+                                <label>Categoria</label>
+                                <select id="dia-inp-cat"></select>
+                            </div>
+                            <div class="dia-form-group">
+                                <label>Subcategoria</label>
+                                <select id="dia-inp-subcat"></select>
+                            </div>
+                            <div class="dia-form-group">
+                                <label>Prioridade</label>
+                                <select id="dia-inp-prio">
+                                    <option value="alta">🔴 Alta</option>
+                                    <option value="media" selected>🟡 Média</option>
+                                    <option value="baixa">🟢 Baixa</option>
+                                </select>
+                            </div>
+                            <div class="dia-form-group">
+                                <label>Status</label>
+                                <select id="dia-inp-status">
+                                    <option value="pendente" selected>⏳ Pendente</option>
+                                    <option value="em_andamento">🔄 Em andamento</option>
+                                    <option value="aguardando">⏸️ Aguardando</option>
+                                    <option value="concluido">✅ Concluído</option>
+                                    <option value="arquivado">🗄️ Arquivado</option>
+                                </select>
+                            </div>
+                            <div class="dia-form-group">
+                                <label>🔔 Data de Revisão (opcional)</label>
+                                <input type="date" id="dia-inp-revisao">
+                            </div>
+                            <div class="dia-form-group">
+                                <label>Tags (separadas por vírgula)</label>
+                                <input type="text" id="dia-inp-tags" placeholder="Ex: urgente, financeiro, ideia">
+                            </div>
+                            <div class="dia-form-group dia-span2 dia-fav-row">
+                                <label class="dia-check-label">
+                                    <input type="checkbox" id="dia-inp-favorito">
+                                    <span>⭐ Marcar como favorito</span>
+                                </label>
+                                <span class="dia-backup-status" id="dia-backup-status"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dia-form-btns">
+                    <button class="dia-btn-salvar" id="dia-btn-salvar">Salvar</button>
+                    <button class="dia-btn-cancelar" id="dia-btn-cancelar">Cancelar</button>
+                    <span class="dia-autosave" id="dia-autosave-status"></span>
+                </div>
+            </div>
+
+            <!-- ===== 4. FAVORITOS (acesso rápido) ===== -->
+            <section class="dia-bloco">
+                <div class="dia-bloco-head"><span>📌 Favoritos</span></div>
+                <div class="dia-favoritos" id="dia-favoritos"></div>
+            </section>
+
+            <!-- ===== 5. REGISTROS (área principal de trabalho) ===== -->
+            <section class="dia-bloco">
+                <div class="dia-bloco-head"><span>🗂️ Registros</span></div>
+
+                <div class="dia-filtros" id="dia-filtros">
+                    <select id="dia-filtro-cat" class="dia-filtro">
+                        <option value="">📂 Todas categorias</option>
+                    </select>
+                    <select id="dia-filtro-status" class="dia-filtro">
+                        <option value="">⏺ Todos status</option>
+                        <option value="pendente">⏳ Pendente</option>
+                        <option value="em_andamento">🔄 Em andamento</option>
+                        <option value="aguardando">⏸️ Aguardando</option>
+                        <option value="concluido">✅ Concluído</option>
+                        <option value="arquivado">🗄️ Arquivado</option>
+                    </select>
+                    <select id="dia-filtro-prio" class="dia-filtro">
+                        <option value="">🚩 Todas prioridades</option>
+                        <option value="alta">🔴 Alta</option>
+                        <option value="media">🟡 Média</option>
+                        <option value="baixa">🟢 Baixa</option>
+                    </select>
+                    <select id="dia-ordenar" class="dia-filtro">
+                        <option value="atualizado">↕ Atualização (recente)</option>
+                        <option value="criado">↕ Criação (recente)</option>
+                        <option value="revisao">🔔 Revisão (próxima)</option>
+                        <option value="favorito">⭐ Favoritos primeiro</option>
+                        <option value="titulo">🔤 Título (A-Z)</option>
+                    </select>
+                </div>
+
+                <div class="dia-loading" id="dia-loading">
+                    <div class="dia-spinner"></div>
+                    <span>Carregando diário...</span>
+                </div>
+
+                <div id="dia-lista" class="dia-lista"></div>
+
+                <div class="dia-empty" id="dia-empty" style="display:none">
+                    <div class="dia-empty-icon">📔</div>
+                    <div class="dia-empty-title">Nenhum registro</div>
+                    <div class="dia-empty-sub">Clique em <strong>＋ Novo Registro</strong> para começar a organizar.</div>
+                </div>
+            </section>
+
+            <!-- ============ PAINÉIS INFERIORES (recolhíveis) ============ -->
+
+            <!-- ===== 6. RESUMO GERAL ===== -->
+            <section class="dia-panel" id="dia-panel-resumo">
+                <button class="dia-panel-head" data-panel="resumo">
+                    <span class="dia-panel-arrow">▶</span>
+                    <span class="dia-panel-titulo">📊 Resumo Geral</span>
+                </button>
+                <div class="dia-panel-body">
+                    <div class="dia-exec-grid">
+                        <div class="dia-exec-item"><span class="dia-exec-num" id="dia-exec-ativos">—</span><span class="dia-exec-label">Registros ativos</span></div>
+                        <div class="dia-exec-item"><span class="dia-exec-num dia-vermelho" id="dia-exec-alta">—</span><span class="dia-exec-label">Prioridade alta</span></div>
+                        <div class="dia-exec-item"><span class="dia-exec-num dia-laranja" id="dia-exec-revisoes">—</span><span class="dia-exec-label">Revisões pendentes</span></div>
+                        <div class="dia-exec-item"><span class="dia-exec-num dia-verde" id="dia-exec-metas">—</span><span class="dia-exec-label">Metas em andamento</span></div>
+                        <div class="dia-exec-item"><span class="dia-exec-num dia-azul" id="dia-exec-decisoes">—</span><span class="dia-exec-label">Decisões pendentes</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 6b. ESTATÍSTICAS (filtros rápidos) ===== -->
+            <section class="dia-panel" id="dia-panel-stats">
+                <button class="dia-panel-head" data-panel="stats">
+                    <span class="dia-panel-arrow">▶</span>
+                    <span class="dia-panel-titulo">📈 Estatísticas</span>
+                </button>
+                <div class="dia-panel-body">
+                    <div class="dia-resumo" id="dia-resumo">
+                        <button class="dia-resumo-item" data-quick="alta">
+                            <span class="dia-resumo-num dia-vermelho" id="dia-num-alta">—</span>
+                            <span class="dia-resumo-label">Prioridade Alta</span>
+                        </button>
+                        <button class="dia-resumo-item" data-quick="pendente">
+                            <span class="dia-resumo-num dia-amarelo" id="dia-num-pendente">—</span>
+                            <span class="dia-resumo-label">Pendentes</span>
+                        </button>
+                        <button class="dia-resumo-item" data-quick="favorito">
+                            <span class="dia-resumo-num dia-dourado" id="dia-num-favorito">—</span>
+                            <span class="dia-resumo-label">Favoritos</span>
+                        </button>
+                        <button class="dia-resumo-item" data-quick="hoje">
+                            <span class="dia-resumo-num dia-verde" id="dia-num-hoje">—</span>
+                            <span class="dia-resumo-label">Criados hoje</span>
+                        </button>
+                        <button class="dia-resumo-item dia-resumo-revisoes" data-quick="revisoes" id="dia-card-revisoes">
+                            <span class="dia-resumo-num dia-laranja" id="dia-num-revisoes">—</span>
+                            <span class="dia-resumo-label">🔔 Revisões</span>
+                            <span class="dia-resumo-sub" id="dia-revisoes-sub">—</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 7. LINHA DO TEMPO ===== -->
+            <section class="dia-panel" id="dia-panel-timeline">
+                <button class="dia-panel-head" data-panel="timeline">
+                    <span class="dia-panel-arrow">▶</span>
+                    <span class="dia-panel-titulo">🕒 Linha do Tempo</span>
+                </button>
+                <div class="dia-panel-body">
+                    <div class="dia-filtros">
+                        <select id="dia-tl-cat" class="dia-filtro">
+                            <option value="">📂 Todas categorias</option>
+                        </select>
+                        <select id="dia-tl-periodo" class="dia-filtro">
+                            <option value="tudo">📆 Todo período</option>
+                            <option value="hoje">Hoje</option>
+                            <option value="7">Últimos 7 dias</option>
+                            <option value="30">Últimos 30 dias</option>
+                        </select>
+                        <select id="dia-tl-tipo" class="dia-filtro">
+                            <option value="">⚙ Todos eventos</option>
+                            <option value="criado">Criação</option>
+                            <option value="atualizado">Atualização</option>
+                            <option value="status">Mudança de status</option>
+                            <option value="favorito">Favorito</option>
+                            <option value="arquivado">Arquivamento</option>
+                            <option value="restaurado">Restauração</option>
+                        </select>
+                        <label class="dia-tl-favcheck">
+                            <input type="checkbox" id="dia-tl-fav"> ⭐ Apenas favoritos
+                        </label>
+                    </div>
+
+                    <div class="dia-loading" id="dia-tl-loading" style="display:none">
+                        <div class="dia-spinner"></div><span>Carregando linha do tempo...</span>
+                    </div>
+
+                    <div class="dia-timeline" id="dia-timeline"></div>
+
+                    <div class="dia-empty" id="dia-tl-empty" style="display:none">
+                        <div class="dia-empty-icon">🕒</div>
+                        <div class="dia-empty-title">Sem eventos no período</div>
+                        <div class="dia-empty-sub">Os eventos aparecem conforme você cria e atualiza registros.</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== CONFIGURAÇÃO: GOOGLE DRIVE BACKUP ===== -->
+            <section class="dia-panel" id="dia-panel-gdrive">
+                <button class="dia-panel-head" data-panel="gdrive">
+                    <span class="dia-panel-arrow">▶</span>
+                    <span class="dia-panel-titulo">📁 Google Drive Backup</span>
+                </button>
+                <div class="dia-panel-body">
+                    <p class="dia-gd-ajuda">
+                        Configure uma vez: no <strong>Google Cloud Console</strong> habilite a
+                        <em>Google Drive API</em> e crie um <em>OAuth Client ID (Web)</em> com a origem
+                        deste site autorizada. Cole o Client ID e o <em>link da pasta</em> (CELLCITY_BACKUP › Diario).
+                        Clique em <strong>Conectar</strong> e <strong>Testar conexão</strong>.
+                        Depois disso o backup ocorre <strong>automaticamente</strong> ao salvar — sem mais nada a fazer.
+                    </p>
+                    <div class="dia-gd-grid">
+                        <div class="dia-form-group dia-span2">
+                            <label>OAuth Client ID (Google Cloud) — vale para todos os módulos</label>
+                            <input type="text" id="gd-client-id" placeholder="xxxxxxxx.apps.googleusercontent.com">
+                        </div>
+                        <div class="dia-form-group dia-span2">
+                            <label>Link da pasta Google Drive (Diario)</label>
+                            <input type="text" id="gd-folder-link" placeholder="https://drive.google.com/drive/folders/...">
+                        </div>
+                        <div class="dia-form-group dia-span2">
+                            <label>📛 Apelido deste dispositivo (aparece nos logs de exclusão)</label>
+                            <input type="text" id="gd-apelido" placeholder="Ex: Bancada 1, Notebook do Itamar">
+                        </div>
+                        <div class="dia-form-group">
+                            <label>Status da conexão</label>
+                            <div class="dia-gd-info" id="gd-status">—</div>
+                        </div>
+                        <div class="dia-form-group">
+                            <label>Última sincronização</label>
+                            <div class="dia-gd-info" id="gd-ultima-sync">—</div>
+                        </div>
+                    </div>
+                    <div class="dia-form-btns dia-gd-btns">
+                        <button class="dia-btn-salvar" id="gd-btn-salvar-config">Salvar configuração</button>
+                        <button class="dia-btn-cancelar" id="gd-btn-conectar">Conectar Google Drive</button>
+                        <button class="dia-btn-cancelar" id="gd-btn-testar">Testar conexão</button>
+                    </div>
+                    <div class="gd-msg" id="gd-config-msg"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <div class="dia-toast" id="dia-toast"></div>
+
+    <!-- ===== MODAL CONFIRMAÇÃO ===== -->
+    <div class="dia-modal-overlay" id="dia-modal-overlay" style="display:none">
+        <div class="dia-modal">
+            <div class="dia-modal-titulo" id="dia-modal-titulo">Confirmar</div>
+            <div class="dia-modal-body" id="dia-modal-body">Tem certeza?</div>
+            <div class="dia-form-btns">
+                <button class="dia-btn-salvar dia-btn-perigo" id="dia-modal-confirmar">Confirmar</button>
+                <button class="dia-btn-cancelar" id="dia-modal-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="diario.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+  <title>
+    Cell City Sistema 2026
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="css/master.css">
+
+  <link
+    rel="stylesheet"
+    href="css/cards.css">
+
+  <link
+    rel="stylesheet"
+    href="css/typography.css">
+
+</head>
+
+<body>
+
+  <main class="section-padding">
+
+    <div class="u-container">
+
+      <h1>
+        Sistema Cell City 2026
+      </h1>
+
+      <div class="u-grid-auto">
+
+        <article class="card">
+
+          <img
+            src="https://placehold.co/600x400"
+            alt="Imagem teste">
+
+          <br>
+
+          <a href="#" class="btn btn--amarelo">
+            Botão Teste
+          </a>
+
+        </article>
+
+        <article class="card">
+
+          <img
+            src="https://placehold.co/600x400"
+            alt="Imagem teste">
+
+          <br>
+
+          <a href="#" class="btn btn--amarelo">
+            Botão Teste
+          </a>
+
+        </article>
+
+      </div>
+
+    </div>
+
+  </main>
+
+</body>
+
+</html>
+
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}

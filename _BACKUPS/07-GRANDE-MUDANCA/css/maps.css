@@ -1,0 +1,258 @@
+/* ===================================================== */
+/* MAPS.CSS – CELL CITY PREMIUM                          */
+/* ===================================================== */
+
+.maps-section {
+
+    width: 100%;
+
+    padding: 90px 24px;
+
+    background:
+    linear-gradient(
+        to bottom,
+        #12151b,
+        #0f1115
+    );
+
+    position: relative;
+
+    overflow: hidden;
+}
+
+/* ===================================================== */
+/* CONTAINER                                             */
+/* ===================================================== */
+
+.maps-container {
+
+    width: 100%;
+
+    max-width: 1200px;
+
+    margin: 0 auto;
+
+    position: relative;
+
+    z-index: 2;
+}
+
+/* ===================================================== */
+/* TITULO                                                */
+/* ===================================================== */
+
+.maps-title {
+
+    text-align: center;
+
+    margin-bottom: 50px;
+}
+
+.maps-title span {
+
+    display: inline-block;
+
+    color: #ffcc00;
+
+    font-size: 14px;
+
+    font-weight: 800;
+
+    letter-spacing: 2px;
+
+    text-transform: uppercase;
+
+    margin-bottom: 16px;
+}
+
+.maps-title h2 {
+
+    color: #ffffff;
+
+    font-size: clamp(34px, 5vw, 54px);
+
+    line-height: 1.1;
+
+    font-weight: 900;
+
+    margin-bottom: 18px;
+}
+
+.maps-title p {
+
+    color: #d6d6d6;
+
+    font-size: 18px;
+
+    line-height: 1.8;
+
+    max-width: 760px;
+
+    margin: 0 auto;
+}
+
+/* ===================================================== */
+/* MAPA                                                  */
+/* ===================================================== */
+
+.map-wrapper {
+
+    width: 100%;
+
+    max-width: 1200px;
+
+    margin: 0 auto;
+
+    border-radius: 30px;
+
+    overflow: hidden;
+
+    border:
+    1px solid
+    rgba(255,255,255,0.06);
+
+    box-shadow:
+    0 15px 60px
+    rgba(0,0,0,0.40);
+
+    background: #0f1115;
+}
+
+.map-wrapper iframe {
+
+    width: 100%;
+
+    height: 500px;
+
+    border: 0;
+
+    display: block;
+}
+
+/* ===================================================== */
+/* BOTAO MAPS                                            */
+/* ===================================================== */
+
+.map-button {
+
+    margin-top: 35px;
+
+    display: flex;
+
+    justify-content: center;
+}
+
+.map-button a {
+
+    background: #ffcc00;
+
+    color: #111111;
+
+    text-decoration: none;
+
+    padding: 16px 34px;
+
+    border-radius: 14px;
+
+    font-weight: 800;
+
+    transition: 0.35s ease;
+
+    box-shadow:
+    0 8px 30px
+    rgba(255,204,0,0.15);
+}
+
+.map-button a:hover {
+
+    transform:
+    translateY(-4px);
+
+    box-shadow:
+    0 14px 40px
+    rgba(255,204,0,0.25);
+}
+
+/* ===================================================== */
+/* TABLET                                                */
+/* ===================================================== */
+
+@media (max-width: 1024px) {
+
+    .maps-section {
+
+        padding: 80px 20px;
+    }
+
+    .map-wrapper iframe {
+
+        height: 420px;
+    }
+}
+
+/* ===================================================== */
+/* MOBILE                                                */
+/* ===================================================== */
+
+@media (max-width: 768px) {
+
+    .maps-section {
+
+        padding: 70px 16px;
+    }
+
+    .maps-title h2 {
+
+        font-size: 34px;
+    }
+
+    .maps-title p {
+
+        font-size: 16px;
+    }
+
+    .map-wrapper {
+
+        border-radius: 22px;
+    }
+
+    .map-wrapper iframe {
+
+        height: 320px;
+    }
+
+    .map-button a {
+
+        width: 100%;
+
+        text-align: center;
+    }
+}
+
+/* ===================================================== */
+/* MOBILE PEQUENO                                        */
+/* ===================================================== */
+
+@media (max-width: 480px) {
+
+    .maps-title h2 {
+
+        font-size: 28px;
+    }
+
+    .map-wrapper iframe {
+
+        height: 280px;
+    }
+}
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}

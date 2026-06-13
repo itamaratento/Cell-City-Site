@@ -1,0 +1,532 @@
+/* ===================================================== */
+/* RESPONSIVE.CSS – CELL CITY INFORMÁTICA (FINAL)       */
+/* ===================================================== */
+
+/* ---------- PROTEÇÃO GLOBAL ---------- */
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+img, video, iframe {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ============================================= */
+/* MOBILE (até 767px)                            */
+/* ============================================= */
+@media (max-width: 767px) {
+
+    .container {
+        padding: 0 16px;
+    }
+
+    /* HEADER */
+    .header {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        height: auto !important;
+        overflow: visible !important;
+        position: relative;
+        z-index: 9999;
+        padding: 14px 16px 10px;
+        background: rgba(11,13,16,0.96);
+    }
+
+    .header-flex {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px;
+    }
+
+    .logo img {
+        display: block !important;
+        width: 110px;
+        max-width: 32vw;
+        height: auto;
+    }
+
+    .nav {
+        display: flex !important;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        padding: 0 4px;
+    }
+
+    .nav a {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: #fff;
+        white-space: nowrap;
+    }
+
+    /* HERO */
+    .hero {
+        padding: 14px 16px 80px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .hero-grid {
+        flex-direction: column;
+        gap: 30px;
+        text-align: center;
+    }
+
+    .hero-image {
+        max-height: 270px;
+        overflow: hidden;
+        border-radius: 24px;
+    }
+
+    .hero-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .hero-content h1 {
+        font-size: 1.9rem;
+        line-height: 1.25;
+    }
+
+    .hero-content p {
+        font-size: 0.95rem;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .hero-buttons .btn {
+        max-width: 320px;
+        width: 100%;
+    }
+
+    .section-title {
+        font-size: 1.8rem;
+    }
+
+    /* WHATSAPP */
+    .whatsapp-float {
+        position: fixed;
+        right: 17px;
+        bottom: 33px;
+        width: 52px;
+        height: 52px;
+        z-index: 9999;
+    }
+
+    .whatsapp-float img {
+        width: 27px;
+        height: 27px;
+    }
+
+    /* GARANTIA */
+    .garantia-section {
+        padding: 45px 0 55px;
+        width: 100%;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    .garantia-wrapper {
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
+        padding: 0 14px;
+        gap: 14px;
+        box-sizing: border-box;
+    }
+
+    .garantia-badge img {
+        max-width: 145px;
+    }
+
+    .garantia-title {
+        font-size: 1.2rem;
+        margin-bottom: 8px;
+        line-height: 1.15;
+        padding: 0 6px;
+    }
+
+    .garantia-text {
+        line-height: 1.5;
+        margin-bottom: 12px;
+        font-size: 0.88rem;
+        padding: 0 8px;
+    }
+
+    .garantia-icons {
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: center;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+        max-width: 100%;
+        padding: 0 4px;
+    }
+
+    .garantia-icons span {
+        flex: 0 0 auto;
+        padding: 4px 7px;
+        font-size: 0.66rem;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    /* ===== FOOTER – ACABAMENTO PREMIUM ===== */
+    .footer {
+        padding: 50px 0 130px;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .footer .container {
+        height: auto !important;
+        overflow: visible !important;
+        padding: 0 12px;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 30px;
+    }
+
+    .footer-brand p {
+        margin-top: 8px;
+    }
+
+    .footer-links h3,
+    .footer-contact h3 {
+        margin-bottom: 10px;
+    }
+
+    .footer-links {
+        gap: 8px;
+    }
+
+    .footer-contact p {
+        margin-bottom: 4px;
+    }
+
+    .footer-map {
+        margin: 20px 0 16px;
+        border-radius: 16px;
+        max-width: 100%;
+    }
+
+    .footer-map iframe {
+        height: 220px;
+    }
+
+    .footer-map-btn {
+        margin-bottom: 8px;              /* subiu 8px */
+    }
+
+    .footer-bottom {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        padding-top: 16px;
+        margin-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .footer-bottom p {
+        font-size: 0.8rem;
+        line-height: 1.5;
+        color: #bbb;
+        padding-bottom: 20px;
+        white-space: normal;             /* permite quebra em duas linhas centralizadas */
+        text-align: center;
+        letter-spacing: 0;
+    }
+}
+
+/* ============================================= */
+/* TELAS MUITO PEQUENAS (≤ 400px)               */
+/* ============================================= */
+@media (max-width: 400px) {
+    .header {
+        padding: 12px 12px 8px;
+    }
+
+    .header-flex {
+        gap: 5px;
+    }
+
+    .logo img {
+        width: 100px;
+    }
+
+    .nav {
+        gap: 7px;
+        justify-content: flex-start;
+        padding: 0 2px;
+    }
+
+    .nav a {
+        font-size: 0.68rem;
+    }
+
+    .hero {
+        padding: 10px 12px 60px;
+    }
+
+    .hero-image {
+        max-height: 230px;
+    }
+
+    .hero-content h1 {
+        font-size: 1.6rem;
+    }
+
+    .hero-content p {
+        font-size: 0.85rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+    }
+
+    .whatsapp-float {
+        right: 15px;
+        bottom: 30px;
+        width: 46px;
+        height: 46px;
+    }
+
+    .whatsapp-float img {
+        width: 24px;
+        height: 24px;
+    }
+
+    .garantia-wrapper {
+        padding: 0 10px;
+        gap: 12px;
+    }
+
+    .garantia-badge img {
+        max-width: 130px;
+    }
+
+    .garantia-title {
+        font-size: 1.05rem;
+    }
+
+    .garantia-text {
+        font-size: 0.8rem;
+        padding: 0 4px;
+    }
+
+    .garantia-icons {
+        gap: 3px;
+    }
+
+    .garantia-icons span {
+        padding: 4px 6px;
+        font-size: 0.63rem;
+    }
+
+    .footer {
+        padding: 40px 0 115px;
+    }
+
+    .footer .container {
+        padding: 0 10px;
+    }
+
+    .footer-grid {
+        gap: 24px;
+    }
+
+    .footer-bottom p {
+        font-size: 0.75rem;
+        padding-bottom: 18px;
+        white-space: normal;
+        letter-spacing: 0;
+    }
+}
+
+/* ============================================= */
+/* TABLET / DESKTOP (768px+)                    */
+/* ============================================= */
+@media (min-width: 768px) {
+    .container {
+        padding: 0 20px;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        padding: 16px 0 12px;
+        z-index: 1000;
+        background: rgba(11,13,16,0.96);
+        backdrop-filter: blur(10px);
+    }
+
+    .header-flex {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+    }
+
+    .logo img {
+        width: 180px;
+        max-width: 24vw;
+    }
+
+    .nav {
+        display: flex;
+        gap: 24px;
+        flex-wrap: nowrap;
+        justify-content: center;
+    }
+
+    .nav a {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #fff;
+        white-space: nowrap;
+        transition: color 0.3s;
+    }
+
+    .nav a:hover {
+        color: #ffcc00;
+    }
+
+    .hero {
+        padding: 80px 0 80px;
+    }
+
+    .hero-grid {
+        flex-direction: row;
+        text-align: left;
+        justify-content: center;
+        gap: 40px;
+    }
+
+    .hero-image {
+        max-height: none;
+    }
+
+    .hero-image img {
+        max-width: 450px;
+    }
+
+    .hero-content {
+        max-width: 450px;
+        align-self: flex-start;
+        margin-top: 30px;
+    }
+
+    .hero-buttons {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 14px;
+    }
+
+    .btn {
+        max-width: 220px;
+    }
+
+    .services-grid,
+    .stats-grid,
+    .testimonials-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .footer {
+        padding-bottom: 30px;
+    }
+
+    .footer-grid {
+        grid-template-columns: 2fr 1.5fr;
+        text-align: left;
+    }
+
+    .footer-map iframe {
+        height: 300px;
+    }
+
+    .footer-bottom p {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .whatsapp-float {
+        right: 18px;
+        bottom: 18px;
+        width: 60px;
+        height: 60px;
+    }
+
+    .whatsapp-float img {
+        width: 30px;
+        height: 30px;
+    }
+}
+
+/* ============================================= */
+/* DESKTOP GRANDE (1024px+)                     */
+/* ============================================= */
+@media (min-width: 1024px) {
+    .hero {
+        padding: 100px 0 80px;
+    }
+
+    .hero-grid {
+        gap: 40px;
+    }
+
+    .hero-image img {
+        max-width: 550px;
+    }
+
+    .hero-content h1 {
+        font-size: 2.6rem;
+    }
+
+    .hero-content p {
+        font-size: 1.1rem;
+    }
+
+    .footer-map iframe {
+        height: 350px;
+    }
+}
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}

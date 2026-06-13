@@ -1,0 +1,38 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "southamerica-east1",
+    "rules": "CRM/firestore.rules",
+    "indexes": "CRM/firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "CRM",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/portal",
+        "destination": "/pages/portal-cliente/index.html"
+      },
+      {
+        "source": "/portal/**",
+        "destination": "/pages/portal-cliente/index.html"
+      },
+      {
+        "source": "/catalogo",
+        "destination": "/pages/catalogo/public/index.html"
+      },
+      {
+        "source": "/catalogo/**",
+        "destination": "/pages/catalogo/public/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

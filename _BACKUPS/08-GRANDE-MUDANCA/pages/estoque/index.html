@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque - Cell City CRM</title>
+    <link rel="stylesheet" href="estoque.css">
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <button class="header-back" onclick="window.location.href='/CRM/index.html'">←</button>
+        <div class="header-logo">
+            <span class="header-title">📦 Controle de Estoque</span>
+        </div>
+    </header>
+
+    <!-- MAIN SCREEN -->
+    <div class="screen active" id="screen-main">
+        
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px;">
+            <div style="color: #e60000; font-weight: bold; padding: 8px; font-size: 16px; background: #fff0f0; border-radius: 6px;">
+                TESTE REALIZADO EM 03/06/2026
+            </div>
+            <button onclick="alert('ESTOQUE FUNCIONANDO')" style="background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                TESTE
+            </button>
+        </div>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 1: CADASTRO DE PRODUTO -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-cadastro">
+            <div class="form-section">
+                <div class="form-section-title">➕ Novo Produto</div>
+                
+                <div class="form-group">
+                    <label>Nome do Produto *</label>
+                    <input type="text" id="nome" placeholder="Ex: SAMSUNG GALAXY S24" 
+                           onkeypress="if(event.key==='Enter') document.getElementById('descricao').focus()">
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" id="descricao" placeholder="Ex: Smartphone Samsung 256GB"
+                           onkeypress="if(event.key==='Enter') document.getElementById('quantidade').focus()">
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="categoria">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantidade *</label>
+                        <input type="number" id="quantidade" placeholder="0" min="0" step="1"
+                               onkeypress="if(event.key==='Enter') document.getElementById('preco').focus()">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço (R$)</label>
+                        <input type="number" id="preco" placeholder="0,00" step="0.01"
+                               onkeypress="if(event.key==='Enter') window.cadastrarProduto()">
+                    </div>
+                </div>
+
+                <button class="btn-salvar" onclick="cadastrarProduto()">💾 Cadastrar Produto</button>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 2: PESQUISA E FILTROS -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-busca">
+            <div class="busca-container">
+                <div class="premium-search">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Pesquisar por nome, descrição ou categoria...">
+                </div>
+                <div class="filtro-categoria">
+                    <select id="filtroCategoria" onchange="filtrarCategoria()">
+                        <option value="todos">Todas as Categorias</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!-- SEÇÃO 3: LISTA DE PRODUTOS -->
+        <!-- ═══════════════════════════════════════ -->
+        <section class="secao-produtos">
+            <div class="form-section">
+                <div class="form-section-title">
+                    📋 Produtos Cadastrados
+                    <span id="contadorProdutos" class="contador">0</span>
+                </div>
+                <div id="listaProdutos" class="lista-produtos">
+                    <div class="empty-state">
+                        <div class="empty-icon">📦</div>
+                        <p>Nenhum produto cadastrado</p>
+                        <p class="empty-sub">Cadastre seu primeiro produto acima</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- MODAL DE EDIÇÃO -->
+    <!-- ═══════════════════════════════════════ -->
+    <div id="modalEdicao" class="modal-edicao">
+        <div class="modal-edicao-content">
+            <div class="modal-edicao-header">
+                <h3>✏️ Editar Produto</h3>
+                <button class="modal-close" onclick="fecharModalEdicao()">✕</button>
+            </div>
+            
+            <div class="modal-edicao-body">
+                <input type="hidden" id="editId">
+                
+                <div class="form-group">
+                    <label>Nome do Produto *</label>
+                    <input type="text" id="editNome" placeholder="Nome do produto">
+                </div>
+
+                <div class="form-group">
+                    <label>Descrição</label>
+                    <input type="text" id="editDescricao" placeholder="Descrição do produto">
+                </div>
+
+                <div class="form-group">
+                    <label>Categoria *</label>
+                    <select id="editCategoria">
+                        <option value="">Selecione...</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantidade *</label>
+                        <input type="number" id="editQuantidade" placeholder="0" min="0" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Preço (R$)</label>
+                        <input type="number" id="editPreco" placeholder="0,00" step="0.01">
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-edicao-footer">
+                <button class="btn-cancelar" onclick="fecharModalEdicao()">Cancelar</button>
+                <button class="btn-salvar-edicao" onclick="salvarEdicao()">💾 Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="toast" class="premium-toast"></div>
+
+    <script type="module" src="estoque.js"></script>
+</body>
+</html>
