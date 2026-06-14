@@ -84,7 +84,7 @@ function renderCategorias() {
   const wrap = document.getElementById('cat-cats');
   wrap.innerHTML = cats.map(c =>
     `<button class="cat-cat-chip${c === _filtroCategoria ? ' ativo' : ''}"
-             onclick="catFiltrarCat(${JSON.stringify(c)})">${c === 'todos' ? '🏷️ Todos' : c}</button>`
+             onclick="catFiltrarCat('${c}')">${c === 'todos' ? '🏷️ Todos' : c}</button>`
   ).join('');
 }
 
@@ -137,7 +137,7 @@ function cardHTML(p) {
   const badgeDestaque = p.destaque
     ? `<span class="cat-card-badge-destaque">⭐ Destaque</span>` : '';
 
-  return `<div class="cat-card" onclick="catAbrirModal(${JSON.stringify(p.id)})">
+  return `<div class="cat-card" onclick="catAbrirModal('${p.id}')">
     <div class="cat-card-img-wrap">
       <div class="cat-card-img">${imgHTML}</div>
       ${badgeDestaque}
@@ -147,8 +147,8 @@ function cardHTML(p) {
       <div class="cat-card-nome">${esc(p.nome || '')}</div>
       <div class="cat-card-preco-wrap">${precoHTML}</div>
       <div class="cat-card-btns">
-        <button class="cat-btn-detalhes" onclick="event.stopPropagation();catAbrirModal(${JSON.stringify(p.id)})">Ver detalhes</button>
-        <button class="cat-btn-wpp" onclick="event.stopPropagation();catComprarWpp(${JSON.stringify(p.id)})">🟢 WhatsApp</button>
+        <button class="cat-btn-detalhes" onclick="event.stopPropagation();catAbrirModal('${p.id}')">Ver detalhes</button>
+        <button class="cat-btn-wpp" onclick="event.stopPropagation();catComprarWpp('${p.id}')">🟢 WhatsApp</button>
       </div>
     </div>
   </div>`;

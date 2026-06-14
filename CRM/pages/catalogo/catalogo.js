@@ -103,10 +103,10 @@ function renderTabela() {
       <td>${p.ordem ?? '—'}</td>
       <td class="td-acoes">
         <div class="acoes-wrap">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admEditar(${JSON.stringify(p.id)})" title="Editar">✏️</button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admDuplicar(${JSON.stringify(p.id)})" title="Duplicar">📋</button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admToggleAtivo(${JSON.stringify(p.id)})" title="${p.ativo !== false ? 'Ocultar' : 'Mostrar'}">${p.ativo !== false ? '🙈' : '👁️'}</button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="admExcluir(${JSON.stringify(p.id)})" title="Excluir">🗑️</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="admEditar('${p.id}')" title="Editar">✏️</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="admDuplicar('${p.id}')" title="Duplicar">📋</button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="admToggleAtivo('${p.id}')" title="${p.ativo !== false ? 'Ocultar' : 'Mostrar'}">${p.ativo !== false ? '🙈' : '👁️'}</button>
+          <button class="btn btn-danger btn-sm btn-icon" onclick="admExcluir('${p.id}')" title="Excluir">🗑️</button>
         </div>
       </td>
     </tr>`;
@@ -157,7 +157,7 @@ function renderFotosForm() {
     return `<div class="foto-item${isPrincipal ? ' principal' : ''}" onclick="admSetPrincipal(${gi})">
       <img src="${esc(f.url)}" alt="foto">
       ${isPrincipal ? '<span class="foto-principal-badge">Principal</span>' : ''}
-      <button class="foto-del" onclick="event.stopPropagation();admRemoverFoto(${JSON.stringify(f.tipo)},${f.i})" title="Remover">✕</button>
+      <button class="foto-del" onclick="event.stopPropagation();admRemoverFoto('${f.tipo}',${f.i})" title="Remover">✕</button>
     </div>`;
   }).join('');
 }
