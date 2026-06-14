@@ -6,7 +6,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import {
   getFirestore, collection, getDocs, doc, getDoc,
-  query, where, orderBy
+  query, orderBy
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // ─── Config Firebase (mesma do CRM) ────────────────────────
@@ -68,13 +68,11 @@ async function carregarProdutos() {
   document.getElementById('cat-grid').innerHTML =
     '<div class="cat-loading"><div class="cat-spinner"></div>Carregando produtos...</div>';
   try {
-    const q = query(
-      collection(_db, 'catalogo_produtos'),
-      where('ativo', '==', true),
-      orderBy('ordem', 'asc')
-    );
+    const q = query(collection(_db, 'catalogo_produtos'), orderBy('ordem', 'asc'));
     const snap = await getDocs(q);
-    _produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _produtos = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .filter(p => p.ativo !== false);
   } catch (e) {
     console.error('[Catálogo] Erro ao carregar produtos:', e);
     _produtos = [];
