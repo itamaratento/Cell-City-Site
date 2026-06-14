@@ -79,10 +79,12 @@ async function carregarProdutos() {
 function renderCategorias() {
   const cats = ['todos', ...new Set(_produtos.map(p => p.categoria).filter(Boolean))];
   const wrap = document.getElementById('cat-cats');
-  wrap.innerHTML = cats.map(c =>
-    `<button class="cat-cat-chip${c === _filtroCategoria ? ' ativo' : ''}"
-             onclick="catFiltrarCat('${c}')">${c === 'todos' ? '🏷️ Todos' : c}</button>`
-  ).join('');
+  wrap.innerHTML = cats.map(c => {
+    const count = c === 'todos' ? _produtos.length : _produtos.filter(p => p.categoria === c).length;
+    const label = c === 'todos' ? 'Todos' : c;
+    return `<button class="cat-cat-chip${c === _filtroCategoria ? ' ativo' : ''}"
+                     onclick="catFiltrarCat('${c}')">${label} <span class="cat-chip-count">(${count})</span></button>`;
+  }).join('');
 }
 
 // ─── Render Produtos ────────────────────────────────────────
@@ -230,9 +232,7 @@ window.catComprarWpp = function(id) {
 // ─── Filtros ──────────────────────────────────────────────
 window.catFiltrarCat = function(cat) {
   _filtroCategoria = cat;
-  document.querySelectorAll('.cat-cat-chip').forEach(el => {
-    el.classList.toggle('ativo', el.textContent.replace('🏷️ ', '') === (cat === 'todos' ? 'Todos' : cat));
-  });
+  renderCategorias();
   renderProdutos();
 };
 
