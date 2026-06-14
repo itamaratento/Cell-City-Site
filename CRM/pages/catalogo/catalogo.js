@@ -30,7 +30,7 @@ const CATEGORIAS = [
   'Películas', 'Capinhas', 'Informática', 'Outros'
 ];
 
-const URL_PUBLICA = 'https://cellcity-crm.web.app/catalogo';
+const URL_PUBLICA = 'https://www.cellcityinformatica.com.br/catalogo';
 
 // ─── Init ─────────────────────────────────────────────────
 async function init() {
