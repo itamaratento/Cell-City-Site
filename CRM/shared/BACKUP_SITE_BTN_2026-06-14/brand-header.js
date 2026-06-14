@@ -156,41 +156,6 @@
       .brand-header-subtitle { display: none; }
       .brand-header { padding: 6px 10px; }
     }
-
-    /* === Atalho Site Cell City === */
-    .crm-site-cc-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 5px 10px;
-      border-radius: 8px;
-      background: rgba(0, 200, 83, 0.06);
-      border: 1px solid rgba(0, 200, 83, 0.22);
-      flex-shrink: 0;
-      text-decoration: none;
-      cursor: pointer;
-      transition: background 180ms, border-color 180ms, box-shadow 180ms;
-    }
-    .crm-site-cc-btn:hover {
-      background: rgba(0, 200, 83, 0.14);
-      border-color: rgba(0, 200, 83, 0.45);
-      box-shadow: 0 0 10px rgba(0, 200, 83, 0.18);
-    }
-    .crm-site-cc-icon {
-      font-size: 16px;
-      line-height: 1;
-      filter: hue-rotate(120deg) saturate(1.4);
-    }
-    .crm-site-cc-label {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: #8b949e;
-      white-space: nowrap;
-      transition: color 180ms;
-    }
-    .crm-site-cc-btn:hover .crm-site-cc-label {
-      color: #00e676;
-    }
   `;
 
   const BRAND_HTML = `
@@ -280,16 +245,6 @@
     const spacer = document.createElement('div');
     spacer.className = 'crm-bar-spacer';
     bar.appendChild(spacer);
-
-    // Atalho fixo para o site institucional
-    const siteBtn = document.createElement('a');
-    siteBtn.className = 'crm-site-cc-btn crm-bar-migrated';
-    siteBtn.href = 'https://www.cellcityinformatica.com.br';
-    siteBtn.target = '_blank';
-    siteBtn.rel = 'noopener noreferrer';
-    siteBtn.title = 'Abrir Site da Cell City';
-    siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
-    bar.appendChild(siteBtn);
 
     // Migra todos os filhos do header existente para dentro do brand bar.
     // O título vira .crm-page-title (centralizado em absolute); os demais

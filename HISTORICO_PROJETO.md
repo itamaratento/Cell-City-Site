@@ -319,6 +319,22 @@ Cada registro deve conter:
 
 ## HISTÓRICO DE ALTERAÇÕES
 
+### 14/06/2026 — Atalho Site Cell City
+
+**Tarefa:** Adicionar acesso rápido ao site institucional em todas as páginas do CRM.
+
+**O que foi feito:**
+- Botão com logo da Cell City adicionado à `top-meta-right` do Dashboard e injetado pelo `brand-header.js` em todos os demais módulos
+- Abre `https://www.cellcityinformatica.com.br` em nova aba (`target="_blank"`, `rel="noopener noreferrer"`)
+- Tooltip "Abrir Site da Cell City"
+- CSS isolado em classes próprias: `.site-cc-btn` (dashboard) e `.crm-site-cc-btn` (brand-header)
+- Sem impacto em Firebase, Firestore, Auth, Rules ou dados
+
+**Arquivos alterados:** `CRM/pages/dashboard/index.html`, `CRM/pages/dashboard/dashboard.css`, `CRM/shared/brand-header.js`
+**Backups:** `CRM/shared/BACKUP_SITE_BTN_2026-06-14/`, `CRM/pages/dashboard/BACKUP_SITE_BTN_2026-06-14/`
+
+---
+
 ### 12/06/2026 — Central de Retorno na O.S.
 
 **Tarefa:** Adicionar controle de retorno ao cliente dentro da própria tela da O.S., sem criar novo módulo.

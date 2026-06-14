@@ -46,9 +46,29 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ÚLTIMA ETAPA CONCLUÍDA
+## ✅ ÚLTIMA ETAPA CONCLUÍDA — Atalho Site Cell City (14/06/2026)
 
-**Dashboard v4.3 FINAL + Portal do Cliente + Agenda Inteligente + Autoatendimento + Soft Delete Pós-Venda**
+**Atalho fixo para o site institucional em todas as páginas do CRM.**
+
+### O que foi feito
+- Botão com logo (`/CRM/assets/logo.png`) adicionado à barra superior do Dashboard (`top-meta-right`) e ao cabeçalho universal (`brand-header.js`)
+- Tooltip "Abrir Site da Cell City", abre `https://www.cellcityinformatica.com.br` em nova aba
+- CSS isolado (`.site-cc-btn` no Dashboard; `.crm-site-cc-btn` no brand-header) — sem impacto em outros elementos
+
+### Arquivos alterados
+- `CRM/pages/dashboard/index.html` — botão no `top-meta-right`
+- `CRM/pages/dashboard/dashboard.css` — estilos `.site-cc-btn` e `.site-cc-icon`
+- `CRM/shared/brand-header.js` — CSS + injeção do botão no init()
+
+### Backups
+- `CRM/shared/BACKUP_SITE_BTN_2026-06-14/`
+- `CRM/pages/dashboard/BACKUP_SITE_BTN_2026-06-14/`
+
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
+
+---
+
+## ✅ ETAPA ANTERIOR — Dashboard v4.3 FINAL + Portal do Cliente + Agenda Inteligente + Autoatendimento + Soft Delete Pós-Venda
 
 ### O que foi feito (acumulado)
 - Dashboard completo com Central de Alertas (Ação da Semana, Pós-Venda, OS sem andamento, Caixa, Pré-OS)

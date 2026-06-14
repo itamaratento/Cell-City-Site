@@ -161,14 +161,14 @@
     .crm-site-cc-btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 5px 10px;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
       border-radius: 8px;
       background: rgba(0, 200, 83, 0.06);
       border: 1px solid rgba(0, 200, 83, 0.22);
       flex-shrink: 0;
       text-decoration: none;
-      cursor: pointer;
       transition: background 180ms, border-color 180ms, box-shadow 180ms;
     }
     .crm-site-cc-btn:hover {
@@ -177,19 +177,11 @@
       box-shadow: 0 0 10px rgba(0, 200, 83, 0.18);
     }
     .crm-site-cc-icon {
-      font-size: 16px;
-      line-height: 1;
-      filter: hue-rotate(120deg) saturate(1.4);
-    }
-    .crm-site-cc-label {
-      font-size: 11.5px;
-      font-weight: 600;
-      color: #8b949e;
-      white-space: nowrap;
-      transition: color 180ms;
-    }
-    .crm-site-cc-btn:hover .crm-site-cc-label {
-      color: #00e676;
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      border-radius: 4px;
+      display: block;
     }
   `;
 
@@ -288,7 +280,7 @@
     siteBtn.target = '_blank';
     siteBtn.rel = 'noopener noreferrer';
     siteBtn.title = 'Abrir Site da Cell City';
-    siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
+    siteBtn.innerHTML = '<img src="/CRM/assets/logo.png" alt="Cell City" class="crm-site-cc-icon">';
     bar.appendChild(siteBtn);
 
     // Migra todos os filhos do header existente para dentro do brand bar.
