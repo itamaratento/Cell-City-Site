@@ -1152,6 +1152,9 @@ function iniciarListenerLancamentos() {
 // ═══════════════════════════════════════════
 function filtrarPorPeriodo(periodo) {
     periodoFiltro = periodo;
+    // Log de auditoria (remover após validar)
+    console.log('Filtro selecionado:', periodo);
+    console.log('Total lançamentos em memória:', lancamentos.length);
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`[data-periodo="${periodo}"]`)?.classList.add('active');
     atualizarInterface();
@@ -1162,10 +1165,30 @@ function aplicarFiltros(lista) {
     const hoje = new Date();
     const hojeSP = getDataEmSP(hoje);
     const h = new Date(hojeSP + 'T00:00:00');
-    const is = new Date(h); is.setDate(h.getDate() - h.getDay());
     const im = new Date(hojeSP.substring(0, 7) + '-01T00:00:00');
     if (periodoFiltro === 'hoje') f = f.filter(l => l.dia === hojeSP);
-    else if (periodoFiltro === 'semana') f = f.filter(l => new Date(l.dataISO) >= is);
+    else if (periodoFiltro === 'semana') {
+        // Usa getWeekKey (ISO: seg→dom) — mesma lógica de atualizarResumosLive/gerarFechamentoSemanal
+        const semanaAtual = getWeekKey(hoje);
+        // Logs de auditoria (remover após validar)
+        const diaSemana = h.getDay() || 7; // Dom(0)→7, Seg-Sáb→1-6
+        const inicioSemana = new Date(h); inicioSemana.setDate(h.getDate() - diaSemana + 1);
+        const fimSemana = new Date(inicioSemana); fimSemana.setDate(inicioSemana.getDate() + 7);
+        console.log('Filtro Semana');
+        console.log('Chave semana procurada:', semanaAtual);
+        console.log('Inicio Semana:', inicioSemana.toISOString());
+        console.log('Fim Semana:', fimSemana.toISOString());
+        f = f.filter(l => {
+            if (!l.dataISO) return false;
+            return getWeekKey(new Date(l.dataISO)) === semanaAtual;
+        });
+        console.log('Movimentações Encontradas:', f.length);
+        if (f.length === 0 && lista.length > 0) {
+            console.warn('⚠️ [SEMANA] Nenhum registro encontrado. Primeiros 3 dataISO da memória:',
+                lista.slice(0, 3).map(l => ({ dataISO: l.dataISO, chave: l.dataISO ? getWeekKey(new Date(l.dataISO)) : 'sem dataISO' }))
+            );
+        }
+    }
     else if (periodoFiltro === 'mes') f = f.filter(l => l.mes === getMonthKey(hoje));
     return f;
 }

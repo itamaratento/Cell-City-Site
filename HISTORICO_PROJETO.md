@@ -319,6 +319,23 @@ Cada registro deve conter:
 
 ## HISTÓRICO DE ALTERAÇÕES
 
+### 14/06/2026 — Correção Filtro Semana — Caixa Operacional
+
+**Tarefa:** Corrigir filtro "Semana" que mostrava valores zerados e nenhuma movimentação.
+
+**Causa-raiz:** `aplicarFiltros()` em `caixa.js` calculava o início da semana com `setDate(date - getDay())`. Como `getDay()` retorna `0` para domingo, no domingo o início da semana era fixado em "hoje", excluindo todos os registros de segunda a sábado da mesma semana ISO.
+
+**O que foi feito:**
+- Filtro `periodoFiltro === 'semana'` agora usa `getWeekKey(hoje)` (semana ISO: segunda→domingo), comparando a chave de semana do registro com a semana atual. Mesma função usada em `atualizarResumosLive` e `gerarFechamentoSemanal` — lógica 100% consistente.
+- Logs de auditoria temporários adicionados: `Filtro Semana`, `Inicio Semana`, `Fim Semana`, `Movimentações Encontradas`.
+
+**Arquivo alterado:** `CRM/pages/caixa/caixa.js` — função `aplicarFiltros()` (~linha 1160)
+**Backup:** `CRM/pages/caixa/BACKUP_FILTRO_SEMANA_2026-06-14/`
+
+**Pendente:** teste visual no navegador + remover logs de auditoria + `firebase deploy`.
+
+---
+
 ### 14/06/2026 — Separação de Papéis: 3 Componentes de Alertas
 
 **Tarefa:** Implementar arquitetura "Sino = agir · Central de Alertas = analisar · Painel Lateral = monitorar", eliminando duplicidade entre os componentes.

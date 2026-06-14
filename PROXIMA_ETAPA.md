@@ -46,7 +46,28 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ÚLTIMA ETAPA CONCLUÍDA — Separação de Papéis dos 3 Componentes de Alertas (14/06/2026)
+## ✅ ÚLTIMA ETAPA CONCLUÍDA — Correção Filtro Semana no Caixa Operacional (14/06/2026)
+
+**Bug corrigido: filtro "Semana" zerava quando hoje é domingo.**
+
+### O que foi feito
+- **Causa-raiz:** `aplicarFiltros()` calculava o início da semana como `date - getDay()`. Como `getDay()` retorna `0` para domingo, o início da semana era definido como hoje (domingo), excluindo todos os registros de segunda a sábado da mesma semana ISO.
+- **Correção:** Filtro "semana" agora usa `getWeekKey()` (semana ISO: seg→dom) — mesma função já usada em `atualizarResumosLive` e `gerarFechamentoSemanal`. Garante consistência total e resolve o bug do domingo.
+- **Logs de auditoria** adicionados temporariamente (`console.log`) com `Inicio Semana`, `Fim Semana` e `Movimentações Encontradas`.
+
+### Arquivo alterado
+- `CRM/pages/caixa/caixa.js` — função `aplicarFiltros()` (linha ~1160)
+
+### Backup
+- `CRM/pages/caixa/BACKUP_FILTRO_SEMANA_2026-06-14/`
+
+> ⚠️ **Validação pendente:** testar no navegador (selecionar "Semana" com registros de seg-sáb e verificar que aparecem).
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
+> ⚠️ Remover os `console.log` de auditoria após validar.
+
+---
+
+## ✅ ETAPA ANTERIOR — Separação de Papéis dos 3 Componentes de Alertas (14/06/2026)
 
 **Filosofia: Sino = agir · Central de Alertas = analisar · Painel Lateral = monitorar**
 
