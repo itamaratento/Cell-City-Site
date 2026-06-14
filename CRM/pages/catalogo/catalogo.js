@@ -203,13 +203,15 @@ window.admSalvar = async function() {
     // Upload de fotos novas
     const fotasUpload = [];
     for (const f of _fotosNovas) {
-      if (f.file) {
-        const path = `catalogo/${Date.now()}_${f.file.name}`;
-        const sRef = storageRef(storage, path);
-        const snap = await uploadBytes(sRef, f.file);
-        const downloadUrl = await getDownloadURL(snap.ref);
-        fotasUpload.push(downloadUrl);
-      }
+      if (!f.file) continue;
+      const path = `catalogo/${Date.now()}_${f.file.name}`;
+      const sRef = storageRef(storage, path);
+      const uploadPromise = uploadBytes(sRef, f.file).then(snap => getDownloadURL(snap.ref));
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Tempo de upload esgotado (30s). Verifique a conexão ou a configuração de CORS do Storage.')), 30000)
+      );
+      const downloadUrl = await Promise.race([uploadPromise, timeout]);
+      fotasUpload.push(downloadUrl);
     }
 
     const todasFotos = [
