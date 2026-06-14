@@ -30,7 +30,7 @@ const CATEGORIAS = [
   'Películas', 'Capinhas', 'Informática', 'Outros'
 ];
 
-const URL_PUBLICA = 'https://www.cellcityinformatica.com.br/catalogo';
+const URL_PUBLICA = 'https://www.cellcityinformatica.com.br/catalogo.html';
 
 // ─── Init ─────────────────────────────────────────────────
 async function init() {

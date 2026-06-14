@@ -37,14 +37,6 @@
         "destination": "/pages/portal-cliente/index.html"
       },
       {
-        "source": "/catalogo",
-        "destination": "/pages/catalogo/public/index.html"
-      },
-      {
-        "source": "/catalogo/**",
-        "destination": "/pages/catalogo/public/index.html"
-      },
-      {
         "source": "**",
         "destination": "/index.html"
       }
