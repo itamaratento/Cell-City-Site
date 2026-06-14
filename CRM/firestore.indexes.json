@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "catalogo_produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "ativo", "order": "ASCENDING" },
+        { "fieldPath": "ordem", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "mensagens_portal",
       "queryScope": "COLLECTION",
       "fields": [

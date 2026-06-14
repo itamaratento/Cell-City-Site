@@ -1,0 +1,12 @@
+[
+  {
+    "origin": [
+      "https://www.cellcityinformatica.com.br",
+      "http://localhost",
+      "http://127.0.0.1"
+    ],
+    "method": ["GET", "POST", "PUT", "DELETE", "HEAD"],
+    "responseHeader": ["Content-Type", "Authorization", "Content-Length", "x-goog-resumable"],
+    "maxAgeSeconds": 3600
+  }
+]
