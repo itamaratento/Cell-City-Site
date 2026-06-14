@@ -319,6 +319,53 @@ Cada registro deve conter:
 
 ## HISTÓRICO DE ALTERAÇÕES
 
+### 14/06/2026 — Separação de Papéis: 3 Componentes de Alertas
+
+**Tarefa:** Implementar arquitetura "Sino = agir · Central de Alertas = analisar · Painel Lateral = monitorar", eliminando duplicidade entre os componentes.
+
+**O que foi feito:**
+- `gerarAlertas()` simplificado: removidos blocos de Agendamentos do Portal, Diagnósticos do Portal e Solicitações de Serviço (esses dados já existem no sino)
+- Painel Lateral Direito convertido de duplicata do sino para painel gerencial, com nova função `setupPainelLateralGerencial()`:
+  - Exibe: Meta Semanal (%), Ticket Médio, Pós-venda atrasado/pendente, Avaliações críticas, Estoque baixo, Aparelhos não retirados, Orçamentos sem resposta
+  - Refresh automático a cada 3 min + refresh ao focar a aba
+  - Header renomeado "⚠️ CENTRAL DE ALERTAS" → "📊 MONITORAMENTO"
+- Sino (script inline): função `atualizarAlertasDireita()` removida (efeito colateral), núcleo funcional 100% preservado
+
+**Arquivos alterados:** `CRM/pages/dashboard/dashboard.js`, `CRM/pages/dashboard/index.html`
+**Backup:** `CRM/pages/dashboard/BACKUP_REDESIGN_PAINEL_2026-06-14/`
+
+---
+
+### 14/06/2026 — Central de Alertas como Módulo
+
+**Tarefa:** Remover painel rotativo do topo e converter Central de Alertas em card de módulo no grid principal.
+
+**O que foi feito:**
+- `alerts-section` ocultada com `display:none` (lógica de som e config permanece ativa)
+- Card "⚠️ Central de Alertas" adicionado ao grid de módulos: badge de contagem + subtítulo dinâmico
+- Clicar no card abre modal com lista completa de alertas; modal tem botão ⚙️ que abre config
+- `navigateTo('central-alertas')` interceptado para abrir modal
+
+**Arquivos alterados:** `CRM/pages/dashboard/dashboard.js`, `CRM/pages/dashboard/dashboard.css`, `CRM/pages/dashboard/index.html`
+**Backup:** `CRM/pages/dashboard/BACKUP_UNIF_ALERTAS_2026-06-14/`
+
+---
+
+### 14/06/2026 — Unificação da Central de Alertas (sistema base)
+
+**Tarefa:** Unificar `setupAvisoAcoes()`, `monitorarCardAcaoSemana()` e `gerarAlertas()` em sistema único com configuração pelo usuário.
+
+**O que foi feito:**
+- `setupAvisoAcoes()` removida; `monitorarCardAcaoSemana()` substituída por `atualizarCardAcaoSemana()` (só visual)
+- Cada alerta ganhou flags `som`, `pulsar`, `repetir`, `tipo`
+- `setupAlerts()` integra som + pulsação respeitando config; config salva em `localStorage('cc_config_alertas')`
+- Modal de configuração: som on/off, dias da semana, horário de silêncio, toggles por tipo de alerta, pulsação
+
+**Arquivos alterados:** `CRM/pages/dashboard/dashboard.js`, `CRM/pages/dashboard/dashboard.css`, `CRM/pages/dashboard/index.html`
+**Backup:** `CRM/pages/dashboard/BACKUP_UNIF_ALERTAS_2026-06-14/`
+
+---
+
 ### 14/06/2026 — Atalho Site Cell City
 
 **Tarefa:** Adicionar acesso rápido ao site institucional em todas as páginas do CRM.
@@ -915,6 +962,37 @@ Cada registro deve conter:
 **Arquivos alterados:** `CRM/pages/central-informacoes/index.html`, `CRM/pages/central-informacoes/informacoes.js`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
 **Arquivos criados:** `CRM/pages/central-informacoes/visualizacao.css`, `CRM/pages/central-informacoes/visualizacao.js`.
 **Validação:** revisão de diff e inspeção manual dos trechos críticos. Checagem automática com `node --check` não executada porque `node` não está instalado no ambiente.
+
+---
+
+---
+
+## 14/06/2026 — Unificação da Central de Alertas + Modal de Configuração
+
+**Tarefa:** Unificar `setupAvisoAcoes()` + `monitorarCardAcaoSemana()` + `gerarAlertas()` em um único sistema centralizado, com configuração pelo usuário.
+
+**Contexto:** No Dashboard V2 (13/06), o `alerts-card` rotativo havia sido removido do layout, tornando `setupAlerts()` e `setupAvisoAcoes()` inoperantes. Esta etapa reativou e unificou o sistema.
+
+**Entregue:**
+- **`alerts-card` re-adicionado** ao `index.html` como seção dedicada entre o Painel Executivo e o grid de módulos.
+- **Botão ⚙️** (`btn-abrir-config-alertas`) no canto do card de alertas.
+- **Modal de configuração** com: som global on/off, horário de funcionamento, dias da semana, horário de silêncio, alertas individuais com som, pulsação visual.
+- **`setupAvisoAcoes()`** — **removida** (sobrepunha o card, brigava com `setupAlerts()`).
+- **`monitorarCardAcaoSemana()`** — **substituída** por `atualizarCardAcaoSemana()` (só marca `acao-vencida` no card, sem som).
+- **`gerarAlertas()`** — cada alerta ganhou flags: `som`, `pulsar`, `repetir`, `tipo`.
+- **`setupAlerts()`** — funções de som movidas para cá; `verificarConfigSom()` e `verificarPulsacao()` integradas ao `mostrar()`; intervalo de 30s para re-tocar som em alertas `repetir:true`.
+- **Novas funções:** `setupConfigAlertas()`, `carregarConfigAlertas()`, `salvarConfigAlertas()`, `carregarConfigAlertasUI()`, helpers `_setChecked/_getChecked/_setValue/_getValue`.
+- Config salva em `localStorage('cc_config_alertas')`.
+
+**Arquivos alterados:**
+- `CRM/pages/dashboard/dashboard.js`
+- `CRM/pages/dashboard/dashboard.css` (seção `.alerts-section`, `.btn-config-alertas`, modal)
+- `CRM/pages/dashboard/index.html` (alerts-card + modal HTML)
+
+**Backup:** `CRM/pages/dashboard/BACKUP_UNIF_ALERTAS_2026-06-14/`
+
+**Validação:** chaves JS balanceadas (862/862), todas as funções novas presentes, `setupAvisoAcoes` e `monitorarCardAcaoSemana` zeradas.
+Pendente: teste visual no navegador.
 
 ---
 

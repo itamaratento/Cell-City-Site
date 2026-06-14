@@ -583,19 +583,19 @@
         </div>
       </div>
 
-      <!-- MONITORAMENTO GERENCIAL -->
+      <!-- CENTRAL DE ALERTAS -->
       <div class="pr-section pr-alertas">
         <div class="pr-section-header">
-          <span>📊 MONITORAMENTO</span>
+          <span>⚠️ CENTRAL DE ALERTAS</span>
           <button class="pr-section-toggle" id="alertas-toggle" title="Recolher">−</button>
         </div>
         <div class="pr-section-body" id="alertas-body">
 
           <div class="alertas-list" id="alertas-direita-list">
-            <div class="alertas-loading">Carregando...</div>
+            <div class="alertas-loading">Carregando alertas...</div>
           </div>
 
-          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../relatorios/index.html">Ver relatórios ›</a>
+          <a class="pr-ver-tudo" id="alertas-ver-todos" href="#">Ver todos os alertas ›</a>
 
         </div>
       </div>
@@ -973,6 +973,63 @@
       + '</div>';
   }
 
+  // ---- Atualiza Central de Alertas no painel direito ----
+  function atualizarAlertasDireita() {
+    var el = document.getElementById('alertas-direita-list');
+    if (!el) return;
+
+    var STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente', 'recebido', 'diagnostico', 'aguardando_peca'];
+
+    var aprovPend = osDocs.filter(function(os) {
+      return (os.orcamentoResposta === 'aprovado' || os.orcamentoResposta === 'recusado' || os.status === 'orcamento_aprovado') && !os.orcamentoVisto;
+    });
+    var agPend = agDocs.filter(function(a) { return a.status === 'aguardando'; });
+    var diagPend = diagDocs.filter(function(s) { return (s.status || 'pendente') !== 'concluido'; });
+    var preOSPend = preOSDocs.filter(function(p) { return (p.status || 'AGUARDANDO_CONVERSAO') === 'AGUARDANDO_CONVERSAO'; });
+
+    // Peças aguardando (OS com status relevante)
+    var pecasAguardando = osDocs.filter(function(os) { return os.status === 'aguardando_peca'; }).length;
+
+    // OS prontas para entrega
+    var prontas = osDocs.filter(function(os) { return os.status === 'pronto' || os.status === 'concluido'; }).length;
+
+    var alertas = [];
+
+    if (aprovPend.length > 0)
+      alertas.push({ cor: '#ef4444', icon: '✅', label: 'aprovações pendentes', count: aprovPend.length, sub: 'Aguardando clientes', href: '../os/index.html' });
+
+    if (agPend.length > 0)
+      alertas.push({ cor: '#f59e0b', icon: '📅', label: 'agendamentos aguardando', count: agPend.length, sub: 'Confirmar ou reagendar', href: '../portal-cliente/admin.html' });
+
+    if (diagPend.length > 0)
+      alertas.push({ cor: '#00C853', icon: '🔧', label: 'diagnósticos pendentes', count: diagPend.length, sub: 'Solicitar atendimento', href: '../portal-cliente/admin.html' });
+
+    if (preOSPend.length > 0)
+      alertas.push({ cor: '#00C853', icon: '🆕', label: 'pré-OS aguardando', count: preOSPend.length, sub: 'Converter em OS', href: '../autoatendimento/index.html' });
+
+    if (prontas > 0)
+      alertas.push({ cor: '#3b82f6', icon: '📦', label: 'OS prontas para entrega', count: prontas, sub: 'Avisar o cliente', href: '../os/index.html' });
+
+    if (pecasAguardando > 0)
+      alertas.push({ cor: '#f59e0b', icon: '⏳', label: 'OS aguardando peça', count: pecasAguardando, sub: 'Verificar fornecedores', href: '../estoque/index.html' });
+
+    if (!alertas.length) {
+      el.innerHTML = '<div class="alertas-vazio">✅ Nenhum alerta pendente</div>';
+      return;
+    }
+
+    el.innerHTML = alertas.map(function(a) {
+      return '<a class="alerta-item" href="' + a.href + '" style="border-left-color:' + a.cor + ';">'
+        + '<span class="alerta-icon" style="color:' + a.cor + ';">' + a.icon + '</span>'
+        + '<div class="alerta-texto">'
+        + '<div class="alerta-label">' + esc(a.label) + '</div>'
+        + '<div class="alerta-sub">' + esc(a.sub) + '</div>'
+        + '</div>'
+        + '<span class="alerta-count" style="background:' + a.cor + ';">' + a.count + '</span>'
+        + '</a>';
+    }).join('');
+  }
+  window.ccAtualizarAlertasDireita = atualizarAlertasDireita;
 
   function recompute() {
     if (!badge) return;
@@ -1047,6 +1104,8 @@
       footer.style.display = (aprovPend.length || pvPend.length || preOSPend.length) ? '' : 'none';
     }
 
+    // Atualiza a Central de Alertas no painel direito
+    atualizarAlertasDireita();
   }
 
   function salvarVistoFirestore(key) {

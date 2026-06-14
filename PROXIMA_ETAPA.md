@@ -46,7 +46,76 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ÚLTIMA ETAPA CONCLUÍDA — Atalho Site Cell City (14/06/2026)
+## ✅ ÚLTIMA ETAPA CONCLUÍDA — Separação de Papéis dos 3 Componentes de Alertas (14/06/2026)
+
+**Filosofia: Sino = agir · Central de Alertas = analisar · Painel Lateral = monitorar**
+
+### O que foi feito
+
+**Central de Alertas (módulo) — `dashboard.js` `gerarAlertas()`:**
+- Removidos: bloco Agendamentos do Portal, bloco Diagnósticos do Portal, bloco Solicitações de Serviço (keywords)
+- Mantidos: Ação da Semana, Pós-venda, OS aguardando/orçamento/pronto, Meta semanal, Mensagens Portal, Avaliações, Aparelhos não retirados, Orçamentos sem resposta
+
+**Painel Lateral Direito — nova função `setupPainelLateralGerencial()`:**
+- Renomeado: "⚠️ CENTRAL DE ALERTAS" → "📊 MONITORAMENTO"
+- Link de rodapé: "Ver todos os alertas" → "Ver relatórios"
+- Removida função `atualizarAlertasDireita()` do sino (script inline) — não mais usada
+- Novo conteúdo (dados gerenciais, refresh a cada 3 min):
+  - 🎯 Meta Semanal (% do `this.state.meta`)
+  - 💰 Ticket Médio (do KPI `#kpi-ticket-medio` já calculado)
+  - 💡 Pós-venda atrasado / pendente (join `os` + `posvenda_contatos`, mesma lógica do módulo)
+  - ⭐ Avaliações críticas (nota ≤ 2, últimas 10)
+  - 📦 Estoque baixo (collection `estoque`, `quantidade < estoqueMinimo`)
+  - 🔧 Aparelhos não retirados (status `concluido`/`pronto` > 3 dias)
+  - 💬 Orçamentos sem resposta (status `orcamento`/`orcamento_enviado` > 2 dias)
+
+**Sino (`index.html` script inline):**
+- Funcionalidade PRESERVADA 100%: badge, painel de ações, som, marcar visto, etc.
+- Apenas efeito colateral removido: a chamada a `atualizarAlertasDireita()` em `recompute()`
+
+**Não implementado (sem critérios definidos ou sem coleção):**
+- "Clientes sem retorno" — critério não especificado
+- "Compras pendentes" — módulo Compras ainda é shell sem coleção Firestore
+
+### Arquivos alterados
+- `CRM/pages/dashboard/dashboard.js` — `gerarAlertas()` simplificado, novo `setupPainelLateralGerencial()`
+- `CRM/pages/dashboard/index.html` — sino sem `atualizarAlertasDireita`, header do painel renomeado
+
+### Backup
+- `CRM/pages/dashboard/BACKUP_REDESIGN_PAINEL_2026-06-14/`
+
+> ⚠️ **Validação pendente:** teste visual no navegador (painel lateral exibindo dados gerenciais).
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
+
+---
+
+## ✅ ETAPA ANTERIOR — Unificação da Central de Alertas sistema base (14/06/2026)
+
+**Sistema de alertas unificado com configuração pelo usuário.**
+
+### O que foi feito
+- `alerts-card` rotativo re-adicionado ao Dashboard V2 (havia sido removido no V2)
+- Botão ⚙️ no card abre modal de configuração
+- `setupAvisoAcoes()` removida — sobrepunha o card e brigava com `setupAlerts()`
+- `monitorarCardAcaoSemana()` substituída por `atualizarCardAcaoSemana()` (só visual, sem som)
+- `gerarAlertas()` — cada alerta ganhou flags `som`, `pulsar`, `repetir`, `tipo`
+- `setupAlerts()` — integra som + pulsação respeitando config do usuário
+- Config salva em `localStorage('cc_config_alertas')`
+
+### Arquivos alterados
+- `CRM/pages/dashboard/dashboard.js`
+- `CRM/pages/dashboard/dashboard.css`
+- `CRM/pages/dashboard/index.html`
+
+### Backup
+- `CRM/pages/dashboard/BACKUP_UNIF_ALERTAS_2026-06-14/`
+
+> ⚠️ **Validação pendente:** teste visual no navegador (card visível, botão ⚙️, modal abre/fecha, som toca, pulsação funciona).
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
+
+---
+
+## ✅ ETAPA ANTERIOR — Atalho Site Cell City (14/06/2026)
 
 **Atalho fixo para o site institucional em todas as páginas do CRM.**
 

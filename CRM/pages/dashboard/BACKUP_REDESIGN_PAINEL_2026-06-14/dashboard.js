@@ -73,7 +73,6 @@ class Dashboard {
     this.atualizarCardAcaoSemana();
     this.setupAlarmeOS();
     this.setupCompactMode();
-    this.setupPainelLateralGerencial();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -869,6 +868,123 @@ class Dashboard {
         }
       } catch (e) {
         console.warn('Central de Alertas — erro ao buscar avaliações:', e);
+      }
+
+      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
+      try {
+        const solicitacoesSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        );
+        const solicitacoes = [];
+        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
+        // Este bloco complementa o de mensagens, focando em solicitações específicas
+        const solicitacoesServico = solicitacoes.filter(s =>
+          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
+                      s.texto.toLowerCase().includes('conserto') ||
+                      s.texto.toLowerCase().includes('reparo') ||
+                      s.texto.toLowerCase().includes('manutenção'))
+        );
+        if (solicitacoesServico.length > 0) {
+          alertas.push({
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE SERVIÇO',
+            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
+            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
+          });
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
+      }
+
+      // ===== AGENDAMENTOS DO PORTAL (aguardando confirmação) =====
+      // Centraliza no Painel de Alertas todo novo pedido de agendamento, evitando
+      // que a equipe precise abrir o módulo Portal/Painel Administrativo para vê-los.
+      try {
+        const agendamentosSnap = await getDocs(
+          query(collection(db, 'agendamentos'), where('status', '==', 'aguardando'))
+        );
+        const agPendentes = [];
+        agendamentosSnap.forEach(d => agPendentes.push({ id: d.id, ...d.data() }));
+
+        // "YYYY-MM-DD" → "DD/MM/YYYY" (sem conversão de fuso)
+        const fmtDataAg = (data) =>
+          (data && /^\d{4}-\d{2}-\d{2}$/.test(data)) ? data.split('-').reverse().join('/') : (data || 'Sem data');
+
+        if (agPendentes.length > 0) {
+          // Ordena pela data desejada (mais próxima primeiro)
+          agPendentes.sort((a, b) => (a.data || '9999-99-99') < (b.data || '9999-99-99') ? -1 : 1);
+
+          const badge = document.getElementById('agendamentos-badge');
+          if (badge) {
+            badge.textContent = agPendentes.length;
+            badge.style.display = '';
+          }
+
+          // Alerta-resumo
+          alertas.push({
+            icon: '📅', cat: 'atencao', cor: 'atencao',
+            title: 'AGENDAMENTOS PENDENTES',
+            sub: `${agPendentes.length} agendamento(s) aguardando confirmação`,
+            detail: `${agPendentes.length} cliente(s) solicitaram horário de atendimento pelo Portal. Acesse o Painel Administrativo do Portal para confirmar, reagendar ou cancelar.`
+          });
+
+          // Alertas individuais (até 3) — formato pedido pela equipe
+          agPendentes.slice(0, 3).forEach(a => {
+            alertas.push({
+              icon: '🔔', cat: 'crm', cor: null,
+              title: `🔔 Novo Agendamento · ${a.clientName || a.nome || 'Cliente'}`,
+              sub: `📅 ${fmtDataAg(a.data)}${a.horario ? ' · ⏰ ' + a.horario : ''}`,
+              detail: `Cliente: ${a.clientName || a.nome || 'Cliente'} · Data: ${fmtDataAg(a.data)}${a.horario ? ' · Horário: ' + a.horario : ''} · Status: Aguardando Confirmação. Confirme, reagende ou cancele no Painel Administrativo do Portal.`
+            });
+          });
+        } else {
+          const badge = document.getElementById('agendamentos-badge');
+          if (badge) badge.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar agendamentos:', e);
+      }
+
+      // ===== SOLICITAÇÕES DE DIAGNÓSTICO DO PORTAL (aguardando atendimento) =====
+      // Centraliza no Painel de Alertas todo novo pedido de diagnóstico/orçamento
+      // enviado pelo módulo "🔧 Solicitar Diagnóstico Gratuito" do Portal do Cliente.
+      try {
+        const TIPO_EQUIP = { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora', outro: '🔧 Outro' };
+        const diagSnap = await getDocs(
+          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
+        );
+        const diagPend = [];
+        diagSnap.forEach(d => diagPend.push({ id: d.id, ...d.data() }));
+
+        const equipDe = (s) => {
+          const partes = [s.marca, s.modelo].filter(Boolean).join(' ').trim();
+          return partes || TIPO_EQUIP[s.tipoEquipamento] || (s.tipoEquipamento || 'Equipamento não informado');
+        };
+
+        if (diagPend.length > 0) {
+          // Mais recentes primeiro
+          diagPend.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
+
+          // Alerta-resumo
+          alertas.push({
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
+            sub: `${diagPend.length} solicitação(ões) aguardando atendimento`,
+            detail: `${diagPend.length} cliente(s) solicitaram diagnóstico/orçamento pelo Portal. Abra o Painel de Alertas (🔔) para atender ou descartar.`
+          });
+
+          // Alertas individuais (até 3) — formato pedido pela equipe
+          diagPend.slice(0, 3).forEach(s => {
+            alertas.push({
+              icon: '🔔', cat: 'crm', cor: null,
+              title: `🔔 Nova Solicitação de Diagnóstico · ${s.clientName || 'Cliente'}`,
+              sub: `🔧 ${equipDe(s)}${s.descricao ? ' · 📝 ' + s.descricao : ''}`,
+              detail: `Cliente: ${s.clientName || 'Cliente'} · Equipamento: ${equipDe(s)}${s.descricao ? ' · Motivo: ' + s.descricao : ''} · Status: Aguardando Atendimento.`
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
       }
 
     } catch (e) {
@@ -1893,161 +2009,6 @@ class Dashboard {
   _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
   _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
   _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
-
-  // ===== PAINEL LATERAL DIREITO — MONITORAMENTO GERENCIAL =====
-  setupPainelLateralGerencial() {
-    const lista = document.getElementById('alertas-direita-list');
-    if (!lista) return;
-
-    const headerSpan = document.querySelector('.pr-section.pr-alertas .pr-section-header > span');
-    if (headerSpan) headerSpan.textContent = '📊 MONITORAMENTO';
-    const linkVerTodos = document.getElementById('alertas-ver-todos');
-    if (linkVerTodos) { linkVerTodos.textContent = 'Ver relatórios ›'; linkVerTodos.href = '../relatorios/index.html'; }
-
-    const calcDias = (dateStr) => {
-      try { return Math.floor((Date.now() - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const getDeliveryDate = (os) => {
-      if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-      }
-      const ua = os.updatedAt;
-      if (!ua) return null;
-      if (typeof ua === 'string') return ua;
-      if (ua.toDate) return ua.toDate().toISOString();
-      return null;
-    };
-
-    const renderizar = ({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas }) => {
-      const items = [];
-
-      if (metaPct !== null) {
-        const cor = metaPct >= 100 ? '#00e676' : metaPct >= 60 ? '#f59e0b' : '#ef4444';
-        const txt = metaPct >= 100 ? '✅ Meta atingida' : `${metaPct}% da meta`;
-        items.push({ icon: '🎯', label: 'Meta Semanal', value: txt, cor, href: '../relatorios/index.html' });
-      }
-
-      if (ticketMedio) {
-        items.push({ icon: '💰', label: 'Ticket Médio', value: ticketMedio, cor: '#3b82f6', href: '../relatorios/index.html' });
-      }
-
-      if (pvAtrasados > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda atrasado', value: `${pvAtrasados} cliente(s)`, cor: '#ef4444', href: '../pos-venda/index.html' });
-      } else if (pvPendentes > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda pendente', value: `${pvPendentes} cliente(s)`, cor: '#f59e0b', href: '../pos-venda/index.html' });
-      }
-
-      if (avalCriticas > 0) {
-        items.push({ icon: '⭐', label: 'Avaliações críticas', value: `${avalCriticas}`, cor: '#ef4444', href: '../portal-cliente/admin.html' });
-      }
-
-      if (estoqueBaixo > 0) {
-        items.push({ icon: '📦', label: 'Estoque baixo', value: `${estoqueBaixo} item(s)`, cor: '#f59e0b', href: '../estoque/index.html' });
-      }
-
-      if (aparelhos > 0) {
-        items.push({ icon: '🔧', label: 'Ap. não retirados', value: `${aparelhos}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (orcSemResposta > 0) {
-        items.push({ icon: '💬', label: 'Orç. sem resposta', value: `${orcSemResposta}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (!items.length) {
-        lista.innerHTML = '<div class="alertas-vazio">✅ Tudo em dia</div>';
-        return;
-      }
-
-      lista.innerHTML = items.map(a =>
-        `<a class="alerta-item" href="${a.href}" style="border-left-color:${a.cor};">` +
-        `<span class="alerta-icon" style="color:${a.cor};">${a.icon}</span>` +
-        `<div class="alerta-texto"><div class="alerta-label">${esc(a.label)}</div></div>` +
-        `<span class="alerta-count" style="background:${a.cor};">${esc(a.value)}</span>` +
-        `</a>`
-      ).join('');
-    };
-
-    const atualizar = async () => {
-      try {
-        const meta = this.state && this.state.meta;
-        const metaPct = meta && meta.goal > 0 ? Math.round((meta.current / meta.goal) * 100) : null;
-        const ticketEl = document.getElementById('kpi-ticket-medio');
-        const ticketMedio = ticketEl ? ticketEl.textContent.trim() : null;
-
-        const [osSnap, contatosSnap] = await Promise.all([
-          getDocs(collection(db, 'os')),
-          getDocs(collection(db, 'posvenda_contatos'))
-        ]);
-
-        const contatosFeitos = new Set();
-        contatosSnap.forEach(d => { const c = d.data(); if (c.ativo !== false) contatosFeitos.add(`${c.osId}_${c.prazo}`); });
-
-        let pvAtrasados = 0, pvPendentes = 0, aparelhos = 0, orcSemResposta = 0;
-        osSnap.forEach(d => {
-          const os = { _id: d.id, ...d.data() };
-
-          if (os.status === 'entregue') {
-            const dd = getDeliveryDate(os);
-            if (dd) {
-              const dias = calcDias(dd);
-              const osId = os.id || os._id;
-              [5, 15, 30].forEach(prazo => {
-                if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-                const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
-                if (dias < prazo || dias >= proxPrazo) return;
-                pvPendentes++;
-                if (dias > prazo + 2) pvAtrasados++;
-              });
-            }
-          }
-
-          if (os.status === 'concluido' || os.status === 'pronto') {
-            let dataConcl = null;
-            if (Array.isArray(os.timeline)) {
-              const e = [...os.timeline].reverse().find(t => typeof t.text === 'string' && t.text.includes('→ Concluído'));
-              if (e?.date) dataConcl = e.date;
-            }
-            if (!dataConcl) dataConcl = typeof os.updatedAt === 'string' ? os.updatedAt : (os.updatedAt && os.updatedAt.toDate ? os.updatedAt.toDate().toISOString() : null);
-            if (dataConcl && calcDias(dataConcl) > 3) aparelhos++;
-          }
-
-          if (os.status === 'orcamento' || os.status === 'orcamento_enviado') {
-            const ref = os.updatedAt || os.createdAt;
-            const refStr = typeof ref === 'string' ? ref : (ref && ref.toDate ? ref.toDate().toISOString() : null);
-            if (refStr && calcDias(refStr) > 2) orcSemResposta++;
-          }
-        });
-
-        let estoqueBaixo = 0;
-        try {
-          const estSnap = await getDocs(collection(db, 'estoque'));
-          estSnap.forEach(d => {
-            const p = d.data();
-            const qty = Number(p.quantidade ?? p.estoque ?? 0);
-            const min = Number(p.estoqueMinimo ?? p.minimo ?? 1);
-            if (qty < min) estoqueBaixo++;
-          });
-        } catch (e) { console.warn('[Painel] estoque:', e); }
-
-        let avalCriticas = 0;
-        try {
-          const avalSnap = await getDocs(query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(10)));
-          avalSnap.forEach(d => { if ((d.data().nota || 0) <= 2) avalCriticas++; });
-        } catch (e) { console.warn('[Painel] avaliações:', e); }
-
-        renderizar({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas });
-      } catch (e) {
-        console.warn('[Painel Gerencial] erro:', e);
-      }
-    };
-
-    atualizar();
-    setInterval(atualizar, 180000);
-    window.addEventListener('focus', atualizar);
-  }
 
   // ===== ALARME PARA OS NOVA =====
   setupAlarmeOS() {

@@ -284,24 +284,6 @@
       </div>
     </section>
 
-    <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
-    <section class="alerts-section" id="alerts-section" style="display:none;">
-      <div class="module-card alerts-card" id="alerts-card">
-        <div class="alerts-main">
-          <div class="alert-header-row">
-            <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
-            <div class="alert-title">DICA DO CRM</div>
-            <button class="btn-config-alertas" id="btn-abrir-config-alertas" title="Configurar alertas">⚙️</button>
-          </div>
-          <div class="alert-subtitle">Carregando alertas...</div>
-          <div class="alert-detail"></div>
-        </div>
-        <div class="alert-progress-track">
-          <div class="alert-progress-bar" id="alert-progress-bar"></div>
-        </div>
-      </div>
-    </section>
-
     <!-- MÓDULOS PRINCIPAIS -->
     <section class="modules-section">
       <div class="modules-header">
@@ -326,17 +308,6 @@
           <div class="module-info">
             <h3>Caixa</h3>
             <p class="module-sub">Fluxo financeiro</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="central-alertas">
-          <div class="module-indicator" id="alertas-card-indicator">
-            <span class="badge-contador" id="alertas-count-badge" style="display:none;">0</span>
-          </div>
-          <div class="module-icon">⚠️</div>
-          <div class="module-info">
-            <h3>Central de Alertas</h3>
-            <p class="module-sub" id="alertas-card-sub">Sem pendências</p>
           </div>
         </div>
 
@@ -583,19 +554,19 @@
         </div>
       </div>
 
-      <!-- MONITORAMENTO GERENCIAL -->
+      <!-- CENTRAL DE ALERTAS -->
       <div class="pr-section pr-alertas">
         <div class="pr-section-header">
-          <span>📊 MONITORAMENTO</span>
+          <span>⚠️ CENTRAL DE ALERTAS</span>
           <button class="pr-section-toggle" id="alertas-toggle" title="Recolher">−</button>
         </div>
         <div class="pr-section-body" id="alertas-body">
 
           <div class="alertas-list" id="alertas-direita-list">
-            <div class="alertas-loading">Carregando...</div>
+            <div class="alertas-loading">Carregando alertas...</div>
           </div>
 
-          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../relatorios/index.html">Ver relatórios ›</a>
+          <a class="pr-ver-tudo" id="alertas-ver-todos" href="#">Ver todos os alertas ›</a>
 
         </div>
       </div>
@@ -973,6 +944,63 @@
       + '</div>';
   }
 
+  // ---- Atualiza Central de Alertas no painel direito ----
+  function atualizarAlertasDireita() {
+    var el = document.getElementById('alertas-direita-list');
+    if (!el) return;
+
+    var STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente', 'recebido', 'diagnostico', 'aguardando_peca'];
+
+    var aprovPend = osDocs.filter(function(os) {
+      return (os.orcamentoResposta === 'aprovado' || os.orcamentoResposta === 'recusado' || os.status === 'orcamento_aprovado') && !os.orcamentoVisto;
+    });
+    var agPend = agDocs.filter(function(a) { return a.status === 'aguardando'; });
+    var diagPend = diagDocs.filter(function(s) { return (s.status || 'pendente') !== 'concluido'; });
+    var preOSPend = preOSDocs.filter(function(p) { return (p.status || 'AGUARDANDO_CONVERSAO') === 'AGUARDANDO_CONVERSAO'; });
+
+    // Peças aguardando (OS com status relevante)
+    var pecasAguardando = osDocs.filter(function(os) { return os.status === 'aguardando_peca'; }).length;
+
+    // OS prontas para entrega
+    var prontas = osDocs.filter(function(os) { return os.status === 'pronto' || os.status === 'concluido'; }).length;
+
+    var alertas = [];
+
+    if (aprovPend.length > 0)
+      alertas.push({ cor: '#ef4444', icon: '✅', label: 'aprovações pendentes', count: aprovPend.length, sub: 'Aguardando clientes', href: '../os/index.html' });
+
+    if (agPend.length > 0)
+      alertas.push({ cor: '#f59e0b', icon: '📅', label: 'agendamentos aguardando', count: agPend.length, sub: 'Confirmar ou reagendar', href: '../portal-cliente/admin.html' });
+
+    if (diagPend.length > 0)
+      alertas.push({ cor: '#00C853', icon: '🔧', label: 'diagnósticos pendentes', count: diagPend.length, sub: 'Solicitar atendimento', href: '../portal-cliente/admin.html' });
+
+    if (preOSPend.length > 0)
+      alertas.push({ cor: '#00C853', icon: '🆕', label: 'pré-OS aguardando', count: preOSPend.length, sub: 'Converter em OS', href: '../autoatendimento/index.html' });
+
+    if (prontas > 0)
+      alertas.push({ cor: '#3b82f6', icon: '📦', label: 'OS prontas para entrega', count: prontas, sub: 'Avisar o cliente', href: '../os/index.html' });
+
+    if (pecasAguardando > 0)
+      alertas.push({ cor: '#f59e0b', icon: '⏳', label: 'OS aguardando peça', count: pecasAguardando, sub: 'Verificar fornecedores', href: '../estoque/index.html' });
+
+    if (!alertas.length) {
+      el.innerHTML = '<div class="alertas-vazio">✅ Nenhum alerta pendente</div>';
+      return;
+    }
+
+    el.innerHTML = alertas.map(function(a) {
+      return '<a class="alerta-item" href="' + a.href + '" style="border-left-color:' + a.cor + ';">'
+        + '<span class="alerta-icon" style="color:' + a.cor + ';">' + a.icon + '</span>'
+        + '<div class="alerta-texto">'
+        + '<div class="alerta-label">' + esc(a.label) + '</div>'
+        + '<div class="alerta-sub">' + esc(a.sub) + '</div>'
+        + '</div>'
+        + '<span class="alerta-count" style="background:' + a.cor + ';">' + a.count + '</span>'
+        + '</a>';
+    }).join('');
+  }
+  window.ccAtualizarAlertasDireita = atualizarAlertasDireita;
 
   function recompute() {
     if (!badge) return;
@@ -1047,6 +1075,8 @@
       footer.style.display = (aprovPend.length || pvPend.length || preOSPend.length) ? '' : 'none';
     }
 
+    // Atualiza a Central de Alertas no painel direito
+    atualizarAlertasDireita();
   }
 
   function salvarVistoFirestore(key) {
@@ -1371,125 +1401,6 @@
   });
 })();
 </script>
-
-<!-- ===== MODAL LISTA DE ALERTAS ===== -->
-<div id="modal-lista-alertas" class="modal-lista-overlay" style="display:none;">
-  <div class="modal-lista-content">
-    <div class="modal-lista-header">
-      <span>⚠️ Central de Alertas</span>
-      <div class="modal-lista-actions">
-        <button class="modal-lista-config-btn" id="btn-config-alertas-modal" title="Configurar alertas">⚙️ Config</button>
-        <button class="modal-lista-close" id="btn-fechar-lista-alertas">&times;</button>
-      </div>
-    </div>
-    <div class="modal-lista-body" id="lista-alertas-body">
-      <div class="lista-alertas-loading">Carregando alertas...</div>
-    </div>
-  </div>
-</div>
-
-<!-- ===== MODAL DE CONFIGURAÇÃO DE ALERTAS ===== -->
-<div id="modal-config-alertas" class="modal-config-overlay" style="display:none;">
-  <div class="modal-config-content">
-    <div class="modal-config-header">
-      <span>⚙️ Configuração de Alertas</span>
-      <button class="modal-config-close" id="btn-fechar-config-alertas">&times;</button>
-    </div>
-
-    <div class="modal-config-body">
-
-      <!-- SEÇÃO: SOM GLOBAL -->
-      <div class="config-secao">
-        <div class="config-secao-titulo">🔊 Som</div>
-
-        <label class="config-toggle">
-          <input type="checkbox" id="config-som-ativo" checked>
-          <span>Ativar som nos alertas</span>
-        </label>
-
-        <div class="config-horario-row">
-          <label>Tocar apenas entre:</label>
-          <input type="time" id="config-som-inicio" value="08:00">
-          <span>até</span>
-          <input type="time" id="config-som-fim" value="18:00">
-        </div>
-
-        <div class="config-dias-row">
-          <label>Dias da semana:</label>
-          <label><input type="checkbox" class="config-dia-sem" value="0"> Dom</label>
-          <label><input type="checkbox" class="config-dia-sem" value="1" checked> Seg</label>
-          <label><input type="checkbox" class="config-dia-sem" value="2" checked> Ter</label>
-          <label><input type="checkbox" class="config-dia-sem" value="3" checked> Qua</label>
-          <label><input type="checkbox" class="config-dia-sem" value="4" checked> Qui</label>
-          <label><input type="checkbox" class="config-dia-sem" value="5" checked> Sex</label>
-          <label><input type="checkbox" class="config-dia-sem" value="6"> Sab</label>
-        </div>
-
-        <div class="config-silencio-row">
-          <label class="config-toggle">
-            <input type="checkbox" id="config-silencio-ativo">
-            <span>Horário de silêncio 🤫</span>
-          </label>
-          <div id="config-silencio-campos" style="display:none; margin-top:6px; display:flex; align-items:center; gap:6px;">
-            <input type="time" id="config-silencio-inicio" value="12:00">
-            <span>até</span>
-            <input type="time" id="config-silencio-fim" value="13:00">
-          </div>
-        </div>
-      </div>
-
-      <!-- SEÇÃO: ALERTAS COM SOM -->
-      <div class="config-secao">
-        <div class="config-secao-titulo">🔔 Alertas com som</div>
-        <p class="config-secao-sub">Mesmo com som global ativo, só tocarão os selecionados abaixo:</p>
-
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="acaoSemanaVencidas" checked>
-          <span>🔴 Ação da Semana — Vencidas</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="acaoSemanaAgora">
-          <span>🟡 Ação da Semana — Horário atual</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="acaoSemanaProximas">
-          <span>🟢 Ação da Semana — Próximas</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="posVendaCritico">
-          <span>💡 Pós-Venda atrasado</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="osAguardandoCliente">
-          <span>📦 OS com orçamento parado</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-alerta-som" data-tipo="avaliacoesCriticas">
-          <span>⭐ Avaliações críticas (nota ≤ 2)</span>
-        </label>
-      </div>
-
-      <!-- SEÇÃO: PULSAÇÃO VISUAL -->
-      <div class="config-secao">
-        <div class="config-secao-titulo">🔴 Pulsação Visual</div>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-pulsacao" data-nivel="critico" checked>
-          <span>Alertas críticos</span>
-        </label>
-        <label class="config-toggle">
-          <input type="checkbox" class="config-pulsacao" data-nivel="atencao">
-          <span>Alertas de atenção</span>
-        </label>
-      </div>
-
-    </div>
-
-    <div class="modal-config-footer">
-      <button id="btn-testar-som" class="config-btn config-btn-secondary">🔇 Testar Som</button>
-      <button id="btn-salvar-config" class="config-btn config-btn-primary">💾 Salvar</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
