@@ -53,14 +53,11 @@ async function carregarConfig() {
 
 function atualizarWppHeader() {
   const n = (_config.whatsapp || '').replace(/\D/g, '');
-  const btn = document.getElementById('cat-wpp-header');
-  if (!btn) return;
-  if (n) {
-    btn.href = `https://wa.me/${n}`;
-    btn.style.display = 'flex';
-  } else {
-    btn.style.display = 'none';
-  }
+  if (!n) return;
+  ['cat-wpp-hero', 'cat-footer-wpp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.href = `https://wa.me/${n}`;
+  });
 }
 
 async function carregarProdutos() {
