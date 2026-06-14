@@ -34,7 +34,7 @@ body {
 /* ===== HERO compacto (só o selo) ===== */
 .cat-hero {
   background: linear-gradient(155deg, #0a1628 0%, #071a0f 55%, #0a0b0c 100%);
-  padding: 14px 24px;
+  padding: 32px 24px;
   text-align: center;
   border-bottom: 1px solid rgba(0,200,83,0.1);
 }
@@ -62,7 +62,7 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  padding: 10px 20px;
+  padding: 14px 20px;
 }
 @media (max-width: 767px) {
   .cat-categorias { top: 0; }
