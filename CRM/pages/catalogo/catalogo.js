@@ -7,13 +7,6 @@ import {
   collection, getDocs, doc, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, orderBy, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-import { initializeApp, getApps } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-import {
-  getStorage, ref as storageRef, uploadBytes, getDownloadURL
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js';
-
-// Reutiliza a app já inicializada pelo firebase.js
-const storage = getStorage(getApps()[0]);
 
 // ─── Estado ──────────────────────────────────────────────
 let _produtos = [];
@@ -21,9 +14,6 @@ let _config = { whatsapp: '', mensagemTemplate: 'Olá! Tenho interesse no produt
 let _filtroAdm = '';
 let _filtroCatAdm = 'todos';
 let _produtoEditando = null;
-let _fotosNovas = [];   // { file, url, principal? }
-let _fotosExist = [];   // { url, storageRef? }
-let _fotoPrincipalIdx = 0;
 
 const CATEGORIAS = [
   'Carregadores', 'Cabos', 'Fones Bluetooth', 'Power Banks',
@@ -116,9 +106,6 @@ function renderTabela() {
 // ─── ADICIONAR / EDITAR ────────────────────────────────────
 window.admAbrirForm = function(id = null) {
   _produtoEditando = id ? _produtos.find(p => p.id === id) || null : null;
-  _fotosNovas = [];
-  _fotosExist = _produtoEditando?.fotos?.map(u => ({ url: u })) || [];
-  _fotoPrincipalIdx = _produtoEditando?.fotoPrincipal || 0;
 
   document.getElementById('form-modal-title').textContent = id ? 'Editar Produto' : 'Novo Produto';
   document.getElementById('form-nome').value = _produtoEditando?.nome || '';
@@ -130,7 +117,9 @@ window.admAbrirForm = function(id = null) {
   document.getElementById('form-destaque').checked = (_produtoEditando?.destaque ?? false);
   document.getElementById('form-ordem').value = _produtoEditando?.ordem ?? (_produtos.length + 1);
 
-  renderFotosForm();
+  const fotoAtual = _produtoEditando?.fotos?.[ _produtoEditando?.fotoPrincipal || 0] || '';
+  document.getElementById('form-foto-url').value = fotoAtual;
+
   document.getElementById('modal-produto').classList.add('aberto');
 };
 
@@ -139,57 +128,8 @@ window.admEditar = function(id) { admAbrirForm(id); };
 window.admFecharForm = function() {
   document.getElementById('modal-produto').classList.remove('aberto');
   _produtoEditando = null;
-  _fotosNovas = [];
-  _fotosExist = [];
 };
 
-// ─── FOTOS NO FORM ─────────────────────────────────────────
-function renderFotosForm() {
-  const wrap = document.getElementById('form-fotos-lista');
-  const allFotos = [
-    ..._fotosExist.map((f, i) => ({ tipo: 'exist', i, url: f.url })),
-    ..._fotosNovas.map((f, i) => ({ tipo: 'nova', i, url: f.url }))
-  ];
-  const globalPrincipal = _fotoPrincipalIdx;
-
-  wrap.innerHTML = allFotos.map((f, gi) => {
-    const isPrincipal = gi === globalPrincipal;
-    return `<div class="foto-item${isPrincipal ? ' principal' : ''}" onclick="admSetPrincipal(${gi})">
-      <img src="${esc(f.url)}" alt="foto">
-      ${isPrincipal ? '<span class="foto-principal-badge">Principal</span>' : ''}
-      <button class="foto-del" onclick="event.stopPropagation();admRemoverFoto('${f.tipo}',${f.i})" title="Remover">✕</button>
-    </div>`;
-  }).join('');
-}
-
-window.admSetPrincipal = function(globalIdx) {
-  _fotoPrincipalIdx = globalIdx;
-  renderFotosForm();
-};
-
-window.admRemoverFoto = function(tipo, i) {
-  if (tipo === 'exist') _fotosExist.splice(i, 1);
-  else _fotosNovas.splice(i, 1);
-  if (_fotoPrincipalIdx >= _fotosExist.length + _fotosNovas.length) {
-    _fotoPrincipalIdx = 0;
-  }
-  renderFotosForm();
-};
-
-window.admEscolherFotos = function() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.multiple = true;
-  input.accept = 'image/*';
-  input.onchange = () => {
-    Array.from(input.files).forEach(file => {
-      const url = URL.createObjectURL(file);
-      _fotosNovas.push({ file, url });
-    });
-    renderFotosForm();
-  };
-  input.click();
-};
 
 // ─── SALVAR PRODUTO ────────────────────────────────────────
 window.admSalvar = async function() {
@@ -201,27 +141,9 @@ window.admSalvar = async function() {
   btn.textContent = 'Salvando...';
 
   try {
-    // Upload de fotos novas
-    const fotasUpload = [];
-    for (const f of _fotosNovas) {
-      if (!f.file) continue;
-      const path = `catalogo/${Date.now()}_${f.file.name}`;
-      const sRef = storageRef(storage, path);
-      const uploadPromise = uploadBytes(sRef, f.file).then(snap => getDownloadURL(snap.ref));
-      const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Tempo de upload esgotado (30s). Verifique a conexão ou a configuração de CORS do Storage.')), 30000)
-      );
-      const downloadUrl = await Promise.race([uploadPromise, timeout]);
-      fotasUpload.push(downloadUrl);
-    }
-
-    const todasFotos = [
-      ..._fotosExist.map(f => f.url),
-      ...fotasUpload
-    ];
-
-    const catIdx = _fotoPrincipalIdx;
-    const fotoPrincipalFinal = Math.min(catIdx, Math.max(todasFotos.length - 1, 0));
+    const urlFoto = document.getElementById('form-foto-url').value.trim();
+    const todasFotos = urlFoto ? [urlFoto] : [];
+    const fotoPrincipalFinal = 0;
 
     const data = {
       nome,
