@@ -72,7 +72,7 @@ body {
 }
 
 .cat-cats-wrap {
-  max-width: 1100px;
+  max-width: 1440px;
   margin: 0 auto;
   display: flex;
   gap: 6px;
@@ -117,7 +117,7 @@ body {
 .cat-secao { padding: 0; }
 
 .cat-wrap {
-  max-width: 1100px;
+  max-width: 1440px;
   margin: 28px auto 0;
   padding: 0 20px;
 }
@@ -148,8 +148,8 @@ body {
 /* ===== GRID ===== */
 .cat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 22px;
 }
 
 /* ===== CARDS ===== */
@@ -173,12 +173,12 @@ body {
 
 .cat-card-img {
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   background: var(--bg3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 52px;
+  font-size: 64px;
   color: var(--text-muted);
   overflow: hidden;
 }
@@ -232,9 +232,9 @@ body {
   gap: 8px;
   flex-wrap: wrap;
 }
-.cat-card-preco-promo   { font-size: 18px; font-weight: 800; color: var(--green-light); }
-.cat-card-preco-original { font-size: 12px; color: var(--text-muted); text-decoration: line-through; }
-.cat-card-preco-normal  { font-size: 18px; font-weight: 800; color: var(--text); }
+.cat-card-preco-promo   { font-size: 22px; font-weight: 900; color: var(--green-light); }
+.cat-card-preco-original { font-size: 13px; color: var(--text-muted); text-decoration: line-through; }
+.cat-card-preco-normal  { font-size: 22px; font-weight: 900; color: #ffffff; }
 
 .cat-card-btns {
   display: flex;
@@ -350,7 +350,7 @@ body {
 .cat-modal-galeria { padding: 0 16px; }
 .cat-modal-foto-principal {
   width: 100%;
-  aspect-ratio: 4/3;
+  aspect-ratio: 1/1;
   border-radius: 12px;
   background: var(--bg3);
   display: flex;

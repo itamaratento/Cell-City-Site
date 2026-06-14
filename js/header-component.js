@@ -57,7 +57,7 @@
     }
 
     .header .logo img {
-      width: 100px;
+      width: 125px;
       height: auto;
       border-radius: 10px;
       display: block;
@@ -186,7 +186,7 @@
     /* ===== RESPONSIVO: TABLET / DESKTOP GRANDE (1024px+) ===== */
     @media (min-width: 1024px) {
       .header .logo img {
-        width: 105px;
+        width: 130px;
       }
 
       .header .nav a {
@@ -228,8 +228,8 @@
 
       .header .logo img {
         display: block !important;
-        width: 85px;
-        max-width: 28vw;
+        width: 105px;
+        max-width: 33vw;
         height: auto;
       }
 
@@ -271,7 +271,7 @@
       }
 
       .header .logo img {
-        width: 75px;
+        width: 92px;
       }
 
       .header .nav {
@@ -300,7 +300,7 @@
   const HEADER_HTML = `
     <div class="container header-flex">
       <a href="/" class="logo" aria-label="Cell City Informática - Página inicial">
-        <img src="/imagens/logooficial.jpeg" alt="Cell City Informática" width="100" height="29">
+        <img src="/imagens/logooficial.jpeg" alt="Cell City Informática" width="125" height="36">
       </a>
       <nav class="nav" role="navigation" aria-label="Menu principal">
         <div class="nav-row">
