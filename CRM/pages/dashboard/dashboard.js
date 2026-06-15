@@ -3186,6 +3186,28 @@ class Dashboard {
       navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
       saveOrder();
     });
+
+    // ----- tooltip dos módulos (body-level, bypassa overflow:hidden) -----
+    const tip = document.createElement('div');
+    tip.id = 'cc-sidebar-tooltip';
+    document.body.appendChild(tip);
+
+    const showTip = (item) => {
+      const label = item.dataset.tip;
+      if (!label) return;
+      const rect = item.getBoundingClientRect();
+      tip.textContent = label;
+      tip.style.top  = `${rect.top + rect.height / 2 - 14}px`;
+      tip.style.left = `${rect.right + 10}px`;
+      tip.classList.add('visible');
+    };
+    const hideTip = () => tip.classList.remove('visible');
+
+    document.querySelectorAll('#sidebar-nav [data-tip], #sidebar-left .sidebar-footer [data-tip]')
+      .forEach(item => {
+        item.addEventListener('mouseenter', () => showTip(item));
+        item.addEventListener('mouseleave', hideTip);
+      });
   }
 
   // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====

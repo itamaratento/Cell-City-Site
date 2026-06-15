@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar OS - Cell City</title>
+    <link rel="icon" href="/favicon.ico" type="image/png">
+    <script src="js/header-component.js" defer></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --cell-green: #00c853; --bg-base: #0a0b0d; --bg-surface: #121418; --bg-elevated: #1a1d23; --border: rgba(255,255,255,0.10); --text-primary: #f5f7fa; --text-secondary: #a1a8b3; --text-muted: #6b7280; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-base); color: var(--text-primary); }
+        .container { max-width: 700px; margin: 30px auto; padding: 30px; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .container h1 { color: var(--cell-green); margin-bottom: 10px; text-align: center; font-size: 28px; }
+        .container p { text-align: center; color: var(--text-secondary); margin-bottom: 25px; }
+        .search-box { background: rgba(0, 200, 83, 0.06); padding: 20px; border-radius: 8px; border: 1px solid rgba(0, 200, 83, 0.25); margin-bottom: 20px; }
+        .search-box input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; margin-bottom: 10px; transition: border-color 0.3s; background: var(--bg-elevated); color: var(--text-primary); }
+        .search-box input::placeholder { color: var(--text-muted); }
+        .search-box input:focus { outline: none; border-color: var(--cell-green); box-shadow: 0 0 0 1px rgba(0,200,83,0.25); }
+        .search-box button { width: 100%; background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; padding: 12px; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 15px; transition: all 0.3s; }
+        .search-box button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3); }
+        .search-box button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .result-box { background: var(--bg-elevated); padding: 20px; border-radius: 8px; border-left: 4px solid var(--cell-green); margin: 15px 0; box-shadow: 0 4px 16px rgba(0,0,0,0.3); display: none; }
+        .result-box.show { display: block; }
+        .result-box h3 { color: var(--cell-green); margin-bottom: 20px; font-size: 18px; }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .result-item { background: var(--bg-surface); border: 1px solid var(--border); padding: 12px; border-radius: 6px; }
+        .result-label { font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; }
+        .result-value { color: var(--text-primary); font-size: 15px; margin-top: 5px; font-weight: 500; }
+        .result-full { grid-column: 1 / -1; }
+        .status-badge { display: inline-block; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+        .status-recebido { background: rgba(33,150,243,0.15); color: #80a8ff; }
+        .status-em_analise { background: rgba(33,150,243,0.15); color: #80a8ff; }
+        .status-aguardando_peca { background: rgba(255,160,0,0.15); color: #ffc04d; }
+        .status-em_reparo { background: rgba(233,30,99,0.15); color: #ff80ab; }
+        .status-em_manutencao { background: rgba(233,30,99,0.15); color: #ff80ab; }
+        .status-pronto { background: rgba(0,200,83,0.15); color: #00e676; }
+        .status-pronto_retirada { background: rgba(0,200,83,0.15); color: #00e676; }
+        .status-entregue { background: rgba(255,255,255,0.08); color: #a1a8b3; }
+        .status-orcamento_enviado { background: rgba(255,160,0,0.15); color: #ffc04d; }
+        .status-orcamento_aprovado { background: rgba(0,200,83,0.15); color: #00e676; }
+        .status-orcamento_recusado { background: rgba(239,68,68,0.15); color: #ff8080; }
+        .error-box { background: rgba(239,68,68,0.12); color: #ff8080; padding: 15px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 15px 0; display: none; text-align: center; }
+        .error-box.show { display: block; }
+        .loading-box { text-align: center; padding: 20px; display: none; color: var(--text-secondary); }
+        .loading-box.show { display: block; }
+        .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--cell-green); border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .garantia-section { background: rgba(0, 200, 83, 0.06); border: 1px solid rgba(0, 200, 83, 0.25); border-radius: 8px; padding: 15px; margin-top: 15px; grid-column: 1 / -1; }
+        .garantia-section .garantia-nome { font-size: 16px; font-weight: 600; color: #00e676; margin-bottom: 10px; }
+        .garantia-section .garantia-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+        .garantia-btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; text-decoration: none; transition: all 0.3s; border: none; margin-right: 8px; margin-top: 8px; }
+        .garantia-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .garantia-btn.visualizar { background: linear-gradient(135deg, #00C853 0%, #00A040 100%); color: white; }
+        .garantia-btn.baixar { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border); }
+        @media (max-width: 768px) { .result-grid { grid-template-columns: 1fr; } }
+        .result-obs { white-space: pre-wrap; word-wrap: break-word; text-align: left; line-height: 1.6; font-size: 14px; }
+        .garantia-section { background: rgba(0,200,83,0.06); border: 1px solid rgba(0,200,83,0.25); border-radius: 10px; padding: 20px 16px; margin-top: 4px; grid-column: 1 / -1; text-align: center; }
+        .garantia-section .garantia-shield { font-size: 42px; line-height: 1; margin-bottom: 8px; }
+        .garantia-section .garantia-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .garantia-section .garantia-nome { font-size: 17px; font-weight: 700; color: #00e676; margin: 6px 0 4px; }
+        .garantia-section .garantia-dias { font-size: 13px; color: var(--text-secondary); margin-bottom: 12px; }
+        .garantia-section .garantia-dias.expirada { color: #ff8080; }
+        .timeline-section { grid-column: 1 / -1; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+        .timeline-title { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+        .tl-item { display: flex; align-items: flex-start; gap: 12px; position: relative; padding-bottom: 12px; }
+        .tl-item:last-child { padding-bottom: 0; }
+        .tl-item:not(:last-child)::before { content: ''; position: absolute; left: 7px; top: 18px; bottom: 0; width: 2px; background: var(--border); }
+        .tl-dot { width: 16px; height: 16px; border-radius: 50%; background: var(--cell-green); flex-shrink: 0; margin-top: 2px; box-shadow: 0 0 6px rgba(0,200,83,0.4); }
+        .tl-text { font-size: 13px; color: var(--text-primary); line-height: 1.4; }
+        .tl-date { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    </style>
+</head>
+<body style="padding-top: 80px;">
+    <div class="container">
+        <h1>Consultar Sua Ordem</h1>
+        <p>Informe o numero da OS ou seu telefone</p>
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="Ex: 48 ou seu telefone" onkeypress="if(event.key==='Enter')searchOS()">
+            <button onclick="searchOS()" id="btn-search">Pesquisar</button>
+        </div>
+        <div id="loading-box" class="loading-box"><div class="spinner"></div><p>Buscando...</p></div>
+        <div id="error-box" class="error-box"></div>
+        <div id="result-box" class="result-box"></div>
+    </div>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-auth-compat.js"></script>
+    <script>
+        firebase.initializeApp({apiKey:"AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",authDomain:"cellcity-crm.firebaseapp.com",projectId:"cellcity-crm",storageBucket:"cellcity-crm.firebasestorage.app",messagingSenderId:"645609867368",appId:"1:645609867368:web:b3ee19ccfe3d17c61c53dd"});
+        const db=firebase.firestore();
+        // Auth anônima: necessária para as regras seguras do Firestore (request.auth != null).
+        const authReady=firebase.auth().signInAnonymously().catch(e=>{console.warn('Auth anônima falhou:',e);});
+        async function searchOS(){const inputRaw=document.getElementById('search-input').value.trim();const resultBox=document.getElementById('result-box');const errorBox=document.getElementById('error-box');const loadingBox=document.getElementById('loading-box');const btn=document.getElementById('btn-search');if(!inputRaw){errorBox.textContent='Digite o número da OS ou seu telefone.';errorBox.classList.add('show');resultBox.classList.remove('show');loadingBox.classList.remove('show');return;}errorBox.classList.remove('show');loadingBox.classList.add('show');resultBox.classList.remove('show');btn.disabled=true;try{await authReady;const digits=inputRaw.replace(/\D/g,'');const hasLetters=/[a-z]/i.test(inputRaw);let lista=[];if(!hasLetters&&digits.length>=8){const snap=await db.collection('os').get();snap.forEach(doc=>{const os=doc.data();const st=String(os.phone||'').replace(/\D/g,'');if(st&&(st===digits||(digits.length>=8&&st.endsWith(digits))||(st.length>=8&&digits.endsWith(st))))lista.push({_docId:doc.id,...os});});}else{const n=parseInt(digits,10);const osId='OS-'+String(isNaN(n)?digits:n).padStart(4,'0');const snap=await db.collection('os').where('id','==',osId).get();snap.forEach(doc=>lista.push({_docId:doc.id,...doc.data()}));}loadingBox.classList.remove('show');if(!lista.length){errorBox.textContent='OS não encontrada. Verifique o número ou telefone.';errorBox.classList.add('show');btn.disabled=false;return;}// Carrega config de garantias — tenta Firestore primeiro, fallback localStorage
+let garantias=[];try{const cfgSnap=await db.collection('config').doc('impressao').get();if(cfgSnap.exists()){const cfgData=cfgSnap.data();garantias=Array.isArray(cfgData.garantias)?cfgData.garantias:[];}}catch(e){console.warn('Erro ao carregar garantias do Firestore:',e);try{const c=localStorage.getItem('cc_config_impressao');if(c){const cfgData=JSON.parse(c);garantias=Array.isArray(cfgData.garantias)?cfgData.garantias:[];}}catch(e2){console.warn('Fallback localStorage falhou:',e2);}}
+let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatusLabel(os.status||'em_analise');const statusClass=`status-${(os.status||'em_analise').replace(/\s/g,'_')}`;const entryDate=formatDate(os.createdAt);const garantia=garantias.find(g=>String(g.id)===String(os.garantiaId));const garantiaNome=garantia?garantia.nome:null;const osId=os.id||'N/A';html+=`<div class="result-grid"><div class="result-item"><div class="result-label">📋 Número</div><div class="result-value"><strong>${osId}</strong></div></div><div class="result-item"><div class="result-label">🔄 Status</div><div class="result-value"><span class="status-badge ${statusClass}">${statusLabel}</span></div></div><div class="result-item"><div class="result-label">👤 Cliente</div><div class="result-value">${os.clientName||'N/A'}</div></div><div class="result-item"><div class="result-label">📞 Telefone</div><div class="result-value">${formatPhone(os.phone||'N/A')}</div></div>${os.cpf?`<div class="result-item"><div class="result-label">🪪 CPF</div><div class="result-value">${os.cpf}</div></div>`:''}<div class="result-item"><div class="result-label">📱 Dispositivo</div><div class="result-value">${os.model||'N/A'}</div></div><div class="result-item"><div class="result-label">🏷️ Categoria</div><div class="result-value">${os.category||'N/A'}</div></div><div class="result-item result-full"><div class="result-label">🔧 Problema</div><div class="result-value">${os.defect||'N/A'}</div></div><div class="result-item"><div class="result-label">📅 Data de Entrada</div><div class="result-value">${entryDate}</div></div>${os.valor?`<div class="result-item"><div class="result-label">💰 Valor (à vista/PIX)</div><div class="result-value">R$ ${Number(os.valor).toFixed(2)}</div></div>`:''}${os.valorCartao?`<div class="result-item"><div class="result-label">💳 Valor (cartão)</div><div class="result-value">R$ ${Number(os.valorCartao).toFixed(2)}</div></div>`:''}${os.observations?`<div class="result-item result-full"><div class="result-label">📝 Observações</div><div class="result-value result-obs">${os.observations}</div></div>`:''}${garantiaNome?garantiaBloco(os,garantia,osId):''}${orcamentoBlocoConsulta(os)}${timelineBloco(os)}`;});resultBox.innerHTML=html;resultBox.classList.add('show');btn.disabled=false;}catch(error){loadingBox.classList.remove('show');errorBox.textContent=`Erro: ${error.message}`;errorBox.classList.add('show');btn.disabled=false;}}
+        function getStatusLabel(status){const map={'recebido':'Recebido','em_analise':'Em analise','aguardando_aprovacao':'Aguardando aprovacao','aprovado':'Aprovado','em_reparo':'Em reparo','testes_finais':'Testes finais','concluido':'Concluido','entregue':'Entregue','aguardando_peca':'Aguardando peca','em_manutencao':'Em manutencao','orcamento':'Aguardando aprovacao','orcamento_enviado':'Orcamento enviado','orcamento_aprovado':'Orcamento aprovado','orcamento_recusado':'Orcamento recusado','pronto':'Concluido','pronto_retirada':'Pronto para retirada','devolvido_orcamento':'Nao aprovado'};return map[status]||status||'N/A';}
+        function formatDate(date){if(!date)return 'N/A';try{if(typeof date==='object'&&date.toDate){return date.toDate().toLocaleDateString('pt-BR');}if(typeof date==='string'){return new Date(date).toLocaleDateString('pt-BR');}}catch(e){return 'N/A';}}
+        function formatPhone(phone){if(!phone||phone==='N/A')return phone;const cleaned=phone.replace(/\D/g,'');if(cleaned.length===11){return `(${cleaned.slice(0,2)}) ${cleaned.slice(2,7)}-${cleaned.slice(7)}`;}return phone;}
+        function garantiaBloco(os, garantia, osId) {
+            var nome = garantia ? garantia.nome : '';
+            var diasInfo = '';
+            if (garantia && garantia.dias) {
+                var startRaw = os.deliveredAt || os.updatedAt;
+                var start = null;
+                if (startRaw) {
+                    if (typeof startRaw === 'object' && startRaw.toDate) start = startRaw.toDate();
+                    else if (typeof startRaw === 'string') start = new Date(startRaw);
+                }
+                if (start && !isNaN(start)) {
+                    var fim = new Date(start.getTime() + garantia.dias * 86400000);
+                    var restantes = Math.ceil((fim - new Date()) / 86400000);
+                    if (restantes > 0) {
+                        diasInfo = '<div class="garantia-dias">⏳ ' + restantes + ' dia' + (restantes !== 1 ? 's' : '') + ' restante' + (restantes !== 1 ? 's' : '') + '</div>';
+                    } else {
+                        diasInfo = '<div class="garantia-dias expirada">Garantia expirada</div>';
+                    }
+                }
+            }
+            return '<div class="garantia-section">'
+                + '<div class="garantia-shield">🛡️</div>'
+                + '<div class="garantia-label">Garantia Incluída</div>'
+                + '<div class="garantia-nome">' + nome + '</div>'
+                + diasInfo
+                + '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;justify-content:center;">'
+                + '<a href="/CRM/garantia.html?id=' + osId + '" target="_blank" class="garantia-btn visualizar">👁️ Visualizar Garantia</a>'
+                + '<a href="/CRM/garantia.html?id=' + osId + '" download class="garantia-btn baixar">📥 Baixar Garantia</a>'
+                + '</div></div>';
+        }
+        function timelineBloco(os) {
+            if (!os.timeline || !os.timeline.length) return '';
+            var sorted = os.timeline.slice().sort(function(a,b){return new Date(a.date)-new Date(b.date);});
+            var html = '<div class="timeline-section"><div class="timeline-title">📋 Histórico</div>';
+            sorted.forEach(function(item) {
+                html += '<div class="tl-item">'
+                    + '<div class="tl-dot"></div>'
+                    + '<div><div class="tl-text">' + item.text + '</div>'
+                    + '<div class="tl-date">' + formatDate(item.date) + '</div>'
+                    + '</div></div>';
+            });
+            html += '</div>';
+            return html;
+        }
+        // ===== APROVAÇÃO/RECUSA DE ORÇAMENTO PELO CLIENTE (Consulta OS) =====
+        function orcamentoBlocoConsulta(os){
+            var v = os.valor ? ('R$ ' + Number(os.valor).toFixed(2)) : '';
+            var dataLinha = os.orcamentoDataResposta ? ('<div style="font-size:12px;color:#a1a8b3;margin-top:4px;">📅 ' + os.orcamentoDataResposta + (os.orcamentoHoraResposta ? ' • ⏰ ' + os.orcamentoHoraResposta : '') + '</div>') : '';
+            if ((os.status === 'orcamento_enviado' || os.status === 'orcamento') && os.valor) {
+                var btn = 'padding:12px 18px;border:none;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;margin:6px;';
+                return '<div class="result-full" style="background:rgba(255,160,0,0.08);border:1px solid rgba(255,160,0,0.35);border-radius:8px;padding:18px;margin-top:8px;text-align:center;">'
+                    + '<div style="color:#ffc04d;font-weight:600;margin-bottom:6px;">Valor do orçamento:</div>'
+                    + '<div style="font-size:24px;font-weight:800;color:#fff;margin-bottom:14px;">' + v + '</div>'
+                    + '<button onclick="aprovarOrcamentoConsulta(\'' + os._docId + '\')" style="' + btn + 'background:linear-gradient(135deg,#00C853,#00A040);color:#fff;">✅ Aprovar Orçamento</button>'
+                    + '<button onclick="recusarOrcamentoConsulta(\'' + os._docId + '\')" style="' + btn + 'background:rgba(239,68,68,0.15);color:#ff8080;border:1px solid rgba(239,68,68,0.4);">❌ Recusar Orçamento</button>'
+                    + '</div>';
+            }
+            if (os.status === 'orcamento_aprovado' || os.orcamentoResposta === 'aprovado') {
+                return '<div class="result-full" style="background:rgba(0,200,83,0.1);border:1px solid rgba(0,200,83,0.4);border-radius:8px;padding:14px;margin-top:8px;color:#00e676;font-weight:700;text-align:center;">✅ Orçamento aprovado pelo cliente.' + dataLinha + '</div>';
+            }
+            if (os.status === 'orcamento_recusado' || os.orcamentoResposta === 'recusado') {
+                return '<div class="result-full" style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:8px;padding:14px;margin-top:8px;color:#ff8080;font-weight:700;text-align:center;">❌ Orçamento recusado pelo cliente.' + dataLinha + '</div>';
+            }
+            return '';
+        }
+        async function aprovarOrcamentoConsulta(docId){ if(!docId){alert('OS sem identificador.');return;} if(!confirm('Deseja aprovar este orçamento?'))return; await responderOrcamentoConsulta(docId,'aprovado'); }
+        async function recusarOrcamentoConsulta(docId){ if(!docId){alert('OS sem identificador.');return;} if(!confirm('Deseja recusar este orçamento?'))return; await responderOrcamentoConsulta(docId,'recusado'); }
+        async function responderOrcamentoConsulta(docId, resposta){
+            try{
+                await authReady;
+                var ref = db.collection('os').doc(docId);
+                var snap = await ref.get();
+                if(!snap.exists){ alert('OS não encontrada.'); return; }
+                var st = snap.data().status;
+                if(st !== 'orcamento_enviado' && st !== 'orcamento'){ alert('Este orçamento já foi respondido.'); searchOS(); return; }
+                var now = new Date();
+                await ref.update({
+                    status: resposta === 'aprovado' ? 'orcamento_aprovado' : 'orcamento_recusado',
+                    orcamentoResposta: resposta,
+                    orcamentoOrigem: 'Consulta OS',
+                    orcamentoDataResposta: now.toLocaleDateString('pt-BR'),
+                    orcamentoHoraResposta: now.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+                    orcamentoTimestamp: now.toISOString(),
+                    updatedAt: now.toISOString(),
+                    timeline: firebase.firestore.FieldValue.arrayUnion({ date: now.toISOString(), text: (resposta === 'aprovado' ? 'Orçamento aprovado' : 'Orçamento recusado') + ' pelo cliente (Consulta OS)' })
+                });
+                alert(resposta === 'aprovado' ? '✅ Orçamento aprovado!' : '❌ Orçamento recusado.');
+                searchOS();
+            }catch(e){ alert('Erro: ' + (e.message || e)); }
+        }
+        window.addEventListener('load',()=>{document.getElementById('search-input').focus();});
+    </script>
+</body>
+</html>

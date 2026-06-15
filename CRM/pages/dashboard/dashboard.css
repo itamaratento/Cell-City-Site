@@ -2752,6 +2752,11 @@ body {
   width: 24px;
   text-align: center;
   flex-shrink: 0;
+  transition: filter 150ms, transform 150ms;
+}
+.sidebar-item:hover .sidebar-icon {
+  filter: brightness(1.5);
+  transform: scale(1.12);
 }
 .sidebar-label {
   overflow: hidden;
@@ -2764,24 +2769,24 @@ body {
 .sidebar-left.collapsed .sidebar-label { opacity: 0; max-width: 0; }
 .sidebar-left.collapsed .sidebar-toggle-icon { transform: rotate(180deg); }
 
-/* Tooltip quando recolhido */
-.sidebar-left.collapsed .sidebar-item[data-tip]:hover::after,
-.sidebar-left.collapsed .sidebar-util[data-tip]:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-medium);
-  color: var(--text-primary);
+/* Tooltip da sidebar — elemento injetado no <body> pelo JS (bypassa overflow:hidden) */
+#cc-sidebar-tooltip {
+  position: fixed;
+  background: #111827;
+  color: #fff;
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 10px;
+  padding: 6px 12px;
   border-radius: 6px;
   white-space: nowrap;
-  z-index: 200;
+  z-index: 9999;
   pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+  opacity: 0;
+  transition: opacity 80ms;
+}
+#cc-sidebar-tooltip.visible {
+  opacity: 1;
 }
 
 /* Rodapé da sidebar */

@@ -46,7 +46,31 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ÚLTIMA ETAPA CONCLUÍDA — Correção Filtro Semana no Caixa Operacional (14/06/2026)
+## ✅ ÚLTIMA ETAPA CONCLUÍDA — Tooltip no Menu Lateral (15/06/2026)
+
+**Tooltip dos módulos da sidebar implementado com efeito hover no ícone.**
+
+### O que foi feito
+- **Problema identificado:** `overflow: hidden` na `.sidebar-left` cortava o tooltip `::after` — o tooltip simplesmente não aparecia.
+- **Solução:** tooltip injetado diretamente no `<body>` via JavaScript (elemento `#cc-sidebar-tooltip`), posicionado com `position: fixed` — completamente imune ao `overflow: hidden` da sidebar.
+- **Comportamento:** tooltip aparece à direita do item ao passar o mouse, desaparece ao sair. Sem delay.
+- **Estilo:** fundo `#111827`, texto branco, `border-radius: 6px`, `box-shadow` leve, transição de opacidade 80ms.
+- **Hover no ícone:** `filter: brightness(1.5)` + `transform: scale(1.12)` com transição suave 150ms.
+- **Escopo:** todos os itens `[data-tip]` em `#sidebar-nav` e `.sidebar-footer`.
+
+### Arquivos alterados
+- `CRM/pages/dashboard/dashboard.css` — CSS do `#cc-sidebar-tooltip` + hover no `.sidebar-icon`
+- `CRM/pages/dashboard/dashboard.js` — lógica JS de tooltip no final de `setupSidebar()`
+
+### Backup
+- `CRM/pages/dashboard/BACKUP_TOOLTIP_SIDEBAR_2026-06-15/`
+
+> ⚠️ **Validação pendente:** teste visual no navegador (hover nos ícones com sidebar recolhida).
+> ⚠️ **Pendente: `firebase deploy`** para publicar em produção.
+
+---
+
+## ✅ ETAPA ANTERIOR — Correção Filtro Semana no Caixa Operacional (14/06/2026)
 
 **Bug corrigido: filtro "Semana" zerava quando hoje é domingo.**
 

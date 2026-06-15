@@ -319,6 +319,27 @@ Cada registro deve conter:
 
 ## HISTÓRICO DE ALTERAÇÕES
 
+### 15/06/2026 — Tooltip no Menu Lateral da Sidebar
+
+**Tarefa:** Exibir o nome do módulo ao passar o mouse sobre os ícones da sidebar.
+
+**Problema encontrado:** o tooltip via `::after` CSS existia no código mas era invisível — `.sidebar-left` tem `overflow: hidden` (necessário para a animação de colapso), o que cortava qualquer conteúdo posicionado absolutamente fora dos seus limites.
+
+**O que foi feito:**
+- Removido o CSS `::after` que não funcionava.
+- Tooltip criado via JS: elemento `<div id="cc-sidebar-tooltip">` injetado no `<body>`, com `position: fixed` — imune ao `overflow: hidden` de qualquer ancestral.
+- `showTip()` / `hideTip()` via `mouseenter` / `mouseleave` em todos os `[data-tip]` da sidebar.
+- Estilo: fundo `#111827`, texto branco, `border-radius: 6px`, `box-shadow: 0 4px 16px rgba(0,0,0,0.45)`, transição de opacidade 80ms.
+- Hover no ícone: `filter: brightness(1.5)` + `transform: scale(1.12)` — efeito de destaque visual imediato.
+
+**Arquivos alterados:**
+- `CRM/pages/dashboard/dashboard.css` — `#cc-sidebar-tooltip` + `.sidebar-item:hover .sidebar-icon`
+- `CRM/pages/dashboard/dashboard.js` — bloco de tooltip no final de `setupSidebar()`
+
+**Backup:** `CRM/pages/dashboard/BACKUP_TOOLTIP_SIDEBAR_2026-06-15/`
+
+---
+
 ### 14/06/2026 — Correção Filtro Semana — Caixa Operacional
 
 **Tarefa:** Corrigir filtro "Semana" que mostrava valores zerados e nenhuma movimentação.

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compras — Cell City</title>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--cell-green:#00c853;--bg-base:#0a0b0d;--bg-surface:#121418;--bg-elevated:#1a1d23;--border-subtle:rgba(255,255,255,.06);--border-medium:rgba(255,255,255,.10);--text-primary:#f5f7fa;--text-secondary:#a1a8b3;--text-tertiary:#6b7280}
+html,body{height:100%;background:var(--bg-base);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
+.page-header{display:flex;align-items:center;gap:12px;padding:16px 24px;background:rgba(10,11,13,.9);border-bottom:1px solid var(--border-subtle);position:sticky;top:0;z-index:10}
+.btn-voltar{background:none;border:1px solid var(--border-medium);border-radius:8px;color:var(--text-secondary);font-size:13px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .15s}
+.btn-voltar:hover{background:rgba(255,255,255,.06);color:var(--text-primary)}
+.page-title{font-size:18px;font-weight:800}
+.page-sub{font-size:12px;color:var(--text-tertiary)}
+.shell-body{max-width:860px;margin:0 auto;padding:48px 24px;text-align:center}
+.shell-icon{font-size:64px;display:block;margin-bottom:16px}
+.shell-titulo{font-size:28px;font-weight:800;margin-bottom:8px}
+.shell-desc{font-size:15px;color:var(--text-secondary);line-height:1.6;margin-bottom:32px}
+.shell-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25);color:var(--cell-green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;margin-bottom:40px}
+.recursos{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:600px;margin:0 auto;text-align:left}
+.recurso{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:12px}
+.recurso-icon{font-size:22px;flex-shrink:0}
+.recurso-titulo{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px}
+.recurso-desc{font-size:11px;color:var(--text-tertiary);line-height:1.4}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
+  <div>
+    <div class="page-title">🛒 Compras</div>
+    <div class="page-sub">Pedidos e recebimentos de peças</div>
+  </div>
+</div>
+
+<div class="shell-body">
+  <span class="shell-icon">🛒</span>
+  <h1 class="shell-titulo">Módulo de Compras</h1>
+  <p class="shell-desc">Registre e acompanhe pedidos de peças e insumos.<br>Controle o que foi pedido, o que chegou e o que está pendente.</p>
+  <div class="shell-badge">🚧 Em desenvolvimento — Etapa futura</div>
+
+  <div class="recursos">
+    <div class="recurso">
+      <span class="recurso-icon">📦</span>
+      <div>
+        <div class="recurso-titulo">Pedidos de peças</div>
+        <div class="recurso-desc">Registre cada pedido com fornecedor, valor e previsão</div>
+      </div>
+    </div>
+    <div class="recurso">
+      <span class="recurso-icon">✅</span>
+      <div>
+        <div class="recurso-titulo">Confirmação de recebimento</div>
+        <div class="recurso-desc">Marque quando o pedido chegar e atualize o estoque</div>
+      </div>
+    </div>
+    <div class="recurso">
+      <span class="recurso-icon">🏭</span>
+      <div>
+        <div class="recurso-titulo">Vinculado a fornecedores</div>
+        <div class="recurso-desc">Integração com o módulo Fornecedor</div>
+      </div>
+    </div>
+    <div class="recurso">
+      <span class="recurso-icon">📊</span>
+      <div>
+        <div class="recurso-titulo">Histórico de pedidos</div>
+        <div class="recurso-desc">Consulte o histórico completo de compras realizadas</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

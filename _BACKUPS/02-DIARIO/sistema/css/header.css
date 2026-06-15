@@ -1,0 +1,149 @@
+/* ===================================================== */
+/* HEADER.CSS - CELL CITY - VERSÃO FINAL COM HEADER FIXO */
+/* ===================================================== */
+
+/* HEADER FIXO - PRINCIPAL */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 99999;
+  background: rgba(11, 11, 15, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* CONTAINER INTERNO */
+.header-container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 18px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* BODY PRECISA DE PADDING-TOP PARA NÃO SOBREPOR CONTEÚDO */
+body {
+  padding-top: 90px;
+}
+
+/* ===================================================== */
+/* LOGO */
+/* ===================================================== */
+
+.logo {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.logo img {
+  width: 150px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(0, 255, 120, 0.20)) brightness(1.08) contrast(1.05);
+  transition: 0.3s ease;
+  display: block;
+}
+
+.logo img:hover {
+  filter: drop-shadow(0 0 12px rgba(0, 255, 120, 0.35)) brightness(1.12) contrast(1.08);
+}
+
+/* ===================================================== */
+/* MENU DE NAVEGAÇÃO */
+/* ===================================================== */
+
+.menu {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.menu a {
+  color: #e0e0e0;
+  text-decoration: none;
+  font-size: 16px;
+  font-weight: 500;
+  transition: 0.3s ease;
+  padding: 8px 0;
+  position: relative;
+}
+
+.menu a:hover {
+  color: #ffcc00;
+}
+
+/* LINHA AMARELA NO HOVER */
+.menu a::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: #ffcc00;
+  transition: 0.3s ease;
+}
+
+.menu a:hover::after {
+  width: 100%;
+}
+
+/* ===================================================== */
+/* MOBILE - RESPONSIVO */
+/* ===================================================== */
+
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    padding: 15px 20px;
+    gap: 15px;
+  }
+
+  body {
+    padding-top: 110px;
+  }
+
+  .logo img {
+    width: 120px;
+  }
+
+  .menu {
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .menu a {
+    font-size: 14px;
+  }
+}
+
+/* ===================================================== */
+/* MOBILE PEQUENO (ATÉ 480px) */
+/* ===================================================== */
+
+@media (max-width: 480px) {
+  .menu {
+    gap: 16px;
+  }
+
+  .menu a {
+    font-size: 13px;
+  }
+}
+
+/* Premium calendar icon */
+.premium-calendar-icon{
+    font-size: 34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#ffd43b;
+    filter: drop-shadow(0 0 6px rgba(255,212,59,0.35));
+    margin-bottom:8px;
+}
