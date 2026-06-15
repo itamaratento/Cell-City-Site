@@ -71,6 +71,15 @@ window.addDiasRetorno = addDiasRetorno;
 window.copiarMensagemRetorno = copiarMensagemRetorno;
 window.abrirEditarMensagensRetorno = abrirEditarMensagensRetorno;
 window.salvarMensagensRetorno = salvarMensagensRetorno;
+window.abrirMenuWpp = abrirMenuWpp;
+window.previewWpp = previewWpp;
+window._renderPreviewWpp = _renderPreviewWpp;
+window.editarMsgWppInline = editarMsgWppInline;
+window.confirmarEdicaoWpp = confirmarEdicaoWpp;
+window.copiarMsgWpp = copiarMsgWpp;
+window.enviarWppOS = enviarWppOS;
+window.abrirEditorTemplatesWpp = abrirEditorTemplatesWpp;
+window.salvarTemplatesWpp = salvarTemplatesWpp;
 
 function toggleRelatorioTecnico() {
     const body = document.getElementById('rel-tec-body');
@@ -302,6 +311,37 @@ let currentOS = null, currentCategory = '', tempPhotos = [], currentLockPhoto = 
 let screenHistory = [], currentListFilter = '', currentClientPhone = '', appInitialized = false;
 let hasUnsavedChanges = false;
 let retornoMensagens = {};
+
+// ===== WHATSAPP CRM =====
+const LINK_PORTAL_WPP = 'https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html';
+
+const CATEGORIAS_WPP = [
+    { tipo: 'primeiro_contato',   emoji: '📋', label: 'Primeiro Contato' },
+    { tipo: 'orcamento',          emoji: '💰', label: 'Orçamento' },
+    { tipo: 'orcamento_aprovado', emoji: '✅', label: 'Orçamento Aprovado' },
+    { tipo: 'orcamento_recusado', emoji: '❌', label: 'Orçamento Recusado' },
+    { tipo: 'aguardando_peca',    emoji: '⏳', label: 'Aguardando Peça' },
+    { tipo: 'em_reparo',          emoji: '🔧', label: 'Em Reparo' },
+    { tipo: 'servico_concluido',  emoji: '🎉', label: 'Serviço Concluído' },
+    { tipo: 'pronto_retirada',    emoji: '📦', label: 'Pronto p/ Retirada' },
+    { tipo: 'lembrete_retirada',  emoji: '🔔', label: 'Lembrete de Retirada' },
+];
+
+const TEMPLATES_WPP_PADRAO = {
+    primeiro_contato:   `Olá, {{nome}}! 👋\n\nSua OS foi aberta e está disponível para acompanhamento.\n\n📋 OS Nº {{os}}\n\n🔗 Portal do Cliente:\n{{link_portal}}\n\n📱 Use o telefone cadastrado para acessar o portal.\n\nAgradecemos pela confiança!\nCell City Informática`,
+    orcamento:          `Olá, {{nome}}! 👋\n\nO orçamento do seu {{modelo}} está pronto.\n\n📋 OS Nº {{os}}\n💰 Valor: {{valor}}\n\nAguardamos sua aprovação para prosseguir com o serviço.\n\nQualquer dúvida, estamos à disposição!\nCell City Informática`,
+    orcamento_aprovado: `Olá, {{nome}}! ✅\n\nÓtimo! O orçamento do seu {{modelo}} foi aprovado.\n\nJá iniciamos o serviço e avisaremos assim que estiver concluído.\n\nCell City Informática`,
+    orcamento_recusado: `Olá, {{nome}}! 📋\n\nEntendemos sua decisão.\n\nSeu {{modelo}} está disponível para retirada quando preferir.\n\n📋 OS Nº {{os}}\n\nCell City Informática`,
+    aguardando_peca:    `Olá, {{nome}}! ⏳\n\nEstamos aguardando a chegada da peça para o seu {{modelo}}.\n\n📋 OS Nº {{os}}\n\nAssim que a peça chegar, iniciaremos o reparo imediatamente!\n\nCell City Informática`,
+    em_reparo:          `Olá, {{nome}}! 🔧\n\nSeu {{modelo}} está em reparo.\n\n📋 OS Nº {{os}}\n\nEstamos trabalhando para finalizar o mais rápido possível!\n\nCell City Informática`,
+    servico_concluido:  `Olá, {{nome}}! 🎉\n\nÓtimas notícias! O serviço do seu {{modelo}} foi concluído com sucesso.\n\n📋 OS Nº {{os}}\n\nEstamos à sua disposição!\nCell City Informática`,
+    pronto_retirada:    `Olá, {{nome}}! 📦\n\nSeu {{modelo}} está pronto para retirada!\n\n📋 OS Nº {{os}}\n\nEstamos aguardando sua visita.\n\nCell City Informática`,
+    lembrete_retirada:  `Olá, {{nome}}! 🔔\n\nSeu {{modelo}} está aguardando retirada há alguns dias.\n\n📋 OS Nº {{os}}\n\nQualquer dúvida, estamos à disposição!\nCell City Informática`,
+};
+
+let templatesWpp = { ...TEMPLATES_WPP_PADRAO };
+let _wppTipoAtual = '';
+let _wppMensagemAtual = '';
 
 function updateSaveUI() {
     const el = document.getElementById('save-status');
@@ -740,7 +780,7 @@ function renderDetail() {
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
     const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -1409,6 +1449,167 @@ async function salvarMensagensRetorno() {
     } catch(e) { console.error(e); showToast('❌ Erro ao salvar mensagens'); }
 }
 
+// ===== WHATSAPP CRM — FUNÇÕES =====
+
+async function carregarTemplatesWpp() {
+    try {
+        const snap = await getDoc(doc(db, 'config', 'mensagens_whatsapp'));
+        if (snap.exists()) {
+            const data = snap.data();
+            Object.keys(TEMPLATES_WPP_PADRAO).forEach(tipo => {
+                const val = data[tipo];
+                if (!val) return;
+                // Suporta tanto string quanto objeto { texto: "..." }
+                const texto = (typeof val === 'object' && val.texto) ? val.texto
+                            : (typeof val === 'string' ? val : '');
+                if (texto.trim()) templatesWpp[tipo] = texto;
+            });
+        }
+    } catch(e) {
+        console.warn('WPP CRM: usando templates padrão', e);
+    }
+}
+
+function _substituirVarsWpp(template, os) {
+    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const valorNum = (parseFloat(os.valor) || 0) + (parseFloat(os.valorCartao) || 0);
+    const valor = valorNum > 0 ? `R$ ${valorNum.toFixed(2).replace('.', ',')}` : 'a combinar';
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    return template
+        .replace(/\{\{nome\}\}/g, nome)
+        .replace(/\{\{nome_completo\}\}/g, os.clientName || '')
+        .replace(/\{\{modelo\}\}/g, [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho')
+        .replace(/\{\{os\}\}/g, os.id || '')
+        .replace(/\{\{valor\}\}/g, valor)
+        .replace(/\{\{defeito\}\}/g, os.defect || '')
+        .replace(/\{\{status\}\}/g, getStatusLabel(os.status) || '')
+        .replace(/\{\{telefone\}\}/g, os.phone || '')
+        .replace(/\{\{data\}\}/g, hoje)
+        .replace(/\{\{link_portal\}\}/g, LINK_PORTAL_WPP);
+}
+
+function abrirMenuWpp() {
+    if (!currentOS) return;
+    const cats = CATEGORIAS_WPP.map(c =>
+        `<button onclick="previewWpp('${c.tipo}')" style="width:100%;text-align:left;padding:10px 12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">${c.emoji} ${c.label}</button>`
+    ).join('');
+    const primeiroNome = (currentOS.clientName || '').split(' ')[0] || currentOS.clientName || '';
+    openModal(`<div class="modal-handle"></div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px;color:#25D366;">💬 Mensagens WhatsApp</h3>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">OS: <strong>${currentOS.id}</strong> — ${primeiroNome}</div>
+        ${cats}
+        <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+        <button onclick="abrirEditorTemplatesWpp()" style="width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text2);">⚙️ Editar Mensagens</button>`);
+}
+
+function previewWpp(tipo) {
+    if (!currentOS) return;
+    _wppTipoAtual = tipo;
+    const template = templatesWpp[tipo] || TEMPLATES_WPP_PADRAO[tipo] || '';
+    _wppMensagemAtual = _substituirVarsWpp(template, currentOS);
+    _renderPreviewWpp();
+}
+
+function _renderPreviewWpp() {
+    if (!currentOS) return;
+    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
+    const phone = (currentOS.phone || '').replace(/\D/g, '');
+    const phoneValido = phone.length >= 10;
+    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    openModal(`<div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <button onclick="abrirMenuWpp()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">← Voltar</button>
+            <h3 style="font-size:14px;font-weight:700;color:#25D366;">${cat ? cat.emoji + ' ' + cat.label : _wppTipoAtual}</h3>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:240px;overflow-y:auto;">${esc(_wppMensagemAtual)}</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onclick="editarMsgWppInline()" style="flex:1;padding:9px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--text);">✏️ Editar</button>
+            <button onclick="copiarMsgWpp()" style="flex:1;padding:9px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:var(--text);">📋 Copiar</button>
+            <button onclick="enviarWppOS()" ${!phoneValido ? 'disabled' : ''} style="flex:2;padding:9px;background:#25D366;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;${!phoneValido ? 'opacity:0.4;cursor:not-allowed;' : ''}">📤 Enviar</button>
+        </div>
+        ${!phoneValido ? '<div style="font-size:11px;color:var(--red);">⚠️ Telefone inválido ou não cadastrado</div>' : ''}`);
+}
+
+function editarMsgWppInline() {
+    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
+    openModal(`<div class="modal-handle"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <button onclick="_renderPreviewWpp()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">← Voltar</button>
+            <h3 style="font-size:14px;font-weight:700;color:var(--text);">✏️ Editar Mensagem</h3>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Variáveis: {{nome}} {{modelo}} {{os}} {{valor}} {{defeito}} {{data}}</div>
+        <textarea id="wpp-inline-edit" rows="8" style="width:100%;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;resize:vertical;min-height:160px;margin-bottom:10px;"></textarea>
+        <div style="display:flex;gap:8px;">
+            <button onclick="_renderPreviewWpp()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">✕ Cancelar</button>
+            <button onclick="confirmarEdicaoWpp()" style="flex:2;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">✅ Usar esta</button>
+        </div>`);
+    // preenche o textarea após render
+    requestAnimationFrame(() => {
+        const ta = document.getElementById('wpp-inline-edit');
+        if (ta) ta.value = _wppMensagemAtual;
+    });
+}
+
+function confirmarEdicaoWpp() {
+    const ta = document.getElementById('wpp-inline-edit');
+    if (ta) _wppMensagemAtual = ta.value;
+    _renderPreviewWpp();
+}
+
+function copiarMsgWpp() {
+    if (!currentOS || !_wppMensagemAtual) return;
+    closeModal();
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(_wppMensagemAtual).then(() => showToast('✅ Mensagem copiada!')).catch(() => fallbackCopyMessage(_wppMensagemAtual));
+    } else { fallbackCopyMessage(_wppMensagemAtual); }
+}
+
+function enviarWppOS() {
+    if (!currentOS || !_wppMensagemAtual) return;
+    const phone = (currentOS.phone || '').replace(/\D/g, '');
+    if (!phone || phone.length < 10) { showToast('⚠️ Telefone não cadastrado ou inválido'); return; }
+    const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
+    closeModal();
+    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(_wppMensagemAtual)}`, '_blank');
+}
+
+async function abrirEditorTemplatesWpp() {
+    const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    const campos = CATEGORIAS_WPP.map(c => {
+        const val = esc(templatesWpp[c.tipo] || TEMPLATES_WPP_PADRAO[c.tipo] || '');
+        return `<div style="margin-bottom:14px;">
+            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${c.emoji} ${c.label}</label>
+            <textarea id="wpp-tpl-${c.tipo}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${val}</textarea>
+        </div>`;
+    }).join('');
+    openModal(`<div class="modal-handle"></div>
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px;">⚙️ Editar Mensagens WhatsApp</h3>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{{nome}}</strong> <strong>{{modelo}}</strong> <strong>{{os}}</strong> <strong>{{valor}}</strong> <strong>{{defeito}}</strong> <strong>{{link_portal}}</strong></div>
+        ${campos}
+        <div style="display:flex;gap:8px;margin-top:4px;">
+            <button onclick="abrirMenuWpp()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text2);">← Voltar</button>
+            <button onclick="salvarTemplatesWpp()" style="flex:2;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">💾 Salvar</button>
+        </div>`);
+}
+
+async function salvarTemplatesWpp() {
+    const payload = {};
+    CATEGORIAS_WPP.forEach(c => {
+        const el = document.getElementById(`wpp-tpl-${c.tipo}`);
+        if (!el) return;
+        const texto = el.value;
+        const padrao = TEMPLATES_WPP_PADRAO[c.tipo] || texto;
+        // Salva no formato objeto para compatibilidade com o spec
+        payload[c.tipo] = { nome: c.label, texto, padrao, categoria: 'os', ativo: true };
+        templatesWpp[c.tipo] = texto;
+    });
+    try {
+        await setDoc(doc(db, 'config', 'mensagens_whatsapp'), { ...payload, updatedAt: new Date().toISOString() });
+        closeModal();
+        showToast('✅ Mensagens salvas com sucesso!');
+    } catch(e) { console.error(e); showToast('❌ Erro ao salvar mensagens'); }
+}
+
 function fallbackCopyMessage(text) {
     var textarea = document.createElement('textarea');
     textarea.value = text;
@@ -2072,6 +2273,7 @@ async function init() {
         logoEl.dataset.logoHandler = 'true';
     }
     await DB.loadFromFirestore(); updateStats(); updateFavStars();
+    await carregarTemplatesWpp();
     // Garante que as configurações de garantia estejam carregadas do Firestore
     // (fallback caso localStorage não tenha sido populado por clientes.js)
     await _fetchWarrantyConfigFromFirestore();
