@@ -785,6 +785,7 @@ function renderDetail() {
         ? `<div id="wpp-os-indicator" style="font-size:11px;color:#22c55e;margin-top:2px;">🟢 ${_ultimoWpp.label} • ${_ultimoWpp.data} ${_ultimoWpp.hora}</div>`
         : `<div id="wpp-os-indicator" style="font-size:11px;color:var(--text3);margin-top:2px;">🟡 Nenhum WhatsApp enviado</div>`;
     html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += _wppInd;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -1578,6 +1579,7 @@ async function enviarWppOS() {
     const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
     const now = new Date();
     const entrada = {
+        ts: now.toISOString(),
         data: now.toLocaleDateString('pt-BR'),
         hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         tipo: _wppTipoAtual,

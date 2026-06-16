@@ -27,6 +27,7 @@ const DOCK_ITEMS = [
   { id: 'comandos',  html: `<a href="../central-comandos/index.html" class="dock-item" data-tooltip="Central de Comandos"><span class="dock-icon">⚡</span></a>` },
   { id: 'central',   html: `<a href="../central-informacoes/index.html" class="dock-item" data-tooltip="Central de Informações"><span class="dock-icon">📚</span></a>` },
   { id: 'portal',    html: `<a href="../portal-cliente/admin.html" class="dock-item" data-tooltip="Portal do Cliente"><span class="dock-icon">👤</span></a>` },
+  { id: 'wpp-msgs',    html: `<a href="../mensagens-wpp/index.html" class="dock-item" data-tooltip="Mensagens WhatsApp"><span class="dock-icon">💬</span></a>` },
   { id: 'ferramentas', html: `<a href="../config/index.html" class="dock-item dock-item-separator" id="dock-ferramentas" data-tooltip="Ferramentas"><span class="dock-icon">⚙️</span></a>` }
 ];
 
