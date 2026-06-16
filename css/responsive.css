@@ -441,7 +441,7 @@ img, video, iframe {
     .hero-content {
         max-width: 450px;
         align-self: flex-start;
-        margin-top: 90px;
+        margin-top: 55px;
     }
 
     .hero-buttons {
