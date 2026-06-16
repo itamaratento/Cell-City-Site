@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Venda Rápida</title>
+    <link rel="stylesheet" href="venda-rapida.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+
+<header class="vr-header">
+    <h1>⚡ Venda Rápida</h1>
+    <div class="vr-header-actions">
+        <label class="vr-confirm-toggle" title="Confirmar antes de finalizar">
+            <input type="checkbox" id="vr-confirmar-check"> Confirmar
+        </label>
+    </div>
+</header>
+
+<main class="vr-main">
+
+    <!-- CAMPO DE LEITURA -->
+    <section class="vr-scan-section">
+        <div class="vr-input-wrap">
+            <span class="vr-input-icon">🔍</span>
+            <input type="text" id="vr-codigo"
+                placeholder="Scan ou digite o código de barras..."
+                autocomplete="off" inputmode="text" spellcheck="false">
+            <button class="vr-camera-btn" id="vr-camera-btn" title="Abrir câmera">📷</button>
+        </div>
+        <div id="vr-camera-area" class="vr-camera-area" style="display:none">
+            <div id="vr-camera-reader"></div>
+            <button class="vr-camera-close" id="vr-camera-close">✕ Fechar câmera</button>
+        </div>
+    </section>
+
+    <!-- STATUS / PRODUTO ENCONTRADO -->
+    <section class="vr-resultado" id="vr-resultado" style="display:none">
+        <!-- Produto -->
+        <div class="vr-produto-card" id="vr-produto-card" style="display:none">
+            <div class="vr-produto-categoria" id="vr-produto-categoria"></div>
+            <div class="vr-produto-nome" id="vr-produto-nome"></div>
+            <div class="vr-produto-preco" id="vr-produto-preco"></div>
+            <div class="vr-produto-estoque" id="vr-produto-estoque"></div>
+            <div class="vr-produto-cod" id="vr-produto-cod"></div>
+        </div>
+
+        <!-- Pagamento -->
+        <div class="vr-pagamento" id="vr-pagamento" style="display:none">
+            <div class="vr-pagamento-titulo">Como vai pagar?</div>
+            <div class="vr-pagamento-grid">
+                <button class="vr-pag-btn vr-pag-pix"     data-forma="pix">💚 PIX</button>
+                <button class="vr-pag-btn vr-pag-dinheiro" data-forma="dinheiro">💵 Dinheiro</button>
+                <button class="vr-pag-btn vr-pag-debito"   data-forma="debito">💳 Débito</button>
+                <button class="vr-pag-btn vr-pag-credito"  data-forma="credito">💰 Crédito</button>
+            </div>
+        </div>
+
+        <!-- Sucesso -->
+        <div class="vr-sucesso" id="vr-sucesso" style="display:none">
+            <div class="vr-sucesso-icon">✅</div>
+            <div class="vr-sucesso-titulo">VENDA FINALIZADA</div>
+            <div class="vr-sucesso-info" id="vr-sucesso-info"></div>
+        </div>
+
+        <!-- Erro -->
+        <div class="vr-erro" id="vr-erro" style="display:none">
+            <div class="vr-erro-icon" id="vr-erro-icon"></div>
+            <div class="vr-erro-msg" id="vr-erro-msg"></div>
+        </div>
+    </section>
+
+    <!-- HISTÓRICO DO DIA -->
+    <section class="vr-historico" id="vr-historico">
+        <div class="vr-historico-header">
+            <span class="vr-historico-titulo">Vendas Hoje</span>
+            <span class="vr-historico-total" id="vr-historico-total"></span>
+        </div>
+        <div class="vr-historico-lista" id="vr-historico-lista">
+            <div class="vr-historico-empty">Nenhuma venda ainda hoje.</div>
+        </div>
+    </section>
+
+</main>
+
+<div id="vr-toast" class="vr-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script type="module" src="venda-rapida.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

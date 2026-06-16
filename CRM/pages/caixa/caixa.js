@@ -1491,7 +1491,25 @@ window.buscarSugestoesEstoque = async function(termo) {
     if (!termo || termo.length < 2) { dropdown.style.display = 'none'; _ultimoItemSelecionado = null; return; }
     const produtos = await _carregarProdutosEstoque();
     const q = termo.toLowerCase();
-    const matches = produtos.filter(p => (p.nome || p.description || '').toLowerCase().includes(q)).slice(0, 6);
+
+    // Leitor USB: se o código bater exatamente com um codigoBarras, seleciona na hora
+    const barcodeExato = produtos.find(p => p.codigoBarras && p.codigoBarras === termo.trim());
+    if (barcodeExato) {
+        dropdown.style.display = 'none';
+        _selecionarItemEstoque({ dataset: {
+            id: barcodeExato.id,
+            nome: barcodeExato.nome || barcodeExato.description || '',
+            venda: String(barcodeExato.venda || ''),
+            custo: String(barcodeExato.custo || '')
+        }});
+        return;
+    }
+
+    // Busca normal: por nome OU por código de barras parcial
+    const matches = produtos.filter(p =>
+        (p.nome || p.description || '').toLowerCase().includes(q) ||
+        (p.codigoBarras || '').toLowerCase().includes(q)
+    ).slice(0, 6);
     if (!matches.length) { dropdown.style.display = 'none'; return; }
     dropdown.innerHTML = matches.map(p => {
         const nome = p.nome || p.description || '';
@@ -1530,6 +1548,29 @@ document.addEventListener('click', e => {
         const d = document.getElementById('desc-dropdown');
         if (d) d.style.display = 'none';
     }
+});
+
+// Fallback para leitor USB: Enter no campo de descrição com código exato
+document.addEventListener('DOMContentLoaded', () => {
+    const descEl = document.getElementById('descricao');
+    if (!descEl) return;
+    descEl.addEventListener('keydown', async e => {
+        if (e.key !== 'Enter') return;
+        const termo = descEl.value.trim();
+        if (!termo) return;
+        const prods = await _carregarProdutosEstoque();
+        const match = prods.find(p => p.codigoBarras && p.codigoBarras === termo);
+        if (match) {
+            e.preventDefault();
+            e.stopPropagation();
+            _selecionarItemEstoque({ dataset: {
+                id: match.id,
+                nome: match.nome || match.description || '',
+                venda: String(match.venda || ''),
+                custo: String(match.custo || '')
+            }});
+        }
+    });
 });
 
 // Hook no salvarLancamento — baixa estoque automaticamente + gerencia produtos

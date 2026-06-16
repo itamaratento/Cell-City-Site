@@ -13,6 +13,12 @@ const CAT_ICON = {
     'Acessório': '✨', 'Outro': '📌'
 };
 
+const CAT_PREFIX = {
+    'Cabo': 'CAB', 'Capinha': 'CAP', 'Película': 'PEL', 'Carregador': 'CRG',
+    'Fone': 'FON', 'Bateria': 'BAT', 'Tela': 'TEL', 'Peça': 'PEC',
+    'Acessório': 'ACE', 'Outro': 'OUT'
+};
+
 // ── elementos ──────────────────────────────────────────────────────
 const formEl      = document.getElementById('est-form');
 const btnNovo     = document.getElementById('est-btn-novo');
@@ -24,6 +30,7 @@ const inpQty      = document.getElementById('est-inp-qty');
 const inpMin      = document.getElementById('est-inp-min');
 const inpVenda    = document.getElementById('est-inp-venda');
 const inpCusto    = document.getElementById('est-inp-custo');
+const inpCodigo   = document.getElementById('est-inp-codigo');
 const formTitulo  = document.getElementById('est-form-titulo');
 const toastEl     = document.getElementById('est-toast');
 const searchEl    = document.getElementById('est-search');
@@ -35,6 +42,46 @@ function toast(msg) {
     toastEl.classList.add('visivel');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
+}
+
+// ── código de barras ───────────────────────────────────────
+function gerarCodigoBarras(categoria) {
+    const prefix = CAT_PREFIX[categoria] || 'OUT';
+    const ts = Date.now().toString().slice(-6);
+    return `CC-${prefix}-${ts}`;
+}
+
+function imprimirEtiqueta(produto) {
+    const codigo = produto.codigoBarras;
+    if (!codigo) { toast('⚠️ Produto sem código de barras. Salve primeiro.'); return; }
+    const venda = Number(produto.venda || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const win = window.open('', '_blank', 'width=420,height=320,menubar=no,toolbar=no');
+    if (!win) { toast('⚠️ Permita pop-ups para imprimir etiquetas'); return; }
+    win.document.write(`<!DOCTYPE html><html><head>
+<title>Etiqueta</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+<style>
+@page{margin:3mm;size:80mm 50mm}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#fff}
+.etq{width:72mm;padding:3mm;text-align:center}
+.nome{font-size:11px;font-weight:bold;margin-bottom:2mm;line-height:1.2}
+.preco{font-size:12px;font-weight:bold;color:#000;margin-bottom:2mm}
+svg{max-width:100%;height:auto}
+.cod{font-size:8px;color:#555;margin-top:1mm;font-family:monospace;letter-spacing:1px}
+@media print{body{min-height:0}}
+</style></head><body>
+<div class="etq">
+<div class="nome">${escHtml(produto.nome)}</div>
+<div class="preco">${venda}</div>
+<svg id="bcode"></svg>
+<div class="cod">${escHtml(codigo)}</div>
+</div>
+<script>
+try{JsBarcode("#bcode","${codigo}",{format:"CODE128",width:1.8,height:40,displayValue:false,margin:2,background:"#fff",lineColor:"#000"});}catch(e){}
+window.onload=function(){setTimeout(function(){window.print();setTimeout(function(){window.close();},400);},300);};
+<\/script></body></html>`);
+    win.document.close();
 }
 
 // ── toggle busca ───────────────────────────────────────────────────
@@ -148,6 +195,12 @@ function render(lista) {
     });
 
     // eventos dos cards
+    container.querySelectorAll('[data-print]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const prod = produtos.find(p => p.id === btn.dataset.print);
+            if (prod) imprimirEtiqueta(prod);
+        });
+    });
     container.querySelectorAll('[data-edit]').forEach(btn => {
         btn.addEventListener('click', () => abrirFormEdicao(btn.dataset.edit));
     });
@@ -172,6 +225,7 @@ function renderCard(p, fmt) {
             <div class="est-card-meta">
                 <span class="est-card-preco">${fmt(p.venda)}</span>
                 ${p.custo ? `<span class="est-card-custo">Custo: ${fmt(p.custo)}</span>` : ''}
+                ${p.codigoBarras ? `<span class="est-card-cod">${escHtml(p.codigoBarras)}</span>` : ''}
             </div>
         </div>
         <div class="est-card-qty-area">
@@ -183,6 +237,7 @@ function renderCard(p, fmt) {
             <button class="est-qty-btn" data-entrada="${p.id}" title="Entrada">+</button>
         </div>
         <div class="est-card-acoes">
+            ${p.codigoBarras ? `<button class="est-card-print" data-print="${p.id}" title="Imprimir etiqueta">🖨️</button>` : ''}
             <button class="est-card-edit" data-edit="${p.id}" title="Editar">✏️</button>
             <button class="est-card-del" data-del="${p.id}" title="Excluir">✕</button>
         </div>
@@ -193,12 +248,13 @@ function renderCard(p, fmt) {
 function abrirFormNovo() {
     editandoId = null;
     formTitulo.textContent = 'Novo Produto';
-    inpNome.value  = '';
-    inpCat.value   = 'Cabo';
-    inpQty.value   = '0';
-    inpMin.value   = '1';
-    inpVenda.value = '';
-    inpCusto.value = '';
+    inpNome.value   = '';
+    inpCat.value    = 'Cabo';
+    inpQty.value    = '0';
+    inpMin.value    = '1';
+    inpVenda.value  = '';
+    inpCusto.value  = '';
+    inpCodigo.value = '';
     formEl.style.display = 'flex';
     btnNovo.style.display = 'none';
     inpNome.focus();
@@ -209,12 +265,13 @@ function abrirFormEdicao(id) {
     if (!p) return;
     editandoId = id;
     formTitulo.textContent = 'Editar Produto';
-    inpNome.value  = p.nome || p.description || '';
-    inpCat.value   = p.categoria || 'Outro';
-    inpQty.value   = p.quantidade ?? 0;
-    inpMin.value   = p.quantidadeMinima ?? 1;
-    inpVenda.value = p.venda || '';
-    inpCusto.value = p.custo || '';
+    inpNome.value   = p.nome || p.description || '';
+    inpCat.value    = p.categoria || 'Outro';
+    inpQty.value    = p.quantidade ?? 0;
+    inpMin.value    = p.quantidadeMinima ?? 1;
+    inpVenda.value  = p.venda || '';
+    inpCusto.value  = p.custo || '';
+    inpCodigo.value = p.codigoBarras || '';
     formEl.style.display = 'flex';
     btnNovo.style.display = 'none';
     inpNome.focus();
@@ -230,9 +287,14 @@ async function salvarProduto() {
     const nome = inpNome.value.trim();
     if (!nome) { inpNome.focus(); return; }
 
+    const cat = inpCat.value;
+    const codigoExistente = editandoId ? produtos.find(p => p.id === editandoId)?.codigoBarras : null;
+    const codigoBarras = inpCodigo.value.trim() || codigoExistente || gerarCodigoBarras(cat);
+
     const dados = {
         nome,
-        categoria:        inpCat.value,
+        categoria:        cat,
+        codigoBarras,
         quantidade:       Number(inpQty.value) || 0,
         quantidadeMinima: Number(inpMin.value) || 1,
         venda:            Number(inpVenda.value) || 0,
@@ -310,9 +372,19 @@ function filtrar() {
     if (!q) { render(produtos); return; }
     render(produtos.filter(p =>
         (p.nome || p.description || '').toLowerCase().includes(q) ||
-        (p.categoria || '').toLowerCase().includes(q)
+        (p.categoria || '').toLowerCase().includes(q) ||
+        (p.codigoBarras || '').toLowerCase().includes(q)
     ));
 }
+
+// Ao pressionar Enter na busca com leitor USB (código exato → abre produto direto)
+searchEl.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    const q = searchEl.value.trim();
+    if (!q) return;
+    const match = produtos.find(p => p.codigoBarras === q);
+    if (match) toast(`📦 ${match.nome}  —  Qtd: ${match.quantidade}`);
+});
 
 function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -352,4 +424,16 @@ export async function listarProdutosEstoque() {
         snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
         return lista;
     } catch { return []; }
+}
+
+// Busca produto pelo código de barras — usado no Caixa com leitor USB
+export async function buscarPorCodigoBarras(codigo) {
+    const local = produtos.find(p => p.codigoBarras === codigo);
+    if (local) return local;
+    try {
+        const snap = await getDocs(collection(db, COL));
+        let found = null;
+        snap.forEach(d => { if (d.data().codigoBarras === codigo) found = { id: d.id, ...d.data() }; });
+        return found;
+    } catch { return null; }
 }
