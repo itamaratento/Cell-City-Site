@@ -780,6 +780,10 @@ function renderDetail() {
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
     const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
+    const _ultimoWpp = (os.wppHistorico || []).slice(-1)[0];
+    const _wppInd = _ultimoWpp
+        ? `<div id="wpp-os-indicator" style="font-size:11px;color:#22c55e;margin-top:2px;">🟢 ${_ultimoWpp.label} • ${_ultimoWpp.data} ${_ultimoWpp.hora}</div>`
+        : `<div id="wpp-os-indicator" style="font-size:11px;color:var(--text3);margin-top:2px;">🟡 Nenhum WhatsApp enviado</div>`;
     html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
