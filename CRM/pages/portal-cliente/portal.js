@@ -1028,6 +1028,17 @@ window.Portal = {
       `;
     }
 
+    if (o.nfLink) {
+      html += `
+        <div class="os-detail-section">
+          <h3 class="os-detail-section-title">📄 Nota Fiscal</h3>
+          <a href="${this._esc(o.nfLink)}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:8px;padding:12px 18px;background:linear-gradient(135deg,#1976D2,#1565C0);color:#fff;border-radius:10px;font-weight:700;font-size:14px;text-decoration:none;">
+            👁️ Visualizar Nota Fiscal
+          </a>
+        </div>
+      `;
+    }
+
     html += `</div></div>`;
     el.innerHTML = html;
   },
@@ -1324,6 +1335,7 @@ window.Portal = {
       const BTN_SEC = 'display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;text-decoration:none;background:var(--bg-surface,#1a1d23);color:var(--text-primary,#f5f7fa);border:1px solid var(--border,rgba(255,255,255,0.10));';
       const LBL = 'font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;';
       // Bloco de ações: Garantia + (se houver) Relatório Técnico
+      const BTN_NF = 'display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-weight:600;font-size:13px;text-decoration:none;background:linear-gradient(135deg,#1976D2,#1565C0);color:#fff;';
       const acoesDoc = (o) => {
         const g = osLink(o), r = relLink(o);
         let h = `<div style="margin-top:12px;">`;
@@ -1337,6 +1349,12 @@ window.Portal = {
           h += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`
              + `<a href="${r}" target="_blank" style="${BTN_REL}">👁️ Visualizar Relatório</a>`
              + `<a href="${r}" download style="${BTN_SEC}">📥 Baixar Relatório</a>`
+             + `</div>`;
+        }
+        if (o.nfLink) {
+          h += `<div style="${LBL}margin:14px 0 6px;">📄 Nota Fiscal</div>`;
+          h += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`
+             + `<a href="${this._esc(o.nfLink)}" target="_blank" style="${BTN_NF}">👁️ Visualizar Nota Fiscal</a>`
              + `</div>`;
         }
         h += `</div>`;

@@ -771,6 +771,11 @@ function renderDetail() {
         </div></div></div>`;
     }
 
+    if (os.nfLink) {
+        const nfMeta = [os.nfNumero ? `NF ${os.nfNumero}` : null, os.nfData ? os.nfData.split('-').reverse().join('/') : null].filter(Boolean).join(' • ');
+        html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📄 Nota Fiscal</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${nfMeta ? `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;">${nfMeta}</div>` : ''}<a href="${os.nfLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#1976D2;color:#fff;border-radius:var(--radius-sm);font-weight:700;font-size:13px;text-decoration:none;">👁️ Visualizar Nota Fiscal</a></div></div></div>`;
+    }
+
     html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📜 Histórico</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${(os.timeline||[]).map(t => `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${formatDate(t.date)}</div><div>${t.text || ''}</div></div>`).join('')}</div></div></div>`;
     
     if (client?.history.length > 1) {
@@ -872,6 +877,27 @@ async function toggleOSEdit() {
 
 <label style="font-size:12px;color:var(--text2);">Modelo de Garantia</label>
 <select id="edit-os-garantia-modelo" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" onchange="window.markUnsaved()"></select>
+
+    </div>
+  </div></div>
+</div>
+
+<!-- ===== Seção recolhível: Nota Fiscal (inicia recolhida) ===== -->
+<div class="form-section accordion collapsed" style="margin-top:10px;">
+  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📄 Nota Fiscal</span><span class="accordion-arrow">▶</span></button>
+  <div class="accordion-content"><div class="accordion-content-inner">
+    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
+
+<label style="font-size:12px;color:var(--text2);">Número da Nota Fiscal</label>
+<input id="edit-os-nf-numero" value="${os.nfNumero||''}" placeholder="Ex: 000123" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+
+<label style="font-size:12px;color:var(--text2);">Data da Nota Fiscal</label>
+<input id="edit-os-nf-data" type="date" value="${os.nfData||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+
+<label style="font-size:12px;color:var(--text2);">Link da Nota Fiscal (Google Drive)</label>
+<input id="edit-os-nf-link" value="${os.nfLink||''}" placeholder="https://drive.google.com/..." style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+
+${os.nfLink ? `<a href="${os.nfLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;background:#1976D2;color:#fff;border-radius:var(--radius-sm);font-weight:700;font-size:13px;text-decoration:none;">👁️ Visualizar Nota Fiscal</a>` : ''}
 
     </div>
   </div></div>
@@ -1012,9 +1038,12 @@ async function saveOSEdit() {
     const bairro = document.getElementById('edit-os-bairro')?.value.trim() || '';
     const cidade = document.getElementById('edit-os-cidade')?.value.trim() || '';
     const estado = document.getElementById('edit-os-estado')?.value.trim() || '';
+    const nfNumero = document.getElementById('edit-os-nf-numero')?.value.trim() || '';
+    const nfData = document.getElementById('edit-os-nf-data')?.value.trim() || '';
+    const nfLink = document.getElementById('edit-os-nf-link')?.value.trim() || '';
     if (!n || !p || !m) return showToast("⚠️ Preencha todos os campos");
     try {
-        const updates = { clientName: n, phone: p, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
+        const updates = { clientName: n, phone: p, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, nfNumero: nfNumero || null, nfData: nfData || null, nfLink: nfLink || null, updatedAt: new Date().toISOString() };
         await updateDoc(doc(db, "os", currentOS.id), updates);
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
