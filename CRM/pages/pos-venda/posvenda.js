@@ -539,7 +539,7 @@ function enviarWppPosvenda(osId, prazo) {
     if (!phone || phone.length < 10) { showToast('⚠️ Telefone inválido ou não cadastrado'); return; }
     const mensagem = _getMsgWppPosvenda(prazo, os.clientName, os.model);
     const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
-    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensagem)}`, '_blank');
+    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensagem)}`, 'whatsapp_crm');
     // Marca como enviado nessa sessão
     wppEnviados.add(`${osId}_${prazo}`);
     // Atualiza indicador visual no card

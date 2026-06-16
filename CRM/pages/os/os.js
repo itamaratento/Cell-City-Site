@@ -1564,13 +1564,27 @@ function copiarMsgWpp() {
     } else { fallbackCopyMessage(_wppMensagemAtual); }
 }
 
-function enviarWppOS() {
+async function enviarWppOS() {
     if (!currentOS || !_wppMensagemAtual) return;
     const phone = (currentOS.phone || '').replace(/\D/g, '');
     if (!phone || phone.length < 10) { showToast('⚠️ Telefone não cadastrado ou inválido'); return; }
     const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
     closeModal();
-    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(_wppMensagemAtual)}`, '_blank');
+    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(_wppMensagemAtual)}`, 'whatsapp_crm');
+    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
+    const now = new Date();
+    const entrada = {
+        data: now.toLocaleDateString('pt-BR'),
+        hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        tipo: _wppTipoAtual,
+        label: cat ? cat.emoji + ' ' + cat.label : _wppTipoAtual
+    };
+    try {
+        currentOS.wppHistorico = [...(currentOS.wppHistorico || []), entrada];
+        await updateDoc(doc(db, 'os', currentOS.id), { wppHistorico: currentOS.wppHistorico });
+        const ind = document.getElementById('wpp-os-indicator');
+        if (ind) ind.innerHTML = `🟢 ${entrada.label} • ${entrada.data} ${entrada.hora}`;
+    } catch(e) { console.warn('WPP: erro ao salvar histórico', e); }
 }
 
 async function abrirEditorTemplatesWpp() {
