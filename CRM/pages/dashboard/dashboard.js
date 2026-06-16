@@ -1694,7 +1694,8 @@ class Dashboard {
       'relatorios':          '../../pages/relatorios/index.html',
       'crm-comercial':       '../../pages/crm-comercial/index.html',
       'compras':             '../../pages/compras/index.html',
-      'auditoria':           '../../pages/auditoria/index.html'
+      'auditoria':           '../../pages/auditoria/index.html',
+      'pendencias':          '../../pages/pendencias/index.html'
     };
     if (module === 'central-alertas') {
       this.abrirListaAlertas();
