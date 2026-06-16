@@ -13,6 +13,7 @@ let todos = [];
 let abaAtiva = 'todos';
 let mostrarResolvidos = false;
 let editandoId = null;
+let termoBusca = '';
 
 // ── toast ──────────────────────────────────────────────────────────
 const toastEl = document.getElementById('pend-toast');
@@ -89,10 +90,16 @@ async function carregar() {
 
 // ── renderização ───────────────────────────────────────────────────
 function filtrados() {
+    const q = termoBusca.toLowerCase();
     return todos.filter(i => {
         if (!mostrarResolvidos && i.status === 'resolvido') return false;
-        if (abaAtiva === 'todos') return true;
-        return i.tipo === abaAtiva;
+        if (abaAtiva !== 'todos' && i.tipo !== abaAtiva) return false;
+        if (q) {
+            const nome = (i.nome || '').toLowerCase();
+            const desc = (i.descricao || '').toLowerCase();
+            if (!nome.includes(q) && !desc.includes(q)) return false;
+        }
+        return true;
     });
 }
 
@@ -123,6 +130,7 @@ function renderizar() {
                 <div class="pend-card-nome">${escHtml(item.nome)}</div>
                 ${item.descricao ? `<div class="pend-card-desc">${escHtml(item.descricao)}</div>` : ''}
                 ${val ? `<div class="pend-card-valor">${val}</div>` : ''}
+                ${item.quantidade ? `<div class="pend-card-meta">📦 ${escHtml(item.quantidade)} unid.</div>` : ''}
                 ${item.data ? `<div class="pend-card-meta">📅 ${formatarData(item.data)}</div>` : ''}
             </div>
             <div class="pend-card-acoes">
@@ -165,9 +173,11 @@ function abrirForm() {
     document.getElementById('pf-nome').value = '';
     document.getElementById('pf-tipo').value = 'cliente_devendo';
     document.getElementById('pf-valor').value = '';
+    document.getElementById('pf-quantidade').value = '';
     document.getElementById('pf-descricao').value = '';
     document.getElementById('pf-telefone').value = '';
     document.getElementById('pf-data').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('pf-status-group').style.display = 'none';
     document.getElementById('pend-form').style.display = 'flex';
     document.getElementById('btn-nova-pend').style.display = 'none';
     document.getElementById('pf-nome').focus();
@@ -181,9 +191,12 @@ function abrirEdicao(id) {
     document.getElementById('pf-nome').value = item.nome || '';
     document.getElementById('pf-tipo').value = item.tipo || 'cliente_devendo';
     document.getElementById('pf-valor').value = item.valor != null ? item.valor : '';
+    document.getElementById('pf-quantidade').value = item.quantidade || '';
     document.getElementById('pf-descricao').value = item.descricao || '';
     document.getElementById('pf-telefone').value = item.telefone || '';
     document.getElementById('pf-data').value = item.data || '';
+    document.getElementById('pf-status').value = item.status || 'aberto';
+    document.getElementById('pf-status-group').style.display = '';
     document.getElementById('pend-form').style.display = 'flex';
     document.getElementById('btn-nova-pend').style.display = 'none';
     document.getElementById('pf-nome').focus();
@@ -200,14 +213,19 @@ async function salvar() {
     if (!nome) { document.getElementById('pf-nome').focus(); return; }
 
     const valorRaw = document.getElementById('pf-valor').value;
+    const qtdRaw = document.getElementById('pf-quantidade').value;
+    const statusAtual = editandoId
+        ? (document.getElementById('pf-status').value || 'aberto')
+        : 'aberto';
     const dados = {
         nome,
-        tipo:      document.getElementById('pf-tipo').value,
-        valor:     valorRaw !== '' ? Number(valorRaw) : null,
-        descricao: document.getElementById('pf-descricao').value.trim(),
-        telefone:  document.getElementById('pf-telefone').value.trim(),
-        data:      document.getElementById('pf-data').value,
-        status:    editandoId ? (todos.find(x => x.id === editandoId)?.status || 'aberto') : 'aberto',
+        tipo:       document.getElementById('pf-tipo').value,
+        valor:      valorRaw !== '' ? Number(valorRaw) : null,
+        quantidade: qtdRaw !== '' ? Number(qtdRaw) : null,
+        descricao:  document.getElementById('pf-descricao').value.trim(),
+        telefone:   document.getElementById('pf-telefone').value.trim(),
+        data:       document.getElementById('pf-data').value,
+        status:     statusAtual,
         atualizadoEm: serverTimestamp(),
     };
     if (!editandoId) dados.criadoEm = serverTimestamp();
@@ -247,6 +265,11 @@ document.querySelectorAll('.pend-tab').forEach(btn => {
 
 document.getElementById('chk-resolvidos').addEventListener('change', e => {
     mostrarResolvidos = e.target.checked;
+    renderizar();
+});
+
+document.getElementById('pend-busca').addEventListener('input', e => {
+    termoBusca = e.target.value.trim();
     renderizar();
 });
 

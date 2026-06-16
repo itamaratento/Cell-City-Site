@@ -49,6 +49,11 @@
                 <button class="pend-tab" data-tab="eu_devo">🔴 Eu Devo</button>
             </div>
 
+            <!-- BUSCA -->
+            <div class="pend-busca-wrap">
+                <input type="search" id="pend-busca" class="pend-busca-input" placeholder="🔍 Buscar por nome ou descrição...">
+            </div>
+
             <!-- TOOLBAR -->
             <div class="pend-toolbar">
                 <button class="pend-btn-nova" id="btn-nova-pend">＋ Adicionar</button>
@@ -83,12 +88,23 @@
                         <input type="text" id="pf-descricao" placeholder="Ex: Teclado Virtual, Película, Cabo Tipo C - 3 unidades..." maxlength="200">
                     </div>
                     <div class="pend-form-group">
-                        <label>Telefone (WhatsApp)</label>
-                        <input type="tel" id="pf-telefone" placeholder="(11) 9 9999-0000" maxlength="20">
+                        <label>Quantidade</label>
+                        <input type="number" id="pf-quantidade" placeholder="Ex: 3" min="1" step="1">
                     </div>
                     <div class="pend-form-group">
                         <label>Data</label>
                         <input type="date" id="pf-data">
+                    </div>
+                    <div class="pend-form-group">
+                        <label>Telefone (WhatsApp)</label>
+                        <input type="tel" id="pf-telefone" placeholder="(11) 9 9999-0000" maxlength="20">
+                    </div>
+                    <div class="pend-form-group pend-span2" style="display:none" id="pf-status-group">
+                        <label>Status</label>
+                        <select id="pf-status">
+                            <option value="aberto">🟡 Aberto</option>
+                            <option value="resolvido">✅ Resolvido</option>
+                        </select>
                     </div>
                 </div>
                 <div class="pend-form-btns">
