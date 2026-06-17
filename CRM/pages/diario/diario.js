@@ -64,8 +64,8 @@ let autosaveTimer = null;
 let _carregarGen = 0;       // generation counter p/ evitar race condition
 
 // Estado da sidebar (explorador de arquivos)
-let sidebarCat = '';       // '' | catId | '__fav__' | '__revisoes__'
-let sidebarSubcat = '';    // '' | string da subcategoria
+let sidebarCat = '__home__'; // '' | catId | '__home__' | '__fav__' | '__revisoes__'
+let sidebarSubcat = '';      // '' | string da subcategoria
 const sbExpandidas = new Set(); // categorias com subcats abertas
 
 // ── Elementos ─────────────────────────────────────────────────────────
@@ -431,8 +431,16 @@ function renderSidebar() {
 // ── Atualiza o título/breadcrumb da área principal ────────────────────
 function updateMainTitulo() {
     const el = $('dia-main-cat-titulo');
+    const headerEl = $('dia-main-header');
+    const isHome = sidebarCat === '__home__';
+
+    // Breadcrumb: oculta na tela Home (o grid substitui)
+    if (headerEl) headerEl.style.display = isHome ? 'none' : '';
+
     if (!el) return;
-    if (!sidebarCat) {
+    if (isHome) {
+        el.textContent = '🏠 Home';
+    } else if (!sidebarCat) {
         el.textContent = '📂 Todos os registros';
     } else if (sidebarCat === '__fav__') {
         el.textContent = '⭐ Favoritos';
@@ -446,17 +454,84 @@ function updateMainTitulo() {
                 : `${cat.icon} ${cat.nome}`;
         }
     }
-    // Seção de favoritos: esconde quando sidebar mostra favs (redundante)
+
+    // Seção de favoritos: esconde quando sidebar mostra favs ou Home
     const favSection = $('dia-bloco-favs');
-    if (favSection) favSection.style.display = (sidebarCat === '__fav__') ? 'none' : '';
+    if (favSection) favSection.style.display = (isHome || sidebarCat === '__fav__') ? 'none' : '';
+}
+
+// ── Home: renderiza grid de pastas/categorias ─────────────────────────
+function renderHome() {
+    const homeGrid = $('dia-home-grid');
+    if (!homeGrid) return;
+
+    const ativos = registros.filter(r => r.status !== 'arquivado');
+    const favCount = ativos.filter(r => r.favorito).length;
+    const revCount = contarRevisoes().pendentes;
+
+    const catBlocks = CATEGORIAS.map(c => {
+        const count = ativos.filter(r => r.categoria === c.id).length;
+        return `<div class="dia-home-block" data-home-cat="${c.id}">
+            <span class="dia-home-icon">${c.icon}</span>
+            <span class="dia-home-nome">${c.nome}</span>
+            <span class="dia-home-count${count === 0 ? ' dia-home-count-zero' : ''}">${count}</span>
+        </div>`;
+    }).join('');
+
+    const extraBlocks = [
+        favCount ? `<div class="dia-home-block dia-home-fav-block" data-home-cat="__fav__">
+            <span class="dia-home-icon">⭐</span>
+            <span class="dia-home-nome">Favoritos</span>
+            <span class="dia-home-count">${favCount}</span>
+        </div>` : '',
+        revCount ? `<div class="dia-home-block dia-home-rev-block" data-home-cat="__revisoes__">
+            <span class="dia-home-icon">🔔</span>
+            <span class="dia-home-nome">Revisões</span>
+            <span class="dia-home-count dia-home-count-rev">${revCount}</span>
+        </div>` : '',
+    ].join('');
+
+    homeGrid.innerHTML = catBlocks + extraBlocks;
+
+    homeGrid.onclick = (e) => {
+        const block = e.target.closest('[data-home-cat]');
+        if (!block) return;
+        const cat = block.dataset.homeCat;
+        sidebarCat = cat;
+        sidebarSubcat = '';
+        if (cat && cat !== '__fav__' && cat !== '__revisoes__') {
+            sbExpandidas.add(cat);
+        }
+        quickFilter = null;
+        document.querySelectorAll('.dia-resumo-item').forEach(i => i.classList.remove('ativo'));
+        render();
+        fecharSidebarMobile();
+    };
 }
 
 // ── Render registros + favoritos + resumo ─────────────────────────────
 function render() {
     atualizarResumo();
-    renderFavoritos();
     renderSidebar();
     updateMainTitulo();
+
+    const isHome = sidebarCat === '__home__';
+    const homeGrid = $('dia-home-grid');
+    const filtrosEl = $('dia-filtros');
+
+    // Mostra/esconde componentes conforme modo
+    if (homeGrid) homeGrid.style.display = isHome ? '' : 'none';
+    if (filtrosEl) filtrosEl.style.display = isHome ? 'none' : '';
+
+    if (isHome) {
+        renderHome();
+        renderFavoritos();
+        listaEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        return;
+    }
+
+    renderFavoritos();
 
     const lista = aplicarFiltros();
     if (!lista.length) {

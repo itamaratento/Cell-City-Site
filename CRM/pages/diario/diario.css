@@ -310,6 +310,74 @@ main { padding: 0; }
 .dia-sb-overlay.open { display: block; animation: fadeOverlay 0.2s ease; }
 @keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
 
+/* ── Home Grid (tela inicial de navegação) ── */
+.dia-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  padding: 2px 0 24px;
+}
+
+.dia-home-block {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 22px 12px 18px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+.dia-home-block:hover {
+  border-color: var(--cell-green);
+  background: rgba(0, 200, 83, 0.06);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.dia-home-block:active { transform: translateY(-1px); }
+
+.dia-home-icon { font-size: 34px; line-height: 1; }
+
+.dia-home-nome {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.dia-home-count {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--cell-green-light);
+  background: rgba(0, 200, 83, 0.12);
+  border-radius: 100px;
+  padding: 2px 12px;
+  min-width: 36px;
+}
+.dia-home-count-zero {
+  color: var(--text-tertiary);
+  background: var(--bg-surface);
+  font-size: 13px;
+  font-weight: 400;
+}
+.dia-home-count-rev {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.12);
+}
+
+.dia-home-fav-block { border-color: rgba(255, 204, 0, 0.2); }
+.dia-home-fav-block:hover { border-color: var(--cell-gold); background: rgba(255, 204, 0, 0.06); }
+.dia-home-fav-block .dia-home-count { color: var(--cell-gold); background: rgba(255, 204, 0, 0.12); }
+
+.dia-home-rev-block { border-color: rgba(251, 146, 60, 0.2); }
+.dia-home-rev-block:hover { border-color: #fb923c; background: rgba(251, 146, 60, 0.06); }
+
 /* ── Responsivo mobile ── */
 @media (max-width: 767px) {
   .dia-sidebar {

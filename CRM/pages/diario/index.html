@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Diário</title>
-    <link rel="stylesheet" href="diario.css?v=20260617">
+    <link rel="stylesheet" href="diario.css?v=20260617b">
     <link rel="stylesheet" href="../../shared/dock.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -27,7 +27,11 @@
                 </div>
 
                 <!-- Itens especiais -->
-                <div class="dia-sb-item active" data-cat="" data-sub="">
+                <div class="dia-sb-item" data-cat="__home__" data-sub="">
+                    <span class="dia-sb-icon">🏠</span>
+                    <span class="dia-sb-label">Home</span>
+                </div>
+                <div class="dia-sb-item" data-cat="" data-sub="">
                     <span class="dia-sb-icon">📂</span>
                     <span class="dia-sb-label">Todos</span>
                     <span class="dia-sb-count" id="dia-sb-count-all">0</span>
@@ -70,6 +74,9 @@
                 <div class="dia-main-header" id="dia-main-header">
                     <span class="dia-main-cat-titulo" id="dia-main-cat-titulo">📂 Todos os registros</span>
                 </div>
+
+                <!-- Grid Home (tela inicial de navegação por pastas) -->
+                <div class="dia-home-grid" id="dia-home-grid" style="display:none"></div>
 
                 <!-- Formulário / Editor -->
                 <div class="dia-form dia-editor" id="dia-form" style="display:none">
@@ -350,7 +357,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="diario.js?v=20260617"></script>
+    <script type="module" src="diario.js?v=20260617b"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
