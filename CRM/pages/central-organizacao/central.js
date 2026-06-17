@@ -335,14 +335,8 @@ document.querySelectorAll('.tab').forEach(btn => {
 const ABA_FIXADA_KEY = 'cc_aba_fixada_central';
 
 (function iniciarFixarAba() {
-    const tabsEl = document.querySelector('.tabs');
-    if (!tabsEl) return;
-
-    // ── Botão "⭐ Fixar" sempre visível no final da barra ──────────────────────
-    const btn = document.createElement('button');
-    btn.id        = 'btn-fixar-aba';
-    btn.className = 'btn-fixar-aba';
-    tabsEl.appendChild(btn);
+    const btn = document.getElementById('btn-fixar-aba-header');
+    if (!btn) return;
 
     function obterTabAtiva() {
         return document.querySelector('.tabs .tab.active');
@@ -376,7 +370,7 @@ const ABA_FIXADA_KEY = 'cc_aba_fixada_central';
                 btn.title = `Aba padrão: ${nome} — clique para mudar`;
             }
         } else {
-            btn.innerHTML = `⭐ Fixar`;
+            btn.innerHTML = `⭐ Favoritar`;
             btn.classList.remove('fixada');
             btn.title = 'Fixar a aba atual como padrão ao abrir';
         }

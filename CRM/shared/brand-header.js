@@ -292,6 +292,8 @@
     bar.appendChild(siteBtn);
 
     // Migra todos os filhos do header existente para dentro do brand bar.
+    // Insere ANTES do botão Site para que botões como "Favoritar" fiquem
+    // mais à esquerda que o "Site".
     // O título vira .crm-page-title (centralizado em absolute); os demais
     // botões recebem .crm-bar-migrated para neutralizar flex herdado do módulo
     // (ex.: .header-spacer com flex:1 que concorreria com .crm-bar-spacer).
@@ -302,7 +304,9 @@
         const child = existingHeader.firstElementChild;
         if (!titleEl && isPageTitle(child)) titleEl = child;
         child.classList.add('crm-bar-migrated');
-        bar.appendChild(child);
+        // Insere antes do siteBtn para que botões do header (ex: Favoritar)
+        // fiquem à esquerda do atalho "Site"
+        bar.insertBefore(child, siteBtn);
       }
       existingHeader.remove();
 

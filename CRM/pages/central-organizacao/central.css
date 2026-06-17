@@ -43,11 +43,11 @@ body {
     position:sticky; top:0; z-index:100;
     background:rgba(8,10,9,0.85);
     border-bottom:1px solid var(--border);
-    padding:11px 16px;
+    padding:14px 18px;
     display:flex; align-items:center; gap:12px;
     backdrop-filter:blur(24px) saturate(180%);
     -webkit-backdrop-filter:blur(24px) saturate(180%);
-    min-height:58px;
+    min-height:62px;
 }
 .header::after {
     content:''; position:absolute; bottom:0; left:0; right:0; height:1px;
@@ -68,29 +68,40 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 .back-btn:hover { background:rgba(255,255,255,0.09); border-color:var(--border-hover); }
 
 /* ── LAYOUT ── */
-.content { padding:18px 16px; max-width:920px; margin:0 auto; padding-bottom:100px; }
+.content { padding:24px 16px; max-width:920px; margin:0 auto; padding-bottom:100px; }
+/* Espaçamento extra do cabeçalho para não cortar horário/título */
+#crm-brand-bar { margin-bottom: 18px !important; }
 
 /* ── TABS ── */
 /* ── TABS — visual premium ── */
 .tabs {
-    display:flex; flex-wrap:nowrap; gap:6px;
-    overflow-x:auto; scrollbar-width:none;
+    display:flex; flex-wrap:wrap; gap:5px;
     margin-bottom:24px; padding:8px;
     background:rgba(255,255,255,0.025);
     border:1px solid rgba(255,255,255,0.06);
     border-radius:18px;
+    width:100%;
+}
+/* Em telas maiores, nowrap para ocupar menos altura */
+@media (min-width: 768px) {
+    .tabs { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
+    .tabs::-webkit-scrollbar { display:none; }
 }
 .tabs::-webkit-scrollbar { display:none; }
 
 /* base do botão — cor visível permanentemente via [data-tab] abaixo */
 .tab {
-    padding:10px 14px; min-height:44px;
+    padding:9px 12px; min-height:40px;
     border-radius:12px; border:1px solid;
-    font-size:13px; font-weight:700;
+    font-size:12px; font-weight:700;
     cursor:pointer; font-family:inherit; white-space:nowrap;
     transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
     flex-shrink:0; letter-spacing:.02em;
     position:relative; overflow:hidden;
+}
+/* Em telas muito pequenas, tabs ainda menores */
+@media (max-width: 480px) {
+    .tab { padding:7px 10px; font-size:11px; min-height:36px; }
 }
 .tab::after {
     content:''; position:absolute; inset:0;
@@ -206,33 +217,33 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     box-shadow:0 0 28px rgba(16,185,129,0.28),inset 0 1px 0 rgba(52,211,153,0.3);
 }
 
-/* ── Botão Fixar Aba (sempre visível, lado direito da barra) ── */
+/* ── Botão Fixar Aba — no header (migrado para brand bar) ── */
 .btn-fixar-aba {
     margin-left:auto; flex-shrink:0;
-    padding:10px 14px; min-height:44px;
-    border-radius:12px; border:1px solid rgba(255,255,255,0.14);
-    background:rgba(255,255,255,0.05);
-    color:rgba(255,255,255,0.55);
+    padding:7px 12px; min-height:34px;
+    border-radius:10px; border:1px solid rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.04);
+    color:rgba(255,255,255,0.5);
     font-size:12px; font-weight:700; font-family:inherit;
     cursor:pointer; white-space:nowrap;
     transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
     letter-spacing:.02em;
 }
 .btn-fixar-aba:hover {
-    background:rgba(255,255,255,0.1);
-    border-color:rgba(255,255,255,0.25);
+    background:rgba(255,255,255,0.08);
+    border-color:rgba(255,255,255,0.22);
     color:var(--text);
     transform:translateY(-1px);
 }
 .btn-fixar-aba.fixada {
     background:rgba(255,193,7,0.12);
-    border-color:rgba(255,193,7,0.4);
+    border-color:rgba(255,193,7,0.35);
     color:#FFD54F;
-    box-shadow:0 0 14px rgba(255,193,7,0.15);
+    box-shadow:0 0 12px rgba(255,193,7,0.12);
 }
 .btn-fixar-aba.fixada:hover {
-    background:rgba(255,193,7,0.2);
-    border-color:rgba(255,193,7,0.6);
+    background:rgba(255,193,7,0.18);
+    border-color:rgba(255,193,7,0.55);
 }
 /* Destaque sutil na aba que está fixada */
 .tab.tab-fixada { outline:1px solid rgba(255,193,7,0.4); outline-offset:1px; }
