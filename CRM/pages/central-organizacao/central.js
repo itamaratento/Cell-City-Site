@@ -1,4 +1,4 @@
-import { db, doc, getDoc, setDoc, serverTimestamp, authReady } from '../../scripts/firebase.js';
+import { db, doc, getDoc, setDoc, serverTimestamp, authReady, collection, addDoc, getDocs, updateDoc, deleteDoc, onSnapshot, query, orderBy, limit } from '../../scripts/firebase.js';
 
 const SECAO_DOC = 'central_organizacao';
 
@@ -322,10 +322,1053 @@ document.querySelectorAll('.tab').forEach(btn => {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
+        // lazy-init monitoramento ao abrir a aba
+        if (btn.dataset.tab === 'monitoramento') {
+            Monitoramento.init().catch(console.error);
+        }
     });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO MONITORAMENTO
+// Lê em tempo real: config/robo_status (heartbeat do robô)
+// Lê/escreve: config/robo_classificacao (palavras para classificar leads)
+// Lê: robo_atividade (log de envios/respostas)
+//
+// CONTRATO DO ROBÔ — o robô deve escrever em Firestore:
+//
+// 1) config/robo_status (heartbeat a cada envio/30s):
+//    { online:bool, wppConectado:bool, numeroPrincipal:string,
+//      versao:string, ultimaSync:Timestamp,
+//      enviadosHoje:number, recebidosHoje:number, erros:string[] }
+//
+// 2) robo_atividade/{autoId} (a cada evento):
+//    { tipo:'envio'|'resposta'|'lead_quente'|'lead_morno'|'bloqueado'|'erro'|'inicio'|'pausa',
+//      numero:string, catId:string, catNome:string, texto:string, ts:serverTimestamp() }
+//
+// 3) categorias_wpp/{catId} — atualiza o telefone na array:
+//    campos: status, pontos, ultimoEnvio, ultimaResposta, totalEnviados, totalRespostas
+//
+// 4) categorias_wpp/{catId} — atualiza stats:
+//    { 'stats.enviados': increment(1), 'stats.respostas': increment(1) }
+//
+// 5) Classificação (lida do Firestore por: getDoc config/robo_classificacao):
+//    palavras_quentes[] → status='lead_quente', pontos+=15
+//    palavras_mornos[]  → status='lead_morno',  pontos+=5
+//    palavras_bloqueado[]→ status='bloqueado',   pontos-=50
+//    (resposta sem match) → status='respondeu',  pontos+=5
+// ══════════════════════════════════════════════════════════════════════════════
+
+const monState = {
+    palavrasQuente:   [],
+    palavrasMorno:    [],
+    palavrasBloqueado:[],
+    pontos: { respondeu:5, lead_quente:15, lead_morno:5, lead_frio:-10, cliente:50, bloqueado:-50 },
+    unsubStatus: null,
+};
+
+function monFmt(ts) {
+    if (!ts) return '—';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    return d.toLocaleString('pt-BR',{ day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+
+function monRenderStatus(data) {
+    const badge  = document.getElementById('mon-badge');
+    const syncEl = document.getElementById('mon-ultima-sync');
+    const wppEl  = document.getElementById('mon-wpp');
+    const numEl  = document.getElementById('mon-numero');
+    const verEl  = document.getElementById('mon-versao');
+    const envEl  = document.getElementById('mon-enviados');
+    const recEl  = document.getElementById('mon-recebidos');
+    const errEl  = document.getElementById('mon-erros');
+    if (!data) {
+        if (badge)  { badge.textContent='⚫ Sem dados'; badge.className='mon-badge'; }
+        if (syncEl) syncEl.textContent='Robô nunca conectou ao CRM.';
+        return;
+    }
+    const agoSec = data.ultimaSync ? (Date.now() - (data.ultimaSync.toDate?.() ?? new Date(data.ultimaSync)).getTime()) / 1000 : 999;
+    const online = data.online && agoSec < 300;
+    if (badge)  { badge.textContent = online ? '🟢 Online' : '🔴 Offline'; badge.className = `mon-badge ${online?'online':'offline'}`; }
+    if (syncEl) syncEl.textContent  = `Última sync: ${monFmt(data.ultimaSync)}${!online && agoSec < 9999 ? ` (${Math.round(agoSec/60)} min atrás)` : ''}`;
+    if (wppEl)  wppEl.textContent   = data.wppConectado ? '🟢 Conectado' : '🔴 Desconectado';
+    if (numEl)  numEl.textContent   = data.numeroPrincipal || '—';
+    if (verEl)  verEl.textContent   = data.versao || '—';
+    if (envEl)  envEl.textContent   = data.enviadosHoje  || 0;
+    if (recEl)  recEl.textContent   = data.recebidosHoje || 0;
+    if (errEl)  errEl.textContent   = (data.erros || []).length;
+}
+
+function monRenderChips(tipo, lista) {
+    const el = document.getElementById(`mon-chips-${tipo}`); if (!el) return;
+    el.innerHTML = lista.map((p,i) =>
+        `<span class="cat-tag-chip">${catEsc(p)}<button class="cat-tag-chip-x" onclick="Monitoramento._removeP('${tipo}',${i})">×</button></span>`
+    ).join('');
+}
+
+function monRenderPontos() {
+    const el = document.getElementById('mon-pontos-grid'); if (!el) return;
+    const P = monState.pontos;
+    const itens = [
+        ['respondeu','💬 Respondeu',P.respondeu],
+        ['lead_quente','🔥 Lead Quente',P.lead_quente],
+        ['lead_morno','🌡️ Lead Morno',P.lead_morno],
+        ['lead_frio','❄️ Lead Frio',P.lead_frio],
+        ['cliente','⭐ Cliente',P.cliente],
+        ['bloqueado','🔴 Bloqueado',P.bloqueado],
+    ];
+    el.innerHTML = itens.map(([k,lbl,v]) => {
+        const pos = v > 0;
+        return `<div class="mon-ponto-item">
+            <span class="mon-ponto-lbl">${catEsc(lbl)}</span>
+            <span class="mon-ponto-val ${pos?'mon-ponto-pos':'mon-ponto-neg'}">${pos?'+':''}${v}</span>
+        </div>`;
+    }).join('');
+}
+
+async function monCarregarClassificacao() {
+    const snap = await getDoc(doc(db, 'config', 'robo_classificacao'));
+    if (snap.exists()) {
+        const d = snap.data();
+        monState.palavrasQuente    = d.palavras_quentes   || [];
+        monState.palavrasMorno     = d.palavras_mornos    || [];
+        monState.palavrasBloqueado = d.palavras_bloqueado || [];
+        if (d.pontos) monState.pontos = { ...monState.pontos, ...d.pontos };
+    } else {
+        // padrões iniciais
+        monState.palavrasQuente    = ['quanto custa','valor','preço','orçamento','tenho interesse','pode explicar','como funciona','quero saber'];
+        monState.palavrasMorno     = ['talvez','depois vejo','vou analisar','me chama depois','vou pensar','não sei'];
+        monState.palavrasBloqueado = ['não tenho interesse','não quero','pare','remover','não quero receber','sair','stop','chega','cancela'];
+    }
+    monRenderChips('quente',   monState.palavrasQuente);
+    monRenderChips('morno',    monState.palavrasMorno);
+    monRenderChips('bloqueado',monState.palavrasBloqueado);
+    monRenderPontos();
+}
+
+async function monCarregarAtividade() {
+    const el = document.getElementById('mon-atividade'); if (!el) return;
+    try {
+        const snap = await getDocs(query(collection(db, 'robo_atividade'), orderBy('ts','desc'), limit(30)));
+        if (snap.empty) {
+            el.innerHTML = '<div class="empty">Nenhuma atividade registrada ainda.<br>O robô escreverá aqui automaticamente.</div>';
+            return;
+        }
+        const ICON = { envio:'📤', resposta:'💬', lead_quente:'🔥', lead_morno:'🌡️', lead_frio:'❄️', bloqueado:'🔴', cliente:'⭐', erro:'❌', inicio:'▶️', pausa:'⏸️' };
+        el.innerHTML = snap.docs.map(d => {
+            const a = d.data();
+            return `<div class="mon-ativ-item">
+                <span class="mon-ativ-hora">${monFmt(a.ts)}</span>
+                <span class="mon-ativ-tipo">${ICON[a.tipo] || '•'}</span>
+                <div class="mon-ativ-desc">
+                    ${a.numero?`<strong>${catEsc(a.numero)}</strong> `:''}
+                    ${a.catNome?`<span class="mon-ativ-cat">[${catEsc(a.catNome)}]</span> `:''}
+                    ${catEsc(a.texto || a.tipo || '')}
+                </div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        el.innerHTML = '<div class="empty">Erro ao carregar atividade.</div>';
+        console.error(e);
+    }
+}
+
+window.Monitoramento = {
+
+    _addP(tipo) {
+        const input = document.getElementById(`mon-input-${tipo}`); if (!input) return;
+        const p = input.value.trim().toLowerCase();
+        if (!p) { input.value=''; return; }
+        const arr = tipo==='quente' ? monState.palavrasQuente : tipo==='morno' ? monState.palavrasMorno : monState.palavrasBloqueado;
+        if (!arr.includes(p)) { arr.push(p); monRenderChips(tipo,arr); }
+        input.value = '';
+    },
+
+    _removeP(tipo, idx) {
+        const arr = tipo==='quente' ? monState.palavrasQuente : tipo==='morno' ? monState.palavrasMorno : monState.palavrasBloqueado;
+        arr.splice(idx,1);
+        monRenderChips(tipo,arr);
+    },
+
+    async salvarClassificacao() {
+        const dados = {
+            palavras_quentes:   monState.palavrasQuente,
+            palavras_mornos:    monState.palavrasMorno,
+            palavras_bloqueado: monState.palavrasBloqueado,
+            pontos:             monState.pontos,
+            atualizadoEm:       serverTimestamp(),
+        };
+        try {
+            await setDoc(doc(db,'config','robo_classificacao'), dados);
+            toast('✅ Classificação salva — o robô lerá na próxima inicialização.');
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    async atualizarAtividade() { await monCarregarAtividade(); },
+
+    async init() {
+        await monCarregarClassificacao();
+        await monCarregarAtividade();
+        // listener em tempo real no status do robô
+        if (!monState.unsubStatus) {
+            monState.unsubStatus = onSnapshot(doc(db,'config','robo_status'), (snap) => {
+                monRenderStatus(snap.exists() ? snap.data() : null);
+            }, (e) => { console.error('Monitor onSnapshot:', e); monRenderStatus(null); });
+        }
+    },
+
+    destroy() {
+        if (monState.unsubStatus) { monState.unsubStatus(); monState.unsubStatus=null; }
+    },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO CATEGORIAS
+// Coleção Firestore: categorias_wpp/{id}
+// Campos: nome, descricao, cor, status, tags[], telefones[], mensagens[],
+//         anotacoes[], campanhas[], stats{enviados,respostas,conversas,clientes}
+// Telefone: {numero, status, pontos, obs, dataCadastro, ultimoEnvio, ultimaResposta, totalEnviados, totalRespostas}
+// ══════════════════════════════════════════════════════════════════════════════
+
+const CATS_COL = 'categorias_wpp';
+
+const CAT_CORES = [
+    '#2563eb','#7c3aed','#db2777','#dc2626','#d97706',
+    '#059669','#0891b2','#ea580c','#9333ea','#16a34a',
+];
+
+const CAT_SUGESTOES = [
+    'Advogados','Clínicas','Escritórios','Contabilidade',
+    'Auto Escolas','Igrejas','Mercados','Farmácias','Outros',
+];
+
+const TEL_STATUS = {
+    nunca_contatado: { emoji: '⬜', label: 'Nunca Contatado' },
+    contatado:       { emoji: '📤', label: 'Contatado' },
+    respondeu:       { emoji: '💬', label: 'Respondeu' },
+    lead_quente:     { emoji: '🔥', label: 'Lead Quente' },
+    lead_morno:      { emoji: '🌡️', label: 'Lead Morno' },
+    lead_frio:       { emoji: '❄️', label: 'Lead Frio' },
+    cliente:         { emoji: '⭐', label: 'Cliente' },
+    bloqueado:       { emoji: '🔴', label: 'Bloqueado' },
+    invalido:        { emoji: '⚫', label: 'Inválido' },
+};
+
+const MSG_STATUS = {
+    rascunho:  { emoji: '✏️', label: 'Rascunho' },
+    aprovada:  { emoji: '✅', label: 'Aprovada' },
+    arquivada: { emoji: '📦', label: 'Arquivada' },
+};
+
+const CAMP_STATUS_MAP = {
+    rascunho:  { emoji: '✏️', label: 'Rascunho' },
+    ativa:     { emoji: '🚀', label: 'Ativa' },
+    concluida: { emoji: '✅', label: 'Concluída' },
+};
+
+const catState = {
+    lista:       [],
+    atual:       null,
+    corSel:      CAT_CORES[0],
+    tagsDraft:   [],
+    filtroStatus: '',
+    filtroBusca:  '',
+    modalTelIdx:  null,
+};
+
+function catEsc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function catFmt(iso) {
+    if (!iso) return '—';
+    const [y,m,d] = iso.slice(0,10).split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function hoje() { return new Date().toISOString().slice(0,10); }
+
+// Normaliza telefone: retrocompatibilidade (dados antigos eram string)
+function normTel(t) {
+    if (typeof t === 'string') {
+        return { numero: t, status: 'nunca_contatado', pontos: 0, obs: '', dataCadastro: '', ultimoEnvio: null, ultimaResposta: null, totalEnviados: 0, totalRespostas: 0 };
+    }
+    return {
+        numero: t.numero || '',
+        status: t.status || 'nunca_contatado',
+        pontos: t.pontos || 0,
+        obs: t.obs || '',
+        dataCadastro: t.dataCadastro || '',
+        ultimoEnvio: t.ultimoEnvio || null,
+        ultimaResposta: t.ultimaResposta || null,
+        totalEnviados: t.totalEnviados || 0,
+        totalRespostas: t.totalRespostas || 0,
+    };
+}
+
+// ── Listener em tempo real (ativo quando um detalhe está aberto) ──────────────
+let catUnsubscribeDoc = null;
+
+function catEscutarDoc(id) {
+    if (catUnsubscribeDoc) { catUnsubscribeDoc(); catUnsubscribeDoc = null; }
+    catUnsubscribeDoc = onSnapshot(doc(db, CATS_COL, id), (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        if (data.telefones) data.telefones = data.telefones.map(normTel);
+        const updated = { id: snap.id, ...data };
+        const idx = catState.lista.findIndex(c => c.id === id);
+        if (idx >= 0) catState.lista[idx] = updated;
+        else catState.lista.push(updated);
+        if (catState.atual?.id === id) {
+            catState.atual = updated;
+            catRenderDetalhe();
+        }
+        catRenderLista();
+    }, (e) => console.error('catSnapshot:', e));
+}
+
+function catPararListener() {
+    if (catUnsubscribeDoc) { catUnsubscribeDoc(); catUnsubscribeDoc = null; }
+}
+
+// ── Firestore ─────────────────────────────────────────────────────────────────
+async function catCarregar() {
+    const snap = await getDocs(collection(db, CATS_COL));
+    catState.lista = snap.docs.map(d => {
+        const data = d.data();
+        if (data.telefones) data.telefones = data.telefones.map(normTel);
+        return { id: d.id, ...data };
+    });
+    catState.lista.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt'));
+    catRenderLista();
+}
+
+async function catUpdate(id, campos) {
+    await updateDoc(doc(db, CATS_COL, id), campos);
+}
+
+// ── Render lista ──────────────────────────────────────────────────────────────
+function catRenderLista() {
+    const el = document.getElementById('list-cats');
+    if (!el) return;
+    const busca = (catState.filtroBusca || '').toLowerCase().trim();
+    let lista = catState.lista;
+    if (busca) {
+        lista = lista.filter(c => {
+            if ((c.nome||'').toLowerCase().includes(busca)) return true;
+            if ((c.descricao||'').toLowerCase().includes(busca)) return true;
+            if ((c.tags||[]).some(t => t.toLowerCase().includes(busca))) return true;
+            if ((c.telefones||[]).some(t => normTel(t).numero.includes(busca))) return true;
+            if ((c.mensagens||[]).some(m => (m.titulo||'').toLowerCase().includes(busca) || (m.texto||'').toLowerCase().includes(busca))) return true;
+            return false;
+        });
+    }
+    if (!lista.length) {
+        el.innerHTML = `<div class="empty">${busca ? 'Nenhuma categoria encontrada.' : 'Nenhuma categoria cadastrada.'}</div>`
+            + (!busca ? `<div class="cat-sugestoes"><div class="cat-sug-titulo">Sugestões para começar</div><div class="cat-sug-chips">${CAT_SUGESTOES.map(s=>`<button class="cat-sug-chip" onclick="Categorias.sugerirCat('${catEsc(s)}')">${catEsc(s)}</button>`).join('')}</div></div>` : '');
+        return;
+    }
+    el.innerHTML = lista.map(c => {
+        const tels  = (c.telefones||[]).map(normTel);
+        const nTel  = tels.length;
+        const nHot  = tels.filter(t=>t.status==='lead_quente').length;
+        const nMsg  = (c.mensagens||[]).length;
+        const nAnot = (c.anotacoes||[]).length;
+        const nCamp = (c.campanhas||[]).length;
+        const cor   = c.cor || CAT_CORES[0];
+        const tags  = (c.tags||[]).slice(0,3);
+        return `<div class="cat-card${c.status==='inativa'?' inativa':''}" onclick="Categorias.abrirDetalhe('${catEsc(c.id)}')">
+            <div class="cat-card-cor" style="background:${cor}1a;border:1px solid ${cor}44">📁</div>
+            <div class="cat-card-body">
+                <div class="cat-card-nome">${catEsc(c.nome)}${c.status==='inativa'?'<span class="cat-status-inativa">Inativa</span>':''}</div>
+                ${c.descricao?`<div class="cat-card-desc">${catEsc(c.descricao)}</div>`:''}
+                <div class="cat-card-counts">
+                    <span>📞 ${nTel}</span>
+                    ${nHot?`<span>🔥 ${nHot} quentes</span>`:''}
+                    <span>💬 ${nMsg}</span>
+                    ${nAnot?`<span>📝 ${nAnot}</span>`:''}
+                    ${nCamp?`<span>🚀 ${nCamp}</span>`:''}
+                </div>
+                ${tags.length?`<div class="cat-card-tags">${tags.map(t=>`<span class="cat-card-tag">${catEsc(t)}</span>`).join('')}${(c.tags||[]).length>3?`<span class="cat-card-tag">+${(c.tags||[]).length-3}</span>`:''}</div>`:''}
+            </div>
+            <div class="cat-card-actions" onclick="event.stopPropagation()">
+                <button class="btn-edit"   onclick="Categorias.editarCat('${catEsc(c.id)}')" title="Editar">✏️</button>
+                <button class="btn-delete" onclick="Categorias.excluirCat('${catEsc(c.id)}')" title="Excluir">🗑️</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Render detalhe ────────────────────────────────────────────────────────────
+function catRenderDetalhe() {
+    const c = catState.atual; if (!c) return;
+    const cor = c.cor || CAT_CORES[0];
+    const corEl = document.getElementById('cat-det-cor');
+    if (corEl) { corEl.style.background = cor; corEl.style.boxShadow = `0 0 10px ${cor}`; }
+    const nomeEl = document.getElementById('cat-det-nome');
+    if (nomeEl) nomeEl.textContent = c.nome;
+    const stEl = document.getElementById('cat-det-status');
+    if (stEl) stEl.style.display = c.status === 'inativa' ? '' : 'none';
+    const descEl = document.getElementById('cat-det-desc');
+    if (descEl) descEl.textContent = c.descricao || '';
+    const tagsEl = document.getElementById('cat-det-tags');
+    if (tagsEl) tagsEl.innerHTML = (c.tags||[]).map(t=>`<span class="cat-tag-pill">${catEsc(t)}</span>`).join('');
+    catRenderTelefones();
+    catRenderMensagens();
+    catRenderAnotacoes();
+    catRenderCampanhas();
+    catRenderStats();
+}
+
+function catRenderTelefones() {
+    const c = catState.atual; if (!c) return;
+    const countEl = document.getElementById('cat-tel-count');
+    const listEl  = document.getElementById('list-cat-tel');
+    if (!listEl) return;
+    const todos    = (c.telefones||[]).map(normTel);
+    const filtroBusca  = catState.filtroBusca && !catState.atual ? '' : (document.getElementById('cat-tel-busca')?.value || '').toLowerCase();
+    const filtroStatus = catState.filtroStatus;
+    const indexados = todos.map((t, i) => ({ ...t, _idx: i }));
+    const lista = indexados.filter(t => {
+        const matchBusca  = !filtroBusca  || t.numero.includes(filtroBusca);
+        const matchStatus = !filtroStatus || t.status === filtroStatus;
+        return matchBusca && matchStatus;
+    });
+    const nTotais = todos.length;
+    const nFilt   = lista.length;
+    if (countEl) countEl.textContent = filtroStatus || filtroBusca
+        ? `${nFilt} de ${nTotais} telefone${nTotais!==1?'s':''}`
+        : `${nTotais} telefone${nTotais!==1?'s':''}`;
+    if (!lista.length) {
+        listEl.innerHTML = `<div class="empty">${filtroStatus||filtroBusca ? 'Nenhum número neste filtro.' : 'Nenhum telefone cadastrado.'}</div>`;
+        return;
+    }
+    listEl.innerHTML = lista.map(t => {
+        const st = TEL_STATUS[t.status] || TEL_STATUS.nunca_contatado;
+        const pontos = t.pontos || 0;
+        const selectOpts = Object.entries(TEL_STATUS)
+            .map(([k,v])=>`<option value="${k}"${k===t.status?' selected':''}>${v.emoji} ${v.label}</option>`).join('');
+        return `<div class="cat-tel-item">
+            <span class="cat-tel-numero" onclick="Categorias.abrirModalTel(${t._idx})" style="cursor:pointer" title="Ver detalhes">${catEsc(t.numero)}</span>
+            ${pontos?`<span class="cat-tel-meta" title="Pontuação">${pontos>0?'+':''}${pontos}pts</span>`:''}
+            <select class="cat-tel-select" onchange="Categorias.mudarStatusTel(${t._idx},this.value)" title="Status do lead">
+                ${selectOpts}
+            </select>
+            <button class="btn-delete" onclick="Categorias.removerTel(${t._idx})" title="Remover">🗑️</button>
+        </div>`;
+    }).join('');
+}
+
+function catRenderMensagens() {
+    const c = catState.atual; if (!c) return;
+    const countEl = document.getElementById('cat-msg-count');
+    const listEl  = document.getElementById('list-cat-msg');
+    if (!listEl) return;
+    const msgs = c.mensagens || [];
+    if (countEl) countEl.textContent = `${msgs.length} mensagem${msgs.length!==1?'ns':''}`;
+    if (!msgs.length) { listEl.innerHTML = '<div class="empty">Nenhuma mensagem cadastrada.</div>'; return; }
+    listEl.innerHTML = msgs.map((m, idx) => {
+        const st = MSG_STATUS[m.status] || MSG_STATUS.rascunho;
+        return `<div class="cat-msg-card">
+            <div class="cat-msg-header">
+                <span class="cat-msg-titulo">💬 ${catEsc(m.titulo || `Mensagem ${idx+1}`)}</span>
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+                    <span class="cat-msg-status-badge ${m.status==='aprovada'?'aprovada':m.status==='arquivada'?'arquivada':''}">${st.emoji} ${st.label}</span>
+                    <div class="item-actions">
+                        <button class="btn-edit"   onclick="Categorias.editarMsg(${idx})"   title="Editar">✏️</button>
+                        <button class="btn-edit"   onclick="Categorias.duplicarMsg(${idx})" title="Duplicar" style="font-size:12px">📋</button>
+                        <button class="btn-delete" onclick="Categorias.removerMsg(${idx})"  title="Remover">🗑️</button>
+                    </div>
+                </div>
+            </div>
+            <div class="cat-msg-texto">${catEsc(m.texto||'')}</div>
+        </div>`;
+    }).join('');
+}
+
+function catRenderAnotacoes() {
+    const c = catState.atual; if (!c) return;
+    const countEl = document.getElementById('cat-anot-count');
+    const listEl  = document.getElementById('list-cat-anot');
+    if (!listEl) return;
+    const anots = c.anotacoes || [];
+    if (countEl) countEl.textContent = `${anots.length} anotaç${anots.length!==1?'ões':'ão'}`;
+    if (!anots.length) { listEl.innerHTML = '<div class="empty">Nenhuma anotação cadastrada.</div>'; return; }
+    listEl.innerHTML = anots.map((a, idx) => `
+        <div class="cat-anot-card">
+            <div class="cat-anot-texto">${catEsc(a.texto||'')}</div>
+            <div class="item-actions">
+                <button class="btn-edit"   onclick="Categorias.editarAnot(${idx})"  title="Editar">✏️</button>
+                <button class="btn-delete" onclick="Categorias.removerAnot(${idx})" title="Remover">🗑️</button>
+            </div>
+        </div>`).join('');
+}
+
+function catRenderCampanhas() {
+    const c = catState.atual; if (!c) return;
+    const countEl = document.getElementById('cat-camp-count');
+    const listEl  = document.getElementById('list-cat-camp');
+    if (!listEl) return;
+    const camps = c.campanhas || [];
+    if (countEl) countEl.textContent = `${camps.length} campanha${camps.length!==1?'s':''}`;
+    if (!camps.length) { listEl.innerHTML = '<div class="empty">Nenhuma campanha cadastrada.</div>'; return; }
+    listEl.innerHTML = camps.map((camp, idx) => {
+        const st = CAMP_STATUS_MAP[camp.status] || CAMP_STATUS_MAP.rascunho;
+        return `<div class="cat-camp-card">
+            <div class="cat-camp-info">
+                <div class="cat-camp-nome">🚀 ${catEsc(camp.nome)}</div>
+                ${camp.criadoEm?`<div class="cat-camp-data">${catFmt(camp.criadoEm)}</div>`:''}
+            </div>
+            <span class="cat-camp-status ${camp.status==='ativa'?'ativa':camp.status==='concluida'?'concluida':''}">${st.emoji} ${st.label}</span>
+            <div class="item-actions">
+                <button class="btn-edit"   onclick="Categorias.editarCamp(${idx})"  title="Editar">✏️</button>
+                <button class="btn-delete" onclick="Categorias.removerCamp(${idx})" title="Remover">🗑️</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function catRenderStats() {
+    const c = catState.atual; if (!c) return;
+    const el = document.getElementById('cat-stats-grid');
+    if (!el) return;
+    const tels = (c.telefones||[]).map(normTel);
+    const nTel = tels.length;
+    const byStatus = (st) => tels.filter(t=>t.status===st).length;
+    const nQuente  = byStatus('lead_quente');
+    const nMorno   = byStatus('lead_morno');
+    const nFrio    = byStatus('lead_frio');
+    const nCliente = byStatus('cliente');
+    const nResp    = byStatus('respondeu');
+    const nMsg     = (c.mensagens||[]).filter(m=>m.status==='aprovada').length;
+    const nCamp    = (c.campanhas||[]).length;
+    const stats    = c.stats || {};
+    const enviados  = stats.enviados  || 0;
+    const respostas = stats.respostas || 0;
+    const taxa = enviados > 0 ? ((respostas/enviados)*100).toFixed(1)+'%' : '—';
+    const itens = [
+        { valor: nTel,     label: 'Telefones',     emoji: '📞' },
+        { valor: nQuente,  label: 'Leads Quentes', emoji: '🔥' },
+        { valor: nMorno,   label: 'Leads Mornos',  emoji: '🌡️' },
+        { valor: nFrio,    label: 'Leads Frios',   emoji: '❄️' },
+        { valor: nResp,    label: 'Responderam',   emoji: '💬' },
+        { valor: nCliente, label: 'Clientes',       emoji: '⭐' },
+        { valor: nMsg,     label: 'Msg Aprovadas',  emoji: '✅' },
+        { valor: nCamp,    label: 'Campanhas',      emoji: '🚀' },
+        { valor: enviados, label: 'Enviados',       emoji: '📤' },
+        { valor: taxa,     label: 'Taxa Resposta',  emoji: '📊' },
+    ];
+    el.innerHTML = itens.map(s => `
+        <div class="cat-stat-card">
+            <div class="cat-stat-valor">${catEsc(String(s.valor))}</div>
+            <div class="cat-stat-label">${s.emoji} ${catEsc(s.label)}</div>
+        </div>`).join('');
+}
+
+// ── Paleta de cores ───────────────────────────────────────────────────────────
+function catRenderCores(sel) {
+    const el = document.getElementById('cat-cores'); if (!el) return;
+    el.innerHTML = CAT_CORES.map(c =>
+        `<button type="button" class="cat-cor-btn${c===sel?' ativa':''}" style="background:${c}" title="${c}"
+            onclick="Categorias._selectCor('${c}')"></button>`
+    ).join('');
+}
+
+function catRenderTagsDraft() {
+    const el = document.getElementById('cat-f-tags-chips'); if (!el) return;
+    el.innerHTML = catState.tagsDraft.map((t,i) =>
+        `<span class="cat-tag-chip">${catEsc(t)}<button class="cat-tag-chip-x" onclick="Categorias._removeTag(${i})" title="Remover">×</button></span>`
+    ).join('');
+}
+
+// ── Modal detalhe do telefone ─────────────────────────────────────────────────
+function catRenderModalTel(idx) {
+    const c = catState.atual; if (!c) return;
+    const t = normTel((c.telefones||[])[idx]);
+    if (!t.numero) return;
+    const modal = document.getElementById('cat-tel-modal');
+    const numEl = document.getElementById('cat-tel-modal-num');
+    const bodyEl = document.getElementById('cat-tel-modal-body');
+    if (numEl) numEl.textContent = t.numero;
+    const st = TEL_STATUS[t.status] || TEL_STATUS.nunca_contatado;
+    const selectOpts = Object.entries(TEL_STATUS)
+        .map(([k,v])=>`<option value="${k}"${k===t.status?' selected':''}>${v.emoji} ${v.label}</option>`).join('');
+    if (bodyEl) bodyEl.innerHTML = `
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Categoria</span><span>${catEsc(c.nome)}</span></div>
+        <div class="cat-tel-modal-row">
+            <span class="cat-tel-modal-lbl">Status</span>
+            <select class="cat-tel-select" onchange="Categorias.mudarStatusTel(${idx},this.value)">
+                ${selectOpts}
+            </select>
+        </div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Pontuação</span><span>${t.pontos>0?'+':''}${t.pontos} pts</span></div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Data de Cadastro</span><span>${catFmt(t.dataCadastro)}</span></div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Último Envio</span><span>${catFmt(t.ultimoEnvio)}</span></div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Última Resposta</span><span>${catFmt(t.ultimaResposta)}</span></div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Total Enviados</span><span>${t.totalEnviados}</span></div>
+        <div class="cat-tel-modal-row"><span class="cat-tel-modal-lbl">Total Respostas</span><span>${t.totalRespostas}</span></div>
+        <div class="cat-tel-modal-row" style="flex-direction:column;gap:6px">
+            <span class="cat-tel-modal-lbl">Observação</span>
+            <textarea class="field cat-textarea" id="modal-tel-obs" rows="3" maxlength="200"
+                placeholder="Anotação sobre este contato...">${catEsc(t.obs||'')}</textarea>
+        </div>`;
+    if (modal) modal.classList.add('open');
+    catState.modalTelIdx = idx;
+}
+
+// ── API pública ───────────────────────────────────────────────────────────────
+window.Categorias = {
+
+    _selectCor(cor) { catState.corSel = cor; catRenderCores(cor); },
+
+    _addTag() {
+        const input = document.getElementById('cat-f-tag-input');
+        if (!input) return;
+        const tag = input.value.trim();
+        if (!tag || catState.tagsDraft.includes(tag)) { input.value = ''; return; }
+        catState.tagsDraft.push(tag);
+        input.value = '';
+        catRenderTagsDraft();
+    },
+
+    _removeTag(idx) { catState.tagsDraft.splice(idx,1); catRenderTagsDraft(); },
+
+    pesquisar(v) { catState.filtroBusca = v; catRenderLista(); },
+
+    // ── Categoria CRUD ──────────────────────────────────────────────────────────
+
+    abrirFormCat(id) {
+        const form = document.getElementById('form-cat'); if (!form) return;
+        document.getElementById('cat-f-id').value = id || '';
+        if (id) {
+            const c = catState.lista.find(x=>x.id===id);
+            if (c) {
+                document.getElementById('cat-f-nome').value   = c.nome       || '';
+                document.getElementById('cat-f-desc').value   = c.descricao  || '';
+                document.getElementById('cat-f-status').value = c.status     || 'ativa';
+                catState.corSel    = c.cor   || CAT_CORES[0];
+                catState.tagsDraft = [...(c.tags||[])];
+            }
+        } else {
+            document.getElementById('cat-f-nome').value   = '';
+            document.getElementById('cat-f-desc').value   = '';
+            document.getElementById('cat-f-status').value = 'ativa';
+            catState.corSel    = CAT_CORES[0];
+            catState.tagsDraft = [];
+        }
+        catRenderCores(catState.corSel);
+        catRenderTagsDraft();
+        form.classList.remove('hidden');
+        document.getElementById('cat-f-nome')?.focus();
+    },
+
+    fecharFormCat() {
+        document.getElementById('form-cat')?.classList.add('hidden');
+        catState.tagsDraft = [];
+    },
+
+    async salvarCat() {
+        const nome   = document.getElementById('cat-f-nome').value.trim();
+        const desc   = document.getElementById('cat-f-desc').value.trim();
+        const status = document.getElementById('cat-f-status').value;
+        const cor    = catState.corSel || CAT_CORES[0];
+        const tags   = [...catState.tagsDraft];
+        const id     = document.getElementById('cat-f-id').value;
+        if (!nome) { toast('⚠️ Preencha o nome.'); return; }
+        const dados  = { nome, descricao: desc, cor, status, tags };
+        try {
+            if (id) {
+                await catUpdate(id, dados);
+                const idx = catState.lista.findIndex(c=>c.id===id);
+                if (idx>=0) Object.assign(catState.lista[idx], dados);
+                toast('✅ Categoria atualizada');
+            } else {
+                const docData = { ...dados, telefones:[], mensagens:[], anotacoes:[], campanhas:[], stats:{enviados:0,respostas:0,conversas:0,clientes:0}, criadoEm: serverTimestamp() };
+                const ref = await addDoc(collection(db, CATS_COL), docData);
+                catState.lista.push({ id: ref.id, ...docData });
+                catState.lista.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt'));
+                toast('✅ Categoria criada');
+            }
+            this.fecharFormCat();
+            catRenderLista();
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    editarCat(id) { this.abrirFormCat(id); },
+
+    async excluirCat(id) {
+        const c = catState.lista.find(x=>x.id===id);
+        if (!confirm(`Excluir a categoria "${c?.nome}"?\nTodos os dados serão removidos.`)) return;
+        try {
+            await deleteDoc(doc(db, CATS_COL, id));
+            catState.lista = catState.lista.filter(x=>x.id!==id);
+            toast('🗑 Categoria excluída');
+            catRenderLista();
+        } catch(e) { toast('❌ Erro ao excluir'); console.error(e); }
+    },
+
+    sugerirCat(nome) { this.abrirFormCat(); document.getElementById('cat-f-nome').value = nome; },
+
+    // ── Navegação ───────────────────────────────────────────────────────────────
+
+    abrirDetalhe(id) {
+        const c = catState.lista.find(x=>x.id===id); if (!c) return;
+        catState.atual        = c;
+        catState.filtroStatus = '';
+        catState.filtroBusca  = '';
+        document.getElementById('cat-view-lista').style.display   = 'none';
+        document.getElementById('cat-view-detalhe').style.display = '';
+        document.querySelectorAll('.cat-sub-tab').forEach((b,i)   => b.classList.toggle('active', i===0));
+        document.querySelectorAll('.cat-sub-panel').forEach((p,i) => p.classList.toggle('active', i===0));
+        ['form-tel','form-importar','form-msg','form-anot','form-camp'].forEach(fid => document.getElementById(fid)?.classList.add('hidden'));
+        const busca = document.getElementById('cat-tel-busca');
+        if (busca) busca.value = '';
+        document.querySelectorAll('.cat-tel-filtro').forEach(b=>b.classList.toggle('active', b.dataset.status===''));
+        catRenderDetalhe();
+        catEscutarDoc(id); // listener em tempo real — robô atualiza, CRM reflete automaticamente
+    },
+
+    voltarLista() {
+        catPararListener();
+        catState.atual        = null;
+        catState.filtroStatus = '';
+        document.getElementById('cat-view-lista').style.display   = '';
+        document.getElementById('cat-view-detalhe').style.display = 'none';
+    },
+
+    // ── Telefones ───────────────────────────────────────────────────────────────
+
+    filtrarStatus(s) {
+        catState.filtroStatus = s;
+        document.querySelectorAll('.cat-tel-filtro').forEach(b=>b.classList.toggle('active', b.dataset.status===s));
+        catRenderTelefones();
+    },
+
+    filtrarBusca(v) {
+        catRenderTelefones();
+    },
+
+    abrirFormTel() {
+        document.getElementById('form-tel')?.classList.remove('hidden');
+        document.getElementById('tel-f-numero')?.focus();
+    },
+
+    fecharFormTel() {
+        document.getElementById('form-tel')?.classList.add('hidden');
+        const num = document.getElementById('tel-f-numero'); if(num) num.value='';
+        const st  = document.getElementById('tel-f-status'); if(st)  st.value='nunca_contatado';
+        const obs = document.getElementById('tel-f-obs');    if(obs) obs.value='';
+    },
+
+    async salvarTel() {
+        const c   = catState.atual;
+        const num = (document.getElementById('tel-f-numero')?.value||'').replace(/\D/g,'');
+        const st  = document.getElementById('tel-f-status')?.value || 'nunca_contatado';
+        const obs = (document.getElementById('tel-f-obs')?.value||'').trim();
+        if (!num) { toast('⚠️ Digite o número.'); return; }
+        const tels = (c.telefones||[]).map(normTel);
+        if (tels.some(t=>t.numero===num)) { toast('⚠️ Número já cadastrado.'); return; }
+        const novo = { numero:num, status:st, pontos:0, obs, dataCadastro:hoje(), ultimoEnvio:null, ultimaResposta:null, totalEnviados:0, totalRespostas:0 };
+        c.telefones = [...tels, novo];
+        try {
+            await catUpdate(c.id, { telefones: c.telefones });
+            toast('✅ Telefone adicionado');
+            this.fecharFormTel();
+            catRenderTelefones(); catRenderStats();
+        } catch(e) { c.telefones=tels; toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    async mudarStatusTel(idx, novoStatus) {
+        const c = catState.atual;
+        const tels = (c.telefones||[]).map(normTel);
+        if (!tels[idx]) return;
+        const ant = tels[idx].status;
+        tels[idx] = { ...tels[idx], status: novoStatus };
+        c.telefones = tels;
+        try {
+            await catUpdate(c.id, { telefones: tels });
+            catRenderTelefones(); catRenderStats();
+            // re-render modal if open
+            if (catState.modalTelIdx === idx) catRenderModalTel(idx);
+        } catch(e) { tels[idx].status=ant; c.telefones=tels; toast('❌ Erro ao atualizar'); console.error(e); }
+    },
+
+    async removerTel(idx) {
+        const c = catState.atual;
+        const tels = (c.telefones||[]).map(normTel);
+        const removido = tels.splice(idx,1)[0];
+        c.telefones = tels;
+        try {
+            await catUpdate(c.id, { telefones: tels });
+            toast('🗑 Telefone removido');
+            catRenderTelefones(); catRenderStats();
+        } catch(e) { tels.splice(idx,0,removido); c.telefones=tels; toast('❌ Erro ao remover'); console.error(e); }
+    },
+
+    toggleImportar() {
+        const el = document.getElementById('form-importar'); if (!el) return;
+        el.classList.contains('hidden') ? (el.classList.remove('hidden'), document.getElementById('importar-lista')?.focus()) : el.classList.add('hidden');
+    },
+
+    fecharImportar() {
+        document.getElementById('form-importar')?.classList.add('hidden');
+        const el = document.getElementById('importar-lista'); if(el) el.value='';
+    },
+
+    async importarTelefones() {
+        const c   = catState.atual;
+        const raw = document.getElementById('importar-lista')?.value || '';
+        const tels = (c.telefones||[]).map(normTel);
+        const nums  = new Set(tels.map(t=>t.numero));
+        const novos = raw.split('\n')
+            .map(l=>l.replace(/\D/g,''))
+            .filter(n=>n.length>=8 && !nums.has(n))
+            .map(n=>({ numero:n, status:'nunca_contatado', pontos:0, obs:'', dataCadastro:hoje(), ultimoEnvio:null, ultimaResposta:null, totalEnviados:0, totalRespostas:0 }));
+        if (!novos.length) { toast('⚠️ Nenhum número novo encontrado.'); return; }
+        const novaLista = [...tels, ...novos];
+        c.telefones = novaLista;
+        try {
+            await catUpdate(c.id, { telefones: novaLista });
+            toast(`✅ ${novos.length} número${novos.length!==1?'s':''} importado${novos.length!==1?'s':''}`);
+            this.fecharImportar();
+            catRenderTelefones(); catRenderStats();
+        } catch(e) { c.telefones=tels; toast('❌ Erro ao importar'); console.error(e); }
+    },
+
+    // ── Modal detalhe do telefone ─────────────────────────────────────────────
+
+    abrirModalTel(idx) { catRenderModalTel(idx); },
+
+    fecharModalTel() {
+        document.getElementById('cat-tel-modal')?.classList.remove('open');
+        catState.modalTelIdx = null;
+    },
+
+    async salvarObsTel() {
+        const idx = catState.modalTelIdx;
+        if (idx === null) return;
+        const c    = catState.atual;
+        const tels = (c.telefones||[]).map(normTel);
+        if (!tels[idx]) return;
+        const obs = (document.getElementById('modal-tel-obs')?.value||'').trim();
+        const ant = tels[idx].obs;
+        tels[idx] = { ...tels[idx], obs };
+        c.telefones = tels;
+        try {
+            await catUpdate(c.id, { telefones: tels });
+            toast('✅ Observação salva');
+            this.fecharModalTel();
+            catRenderTelefones();
+        } catch(e) { tels[idx].obs=ant; c.telefones=tels; toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    // ── Mensagens ───────────────────────────────────────────────────────────────
+
+    abrirFormMsg(idx) {
+        const form = document.getElementById('form-msg'); if (!form) return;
+        const idxEl = document.getElementById('msg-f-idx');
+        if (idx !== undefined) {
+            const m = (catState.atual?.mensagens||[])[idx];
+            if (m) {
+                document.getElementById('msg-f-titulo').value = m.titulo || '';
+                document.getElementById('msg-f-texto').value  = m.texto  || '';
+                document.getElementById('msg-f-status').value = m.status || 'rascunho';
+                if (idxEl) idxEl.value = idx;
+            }
+        } else {
+            document.getElementById('msg-f-titulo').value = '';
+            document.getElementById('msg-f-texto').value  = '';
+            document.getElementById('msg-f-status').value = 'rascunho';
+            if (idxEl) idxEl.value = '';
+        }
+        form.classList.remove('hidden');
+        document.getElementById('msg-f-titulo')?.focus();
+    },
+
+    fecharFormMsg() {
+        document.getElementById('form-msg')?.classList.add('hidden');
+        const el = document.getElementById('msg-f-idx'); if(el) el.value='';
+    },
+
+    async salvarMsg() {
+        const c      = catState.atual;
+        const titulo = (document.getElementById('msg-f-titulo')?.value||'').trim();
+        const texto  = (document.getElementById('msg-f-texto')?.value ||'').trim();
+        const status = document.getElementById('msg-f-status')?.value || 'rascunho';
+        const idxStr = document.getElementById('msg-f-idx')?.value;
+        if (!titulo || !texto) { toast('⚠️ Preencha título e mensagem.'); return; }
+        const nova = { titulo, texto, status };
+        const msgs = [...(c.mensagens||[])];
+        const editIdx = idxStr!=='' && idxStr!==undefined ? parseInt(idxStr) : NaN;
+        if (!isNaN(editIdx)) { msgs[editIdx]=nova; } else { msgs.push(nova); }
+        const ant = c.mensagens;
+        c.mensagens = msgs;
+        try {
+            await catUpdate(c.id, { mensagens: msgs });
+            toast(`✅ Mensagem ${!isNaN(editIdx)?'atualizada':'salva'}`);
+            this.fecharFormMsg(); catRenderMensagens(); catRenderStats();
+        } catch(e) { c.mensagens=ant; toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    editarMsg(idx) { this.abrirFormMsg(idx); },
+
+    async duplicarMsg(idx) {
+        const c = catState.atual;
+        const m = (c.mensagens||[])[idx]; if (!m) return;
+        const nova = { ...m, titulo: m.titulo+' (cópia)', status:'rascunho' };
+        c.mensagens = [...(c.mensagens||[]), nova];
+        try {
+            await catUpdate(c.id, { mensagens: c.mensagens });
+            toast('📋 Mensagem duplicada'); catRenderMensagens();
+        } catch(e) { c.mensagens.pop(); toast('❌ Erro ao duplicar'); console.error(e); }
+    },
+
+    async removerMsg(idx) {
+        if (!confirm('Remover esta mensagem?')) return;
+        const c = catState.atual;
+        const ant = [...c.mensagens];
+        c.mensagens.splice(idx,1);
+        try {
+            await catUpdate(c.id, { mensagens: c.mensagens });
+            toast('🗑 Mensagem removida'); catRenderMensagens(); catRenderStats();
+        } catch(e) { c.mensagens=ant; toast('❌ Erro ao remover'); console.error(e); }
+    },
+
+    // ── Anotações ───────────────────────────────────────────────────────────────
+
+    abrirFormAnot(idx) {
+        const form = document.getElementById('form-anot'); if (!form) return;
+        const idxEl = document.getElementById('anot-f-idx');
+        if (idx !== undefined) {
+            const a = (catState.atual?.anotacoes||[])[idx];
+            if (a) {
+                document.getElementById('anot-f-texto').value = a.texto || '';
+                if (idxEl) idxEl.value = idx;
+            }
+        } else {
+            document.getElementById('anot-f-texto').value = '';
+            if (idxEl) idxEl.value = '';
+        }
+        form.classList.remove('hidden');
+        document.getElementById('anot-f-texto')?.focus();
+    },
+
+    fecharFormAnot() {
+        document.getElementById('form-anot')?.classList.add('hidden');
+        const idxEl = document.getElementById('anot-f-idx'); if(idxEl) idxEl.value='';
+        const txt   = document.getElementById('anot-f-texto'); if(txt) txt.value='';
+    },
+
+    async salvarAnot() {
+        const c      = catState.atual;
+        const texto  = (document.getElementById('anot-f-texto')?.value||'').trim();
+        const idxStr = document.getElementById('anot-f-idx')?.value;
+        if (!texto) { toast('⚠️ Digite a anotação.'); return; }
+        const nova = { texto };
+        const anots = [...(c.anotacoes||[])];
+        const editIdx = idxStr!=='' && idxStr!==undefined ? parseInt(idxStr) : NaN;
+        if (!isNaN(editIdx)) { anots[editIdx]=nova; } else { anots.push(nova); }
+        const ant = c.anotacoes;
+        c.anotacoes = anots;
+        try {
+            await catUpdate(c.id, { anotacoes: anots });
+            toast(`✅ Anotação ${!isNaN(editIdx)?'atualizada':'salva'}`);
+            this.fecharFormAnot(); catRenderAnotacoes();
+        } catch(e) { c.anotacoes=ant; toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    editarAnot(idx) { this.abrirFormAnot(idx); },
+
+    async removerAnot(idx) {
+        if (!confirm('Remover esta anotação?')) return;
+        const c = catState.atual;
+        const ant = [...c.anotacoes];
+        c.anotacoes.splice(idx,1);
+        try {
+            await catUpdate(c.id, { anotacoes: c.anotacoes });
+            toast('🗑 Anotação removida'); catRenderAnotacoes();
+        } catch(e) { c.anotacoes=ant; toast('❌ Erro ao remover'); console.error(e); }
+    },
+
+    // ── Campanhas ───────────────────────────────────────────────────────────────
+
+    abrirFormCamp(idx) {
+        const form = document.getElementById('form-camp'); if (!form) return;
+        const idxEl = document.getElementById('camp-f-idx');
+        if (idx !== undefined) {
+            const camp = (catState.atual?.campanhas||[])[idx];
+            if (camp) {
+                document.getElementById('camp-f-nome').value   = camp.nome   || '';
+                document.getElementById('camp-f-status').value = camp.status || 'rascunho';
+                if (idxEl) idxEl.value = idx;
+            }
+        } else {
+            document.getElementById('camp-f-nome').value   = '';
+            document.getElementById('camp-f-status').value = 'rascunho';
+            if (idxEl) idxEl.value = '';
+        }
+        form.classList.remove('hidden');
+        document.getElementById('camp-f-nome')?.focus();
+    },
+
+    fecharFormCamp() {
+        document.getElementById('form-camp')?.classList.add('hidden');
+        const el = document.getElementById('camp-f-idx'); if(el) el.value='';
+        const nm = document.getElementById('camp-f-nome'); if(nm) nm.value='';
+    },
+
+    async salvarCamp() {
+        const c      = catState.atual;
+        const nome   = (document.getElementById('camp-f-nome')?.value||'').trim();
+        const status = document.getElementById('camp-f-status')?.value || 'rascunho';
+        const idxStr = document.getElementById('camp-f-idx')?.value;
+        if (!nome) { toast('⚠️ Preencha o nome da campanha.'); return; }
+        const camps = [...(c.campanhas||[])];
+        const editIdx = idxStr!=='' && idxStr!==undefined ? parseInt(idxStr) : NaN;
+        if (!isNaN(editIdx)) {
+            camps[editIdx] = { ...camps[editIdx], nome, status };
+        } else {
+            camps.push({ nome, status, criadoEm: hoje(), stats:{ enviados:0, respostas:0 } });
+        }
+        const ant = c.campanhas;
+        c.campanhas = camps;
+        try {
+            await catUpdate(c.id, { campanhas: camps });
+            toast(`✅ Campanha ${!isNaN(editIdx)?'atualizada':'criada'}`);
+            this.fecharFormCamp(); catRenderCampanhas();
+        } catch(e) { c.campanhas=ant; toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    editarCamp(idx) { this.abrirFormCamp(idx); },
+
+    async removerCamp(idx) {
+        if (!confirm('Remover esta campanha?')) return;
+        const c = catState.atual;
+        const ant = [...c.campanhas];
+        c.campanhas.splice(idx,1);
+        try {
+            await catUpdate(c.id, { campanhas: c.campanhas });
+            toast('🗑 Campanha removida'); catRenderCampanhas();
+        } catch(e) { c.campanhas=ant; toast('❌ Erro ao remover'); console.error(e); }
+    },
+
+    // ── Init ────────────────────────────────────────────────────────────────────
+
+    async init() {
+        document.querySelectorAll('.cat-sub-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.cat-sub-tab').forEach(b  => b.classList.remove('active'));
+                document.querySelectorAll('.cat-sub-panel').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`cat-sub-${btn.dataset.subtab}`)?.classList.add('active');
+            });
+        });
+        await catCarregar();
+    },
+};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 authReady.then(() => {
     Object.keys(estado).filter(k => k !== '_edit').forEach(secao => carregar(secao).catch(console.error));
+    Categorias.init().catch(console.error);
 });

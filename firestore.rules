@@ -148,6 +148,21 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
+    // PRIVADO: Categorias de campanha (Central Automação)
+    // ─────────────────────────────────────────────
+    match /categorias_wpp/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Log de atividade do robô WhatsApp
+    // O robô escreve (create). O CRM lê.
+    // ─────────────────────────────────────────────
+    match /robo_atividade/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
     // PRIVADO: Pós-venda e campanhas
     // ─────────────────────────────────────────────
     match /posvenda_contatos/{docId} {
