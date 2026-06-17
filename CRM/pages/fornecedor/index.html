@@ -5,35 +5,143 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Fornecedor</title>
-    <link rel="stylesheet" href="fornecedor.css">
+    <link rel="stylesheet" href="fornecedor.css?v=20260617">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
-    <header class="header forn-header-compact" id="mainHeader">
-        <h1>🏭 Fornecedor</h1>
-        <button class="forn-toggle-busca" id="forn-toggle-busca" title="Mostrar/ocultar busca">＋</button>
-    </header>
 
-    <!-- BUSCA GLOBAL (colapsável) -->
-    <div class="forn-busca-wrap forn-busca-collapsed" id="forn-busca-wrap">
-        <div class="forn-busca-row">
-            <button class="forn-btn-listar" id="forn-btn-listar">Limpar Tudo</button>
-            <input type="search" id="forn-busca-global" class="forn-busca-input" placeholder="🔍 Buscar item na lista de compras...">
-        </div>
-    </div>
+    <!-- brand-header.js migra este header -->
+    <header>
+        <span class="header-title">🏭 CRM Fornecedores</span>
+    </header>
 
     <main>
         <div class="forn-content">
 
-            <!-- ABAS -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- DASHBOARD DE COMPRAS                           -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="forn-dashboard" id="forn-dashboard">
+                <div class="forn-dash-card">
+                    <div class="forn-dash-val" id="dash-pendentes">0</div>
+                    <div class="forn-dash-lbl">📦 Pendentes</div>
+                </div>
+                <div class="forn-dash-card">
+                    <div class="forn-dash-val" id="dash-comprados">0</div>
+                    <div class="forn-dash-lbl">✅ Comprados</div>
+                </div>
+                <div class="forn-dash-card">
+                    <div class="forn-dash-val" id="dash-fornecedores">0</div>
+                    <div class="forn-dash-lbl">🏢 Fornecedores</div>
+                </div>
+                <div class="forn-dash-card">
+                    <div class="forn-dash-val" id="dash-favoritos">0</div>
+                    <div class="forn-dash-lbl">⭐ Favoritos</div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ABAS                                          -->
+            <!-- ═══════════════════════════════════════════════ -->
             <div class="forn-tabs">
-                <button class="forn-tab active" data-tab="compras">🛒 Lista de Compras</button>
+                <button class="forn-tab active" data-tab="fornecedores">🏢 Fornecedores</button>
+                <button class="forn-tab" data-tab="compras">🛒 Compras</button>
                 <button class="forn-tab" data-tab="estoque-baixo">⚠️ Estoque Baixo</button>
                 <button class="forn-tab" data-tab="mercado">📈 Mercado</button>
             </div>
 
-            <!-- ====== ABA: LISTA DE COMPRAS ====== -->
-            <div class="forn-panel active" id="tab-compras">
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ABA: FORNECEDORES (NOVA)                      -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="forn-panel active" id="tab-fornecedores">
+
+                <!-- Busca de fornecedores -->
+                <div class="forn-search-wrap">
+                    <span class="forn-search-ico">🔍</span>
+                    <input class="forn-search-input" id="forn-busca"
+                        placeholder="Buscar fornecedor..."
+                        oninput="Forn.buscar(this.value)" autocomplete="off">
+                </div>
+
+                <div class="forn-toolbar">
+                    <button class="forn-btn-nova" id="btn-novo-fornecedor">＋ Novo Fornecedor</button>
+                </div>
+
+                <!-- FORM NOVO FORNECEDOR -->
+                <div class="forn-form" id="form-fornecedor" style="display:none">
+                    <div class="forn-form-titulo" id="form-forn-titulo">Novo Fornecedor</div>
+                    <input type="hidden" id="ff-id">
+                    <div class="forn-form-grid">
+                        <div class="forn-form-group">
+                            <label>Nome do Fornecedor *</label>
+                            <input type="text" id="ff-nome" placeholder="Ex: Viper Eletrônicos" maxlength="80">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Nome da Empresa</label>
+                            <input type="text" id="ff-empresa" placeholder="Ex: Viper Distribuidora" maxlength="80">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Telefone 1 *</label>
+                            <input type="tel" id="ff-tel1" placeholder="(62) 98436-3148" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Telefone 2</label>
+                            <input type="tel" id="ff-tel2" placeholder="(62) 98529-6617" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>WhatsApp</label>
+                            <input type="tel" id="ff-whatsapp" placeholder="(62) 98436-3148" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Instagram</label>
+                            <input type="text" id="ff-instagram" placeholder="@viper_eletronicos1" maxlength="60">
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Site</label>
+                            <input type="url" id="ff-site" placeholder="https://..." maxlength="200">
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Endereço</label>
+                            <input type="text" id="ff-endereco" placeholder="Ex: Camelódromo Campinas 2 Stand 190" maxlength="200">
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Cidade</label>
+                            <input type="text" id="ff-cidade" placeholder="Ex: Goiânia - GO" maxlength="60">
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Observações</label>
+                            <textarea id="ff-obs" rows="3" placeholder="Forma de pagamento, prazo de entrega, observações..." maxlength="500"></textarea>
+                        </div>
+                    </div>
+                    <div class="forn-form-btns">
+                        <button class="forn-btn-salvar" id="ff-salvar">Salvar</button>
+                        <button class="forn-btn-cancelar" id="ff-cancelar">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- LISTA DE FORNECEDORES -->
+                <div class="forn-loading" id="forn-loading" style="display:none">
+                    <div class="forn-spinner"></div><span>Carregando fornecedores...</span>
+                </div>
+                <div id="forn-lista"></div>
+                <div class="forn-empty" id="forn-empty" style="display:none">
+                    <div class="forn-empty-icon">🏢</div>
+                    <div class="forn-empty-title">Nenhum fornecedor cadastrado</div>
+                    <div class="forn-empty-sub">Adicione seus fornecedores para começar.</div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ABA: LISTA DE COMPRAS (MELHORADA)              -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="forn-panel" id="tab-compras">
+
+                <div class="forn-search-wrap">
+                    <span class="forn-search-ico">🔍</span>
+                    <input class="forn-search-input" id="compras-busca"
+                        placeholder="Buscar item na lista de compras..."
+                        oninput="Forn.filtrarCompras()" autocomplete="off">
+                </div>
 
                 <div class="forn-toolbar">
                     <button class="forn-btn-nova" id="btn-nova-compra">＋ Adicionar Item</button>
@@ -71,7 +179,7 @@
                 </div>
 
                 <!-- LISTA DE COMPRAS -->
-                <div class="forn-loading" id="compras-loading">
+                <div class="forn-loading" id="compras-loading" style="display:none">
                     <div class="forn-spinner"></div><span>Carregando...</span>
                 </div>
                 <div id="compras-lista"></div>
@@ -82,13 +190,15 @@
                 </div>
             </div>
 
-            <!-- ====== ABA: ESTOQUE BAIXO ====== -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ABA: ESTOQUE BAIXO                            -->
+            <!-- ═══════════════════════════════════════════════ -->
             <div class="forn-panel" id="tab-estoque-baixo">
                 <div class="forn-info-box">
                     <span>🔗</span>
                     <span>Itens do <strong>Estoque</strong> com quantidade abaixo do mínimo definido.</span>
                 </div>
-                <div class="forn-loading" id="baixo-loading">
+                <div class="forn-loading" id="baixo-loading" style="display:none">
                     <div class="forn-spinner"></div><span>Verificando estoque...</span>
                 </div>
                 <div id="baixo-lista"></div>
@@ -99,7 +209,9 @@
                 </div>
             </div>
 
-            <!-- ====== ABA: MERCADO ====== -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ABA: MERCADO                                  -->
+            <!-- ═══════════════════════════════════════════════ -->
             <div class="forn-panel" id="tab-mercado">
                 <div class="forn-info-box">
                     <span>💡</span>
@@ -161,7 +273,8 @@
     <div class="forn-toast" id="forn-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="fornecedor.js"></script>
+    <script type="module" src="fornecedor.js?v=20260617"></script>
+    <script type="module" src="../../shared/favoritos.js"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script>
       // Garante que o launcher de favoritos fique à direita no Fornecedor
