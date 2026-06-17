@@ -115,7 +115,7 @@
 
             <div class="form-box hidden" id="form-historico">
                 <input class="field" id="historico-data" type="date">
-                <input class="field" id="historico-descricao" placeholder="O que foi feito (ex: Criado módulo financeiro)" maxlength="200">
+                <textarea class="field hist-textarea" id="historico-descricao" placeholder="O que foi feito (ex: Criado módulo financeiro)" maxlength="2000" rows="4"></textarea>
                 <input class="field" id="historico-responsavel" placeholder="Responsável (ex: Cell City)" maxlength="60">
                 <div class="form-actions">
                     <button class="btn-save" onclick="Central.salvar('historico')">Salvar</button>

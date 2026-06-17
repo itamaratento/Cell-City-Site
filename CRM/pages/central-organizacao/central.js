@@ -119,10 +119,10 @@ const SECOES = {
         validar: (d) => d.descricao,
         erroValidacao: 'Preencha a descrição.',
         renderItem: (item, idx) => `
-            <div class="item-card">
+            <div class="item-card item-card--hist">
                 <div class="item-date">${formatarData(item.data)}</div>
                 <div class="item-body">
-                    <div class="item-name">${esc(item.descricao)}</div>
+                    <div class="item-name hist-descricao">${esc(item.descricao)}</div>
                     ${item.responsavel ? `<div class="item-sub">👤 ${esc(item.responsavel)}</div>` : ''}
                 </div>
                 <div class="item-actions">
