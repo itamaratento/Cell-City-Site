@@ -63,6 +63,11 @@ let eventosCarregados = false;
 let autosaveTimer = null;
 let _carregarGen = 0;       // generation counter p/ evitar race condition
 
+// Estado da sidebar (explorador de arquivos)
+let sidebarCat = '';       // '' | catId | '__fav__' | '__revisoes__'
+let sidebarSubcat = '';    // '' | string da subcategoria
+const sbExpandidas = new Set(); // categorias com subcats abertas
+
 // ── Elementos ─────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const formEl     = $('dia-form');
@@ -269,22 +274,33 @@ function atualizarResumo() {
 function aplicarFiltros() {
     let lista = [...registros];
 
-    // Filtro rápido (estatísticas)
-    if (quickFilter === 'alta')     lista = lista.filter(r => r.prioridade === 'alta' && r.status !== 'arquivado');
-    if (quickFilter === 'pendente') lista = lista.filter(r => r.status === 'pendente');
-    if (quickFilter === 'favorito') lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
-    if (quickFilter === 'hoje')     lista = lista.filter(r => ehHoje(r.criadoEm));
-    if (quickFilter === 'revisoes') {
+    // Sidebar especial (Favoritos / Revisões) — têm precedência total
+    if (sidebarCat === '__fav__') {
+        lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
+    } else if (sidebarCat === '__revisoes__') {
         lista = lista.filter(r => { const d = diasAteRevisao(r); return revisaoAtiva(r) && d !== null && d <= 7; });
+    } else {
+        // Filtro rápido das estatísticas
+        if (quickFilter === 'alta')     lista = lista.filter(r => r.prioridade === 'alta' && r.status !== 'arquivado');
+        if (quickFilter === 'pendente') lista = lista.filter(r => r.status === 'pendente');
+        if (quickFilter === 'favorito') lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
+        if (quickFilter === 'hoje')     lista = lista.filter(r => ehHoje(r.criadoEm));
+        if (quickFilter === 'revisoes') {
+            lista = lista.filter(r => { const d = diasAteRevisao(r); return revisaoAtiva(r) && d !== null && d <= 7; });
+        }
+
+        // Sidebar categoria (sobrepõe dropdown filtroCat)
+        const catFilter = sidebarCat || filtroCat.value;
+        if (catFilter) lista = lista.filter(r => r.categoria === catFilter);
+        if (sidebarSubcat) lista = lista.filter(r => r.subcategoria === sidebarSubcat);
     }
 
-    // Filtros de seletor
-    if (filtroCat.value)    lista = lista.filter(r => r.categoria === filtroCat.value);
     if (filtroStatus.value) lista = lista.filter(r => (r.status || 'pendente') === filtroStatus.value);
     if (filtroPrio.value)   lista = lista.filter(r => (r.prioridade || 'media') === filtroPrio.value);
 
-    // Por padrão, esconde arquivados (a menos que filtre explicitamente)
-    if (!filtroStatus.value && quickFilter !== 'hoje') {
+    // Por padrão, esconde arquivados (a menos que filtre explicitamente ou sidebar já filtrou)
+    const sbEspecial = sidebarCat === '__fav__' || sidebarCat === '__revisoes__';
+    if (!filtroStatus.value && quickFilter !== 'hoje' && !sbEspecial) {
         lista = lista.filter(r => r.status !== 'arquivado');
     }
 
@@ -359,10 +375,88 @@ function cardHtml(r) {
     </div>`;
 }
 
+// ── Sidebar: renderiza categorias com contadores ──────────────────────
+function renderSidebar() {
+    // Conta por categoria (excluindo arquivados)
+    const ativos = registros.filter(r => r.status !== 'arquivado');
+    const allCount = ativos.length;
+    const favCount = ativos.filter(r => r.favorito).length;
+    const revCount = contarRevisoes().pendentes;
+
+    const sbAll = $('dia-sb-count-all');
+    const sbFav = $('dia-sb-count-fav');
+    const sbRev = $('dia-sb-count-rev');
+    if (sbAll) sbAll.textContent = allCount;
+    if (sbFav) sbFav.textContent = favCount;
+    if (sbRev) sbRev.textContent = revCount;
+
+    // Marca item especial ativo
+    document.querySelectorAll('.dia-sb-item').forEach(el => {
+        const cat = el.dataset.cat || '';
+        el.classList.toggle('active', cat === sidebarCat && !sidebarSubcat);
+    });
+
+    // Renderiza lista de categorias
+    const catsEl = $('dia-sb-cats');
+    if (!catsEl) return;
+    catsEl.innerHTML = CATEGORIAS.map(c => {
+        const count = ativos.filter(r => r.categoria === c.id).length;
+        const expandida = sbExpandidas.has(c.id);
+        const ativaHead = sidebarCat === c.id && !sidebarSubcat;
+
+        let subcatsHtml = '';
+        if (expandida) {
+            subcatsHtml = c.subs.map(s => {
+                const sCount = ativos.filter(r => r.categoria === c.id && r.subcategoria === s).length;
+                const ativaSubcat = sidebarCat === c.id && sidebarSubcat === s;
+                return `<div class="dia-sb-subitem${ativaSubcat ? ' active' : ''}" data-cat="${c.id}" data-sub="${s}">
+                    <span class="dia-sb-sub-label">${s}</span>
+                    ${sCount ? `<span class="dia-sb-sub-count">${sCount}</span>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        return `<div class="dia-sb-cat-wrap">
+            <div class="dia-sb-cat-head${ativaHead ? ' active' : ''}" data-cat="${c.id}" data-sub="">
+                <span class="dia-sb-cat-toggle${expandida ? ' open' : ''}" data-expand="${c.id}">▶</span>
+                <span class="dia-sb-cat-icon">${c.icon}</span>
+                <span class="dia-sb-cat-nome">${c.nome}</span>
+                ${count ? `<span class="dia-sb-cat-count">${count}</span>` : ''}
+            </div>
+            ${expandida ? `<div class="dia-sb-subcats">${subcatsHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// ── Atualiza o título/breadcrumb da área principal ────────────────────
+function updateMainTitulo() {
+    const el = $('dia-main-cat-titulo');
+    if (!el) return;
+    if (!sidebarCat) {
+        el.textContent = '📂 Todos os registros';
+    } else if (sidebarCat === '__fav__') {
+        el.textContent = '⭐ Favoritos';
+    } else if (sidebarCat === '__revisoes__') {
+        el.textContent = '🔔 Revisões pendentes';
+    } else {
+        const cat = CAT_MAP[sidebarCat];
+        if (cat) {
+            el.textContent = sidebarSubcat
+                ? `${cat.icon} ${cat.nome}  ›  ${sidebarSubcat}`
+                : `${cat.icon} ${cat.nome}`;
+        }
+    }
+    // Seção de favoritos: esconde quando sidebar mostra favs (redundante)
+    const favSection = $('dia-bloco-favs');
+    if (favSection) favSection.style.display = (sidebarCat === '__fav__') ? 'none' : '';
+}
+
 // ── Render registros + favoritos + resumo ─────────────────────────────
 function render() {
     atualizarResumo();
     renderFavoritos();
+    renderSidebar();
+    updateMainTitulo();
 
     const lista = aplicarFiltros();
     if (!lista.length) {
@@ -853,6 +947,56 @@ alertaRevEl.addEventListener('click', () => {
 [filtroCat, filtroStatus, filtroPrio, ordenarEl].forEach(el => el.addEventListener('change', render));
 searchEl.addEventListener('input', () => { render(); renderSearchResults(); });
 searchEl.addEventListener('focus', renderSearchResults);
+
+// ── Sidebar: event handlers ───────────────────────────────────────────
+
+// Cliques nos itens especiais (Todos / Favoritos / Revisões)
+document.getElementById('dia-sidebar').addEventListener('click', (e) => {
+    // Clique direto na seta ▶ (span com data-expand) → apenas expande/recolhe
+    if (e.target.hasAttribute('data-expand')) {
+        const catId = e.target.dataset.expand;
+        if (sbExpandidas.has(catId)) sbExpandidas.delete(catId);
+        else sbExpandidas.add(catId);
+        renderSidebar();
+        return;
+    }
+
+    // Clique em item especial ou cabeçalho de categoria ou subcategoria
+    const item = e.target.closest('[data-cat]');
+    if (!item) return;
+
+    const cat = item.dataset.cat ?? '';
+    const sub = item.dataset.sub ?? '';
+
+    // Clique no cabeçalho de categoria: expande (nunca recolhe via clique direto)
+    if (cat && cat !== '__fav__' && cat !== '__revisoes__' && !sub) {
+        sbExpandidas.add(cat);
+    }
+
+    sidebarCat = cat;
+    sidebarSubcat = sub;
+    quickFilter = null;
+    document.querySelectorAll('.dia-resumo-item').forEach(i => i.classList.remove('ativo'));
+
+    render();
+    fecharSidebarMobile();
+});
+
+// ── Mobile: abrir/fechar sidebar ──────────────────────────────────────
+function abrirSidebarMobile() {
+    $('dia-sidebar').classList.add('open');
+    $('dia-sb-overlay').classList.add('open');
+}
+function fecharSidebarMobile() {
+    $('dia-sidebar').classList.remove('open');
+    $('dia-sb-overlay').classList.remove('open');
+}
+
+const btnSbOpen = $('dia-sb-open');
+if (btnSbOpen) btnSbOpen.addEventListener('click', abrirSidebarMobile);
+
+const sbOverlay = $('dia-sb-overlay');
+if (sbOverlay) sbOverlay.addEventListener('click', fecharSidebarMobile);
 
 // ── Init ──────────────────────────────────────────────────────────────
 popularCategorias();
