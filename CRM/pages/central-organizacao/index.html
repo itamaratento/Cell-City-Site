@@ -31,6 +31,13 @@
             <button class="tab" data-tab="categorias">📁 Categorias</button>
         </div>
 
+        <div class="cat-search-wrap" id="central-busca-wrap" style="margin-bottom:20px">
+            <span style="font-size:16px">🔍</span>
+            <input class="cat-search-input" id="central-busca"
+                placeholder="Pesquisar..."
+                oninput="Central.filtrar(this.value)" autocomplete="off">
+        </div>
+
         <!-- ===== WHATSAPP ===== -->
         <div class="tab-panel active" id="tab-whatsapp">
             <div class="section-header">
@@ -586,7 +593,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="central.js?v=20260617"></script>
+    <script type="module" src="central.js?v=20260617b"></script>
     <script type="module" src="../../shared/favoritos.js?v=20260617"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

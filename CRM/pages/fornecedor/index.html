@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Fornecedor</title>
-    <link rel="stylesheet" href="fornecedor.css?v=20260617">
+    <link rel="stylesheet" href="fornecedor.css?v=20260617b">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -19,24 +19,16 @@
         <div class="forn-content">
 
             <!-- ═══════════════════════════════════════════════ -->
-            <!-- DASHBOARD DE COMPRAS                           -->
+            <!-- BUSCA INTELIGENTE GLOBAL                       -->
             <!-- ═══════════════════════════════════════════════ -->
-            <div class="forn-dashboard" id="forn-dashboard">
-                <div class="forn-dash-card">
-                    <div class="forn-dash-val" id="dash-pendentes">0</div>
-                    <div class="forn-dash-lbl">📦 Pendentes</div>
-                </div>
-                <div class="forn-dash-card">
-                    <div class="forn-dash-val" id="dash-comprados">0</div>
-                    <div class="forn-dash-lbl">✅ Comprados</div>
-                </div>
-                <div class="forn-dash-card">
-                    <div class="forn-dash-val" id="dash-fornecedores">0</div>
-                    <div class="forn-dash-lbl">🏢 Fornecedores</div>
-                </div>
-                <div class="forn-dash-card">
-                    <div class="forn-dash-val" id="dash-favoritos">0</div>
-                    <div class="forn-dash-lbl">⭐ Favoritos</div>
+            <div class="forn-hero-search">
+                <div class="forn-hero-search-wrap">
+                    <span class="forn-hero-ico">🔍</span>
+                    <input class="forn-hero-input" id="forn-busca"
+                        placeholder="Buscar fornecedor, telefone, empresa, endereço…"
+                        oninput="Forn.buscar(this.value)" autocomplete="off">
+                    <button class="forn-hero-clear" id="forn-busca-clear"
+                        onclick="Forn.limparBusca()" style="display:none" aria-label="Limpar">✕</button>
                 </div>
             </div>
 
@@ -54,14 +46,6 @@
             <!-- ABA: FORNECEDORES (NOVA)                      -->
             <!-- ═══════════════════════════════════════════════ -->
             <div class="forn-panel active" id="tab-fornecedores">
-
-                <!-- Busca de fornecedores -->
-                <div class="forn-search-wrap">
-                    <span class="forn-search-ico">🔍</span>
-                    <input class="forn-search-input" id="forn-busca"
-                        placeholder="Buscar fornecedor..."
-                        oninput="Forn.buscar(this.value)" autocomplete="off">
-                </div>
 
                 <div class="forn-toolbar">
                     <button class="forn-btn-nova" id="btn-novo-fornecedor">＋ Novo Fornecedor</button>
@@ -267,13 +251,41 @@
                 </div>
             </div>
 
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- PAINEL DE ESTATÍSTICAS (RECOLHÍVEL)           -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="forn-dash-section">
+                <button class="forn-dash-toggle" id="forn-dash-toggle" onclick="Forn.toggleDash()">
+                    <span class="forn-dash-toggle-label">📊 Estatísticas</span>
+                    <span class="forn-dash-toggle-ico" id="forn-dash-ico">▲</span>
+                </button>
+                <div class="forn-dashboard" id="forn-dashboard">
+                    <div class="forn-dash-card">
+                        <div class="forn-dash-val" id="dash-pendentes">0</div>
+                        <div class="forn-dash-lbl">📦 Pendentes</div>
+                    </div>
+                    <div class="forn-dash-card">
+                        <div class="forn-dash-val" id="dash-comprados">0</div>
+                        <div class="forn-dash-lbl">✅ Comprados</div>
+                    </div>
+                    <div class="forn-dash-card">
+                        <div class="forn-dash-val" id="dash-fornecedores">0</div>
+                        <div class="forn-dash-lbl">🏢 Fornecedores</div>
+                    </div>
+                    <div class="forn-dash-card">
+                        <div class="forn-dash-val" id="dash-favoritos">0</div>
+                        <div class="forn-dash-lbl">⭐ Favoritos</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 
     <div class="forn-toast" id="forn-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="fornecedor.js?v=20260617"></script>
+    <script type="module" src="fornecedor.js?v=20260617b"></script>
     <script type="module" src="../../shared/favoritos.js"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script>

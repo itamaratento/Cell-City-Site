@@ -267,18 +267,57 @@ async function toggleFav(id) {
 }
 
 function buscarFornecedores(q) {
-  const termo = (q || '').toLowerCase().trim();
+  const clearBtn = document.getElementById('forn-busca-clear');
+  if (clearBtn) clearBtn.style.display = q ? '' : 'none';
+
+  // auto-switch para aba fornecedores ao digitar
+  if (q) {
+    const tabForn = document.querySelector('[data-tab="fornecedores"]');
+    if (tabForn && !tabForn.classList.contains('active')) tabForn.click();
+  }
+
+  const termo = (q || '').trim().toLowerCase();
   if (!termo) { renderFornecedores(state.fornecedores); return; }
-  const filtrados = state.fornecedores.filter(f =>
-    (f.nome || '').toLowerCase().includes(termo) ||
-    (f.empresa || '').toLowerCase().includes(termo) ||
-    (f.telefone1 || '').replace(/\D/g, '').includes(termo.replace(/\D/g, '')) ||
-    (f.telefone2 || '').replace(/\D/g, '').includes(termo.replace(/\D/g, '')) ||
-    (f.whatsapp || '').replace(/\D/g, '').includes(termo.replace(/\D/g, '')) ||
-    (f.instagram || '').toLowerCase().includes(termo) ||
-    (f.cidade || '').toLowerCase().includes(termo)
-  );
+
+  const palavras = termo.split(/\s+/).filter(Boolean);
+  const soNum    = termo.replace(/\D/g, '');
+
+  const filtrados = state.fornecedores.filter(f => {
+    const textos = [
+      f.nome      || '',
+      f.empresa   || '',
+      f.instagram || '',
+      f.endereco  || '',
+      f.cidade    || '',
+      f.obs       || '',
+    ].map(s => s.toLowerCase()).join(' ');
+
+    const tels = [
+      (f.telefone1 || '').replace(/\D/g, ''),
+      (f.telefone2 || '').replace(/\D/g, ''),
+      (f.whatsapp  || '').replace(/\D/g, ''),
+    ].join(' ');
+
+    if (soNum && tels.includes(soNum)) return true;
+    return palavras.every(p => textos.includes(p));
+  });
   renderFornecedores(filtrados);
+}
+
+function limparBusca() {
+  const input = document.getElementById('forn-busca');
+  if (input) { input.value = ''; input.focus(); }
+  const clearBtn = document.getElementById('forn-busca-clear');
+  if (clearBtn) clearBtn.style.display = 'none';
+  renderFornecedores(state.fornecedores);
+}
+
+function toggleDash() {
+  const dash = document.getElementById('forn-dashboard');
+  const ico  = document.getElementById('forn-dash-ico');
+  const recolhido = dash.classList.toggle('recolhido');
+  ico.classList.toggle('recolhido', recolhido);
+  localStorage.setItem('forn_dash_recolhido', recolhido ? '1' : '0');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -587,6 +626,8 @@ window.Forn = {
   excluir:           (id) => excluirForn(id),
   toggleFav:         (id) => toggleFav(id),
   buscar:            (q)  => buscarFornecedores(q),
+  limparBusca:       ()   => limparBusca(),
+  toggleDash:        ()   => toggleDash(),
   editarCompra:      (id) => abrirFormCompra(id),
   excluirCompra:     (id) => excluirCompraById(id),
   toggleFeita:       (id, feita) => toggleFeita(id, feita),
@@ -598,5 +639,9 @@ window.Forn = {
    INIT
    ═══════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('forn_dash_recolhido') === '1') {
+    document.getElementById('forn-dashboard')?.classList.add('recolhido');
+    document.getElementById('forn-dash-ico')?.classList.add('recolhido');
+  }
   carregarFornecedores();
 });

@@ -164,10 +164,16 @@ const SECOES = {
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [], _edit: null };
+let _busca = '';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function esc(str) {
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function matchBusca(item) {
+    if (!_busca) return true;
+    const t = _busca.toLowerCase();
+    return Object.values(item).some(v => typeof v === 'string' && v.toLowerCase().includes(t));
 }
 function formatarData(iso) {
     if (!iso) return '—';
@@ -203,11 +209,14 @@ function renderLista(secao) {
     if (!lista) return;
     let itens = estado[secao];
     if (cfg.ordenar) itens = cfg.ordenar(itens);
-    if (!itens.length) {
-        lista.innerHTML = `<div class="empty">Nenhum item cadastrado ainda.</div>`;
+    const indexados = itens.map((item, idx) => ({ item, idx })).filter(({ item }) => matchBusca(item));
+    if (!indexados.length) {
+        lista.innerHTML = _busca
+            ? `<div class="empty">Nenhum resultado para "<strong>${esc(_busca)}</strong>".</div>`
+            : `<div class="empty">Nenhum item cadastrado ainda.</div>`;
         return;
     }
-    lista.innerHTML = itens.map((item, idx) => cfg.renderItem(item, idx)).join('');
+    lista.innerHTML = indexados.map(({ item, idx }) => cfg.renderItem(item, idx)).join('');
 }
 
 // ── API pública ───────────────────────────────────────────────────────────────
@@ -313,15 +322,31 @@ window.Central = {
         row.innerHTML = `<input class="field" placeholder="Senha (opcional)" maxlength="120" type="text"><button class="btn-add-row" type="button" onclick="this.parentElement.remove()" title="Remover">−</button>`;
         c.appendChild(row);
     },
+
+    filtrar(valor) {
+        _busca = (valor || '').trim();
+        const tabAtiva = document.querySelector('.tabs .tab.active')?.dataset.tab;
+        if (tabAtiva && SECOES[tabAtiva]) renderLista(tabAtiva);
+    },
 };
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
+const TABS_SEM_BUSCA = new Set(['monitoramento', 'notas', 'categorias']);
+
 document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
+
+        // Limpa e mostra/oculta a barra de busca
+        _busca = '';
+        const buscaInput = document.getElementById('central-busca');
+        const buscaWrap  = document.getElementById('central-busca-wrap');
+        if (buscaInput) buscaInput.value = '';
+        if (buscaWrap)  buscaWrap.style.display = TABS_SEM_BUSCA.has(btn.dataset.tab) ? 'none' : '';
+
         if (btn.dataset.tab === 'monitoramento') {
             Monitoramento.init().catch(console.error);
         }
