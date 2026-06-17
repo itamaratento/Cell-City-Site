@@ -20,6 +20,13 @@
 
     <main class="content">
 
+        <div class="cat-search-wrap" id="central-busca-wrap" style="margin-bottom:12px">
+            <span style="font-size:16px">🔍</span>
+            <input class="cat-search-input" id="central-busca"
+                placeholder="Pesquisar..."
+                oninput="Central.filtrar(this.value)" autocomplete="off">
+        </div>
+
         <div class="tabs">
             <button class="tab active" data-tab="whatsapp">📱 WhatsApp</button>
             <button class="tab" data-tab="robos">🤖 Robôs & IA</button>
@@ -29,13 +36,6 @@
             <button class="tab" data-tab="monitoramento">🤖 Monitoramento</button>
             <button class="tab" data-tab="notas">📝 Notas</button>
             <button class="tab" data-tab="categorias">📁 Categorias</button>
-        </div>
-
-        <div class="cat-search-wrap" id="central-busca-wrap" style="margin-bottom:20px">
-            <span style="font-size:16px">🔍</span>
-            <input class="cat-search-input" id="central-busca"
-                placeholder="Pesquisar..."
-                oninput="Central.filtrar(this.value)" autocomplete="off">
         </div>
 
         <!-- ===== WHATSAPP ===== -->
