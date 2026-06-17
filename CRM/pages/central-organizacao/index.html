@@ -25,6 +25,7 @@
             <button class="tab" data-tab="historico">📜 Histórico</button>
             <button class="tab" data-tab="links">🔗 Links</button>
             <button class="tab" data-tab="monitoramento">🤖 Monitoramento</button>
+            <button class="tab" data-tab="notas">📝 Notas</button>
             <button class="tab" data-tab="categorias">📁 Categorias</button>
         </div>
 
@@ -237,6 +238,103 @@
                 <div class="empty">Nenhuma atividade registrada ainda.<br>O robô escreverá aqui automaticamente quando iniciar.</div>
             </div>
 
+        </div>
+
+        <!-- ===== NOTAS ===== -->
+        <div class="tab-panel" id="tab-notas">
+
+            <!-- ── Vista: lista de projetos ─────────────────────────────── -->
+            <div id="notas-view-lista">
+
+                <div class="section-header">
+                    <div class="section-title">📋 Projetos & Assuntos</div>
+                    <button class="btn-add" onclick="Notas.abrirFormProj()">+ Novo</button>
+                </div>
+
+                <!-- Formulário de criar/editar projeto -->
+                <div class="form-box hidden" id="form-proj">
+                    <input type="hidden" id="proj-edit-id">
+                    <input class="field" id="proj-nome" placeholder="Nome do projeto *" maxlength="60" autocomplete="off">
+                    <input class="field" id="proj-desc" placeholder="Descrição (opcional)" maxlength="120" autocomplete="off">
+                    <div class="cat-tags-chips cat-cor-palette" id="proj-cor-palette"></div>
+                    <div class="form-actions">
+                        <button class="btn-save"   onclick="Notas.salvarProj()">💾 Salvar</button>
+                        <button class="btn-cancel" onclick="Notas.fecharFormProj()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Sugestões iniciais (aparece só quando lista vazia) -->
+                <div id="notas-sugestoes" class="cat-sugestoes hidden">
+                    <div class="cat-sug-titulo">Sugestões de projetos</div>
+                    <div class="cat-sug-chips" id="notas-sug-chips"></div>
+                </div>
+
+                <!-- Cards de projetos -->
+                <div id="notas-lista"></div>
+
+            </div>
+
+            <!-- ── Vista: detalhe do projeto ─────────────────────────────── -->
+            <div id="notas-view-detalhe" style="display:none">
+
+                <!-- Cabeçalho do projeto -->
+                <div class="cat-detalhe-header">
+                    <button class="cat-btn-voltar" onclick="Notas.voltarLista()">← Voltar</button>
+                    <div class="cat-detalhe-titulo">
+                        <span class="cat-badge-cor" id="nota-proj-badge"></span>
+                        <span id="nota-proj-nome" class="cat-card-nome"></span>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-left:auto">
+                        <button class="cat-btn-sm" onclick="Notas.editarProj()">✏️</button>
+                        <button class="cat-btn-sm cat-btn-danger" onclick="Notas.excluirProj()">🗑️</button>
+                        <button class="btn-add" onclick="Notas.abrirFormNota()">+ Nota</button>
+                    </div>
+                </div>
+
+                <div id="nota-proj-desc" class="cat-desc-linha" style="margin-bottom:12px"></div>
+
+                <!-- Formulário de nova nota -->
+                <div class="form-box hidden" id="form-nota">
+                    <input type="hidden" id="nota-edit-id">
+                    <input class="field" id="nota-titulo" placeholder="Título da nota *" maxlength="80" autocomplete="off">
+                    <textarea class="cat-textarea" id="nota-texto" placeholder="Conteúdo da nota..." rows="6"></textarea>
+                    <div class="form-actions">
+                        <button class="btn-save"   onclick="Notas.salvarNota()">💾 Salvar</button>
+                        <button class="btn-cancel" onclick="Notas.fecharFormNota()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Busca dentro do projeto -->
+                <div class="cat-tel-busca-wrap" style="margin-bottom:12px">
+                    <input class="cat-tel-busca" id="notas-busca" placeholder="🔍 Buscar nas notas..."
+                        oninput="Notas.filtrar()" autocomplete="off">
+                </div>
+
+                <!-- Lista de notas -->
+                <div id="notas-proj-lista"></div>
+
+            </div>
+
+        </div>
+
+        <!-- Modal de edição de nota -->
+        <div id="nota-modal" class="cat-tel-modal" onclick="if(event.target===this)Notas.fecharModal()">
+            <div class="cat-tel-modal-content nota-modal-content">
+                <div class="cat-tel-modal-header">
+                    <input class="nota-modal-titulo-input field" id="nota-modal-titulo" placeholder="Título da nota">
+                    <button class="cmd-modal-close" onclick="Notas.fecharModal()">✕</button>
+                </div>
+                <div class="cat-tel-modal-body" style="padding:0">
+                    <textarea class="nota-modal-textarea" id="nota-modal-texto" placeholder="Conteúdo da nota..."></textarea>
+                </div>
+                <div class="cat-tel-modal-footer">
+                    <button class="btn-cancel cat-btn-sm cat-btn-danger" onclick="Notas.excluirNota()">🗑️ Excluir</button>
+                    <div style="display:flex;gap:8px;margin-left:auto">
+                        <button class="btn-cancel" onclick="Notas.fecharModal()">Fechar</button>
+                        <button class="btn-save"   onclick="Notas.salvarModal()">💾 Salvar</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- ===== CATEGORIAS ===== -->

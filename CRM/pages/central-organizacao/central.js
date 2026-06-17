@@ -322,12 +322,352 @@ document.querySelectorAll('.tab').forEach(btn => {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
-        // lazy-init monitoramento ao abrir a aba
         if (btn.dataset.tab === 'monitoramento') {
             Monitoramento.init().catch(console.error);
         }
+        if (btn.dataset.tab === 'notas') {
+            Notas.init().catch(console.error);
+        }
     });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO NOTAS
+// Coleção: notas_projeto/{id}  →  {nome, cor, desc, notas:[{id,titulo,texto,dt}]}
+// ══════════════════════════════════════════════════════════════════════════════
+
+const NOTAS_COL = 'notas_projeto';
+const NOTA_CORES = ['#2563eb','#7c3aed','#db2777','#dc2626','#d97706','#059669','#0891b2','#ea580c','#9333ea','#16a34a'];
+const NOTA_SUGESTOES = ['Robô WhatsApp','CRM','Marketing','Projetos Tech','Ideias','Financeiro','Treinamentos','Outros'];
+
+const notasState = {
+    lista:      [],
+    atual:      null,
+    corSel:     NOTA_CORES[0],
+    modalId:    null,
+    filtro:     '',
+    iniciado:   false,
+};
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+function notaEsc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function notaId()   { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function notaFmt(dt){ if(!dt) return ''; const d=new Date(dt); return d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+
+// ── Firestore ─────────────────────────────────────────────────────────────────
+async function notasCarregar() {
+    const snap = await getDocs(collection(db, NOTAS_COL));
+    notasState.lista = snap.docs.map(d=>({id:d.id,...d.data()}));
+    notasState.lista.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt'));
+}
+
+async function notasUpdate(id, campos) {
+    await updateDoc(doc(db, NOTAS_COL, id), campos);
+}
+
+// ── Render lista de projetos ──────────────────────────────────────────────────
+function notasRenderLista() {
+    const el = document.getElementById('notas-lista'); if (!el) return;
+    const lista = notasState.lista;
+    const sug = document.getElementById('notas-sugestoes');
+
+    if (!lista.length) {
+        el.innerHTML = '';
+        if (sug) {
+            sug.classList.remove('hidden');
+            const chips = document.getElementById('notas-sug-chips');
+            if (chips) chips.innerHTML = NOTA_SUGESTOES.map(s =>
+                `<button class="cat-sug-chip" onclick="Notas.sugerir(${JSON.stringify(s)})">${notaEsc(s)}</button>`
+            ).join('');
+        }
+        return;
+    }
+    if (sug) sug.classList.add('hidden');
+
+    el.innerHTML = lista.map(p => {
+        const total = (p.notas||[]).length;
+        const ultima = (p.notas||[]).slice(-1)[0];
+        const meta = ultima ? `Última nota: ${notaFmt(ultima.dt)}` : 'Sem notas ainda';
+        return `<div class="nota-proj-card" onclick="Notas.abrirProj('${p.id}')">
+            <div class="nota-proj-cor" style="background:${notaEsc(p.cor||'#059669')}"></div>
+            <div class="nota-proj-info">
+                <div class="nota-proj-nome">${notaEsc(p.nome)}</div>
+                <div class="nota-proj-meta">${notaEsc(p.desc||'')}${p.desc?' · ':''}${notaEsc(meta)}</div>
+            </div>
+            <div class="nota-proj-count">${total} nota${total!==1?'s':''}</div>
+            <div class="nota-proj-actions" onclick="event.stopPropagation()">
+                <button class="cat-btn-sm" onclick="Notas.editarProj('${p.id}')" title="Editar">✏️</button>
+                <button class="cat-btn-sm cat-btn-danger" onclick="Notas.excluirProj('${p.id}')" title="Excluir">🗑️</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// ── Render detalhe (notas do projeto) ────────────────────────────────────────
+function notasRenderDetalhe() {
+    const p   = notasState.atual; if (!p) return;
+    const cor = p.cor || '#059669';
+
+    const badge = document.getElementById('nota-proj-badge');
+    const nome  = document.getElementById('nota-proj-nome');
+    const desc  = document.getElementById('nota-proj-desc');
+    if (badge) { badge.style.background = cor; }
+    if (nome)  nome.textContent = p.nome || '';
+    if (desc)  desc.textContent = p.desc || '';
+
+    const filtro = notasState.filtro.toLowerCase();
+    let notas = (p.notas || []).slice().reverse(); // mais recente primeiro
+    if (filtro) notas = notas.filter(n =>
+        (n.titulo||'').toLowerCase().includes(filtro) ||
+        (n.texto||'').toLowerCase().includes(filtro)
+    );
+
+    const el = document.getElementById('notas-proj-lista'); if (!el) return;
+    if (!notas.length) {
+        el.innerHTML = `<div class="empty">${filtro ? 'Nenhuma nota encontrada.' : 'Nenhuma nota ainda. Clique em <strong>+ Nota</strong> para criar.'}</div>`;
+        return;
+    }
+
+    el.innerHTML = notas.map(n => {
+        const preview = (n.texto||'').slice(0,180);
+        return `<div class="nota-card" style="border-left-color:${notaEsc(cor)}" onclick="Notas.abrirModal('${notaEsc(n.id)}')">
+            <div class="nota-card-header">
+                <div class="nota-card-titulo">${notaEsc(n.titulo||'Sem título')}</div>
+                <div class="nota-card-data">${notaFmt(n.dt)}</div>
+            </div>
+            <div class="nota-card-preview">${notaEsc(preview)}${(n.texto||'').length>180?'…':''}</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Paleta de cores do formulário ─────────────────────────────────────────────
+function notasRenderPaleta(palId) {
+    const el = document.getElementById(palId); if (!el) return;
+    el.innerHTML = NOTA_CORES.map(c =>
+        `<button type="button" class="cat-cor-btn${c===notasState.corSel?' ativa':''}"
+            style="background:${c}" onclick="Notas._selectCor('${c}','${palId}')" title="${c}"></button>`
+    ).join('');
+}
+
+// ── API pública ───────────────────────────────────────────────────────────────
+window.Notas = {
+
+    async init() {
+        if (notasState.iniciado) { notasRenderLista(); return; }
+        await notasCarregar();
+        notasState.iniciado = true;
+        notasRenderLista();
+    },
+
+    // ── Projetos ─────────────────────────────────────────────────────────────
+
+    sugerir(nome) {
+        document.getElementById('proj-nome').value = nome;
+        Notas.abrirFormProj();
+    },
+
+    abrirFormProj(id) {
+        notasState.corSel = NOTA_CORES[0];
+        const editId = document.getElementById('proj-edit-id');
+        const nome   = document.getElementById('proj-nome');
+        const desc   = document.getElementById('proj-desc');
+        if (id) {
+            const p = notasState.lista.find(x=>x.id===id); if (!p) return;
+            editId.value    = p.id;
+            nome.value      = p.nome  || '';
+            desc.value      = p.desc  || '';
+            notasState.corSel = p.cor || NOTA_CORES[0];
+        } else {
+            editId.value = '';
+            if (!nome.value) { nome.value=''; }
+            if (desc) desc.value='';
+        }
+        notasRenderPaleta('proj-cor-palette');
+        document.getElementById('form-proj').classList.remove('hidden');
+        nome.focus();
+    },
+
+    fecharFormProj() {
+        document.getElementById('form-proj').classList.add('hidden');
+        document.getElementById('proj-edit-id').value = '';
+        document.getElementById('proj-nome').value    = '';
+        document.getElementById('proj-desc').value    = '';
+    },
+
+    async salvarProj() {
+        const nome  = (document.getElementById('proj-nome').value||'').trim();
+        const desc  = (document.getElementById('proj-desc')?.value||'').trim();
+        const editId = document.getElementById('proj-edit-id').value;
+        if (!nome) { alert('Informe o nome do projeto'); return; }
+
+        const dados = { nome, desc, cor: notasState.corSel };
+        try {
+            if (editId) {
+                await notasUpdate(editId, dados);
+                const idx = notasState.lista.findIndex(x=>x.id===editId);
+                if (idx>=0) notasState.lista[idx] = {...notasState.lista[idx],...dados};
+                if (notasState.atual?.id===editId) notasState.atual = {...notasState.atual,...dados};
+            } else {
+                const ref = await addDoc(collection(db, NOTAS_COL), {...dados, notas:[], criadoEm:serverTimestamp()});
+                notasState.lista.push({id:ref.id, notas:[], ...dados});
+                notasState.lista.sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','pt'));
+            }
+            Notas.fecharFormProj();
+            notasRenderLista();
+        } catch(e) { toast('❌ Erro ao salvar projeto'); console.error(e); }
+    },
+
+    editarProj(id) {
+        const pid = id || notasState.atual?.id; if (!pid) return;
+        Notas.abrirFormProj(pid);
+    },
+
+    async excluirProj(id) {
+        const pid = id || notasState.atual?.id; if (!pid) return;
+        const p = notasState.lista.find(x=>x.id===pid); if (!p) return;
+        if (!confirm(`Excluir projeto "${p.nome}" e todas as suas notas?`)) return;
+        try {
+            await deleteDoc(doc(db, NOTAS_COL, pid));
+            notasState.lista = notasState.lista.filter(x=>x.id!==pid);
+            if (notasState.atual?.id===pid) {
+                notasState.atual = null;
+                document.getElementById('notas-view-lista').style.display   = '';
+                document.getElementById('notas-view-detalhe').style.display = 'none';
+            }
+            notasRenderLista();
+            toast('✅ Projeto excluído');
+        } catch(e) { toast('❌ Erro ao excluir'); console.error(e); }
+    },
+
+    // ── Navegação ─────────────────────────────────────────────────────────────
+
+    abrirProj(id) {
+        const p = notasState.lista.find(x=>x.id===id); if (!p) return;
+        notasState.atual  = p;
+        notasState.filtro = '';
+        const busca = document.getElementById('notas-busca'); if (busca) busca.value='';
+        document.getElementById('form-nota')?.classList.add('hidden');
+        document.getElementById('form-proj')?.classList.add('hidden');
+        document.getElementById('notas-view-lista').style.display   = 'none';
+        document.getElementById('notas-view-detalhe').style.display = '';
+        notasRenderDetalhe();
+    },
+
+    voltarLista() {
+        notasState.atual  = null;
+        notasState.filtro = '';
+        document.getElementById('notas-view-lista').style.display   = '';
+        document.getElementById('notas-view-detalhe').style.display = 'none';
+        document.getElementById('form-nota')?.classList.add('hidden');
+        notasRenderLista();
+    },
+
+    // ── Notas ────────────────────────────────────────────────────────────────
+
+    abrirFormNota() {
+        document.getElementById('nota-edit-id').value = '';
+        document.getElementById('nota-titulo').value  = '';
+        document.getElementById('nota-texto').value   = '';
+        document.getElementById('form-nota').classList.remove('hidden');
+        document.getElementById('nota-titulo').focus();
+    },
+
+    fecharFormNota() {
+        document.getElementById('form-nota').classList.add('hidden');
+    },
+
+    async salvarNota() {
+        const p      = notasState.atual; if (!p) return;
+        const titulo = (document.getElementById('nota-titulo').value||'').trim();
+        const texto  = (document.getElementById('nota-texto').value||'').trim();
+        const editId = document.getElementById('nota-edit-id').value;
+        if (!titulo) { alert('Informe o título da nota'); return; }
+
+        const notas = [...(p.notas||[])];
+        const hoje  = new Date().toISOString().slice(0,10);
+
+        if (editId) {
+            const idx = notas.findIndex(n=>n.id===editId);
+            if (idx>=0) notas[idx] = {...notas[idx], titulo, texto, dt: hoje};
+        } else {
+            notas.push({ id: notaId(), titulo, texto, dt: hoje });
+        }
+
+        try {
+            await notasUpdate(p.id, { notas, atualizadoEm: serverTimestamp() });
+            p.notas = notas;
+            Notas.fecharFormNota();
+            notasRenderDetalhe();
+            // Atualiza contador na lista
+            const li = notasState.lista.find(x=>x.id===p.id);
+            if (li) li.notas = notas;
+        } catch(e) { toast('❌ Erro ao salvar nota'); console.error(e); }
+    },
+
+    // ── Modal de leitura/edição de nota ──────────────────────────────────────
+
+    abrirModal(notaId) {
+        const p = notasState.atual; if (!p) return;
+        const n = (p.notas||[]).find(x=>x.id===notaId); if (!n) return;
+        notasState.modalId = notaId;
+        document.getElementById('nota-modal-titulo').value = n.titulo || '';
+        document.getElementById('nota-modal-texto').value  = n.texto  || '';
+        document.getElementById('nota-modal').classList.add('open');
+        document.getElementById('nota-modal-titulo').focus();
+    },
+
+    fecharModal() {
+        document.getElementById('nota-modal').classList.remove('open');
+        notasState.modalId = null;
+    },
+
+    async salvarModal() {
+        const p = notasState.atual; if (!p || !notasState.modalId) return;
+        const titulo = (document.getElementById('nota-modal-titulo').value||'').trim();
+        const texto  = (document.getElementById('nota-modal-texto').value||'').trim();
+        if (!titulo) { alert('Informe o título'); return; }
+
+        const notas = [...(p.notas||[])];
+        const idx   = notas.findIndex(n=>n.id===notasState.modalId);
+        if (idx<0) return;
+        const hoje = new Date().toISOString().slice(0,10);
+        notas[idx] = {...notas[idx], titulo, texto, dt: hoje};
+
+        try {
+            await notasUpdate(p.id, { notas, atualizadoEm: serverTimestamp() });
+            p.notas = notas;
+            const li = notasState.lista.find(x=>x.id===p.id);
+            if (li) li.notas = notas;
+            Notas.fecharModal();
+            notasRenderDetalhe();
+            toast('✅ Nota salva');
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    async excluirNota() {
+        const p = notasState.atual; if (!p || !notasState.modalId) return;
+        if (!confirm('Excluir esta nota?')) return;
+        const notas = (p.notas||[]).filter(n=>n.id!==notasState.modalId);
+        try {
+            await notasUpdate(p.id, { notas, atualizadoEm: serverTimestamp() });
+            p.notas = notas;
+            const li = notasState.lista.find(x=>x.id===p.id);
+            if (li) li.notas = notas;
+            Notas.fecharModal();
+            notasRenderDetalhe();
+        } catch(e) { toast('❌ Erro ao excluir nota'); console.error(e); }
+    },
+
+    filtrar() {
+        notasState.filtro = (document.getElementById('notas-busca')?.value||'');
+        notasRenderDetalhe();
+    },
+
+    _selectCor(cor, palId) {
+        notasState.corSel = cor;
+        notasRenderPaleta(palId);
+    },
+};
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MÓDULO MONITORAMENTO
