@@ -331,6 +331,94 @@ document.querySelectorAll('.tab').forEach(btn => {
     });
 });
 
+// ── Aba Fixada (aba padrão ao abrir a página) ─────────────────────────────────
+const ABA_FIXADA_KEY = 'cc_aba_fixada_central';
+
+(function iniciarFixarAba() {
+    const tabsEl = document.querySelector('.tabs');
+    if (!tabsEl) return;
+
+    // ── Botão "⭐ Fixar" sempre visível no final da barra ──────────────────────
+    const btn = document.createElement('button');
+    btn.id        = 'btn-fixar-aba';
+    btn.className = 'btn-fixar-aba';
+    tabsEl.appendChild(btn);
+
+    function obterTabAtiva() {
+        return document.querySelector('.tabs .tab.active');
+    }
+
+    function nomeTab(tab) {
+        if (!tab) return '';
+        return tab.childNodes[0]?.textContent?.trim() || tab.textContent.trim();
+    }
+
+    function atualizarBtnFixar() {
+        const fixada = localStorage.getItem(ABA_FIXADA_KEY);
+        const ativa  = obterTabAtiva();
+
+        // Marca a aba fixada visualmente
+        document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('tab-fixada'));
+        if (fixada) {
+            document.querySelector(`.tab[data-tab="${fixada}"]`)?.classList.add('tab-fixada');
+        }
+
+        if (fixada) {
+            const tabFixada = document.querySelector(`.tab[data-tab="${fixada}"]`);
+            const nome = nomeTab(tabFixada) || fixada;
+            if (ativa?.dataset.tab === fixada) {
+                btn.innerHTML = `📌 Fixada`;
+                btn.classList.add('fixada');
+                btn.title = `Clique para remover o fixado (${nome})`;
+            } else {
+                btn.innerHTML = `📌 ${nome}`;
+                btn.classList.add('fixada');
+                btn.title = `Aba padrão: ${nome} — clique para mudar`;
+            }
+        } else {
+            btn.innerHTML = `⭐ Fixar`;
+            btn.classList.remove('fixada');
+            btn.title = 'Fixar a aba atual como padrão ao abrir';
+        }
+    }
+
+    btn.addEventListener('click', () => {
+        const fixada = localStorage.getItem(ABA_FIXADA_KEY);
+        const ativa  = obterTabAtiva();
+        if (!ativa) return;
+
+        if (fixada && ativa.dataset.tab === fixada) {
+            // Desafixar
+            localStorage.removeItem(ABA_FIXADA_KEY);
+            toast('⭐ Aba padrão removida');
+        } else {
+            // Fixar aba atual
+            localStorage.setItem(ABA_FIXADA_KEY, ativa.dataset.tab);
+            toast(`📌 "${nomeTab(ativa)}" será aberta por padrão`);
+        }
+        atualizarBtnFixar();
+    });
+
+    // Atualiza botão sempre que uma aba é clicada
+    document.querySelectorAll('.tabs .tab').forEach(tab => {
+        tab.addEventListener('click', () => setTimeout(atualizarBtnFixar, 50));
+    });
+
+    // Abre a aba fixada ao carregar
+    const fixadaInicial = localStorage.getItem(ABA_FIXADA_KEY);
+    if (fixadaInicial) {
+        const tabFixada = document.querySelector(`.tab[data-tab="${fixadaInicial}"]`);
+        if (tabFixada) {
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            tabFixada.classList.add('active');
+            document.getElementById(`tab-${fixadaInicial}`)?.classList.add('active');
+        }
+    }
+
+    atualizarBtnFixar();
+})();
+
 // ══════════════════════════════════════════════════════════════════════════════
 // MÓDULO NOTAS
 // Coleção: notas_projeto/{id}  →  {nome, cor, desc, notas:[{id,titulo,texto,dt}]}

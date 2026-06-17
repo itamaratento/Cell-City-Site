@@ -206,6 +206,37 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     box-shadow:0 0 28px rgba(16,185,129,0.28),inset 0 1px 0 rgba(52,211,153,0.3);
 }
 
+/* ── Botão Fixar Aba (sempre visível, lado direito da barra) ── */
+.btn-fixar-aba {
+    margin-left:auto; flex-shrink:0;
+    padding:10px 14px; min-height:44px;
+    border-radius:12px; border:1px solid rgba(255,255,255,0.14);
+    background:rgba(255,255,255,0.05);
+    color:rgba(255,255,255,0.55);
+    font-size:12px; font-weight:700; font-family:inherit;
+    cursor:pointer; white-space:nowrap;
+    transition:all 0.25s cubic-bezier(0.4,0,0.2,1);
+    letter-spacing:.02em;
+}
+.btn-fixar-aba:hover {
+    background:rgba(255,255,255,0.1);
+    border-color:rgba(255,255,255,0.25);
+    color:var(--text);
+    transform:translateY(-1px);
+}
+.btn-fixar-aba.fixada {
+    background:rgba(255,193,7,0.12);
+    border-color:rgba(255,193,7,0.4);
+    color:#FFD54F;
+    box-shadow:0 0 14px rgba(255,193,7,0.15);
+}
+.btn-fixar-aba.fixada:hover {
+    background:rgba(255,193,7,0.2);
+    border-color:rgba(255,193,7,0.6);
+}
+/* Destaque sutil na aba que está fixada */
+.tab.tab-fixada { outline:1px solid rgba(255,193,7,0.4); outline-offset:1px; }
+
 .tab-panel { display:none; }
 .tab-panel.active { display:block; animation:fadeIn 180ms ease; }
 @keyframes fadeIn { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
