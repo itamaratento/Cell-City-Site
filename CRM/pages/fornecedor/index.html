@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Fornecedor</title>
-    <link rel="stylesheet" href="fornecedor.css?v=20260617b">
+    <link rel="stylesheet" href="fornecedor.css?v=20260619">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -129,33 +129,58 @@
 
                 <div class="forn-toolbar">
                     <button class="forn-btn-nova" id="btn-nova-compra">＋ Adicionar Item</button>
+                    <button class="forn-btn-excluir-todos" id="btn-excluir-todos-compras"
+                        onclick="Forn.excluirTodas()" style="display:none">🗑 Excluir Todos</button>
                 </div>
 
                 <!-- FORM NOVA COMPRA -->
                 <div class="forn-form" id="form-compra" style="display:none">
                     <div class="forn-form-titulo" id="form-compra-titulo">Novo Item para Comprar</div>
-                    <div class="forn-form-grid">
-                        <div class="forn-form-group forn-span2">
-                            <label>Produto / Descrição</label>
-                            <input type="text" id="fc-nome" placeholder="Ex: Cabo USB-C 2m, Capinha iPhone 15..." maxlength="120">
-                        </div>
-                        <div class="forn-form-group">
-                            <label>Quantidade desejada</label>
-                            <input type="number" id="fc-qty" min="1" value="1">
-                        </div>
-                        <div class="forn-form-group">
-                            <label>Urgência</label>
-                            <select id="fc-urgencia">
-                                <option value="alta">🔴 Alta</option>
-                                <option value="media" selected>🟡 Média</option>
-                                <option value="baixa">🟢 Baixa</option>
-                            </select>
-                        </div>
-                        <div class="forn-form-group forn-span2">
-                            <label>Fornecedor / Observação</label>
-                            <input type="text" id="fc-obs" placeholder="Nome do fornecedor, link, preço estimado..." maxlength="200">
+
+                    <!-- Toggle modo individual / lote (oculto no modo edição) -->
+                    <div class="fc-modo-toggle" id="fc-modo-toggle">
+                        <button class="fc-modo-btn active" id="fc-modo-btn-individual"
+                            onclick="Forn.setModo('individual')">1 Item</button>
+                        <button class="fc-modo-btn" id="fc-modo-btn-lote"
+                            onclick="Forn.setModo('lote')">📋 Vários de uma vez</button>
+                    </div>
+
+                    <!-- Campos individuais -->
+                    <div id="fc-campos-individual">
+                        <div class="forn-form-grid">
+                            <div class="forn-form-group forn-span2">
+                                <label>Produto / Descrição</label>
+                                <input type="text" id="fc-nome" placeholder="Ex: Cabo USB-C 2m, Capinha iPhone 15..." maxlength="120">
+                            </div>
+                            <div class="forn-form-group">
+                                <label>Quantidade desejada</label>
+                                <input type="number" id="fc-qty" min="1" value="1">
+                            </div>
+                            <div class="forn-form-group">
+                                <label>Urgência</label>
+                                <select id="fc-urgencia">
+                                    <option value="alta">🔴 Alta</option>
+                                    <option value="media" selected>🟡 Média</option>
+                                    <option value="baixa">🟢 Baixa</option>
+                                </select>
+                            </div>
+                            <div class="forn-form-group forn-span2">
+                                <label>Fornecedor / Observação</label>
+                                <input type="text" id="fc-obs" placeholder="Nome do fornecedor, link, preço estimado..." maxlength="200">
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Modo lote: um item por linha -->
+                    <div id="fc-campos-lote" style="display:none">
+                        <div class="forn-form-group">
+                            <label>Um item por linha:</label>
+                            <textarea id="fc-lote" rows="7"
+                                placeholder="CABO TIPO C&#10;PELICULA 3D&#10;CARREGADOR IPHONE&#10;FONE BLUETOOTH&#10;PEN DRIVE 32GB"></textarea>
+                        </div>
+                        <div class="fc-lote-dica">Cada linha se torna um item separado na lista de compras.</div>
+                    </div>
+
                     <div class="forn-form-btns">
                         <button class="forn-btn-salvar" id="fc-salvar">Salvar</button>
                         <button class="forn-btn-cancelar" id="fc-cancelar">Cancelar</button>
@@ -285,7 +310,7 @@
     <div class="forn-toast" id="forn-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="fornecedor.js?v=20260617b"></script>
+    <script type="module" src="fornecedor.js?v=20260619"></script>
     <script type="module" src="../../shared/favoritos.js"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script>

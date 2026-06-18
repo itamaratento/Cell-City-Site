@@ -278,6 +278,58 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 }
 .forn-form-group select option { background: #1a1d23; }
 .forn-form-group textarea { resize: vertical; min-height: 60px; }
+
+/* ── Toolbar compras: excluir todos ── */
+.forn-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.forn-btn-excluir-todos {
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid rgba(248,113,113,0.3);
+  border-radius: var(--radius-sm);
+  color: #f87171;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: all 200ms;
+}
+.forn-btn-excluir-todos:hover { background: rgba(248,113,113,0.1); border-color: #f87171; }
+
+/* ── Modo toggle individual / lote ── */
+.fc-modo-toggle {
+  display: flex;
+  gap: 4px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+  width: fit-content;
+  margin-bottom: 4px;
+}
+.fc-modo-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 150ms;
+}
+.fc-modo-btn.active {
+  background: rgba(0,200,83,0.15);
+  border: 1px solid rgba(0,200,83,0.35);
+  color: var(--green-l);
+}
+.fc-lote-dica {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 5px;
+}
+#fc-lote { min-height: 130px; font-size: 13px; line-height: 1.6; }
+
 .forn-form-btns {
   display: flex;
   gap: 10px;

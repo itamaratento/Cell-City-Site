@@ -82,12 +82,18 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     border-radius:18px;
     width:100%;
 }
-/* Em telas maiores, nowrap para ocupar menos altura */
-@media (min-width: 768px) {
-    .tabs { flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; }
-    .tabs::-webkit-scrollbar { display:none; }
+/* Em telas largas: linha única com scroll — thin scrollbar para indicar overflow */
+@media (min-width: 1024px) {
+    .tabs { flex-wrap:nowrap; overflow-x:auto;
+            scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.12) transparent; }
+    .tabs::-webkit-scrollbar { height:3px; }
+    .tabs::-webkit-scrollbar-track { background:transparent; }
+    .tabs::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:3px; }
 }
-.tabs::-webkit-scrollbar { display:none; }
+/* Em telas médias (768–1023px): wrap para nenhuma aba ficar cortada */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .tabs { flex-wrap:wrap; }
+}
 
 /* base do botão — cor visível permanentemente via [data-tab] abaixo */
 .tab {
@@ -1079,3 +1085,39 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 }
 .tar-modo-btn:hover:not(.active) { color:var(--text2); }
 .tar-lote-dica { font-size:11px; color:var(--text3); margin-top:4px; }
+
+/* ── Botões de ação em lote ── */
+.tar-btn-lote-acao {
+    padding:7px 11px; border-radius:8px;
+    background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
+    color:var(--text3); font-size:11px; font-weight:700; font-family:var(--font);
+    cursor:pointer; white-space:nowrap; transition:all var(--transition);
+    flex-shrink:0;
+}
+.tar-btn-lote-acao:hover { background:rgba(255,255,255,0.09); color:var(--text2); border-color:var(--border-hover); }
+.tar-btn-lote-acao.ativo  { background:var(--green-dim2); border-color:var(--green-border); color:var(--green-light); }
+.tar-btn-lote-danger { border-color:rgba(248,113,113,0.2); color:var(--red); }
+.tar-btn-lote-danger:hover { background:var(--red-dim); border-color:var(--red-border); color:var(--red); }
+
+/* ── Barra de seleção em lote ── */
+.tar-sel-bar {
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+    padding:10px 14px; margin-bottom:14px;
+    background:rgba(0,200,83,0.06); border:1px solid var(--green-border);
+    border-radius:var(--radius-sm);
+    animation:slideDown 200ms ease;
+}
+.tar-sel-bar.hidden { display:none; }
+.tar-sel-count {
+    font-size:12px; font-weight:700; color:var(--green-light); margin-right:4px;
+}
+
+/* ── Checkbox de seleção individual ── */
+.tar-sel-checkbox {
+    width:18px; height:18px; flex-shrink:0; margin-top:3px;
+    accent-color:var(--green); cursor:pointer;
+}
+.tar-item.selecionada {
+    border-color:var(--green-border);
+    background:rgba(0,200,83,0.05);
+}

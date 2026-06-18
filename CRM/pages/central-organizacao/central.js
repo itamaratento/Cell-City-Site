@@ -1826,11 +1826,13 @@ window.Categorias = {
 const TAR_COL = 'tarefas_robo';
 
 const tarState = {
-    robos:      [],
-    roboAtual:  null,   // { slug, nome, tarefas:[] }
-    editId:     null,
-    histAberto: false,
-    modo:       'individual',   // 'individual' | 'lote'
+    robos:       [],
+    roboAtual:   null,   // { slug, nome, tarefas:[] }
+    editId:      null,
+    histAberto:  false,
+    modo:        'individual',   // 'individual' | 'lote'
+    selecionando: false,
+    selecionados: new Set(),
 };
 
 function tarSlug(nome) {
@@ -1967,9 +1969,14 @@ function tarRenderTarefas(tarefas) {
     const renderItem = t => {
         const rec  = TAR_REC[t.recorrencia];
         const conc = t.status === 'concluida';
-        return `<div class="tar-item${conc ? ' concluida' : ''}">
-            <button class="tar-item-check" onclick="Tarefas.toggle('${t.id}')"
-                title="${conc ? 'Marcar como pendente' : 'Marcar como concluída'}">${conc ? '✓' : ''}</button>
+        const sel  = tarState.selecionando && tarState.selecionados.has(t.id);
+        const leftCtrl = tarState.selecionando
+            ? `<input type="checkbox" class="tar-sel-checkbox" ${sel ? 'checked' : ''}
+                   onchange="Tarefas.toggleSel('${t.id}',this.checked)">`
+            : `<button class="tar-item-check" onclick="Tarefas.toggle('${t.id}')"
+                   title="${conc ? 'Marcar como pendente' : 'Marcar como concluída'}">${conc ? '✓' : ''}</button>`;
+        return `<div class="tar-item${conc ? ' concluida' : ''}${sel ? ' selecionada' : ''}" data-id="${t.id}">
+            ${leftCtrl}
             <div class="tar-item-body">
                 <div class="tar-item-nome">${esc(t.nome)}</div>
                 ${t.descricao ? `<div class="tar-item-desc">${esc(t.descricao)}</div>` : ''}
@@ -1979,10 +1986,11 @@ function tarRenderTarefas(tarefas) {
                     ${conc && t.concluidoEm ? `<span>✓ ${tarFmt(t.concluidoEm)}</span>` : ''}
                 </div>
             </div>
+            ${tarState.selecionando ? '' : `
             <div class="tar-item-actions">
                 <button class="btn-edit"   onclick="Tarefas.editar('${t.id}')"  title="Editar">✏️</button>
                 <button class="btn-delete" onclick="Tarefas.remover('${t.id}')" title="Remover">🗑️</button>
-            </div>
+            </div>`}
         </div>`;
     };
 
@@ -2211,6 +2219,114 @@ window.Tarefas = {
             if (el)  el.style.display = 'none';
             if (btn) btn.textContent  = 'Ver histórico';
         }
+    },
+
+    // ── Excluir todas ────────────────────────────────────────────────────
+    async excluirTodas() {
+        const r = tarState.roboAtual;
+        if (!r || !r.tarefas.length) { toast('Nenhuma tarefa para excluir'); return; }
+        const ok = confirm(`Excluir todas as ${r.tarefas.length} tarefa(s) de "${r.nome}"? Esta ação não pode ser desfeita.`);
+        if (!ok) return;
+        r.tarefas = [];
+        try {
+            await tarPersistir(r);
+            tarRenderPainel();
+            toast('🗑️ Todas as tarefas excluídas');
+        } catch(e) { toast('❌ Erro ao excluir'); console.error(e); }
+    },
+
+    // ── Marcar todas como concluídas ─────────────────────────────────────
+    async marcarTodas() {
+        const r = tarState.roboAtual;
+        if (!r || !r.tarefas.length) { toast('Nenhuma tarefa para marcar'); return; }
+        const pendentes = r.tarefas.filter(t => t.status !== 'concluida');
+        if (!pendentes.length) { toast('Todas já estão concluídas'); return; }
+        const agora = new Date().toISOString();
+        pendentes.forEach(t => {
+            t.status      = 'concluida';
+            t.concluidoEm = agora;
+            if (!t.historico) t.historico = [];
+            t.historico.unshift({ dt: agora });
+        });
+        try {
+            await tarPersistir(r);
+            tarRenderPainel();
+            toast(`☑️ ${pendentes.length} tarefa(s) marcadas como concluídas`);
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    // ── Modo seleção ─────────────────────────────────────────────────────
+    toggleSelecionar() {
+        tarState.selecionando = !tarState.selecionando;
+        tarState.selecionados.clear();
+        const bar = document.getElementById('tar-sel-bar');
+        const btn = document.getElementById('tar-btn-selecionar');
+        if (tarState.selecionando) {
+            bar?.classList.remove('hidden');
+            if (btn) { btn.textContent = '☑ Selecionando'; btn.classList.add('ativo'); }
+        } else {
+            bar?.classList.add('hidden');
+            if (btn) { btn.textContent = '☐ Selecionar'; btn.classList.remove('ativo'); }
+        }
+        tarRenderTarefas(tarState.roboAtual?.tarefas || []);
+        tarState.selecionando && Tarefas._updateSelBar();
+    },
+
+    toggleSel(id, checked) {
+        if (checked) tarState.selecionados.add(id);
+        else         tarState.selecionados.delete(id);
+        const item = document.querySelector(`.tar-item[data-id="${id}"]`);
+        if (item) item.classList.toggle('selecionada', checked);
+        Tarefas._updateSelBar();
+    },
+
+    selTodos() {
+        const tarefas = tarState.roboAtual?.tarefas || [];
+        tarefas.forEach(t => tarState.selecionados.add(t.id));
+        tarRenderTarefas(tarefas);
+        Tarefas._updateSelBar();
+    },
+
+    async marcarSelecionados() {
+        const r = tarState.roboAtual;
+        if (!r || !tarState.selecionados.size) { toast('Nenhuma tarefa selecionada'); return; }
+        const agora = new Date().toISOString();
+        let cnt = 0;
+        r.tarefas.forEach(t => {
+            if (tarState.selecionados.has(t.id) && t.status !== 'concluida') {
+                t.status = 'concluida'; t.concluidoEm = agora;
+                if (!t.historico) t.historico = [];
+                t.historico.unshift({ dt: agora });
+                cnt++;
+            }
+        });
+        try {
+            await tarPersistir(r);
+            tarState.selecionados.clear();
+            Tarefas.toggleSelecionar();
+            toast(`☑️ ${cnt} tarefa(s) marcadas como concluídas`);
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    async excluirSelecionados() {
+        const r = tarState.roboAtual;
+        if (!r || !tarState.selecionados.size) { toast('Nenhuma tarefa selecionada'); return; }
+        const n = tarState.selecionados.size;
+        const ok = confirm(`Excluir ${n} tarefa(s) selecionada(s)? Esta ação não pode ser desfeita.`);
+        if (!ok) return;
+        r.tarefas = r.tarefas.filter(t => !tarState.selecionados.has(t.id));
+        try {
+            await tarPersistir(r);
+            tarState.selecionados.clear();
+            Tarefas.toggleSelecionar();
+            toast(`🗑️ ${n} tarefa(s) excluídas`);
+        } catch(e) { toast('❌ Erro ao excluir'); console.error(e); }
+    },
+
+    _updateSelBar() {
+        const n   = tarState.selecionados.size;
+        const el  = document.getElementById('tar-sel-count');
+        if (el) el.textContent = `${n} selecionada${n !== 1 ? 's' : ''}`;
     },
 };
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Cell City — Central Automação</title>
-    <link rel="stylesheet" href="central.css?v=20260618">
+    <link rel="stylesheet" href="central.css?v=20260619">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -14,8 +14,6 @@
     <!-- O brand-header.js migra este header para a barra universal -->
     <header>
         <span class="header-title">⚡ Central Automação</span>
-        <!-- ⭐ Botão Favoritar — migrado para a brand bar (lado direito) -->
-        <button id="btn-fixar-aba-header" class="btn-fixar-aba" title="Fixar aba atual como padrão">⭐ Favoritar</button>
     </header>
 
     <main class="content">
@@ -591,7 +589,20 @@
                 <div class="tar-robo-header">
                     <button class="cat-btn-voltar" onclick="Tarefas.voltarRobos()">← Robôs</button>
                     <div class="tar-robo-nome" id="tar-robo-nome"></div>
+                    <button class="tar-btn-lote-acao" id="tar-btn-selecionar"
+                        onclick="Tarefas.toggleSelecionar()" title="Selecionar tarefas para ações em lote">☐ Selecionar</button>
+                    <button class="tar-btn-lote-acao tar-btn-lote-danger"
+                        onclick="Tarefas.excluirTodas()" title="Excluir todas as tarefas">🗑 Excluir Todas</button>
                     <button class="btn-add" onclick="Tarefas.abrirForm()">+ Tarefa</button>
+                </div>
+
+                <!-- Barra de seleção em lote (aparece quando modo seleção está ativo) -->
+                <div class="tar-sel-bar hidden" id="tar-sel-bar">
+                    <span class="tar-sel-count" id="tar-sel-count">0 selecionadas</span>
+                    <button class="tar-btn-lote-acao" onclick="Tarefas.selTodos()">Sel. Todas</button>
+                    <button class="tar-btn-lote-acao" onclick="Tarefas.marcarSelecionados()">☑ Marcar Concluídas</button>
+                    <button class="tar-btn-lote-acao tar-btn-lote-danger" onclick="Tarefas.excluirSelecionados()">🗑 Excluir</button>
+                    <button class="tar-btn-lote-acao" onclick="Tarefas.toggleSelecionar()">✕ Cancelar</button>
                 </div>
 
                 <!-- Progresso do dia -->
@@ -679,7 +690,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="central.js?v=20260618"></script>
+    <script type="module" src="central.js?v=20260619"></script>
     <script type="module" src="../../shared/favoritos.js?v=20260617"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

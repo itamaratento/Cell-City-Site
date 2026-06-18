@@ -19,6 +19,7 @@ const state = {
   compras:      [],
   editandoForn: null,
   editandoComp: null,
+  compModo:     'individual',   // 'individual' | 'lote'
 };
 
 /* ── Helpers ─────────────────────────────────────────────────── */
@@ -346,6 +347,8 @@ async function carregarCompras() {
 function renderCompras(itens) {
   const listaEl = document.getElementById('compras-lista');
   const emptyEl = document.getElementById('compras-empty');
+  const btnDel  = document.getElementById('btn-excluir-todos-compras');
+  if (btnDel) btnDel.style.display = itens.length ? '' : 'none';
   if (!itens.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
   emptyEl.style.display = 'none';
 
@@ -387,9 +390,20 @@ function filtrarCompras() {
   ));
 }
 
+function setModoCompra(modo) {
+  state.compModo = modo;
+  document.getElementById('fc-modo-btn-individual').classList.toggle('active', modo === 'individual');
+  document.getElementById('fc-modo-btn-lote').classList.toggle('active',       modo === 'lote');
+  document.getElementById('fc-campos-individual').style.display = modo === 'individual' ? '' : 'none';
+  document.getElementById('fc-campos-lote').style.display       = modo === 'lote'       ? '' : 'none';
+}
+
 function abrirFormCompra(id) {
   document.getElementById('form-compra-titulo').textContent = id ? 'Editar Item' : 'Novo Item para Comprar';
+  // No modo edição só permite individual
+  document.getElementById('fc-modo-toggle').style.display = id ? 'none' : '';
   if (id) {
+    setModoCompra('individual');
     const item = state.compras.find(x => x.id === id);
     if (!item) return;
     document.getElementById('fc-nome').value     = item.nome || '';
@@ -398,15 +412,19 @@ function abrirFormCompra(id) {
     document.getElementById('fc-obs').value      = item.obs || '';
     state.editandoComp = id;
   } else {
+    setModoCompra(state.compModo);   // mantém o último modo escolhido
     document.getElementById('fc-nome').value     = '';
     document.getElementById('fc-qty').value      = '1';
     document.getElementById('fc-urgencia').value = 'media';
     document.getElementById('fc-obs').value      = '';
+    document.getElementById('fc-lote').value     = '';
     state.editandoComp = null;
   }
   document.getElementById('form-compra').style.display = 'flex';
   document.getElementById('btn-nova-compra').style.display = 'none';
-  document.getElementById('fc-nome').focus();
+  state.compModo === 'lote'
+    ? document.getElementById('fc-lote').focus()
+    : document.getElementById('fc-nome').focus();
 }
 
 function fecharFormCompra() {
@@ -416,6 +434,26 @@ function fecharFormCompra() {
 }
 
 async function salvarCompra() {
+  // Modo lote: cria um item por linha não-vazia
+  if (state.compModo === 'lote' && !state.editandoComp) {
+    const linhas = (document.getElementById('fc-lote').value || '')
+      .split('\n').map(l => l.trim()).filter(Boolean);
+    if (!linhas.length) { document.getElementById('fc-lote').focus(); return; }
+    try {
+      const urgencia = 'media';
+      for (let i = 0; i < linhas.length; i++) {
+        await setDoc(doc(db, COL_COMPRAS, `compra_${Date.now()}_${i}`), {
+          nome: linhas[i], quantidade: 1, urgencia, obs: '', atualizadoEm: serverTimestamp()
+        });
+      }
+      toast(`✅ ${linhas.length} item(s) adicionado(s)!`);
+      fecharFormCompra();
+      await carregarCompras();
+    } catch { toast('⚠ Erro ao salvar.'); }
+    return;
+  }
+
+  // Modo individual (criação ou edição)
   const nome = document.getElementById('fc-nome').value.trim();
   if (!nome) { document.getElementById('fc-nome').focus(); return; }
   const dados = {
@@ -447,6 +485,18 @@ async function excluirCompraById(id) {
     await deleteDoc(doc(db, COL_COMPRAS, id));
     toast('🗑️ Item removido.');
     await carregarCompras();
+  } catch { toast('⚠ Erro ao excluir.'); }
+}
+
+async function excluirTodasCompras() {
+  if (!state.compras.length) { toast('Nenhum item para excluir'); return; }
+  const ok = confirm(`Tem certeza que deseja excluir todos os ${state.compras.length} item(s) da lista de compras?\n\nEsta ação não pode ser desfeita.`);
+  if (!ok) return;
+  try {
+    await Promise.all(state.compras.map(i => deleteDoc(doc(db, COL_COMPRAS, i.id))));
+    state.compras = [];
+    renderCompras([]);
+    toast('🗑️ Todos os itens foram excluídos.');
   } catch { toast('⚠ Erro ao excluir.'); }
 }
 
@@ -666,6 +716,8 @@ window.Forn = {
   toggleDash:        ()   => toggleDash(),
   editarCompra:      (id) => abrirFormCompra(id),
   excluirCompra:     (id) => excluirCompraById(id),
+  excluirTodas:      ()   => excluirTodasCompras(),
+  setModo:           (m)  => setModoCompra(m),
   toggleFeita:       (id, feita) => toggleFeita(id, feita),
   filtrarCompras:    () => filtrarCompras(),
   excluirTendencia:  (id) => excluirTendencia(id),
