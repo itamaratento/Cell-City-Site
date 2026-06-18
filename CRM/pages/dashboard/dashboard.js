@@ -93,6 +93,9 @@ class Dashboard {
       req.onsuccess = () => console.log('🧹 [IndexedDB] AlarmeOSDB removido');
     } catch {}
   }
+
+  /** ===== INICIALIZAÇÃO DO DASHBOARD ===== */
+  init() {
     this._verificarFechamentoCaixa();
     this.setupNotas();
     this.setupClock();
