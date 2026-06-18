@@ -1382,6 +1382,14 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 .cat-home-tar    { border-color:rgba(244,114,182,0.12); }
 .cat-home-tar:hover { border-color:#f472b6; background:rgba(244,114,182,0.05); }
 
+.cat-home-cmds   { border-color:rgba(251,191,36,0.12); }
+.cat-home-cmds:hover { border-color:#fbbf24; background:rgba(251,191,36,0.05); }
+.cat-home-count-cmds { color:#fbbf24; background:rgba(251,191,36,0.12); }
+.cat-home-cmds-favs {
+    font-size:10px; color:#fbbf24; margin-top:2px;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%;
+}
+
 /* ── Mobile responsive ── */
 @media (max-width: 767px) {
     .cat-sidebar {
@@ -1402,4 +1410,221 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 }
 @media (max-width: 480px) {
     .cat-home-grid { grid-template-columns:repeat(3, 1fr); gap:7px; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MÓDULO COMANDOS
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* Topo */
+.cmds-topo {
+    display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;
+}
+.cmds-busca-wrap {
+    display:flex; align-items:center; gap:8px; flex:1; min-width:160px;
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-xs); padding:8px 12px;
+}
+.cmds-busca-wrap input {
+    flex:1; background:transparent; border:none; outline:none;
+    color:var(--text); font-size:13px;
+}
+.cmds-busca-icon { font-size:14px; flex-shrink:0; }
+
+.cmds-btn-novo {
+    background:var(--green); color:#000; font-weight:700;
+    border:none; border-radius:var(--radius-xs); padding:8px 14px;
+    cursor:pointer; font-size:13px; white-space:nowrap;
+    transition:background var(--transition);
+}
+.cmds-btn-novo:hover { background:var(--green-light); }
+
+.cmds-btn-nova-cat {
+    background:transparent; color:var(--text2);
+    border:1px solid var(--border); border-radius:var(--radius-xs);
+    padding:8px 10px; cursor:pointer; font-size:12px; white-space:nowrap;
+    transition:all var(--transition);
+}
+.cmds-btn-nova-cat:hover { border-color:var(--green); color:var(--green); }
+
+/* Filtro de categorias */
+.cmds-cats-bar {
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;
+}
+.cmds-cat-chip {
+    background:var(--surface2); color:var(--text2);
+    border:1px solid var(--border); border-radius:20px;
+    padding:4px 12px; font-size:12px; cursor:pointer;
+    transition:all var(--transition);
+}
+.cmds-cat-chip:hover { border-color:var(--border-hover); color:var(--text); }
+.cmds-cat-chip.active { background:var(--green-dim); border-color:var(--green); color:var(--green); font-weight:600; }
+
+/* Últimos utilizados */
+.cmds-recentes-sec { margin-bottom:14px; }
+.cmds-sec-titulo { font-size:11px; color:var(--text3); margin-bottom:6px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.cmds-recentes { display:flex; gap:6px; flex-wrap:wrap; }
+.cmds-recente-chip {
+    background:var(--surface2); color:var(--text2); font-size:12px;
+    border:1px solid var(--border); border-radius:20px; padding:4px 10px;
+    cursor:pointer; transition:all var(--transition);
+}
+.cmds-recente-chip:hover { border-color:var(--green); color:var(--green-light); }
+
+/* Header da lista */
+.cmds-lista-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px; font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:.5px;
+}
+.cmds-contador {
+    display:inline-block; background:var(--green-dim); color:var(--green);
+    border-radius:10px; padding:0 7px; font-size:11px; margin-left:6px;
+}
+
+/* Linhas de comando */
+.cmds-linha {
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-xs);
+    margin-bottom:6px; transition:all var(--transition);
+}
+.cmds-linha:hover { border-color:var(--border-hover); background:var(--surface2); }
+.cmds-linha.fav { border-left:3px solid #fbbf24; }
+
+.cmds-linha-fav {
+    background:none; border:none; cursor:pointer; font-size:16px;
+    padding:0 2px; flex-shrink:0; transition:transform var(--transition);
+}
+.cmds-linha-fav:hover { transform:scale(1.2); }
+
+.cmds-linha-info {
+    flex:1; min-width:0; cursor:pointer; display:flex; flex-direction:column; gap:2px;
+}
+.cmds-linha-nome {
+    font-size:13px; font-weight:600; color:var(--text);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    transition:color var(--transition);
+}
+.cmds-linha-info:hover .cmds-linha-nome { color:var(--green-light); }
+.cmds-linha-cat {
+    font-size:11px; color:var(--text3);
+}
+.cmds-linha-qtd {
+    font-size:11px; color:var(--text3); flex-shrink:0;
+    background:var(--surface2); border-radius:10px; padding:2px 7px;
+}
+.cmds-linha-acoes { display:flex; gap:4px; flex-shrink:0; }
+
+.cmds-acao {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-xs); padding:5px 8px;
+    cursor:pointer; font-size:13px; transition:all var(--transition);
+}
+.cmds-acao:hover { border-color:var(--border-hover); background:var(--surface3); }
+.cmds-acao-copiar:hover { border-color:var(--green); }
+.cmds-acao-excluir:hover { border-color:var(--red); }
+
+/* Empty state */
+.cmds-empty {
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+    padding:40px 20px; color:var(--text3); text-align:center;
+}
+.cmds-empty-icon { font-size:36px; }
+.cmds-empty p { font-size:13px; line-height:1.5; }
+
+/* Modal overlay */
+.cmds-modal {
+    display:none; position:fixed; inset:0; z-index:1000;
+    background:rgba(0,0,0,0.7); align-items:center; justify-content:center;
+    backdrop-filter:blur(4px);
+}
+.cmds-modal.active { display:flex; }
+.cmds-modal-content {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); width:90%; max-width:480px;
+    max-height:90dvh; display:flex; flex-direction:column;
+    box-shadow:0 24px 64px rgba(0,0,0,0.6);
+}
+.cmds-modal-wide { max-width:640px; }
+.cmds-modal-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px; border-bottom:1px solid var(--border);
+}
+.cmds-modal-header h3 { font-size:15px; font-weight:700; color:var(--green-light); }
+.cmds-modal-close {
+    background:none; border:1px solid var(--border); border-radius:6px;
+    color:var(--text2); cursor:pointer; font-size:14px; padding:4px 8px;
+    transition:all var(--transition);
+}
+.cmds-modal-close:hover { color:var(--text); border-color:var(--border-hover); }
+.cmds-modal-body {
+    padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:14px;
+}
+.cmds-modal-footer {
+    padding:14px 20px; border-top:1px solid var(--border);
+    display:flex; justify-content:flex-end; gap:8px;
+}
+
+.cmds-form-group { display:flex; flex-direction:column; gap:6px; }
+.cmds-form-group label { font-size:12px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
+.cmds-form-group input,
+.cmds-form-group select {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-xs); padding:10px 12px; color:var(--text);
+    font-size:13px; outline:none; transition:border-color var(--transition);
+}
+.cmds-form-group input:focus,
+.cmds-form-group select:focus { border-color:var(--green); }
+
+.cmds-fav-check { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; color:var(--text2); }
+.cmds-fav-check input { width:15px; height:15px; cursor:pointer; }
+
+/* Blocos de comando */
+.cmds-bloco-item {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-xs); padding:10px; margin-bottom:8px;
+}
+.cmds-bloco-header {
+    display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;
+}
+.cmds-bloco-num { font-size:11px; color:var(--text3); font-weight:600; text-transform:uppercase; }
+.cmds-bloco-remover {
+    background:none; border:1px solid var(--border); border-radius:4px;
+    color:var(--text3); cursor:pointer; font-size:11px; padding:2px 6px;
+    transition:all var(--transition);
+}
+.cmds-bloco-remover:hover { border-color:var(--red); color:var(--red); }
+.cmds-bloco-textarea {
+    width:100%; background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius-xs); color:var(--text); font-size:12px;
+    font-family:monospace; padding:8px; resize:vertical; outline:none;
+    transition:border-color var(--transition);
+}
+.cmds-bloco-textarea:focus { border-color:var(--green); }
+
+.cmds-btn-add-bloco {
+    background:transparent; border:1px dashed var(--border); border-radius:var(--radius-xs);
+    color:var(--text3); cursor:pointer; padding:8px; width:100%; font-size:12px;
+    transition:all var(--transition);
+}
+.cmds-btn-add-bloco:hover { border-color:var(--green); color:var(--green); }
+
+.cmds-btn-cancelar {
+    background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-xs);
+    color:var(--text2); cursor:pointer; padding:9px 16px; font-size:13px;
+    transition:all var(--transition);
+}
+.cmds-btn-cancelar:hover { background:var(--surface3); color:var(--text); }
+
+.cmds-btn-salvar {
+    background:var(--green); color:#000; font-weight:700;
+    border:none; border-radius:var(--radius-xs); padding:9px 18px;
+    cursor:pointer; font-size:13px; transition:background var(--transition);
+}
+.cmds-btn-salvar:hover { background:var(--green-light); }
+
+@media (max-width: 480px) {
+    .cmds-topo { flex-wrap:wrap; }
+    .cmds-btn-novo { flex:1; justify-content:center; }
+    .cmds-modal-wide { max-width:100%; }
+    .cmds-linha-cat { display:none; }
 }

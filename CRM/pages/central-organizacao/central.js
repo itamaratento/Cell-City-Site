@@ -419,7 +419,7 @@ window.Central = {
 };
 
 // ── Navegação via Sidebar ─────────────────────────────────────────────────────
-const SECOES_SEM_BUSCA = new Set(['home', 'monitoramento', 'notas', 'categorias', 'tarefas']);
+const SECOES_SEM_BUSCA = new Set(['home', 'monitoramento', 'notas', 'categorias', 'tarefas', 'comandos']);
 const SECAO_TITULO = {
     home:          '🏠 Home',
     whatsapp:      '📱 WhatsApp',
@@ -431,6 +431,7 @@ const SECAO_TITULO = {
     notas:         '📝 Notas',
     categorias:    '📁 Categorias',
     tarefas:       '✅ Tarefas',
+    comandos:      '📋 Comandos',
 };
 
 function navegarParaSecao(secao) {
@@ -461,6 +462,7 @@ function navegarParaSecao(secao) {
     if (secao === 'monitoramento') Monitoramento.init().catch(console.error);
     if (secao === 'notas')         Notas.init().catch(console.error);
     if (secao === 'tarefas')       Tarefas.init().catch(console.error);
+    if (secao === 'comandos')      Comandos.init().catch(console.error);
 }
 
 // Cliques na sidebar
@@ -2391,6 +2393,355 @@ window.Tarefas = {
         if (el) el.textContent = `${n} selecionada${n !== 1 ? 's' : ''}`;
     },
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO COMANDOS
+// Compartilha coleções 'comandos' e 'categorias_comandos' com a Central standalone.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const CMDS_COL         = 'comandos';
+const CMDS_CAT_COL     = 'categorias_comandos';
+const CMDS_CACHE_KEY   = 'cc_comandos_cache';
+const CMDS_CAT_CACHE   = 'cc_categorias_cache';
+const CMDS_RECENTES_KEY= 'cc_comandos_recentes';
+const CMDS_CATS_PADRAO = ['CRM','Claude','Programação','Financeiro','Marketing','Instagram','WhatsApp','Igreja','Outros'];
+
+const cmdsState = {
+    lista:           [],
+    categorias:      [...CMDS_CATS_PADRAO],
+    filtroCategoria: 'Todas',
+    termoBusca:      '',
+    contadorBlocos:  0,
+    iniciado:        false,
+};
+
+const Comandos = {
+
+    async init() {
+        if (cmdsState.iniciado) { Comandos.render(); Comandos.renderRecentes(); return; }
+        cmdsState.iniciado = true;
+        await Comandos._carregarCats();
+        Comandos._montarFiltrosCats();
+        Comandos._montarSelectCats();
+        await Comandos._carregar();
+        document.getElementById('cmds-modal')?.addEventListener('click', e => {
+            if (e.target.id === 'cmds-modal') Comandos.fecharForm();
+        });
+        document.getElementById('cmds-modal-cat')?.addEventListener('click', e => {
+            if (e.target.id === 'cmds-modal-cat') Comandos.fecharFormCat();
+        });
+    },
+
+    async _carregar() {
+        try {
+            const snap = await getDocs(query(collection(db, CMDS_COL), orderBy('criadoEm', 'desc')));
+            cmdsState.lista = [];
+            snap.forEach(d => cmdsState.lista.push({ id: d.id, ...d.data() }));
+            localStorage.setItem(CMDS_CACHE_KEY, JSON.stringify(cmdsState.lista));
+        } catch {
+            cmdsState.lista = JSON.parse(localStorage.getItem(CMDS_CACHE_KEY) || '[]');
+        }
+        Comandos.render();
+        Comandos.renderRecentes();
+        Comandos._syncContadores();
+    },
+
+    async _carregarCats() {
+        try {
+            const snap = await getDocs(collection(db, CMDS_CAT_COL));
+            const custom = snap.docs.map(d => d.data().nome).filter(Boolean);
+            if (custom.length) {
+                cmdsState.categorias = [...CMDS_CATS_PADRAO, ...custom];
+                localStorage.setItem(CMDS_CAT_CACHE, JSON.stringify(cmdsState.categorias));
+            }
+        } catch {
+            const cached = localStorage.getItem(CMDS_CAT_CACHE);
+            if (cached) cmdsState.categorias = JSON.parse(cached);
+        }
+    },
+
+    _montarFiltrosCats() {
+        const cont = document.getElementById('cmds-cats-filtro');
+        if (!cont) return;
+        const todas = ['Todas', ...cmdsState.categorias];
+        cont.innerHTML = todas.map(c =>
+            `<button class="cmds-cat-chip${c === cmdsState.filtroCategoria ? ' active' : ''}" onclick="Comandos.filtrarCat('${esc(c)}')">${esc(c)}</button>`
+        ).join('');
+    },
+
+    _montarSelectCats() {
+        const sel = document.getElementById('cmds-f-categoria');
+        if (!sel) return;
+        sel.innerHTML = cmdsState.categorias.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    },
+
+    filtrar(termo) {
+        cmdsState.termoBusca = (termo || '').toLowerCase().trim();
+        Comandos.render();
+    },
+
+    filtrarCat(cat) {
+        cmdsState.filtroCategoria = cat;
+        Comandos._montarFiltrosCats();
+        Comandos.render();
+    },
+
+    render() {
+        const lista    = document.getElementById('cmds-lista');
+        const contador = document.getElementById('cmds-contador');
+        if (!lista) return;
+
+        let filtrados = cmdsState.lista.slice();
+        if (cmdsState.filtroCategoria !== 'Todas')
+            filtrados = filtrados.filter(c => c.categoria === cmdsState.filtroCategoria);
+        if (cmdsState.termoBusca)
+            filtrados = filtrados.filter(c =>
+                (c.titulo || '').toLowerCase().includes(cmdsState.termoBusca) ||
+                (c.categoria || '').toLowerCase().includes(cmdsState.termoBusca) ||
+                (c.blocos || []).some(b => (b || '').toLowerCase().includes(cmdsState.termoBusca))
+            );
+
+        filtrados.sort((a, b) => (b.favorito === true) - (a.favorito === true));
+
+        if (contador) contador.textContent = filtrados.length;
+
+        if (!filtrados.length) {
+            lista.innerHTML = `<div class="cmds-empty"><div class="cmds-empty-icon">📋</div><p>${
+                cmdsState.lista.length
+                    ? 'Nenhum comando encontrado para essa busca.'
+                    : 'Nenhum comando ainda. Clique em <strong>➕ Novo Comando</strong> para começar.'
+            }</p></div>`;
+            return;
+        }
+
+        lista.innerHTML = filtrados.map(c => {
+            const fav    = c.favorito === true;
+            const blocos = c.blocos?.length ? c.blocos : (c.conteudo ? [c.conteudo] : []);
+            return `
+            <div class="cmds-linha${fav ? ' fav' : ''}">
+                <button class="cmds-linha-fav" onclick="Comandos.toggleFav('${c.id}')" title="Favoritar">${fav ? '⭐' : '☆'}</button>
+                <div class="cmds-linha-info" onclick="Comandos.copiar('${c.id}')" title="Clique para copiar">
+                    <span class="cmds-linha-nome">${esc(c.titulo)}</span>
+                    <span class="cmds-linha-cat">${esc(c.categoria || 'Outros')}</span>
+                </div>
+                ${blocos.length > 1 ? `<span class="cmds-linha-qtd">${blocos.length} blocos</span>` : ''}
+                <div class="cmds-linha-acoes">
+                    <button class="cmds-acao cmds-acao-copiar" onclick="Comandos.copiar('${c.id}')" title="Copiar">📋</button>
+                    <button class="cmds-acao" onclick="Comandos.editar('${c.id}')" title="Editar">✏️</button>
+                    <button class="cmds-acao cmds-acao-excluir" onclick="Comandos.excluir('${c.id}')" title="Excluir">🗑️</button>
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    renderRecentes() {
+        const sec  = document.getElementById('cmds-recentes-sec');
+        const cont = document.getElementById('cmds-recentes');
+        if (!sec || !cont) return;
+        const ids = JSON.parse(localStorage.getItem(CMDS_RECENTES_KEY) || '[]');
+        const recentes = ids.map(id => cmdsState.lista.find(c => c.id === id)).filter(Boolean);
+        if (!recentes.length) { sec.style.display = 'none'; return; }
+        sec.style.display = '';
+        cont.innerHTML = recentes.map(c =>
+            `<button class="cmds-recente-chip" onclick="Comandos.copiar('${c.id}')">📋 ${esc(c.titulo)}</button>`
+        ).join('');
+    },
+
+    _registrarUso(id) {
+        let r = JSON.parse(localStorage.getItem(CMDS_RECENTES_KEY) || '[]').filter(x => x !== id);
+        r.unshift(id);
+        localStorage.setItem(CMDS_RECENTES_KEY, JSON.stringify(r.slice(0, 6)));
+        Comandos.renderRecentes();
+    },
+
+    _syncContadores() {
+        const total = cmdsState.lista.length;
+        const favs  = cmdsState.lista.filter(c => c.favorito === true).length;
+        const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setEl('hc-comandos',      total || '—');
+        setEl('hc-comandos-favs', favs > 0 ? `⭐ ${favs} fav.` : '');
+        setEl('sb-count-comandos', total || '—');
+    },
+
+    async copiar(id) {
+        const c = cmdsState.lista.find(x => x.id === id);
+        if (!c) return;
+        const blocos = c.blocos?.length ? c.blocos : (c.conteudo ? [c.conteudo] : []);
+        const texto  = blocos.join('\n\n---\n\n');
+        await Comandos._copiarTexto(texto);
+        toast('✅ Comando copiado com sucesso.');
+        Comandos._registrarUso(id);
+    },
+
+    async _copiarTexto(texto) {
+        try {
+            if (navigator.clipboard && window.isSecureContext)
+                await navigator.clipboard.writeText(texto);
+            else {
+                const ta = document.createElement('textarea');
+                ta.value = texto;
+                ta.style.cssText = 'position:fixed;opacity:0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+            }
+        } catch { toast('⚠️ Não foi possível copiar.'); }
+    },
+
+    async toggleFav(id) {
+        const c = cmdsState.lista.find(x => x.id === id);
+        if (!c) return;
+        c.favorito = !c.favorito;
+        Comandos.render();
+        try {
+            await setDoc(doc(db, CMDS_COL, id), { favorito: c.favorito, atualizadoEm: serverTimestamp() }, { merge: true });
+        } catch {}
+        localStorage.setItem(CMDS_CACHE_KEY, JSON.stringify(cmdsState.lista));
+        Comandos._syncContadores();
+    },
+
+    abrirForm() {
+        document.getElementById('cmds-edit-id').value = '';
+        document.getElementById('cmds-modal-titulo').textContent = '➕ Novo Comando';
+        document.getElementById('cmds-f-titulo').value = '';
+        document.getElementById('cmds-f-categoria').value = cmdsState.categorias[0];
+        document.getElementById('cmds-f-favorito').checked = false;
+        document.getElementById('cmds-blocos-container').innerHTML = '';
+        cmdsState.contadorBlocos = 0;
+        Comandos.addBloco('');
+        document.getElementById('cmds-modal').classList.add('active');
+        setTimeout(() => document.getElementById('cmds-f-titulo')?.focus(), 100);
+    },
+
+    editar(id) {
+        const c = cmdsState.lista.find(x => x.id === id);
+        if (!c) return;
+        document.getElementById('cmds-edit-id').value = id;
+        document.getElementById('cmds-modal-titulo').textContent = '✏️ Editar Comando';
+        document.getElementById('cmds-f-titulo').value = c.titulo || '';
+        document.getElementById('cmds-f-categoria').value = c.categoria || cmdsState.categorias[0];
+        document.getElementById('cmds-f-favorito').checked = c.favorito === true;
+        document.getElementById('cmds-blocos-container').innerHTML = '';
+        cmdsState.contadorBlocos = 0;
+        const blocos = c.blocos?.length ? c.blocos : (c.conteudo ? [c.conteudo] : ['']);
+        blocos.forEach(b => Comandos.addBloco(b));
+        document.getElementById('cmds-modal').classList.add('active');
+    },
+
+    fecharForm() {
+        document.getElementById('cmds-modal').classList.remove('active');
+    },
+
+    addBloco(conteudo = '') {
+        cmdsState.contadorBlocos++;
+        const cont = document.getElementById('cmds-blocos-container');
+        if (!cont) return;
+        const div = document.createElement('div');
+        div.className = 'cmds-bloco-item';
+        div.innerHTML = `
+            <div class="cmds-bloco-header">
+                <span class="cmds-bloco-num">Comando ${cont.children.length + 1}</span>
+                <button type="button" class="cmds-bloco-remover" onclick="Comandos.removerBloco(this)" title="Remover">✕</button>
+            </div>
+            <textarea class="cmds-bloco-textarea" rows="5" placeholder="Cole aqui o comando/prompt...">${esc(conteudo)}</textarea>`;
+        cont.appendChild(div);
+        Comandos._renum();
+    },
+
+    removerBloco(btn) {
+        const cont = document.getElementById('cmds-blocos-container');
+        if (cont.children.length <= 1) return toast('⚠️ Deve haver pelo menos um bloco.');
+        btn.closest('.cmds-bloco-item').remove();
+        Comandos._renum();
+    },
+
+    _renum() {
+        document.querySelectorAll('#cmds-blocos-container .cmds-bloco-num').forEach((el, i) => {
+            el.textContent = `Comando ${i + 1}`;
+        });
+    },
+
+    _getBlocos() {
+        return Array.from(document.querySelectorAll('#cmds-blocos-container .cmds-bloco-textarea'))
+            .map(ta => ta.value.trim()).filter(Boolean);
+    },
+
+    async salvar() {
+        const id       = document.getElementById('cmds-edit-id').value;
+        const titulo   = document.getElementById('cmds-f-titulo').value.trim();
+        const categoria= document.getElementById('cmds-f-categoria').value;
+        const favorito = document.getElementById('cmds-f-favorito').checked;
+        if (!titulo) return toast('⚠️ Informe o título.');
+        const blocos = Comandos._getBlocos();
+        if (!blocos.length) return toast('⚠️ Adicione pelo menos um bloco de comando.');
+        const agora = new Date().toISOString();
+
+        if (id) {
+            const orig  = cmdsState.lista.find(c => c.id === id) || {};
+            const dados = { ...orig, titulo, categoria, blocos, favorito, conteudo: blocos.join('\n\n---\n\n'), atualizadoEm: serverTimestamp(), atualizadoEmISO: agora };
+            try { await setDoc(doc(db, CMDS_COL, id), dados, { merge: true }); toast('✅ Comando atualizado.'); }
+            catch { toast('✅ Salvo localmente.'); }
+            const idx = cmdsState.lista.findIndex(c => c.id === id);
+            if (idx >= 0) cmdsState.lista[idx] = { ...dados, id };
+        } else {
+            const ref   = doc(collection(db, CMDS_COL));
+            const dados = { id: ref.id, titulo, categoria, blocos, favorito, conteudo: blocos.join('\n\n---\n\n'), criadoEm: serverTimestamp(), criadoEmISO: agora, atualizadoEm: serverTimestamp(), atualizadoEmISO: agora };
+            try { await setDoc(ref, dados); toast('✅ Comando salvo.'); }
+            catch { toast('✅ Salvo localmente.'); }
+            cmdsState.lista.unshift(dados);
+        }
+
+        localStorage.setItem(CMDS_CACHE_KEY, JSON.stringify(cmdsState.lista));
+        Comandos.fecharForm();
+        Comandos.render();
+        Comandos.renderRecentes();
+        Comandos._syncContadores();
+    },
+
+    async excluir(id) {
+        const c = cmdsState.lista.find(x => x.id === id);
+        if (!c) return;
+        if (!confirm(`Excluir "${c.titulo}"?\n\nEsta ação é permanente.`)) return;
+        try { await deleteDoc(doc(db, CMDS_COL, id)); } catch {}
+        cmdsState.lista = cmdsState.lista.filter(x => x.id !== id);
+        const recentes = JSON.parse(localStorage.getItem(CMDS_RECENTES_KEY) || '[]').filter(r => r !== id);
+        localStorage.setItem(CMDS_CACHE_KEY, JSON.stringify(cmdsState.lista));
+        localStorage.setItem(CMDS_RECENTES_KEY, JSON.stringify(recentes));
+        Comandos.render();
+        Comandos.renderRecentes();
+        Comandos._syncContadores();
+        toast('🗑️ Comando excluído.');
+    },
+
+    abrirFormCat() {
+        document.getElementById('cmds-f-cat-nome').value = '';
+        document.getElementById('cmds-modal-cat').classList.add('active');
+        setTimeout(() => document.getElementById('cmds-f-cat-nome')?.focus(), 100);
+    },
+
+    fecharFormCat() {
+        document.getElementById('cmds-modal-cat').classList.remove('active');
+    },
+
+    async salvarCat() {
+        const nome = document.getElementById('cmds-f-cat-nome').value.trim();
+        if (!nome) return toast('⚠️ Informe o nome da categoria.');
+        if (cmdsState.categorias.includes(nome)) return toast('⚠️ Esta categoria já existe.');
+        const ref = doc(collection(db, CMDS_CAT_COL));
+        try {
+            await setDoc(ref, { id: ref.id, nome, criadoEm: serverTimestamp(), criadoEmISO: new Date().toISOString() });
+            toast('✅ Categoria criada.');
+        } catch { toast('✅ Categoria criada (offline).'); }
+        cmdsState.categorias.push(nome);
+        localStorage.setItem(CMDS_CAT_CACHE, JSON.stringify(cmdsState.categorias));
+        Comandos.fecharFormCat();
+        Comandos._montarFiltrosCats();
+        Comandos._montarSelectCats();
+    },
+};
+
+window.Comandos = Comandos;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 authReady.then(() => {

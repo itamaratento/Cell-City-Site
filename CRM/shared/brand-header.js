@@ -88,6 +88,23 @@
       white-space: nowrap;
       text-transform: uppercase;
     }
+    .brand-header-abbrev {
+      display: none;
+      font-size: 10px;
+      color: #a1a8b3;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+    /* Quando a sidebar está recolhida: exibe sigla, oculta texto completo */
+    body:has(#sidebar-left.collapsed) .brand-header-subtitle,
+    body:has(#sidebar-left.collapsed) .brand-header-divider {
+      display: none;
+    }
+    body:has(#sidebar-left.collapsed) .brand-header-abbrev {
+      display: block;
+    }
 
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
        Título sempre no centro ABSOLUTO da barra — fora do fluxo flex.
@@ -194,11 +211,12 @@
   `;
 
   const BRAND_HTML = `
-    <div class="brand-header" id="brand-header" title="Voltar ao painel">
+    <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
       <div class="brand-header-text">
         <div class="brand-header-title">Cell City Informática</div>
         <div class="brand-header-divider"></div>
-        <div class="brand-header-subtitle">CRM Operacional</div>
+        <div class="brand-header-subtitle">Gestão Empresarial</div>
+        <div class="brand-header-abbrev">CCGE</div>
       </div>
     </div>
   `;

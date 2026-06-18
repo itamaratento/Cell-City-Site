@@ -312,6 +312,22 @@ body {
   white-space: nowrap;
   text-transform: uppercase;
 }
+.brand-header-abbrev {
+  display: none;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+body:has(#sidebar-left.collapsed) .brand-header-subtitle,
+body:has(#sidebar-left.collapsed) .brand-header-divider {
+  display: none;
+}
+body:has(#sidebar-left.collapsed) .brand-header-abbrev {
+  display: block;
+}
 
 /* ============ RELÓGIO PREMIUM (REPOSICIONADO) ============ */
 .meta-clock {

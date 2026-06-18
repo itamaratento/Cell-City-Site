@@ -82,6 +82,11 @@
                     <span class="cat-sb-icon">✅</span>
                     <span class="cat-sb-label">Tarefas</span>
                 </div>
+                <div class="cat-sb-item cat-sb-cmds" data-nav="comandos">
+                    <span class="cat-sb-icon">📋</span>
+                    <span class="cat-sb-label">Comandos</span>
+                    <span class="cat-sb-count" id="sb-count-comandos">—</span>
+                </div>
             </aside>
 
             <!-- ═══════════════════════════════════════════════ -->
@@ -150,6 +155,12 @@
                         <div class="cat-home-card cat-home-tar" onclick="Central.nav('tarefas')">
                             <span class="cat-home-icon">✅</span>
                             <span class="cat-home-label">Tarefas</span>
+                        </div>
+                        <div class="cat-home-card cat-home-cmds" onclick="Central.nav('comandos')">
+                            <span class="cat-home-icon">📋</span>
+                            <span class="cat-home-count cat-home-count-cmds" id="hc-comandos">—</span>
+                            <span class="cat-home-label">Comandos</span>
+                            <span class="cat-home-cmds-favs" id="hc-comandos-favs"></span>
                         </div>
                     </div>
                 </div>
@@ -820,6 +831,43 @@
             </div>
         </div>
 
+        <!-- ===== COMANDOS ===== -->
+        <div class="tab-panel" id="tab-comandos">
+
+            <!-- Topo: busca + botões -->
+            <div class="cmds-topo">
+                <div class="cmds-busca-wrap">
+                    <span class="cmds-busca-icon">🔍</span>
+                    <input type="text" id="cmds-busca" placeholder="Pesquisar comando..." oninput="Comandos.filtrar(this.value)" autocomplete="off">
+                </div>
+                <button class="cmds-btn-nova-cat" onclick="Comandos.abrirFormCat()" title="Nova categoria">➕ Cat.</button>
+                <button class="cmds-btn-novo" onclick="Comandos.abrirForm()">➕ Novo Comando</button>
+            </div>
+
+            <!-- Filtro de categorias -->
+            <div class="cmds-cats-bar" id="cmds-cats-filtro"></div>
+
+            <!-- Últimos utilizados -->
+            <div class="cmds-recentes-sec" id="cmds-recentes-sec" style="display:none">
+                <div class="cmds-sec-titulo">🕒 Últimos utilizados</div>
+                <div class="cmds-recentes" id="cmds-recentes"></div>
+            </div>
+
+            <!-- Header da lista -->
+            <div class="cmds-lista-header">
+                <span>📚 Biblioteca <span class="cmds-contador" id="cmds-contador">0</span></span>
+            </div>
+
+            <!-- Lista de comandos -->
+            <div id="cmds-lista">
+                <div class="cmds-empty">
+                    <div class="cmds-empty-icon">📋</div>
+                    <p>Nenhum comando ainda. Clique em <strong>➕ Novo Comando</strong> para começar.</p>
+                </div>
+            </div>
+
+        </div>
+
             </div><!-- /cat-main -->
         </div><!-- /cat-explorer -->
 
@@ -838,6 +886,60 @@
             <div class="cat-tel-modal-footer">
                 <button class="btn-cancel" onclick="Categorias.fecharModalTel()">Fechar</button>
                 <button class="btn-save" id="cat-tel-modal-salvar-obs" onclick="Categorias.salvarObsTel()">💾 Salvar Observação</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Novo/Editar Comando -->
+    <div id="cmds-modal" class="cmds-modal">
+        <div class="cmds-modal-content cmds-modal-wide">
+            <div class="cmds-modal-header">
+                <h3 id="cmds-modal-titulo">➕ Novo Comando</h3>
+                <button class="cmds-modal-close" onclick="Comandos.fecharForm()">✕</button>
+            </div>
+            <div class="cmds-modal-body">
+                <input type="hidden" id="cmds-edit-id">
+                <div class="cmds-form-group">
+                    <label>Título *</label>
+                    <input type="text" id="cmds-f-titulo" placeholder="Ex: Rodar aquecimento Instagram" autocomplete="off">
+                </div>
+                <div class="cmds-form-group">
+                    <label>Categoria *</label>
+                    <select id="cmds-f-categoria"></select>
+                </div>
+                <div class="cmds-form-group">
+                    <label>Comandos / Prompts</label>
+                    <div id="cmds-blocos-container"></div>
+                    <button type="button" class="cmds-btn-add-bloco" onclick="Comandos.addBloco()">➕ Adicionar bloco</button>
+                </div>
+                <label class="cmds-fav-check">
+                    <input type="checkbox" id="cmds-f-favorito">
+                    <span>⭐ Marcar como favorito</span>
+                </label>
+            </div>
+            <div class="cmds-modal-footer">
+                <button class="cmds-btn-cancelar" onclick="Comandos.fecharForm()">Cancelar</button>
+                <button class="cmds-btn-salvar" onclick="Comandos.salvar()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Nova Categoria -->
+    <div id="cmds-modal-cat" class="cmds-modal">
+        <div class="cmds-modal-content">
+            <div class="cmds-modal-header">
+                <h3>➕ Nova Categoria</h3>
+                <button class="cmds-modal-close" onclick="Comandos.fecharFormCat()">✕</button>
+            </div>
+            <div class="cmds-modal-body">
+                <div class="cmds-form-group">
+                    <label>Nome da categoria *</label>
+                    <input type="text" id="cmds-f-cat-nome" placeholder="Ex: DevOps" autocomplete="off">
+                </div>
+            </div>
+            <div class="cmds-modal-footer">
+                <button class="cmds-btn-cancelar" onclick="Comandos.fecharFormCat()">Cancelar</button>
+                <button class="cmds-btn-salvar" onclick="Comandos.salvarCat()">💾 Salvar</button>
             </div>
         </div>
     </div>
