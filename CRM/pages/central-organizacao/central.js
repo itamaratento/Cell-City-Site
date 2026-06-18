@@ -331,7 +331,7 @@ window.Central = {
 };
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS_SEM_BUSCA = new Set(['monitoramento', 'notas', 'categorias']);
+const TABS_SEM_BUSCA = new Set(['monitoramento', 'notas', 'categorias', 'tarefas']);
 
 document.querySelectorAll('.tab').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -352,6 +352,9 @@ document.querySelectorAll('.tab').forEach(btn => {
         }
         if (btn.dataset.tab === 'notas') {
             Notas.init().catch(console.error);
+        }
+        if (btn.dataset.tab === 'tarefas') {
+            Tarefas.init().catch(console.error);
         }
     });
 });
@@ -1811,6 +1814,358 @@ window.Categorias = {
             });
         });
         await catCarregar();
+    },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO TAREFAS
+// Coleção: tarefas_robo/{roboSlug}  →  {roboNome, tarefas:[{id,nome,descricao,
+//   recorrencia,criadoEm,status,concluidoEm,historico:[{dt}]}]}
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TAR_COL = 'tarefas_robo';
+
+const tarState = {
+    robos:      [],
+    roboAtual:  null,   // { slug, nome, tarefas:[] }
+    editId:     null,
+    histAberto: false,
+};
+
+function tarSlug(nome) {
+    return (nome || '').toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '_').slice(0, 50);
+}
+
+function tarId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function tarFmt(iso) {
+    if (!iso) return '—';
+    try {
+        const d = new Date(iso);
+        return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}) + ' ' +
+               d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    } catch { return '—'; }
+}
+
+function tarFmtData(iso) {
+    if (!iso) return '—';
+    const [y, m, d] = iso.slice(0, 10).split('-');
+    return `${d}/${m}/${y}`;
+}
+
+function tarHoje() { return new Date().toISOString().slice(0, 10); }
+
+function tarGetWeek(date) {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
+
+function tarPrecisaReset(t) {
+    if (t.status !== 'concluida' || !t.concluidoEm || !t.recorrencia || t.recorrencia === 'nenhuma') return false;
+    const hoje   = tarHoje();
+    const concDt = t.concluidoEm.slice(0, 10);
+    if (t.recorrencia === 'diaria')  return concDt < hoje;
+    if (t.recorrencia === 'semanal') {
+        const h = new Date(hoje + 'T12:00:00');
+        const c = new Date(concDt + 'T12:00:00');
+        return tarGetWeek(h) !== tarGetWeek(c) || h.getFullYear() !== c.getFullYear();
+    }
+    if (t.recorrencia === 'mensal') return concDt.slice(0, 7) < hoje.slice(0, 7);
+    return false;
+}
+
+async function tarCarregarRobos() {
+    const snap = await getDoc(doc(db, 'central_organizacao', 'robos'));
+    tarState.robos = snap.exists() ? (snap.data().itens || []) : [];
+}
+
+async function tarCarregarTarefas(roboNome) {
+    const slug = tarSlug(roboNome);
+    const snap = await getDoc(doc(db, TAR_COL, slug));
+    const tarefas = snap.exists() ? (snap.data().tarefas || []) : [];
+    let mudou = false;
+    tarefas.forEach(t => {
+        if (tarPrecisaReset(t)) { t.status = 'pendente'; t.concluidoEm = null; mudou = true; }
+    });
+    if (mudou) await tarPersistir(slug, roboNome, tarefas);
+    return tarefas;
+}
+
+async function tarPersistir(slug, roboNome, tarefas) {
+    await setDoc(doc(db, TAR_COL, slug), { roboNome, tarefas, atualizadoEm: serverTimestamp() });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function tarRenderRobos() {
+    const el = document.getElementById('tar-robos-lista'); if (!el) return;
+    const robos = tarState.robos;
+    if (!robos.length) {
+        el.innerHTML = `<div class="empty">Nenhum robô cadastrado.<br>Adicione robôs na aba <strong>🤖 Robôs & IA</strong> primeiro.</div>`;
+        return;
+    }
+    el.innerHTML = robos.map((r, i) => `
+        <div class="tar-robo-card" onclick="Tarefas.abrirRobo(${i})">
+            ${av(r.nome)}
+            <div class="tar-robo-card-info">
+                <div class="tar-robo-card-nome">${esc(r.nome)}</div>
+                <div class="tar-robo-card-meta">${r.funcao ? esc(r.funcao) : 'Sem função definida'}</div>
+            </div>
+            <span class="tar-robo-card-badge" id="tar-badge-${i}">...</span>
+        </div>`).join('');
+
+    // Carrega badges de progresso em paralelo
+    robos.forEach(async (r, i) => {
+        try {
+            const snap = await getDoc(doc(db, TAR_COL, tarSlug(r.nome)));
+            const tarefas = snap.exists() ? (snap.data().tarefas || []) : [];
+            const total = tarefas.length;
+            const conc  = tarefas.filter(t => t.status === 'concluida').length;
+            const badge = document.getElementById(`tar-badge-${i}`);
+            if (!badge) return;
+            if (!total) { badge.textContent = 'Sem tarefas'; return; }
+            badge.textContent = `${conc}/${total}`;
+            if (conc === total) badge.classList.add('concluido');
+        } catch { const b = document.getElementById(`tar-badge-${i}`); if (b) b.textContent = '—'; }
+    });
+}
+
+function tarRenderProgresso(tarefas) {
+    const total = tarefas.length;
+    const conc  = tarefas.filter(t => t.status === 'concluida').length;
+    const pct   = total ? Math.round(conc / total * 100) : 0;
+    const label = document.getElementById('tar-progresso-label');
+    const fill  = document.getElementById('tar-progresso-fill');
+    if (label) label.textContent = total
+        ? `${conc} de ${total} tarefa${total !== 1 ? 's' : ''} concluída${conc !== 1 ? 's' : ''}`
+        : 'Nenhuma tarefa cadastrada';
+    if (fill) {
+        fill.style.width = pct + '%';
+        fill.className   = 'tar-progresso-fill' + (pct === 100 && total ? ' completo' : '');
+    }
+}
+
+const TAR_REC = {
+    diaria:  { label: '📅 Diária',   cls: 'diaria'  },
+    semanal: { label: '📆 Semanal',  cls: 'semanal' },
+    mensal:  { label: '🗓️ Mensal',   cls: 'mensal'  },
+};
+
+function tarRenderTarefas(tarefas) {
+    const pendEl = document.getElementById('tar-lista-pendentes');
+    const concEl = document.getElementById('tar-lista-concluidas');
+    if (!pendEl || !concEl) return;
+
+    const renderItem = t => {
+        const rec  = TAR_REC[t.recorrencia];
+        const conc = t.status === 'concluida';
+        return `<div class="tar-item${conc ? ' concluida' : ''}">
+            <button class="tar-item-check" onclick="Tarefas.toggle('${t.id}')"
+                title="${conc ? 'Marcar como pendente' : 'Marcar como concluída'}">${conc ? '✓' : ''}</button>
+            <div class="tar-item-body">
+                <div class="tar-item-nome">${esc(t.nome)}</div>
+                ${t.descricao ? `<div class="tar-item-desc">${esc(t.descricao)}</div>` : ''}
+                <div class="tar-item-meta">
+                    ${rec ? `<span class="tar-item-badge ${rec.cls}">${rec.label}</span>` : ''}
+                    <span>Criada ${tarFmtData(t.criadoEm)}</span>
+                    ${conc && t.concluidoEm ? `<span>✓ ${tarFmt(t.concluidoEm)}</span>` : ''}
+                </div>
+            </div>
+            <div class="tar-item-actions">
+                <button class="btn-edit"   onclick="Tarefas.editar('${t.id}')"  title="Editar">✏️</button>
+                <button class="btn-delete" onclick="Tarefas.remover('${t.id}')" title="Remover">🗑️</button>
+            </div>
+        </div>`;
+    };
+
+    const pendentes  = tarefas.filter(t => t.status !== 'concluida');
+    const concluidas = tarefas.filter(t => t.status === 'concluida');
+
+    pendEl.innerHTML = pendentes.length
+        ? pendentes.map(renderItem).join('')
+        : `<div style="color:var(--text3);font-size:13px;padding:12px 0 4px;text-align:center">🎉 Tudo concluído hoje!</div>`;
+
+    concEl.innerHTML = concluidas.length
+        ? concluidas.map(renderItem).join('')
+        : `<div style="color:var(--text3);font-size:12px;padding:6px 0">Nenhuma tarefa concluída ainda.</div>`;
+
+    tarRenderProgresso(tarefas);
+}
+
+function tarRenderHistorico(tarefas) {
+    const el = document.getElementById('tar-historico'); if (!el) return;
+    const entries = [];
+    tarefas.forEach(t => (t.historico || []).forEach(h => entries.push({ nome: t.nome, dt: h.dt, rec: t.recorrencia })));
+    entries.sort((a, b) => (b.dt || '').localeCompare(a.dt || ''));
+    const top = entries.slice(0, 60);
+    if (!top.length) {
+        el.innerHTML = `<div class="empty" style="padding:24px">Nenhuma conclusão registrada ainda.</div>`;
+        return;
+    }
+    const recBadge = r => {
+        if (!r || r === 'nenhuma') return '';
+        const cls = r === 'semanal' ? ' semanal' : r === 'mensal' ? ' mensal' : '';
+        return `<span class="tar-hist-rec${cls}">${r}</span>`;
+    };
+    el.innerHTML = top.map(e => `
+        <div class="tar-hist-item">
+            <span class="tar-hist-nome">${esc(e.nome)}</span>
+            ${recBadge(e.rec)}
+            <span class="tar-hist-dt">✓ ${tarFmt(e.dt)}</span>
+        </div>`).join('');
+}
+
+// ── API pública ───────────────────────────────────────────────────────────────
+
+window.Tarefas = {
+
+    async init() {
+        await tarCarregarRobos();
+        if (tarState.roboAtual) {
+            const tarefas = await tarCarregarTarefas(tarState.roboAtual.nome);
+            tarState.roboAtual.tarefas = tarefas;
+            document.getElementById('tar-view-robos').style.display  = 'none';
+            document.getElementById('tar-view-painel').style.display = '';
+            document.getElementById('tar-robo-nome').textContent     = '🤖 ' + tarState.roboAtual.nome;
+            tarRenderTarefas(tarefas);
+        } else {
+            document.getElementById('tar-view-robos').style.display  = '';
+            document.getElementById('tar-view-painel').style.display = 'none';
+            tarRenderRobos();
+        }
+    },
+
+    async abrirRobo(idx) {
+        const r = tarState.robos[idx]; if (!r) return;
+        const tarefas = await tarCarregarTarefas(r.nome);
+        tarState.roboAtual   = { slug: tarSlug(r.nome), nome: r.nome, tarefas };
+        tarState.editId      = null;
+        tarState.histAberto  = false;
+        document.getElementById('tar-view-robos').style.display  = 'none';
+        document.getElementById('tar-view-painel').style.display = '';
+        document.getElementById('tar-robo-nome').textContent     = '🤖 ' + r.nome;
+        document.getElementById('form-tarefas')?.classList.add('hidden');
+        const histEl  = document.getElementById('tar-historico');
+        const histBtn = document.getElementById('tar-btn-historico');
+        if (histEl)  histEl.style.display = 'none';
+        if (histBtn) histBtn.textContent  = 'Ver histórico';
+        tarRenderTarefas(tarefas);
+    },
+
+    voltarRobos() {
+        tarState.roboAtual = null;
+        document.getElementById('tar-view-painel').style.display = 'none';
+        document.getElementById('tar-view-robos').style.display  = '';
+        tarRenderRobos();
+    },
+
+    abrirForm() {
+        tarState.editId = null;
+        document.getElementById('tar-edit-id').value       = '';
+        document.getElementById('tar-f-nome').value        = '';
+        document.getElementById('tar-f-desc').value        = '';
+        document.getElementById('tar-f-recorrencia').value = 'nenhuma';
+        document.getElementById('form-tarefas').classList.remove('hidden');
+        document.getElementById('tar-f-nome').focus();
+    },
+
+    fecharForm() {
+        document.getElementById('form-tarefas').classList.add('hidden');
+        tarState.editId = null;
+    },
+
+    editar(id) {
+        const r = tarState.roboAtual; if (!r) return;
+        const t = r.tarefas.find(x => x.id === id); if (!t) return;
+        tarState.editId = id;
+        document.getElementById('tar-edit-id').value       = id;
+        document.getElementById('tar-f-nome').value        = t.nome        || '';
+        document.getElementById('tar-f-desc').value        = t.descricao   || '';
+        document.getElementById('tar-f-recorrencia').value = t.recorrencia || 'nenhuma';
+        document.getElementById('form-tarefas').classList.remove('hidden');
+        document.getElementById('tar-f-nome').focus();
+        document.getElementById('form-tarefas').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+
+    async salvar() {
+        const r    = tarState.roboAtual; if (!r) return;
+        const nome = (document.getElementById('tar-f-nome').value || '').trim();
+        if (!nome) { toast('⚠️ Informe o nome da tarefa'); return; }
+        const desc    = (document.getElementById('tar-f-desc').value || '').trim();
+        const rec     = document.getElementById('tar-f-recorrencia').value || 'nenhuma';
+        const tarefas = [...r.tarefas];
+        if (tarState.editId) {
+            const idx = tarefas.findIndex(x => x.id === tarState.editId);
+            if (idx >= 0) tarefas[idx] = { ...tarefas[idx], nome, descricao: desc, recorrencia: rec };
+        } else {
+            tarefas.push({
+                id: tarId(), nome, descricao: desc, recorrencia: rec,
+                criadoEm: tarHoje(), status: 'pendente', concluidoEm: null, historico: [],
+            });
+        }
+        try {
+            await tarPersistir(r.slug, r.nome, tarefas);
+            r.tarefas = tarefas;
+            tarRenderTarefas(tarefas);
+            Tarefas.fecharForm();
+            toast(tarState.editId ? '✅ Tarefa atualizada' : '✅ Tarefa criada');
+        } catch(e) { toast('❌ Erro ao salvar tarefa'); console.error(e); }
+    },
+
+    async toggle(id) {
+        const r = tarState.roboAtual; if (!r) return;
+        const tarefas = [...r.tarefas];
+        const idx = tarefas.findIndex(x => x.id === id); if (idx < 0) return;
+        const t   = { ...tarefas[idx] };
+        const agora = new Date().toISOString();
+        if (t.status === 'pendente') {
+            t.status      = 'concluida';
+            t.concluidoEm = agora;
+            t.historico   = [...(t.historico || []), { dt: agora }];
+        } else {
+            t.status      = 'pendente';
+            t.concluidoEm = null;
+        }
+        tarefas[idx] = t;
+        try {
+            await tarPersistir(r.slug, r.nome, tarefas);
+            r.tarefas = tarefas;
+            tarRenderTarefas(tarefas);
+            if (t.status === 'concluida') toast('✅ Tarefa concluída!');
+        } catch(e) { toast('❌ Erro ao salvar'); console.error(e); }
+    },
+
+    async remover(id) {
+        if (!confirm('Remover esta tarefa?')) return;
+        const r = tarState.roboAtual; if (!r) return;
+        const tarefas = r.tarefas.filter(x => x.id !== id);
+        try {
+            await tarPersistir(r.slug, r.nome, tarefas);
+            r.tarefas = tarefas;
+            tarRenderTarefas(tarefas);
+            toast('🗑 Tarefa removida');
+        } catch(e) { toast('❌ Erro ao remover'); console.error(e); }
+    },
+
+    toggleHistorico() {
+        tarState.histAberto = !tarState.histAberto;
+        const el  = document.getElementById('tar-historico');
+        const btn = document.getElementById('tar-btn-historico');
+        if (tarState.histAberto) {
+            if (el)  el.style.display = '';
+            if (btn) btn.textContent  = 'Ocultar histórico';
+            tarRenderHistorico(tarState.roboAtual?.tarefas || []);
+        } else {
+            if (el)  el.style.display = 'none';
+            if (btn) btn.textContent  = 'Ver histórico';
+        }
     },
 };
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Cell City — Central Automação</title>
-    <link rel="stylesheet" href="central.css?v=20260617">
+    <link rel="stylesheet" href="central.css?v=20260618">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -36,6 +36,7 @@
             <button class="tab" data-tab="monitoramento">🤖 Monitoramento</button>
             <button class="tab" data-tab="notas">📝 Notas</button>
             <button class="tab" data-tab="categorias">📁 Categorias</button>
+            <button class="tab" data-tab="tarefas">✅ Tarefas</button>
         </div>
 
         <!-- ===== WHATSAPP ===== -->
@@ -573,6 +574,73 @@
             </div>
         </div>
 
+        <!-- ===== TAREFAS ===== -->
+        <div class="tab-panel" id="tab-tarefas">
+
+            <!-- Vista: lista de robôs -->
+            <div id="tar-view-robos">
+                <div class="section-header">
+                    <div class="section-title">🤖 Selecionar Robô</div>
+                </div>
+                <div id="tar-robos-lista"></div>
+            </div>
+
+            <!-- Vista: tarefas do robô selecionado -->
+            <div id="tar-view-painel" style="display:none">
+
+                <div class="tar-robo-header">
+                    <button class="cat-btn-voltar" onclick="Tarefas.voltarRobos()">← Robôs</button>
+                    <div class="tar-robo-nome" id="tar-robo-nome"></div>
+                    <button class="btn-add" onclick="Tarefas.abrirForm()">+ Tarefa</button>
+                </div>
+
+                <!-- Progresso do dia -->
+                <div class="tar-progresso-box">
+                    <div class="tar-progresso-label" id="tar-progresso-label">Carregando...</div>
+                    <div class="tar-progresso-barra">
+                        <div class="tar-progresso-fill" id="tar-progresso-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Formulário nova/editar tarefa -->
+                <div class="form-box hidden" id="form-tarefas">
+                    <input type="hidden" id="tar-edit-id">
+                    <input class="field" id="tar-f-nome" placeholder="Nome da tarefa *" maxlength="80" autocomplete="off">
+                    <textarea class="cat-textarea" id="tar-f-desc" placeholder="Descrição detalhada (opcional)" rows="3"></textarea>
+                    <select class="field" id="tar-f-recorrencia">
+                        <option value="nenhuma">🔂 Sem recorrência</option>
+                        <option value="diaria">📅 Diária — repete todo dia</option>
+                        <option value="semanal">📆 Semanal — repete toda semana</option>
+                        <option value="mensal">🗓️ Mensal — repete todo mês</option>
+                    </select>
+                    <div class="form-actions">
+                        <button class="btn-save" onclick="Tarefas.salvar()">💾 Salvar</button>
+                        <button class="btn-cancel" onclick="Tarefas.fecharForm()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Tarefas pendentes -->
+                <div class="section-header" style="margin-top:8px">
+                    <div class="section-title">⏳ Pendentes</div>
+                </div>
+                <div id="tar-lista-pendentes"></div>
+
+                <!-- Tarefas concluídas -->
+                <div class="section-header" style="margin-top:16px">
+                    <div class="section-title">✅ Concluídas hoje</div>
+                </div>
+                <div id="tar-lista-concluidas"></div>
+
+                <!-- Histórico -->
+                <div class="section-header" style="margin-top:20px">
+                    <div class="section-title">📜 Histórico</div>
+                    <button class="tar-btn-hist" id="tar-btn-historico" onclick="Tarefas.toggleHistorico()">Ver histórico</button>
+                </div>
+                <div id="tar-historico" style="display:none"></div>
+
+            </div>
+        </div>
+
     </main>
 
     <div class="toast hidden" id="toast"></div>
@@ -593,7 +661,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="central.js?v=20260617b"></script>
+    <script type="module" src="central.js?v=20260618"></script>
     <script type="module" src="../../shared/favoritos.js?v=20260617"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

@@ -926,3 +926,137 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     display:flex; gap:8px; justify-content:flex-end;
     padding:14px 18px; border-top:1px solid var(--border);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MÓDULO TAREFAS
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Tarefas → Rosa */
+.tab[data-tab="tarefas"] {
+    background:rgba(244,114,182,0.1); border-color:rgba(244,114,182,0.28); color:#F472B6;
+}
+.tab[data-tab="tarefas"]:hover {
+    background:rgba(244,114,182,0.18); border-color:rgba(244,114,182,0.5);
+    box-shadow:0 6px 20px rgba(244,114,182,0.2);
+}
+.tab[data-tab="tarefas"].active {
+    background:rgba(244,114,182,0.22); border-color:rgba(244,114,182,0.65); color:#fbcfe8;
+    box-shadow:0 0 28px rgba(244,114,182,0.28),inset 0 1px 0 rgba(244,114,182,0.3);
+}
+
+/* ── Header do robô selecionado ── */
+.tar-robo-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.tar-robo-nome   { font-size:17px; font-weight:800; color:var(--text); flex:1; letter-spacing:-.3px; }
+
+/* ── Barra de progresso ── */
+.tar-progresso-box {
+    background:rgba(255,255,255,0.025); border:1px solid rgba(255,255,255,0.06);
+    border-radius:14px; padding:14px 16px; margin-bottom:18px;
+}
+.tar-progresso-label { font-size:13px; font-weight:700; color:var(--text2); margin-bottom:10px; }
+.tar-progresso-barra {
+    height:8px; background:rgba(255,255,255,0.07); border-radius:100px; overflow:hidden;
+}
+.tar-progresso-fill {
+    height:100%; width:0%;
+    background:linear-gradient(90deg,#00C853,#00E676);
+    border-radius:100px;
+    transition:width 0.4s cubic-bezier(0.4,0,0.2,1);
+    box-shadow:0 0 10px rgba(0,200,83,0.4);
+}
+.tar-progresso-fill.completo {
+    background:linear-gradient(90deg,#FFD700,#FFE066);
+    box-shadow:0 0 10px rgba(255,215,0,0.4);
+}
+
+/* ── Card de robô na lista ── */
+.tar-robo-card {
+    background:linear-gradient(135deg,rgba(20,24,22,0.8),rgba(14,17,15,0.9));
+    border:1px solid var(--border); border-radius:var(--radius);
+    padding:15px 16px; display:flex; align-items:center; gap:14px;
+    cursor:pointer; transition:all var(--transition); box-shadow:var(--shadow-card);
+    margin-bottom:10px;
+}
+.tar-robo-card:hover {
+    border-color:rgba(244,114,182,0.3); box-shadow:var(--shadow-hover); transform:translateY(-1px);
+}
+.tar-robo-card-info { flex:1; min-width:0; }
+.tar-robo-card-nome { font-size:15px; font-weight:700; color:var(--text); margin-bottom:4px; }
+.tar-robo-card-meta { font-size:12px; color:var(--text3); }
+.tar-robo-card-badge {
+    font-size:11px; font-weight:800; padding:4px 11px;
+    border-radius:100px; white-space:nowrap; flex-shrink:0;
+    background:rgba(244,114,182,0.1); border:1px solid rgba(244,114,182,0.25); color:#F472B6;
+}
+.tar-robo-card-badge.concluido {
+    background:var(--green-dim2); border-color:var(--green-border); color:var(--green-light);
+}
+
+/* ── Item de tarefa (checklist) ── */
+.tar-item {
+    display:flex; align-items:flex-start; gap:12px; padding:13px 15px;
+    background:linear-gradient(135deg,rgba(20,24,22,0.8),rgba(14,17,15,0.9));
+    border:1px solid var(--border); border-radius:var(--radius);
+    margin-bottom:8px; transition:all var(--transition); box-shadow:var(--shadow-card);
+}
+.tar-item:hover { border-color:var(--border-hover); }
+.tar-item.concluida { opacity:.6; }
+
+.tar-item-check {
+    width:22px; height:22px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.18);
+    background:rgba(255,255,255,0.03);
+    cursor:pointer; flex-shrink:0; margin-top:2px;
+    display:flex; align-items:center; justify-content:center;
+    transition:all var(--transition);
+    font-size:13px; font-weight:800; color:transparent; font-family:var(--font);
+}
+.tar-item-check:hover {
+    border-color:rgba(0,200,83,0.55); background:var(--green-dim); color:var(--green-light);
+}
+.tar-item.concluida .tar-item-check {
+    border-color:var(--green); background:var(--green-dim2); color:var(--green-light);
+}
+.tar-item-body  { flex:1; min-width:0; }
+.tar-item-nome  {
+    font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; line-height:1.4;
+}
+.tar-item.concluida .tar-item-nome { text-decoration:line-through; color:var(--text3); }
+.tar-item-desc  { font-size:12px; color:var(--text3); line-height:1.5; margin-bottom:4px; }
+.tar-item-meta  {
+    font-size:11px; color:var(--text3); display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.tar-item-badge { font-size:10px; font-weight:700; padding:2px 7px; border-radius:100px; }
+.tar-item-badge.diaria  { background:rgba(0,200,83,0.1); border:1px solid rgba(0,200,83,0.22); color:var(--green-light); }
+.tar-item-badge.semanal { background:rgba(33,150,243,0.1); border:1px solid rgba(33,150,243,0.25); color:#42A5F5; }
+.tar-item-badge.mensal  { background:rgba(156,39,176,0.1); border:1px solid rgba(156,39,176,0.25); color:#CE93D8; }
+.tar-item-actions { display:flex; gap:5px; flex-shrink:0; align-items:flex-start; margin-top:1px; }
+
+/* ── Botão "Ver histórico" ── */
+.tar-btn-hist {
+    background:rgba(255,255,255,0.04); border:1px solid var(--border);
+    color:var(--text3); font-size:11px; font-weight:700;
+    border-radius:100px; padding:5px 12px;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+    transition:all var(--transition);
+}
+.tar-btn-hist:hover { background:rgba(255,255,255,0.08); border-color:var(--border-hover); color:var(--text2); }
+
+/* ── Histórico de conclusões ── */
+.tar-hist-item {
+    display:flex; align-items:center; gap:10px; padding:9px 13px;
+    background:rgba(255,255,255,0.02); border:1px solid var(--border);
+    border-radius:var(--radius-sm); margin-bottom:6px; font-size:12px;
+}
+.tar-hist-nome {
+    font-weight:700; color:var(--text2); flex:1; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.tar-hist-dt  { font-size:11px; color:var(--text3); white-space:nowrap; flex-shrink:0; }
+.tar-hist-rec {
+    font-size:10px; font-weight:700; flex-shrink:0;
+    color:var(--green-light); background:var(--green-dim); border:1px solid var(--green-border);
+    border-radius:100px; padding:1px 6px;
+}
+.tar-hist-rec.semanal { color:#42A5F5; background:rgba(33,150,243,0.1); border-color:rgba(33,150,243,0.25); }
+.tar-hist-rec.mensal  { color:#CE93D8; background:rgba(156,39,176,0.1); border-color:rgba(156,39,176,0.25); }
