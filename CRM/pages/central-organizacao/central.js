@@ -500,8 +500,7 @@ function atualizarHomeCards() {
 const ABA_FIXADA_KEY = 'cc_aba_fixada_central';
 
 (function restaurarSecaoFixada() {
-    const fixada = localStorage.getItem(ABA_FIXADA_KEY);
-    navegarParaSecao(fixada && SECAO_TITULO[fixada] ? fixada : 'home');
+    navegarParaSecao('home');
 })();
 
 // ══════════════════════════════════════════════════════════════════════════════
