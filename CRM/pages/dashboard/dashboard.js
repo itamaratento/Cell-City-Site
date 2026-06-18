@@ -49,10 +49,50 @@ class Dashboard {
         ]
       }
     };
+    this._limparAlertasCache();
     this.init();
   }
 
-  init() {
+  /** ===== LIMPA TODOS OS ALERTAS E CACHES ANTIGOS ===== */
+  _limparAlertasCache() {
+    // Remove todas as chaves do localStorage relacionadas a alertas
+    const keysParaLimpar = [
+      'cc_alertas_badge',
+      'cc_config_alertas', 
+      'alarme_os_config',
+      'cc_nota_uid',
+      'cellcity_note_',
+    ];
+    keysParaLimpar.forEach(key => {
+      try { localStorage.removeItem(key); } catch {}
+    });
+    // Remove chaves com prefixo cellcity_note_
+    try {
+      Object.keys(localStorage).forEach(k => {
+        if (k.startsWith('cellcity_note_') || k.startsWith('cc_')) {
+          localStorage.removeItem(k);
+        }
+      });
+    } catch {}
+    console.log('🧹 [_limparAlertasCache] Cache de alertas limpo');
+    
+    // Tenta desregistrar Service Worker para parar notificações do Ubuntu
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(reg => {
+          reg.unregister().then(success => {
+            console.log('🧹 [SW] Service Worker desregistrado:', success);
+          });
+        });
+      }).catch(e => console.warn('🧹 [SW] Erro ao desregistrar:', e));
+    }
+    
+    // Limpa IndexedDB (onde o SW salva config)
+    try {
+      const req = indexedDB.deleteDatabase('AlarmeOSDB');
+      req.onsuccess = () => console.log('🧹 [IndexedDB] AlarmeOSDB removido');
+    } catch {}
+  }
     this._verificarFechamentoCaixa();
     this.setupNotas();
     this.setupClock();
@@ -549,6 +589,16 @@ class Dashboard {
   async gerarAlertas() {
     const alertas = [];
     const now = new Date();
+    
+    // ═══════════════════════════════════════════════════════════════
+    // 🚫 ALERTAS AUTOMÁTICOS DESATIVADOS
+    // Para reativar, mude esta flag para false ou remova este bloco
+    // ═══════════════════════════════════════════════════════════════
+    if (this._alertasAutomaticosDesativados !== false) {
+      console.log('🔇 [gerarAlertas] Alertas automáticos DESATIVADOS (retornando apenas agenda)');
+      // Ainda gera alertas da Ação da Semana (Agenda) que são manuais
+    }
+    // ═══════════════════════════════════════════════════════════════
 
     // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
     const getDeliveryDate = (os) => {
@@ -667,6 +717,8 @@ class Dashboard {
         });
       }
 
+      // ===== BLOCO DE ALERTAS AUTOMÁTICOS (desativados via flag) =====
+      if (this._alertasAutomaticosDesativados === false) {
       const osSnap = await getDocs(collection(db, 'os'));
       const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
 
@@ -936,6 +988,8 @@ class Dashboard {
           _titulo: 'Orçamentos Sem Resposta',
         });
       }
+      }
+      // ===== FIM DO BLOCO DE ALERTAS AUTOMÁTICOS =====
     } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
 
     return alertas;
@@ -1946,7 +2000,9 @@ class Dashboard {
       }
 
       const CAT_COR = { critico: '#ef4444', atencao: '#f59e0b', crm: '#3b82f6' };
-      body.innerHTML = alertas.map(a => {
+      
+      // Monta lista de alertas + botão "Excluir Todos"
+      const alertasHtml = alertas.map(a => {
         const cor = CAT_COR[a.cat] || '#6b7280';
         return `<div class="lista-alerta-item" style="border-left-color:${cor};">
           <div class="lista-alerta-topo">
@@ -1957,6 +2013,82 @@ class Dashboard {
           ${a.detail ? `<div class="lista-alerta-detail">${this.escapeHtml(a.detail)}</div>` : ''}
         </div>`;
       }).join('');
+      
+      body.innerHTML = \`
+        <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+          <button id="btn-excluir-todos-alertas" class="btn-excluir-todos" style="
+            background: #ef4444; color: white; border: none; border-radius: 8px;
+            padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+          " onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+            🗑 Excluir Todos os Alertas
+          </button>
+          <span style="color: var(--text-tertiary); font-size: 12px;">\${alertas.length} alerta(s) encontrado(s)</span>
+        </div>
+        \${alertasHtml}
+      \`;
+      
+      // Handler do botão "Excluir Todos"
+      const btnExcluir = document.getElementById('btn-excluir-todos-alertas');
+      if (btnExcluir) {
+        btnExcluir.addEventListener('click', () => {
+          // Cria modal de confirmação
+          const confirmOverlay = document.createElement('div');
+          confirmOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:100000;display:flex;align-items:center;justify-content:center;';
+          confirmOverlay.innerHTML = \`
+            <div style="background:#1e1e32;border-radius:16px;padding:32px 36px;max-width:420px;width:90%;text-align:center;border:1px solid rgba(239,68,68,0.2);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+              <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
+              <h3 style="color:#fff;margin:0 0 8px;font-size:18px;">Excluir Todos os Alertas?</h3>
+              <p style="color:#999;margin:0 0 24px;font-size:14px;line-height:1.5;">
+                Tem certeza que deseja excluir <strong style="color:#ef4444;">todos</strong> os \${alertas.length} alerta(s)?
+                <br>Esta ação limpa o cache local e dispensa todos os alertas atuais.
+              </p>
+              <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="btn-cancelar-exclusao" style="background:#2a2a40;color:#ccc;border:none;border-radius:10px;padding:12px 28px;font-size:14px;cursor:pointer;flex:1;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#2a2a40'">Cancelar</button>
+                <button id="btn-confirmar-exclusao" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;flex:1;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">🗑 Excluir Todos</button>
+              </div>
+            </div>
+          \`;
+          document.body.appendChild(confirmOverlay);
+          
+          document.getElementById('btn-cancelar-exclusao').addEventListener('click', () => confirmOverlay.remove());
+          document.getElementById('btn-confirmar-exclusao').addEventListener('click', () => {
+            // Limpa TODOS os alertas
+            try {
+              // 1. Limpa localStorage
+              const keysParaLimpar = [
+                'cc_alertas_badge', 'cc_config_alertas', 'alarme_os_config',
+                'cc_nota_uid',
+              ];
+              keysParaLimpar.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+              // Remove chaves com prefixo
+              Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('cellcity_note_') || k.startsWith('cc_')) {
+                  try { localStorage.removeItem(k); } catch {}
+                }
+              });
+              
+              // 2. Desregistra Service Worker
+              if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(regs => {
+                  regs.forEach(r => r.unregister());
+                });
+              }
+              
+              // 3. Remove IndexedDB
+              try { indexedDB.deleteDatabase('AlarmeOSDB'); } catch {}
+              
+              console.log('🧹 Todos os alertas excluídos!');
+            } catch (e) { console.warn('Erro ao excluir alertas:', e); }
+            
+            confirmOverlay.remove();
+            modal.style.display = 'none';
+            
+            // Recarrega a página para reset completo
+            setTimeout(() => window.location.reload(), 300);
+          });
+        });
+      }
     } catch (e) {
       if (body) body.innerHTML = '<div class="lista-alertas-loading">Erro ao carregar alertas.</div>';
       console.warn('abrirListaAlertas:', e);
