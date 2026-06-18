@@ -1,4 +1,4 @@
-import { db, collection, addDoc, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -792,13 +792,12 @@ function renderDetail() {
     }
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
-    const _wppAvisarBtn = STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-ghost" onclick="notificarClienteOS('${os.id}')" style="color:#25d366">💬 Avisar no WhatsApp</button>` : '';
     const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
     const _ultimoWpp = (os.wppHistorico || []).slice(-1)[0];
     const _wppInd = _ultimoWpp
         ? `<div id="wpp-os-indicator" style="font-size:11px;color:#22c55e;margin-top:2px;">🟢 ${_ultimoWpp.label} • ${_ultimoWpp.data} ${_ultimoWpp.hora}</div>`
         : `<div id="wpp-os-indicator" style="font-size:11px;color:var(--text3);margin-top:2px;">🟡 Nenhum WhatsApp enviado</div>`;
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div>${_wppAvisarBtn}<button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     html += _wppInd;
     c.innerHTML = html;
     updateSaveUI();
@@ -1079,21 +1078,7 @@ async function saveOSEdit() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-async function changeStatus(newStatus) {
-    if (!currentOS) return;
-    window.markUnsaved();
-    const old = currentOS.status;
-    currentOS.status = newStatus;
-    currentOS.updatedAt = new Date().toISOString();
-    currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
-    await saveCurrentOS();
-    // Integrações ao marcar como entregue
-    if (newStatus === 'entregue') {
-        await gerarLancamentoFinanceiro(currentOS);
-        await agendarPosVenda(currentOS);
-    }
-    renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved();
-}
+async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 
@@ -1120,17 +1105,7 @@ function addObservation() { const input = document.getElementById('obs-input'); 
 
 function addPhotoToOS() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = function(e) { for (let f of e.target.files) { const r = new FileReader(); r.onload = function(ev) { const img = new Image(); img.onload = async function() { const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; if(w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); currentOS.photos.push(c.toDataURL('image/jpeg', 0.7)); await saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); window.markSaved(); }; img.src = ev.target.result; }; r.readAsDataURL(f); } }; input.click(); }
 
-async function markDelivered() {
-    if (!currentOS) return;
-    window.markUnsaved();
-    currentOS.status = 'entregue';
-    currentOS.updatedAt = new Date().toISOString();
-    currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
-    await saveCurrentOS();
-    await gerarLancamentoFinanceiro(currentOS);
-    await agendarPosVenda(currentOS);
-    renderDetail(); showToast('✅ Entregue'); window.markSaved();
-}
+async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
@@ -2359,111 +2334,12 @@ function verificarConversaoPortalOS() {
     }
 }
 
-// ===== INTEGRAÇÕES ENTRE MÓDULOS =====
-
-// ── Fase 1: Buscar cliente pelo telefone ──────────────────────────────────────
-async function buscarClientePorTelefone(telefone) {
-    const digitos = (telefone || '').replace(/\D/g, '');
-    if (digitos.length < 8) return;
-    try {
-        let snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', digitos)));
-        if (snap.empty) snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', telefone.trim())));
-        if (snap.empty) return;
-        preencherOScomCliente(snap.docs[0].id, snap.docs[0].data());
-    } catch (e) {
-        console.warn('[Integração] Erro ao buscar cliente:', e);
-    }
-}
-
-function preencherOScomCliente(clienteId, cliente) {
-    const elNome = document.getElementById('f-nome');
-    const elHiddenId = document.getElementById('os-cliente-id');
-    const feedback = document.getElementById('os-cliente-encontrado');
-    if (elNome && !elNome.value) elNome.value = cliente.name || '';
-    if (elHiddenId) elHiddenId.value = clienteId;
-    if (feedback) {
-        feedback.textContent = `✅ Cliente encontrado: ${cliente.name}`;
-        feedback.style.display = 'block';
-        setTimeout(() => { feedback.style.display = 'none'; }, 3000);
-    }
-}
-
-// ── Fase 2: Gerar lançamento no Financeiro ────────────────────────────────────
-async function gerarLancamentoFinanceiro(os) {
-    const valor = parseFloat(os.valor) || 0;
-    if (valor <= 0) return;
-    try {
-        await addDoc(collection(db, 'caixa_lancamentos'), {
-            descricao: `OS ${os.id} — ${os.clientName || ''}`,
-            valor: valor,
-            tipo: 'entrada',
-            data: new Date().toISOString().slice(0, 10),
-            osId: os.id,
-            clienteId: document.getElementById('os-cliente-id')?.value || '',
-            metodo: 'dinheiro',
-            categoria: 'serviço',
-            criadoEm: serverTimestamp()
-        });
-        console.log('[Integração] Lançamento financeiro criado para', os.id);
-    } catch (e) {
-        console.warn('[Integração] Erro ao gerar lançamento:', e);
-    }
-}
-
-// ── Fase 5: Agendar Pós-Venda ─────────────────────────────────────────────────
-async function agendarPosVenda(os) {
-    const servico = (os.defect || os.category || '').toLowerCase();
-    const precisaPosVenda = ['reparo', 'conserto', 'manutenção', 'formatação', 'troca', 'tela', 'bateria', 'conector'].some(s => servico.includes(s));
-    if (!precisaPosVenda && os.category !== 'celular' && os.category !== 'notebook' && os.category !== 'impressora') return;
-    const prazo = 7;
-    const dataContato = new Date();
-    dataContato.setDate(dataContato.getDate() + prazo);
-    try {
-        await addDoc(collection(db, 'posvenda_contatos'), {
-            osId: os.id,
-            clienteNome: os.clientName || '',
-            clienteTel: os.phone || '',
-            prazo: prazo,
-            dataContato: dataContato.toISOString().slice(0, 10),
-            status: 'pendente',
-            ativo: true,
-            criadoEm: serverTimestamp()
-        });
-        console.log('[Integração] Pós-venda agendado para', os.id);
-    } catch (e) {
-        console.warn('[Integração] Erro ao agendar pós-venda:', e);
-    }
-}
-
-// ── Fase 6: Notificar cliente via WhatsApp ────────────────────────────────────
-function notificarClienteOS(osId) {
-    const os = localOS.find(o => o.id === osId) || currentOS;
-    if (!os) return;
-    const tel = (os.phone || '').replace(/\D/g, '');
-    if (!tel) { showToast('⚠️ Cliente sem telefone cadastrado'); return; }
-    const nome = os.clientName || 'Cliente';
-    const valorStr = os.valor ? `\nValor: R$ ${parseFloat(os.valor).toFixed(2)}` : '';
-    const msg = encodeURIComponent(
-        `Olá ${nome}! 🎉\n\nSeu serviço ficou PRONTO! ✅\n${os.id}${valorStr}\n\nPode passar para retirar? 😊\n\n📍 Cell City Informática`
-    );
-    window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
-}
-window.notificarClienteOS = notificarClienteOS;
-
 // ===== INIT =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
-    const phoneInput = document.getElementById('f-telefone');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
-        let _timerBuscaCliente;
-        phoneInput.addEventListener('input', e => {
-            clearTimeout(_timerBuscaCliente);
-            _timerBuscaCliente = setTimeout(() => buscarClientePorTelefone(e.target.value), 800);
-        });
-    }
+    const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
     const logoEl = document.querySelector('.header-logo');
     if (logoEl && !logoEl.dataset.logoHandler) {
         logoEl.addEventListener('click', () => showScreen('home'));

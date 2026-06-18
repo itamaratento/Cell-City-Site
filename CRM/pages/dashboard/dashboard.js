@@ -1347,7 +1347,7 @@ class Dashboard {
     if (this._searchLoading) return this._searchLoading;
 
     this._searchLoading = (async () => {
-      const idx = { os: [], clientes: [], produtos: [] };
+      const idx = { os: [], clientes: [], produtos: [], fornecedores: [], compras: [] };
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
       try {
@@ -1402,6 +1402,38 @@ class Dashboard {
         });
       } catch (e) { console.warn('[Busca] Produtos:', e); }
 
+      // ----- Fornecedores -----
+      try {
+        const snap = await getDocs(collection(db, 'fornecedores'));
+        snap.forEach(d => {
+          const f = { ...d.data() };
+          const tel = f.telefone1 || f.whatsapp || '';
+          idx.fornecedores.push({
+            id: d.id,
+            title: f.nome || '—',
+            sub: `🏢 ${f.empresa || ''}${tel ? ' · 📞 ' + tel : ''}${f.cidade ? ' · ' + f.cidade : ''}`,
+            search: `${f.nome || ''} ${f.empresa || ''} ${tel} ${f.cidade || ''}`.toLowerCase(),
+            url: `../../pages/fornecedor/index.html`
+          });
+        });
+      } catch (e) { console.warn('[Busca] Fornecedores:', e); }
+
+      // ----- Lista de Compras -----
+      try {
+        const snap = await getDocs(collection(db, 'fornecedor_compras'));
+        snap.forEach(d => {
+          const c = { ...d.data() };
+          if (c.status === 'feita') return;
+          idx.compras.push({
+            id: d.id,
+            title: c.nome || '—',
+            sub: `🛒 Qtd: ${c.quantidade || 1} · ${c.urgencia || 'media'}${c.obs ? ' · ' + c.obs : ''}`,
+            search: `${c.nome || ''} ${c.obs || ''}`.toLowerCase(),
+            url: `../../pages/fornecedor/index.html`
+          });
+        });
+      } catch (e) { console.warn('[Busca] Compras:', e); }
+
       this._searchIndex = idx;
       this._searchLoadedAt = Date.now();
       this._searchLoading = null;
@@ -1431,9 +1463,11 @@ class Dashboard {
     }
 
     const groups = [];
-    const osR = filt(idx.os);       if (osR.length) groups.push({ title: 'Ordens de Serviço', icon: '📦', items: osR });
-    const clR = filt(idx.clientes); if (clR.length) groups.push({ title: 'Clientes', icon: '👥', items: clR });
-    const prR = filt(idx.produtos); if (prR.length) groups.push({ title: 'Produtos / Estoque', icon: '📦', items: prR });
+    const osR = filt(idx.os);            if (osR.length) groups.push({ title: 'Ordens de Serviço', icon: '📋', items: osR });
+    const clR = filt(idx.clientes);      if (clR.length) groups.push({ title: 'Clientes', icon: '👤', items: clR });
+    const prR = filt(idx.produtos);      if (prR.length) groups.push({ title: 'Estoque', icon: '📦', items: prR });
+    const fnR = filt(idx.fornecedores);  if (fnR.length) groups.push({ title: 'Fornecedores', icon: '🏢', items: fnR });
+    const cpR = filt(idx.compras);       if (cpR.length) groups.push({ title: 'Lista de Compras', icon: '🛒', items: cpR });
 
     // Módulos (lista estática já existente em state.searchData.modulos)
     const modR = (this.state.searchData.modulos || [])

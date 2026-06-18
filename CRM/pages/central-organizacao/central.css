@@ -612,6 +612,39 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     color:var(--text); font-size:14px; font-family:inherit;
     padding:11px 15px; outline:none; transition:all var(--transition); line-height:1.5;
 }
+.cmd-modal-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 22px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all var(--transition);
+    line-height: 1;
+    font-family: var(--font);
+}
+.cmd-modal-close:hover {
+    color: var(--text);
+    background: rgba(255,255,255,0.06);
+}
+
+.cat-btn-danger {
+    border-color: rgba(248,113,113,0.25) !important;
+    background: rgba(248,113,113,0.08) !important;
+    color: var(--red) !important;
+}
+.cat-btn-danger:hover {
+    border-color: rgba(248,113,113,0.4) !important;
+    background: rgba(248,113,113,0.14) !important;
+}
+
+.cat-cor-palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .cat-textarea:focus {
     border-color:rgba(0,200,83,0.45); background:rgba(255,255,255,0.06);
     box-shadow:0 0 0 3px rgba(0,200,83,0.08);

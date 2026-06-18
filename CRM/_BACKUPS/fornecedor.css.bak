@@ -592,17 +592,6 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
   color: #fbbf24;
 }
 
-.compra-btn-receber {
-  border-color: rgba(0,200,83,0.25);
-  background: rgba(0,200,83,0.08);
-  color: var(--green-l, #00e676);
-}
-.compra-btn-receber:hover {
-  border-color: rgba(0,200,83,0.4);
-  background: rgba(0,200,83,0.14);
-  box-shadow: 0 0 14px rgba(0,200,83,0.12);
-}
-
 .compra-feita {
   opacity: 0.6;
   border-color: rgba(0,200,83,0.15);

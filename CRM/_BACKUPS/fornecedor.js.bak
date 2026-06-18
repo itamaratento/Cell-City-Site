@@ -3,8 +3,8 @@
    ============================================================ */
 
 import {
-  db, collection, doc, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
-  query, where, serverTimestamp
+  db, collection, doc, getDocs, setDoc, updateDoc, deleteDoc,
+  serverTimestamp
 } from '../../scripts/firebase.js';
 
 /* ── Coleções Firestore ──────────────────────────────────────── */
@@ -372,7 +372,6 @@ function renderCompras(itens) {
             onclick="Forn.toggleFeita('${item.id}', ${feita})" title="${feita ? 'Desmarcar' : 'Marcar como feita'}">
             ${feita ? '↩ Desmarcar' : '✅ Feita'}
           </button>
-          ${!feita ? `<button class="compra-btn compra-btn-receber" onclick="Forn.receberItem('${item.id}')" title="Dar entrada no estoque">📦 Recebi</button>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -620,41 +619,6 @@ document.getElementById('ft-salvar').addEventListener('click', salvarTendencia);
 document.getElementById('ft-cancelar').addEventListener('click', fecharFormTendencia);
 
 /* ═══════════════════════════════════════════════════════════════
-   INTEGRAÇÃO: FORNECEDOR → ESTOQUE
-   ═══════════════════════════════════════════════════════════════ */
-async function receberItemNoEstoque(item) {
-  const nome = (item.nome || '').trim();
-  const qtd  = parseInt(item.quantidade) || 1;
-  if (!nome) return;
-  try {
-    const snap = await getDocs(query(collection(db, COL_ESTOQUE), where('nome', '==', nome)));
-    if (!snap.empty) {
-      const prodRef = doc(db, COL_ESTOQUE, snap.docs[0].id);
-      const atual = snap.docs[0].data().quantidade || 0;
-      await updateDoc(prodRef, { quantidade: atual + qtd, atualizadoEm: serverTimestamp() });
-    } else {
-      await addDoc(collection(db, COL_ESTOQUE), {
-        nome: nome,
-        quantidade: qtd,
-        quantidadeMinima: 2,
-        categoria: item.categoria || 'Comprado',
-        fornecedor: item.obs || '',
-        precoCusto: 0,
-        precoVenda: 0,
-        criadoEm: serverTimestamp()
-      });
-    }
-    await deleteDoc(doc(db, COL_COMPRAS, item.id));
-    toast(`📦 "${nome}" adicionado ao estoque!`);
-    return true;
-  } catch (e) {
-    console.error('[Integração] Erro ao receber item no estoque:', e);
-    toast('⚠️ Erro ao dar entrada no estoque');
-    return false;
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════════
    API PÚBLICA
    ═══════════════════════════════════════════════════════════════ */
 window.Forn = {
@@ -669,13 +633,6 @@ window.Forn = {
   toggleFeita:       (id, feita) => toggleFeita(id, feita),
   filtrarCompras:    () => filtrarCompras(),
   excluirTendencia:  (id) => excluirTendencia(id),
-  receberItem:       (id) => {
-    const item = state.compras.find(x => x.id === id);
-    if (!item) return;
-    if (confirm(`Dar entrada de "${item.nome}" (x${item.quantidade || 1}) no estoque?`)) {
-      receberItemNoEstoque(item).then(ok => { if (ok) { state.compras = state.compras.filter(x => x.id !== id); renderCompras(state.compras); } });
-    }
-  },
 };
 
 /* ═══════════════════════════════════════════════════════════════
