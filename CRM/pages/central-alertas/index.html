@@ -54,6 +54,19 @@
 
                 <div class="al-sb-sep"></div>
 
+                <div class="al-sb-item" data-nav="comandos">
+                    <span class="al-sb-icon">⚡</span>
+                    <span class="al-sb-label">Comandos</span>
+                    <span class="al-sb-badge" id="sb-badge-comandos"></span>
+                </div>
+                <div class="al-sb-item" data-nav="tarefas">
+                    <span class="al-sb-icon">✅</span>
+                    <span class="al-sb-label">Tarefas</span>
+                    <span class="al-sb-badge" id="sb-badge-tarefas"></span>
+                </div>
+
+                <div class="al-sb-sep"></div>
+
                 <div class="al-sb-item" data-nav="calendario">
                     <span class="al-sb-icon">🗓️</span>
                     <span class="al-sb-label">Calendário</span>
@@ -97,6 +110,16 @@
                         <div class="al-section-titulo al-titulo-critico">🚨 Alertas Vencidos</div>
                         <div id="home-vencidos-lista" class="al-mini-lista"></div>
                     </div>
+
+                    <div class="al-home-section">
+                        <div class="al-section-titulo">⚡ Comandos Agendados</div>
+                        <div id="home-comandos-lista" class="al-mini-lista"></div>
+                    </div>
+
+                    <div class="al-home-section">
+                        <div class="al-section-titulo">✅ Tarefas Agendadas</div>
+                        <div id="home-tarefas-lista" class="al-mini-lista"></div>
+                    </div>
                 </div>
 
                 <!-- ═══ HOJE ═══ -->
@@ -134,6 +157,24 @@
                     <div id="lista-concluidos"></div>
                 </div>
 
+                <!-- ═══ COMANDOS ═══ -->
+                <div class="al-panel" id="panel-comandos">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">⚡ Comandos Agendados</div>
+                        <button class="al-btn-novo" onclick="Alertas.abrirForm()">➕ Novo</button>
+                    </div>
+                    <div id="lista-comandos"></div>
+                </div>
+
+                <!-- ═══ TAREFAS ═══ -->
+                <div class="al-panel" id="panel-tarefas">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">✅ Tarefas</div>
+                        <button class="al-btn-novo" onclick="Alertas.abrirForm()">➕ Novo</button>
+                    </div>
+                    <div id="lista-tarefas"></div>
+                </div>
+
                 <!-- ═══ CALENDÁRIO ═══ -->
                 <div class="al-panel" id="panel-calendario">
                     <div class="al-panel-header">
@@ -143,6 +184,10 @@
                             <span class="al-cal-mes" id="cal-mes-label"></span>
                             <button class="al-cal-btn" id="cal-next">›</button>
                         </div>
+                    </div>
+                    <div class="al-cal-view-toggle">
+                        <button class="al-cal-view-btn active" data-view="mes" onclick="Alertas.setCalView('mes')">Mês</button>
+                        <button class="al-cal-view-btn" data-view="semana" onclick="Alertas.setCalView('semana')">Semana</button>
                     </div>
                     <div class="al-cal-grid" id="al-cal-grid"></div>
                     <div class="al-cal-detalhe" id="al-cal-detalhe" style="display:none">
@@ -274,6 +319,33 @@
             <div class="al-modal-footer">
                 <button class="al-btn-cancelar" onclick="Alertas.fecharForm()">Cancelar</button>
                 <button class="al-btn-salvar" onclick="Alertas.salvar()">💾 Salvar Alerta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ MODAL: ADIAR ═══════ -->
+    <div id="al-modal-adiar" class="al-modal">
+        <div class="al-modal-content" style="max-width:400px;">
+            <div class="al-modal-header">
+                <h3>⏰ Adiar Alerta</h3>
+                <button class="al-modal-close" onclick="Alertas.fecharAdiar()">✕</button>
+            </div>
+            <div class="al-modal-body">
+                <input type="hidden" id="al-adiar-id">
+                <p style="color:var(--text2);font-size:13px;margin-bottom:8px;">Adiar por quanto tempo?</p>
+                <div class="al-adiar-opts">
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(5)">5 min</button>
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(15)">15 min</button>
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(30)">30 min</button>
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(60)">1 hora</button>
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(120)">2 horas</button>
+                    <button class="al-adiar-btn" onclick="Alertas.adiar(1440)">1 dia</button>
+                </div>
+                <div class="al-form-group" style="margin-top:12px;">
+                    <label>⏱ Personalizado (minutos)</label>
+                    <input type="number" id="al-adiar-custom" min="1" max="10080" placeholder="Ex: 45" style="width:100%;">
+                    <button class="al-btn-salvar" onclick="Alertas.adiarCustom()" style="margin-top:8px;width:100%;">Aplicar</button>
+                </div>
             </div>
         </div>
     </div>

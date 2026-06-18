@@ -15,7 +15,9 @@ const st = {
     comandos: [],          // cache de comandos para vínculo
     secao:    'home',
     cal:      { ano: 0, mes: 0 },
+    calView:  'mes',      // 'mes' | 'semana'
     calDiaSel: null,
+    calSemanaOffset: 0,    // semanas para navegação na visão Semana
 };
 
 // ── Helpers de data ───────────────────────────────────────────────────────────
@@ -123,6 +125,7 @@ async function persistir(dados) {
 const SECAO_TITULO = {
     home: '🏠 Home', hoje: '📅 Alertas de Hoje', agendados: '⏰ Agendados',
     recorrentes: '🔁 Recorrentes', concluidos: '✅ Concluídos',
+    comandos: '⚡ Comandos', tarefas: '✅ Tarefas',
     calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
 };
 
@@ -148,6 +151,8 @@ function render() {
     renderLista('agendados',  listaAgendados());
     renderLista('recorrentes',listaRecorrentes());
     renderLista('concluidos', listaConcluidos());
+    renderLista('comandos',   listaComandos());
+    renderLista('tarefas',    listaTarefas());
     atualizarBadges();
 }
 
@@ -156,6 +161,8 @@ function listaAgendados()   { const h=hojeISO(); return st.lista.filter(a=>a.sta
 function listaRecorrentes() { return st.lista.filter(a=>a.status!=='concluido'&&a.repeticao&&a.repeticao!=='nenhuma').sort(sortData); }
 function listaConcluidos()  { return st.lista.filter(a=>a.status==='concluido').sort((a,b)=>(b.atualizadoEmISO||'').localeCompare(a.atualizadoEmISO||'')); }
 function listaVencidos()    { const h=hojeISO(); return st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)<h); }
+function listaComandos()   { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='comando').sort(sortData); }
+function listaTarefas()    { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='tarefa').sort(sortData); }
 
 function dataEfetiva(a) {
     if (a.repeticao && a.repeticao !== 'nenhuma') return calcProxima(a);
@@ -168,6 +175,12 @@ function renderHome() {
     const hoje   = listaHoje();
     const prox   = listaAgendados().slice(0,5);
     const venc   = listaVencidos();
+    const cmds   = listaComandos().slice(0,5);
+    const tarefs = listaTarefas().slice(0,5);
+
+    // Próximo alerta a disparar
+    const todosPendentes = st.lista.filter(a=>a.status!=='concluido').sort(sortData);
+    const proximoAlerta = todosPendentes[0] || null;
 
     // Stats
     const statsEl = document.getElementById('home-stats');
@@ -184,7 +197,26 @@ function renderHome() {
         <div class="al-stat-card vencido" onclick="Alertas.navegar('agendados')">
             <span class="al-stat-num">${venc.length}</span>
             <span class="al-stat-lbl">🚨 Vencidos</span>
+        </div>
+        <div class="al-stat-card hoje" onclick="Alertas.navegar('comandos')">
+            <span class="al-stat-num">${cmds.length}</span>
+            <span class="al-stat-lbl">⚡ Comandos</span>
+        </div>
+        <div class="al-stat-card pendente" onclick="Alertas.navegar('tarefas')">
+            <span class="al-stat-num">${tarefs.length}</span>
+            <span class="al-stat-lbl">✅ Tarefas</span>
         </div>`;
+        // Próximo alerta (card extra se existir)
+        if (proximoAlerta) {
+            const pe = dataEfetiva(proximoAlerta);
+            const ph = proximoAlerta.hora || '--:--';
+            const extra = document.createElement('div');
+            extra.className = 'al-stat-card';
+            extra.style.cssText = 'grid-column:1/-1;border-color:rgba(0,200,83,0.3);cursor:default;';
+            extra.innerHTML = `<span style="font-size:20px;font-weight:800;color:var(--green);">⏰ ${ph}</span>
+                <span style="font-size:11px;color:var(--text3);font-weight:600;">Próximo: ${esc(proximoAlerta.titulo)} — ${fmtData(pe)}</span>`;
+            statsEl.appendChild(extra);
+        }
     }
 
     const elHoje = document.getElementById('home-hoje-lista');
@@ -199,6 +231,14 @@ function renderHome() {
         secVenc.style.display = venc.length ? '' : 'none';
         elVenc.innerHTML = venc.map(htmlItem).join('');
     }
+
+    // Comandos agendados no Home
+    const elCmds = document.getElementById('home-comandos-lista');
+    if (elCmds) elCmds.innerHTML = cmds.length ? cmds.map(htmlItem).join('') : '<div class="al-empty"><p>Nenhum comando agendado.</p></div>';
+
+    // Tarefas agendadas no Home
+    const elTarefs = document.getElementById('home-tarefas-lista');
+    if (elTarefs) elTarefs.innerHTML = tarefs.length ? tarefs.map(htmlItem).join('') : '<div class="al-empty"><p>Nenhuma tarefa agendada.</p></div>';
 }
 
 function renderLista(secao, lista) {
@@ -235,8 +275,10 @@ function htmlItem(a) {
             ${cmd ? `<div class="al-item-cmd">⚡ ${esc(cmd.titulo)}</div>` : ''}
         </div>
         <div class="al-item-acoes">
+            ${cmd ? `<button class="al-acao al-acao-executar" onclick="Alertas.executarComando('${a.id}')" title="Executar comando">▶</button>` : ''}
             ${cmd ? `<button class="al-acao al-acao-copiar" onclick="Alertas.copiarComando('${a.id}')" title="Copiar comando">📋</button>` : ''}
             ${a.status!=='concluido' ? `<button class="al-acao al-acao-concluir" onclick="Alertas.concluir('${a.id}')" title="Concluir">✔</button>` : ''}
+            ${a.status!=='concluido' ? `<button class="al-acao" onclick="Alertas.abrirAdiar('${a.id}')" title="Adiar">⏰</button>` : ''}
             <button class="al-acao" onclick="Alertas.editar('${a.id}')" title="Editar">✏️</button>
             <button class="al-acao al-acao-excluir" onclick="Alertas.excluir('${a.id}')" title="Excluir">🗑️</button>
         </div>
@@ -255,6 +297,12 @@ function atualizarBadges() {
     const ag = listaAgendados().length;
     const el2 = document.getElementById('sb-badge-agendados');
     if (el2) { el2.textContent = ag || ''; el2.classList.toggle('show', ag > 0); }
+    const cm = listaComandos().length;
+    const el3 = document.getElementById('sb-badge-comandos');
+    if (el3) { el3.textContent = cm || ''; el3.classList.toggle('show', cm > 0); }
+    const tf = listaTarefas().length;
+    const el4 = document.getElementById('sb-badge-tarefas');
+    if (el4) { el4.textContent = tf || ''; el4.classList.toggle('show', tf > 0); }
 }
 
 function _salvarBadgeGlobal() {
@@ -263,19 +311,67 @@ function _salvarBadgeGlobal() {
 }
 
 // ── Calendário ────────────────────────────────────────────────────────────────
+function setCalView(view) {
+    st.calView = view;
+    document.querySelectorAll('.al-cal-view-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+    });
+    renderCalendario();
+}
+
+function _semanaInicio(offset) {
+    const hoje = new Date();
+    const diaSem = hoje.getDay(); // 0=Dom
+    const diff = (offset || 0) * 7;
+    const seg = new Date(hoje);
+    seg.setDate(hoje.getDate() - diaSem + diff);
+    seg.setHours(0,0,0,0);
+    return seg;
+}
+
 function renderCalendario() {
-    const { ano, mes } = st.cal;
+    const { ano, mes, calView } = st;
     const el = document.getElementById('al-cal-grid');
     const lb = document.getElementById('cal-mes-label');
     if (!el) return;
+
+    const hoje = hojeISO();
+    const hojeAno = parseInt(hoje.slice(0,4)), hojeM = parseInt(hoje.slice(5,7))-1, hojeD = parseInt(hoje.slice(8,10));
+    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+
+    if (calView === 'semana') {
+        el.classList.add('semana');
+        const semanaInicio = _semanaInicio(st.calSemanaOffset || 0);
+        const label = semanaInicio.toLocaleDateString('pt-BR', { day:'numeric', month:'long', year:'numeric' });
+        if (lb) lb.textContent = `📅 Semana de ${label}`;
+
+        let html = dias.map(d=>`<div class="al-cal-day-header">${d}</div>`).join('');
+
+        for (let i=0; i<7; i++) {
+            const d = new Date(semanaInicio);
+            d.setDate(semanaInicio.getDate() + i);
+            const iso = d.toISOString().slice(0,10);
+            const alertasNoDia = st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)===iso);
+            const isHoje = (iso === hoje);
+            const isSel  = st.calDiaSel === iso;
+            const dots   = alertasNoDia.slice(0,5).map(a=>`<div class="al-cal-dot dot-${a.prioridade||'media'}"></div>`).join('');
+            html += `<div class="al-cal-day${alertasNoDia.length?' com-alertas':''}${isHoje?' hoje':''}${isSel?' selecionado':''}" onclick="Alertas.selDia('${iso}')">
+                <span class="al-cal-day-num">${d.getDate()}</span>
+                ${dots ? `<div class="al-cal-day-dots">${dots}</div>` : ''}
+                ${alertasNoDia.slice(0,2).map(a => `<span style="font-size:9px;color:var(--text3);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${esc(a.titulo||'').slice(0,12)}</span>`).join('')}
+            </div>`;
+        }
+        el.innerHTML = html;
+        if (st.calDiaSel) _renderCalDetalhe(st.calDiaSel);
+        return;
+    }
+
+    el.classList.remove('semana');
     if (lb) lb.textContent = fmtMesAno(ano, mes);
 
     const primDia   = new Date(ano, mes, 1).getDay();
     const diasNoMes = new Date(ano, mes+1, 0).getDate();
-    const hoje      = hojeISO();
-    const hojeAno   = parseInt(hoje.slice(0,4)), hojeM = parseInt(hoje.slice(5,7))-1, hojeD = parseInt(hoje.slice(8,10));
 
-    const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     let html = dias.map(d=>`<div class="al-cal-day-header">${d}</div>`).join('');
 
     for (let i=0; i<primDia; i++) html += `<div class="al-cal-day vazio"></div>`;
@@ -456,6 +552,72 @@ async function copiarComando(id) {
     } catch { toast('⚠️ Não foi possível copiar.'); }
 }
 
+// ── Executar Comando ─────────────────────────────────────────────────────────
+async function executarComando(id) {
+    const a   = st.lista.find(x=>x.id===id);
+    const cmd = a?.comandoId ? st.comandos.find(c=>c.id===a.comandoId) : null;
+    if (!cmd) return toast('⚠️ Nenhum comando vinculado.');
+    const blocos = cmd.blocos?.length ? cmd.blocos : (cmd.conteudo ? [cmd.conteudo] : []);
+    const texto  = blocos.join('\n\n---\n\n');
+    try {
+        if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(texto);
+        else {
+            const ta = document.createElement('textarea');
+            ta.value = texto; ta.style.cssText='position:fixed;opacity:0';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        toast('✅ Comando copiado para área de transferência!');
+        // Se tiver janela do terminal, tenta focar (opcional)
+    } catch { toast('⚠️ Não foi possível copiar.'); }
+}
+
+// ── Adiar Alerta ─────────────────────────────────────────────────────────────
+function abrirAdiar(id) {
+    document.getElementById('al-adiar-id').value = id;
+    document.getElementById('al-adiar-custom').value = '';
+    document.getElementById('al-modal-adiar').classList.add('active');
+}
+
+function fecharAdiar() {
+    document.getElementById('al-modal-adiar').classList.remove('active');
+}
+
+async function adiar(minutos) {
+    const id = document.getElementById('al-adiar-id').value;
+    const a = st.lista.find(x=>x.id===id);
+    if (!a) return toast('⚠️ Alerta não encontrado.');
+
+    const agora = new Date();
+    const novaData = new Date(agora.getTime() + minutos * 60 * 1000);
+    a.data = novaData.toISOString().slice(0,10);
+    a.hora = `${String(novaData.getHours()).padStart(2,'0')}:${String(novaData.getMinutes()).padStart(2,'0')}`;
+    a.adiadoEm = new Date().toISOString();
+    a.adiadoPor = minutos;
+
+    try {
+        await setDoc(doc(db, COL, id), {
+            data: a.data, hora: a.hora, adiadoEm: a.adiadoEm, adiadoPor: minutos,
+            atualizadoEm: serverTimestamp(), atualizadoEmISO: new Date().toISOString()
+        }, { merge: true });
+        toast(`⏰ Adiado por ${minutos} min. Novo horário: ${a.hora}`);
+    } catch {
+        toast(`⏰ Adiado localmente por ${minutos} min.`);
+    }
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    fecharAdiar();
+    render();
+    if (st.secao === 'calendario') renderCalendario();
+    _salvarBadgeGlobal();
+}
+
+async function adiarCustom() {
+    const minutos = parseInt(document.getElementById('al-adiar-custom').value);
+    if (!minutos || minutos < 1) return toast('⚠️ Informe um número válido de minutos.');
+    await adiar(minutos);
+}
+
 // ── Calendário — ações ────────────────────────────────────────────────────────
 function selDia(iso) {
     st.calDiaSel = st.calDiaSel === iso ? null : iso;
@@ -525,12 +687,23 @@ function setupSidebar() {
     document.getElementById('al-modal')?.addEventListener('click', e => {
         if (e.target.id === 'al-modal') fecharForm();
     });
+    document.getElementById('al-modal-adiar')?.addEventListener('click', e => {
+        if (e.target.id === 'al-modal-adiar') fecharAdiar();
+    });
     document.getElementById('cal-prev')?.addEventListener('click', () => {
-        if (--st.cal.mes < 0) { st.cal.mes=11; st.cal.ano--; }
+        if (st.calView === 'semana') {
+            st.calSemanaOffset = (st.calSemanaOffset || 0) - 1;
+        } else {
+            if (--st.cal.mes < 0) { st.cal.mes=11; st.cal.ano--; }
+        }
         renderCalendario();
     });
     document.getElementById('cal-next')?.addEventListener('click', () => {
-        if (++st.cal.mes > 11) { st.cal.mes=0; st.cal.ano++; }
+        if (st.calView === 'semana') {
+            st.calSemanaOffset = (st.calSemanaOffset || 0) + 1;
+        } else {
+            if (++st.cal.mes > 11) { st.cal.mes=0; st.cal.ano++; }
+        }
         renderCalendario();
     });
 }
@@ -561,5 +734,8 @@ authReady.then(async () => {
 // ── Exposição global ──────────────────────────────────────────────────────────
 window.Alertas = {
     navegar, abrirForm, editar, fecharForm, salvar, excluir, concluir,
-    copiarComando, selDia, toggleCustomDias, salvarConfig,
+    copiarComando, executarComando,
+    abrirAdiar, fecharAdiar, adiar, adiarCustom,
+    selDia, toggleCustomDias, salvarConfig,
+    setCalView,
 };
