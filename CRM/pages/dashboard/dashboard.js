@@ -66,11 +66,14 @@ class Dashboard {
     keysParaLimpar.forEach(key => {
       try { localStorage.removeItem(key); } catch {}
     });
-    // Remove chaves com prefixo cellcity_note_
+    // Remove apenas chaves de alertas conhecidas (não remove cc_bk_ ou outras importantes)
     try {
+      const alertKeys = ['cc_alertas_badge', 'cc_config_alertas', 'alarme_os_config', 'cc_nota_uid'];
+      alertKeys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
+      // Remove notas do calendário (cellcity_note_*)  
       Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('cellcity_note_') || k.startsWith('cc_')) {
-          localStorage.removeItem(k);
+        if (k.startsWith('cellcity_note_')) {
+          try { localStorage.removeItem(k); } catch {}
         }
       });
     } catch {}
@@ -2017,7 +2020,7 @@ class Dashboard {
         </div>`;
       }).join('');
       
-      body.innerHTML = \`
+      body.innerHTML = `
         <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
           <button id="btn-excluir-todos-alertas" class="btn-excluir-todos" style="
             background: #ef4444; color: white; border: none; border-radius: 8px;
@@ -2029,7 +2032,7 @@ class Dashboard {
           <span style="color: var(--text-tertiary); font-size: 12px;">\${alertas.length} alerta(s) encontrado(s)</span>
         </div>
         \${alertasHtml}
-      \`;
+      `;
       
       // Handler do botão "Excluir Todos"
       const btnExcluir = document.getElementById('btn-excluir-todos-alertas');
@@ -2038,7 +2041,7 @@ class Dashboard {
           // Cria modal de confirmação
           const confirmOverlay = document.createElement('div');
           confirmOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:100000;display:flex;align-items:center;justify-content:center;';
-          confirmOverlay.innerHTML = \`
+          confirmOverlay.innerHTML = `
             <div style="background:#1e1e32;border-radius:16px;padding:32px 36px;max-width:420px;width:90%;text-align:center;border:1px solid rgba(239,68,68,0.2);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
               <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
               <h3 style="color:#fff;margin:0 0 8px;font-size:18px;">Excluir Todos os Alertas?</h3>
@@ -2051,7 +2054,7 @@ class Dashboard {
                 <button id="btn-confirmar-exclusao" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;flex:1;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">🗑 Excluir Todos</button>
               </div>
             </div>
-          \`;
+          `;
           document.body.appendChild(confirmOverlay);
           
           document.getElementById('btn-cancelar-exclusao').addEventListener('click', () => confirmOverlay.remove());
