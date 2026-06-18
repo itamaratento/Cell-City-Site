@@ -253,10 +253,13 @@ function renderLista(secao) {
         return;
     }
     lista.innerHTML = indexados.map(({ item, idx }) => cfg.renderItem(item, idx)).join('');
+    atualizarHomeCards();
 }
 
 // ── API pública ───────────────────────────────────────────────────────────────
 window.Central = {
+    nav(secao) { navegarParaSecao(secao); },
+
     abrirForm(secao) {
         document.getElementById(`form-${secao}`)?.classList.remove('hidden');
         if (secao === 'historico') {
@@ -415,115 +418,90 @@ window.Central = {
     },
 };
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
-const TABS_SEM_BUSCA = new Set(['monitoramento', 'notas', 'categorias', 'tarefas']);
+// ── Navegação via Sidebar ─────────────────────────────────────────────────────
+const SECOES_SEM_BUSCA = new Set(['home', 'monitoramento', 'notas', 'categorias', 'tarefas']);
+const SECAO_TITULO = {
+    home:          '🏠 Home',
+    whatsapp:      '📱 WhatsApp',
+    robos:         '🤖 Robôs & IA',
+    programas:     '🛠️ Programas',
+    historico:     '📜 Histórico',
+    links:         '🔐 Acessos',
+    monitoramento: '📊 Monitoramento',
+    notas:         '📝 Notas',
+    categorias:    '📁 Categorias',
+    tarefas:       '✅ Tarefas',
+};
 
-document.querySelectorAll('.tab').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
-
-        // Limpa e mostra/oculta a barra de busca
-        _busca = '';
-        const buscaInput = document.getElementById('central-busca');
-        const buscaWrap  = document.getElementById('central-busca-wrap');
-        if (buscaInput) buscaInput.value = '';
-        if (buscaWrap)  buscaWrap.style.display = TABS_SEM_BUSCA.has(btn.dataset.tab) ? 'none' : '';
-
-        if (btn.dataset.tab === 'monitoramento') {
-            Monitoramento.init().catch(console.error);
-        }
-        if (btn.dataset.tab === 'notas') {
-            Notas.init().catch(console.error);
-        }
-        if (btn.dataset.tab === 'tarefas') {
-            Tarefas.init().catch(console.error);
-        }
+function navegarParaSecao(secao) {
+    // Atualiza sidebar
+    document.querySelectorAll('.cat-sb-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.nav === secao);
     });
+    // Atualiza painéis
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`tab-${secao}`)?.classList.add('active');
+
+    // Breadcrumb
+    const titulo = document.getElementById('cat-nav-titulo');
+    if (titulo) titulo.textContent = SECAO_TITULO[secao] || secao;
+
+    // Busca: limpa e mostra/oculta
+    _busca = '';
+    const buscaInput = document.getElementById('central-busca');
+    const buscaWrap  = document.getElementById('central-busca-wrap');
+    if (buscaInput) buscaInput.value = '';
+    if (buscaWrap)  buscaWrap.style.display = SECOES_SEM_BUSCA.has(secao) ? 'none' : '';
+
+    // Fecha sidebar mobile
+    document.getElementById('cat-sidebar')?.classList.remove('open');
+    document.getElementById('cat-sb-overlay')?.classList.remove('open');
+
+    // Inicializa módulos especiais ao navegar
+    if (secao === 'monitoramento') Monitoramento.init().catch(console.error);
+    if (secao === 'notas')         Notas.init().catch(console.error);
+    if (secao === 'tarefas')       Tarefas.init().catch(console.error);
+}
+
+// Cliques na sidebar
+document.querySelectorAll('.cat-sb-item').forEach(item => {
+    item.addEventListener('click', () => navegarParaSecao(item.dataset.nav));
 });
 
-// ── Aba Fixada (aba padrão ao abrir a página) ─────────────────────────────────
+// Toggle sidebar mobile
+document.getElementById('cat-sb-open')?.addEventListener('click', () => {
+    document.getElementById('cat-sidebar')?.classList.toggle('open');
+    document.getElementById('cat-sb-overlay')?.classList.toggle('open');
+});
+document.getElementById('cat-sb-overlay')?.addEventListener('click', () => {
+    document.getElementById('cat-sidebar')?.classList.remove('open');
+    document.getElementById('cat-sb-overlay')?.classList.remove('open');
+});
+
+// ── Atualizar Home cards e sidebar counts ─────────────────────────────────────
+function atualizarHomeCards() {
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const c = k => estado[k]?.length ?? '—';
+    // Home grid counts
+    setEl('hc-whatsapp',  c('whatsapp'));
+    setEl('hc-robos',     c('robos'));
+    setEl('hc-programas', c('programas'));
+    setEl('hc-historico', c('historico'));
+    setEl('hc-links',     c('links'));
+    // Sidebar counts
+    setEl('sb-count-whatsapp',  c('whatsapp'));
+    setEl('sb-count-robos',     c('robos'));
+    setEl('sb-count-programas', c('programas'));
+    setEl('sb-count-historico', c('historico'));
+    setEl('sb-count-links',     c('links'));
+}
+
+// ── Seção fixada (seção padrão ao abrir a página) ────────────────────────────
 const ABA_FIXADA_KEY = 'cc_aba_fixada_central';
 
-(function iniciarFixarAba() {
-    const btn = document.getElementById('btn-fixar-aba-header');
-    if (!btn) return;
-
-    function obterTabAtiva() {
-        return document.querySelector('.tabs .tab.active');
-    }
-
-    function nomeTab(tab) {
-        if (!tab) return '';
-        return tab.childNodes[0]?.textContent?.trim() || tab.textContent.trim();
-    }
-
-    function atualizarBtnFixar() {
-        const fixada = localStorage.getItem(ABA_FIXADA_KEY);
-        const ativa  = obterTabAtiva();
-
-        // Marca a aba fixada visualmente
-        document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('tab-fixada'));
-        if (fixada) {
-            document.querySelector(`.tab[data-tab="${fixada}"]`)?.classList.add('tab-fixada');
-        }
-
-        if (fixada) {
-            const tabFixada = document.querySelector(`.tab[data-tab="${fixada}"]`);
-            const nome = nomeTab(tabFixada) || fixada;
-            if (ativa?.dataset.tab === fixada) {
-                btn.innerHTML = `📌 Fixada`;
-                btn.classList.add('fixada');
-                btn.title = `Clique para remover o fixado (${nome})`;
-            } else {
-                btn.innerHTML = `📌 ${nome}`;
-                btn.classList.add('fixada');
-                btn.title = `Aba padrão: ${nome} — clique para mudar`;
-            }
-        } else {
-            btn.innerHTML = `⭐ Favoritar`;
-            btn.classList.remove('fixada');
-            btn.title = 'Fixar a aba atual como padrão ao abrir';
-        }
-    }
-
-    btn.addEventListener('click', () => {
-        const fixada = localStorage.getItem(ABA_FIXADA_KEY);
-        const ativa  = obterTabAtiva();
-        if (!ativa) return;
-
-        if (fixada && ativa.dataset.tab === fixada) {
-            // Desafixar
-            localStorage.removeItem(ABA_FIXADA_KEY);
-            toast('⭐ Aba padrão removida');
-        } else {
-            // Fixar aba atual
-            localStorage.setItem(ABA_FIXADA_KEY, ativa.dataset.tab);
-            toast(`📌 "${nomeTab(ativa)}" será aberta por padrão`);
-        }
-        atualizarBtnFixar();
-    });
-
-    // Atualiza botão sempre que uma aba é clicada
-    document.querySelectorAll('.tabs .tab').forEach(tab => {
-        tab.addEventListener('click', () => setTimeout(atualizarBtnFixar, 50));
-    });
-
-    // Abre a aba fixada ao carregar
-    const fixadaInicial = localStorage.getItem(ABA_FIXADA_KEY);
-    if (fixadaInicial) {
-        const tabFixada = document.querySelector(`.tab[data-tab="${fixadaInicial}"]`);
-        if (tabFixada) {
-            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-            tabFixada.classList.add('active');
-            document.getElementById(`tab-${fixadaInicial}`)?.classList.add('active');
-        }
-    }
-
-    atualizarBtnFixar();
+(function restaurarSecaoFixada() {
+    const fixada = localStorage.getItem(ABA_FIXADA_KEY);
+    navegarParaSecao(fixada && SECAO_TITULO[fixada] ? fixada : 'home');
 })();
 
 // ══════════════════════════════════════════════════════════════════════════════

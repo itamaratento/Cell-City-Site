@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Cell City — Central Automação</title>
-    <link rel="stylesheet" href="central.css?v=20260618b">
+    <link rel="stylesheet" href="central.css?v=20260619c">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -16,29 +16,146 @@
         <span class="header-title">⚡ Central Automação</span>
     </header>
 
-    <main class="content">
+    <main>
 
-        <div class="cat-search-wrap" id="central-busca-wrap" style="margin-bottom:12px">
-            <span style="font-size:16px">🔍</span>
-            <input class="cat-search-input" id="central-busca"
-                placeholder="Pesquisar..."
-                oninput="Central.filtrar(this.value)" autocomplete="off">
-        </div>
+        <!-- Overlay mobile para fechar sidebar -->
+        <div class="cat-sb-overlay" id="cat-sb-overlay"></div>
 
-        <div class="tabs">
-            <button class="tab active" data-tab="whatsapp">📱 WhatsApp</button>
-            <button class="tab" data-tab="robos">🤖 Robôs & IA</button>
-            <button class="tab" data-tab="programas">🛠️ Programas</button>
-            <button class="tab" data-tab="historico">📜 Histórico</button>
-            <button class="tab" data-tab="links">🔐 Acessos</button>
-            <button class="tab" data-tab="monitoramento">🤖 Monitoramento</button>
-            <button class="tab" data-tab="notas">📝 Notas</button>
-            <button class="tab" data-tab="categorias">📁 Categorias</button>
-            <button class="tab" data-tab="tarefas">✅ Tarefas</button>
-        </div>
+        <div class="cat-explorer">
 
-        <!-- ===== WHATSAPP ===== -->
-        <div class="tab-panel active" id="tab-whatsapp">
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- SIDEBAR                                        -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <aside class="cat-sidebar" id="cat-sidebar">
+                <div class="cat-sb-header">
+                    <span class="cat-sb-titulo">Navegação</span>
+                </div>
+
+                <div class="cat-sb-item active" data-nav="home">
+                    <span class="cat-sb-icon">🏠</span>
+                    <span class="cat-sb-label">Home</span>
+                </div>
+
+                <div class="cat-sb-sep"></div>
+
+                <div class="cat-sb-item cat-sb-wpp" data-nav="whatsapp">
+                    <span class="cat-sb-icon">📱</span>
+                    <span class="cat-sb-label">WhatsApp</span>
+                    <span class="cat-sb-count" id="sb-count-whatsapp">—</span>
+                </div>
+                <div class="cat-sb-item cat-sb-robos" data-nav="robos">
+                    <span class="cat-sb-icon">🤖</span>
+                    <span class="cat-sb-label">Robôs & IA</span>
+                    <span class="cat-sb-count" id="sb-count-robos">—</span>
+                </div>
+                <div class="cat-sb-item cat-sb-programas" data-nav="programas">
+                    <span class="cat-sb-icon">🛠️</span>
+                    <span class="cat-sb-label">Programas</span>
+                    <span class="cat-sb-count" id="sb-count-programas">—</span>
+                </div>
+                <div class="cat-sb-item cat-sb-historico" data-nav="historico">
+                    <span class="cat-sb-icon">📜</span>
+                    <span class="cat-sb-label">Histórico</span>
+                    <span class="cat-sb-count" id="sb-count-historico">—</span>
+                </div>
+                <div class="cat-sb-item cat-sb-links" data-nav="links">
+                    <span class="cat-sb-icon">🔐</span>
+                    <span class="cat-sb-label">Acessos</span>
+                    <span class="cat-sb-count" id="sb-count-links">—</span>
+                </div>
+
+                <div class="cat-sb-sep"></div>
+
+                <div class="cat-sb-item cat-sb-monit" data-nav="monitoramento">
+                    <span class="cat-sb-icon">📊</span>
+                    <span class="cat-sb-label">Monitoramento</span>
+                </div>
+                <div class="cat-sb-item cat-sb-notas" data-nav="notas">
+                    <span class="cat-sb-icon">📝</span>
+                    <span class="cat-sb-label">Notas</span>
+                </div>
+                <div class="cat-sb-item cat-sb-cats" data-nav="categorias">
+                    <span class="cat-sb-icon">📁</span>
+                    <span class="cat-sb-label">Categorias</span>
+                </div>
+                <div class="cat-sb-item cat-sb-tarefas" data-nav="tarefas">
+                    <span class="cat-sb-icon">✅</span>
+                    <span class="cat-sb-label">Tarefas</span>
+                </div>
+            </aside>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ÁREA PRINCIPAL                                 -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="cat-main">
+
+                <!-- Topbar: mobile toggle + busca -->
+                <div class="cat-topbar">
+                    <button class="cat-btn-sb-open" id="cat-sb-open" title="Abrir menu">☰</button>
+                    <div class="cat-search-wrap" id="central-busca-wrap">
+                        <span style="font-size:15px;flex-shrink:0">🔍</span>
+                        <input class="cat-search-input" id="central-busca"
+                            placeholder="Pesquisar..."
+                            oninput="Central.filtrar(this.value)" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="cat-nav-header" id="cat-nav-header">
+                    <span class="cat-nav-titulo" id="cat-nav-titulo">🏠 Home</span>
+                </div>
+
+                <!-- ═══════════════════════════════════════════ -->
+                <!-- PAINEL: HOME                               -->
+                <!-- ═══════════════════════════════════════════ -->
+                <div class="tab-panel active" id="tab-home">
+                    <div class="cat-home-grid">
+                        <div class="cat-home-card cat-home-wpp" onclick="Central.nav('whatsapp')">
+                            <span class="cat-home-icon">📱</span>
+                            <span class="cat-home-count cat-home-count-wpp" id="hc-whatsapp">—</span>
+                            <span class="cat-home-label">WhatsApp</span>
+                        </div>
+                        <div class="cat-home-card cat-home-robos" onclick="Central.nav('robos')">
+                            <span class="cat-home-icon">🤖</span>
+                            <span class="cat-home-count cat-home-count-robos" id="hc-robos">—</span>
+                            <span class="cat-home-label">Robôs & IA</span>
+                        </div>
+                        <div class="cat-home-card cat-home-prog" onclick="Central.nav('programas')">
+                            <span class="cat-home-icon">🛠️</span>
+                            <span class="cat-home-count cat-home-count-prog" id="hc-programas">—</span>
+                            <span class="cat-home-label">Programas</span>
+                        </div>
+                        <div class="cat-home-card cat-home-hist" onclick="Central.nav('historico')">
+                            <span class="cat-home-icon">📜</span>
+                            <span class="cat-home-count cat-home-count-hist" id="hc-historico">—</span>
+                            <span class="cat-home-label">Histórico</span>
+                        </div>
+                        <div class="cat-home-card cat-home-links" onclick="Central.nav('links')">
+                            <span class="cat-home-icon">🔐</span>
+                            <span class="cat-home-count cat-home-count-links" id="hc-links">—</span>
+                            <span class="cat-home-label">Acessos</span>
+                        </div>
+                        <div class="cat-home-card cat-home-monit" onclick="Central.nav('monitoramento')">
+                            <span class="cat-home-icon">📊</span>
+                            <span class="cat-home-label">Monitoramento</span>
+                        </div>
+                        <div class="cat-home-card cat-home-notas" onclick="Central.nav('notas')">
+                            <span class="cat-home-icon">📝</span>
+                            <span class="cat-home-label">Notas</span>
+                        </div>
+                        <div class="cat-home-card cat-home-cats" onclick="Central.nav('categorias')">
+                            <span class="cat-home-icon">📁</span>
+                            <span class="cat-home-label">Categorias</span>
+                        </div>
+                        <div class="cat-home-card cat-home-tar" onclick="Central.nav('tarefas')">
+                            <span class="cat-home-icon">✅</span>
+                            <span class="cat-home-label">Tarefas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== WHATSAPP ===== -->
+                <div class="tab-panel" id="tab-whatsapp">
             <div class="section-header">
                 <div class="section-title">Números de WhatsApp</div>
                 <button class="btn-add" onclick="Central.abrirForm('whatsapp')">+ Adicionar</button>
@@ -703,6 +820,9 @@
             </div>
         </div>
 
+            </div><!-- /cat-main -->
+        </div><!-- /cat-explorer -->
+
     </main>
 
     <div class="toast hidden" id="toast"></div>
@@ -723,7 +843,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="central.js?v=20260618b"></script>
+    <script type="module" src="central.js?v=20260619c"></script>
     <script type="module" src="../../shared/favoritos.js?v=20260617"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
