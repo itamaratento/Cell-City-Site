@@ -2,8 +2,13 @@
   const DASHBOARD_URL = '/CRM/pages/dashboard/index.html';
 
   const CSS = `
-    /* === CRM Brand Bar (injetada em todas as páginas exceto dashboard) === */
-    #crm-brand-bar {
+    /* === CRM Brand Bar (injetada em todas as páginas do CRM) ===
+       No Dashboard (quando #brand-header já existe), o .top-bar existente
+       recebe id=crm-brand-bar e perde a classe .top-bar, herdando todos
+       os estilos abaixo — sem quebrar a estrutura interna (busca global,
+       relógio, sino, etc.).                                        */
+    #crm-brand-bar,
+    .crm-brand-bar-unified {
       position: sticky;
       top: 0;
       z-index: 9999;
@@ -16,6 +21,8 @@
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       min-height: 56px;
+      height: auto;
+      flex-shrink: 0;
       /* Folga vertical para o conteúdo logo abaixo da barra não ficar colado.
          position:sticky já cria contexto de posicionamento para o título
          centralizado em absolute abaixo. */
@@ -152,6 +159,15 @@
       pointer-events: none;
     }
 
+    /* Dashboard: a busca global deve ocupar o espaço central flexível */
+    #crm-brand-bar > .global-search-wrapper {
+      flex: 1 1 auto;
+    }
+    #crm-brand-bar > .global-search-wrapper .global-search {
+      max-width: 620px;
+      margin: 0 auto;
+    }
+
     /* Espaçador sempre ativo: empurra botões (Favoritar, ações de módulo)
        para o lado direito em todos os breakpoints. */
     #crm-brand-bar .crm-bar-spacer {
@@ -273,10 +289,38 @@
   function init() {
     injectStyles();
 
-    // Dashboard: #brand-header já existe — só adiciona o onclick
+    // Dashboard: #brand-header já existe — aplica o id #crm-brand-bar
+    // ao .top-bar existente. O seletor de ID (#crm-brand-bar) tem
+    // especificidade maior que a classe (.top-bar), sobrepondo os
+    // estilos originais sem precisar remover a classe — isso preserva
+    // a compatibilidade com favoritos.js e demais scripts que referenciam
+    // .top-bar.
     const existing = document.getElementById('brand-header');
     if (existing) {
       attachHandler(existing);
+
+      const topBar = existing.closest('.top-bar');
+      if (topBar) {
+        // Aplica o id padronizado — a maior especificidade do ID
+        // sobrepõe os estilos de .top-bar (grid → flex, etc.)
+        topBar.id = 'crm-brand-bar';
+        topBar.classList.add('crm-brand-bar-unified');
+
+        // Garante que o botão Site existe no top-meta-right
+        // (já existe no Dashboard com classe .site-cc-btn, mas
+        //  deixamos o .crm-site-cc-btn como fallback)
+        const right = topBar.querySelector('.top-meta-right');
+        if (right && !right.querySelector('.crm-site-cc-btn, .site-cc-btn')) {
+          const siteBtn = document.createElement('a');
+          siteBtn.className = 'crm-site-cc-btn';
+          siteBtn.href = 'https://www.cellcityinformatica.com.br';
+          siteBtn.target = '_blank';
+          siteBtn.rel = 'noopener noreferrer';
+          siteBtn.title = 'Abrir Site da Cell City';
+          siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
+          right.prepend(siteBtn);
+        }
+      }
       return;
     }
 
