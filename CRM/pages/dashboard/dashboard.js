@@ -425,10 +425,10 @@ class Dashboard {
 
         if (dados.recorrencia) {
           // ===== TAREFA RECORRENTE =====
-          // Só gera alerta no Dashboard se "Exibir alerta no painel" estiver marcado.
-          // (Mesma regra das tarefas não-recorrentes — antes esse ramo ignorava o flag,
-          //  gerando alertas-fantasma de tarefas que não aparecem na Ação da Semana.)
-          if (dados.alertaDashboard !== true) return;
+          // 🔧 CORREÇÃO: alerta auto-ativa se tiver horário definido, mesmo sem checkbox marcado
+          const alertaEfetivo = dados.alertaDashboard === true || (dados.alertaHora && dados.alertaHora.length > 0);
+          console.log('🔍 [_lerAgenda] Recorrente dia:', dia, 'alertaEfetivo:', alertaEfetivo, 'alertaDashboard:', dados.alertaDashboard, 'hora:', dados.alertaHora);
+          if (!alertaEfetivo) return;
 
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
@@ -459,15 +459,19 @@ class Dashboard {
           }
         } else {
           // ===== TAREFA NÃO RECORRENTE =====
-          // Só gera eventos se o usuário ativou explicitamente o alerta no Dashboard.
-          // Caso contrário, a tarefa é apenas um lembrete local no calendário
-          // e NÃO deve aparecer na Central de Alertas / Ação da Semana.
-          if (dados.alertaDashboard !== true) return;
+          // 🔧 CORREÇÃO: alerta auto-ativa se tiver horário definido, mesmo sem checkbox marcado
+          const alertaEfetivo = dados.alertaDashboard === true || (dados.alertaHora && dados.alertaHora.length > 0);
+          console.log('🔍 [_lerAgenda] Não-recorrente dia:', dia, 'alertaEfetivo:', alertaEfetivo, 'alertaDashboard:', dados.alertaDashboard, 'hora:', dados.alertaHora);
+          if (!alertaEfetivo) {
+            console.log('🔍 [_lerAgenda] ⏭️ Pulando dia', dia, 'sem alerta efetivo');
+            return;
+          }
 
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
           // Gera evento para a DATA ORIGINAL (passada, hoje ou futura)
           // Se for passada, aparecerá como atrasada no Dashboard
+          console.log('🔍 [_lerAgenda] ✅ Gerando eventos para:', dia, 'horaPadrao:', horaPadrao);
           gerarEventosDoDia(dia, horaPadrao);
         }
       });
@@ -1137,11 +1141,189 @@ class Dashboard {
       }
     };
 
+    // ════════════════════════════════════════════════════════════
+    // 🚀 POPUP VISUAL IN-APP (notificação flutuante no CRM)
+    // ════════════════════════════════════════════════════════════
+    // Injeta o HTML do container de popup uma única vez
+    if (!document.getElementById('alert-popup-container')) {
+      const popupContainer = document.createElement('div');
+      popupContainer.id = 'alert-popup-container';
+      popupContainer.style.cssText = `
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        pointer-events: none;
+        max-width: 380px;
+      `;
+      document.body.appendChild(popupContainer);
+
+      // Estilos únicos injetados uma vez
+      const styleEl = document.createElement('style');
+      styleEl.id = 'alert-popup-styles';
+      styleEl.textContent = `
+        @keyframes popup-slide-in {
+          from { transform: translateX(120%); opacity: 0; }
+          to   { transform: translateX(0);    opacity: 1; }
+        }
+        @keyframes popup-slide-out {
+          from { transform: translateX(0);    opacity: 1; }
+          to   { transform: translateX(120%); opacity: 0; }
+        }
+        @keyframes popup-pulse-border {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+          50%      { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+        }
+        .alert-popup-toast {
+          background: #1a1a2e;
+          border: 1px solid rgba(239,68,68,0.3);
+          border-left: 4px solid #ef4444;
+          border-radius: 10px;
+          padding: 14px 18px;
+          color: #e0e0e0;
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          font-size: 13px;
+          line-height: 1.5;
+          pointer-events: auto;
+          cursor: pointer;
+          animation: popup-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          transition: all 0.2s;
+          position: relative;
+          overflow: hidden;
+        }
+        .alert-popup-toast:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+          border-color: rgba(239,68,68,0.6);
+        }
+        .alert-popup-toast.popup-critico {
+          border-left-color: #ef4444;
+          animation: popup-pulse-border 2s ease-in-out 3;
+        }
+        .alert-popup-toast.popup-atencao {
+          border-left-color: #f59e0b;
+        }
+        .alert-popup-toast.popup-fechando {
+          animation: popup-slide-out 0.3s ease-in forwards;
+        }
+        .alert-popup-icon {
+          font-size: 22px;
+          flex-shrink: 0;
+          margin-top: 1px;
+        }
+        .alert-popup-body {
+          flex: 1;
+          min-width: 0;
+        }
+        .alert-popup-title {
+          font-weight: 700;
+          font-size: 13px;
+          color: #ef4444;
+          margin-bottom: 3px;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+        .alert-popup-toast.popup-atencao .alert-popup-title {
+          color: #f59e0b;
+        }
+        .alert-popup-sub {
+          font-size: 12px;
+          color: #ccc;
+          margin-bottom: 2px;
+        }
+        .alert-popup-detail {
+          font-size: 11px;
+          color: #999;
+        }
+        .alert-popup-close {
+          position: absolute;
+          top: 6px;
+          right: 8px;
+          background: none;
+          border: none;
+          color: #666;
+          font-size: 16px;
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 4px;
+          transition: all 0.2s;
+          line-height: 1;
+        }
+        .alert-popup-close:hover {
+          background: rgba(255,255,255,0.1);
+          color: #fff;
+        }
+      `;
+      document.head.appendChild(styleEl);
+    }
+
+    // Função para mostrar um popup visual na tela
+    const mostrarPopupVisual = (alerta) => {
+      if (!alerta || !alerta.cat || alerta.cat === 'crm') return; // só mostra crítico/atenção
+
+      const container = document.getElementById('alert-popup-container');
+      if (!container) return;
+
+      // Verifica popup recente para evitar duplicatas (mesmo title nos últimos 10s)
+      const recentes = Array.from(container.children).map(el => el.dataset.popupTitle).filter(Boolean);
+      if (recentes.includes(alerta.title)) return;
+
+      const popup = document.createElement('div');
+      popup.className = `alert-popup-toast popup-${alerta.cat || 'atencao'}`;
+      popup.dataset.popupTitle = alerta.title || '';
+      popup.innerHTML = `
+        <span class="alert-popup-icon">${alerta.icon || '🔔'}</span>
+        <div class="alert-popup-body">
+          <div class="alert-popup-title">${this.escapeHtml(alerta.title || 'Alerta')}</div>
+          <div class="alert-popup-sub">${this.escapeHtml(alerta.sub || '')}</div>
+          ${alerta.detail ? `<div class="alert-popup-detail">${this.escapeHtml(alerta.detail)}</div>` : ''}
+        </div>
+        <button class="alert-popup-close">&times;</button>
+      `;
+
+      // Botão fechar
+      popup.querySelector('.alert-popup-close').addEventListener('click', (e) => {
+        e.stopPropagation();
+        popup.classList.add('popup-fechando');
+        setTimeout(() => popup.remove(), 300);
+      });
+
+      // Clique no popup → abre a lista de alertas
+      popup.addEventListener('click', (e) => {
+        if (e.target.closest('.alert-popup-close')) return;
+        popup.classList.add('popup-fechando');
+        setTimeout(() => popup.remove(), 300);
+        // Abre o modal da lista
+        this.abrirListaAlertas();
+      });
+
+      container.appendChild(popup);
+
+      // Auto-remove após 12 segundos
+      setTimeout(() => {
+        if (popup.parentNode) {
+          popup.classList.add('popup-fechando');
+          setTimeout(() => popup.remove(), 300);
+        }
+      }, 12000);
+    };
+
     // Verifica os módulos e atualiza a lista de alertas
     const atualizarAlertas = async () => {
       try {
         const alertas = await this.gerarAlertas();
         aplicarLista(alertas);
+        // 🚀 Mostra popup visual para alertas críticos/atenção
+        if (alertas && alertas.length) {
+          alertas.forEach(a => mostrarPopupVisual(a));
+        }
       } catch (e) {
         console.warn('Central de Alertas:', e);
         aplicarLista(DICAS);

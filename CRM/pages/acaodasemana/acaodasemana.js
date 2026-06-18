@@ -459,7 +459,9 @@ async function salvar() {
   const arr = lerLinhas();
   try {
     const alertaHora = (alertaHoraEl && alertaHoraEl.value) || '';
-    const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked);
+    // 🔧 CORREÇÃO CRÍTICA: alertaDashboard auto-ativa se houver horário definido
+    // Se o usuário definiu um horário, presume-se que quer ser alertado
+    const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked) || (alertaHora && alertaHora.length > 0);
     const recorrencia = (recorrEl && recorrEl.value) || '';
     if (arr.length === 0) {
       // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
