@@ -1121,3 +1121,86 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     border-color:var(--green-border);
     background:rgba(0,200,83,0.05);
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   ABA ACESSOS — Contas & Senhas
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Barra de filtro por categoria */
+.acesso-cats-bar {
+    display:flex; gap:6px; flex-wrap:wrap;
+    padding:0 0 12px; margin-bottom:4px;
+}
+.acesso-cat-btn {
+    padding:5px 12px; background:rgba(255,255,255,0.04);
+    border:1px solid var(--border); border-radius:100px;
+    color:var(--text3); font-size:12px; font-weight:600;
+    cursor:pointer; font-family:inherit; white-space:nowrap;
+    transition:all var(--transition);
+}
+.acesso-cat-btn.active {
+    background:var(--green-dim); border-color:var(--green-border);
+    color:var(--green-light);
+}
+.acesso-cat-btn:hover:not(.active) {
+    border-color:var(--border-hover); color:var(--text2);
+}
+
+/* Badge de categoria no card */
+.acesso-cat-badge {
+    display:inline-block; font-size:10px; font-weight:700;
+    background:var(--green-dim); border:1px solid var(--green-border);
+    color:var(--green-light); border-radius:100px;
+    padding:2px 8px; margin-bottom:5px;
+}
+
+/* Linha de campo (usuário / senha / url) */
+.acesso-row {
+    display:flex; align-items:center; gap:6px;
+    margin-bottom:4px; min-width:0;
+}
+.acesso-lbl {
+    font-size:13px; flex-shrink:0; line-height:1;
+}
+.acesso-val {
+    font-size:12px; color:var(--text2);
+    flex:1; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.acesso-senha-text {
+    font-family:monospace; letter-spacing:1px; color:var(--text3);
+}
+.acesso-url-text {
+    font-size:12px; color:var(--text3);
+    flex:1; min-width:0;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* Botão pequeno de ação (copiar, olho) */
+.btn-acesso-copy {
+    background:rgba(255,255,255,0.05); border:1px solid var(--border);
+    border-radius:6px; padding:3px 7px;
+    font-size:12px; cursor:pointer; flex-shrink:0;
+    color:var(--text3); font-family:inherit;
+    transition:all 150ms;
+}
+.btn-acesso-copy:hover {
+    background:rgba(255,255,255,0.1); border-color:var(--border-hover);
+    color:var(--text);
+}
+
+/* Campo senha com botão de toggle embutido */
+.acesso-senha-wrap {
+    position:relative; display:flex; align-items:center;
+}
+.acesso-senha-wrap .field {
+    flex:1; padding-right:44px;
+}
+.btn-toggle-senha {
+    position:absolute; right:10px;
+    background:none; border:none;
+    font-size:16px; cursor:pointer; color:var(--text3);
+    padding:0; line-height:1;
+    transition:color 150ms;
+}
+.btn-toggle-senha:hover { color:var(--text); }

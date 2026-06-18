@@ -68,15 +68,30 @@ function av(nome) {
    DASHBOARD
    ═══════════════════════════════════════════════════════════════ */
 function atualizarDashboard() {
-  const pendentes = state.compras.filter(i => i.status !== 'feita').length;
-  const comprados = state.compras.filter(i => i.status === 'feita').length;
-  const totalForn = state.fornecedores.length;
-  const totalFav  = state.fornecedores.filter(f => f.favorito).length;
+  const pendentes  = state.compras.filter(i => i.status !== 'feita').length;
+  const comprados  = state.compras.filter(i => i.status === 'feita').length;
+  const totalForn  = state.fornecedores.length;
+  const totalFav   = state.fornecedores.filter(f => f.favorito).length;
+  const totalMerc  = state.tendencias?.length || 0;
 
-  document.getElementById('dash-pendentes').textContent   = pendentes;
-  document.getElementById('dash-comprados').textContent   = comprados;
-  document.getElementById('dash-fornecedores').textContent = totalForn;
-  document.getElementById('dash-favoritos').textContent   = totalFav;
+  // Stats cards (forn-dashboard)
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('dash-pendentes',    pendentes);
+  set('dash-comprados',    comprados);
+  set('dash-fornecedores', totalForn);
+  set('dash-favoritos',    totalFav);
+
+  // Home summary cards
+  set('hc-forn',    totalForn);
+  set('hc-favs',    totalFav);
+  set('hc-compras', pendentes);
+  set('hc-mercado', totalMerc);
+
+  // Sidebar counts
+  set('sb-count-forn',    totalForn);
+  set('sb-count-favs',    totalFav);
+  set('sb-count-compras', pendentes);
+  set('sb-count-mercado', totalMerc);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -103,51 +118,59 @@ async function carregarFornecedores() {
   document.getElementById('forn-loading').style.display = 'none';
 }
 
+function fornCardHtml(f) {
+  const wpp = f.whatsapp || f.telefone1 || '';
+  const wppLink = wpp ? `https://wa.me/55${wpp.replace(/\D/g,'')}` : null;
+  return `
+    <div class="forn-card-forn ${f.favorito ? 'forn-card-fav' : ''}">
+      <div class="forn-card-left">
+        ${av(f.nome)}
+        <div class="forn-card-forn-body">
+          <div class="forn-card-forn-nome">
+            ${esc(f.nome)}
+            ${f.favorito ? '<span class="forn-star-icon">⭐</span>' : ''}
+          </div>
+          ${f.empresa ? `<div class="forn-card-forn-empresa">🏢 ${esc(f.empresa)}</div>` : ''}
+          <div class="forn-card-forn-contatos">
+            ${f.telefone1 ? `<span>📞 ${fmtTel(f.telefone1)}</span>` : ''}
+            ${f.telefone2 ? `<span>📞 ${fmtTel(f.telefone2)}</span>` : ''}
+            ${f.whatsapp  ? `<span>💬 ${fmtTel(f.whatsapp)}</span>`  : ''}
+            ${f.instagram ? `<span>📷 ${esc(f.instagram)}</span>`    : ''}
+            ${f.endereco  ? `<span>📍 ${esc(f.endereco)}</span>`     : ''}
+            ${f.cidade    ? `<span>🌆 ${esc(f.cidade)}</span>`       : ''}
+          </div>
+          ${f.obs ? `<div class="forn-card-forn-obs">${esc(f.obs)}</div>` : ''}
+        </div>
+      </div>
+      <div class="forn-card-forn-actions">
+        <button class="forn-btn-acc forn-btn-fav ${f.favorito ? 'on' : ''}"
+          onclick="Forn.toggleFav('${f.id}')" title="${f.favorito ? 'Remover dos favoritos' : 'Favoritar'}">
+          ${f.favorito ? '⭐' : '☆'}
+        </button>
+        ${wppLink ? `<a class="forn-btn-acc forn-btn-wpp" href="${wppLink}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : ''}
+        ${f.site ? `<a class="forn-btn-acc forn-btn-site" href="${esc(f.site)}" target="_blank" rel="noopener" title="Abrir Site">🌐</a>` : ''}
+        <button class="forn-btn-acc forn-btn-edit" onclick="Forn.editar('${f.id}')" title="Editar">✏️</button>
+        <button class="forn-btn-acc forn-btn-del" onclick="Forn.excluir('${f.id}')" title="Excluir">🗑️</button>
+      </div>
+    </div>`;
+}
+
 function renderFornecedores(lista) {
   const el = document.getElementById('forn-lista');
   const emptyEl = document.getElementById('forn-empty');
-  if (!lista.length) {
-    el.innerHTML = '';
-    emptyEl.style.display = 'flex';
-    return;
-  }
+  if (!lista.length) { el.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
   emptyEl.style.display = 'none';
-  el.innerHTML = lista.map(f => {
-    const wpp = f.whatsapp || f.telefone1 || '';
-    const wppLink = wpp ? `https://wa.me/55${wpp.replace(/\D/g,'')}` : null;
-    return `
-      <div class="forn-card-forn ${f.favorito ? 'forn-card-fav' : ''}">
-        <div class="forn-card-left">
-          ${av(f.nome)}
-          <div class="forn-card-forn-body">
-            <div class="forn-card-forn-nome">
-              ${esc(f.nome)}
-              ${f.favorito ? '<span class="forn-star-icon">⭐</span>' : ''}
-            </div>
-            ${f.empresa ? `<div class="forn-card-forn-empresa">🏢 ${esc(f.empresa)}</div>` : ''}
-            <div class="forn-card-forn-contatos">
-              ${f.telefone1 ? `<span>📞 ${fmtTel(f.telefone1)}</span>` : ''}
-              ${f.telefone2 ? `<span>📞 ${fmtTel(f.telefone2)}</span>` : ''}
-              ${f.whatsapp ? `<span>💬 ${fmtTel(f.whatsapp)}</span>` : ''}
-              ${f.instagram ? `<span>📷 ${esc(f.instagram)}</span>` : ''}
-              ${f.endereco ? `<span>📍 ${esc(f.endereco)}</span>` : ''}
-              ${f.cidade ? `<span>📍 ${esc(f.cidade)}</span>` : ''}
-            </div>
-            ${f.obs ? `<div class="forn-card-forn-obs">${esc(f.obs)}</div>` : ''}
-          </div>
-        </div>
-        <div class="forn-card-forn-actions">
-          <button class="forn-btn-acc forn-btn-fav ${f.favorito ? 'on' : ''}"
-            onclick="Forn.toggleFav('${f.id}')" title="${f.favorito ? 'Remover dos favoritos' : 'Favoritar'}">
-            ${f.favorito ? '⭐' : '☆'}
-          </button>
-          ${wppLink ? `<a class="forn-btn-acc forn-btn-wpp" href="${wppLink}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : ''}
-          ${f.site ? `<a class="forn-btn-acc forn-btn-site" href="${esc(f.site)}" target="_blank" rel="noopener" title="Abrir Site">🌐</a>` : ''}
-          <button class="forn-btn-acc forn-btn-edit" onclick="Forn.editar('${f.id}')" title="Editar">✏️</button>
-          <button class="forn-btn-acc forn-btn-del" onclick="Forn.excluir('${f.id}')" title="Excluir">🗑️</button>
-        </div>
-      </div>`;
-  }).join('');
+  el.innerHTML = lista.map(fornCardHtml).join('');
+}
+
+function renderFavoritos() {
+  const favs = state.fornecedores.filter(f => f.favorito);
+  const listaEl = document.getElementById('favoritos-lista');
+  const emptyEl = document.getElementById('favoritos-empty');
+  if (!listaEl) return;
+  if (!favs.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
+  emptyEl.style.display = 'none';
+  listaEl.innerHTML = favs.map(fornCardHtml).join('');
 }
 
 function abrirFormForn(id) {
@@ -259,6 +282,7 @@ async function toggleFav(id) {
       return (a.nome || '').localeCompare(b.nome || '', 'pt');
     });
     renderFornecedores(state.fornecedores);
+    renderFavoritos();
     atualizarDashboard();
     toast(novo ? '⭐ Favoritado!' : '☆ Favorito removido.');
   } catch (e) {
@@ -522,6 +546,11 @@ async function carregarEstoqueBaixo() {
       if (p.quantidade <= p.quantidadeMinima) baixo.push(p);
     });
     renderEstoqueBaixo(baixo);
+    // Atualiza contador de estoque baixo na sidebar e home
+    const n = baixo.length;
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('sb-count-baixo', n);
+    setEl('hc-baixo', n);
   } catch { renderEstoqueBaixo([]); }
   document.getElementById('baixo-loading').style.display = 'none';
 }
@@ -562,8 +591,10 @@ async function carregarTendencias() {
     const snap = await getDocs(collection(db, COL_TENDENCIAS));
     const itens = [];
     snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
+    state.tendencias = itens;
     renderTendencias(itens);
-  } catch { renderTendencias([]); }
+    atualizarDashboard();
+  } catch { state.tendencias = []; renderTendencias([]); }
   document.getElementById('tendencias-loading').style.display = 'none';
 }
 
@@ -629,19 +660,53 @@ function fecharFormTendencia() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   TABS
+   SIDEBAR NAVIGATION
    ═══════════════════════════════════════════════════════════════ */
-document.querySelectorAll('.forn-tab').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.forn-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.forn-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'fornecedores') carregarFornecedores();
-    if (btn.dataset.tab === 'compras') carregarCompras();
-    if (btn.dataset.tab === 'estoque-baixo') carregarEstoqueBaixo();
-    if (btn.dataset.tab === 'mercado') carregarTendencias();
+const NAV_TITLES = {
+  home:          '🏠 Home',
+  fornecedores:  '📋 Fornecedores',
+  favoritos:     '⭐ Favoritos',
+  compras:       '🛒 Compras',
+  'estoque-baixo': '⚠️ Estoque Baixo',
+  mercado:       '🏪 Mercado',
+};
+
+function navegarPara(secao) {
+  // Atualiza sidebar
+  document.querySelectorAll('.forn-sb-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.nav === secao);
   });
+  // Atualiza paineis
+  document.querySelectorAll('.forn-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + secao);
+  if (panel) panel.classList.add('active');
+  // Breadcrumb
+  const titulo = document.getElementById('forn-nav-titulo');
+  if (titulo) titulo.textContent = NAV_TITLES[secao] || secao;
+  // Fecha sidebar mobile
+  document.getElementById('forn-sidebar')?.classList.remove('open');
+  document.getElementById('forn-sb-overlay')?.classList.remove('open');
+  // Carrega dados
+  if (secao === 'fornecedores') { if (!state.fornecedores.length) carregarFornecedores(); }
+  if (secao === 'favoritos')    { renderFavoritos(); }
+  if (secao === 'compras')      { carregarCompras(); }
+  if (secao === 'estoque-baixo') { carregarEstoqueBaixo(); }
+  if (secao === 'mercado')      { if (!document.getElementById('tendencias-lista').innerHTML) carregarTendencias(); }
+}
+
+// Cliques na sidebar
+document.querySelectorAll('.forn-sb-item').forEach(item => {
+  item.addEventListener('click', () => navegarPara(item.dataset.nav));
+});
+
+// Toggle mobile
+document.getElementById('forn-sb-open')?.addEventListener('click', () => {
+  document.getElementById('forn-sidebar').classList.toggle('open');
+  document.getElementById('forn-sb-overlay').classList.toggle('open');
+});
+document.getElementById('forn-sb-overlay')?.addEventListener('click', () => {
+  document.getElementById('forn-sidebar').classList.remove('open');
+  document.getElementById('forn-sb-overlay').classList.remove('open');
 });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -708,7 +773,9 @@ async function receberItemNoEstoque(item) {
    API PÚBLICA
    ═══════════════════════════════════════════════════════════════ */
 window.Forn = {
+  nav:               (s)  => navegarPara(s),
   editar:            (id) => abrirFormForn(id),
+  abrirFormForn:     (id) => abrirFormForn(id),
   excluir:           (id) => excluirForn(id),
   toggleFav:         (id) => toggleFav(id),
   buscar:            (q)  => buscarFornecedores(q),
@@ -738,5 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('forn-dashboard')?.classList.add('recolhido');
     document.getElementById('forn-dash-ico')?.classList.add('recolhido');
   }
+  // Carrega dados na inicialização para popular a Home com contadores
   carregarFornecedores();
+  carregarCompras();
 });

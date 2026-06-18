@@ -133,38 +133,74 @@ const SECOES = {
         ordenar: (itens) => [...itens].sort((a, b) => (b.data || '').localeCompare(a.data || '')),
     },
     links: {
-        campos: ['links-nome', 'links-url', 'links-obs'],
+        campos: ['links-nome', 'links-categoria', 'links-usuario', 'links-url', 'links-obs'],
         montar: (campos) => ({
-            nome: campos['links-nome'],
-            url:  campos['links-url'],
-            obs:  campos['links-obs'],
+            nome:      campos['links-nome'],
+            categoria: campos['links-categoria'],
+            usuario:   campos['links-usuario'],
+            senha:     document.getElementById('links-senha')?.value || '',
+            url:       campos['links-url'],
+            obs:       campos['links-obs'],
         }),
         preencher: (item) => {
-            document.getElementById('links-nome').value = item.nome || '';
-            document.getElementById('links-url').value  = item.url  || '';
-            document.getElementById('links-obs').value  = item.obs  || '';
+            document.getElementById('links-nome').value      = item.nome      || '';
+            document.getElementById('links-categoria').value = item.categoria || '';
+            document.getElementById('links-usuario').value   = item.usuario   || '';
+            document.getElementById('links-senha').value     = item.senha     || '';
+            document.getElementById('links-url').value       = item.url       || '';
+            document.getElementById('links-obs').value       = item.obs       || '';
         },
-        validar: (d) => d.nome && d.url,
-        erroValidacao: 'Preencha nome e URL.',
-        renderItem: (item, idx) => `
-            <div class="item-card">
+        onFechar: () => {
+            const el  = document.getElementById('links-senha');
+            const btn = document.getElementById('links-senha-toggle');
+            if (el)  { el.value = ''; el.type = 'password'; }
+            if (btn) btn.textContent = '👁';
+        },
+        validar: (d) => !!d.nome,
+        erroValidacao: 'Preencha o nome.',
+        filtrarExtra: (item) => !_linksCategoria || item.categoria === _linksCategoria,
+        renderItem: (item, idx) => {
+            const CAT_EMOJI = { Instagram:'📸', Facebook:'📘', Google:'🔍', Firebase:'🔥', WhatsApp:'💬', Hospedagem:'🌐', 'Domínio':'🏷️', 'E-mail':'✉️', IA:'🤖', Outros:'📂' };
+            const catEmoji = item.categoria ? (CAT_EMOJI[item.categoria] || '📂') : '';
+            return `
+            <div class="item-card acesso-card">
                 ${av(item.nome)}
                 <div class="item-body">
+                    ${item.categoria ? `<div class="acesso-cat-badge">${catEmoji} ${esc(item.categoria)}</div>` : ''}
                     <div class="item-name">${esc(item.nome)}</div>
-                    <div class="item-sub"><a class="item-link" href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.url)}</a></div>
+                    ${item.usuario ? `
+                    <div class="acesso-row">
+                        <span class="acesso-lbl">👤</span>
+                        <span class="acesso-val">${esc(item.usuario)}</span>
+                        <button class="btn-acesso-copy" onclick="Central.copiarUsuario(${idx})" title="Copiar usuário">📋</button>
+                    </div>` : ''}
+                    ${item.senha ? `
+                    <div class="acesso-row">
+                        <span class="acesso-lbl">🔑</span>
+                        <span class="acesso-val acesso-senha-text" id="senha-val-${idx}">••••••••</span>
+                        <button class="btn-acesso-copy" onclick="Central.toggleSenhaCard(${idx})" id="senha-eye-${idx}" title="Mostrar/ocultar senha">👁</button>
+                        <button class="btn-acesso-copy" onclick="Central.copiarSenha(${idx})" title="Copiar senha">📋</button>
+                    </div>` : ''}
+                    ${item.url ? `
+                    <div class="acesso-row">
+                        <span class="acesso-lbl">🌐</span>
+                        <a class="item-link acesso-url-text" href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.url)}</a>
+                    </div>` : ''}
                     ${item.obs ? `<div class="item-obs">${esc(item.obs)}</div>` : ''}
                 </div>
                 <div class="item-actions">
                     <button class="btn-edit"   onclick="Central.editar('links',${idx})"  title="Editar">✏️</button>
                     <button class="btn-delete" onclick="Central.remover('links',${idx})" title="Remover">🗑️</button>
                 </div>
-            </div>`,
+            </div>`;
+        },
     },
 };
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [], _edit: null };
 let _busca = '';
+let _linksCategoria = '';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function esc(str) {
@@ -209,7 +245,7 @@ function renderLista(secao) {
     if (!lista) return;
     let itens = estado[secao];
     if (cfg.ordenar) itens = cfg.ordenar(itens);
-    const indexados = itens.map((item, idx) => ({ item, idx })).filter(({ item }) => matchBusca(item));
+    const indexados = itens.map((item, idx) => ({ item, idx })).filter(({ item }) => matchBusca(item) && (!cfg.filtrarExtra || cfg.filtrarExtra(item)));
     if (!indexados.length) {
         lista.innerHTML = _busca
             ? `<div class="empty">Nenhum resultado para "<strong>${esc(_busca)}</strong>".</div>`
@@ -237,6 +273,7 @@ window.Central = {
             const el = document.getElementById(id);
             if (el) el.value = '';
         });
+        SECOES[secao].onFechar?.();
         if (estado._edit?.secao === secao) estado._edit = null;
     },
 
@@ -327,6 +364,54 @@ window.Central = {
         _busca = (valor || '').trim();
         const tabAtiva = document.querySelector('.tabs .tab.active')?.dataset.tab;
         if (tabAtiva && SECOES[tabAtiva]) renderLista(tabAtiva);
+    },
+
+    // ── Acessos: senha show/hide no formulário ────────────────────────────────
+    toggleSenhaForm() {
+        const el  = document.getElementById('links-senha');
+        const btn = document.getElementById('links-senha-toggle');
+        if (!el) return;
+        const mostrar = el.type === 'password';
+        el.type = mostrar ? 'text' : 'password';
+        if (btn) btn.textContent = mostrar ? '🙈' : '👁';
+    },
+
+    // ── Acessos: senha show/hide no card ─────────────────────────────────────
+    toggleSenhaCard(idx) {
+        const valEl = document.getElementById(`senha-val-${idx}`);
+        const eyeEl = document.getElementById(`senha-eye-${idx}`);
+        const item  = estado.links[idx];
+        if (!valEl || !item?.senha) return;
+        const mostrando = valEl.dataset.mostrando === '1';
+        valEl.textContent       = mostrando ? '••••••••' : item.senha;
+        valEl.dataset.mostrando = mostrando ? '0' : '1';
+        if (eyeEl) eyeEl.textContent = mostrando ? '👁' : '🙈';
+    },
+
+    // ── Acessos: copiar campos ────────────────────────────────────────────────
+    copiarUsuario(idx) {
+        const item = estado.links[idx];
+        if (!item?.usuario) return;
+        navigator.clipboard.writeText(item.usuario)
+            .then(() => toast('📋 Usuário copiado'))
+            .catch(() => toast('❌ Erro ao copiar'));
+    },
+
+    copiarSenha(idx) {
+        const item = estado.links[idx];
+        if (!item?.senha) return;
+        navigator.clipboard.writeText(item.senha)
+            .then(() => toast('📋 Senha copiada'))
+            .catch(() => toast('❌ Erro ao copiar'));
+    },
+
+    // ── Acessos: filtro por categoria ─────────────────────────────────────────
+    filtrarAcessos(categoria) {
+        _linksCategoria = categoria;
+        document.querySelectorAll('.acesso-cat-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.cat === categoria);
+        });
+        renderLista('links');
     },
 };
 

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <title>Cell City — Central Automação</title>
-    <link rel="stylesheet" href="central.css?v=20260619">
+    <link rel="stylesheet" href="central.css?v=20260618b">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -30,7 +30,7 @@
             <button class="tab" data-tab="robos">🤖 Robôs & IA</button>
             <button class="tab" data-tab="programas">🛠️ Programas</button>
             <button class="tab" data-tab="historico">📜 Histórico</button>
-            <button class="tab" data-tab="links">🔗 Links</button>
+            <button class="tab" data-tab="links">🔐 Acessos</button>
             <button class="tab" data-tab="monitoramento">🤖 Monitoramento</button>
             <button class="tab" data-tab="notas">📝 Notas</button>
             <button class="tab" data-tab="categorias">📁 Categorias</button>
@@ -134,21 +134,54 @@
             <div class="list" id="list-historico"></div>
         </div>
 
-        <!-- ===== LINKS ===== -->
+        <!-- ===== ACESSOS ===== -->
         <div class="tab-panel" id="tab-links">
             <div class="section-header">
-                <div class="section-title">Links Importantes</div>
+                <div class="section-title">Contas & Acessos</div>
                 <button class="btn-add" onclick="Central.abrirForm('links')">+ Adicionar</button>
             </div>
 
             <div class="form-box hidden" id="form-links">
-                <input class="field" id="links-nome" placeholder="Nome (ex: Firebase Console)" maxlength="60">
-                <input class="field" id="links-url" placeholder="URL (ex: https://console.firebase.google.com)" maxlength="300">
-                <input class="field" id="links-obs" placeholder="Observação (opcional)" maxlength="120">
+                <input class="field" id="links-nome" placeholder="Nome * (ex: Instagram Principal)" maxlength="60" autocomplete="off">
+                <select class="field" id="links-categoria">
+                    <option value="">Categoria (opcional)</option>
+                    <option value="Instagram">📸 Instagram</option>
+                    <option value="Facebook">📘 Facebook</option>
+                    <option value="Google">🔍 Google</option>
+                    <option value="Firebase">🔥 Firebase</option>
+                    <option value="WhatsApp">💬 WhatsApp</option>
+                    <option value="Hospedagem">🌐 Hospedagem</option>
+                    <option value="Domínio">🏷️ Domínio</option>
+                    <option value="E-mail">✉️ E-mail</option>
+                    <option value="IA">🤖 IA</option>
+                    <option value="Outros">📂 Outros</option>
+                </select>
+                <input class="field" id="links-usuario" placeholder="Usuário / Login (ex: @cellcity)" maxlength="120" autocomplete="off">
+                <div class="acesso-senha-wrap">
+                    <input class="field" id="links-senha" placeholder="Senha" maxlength="200" type="password" autocomplete="new-password">
+                    <button type="button" class="btn-toggle-senha" id="links-senha-toggle" onclick="Central.toggleSenhaForm()" title="Mostrar/ocultar senha">👁</button>
+                </div>
+                <input class="field" id="links-url" placeholder="URL (ex: https://instagram.com)" maxlength="300" autocomplete="off">
+                <input class="field" id="links-obs" placeholder="Observação (opcional)" maxlength="200" autocomplete="off">
                 <div class="form-actions">
                     <button class="btn-save" onclick="Central.salvar('links')">Salvar</button>
                     <button class="btn-cancel" onclick="Central.fecharForm('links')">Cancelar</button>
                 </div>
+            </div>
+
+            <!-- Filtro por categoria -->
+            <div class="acesso-cats-bar" id="acesso-cats-bar">
+                <button class="acesso-cat-btn active" data-cat="" onclick="Central.filtrarAcessos('')">Todos</button>
+                <button class="acesso-cat-btn" data-cat="Instagram" onclick="Central.filtrarAcessos('Instagram')">📸 Instagram</button>
+                <button class="acesso-cat-btn" data-cat="Facebook" onclick="Central.filtrarAcessos('Facebook')">📘 Facebook</button>
+                <button class="acesso-cat-btn" data-cat="Google" onclick="Central.filtrarAcessos('Google')">🔍 Google</button>
+                <button class="acesso-cat-btn" data-cat="Firebase" onclick="Central.filtrarAcessos('Firebase')">🔥 Firebase</button>
+                <button class="acesso-cat-btn" data-cat="WhatsApp" onclick="Central.filtrarAcessos('WhatsApp')">💬 WhatsApp</button>
+                <button class="acesso-cat-btn" data-cat="Hospedagem" onclick="Central.filtrarAcessos('Hospedagem')">🌐 Hospedagem</button>
+                <button class="acesso-cat-btn" data-cat="Domínio" onclick="Central.filtrarAcessos('Domínio')">🏷️ Domínio</button>
+                <button class="acesso-cat-btn" data-cat="E-mail" onclick="Central.filtrarAcessos('E-mail')">✉️ E-mail</button>
+                <button class="acesso-cat-btn" data-cat="IA" onclick="Central.filtrarAcessos('IA')">🤖 IA</button>
+                <button class="acesso-cat-btn" data-cat="Outros" onclick="Central.filtrarAcessos('Outros')">📂 Outros</button>
             </div>
 
             <div class="list" id="list-links"></div>
@@ -690,7 +723,7 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="central.js?v=20260619"></script>
+    <script type="module" src="central.js?v=20260618b"></script>
     <script type="module" src="../../shared/favoritos.js?v=20260617"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

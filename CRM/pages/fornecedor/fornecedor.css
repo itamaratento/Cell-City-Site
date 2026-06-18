@@ -762,12 +762,284 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); min-hei
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   RESPONSIVE
+   RESPONSIVE (legado forn-content)
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 480px) {
   .forn-content { padding: 10px; }
   .forn-form-grid { grid-template-columns: 1fr; }
   .forn-span2 { grid-column: span 1; }
+  .forn-card-forn-nome { font-size: 15px; }
+  .forn-avatar { width: 40px; height: 40px; font-size: 14px; }
+  .forn-dash-val { font-size: 22px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXPLORER LAYOUT (sidebar + main) — padrão Diário
+   ═══════════════════════════════════════════════════════════════ */
+
+/* overlay mobile */
+.forn-sb-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 199;
+  backdrop-filter: blur(2px);
+}
+.forn-sb-overlay.open { display: block; animation: fadeOv 200ms ease; }
+@keyframes fadeOv { from { opacity:0; } to { opacity:1; } }
+
+.forn-explorer {
+  display: flex;
+  min-height: calc(100dvh - 58px);
+  align-items: flex-start;
+}
+
+/* ── Sidebar ── */
+.forn-sidebar {
+  width: 210px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 6px 0 100px;
+  position: sticky;
+  top: 58px;
+  height: calc(100dvh - 58px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.forn-sb-header {
+  padding: 6px 14px 4px;
+  margin-bottom: 2px;
+}
+.forn-sb-titulo {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.forn-sb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text2);
+  transition: background 140ms, color 140ms;
+  border-left: 3px solid transparent;
+  user-select: none;
+}
+.forn-sb-item:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+.forn-sb-item.active {
+  background: rgba(0,200,83,0.09);
+  color: var(--green-l);
+  border-left-color: var(--green);
+  font-weight: 600;
+}
+.forn-sb-icon { font-size: 14px; flex-shrink: 0; width: 18px; text-align: center; }
+.forn-sb-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.forn-sb-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.06);
+  border-radius: 100px;
+  padding: 1px 7px;
+  color: var(--text3);
+  flex-shrink: 0;
+  min-width: 22px;
+  text-align: center;
+}
+.forn-sb-item.active .forn-sb-count {
+  background: rgba(0,200,83,0.16);
+  color: var(--green-l);
+}
+.forn-sb-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 5px 0;
+}
+
+/* ── Main area ── */
+.forn-main {
+  flex: 1;
+  min-width: 0;
+  padding: 0 14px 100px;
+  max-width: 860px;
+}
+
+/* ── Topbar ── */
+.forn-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 6px;
+  margin-bottom: 6px;
+}
+.forn-topbar .forn-hero-search-wrap {
+  flex: 1;
+  margin-bottom: 0;
+}
+.forn-btn-sb-open {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text2);
+  font-size: 17px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 150ms;
+}
+.forn-btn-sb-open:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.forn-btn-novo-top {
+  flex-shrink: 0;
+  padding: 8px 15px;
+  background: var(--green);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: var(--font);
+  transition: background 150ms, transform 150ms;
+  white-space: nowrap;
+}
+.forn-btn-novo-top:hover { background: var(--green-l); transform: translateY(-1px); }
+
+/* ── Breadcrumb / nav header ── */
+.forn-nav-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.forn-nav-titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+/* ── Home grid ── */
+.forn-home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+  padding: 2px 0 20px;
+}
+.forn-home-card {
+  background: rgba(20,24,22,0.85);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 12px 16px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  transition: border-color 180ms, background 180ms, transform 180ms, box-shadow 180ms;
+  user-select: none;
+}
+.forn-home-card:hover {
+  border-color: var(--green);
+  background: rgba(0,200,83,0.06);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+}
+.forn-home-card:active { transform: translateY(-1px); }
+.forn-home-icon { font-size: 32px; line-height: 1; }
+.forn-home-count {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--green-l);
+  background: rgba(0,200,83,0.12);
+  border-radius: 100px;
+  padding: 2px 14px;
+  min-width: 40px;
+}
+.forn-home-count-fav { color: #fbbf24; background: rgba(255,193,7,0.12); }
+.forn-home-count-alerta { color: #fb923c; background: rgba(251,146,60,0.12); }
+.forn-home-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+.forn-home-fav { border-color: rgba(255,193,7,0.15); }
+.forn-home-fav:hover { border-color: #fbbf24; background: rgba(255,193,7,0.06); }
+.forn-home-alerta { border-color: rgba(251,146,60,0.15); }
+.forn-home-alerta:hover { border-color: #fb923c; background: rgba(251,146,60,0.06); }
+
+/* ── Ações rápidas ── */
+.forn-quick-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.forn-quick-btn {
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border-h);
+  background: rgba(255,255,255,0.04);
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms;
+}
+.forn-quick-btn:hover { background: rgba(255,255,255,0.09); color: var(--text); transform: translateY(-1px); }
+.forn-quick-primary {
+  background: rgba(0,200,83,0.1);
+  border-color: rgba(0,200,83,0.3);
+  color: var(--green-l);
+}
+.forn-quick-primary:hover { background: rgba(0,200,83,0.18); border-color: rgba(0,200,83,0.5); }
+
+/* ── Mobile responsive ── */
+@media (max-width: 767px) {
+  .forn-sidebar {
+    position: fixed;
+    left: -230px;
+    top: 0;
+    bottom: 0;
+    z-index: 200;
+    width: 230px;
+    height: 100%;
+    padding-top: 68px;
+    transition: left 250ms cubic-bezier(0.4,0,0.2,1);
+    box-shadow: none;
+  }
+  .forn-sidebar.open {
+    left: 0;
+    box-shadow: 4px 0 28px rgba(0,0,0,0.55);
+  }
+  .forn-btn-sb-open { display: flex; }
+  .forn-main { padding: 0 10px 100px; }
+  .forn-home-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .forn-form-grid { grid-template-columns: 1fr; }
+  .forn-span2 { grid-column: span 1; }
+  .forn-btn-novo-top { padding: 8px 11px; font-size: 12px; }
+}
+@media (max-width: 420px) {
+  .forn-home-grid { grid-template-columns: repeat(2, 1fr); }
   .forn-card-forn-nome { font-size: 15px; }
   .forn-avatar { width: 40px; height: 40px; font-size: 14px; }
   .forn-dash-val { font-size: 22px; }
