@@ -1060,3 +1060,22 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 }
 .tar-hist-rec.semanal { color:#42A5F5; background:rgba(33,150,243,0.1); border-color:rgba(33,150,243,0.25); }
 .tar-hist-rec.mensal  { color:#CE93D8; background:rgba(156,39,176,0.1); border-color:rgba(156,39,176,0.25); }
+
+/* ── Toggle modo individual / lote ── */
+.tar-modo-toggle {
+    display:flex; gap:4px;
+    background:rgba(255,255,255,0.03); border:1px solid var(--border);
+    border-radius:10px; padding:4px;
+}
+.tar-modo-btn {
+    flex:1; padding:7px 10px; border-radius:7px;
+    background:none; border:none; color:var(--text3);
+    font-size:12px; font-weight:700; font-family:var(--font);
+    cursor:pointer; transition:all var(--transition);
+}
+.tar-modo-btn.active {
+    background:rgba(255,255,255,0.09); color:var(--text);
+    box-shadow:0 1px 4px rgba(0,0,0,0.35);
+}
+.tar-modo-btn:hover:not(.active) { color:var(--text2); }
+.tar-lote-dica { font-size:11px; color:var(--text3); margin-top:4px; }

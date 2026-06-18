@@ -605,8 +605,26 @@
                 <!-- Formulário nova/editar tarefa -->
                 <div class="form-box hidden" id="form-tarefas">
                     <input type="hidden" id="tar-edit-id">
-                    <input class="field" id="tar-f-nome" placeholder="Nome da tarefa *" maxlength="80" autocomplete="off">
-                    <textarea class="cat-textarea" id="tar-f-desc" placeholder="Descrição detalhada (opcional)" rows="3"></textarea>
+
+                    <!-- Toggle individual / lote -->
+                    <div class="tar-modo-toggle" id="tar-modo-toggle">
+                        <button class="tar-modo-btn active" id="tar-modo-btn-individual" onclick="Tarefas.setModo('individual')">1 Tarefa</button>
+                        <button class="tar-modo-btn" id="tar-modo-btn-lote" onclick="Tarefas.setModo('lote')">📋 Várias de uma vez</button>
+                    </div>
+
+                    <!-- Modo individual -->
+                    <div id="tar-campos-individual">
+                        <input class="field" id="tar-f-nome" placeholder="Nome da tarefa *" maxlength="80" autocomplete="off">
+                        <textarea class="cat-textarea" id="tar-f-desc" placeholder="Descrição detalhada (opcional)" rows="2"></textarea>
+                    </div>
+
+                    <!-- Modo lote -->
+                    <div id="tar-campos-lote" style="display:none">
+                        <textarea class="cat-textarea" id="tar-f-lote"
+                            placeholder="Uma tarefa por linha:&#10;Publicar Story do dia&#10;Responder mensagens&#10;Fazer postagem do feed&#10;Curtir publicações de concorrentes" rows="7"></textarea>
+                        <div class="tar-lote-dica">Uma tarefa por linha — todas receberão a mesma recorrência abaixo.</div>
+                    </div>
+
                     <select class="field" id="tar-f-recorrencia">
                         <option value="nenhuma">🔂 Sem recorrência</option>
                         <option value="diaria">📅 Diária — repete todo dia</option>

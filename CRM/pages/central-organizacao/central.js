@@ -1830,6 +1830,7 @@ const tarState = {
     roboAtual:  null,   // { slug, nome, tarefas:[] }
     editId:     null,
     histAberto: false,
+    modo:       'individual',   // 'individual' | 'lote'
 };
 
 function tarSlug(nome) {
@@ -2066,19 +2067,37 @@ window.Tarefas = {
         tarRenderRobos();
     },
 
+    setModo(modo) {
+        tarState.modo = modo;
+        const isLote = modo === 'lote';
+        document.getElementById('tar-campos-individual').style.display = isLote ? 'none' : '';
+        document.getElementById('tar-campos-lote').style.display       = isLote ? '' : 'none';
+        document.getElementById('tar-modo-btn-individual')?.classList.toggle('active', !isLote);
+        document.getElementById('tar-modo-btn-lote')?.classList.toggle('active',  isLote);
+        setTimeout(() => {
+            (isLote
+                ? document.getElementById('tar-f-lote')
+                : document.getElementById('tar-f-nome')
+            )?.focus();
+        }, 50);
+    },
+
     abrirForm() {
         tarState.editId = null;
         document.getElementById('tar-edit-id').value       = '';
         document.getElementById('tar-f-nome').value        = '';
         document.getElementById('tar-f-desc').value        = '';
+        document.getElementById('tar-f-lote').value        = '';
         document.getElementById('tar-f-recorrencia').value = 'nenhuma';
+        document.getElementById('tar-modo-toggle').style.display = '';
         document.getElementById('form-tarefas').classList.remove('hidden');
-        document.getElementById('tar-f-nome').focus();
+        Tarefas.setModo('individual');
     },
 
     fecharForm() {
         document.getElementById('form-tarefas').classList.add('hidden');
         tarState.editId = null;
+        tarState.modo   = 'individual';
     },
 
     editar(id) {
@@ -2089,17 +2108,43 @@ window.Tarefas = {
         document.getElementById('tar-f-nome').value        = t.nome        || '';
         document.getElementById('tar-f-desc').value        = t.descricao   || '';
         document.getElementById('tar-f-recorrencia').value = t.recorrencia || 'nenhuma';
+        // Ao editar, esconde o toggle (modo fixo individual)
+        document.getElementById('tar-modo-toggle').style.display = 'none';
+        Tarefas.setModo('individual');
         document.getElementById('form-tarefas').classList.remove('hidden');
         document.getElementById('tar-f-nome').focus();
         document.getElementById('form-tarefas').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     },
 
     async salvar() {
-        const r    = tarState.roboAtual; if (!r) return;
+        const r   = tarState.roboAtual; if (!r) return;
+        const rec = document.getElementById('tar-f-recorrencia').value || 'nenhuma';
+
+        // ── Modo lote ──
+        if (tarState.modo === 'lote') {
+            const texto = document.getElementById('tar-f-lote').value || '';
+            const nomes = texto.split('\n').map(l => l.trim()).filter(Boolean);
+            if (!nomes.length) { toast('⚠️ Digite ao menos uma tarefa'); return; }
+            const tarefas = [...r.tarefas];
+            const hoje    = tarHoje();
+            nomes.forEach(nome => tarefas.push({
+                id: tarId(), nome, descricao: '', recorrencia: rec,
+                criadoEm: hoje, status: 'pendente', concluidoEm: null, historico: [],
+            }));
+            try {
+                await tarPersistir(r.slug, r.nome, tarefas);
+                r.tarefas = tarefas;
+                tarRenderTarefas(tarefas);
+                Tarefas.fecharForm();
+                toast(`✅ ${nomes.length} tarefa${nomes.length !== 1 ? 's' : ''} criada${nomes.length !== 1 ? 's' : ''}!`);
+            } catch(e) { toast('❌ Erro ao salvar tarefas'); console.error(e); }
+            return;
+        }
+
+        // ── Modo individual ──
         const nome = (document.getElementById('tar-f-nome').value || '').trim();
         if (!nome) { toast('⚠️ Informe o nome da tarefa'); return; }
         const desc    = (document.getElementById('tar-f-desc').value || '').trim();
-        const rec     = document.getElementById('tar-f-recorrencia').value || 'nenhuma';
         const tarefas = [...r.tarefas];
         if (tarState.editId) {
             const idx = tarefas.findIndex(x => x.id === tarState.editId);
