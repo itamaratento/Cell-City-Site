@@ -1110,10 +1110,12 @@ class Dashboard {
       const badge = document.getElementById('alertas-count-badge');
       const cardSub = document.getElementById('alertas-card-sub');
       const criticos = (nova || []).filter(a => a.cat === 'critico').length;
-      const total = (nova || []).length;
+      const userAlertas = parseInt(localStorage.getItem('cc_alertas_badge') || '0');
+      const total = (nova || []).length + userAlertas;
+      const totalCrit = criticos;
       if (badge) {
-        if (criticos > 0) {
-          badge.textContent = criticos;
+        if (totalCrit > 0) {
+          badge.textContent = totalCrit;
           badge.style.display = '';
           badge.style.background = '#ef4444';
         } else if (total > 0) {
@@ -1125,8 +1127,8 @@ class Dashboard {
         }
       }
       if (cardSub) {
-        if (criticos > 0) {
-          cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
+        if (totalCrit > 0) {
+          cardSub.textContent = `${totalCrit} alerta(s) crítico(s)`;
         } else if (total > 0) {
           cardSub.textContent = `${total} alerta(s) pendente(s)`;
         } else {
@@ -1732,7 +1734,7 @@ class Dashboard {
       'pendencias':          '../../pages/pendencias/index.html'
     };
     if (module === 'central-alertas') {
-      this.abrirListaAlertas();
+      window.location.href = '../../pages/central-alertas/index.html';
       return;
     }
     const url = routes[module];

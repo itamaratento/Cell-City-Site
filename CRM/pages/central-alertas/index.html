@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Cell City Gestão Empresarial — Central de Alertas</title>
+    <link rel="stylesheet" href="alertas.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <header>
+        <span class="header-title">🔔 Central de Alertas</span>
+    </header>
+
+    <main>
+        <div class="al-overlay" id="al-overlay"></div>
+
+        <div class="al-layout">
+
+            <!-- ═══════ SIDEBAR ═══════ -->
+            <aside class="al-sidebar" id="al-sidebar">
+                <div class="al-sb-header">
+                    <span class="al-sb-titulo">Menu</span>
+                </div>
+
+                <div class="al-sb-item active" data-nav="home">
+                    <span class="al-sb-icon">🏠</span>
+                    <span class="al-sb-label">Home</span>
+                </div>
+
+                <div class="al-sb-sep"></div>
+
+                <div class="al-sb-item" data-nav="hoje">
+                    <span class="al-sb-icon">📅</span>
+                    <span class="al-sb-label">Alertas de Hoje</span>
+                    <span class="al-sb-badge" id="sb-badge-hoje"></span>
+                </div>
+                <div class="al-sb-item" data-nav="agendados">
+                    <span class="al-sb-icon">⏰</span>
+                    <span class="al-sb-label">Agendados</span>
+                    <span class="al-sb-badge" id="sb-badge-agendados"></span>
+                </div>
+                <div class="al-sb-item" data-nav="recorrentes">
+                    <span class="al-sb-icon">🔁</span>
+                    <span class="al-sb-label">Recorrentes</span>
+                </div>
+                <div class="al-sb-item" data-nav="concluidos">
+                    <span class="al-sb-icon">✅</span>
+                    <span class="al-sb-label">Concluídos</span>
+                </div>
+
+                <div class="al-sb-sep"></div>
+
+                <div class="al-sb-item" data-nav="calendario">
+                    <span class="al-sb-icon">🗓️</span>
+                    <span class="al-sb-label">Calendário</span>
+                </div>
+                <div class="al-sb-item" data-nav="configuracoes">
+                    <span class="al-sb-icon">⚙️</span>
+                    <span class="al-sb-label">Configurações</span>
+                </div>
+            </aside>
+
+            <!-- ═══════ ÁREA PRINCIPAL ═══════ -->
+            <div class="al-main">
+
+                <!-- Topbar mobile -->
+                <div class="al-topbar">
+                    <button class="al-btn-sb-open" id="al-sb-open" title="Menu">☰</button>
+                    <span class="al-topbar-titulo" id="al-topbar-titulo">🏠 Home</span>
+                    <button class="al-btn-novo" id="al-btn-novo-top" onclick="Alertas.abrirForm()">➕ Novo Alerta</button>
+                </div>
+
+                <!-- ═══ HOME ═══ -->
+                <div class="al-panel active" id="panel-home">
+                    <div class="al-home-header">
+                        <h2 class="al-home-titulo">Central de Alertas</h2>
+                        <button class="al-btn-novo al-btn-novo-lg" onclick="Alertas.abrirForm()">➕ Novo Alerta</button>
+                    </div>
+
+                    <div class="al-stats-grid" id="home-stats"></div>
+
+                    <div class="al-home-section">
+                        <div class="al-section-titulo">📅 Alertas de Hoje</div>
+                        <div id="home-hoje-lista" class="al-mini-lista"></div>
+                    </div>
+
+                    <div class="al-home-section">
+                        <div class="al-section-titulo">⏰ Próximos Alertas</div>
+                        <div id="home-proximos-lista" class="al-mini-lista"></div>
+                    </div>
+
+                    <div class="al-home-section" id="home-vencidos-sec" style="display:none">
+                        <div class="al-section-titulo al-titulo-critico">🚨 Alertas Vencidos</div>
+                        <div id="home-vencidos-lista" class="al-mini-lista"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ HOJE ═══ -->
+                <div class="al-panel" id="panel-hoje">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">📅 Alertas de Hoje</div>
+                        <button class="al-btn-novo" onclick="Alertas.abrirForm()">➕ Novo</button>
+                    </div>
+                    <div id="lista-hoje"></div>
+                </div>
+
+                <!-- ═══ AGENDADOS ═══ -->
+                <div class="al-panel" id="panel-agendados">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">⏰ Agendados</div>
+                        <button class="al-btn-novo" onclick="Alertas.abrirForm()">➕ Novo</button>
+                    </div>
+                    <div id="lista-agendados"></div>
+                </div>
+
+                <!-- ═══ RECORRENTES ═══ -->
+                <div class="al-panel" id="panel-recorrentes">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">🔁 Recorrentes</div>
+                        <button class="al-btn-novo" onclick="Alertas.abrirForm()">➕ Novo</button>
+                    </div>
+                    <div id="lista-recorrentes"></div>
+                </div>
+
+                <!-- ═══ CONCLUÍDOS ═══ -->
+                <div class="al-panel" id="panel-concluidos">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">✅ Concluídos</div>
+                    </div>
+                    <div id="lista-concluidos"></div>
+                </div>
+
+                <!-- ═══ CALENDÁRIO ═══ -->
+                <div class="al-panel" id="panel-calendario">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">🗓️ Calendário</div>
+                        <div class="al-cal-nav">
+                            <button class="al-cal-btn" id="cal-prev">‹</button>
+                            <span class="al-cal-mes" id="cal-mes-label"></span>
+                            <button class="al-cal-btn" id="cal-next">›</button>
+                        </div>
+                    </div>
+                    <div class="al-cal-grid" id="al-cal-grid"></div>
+                    <div class="al-cal-detalhe" id="al-cal-detalhe" style="display:none">
+                        <div class="al-cal-detalhe-titulo" id="al-cal-detalhe-data"></div>
+                        <div id="al-cal-detalhe-lista"></div>
+                    </div>
+                </div>
+
+                <!-- ═══ CONFIGURAÇÕES ═══ -->
+                <div class="al-panel" id="panel-configuracoes">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">⚙️ Configurações de Notificação</div>
+                    </div>
+                    <div class="al-config-box">
+                        <label class="al-config-row">
+                            <input type="checkbox" id="cfg-som-global" checked>
+                            <span>🔊 Ativar som nas notificações</span>
+                        </label>
+                        <label class="al-config-row">
+                            <input type="checkbox" id="cfg-notif-browser" checked>
+                            <span>🌐 Notificação do navegador (fora da aba)</span>
+                        </label>
+                        <div class="al-config-sep">Tipos de alerta com som</div>
+                        <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="critico" checked><span>🔴 Crítico</span></label>
+                        <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="alto" checked><span>🟠 Alta prioridade</span></label>
+                        <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="medio" checked><span>🟡 Média prioridade</span></label>
+                        <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="baixo"><span>⚪ Baixa prioridade</span></label>
+                        <button class="al-btn-salvar-cfg" onclick="Alertas.salvarConfig()">💾 Salvar Configurações</button>
+                    </div>
+                </div>
+
+            </div><!-- /al-main -->
+        </div><!-- /al-layout -->
+    </main>
+
+    <!-- TOAST -->
+    <div class="al-toast hidden" id="al-toast"></div>
+
+    <!-- ═══════ MODAL: Novo/Editar Alerta ═══════ -->
+    <div id="al-modal" class="al-modal">
+        <div class="al-modal-content">
+            <div class="al-modal-header">
+                <h3 id="al-modal-titulo">➕ Novo Alerta</h3>
+                <button class="al-modal-close" onclick="Alertas.fecharForm()">✕</button>
+            </div>
+            <div class="al-modal-body">
+                <input type="hidden" id="al-edit-id">
+
+                <div class="al-form-row">
+                    <div class="al-form-group al-form-grow">
+                        <label>Título *</label>
+                        <input type="text" id="al-f-titulo" placeholder="Ex: Rodar aquecimento Instagram" autocomplete="off">
+                    </div>
+                    <div class="al-form-group al-form-priority">
+                        <label>Prioridade</label>
+                        <select id="al-f-prioridade">
+                            <option value="baixa">⚪ Baixa</option>
+                            <option value="media" selected>🟡 Média</option>
+                            <option value="alta">🟠 Alta</option>
+                            <option value="critica">🔴 Crítica</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="al-form-row">
+                    <div class="al-form-group al-form-grow">
+                        <label>Tipo</label>
+                        <select id="al-f-tipo">
+                            <option value="lembrete">🔔 Lembrete</option>
+                            <option value="comando">⚡ Comando</option>
+                            <option value="tarefa">✅ Tarefa</option>
+                            <option value="whatsapp">📱 WhatsApp</option>
+                            <option value="instagram">📸 Instagram</option>
+                            <option value="financeiro">💰 Financeiro</option>
+                            <option value="os">🔧 Ordem de Serviço</option>
+                            <option value="cliente">👤 Cliente</option>
+                            <option value="fornecedor">🏢 Fornecedor</option>
+                            <option value="outro">📌 Outro</option>
+                        </select>
+                    </div>
+                    <div class="al-form-group al-form-grow">
+                        <label>Categoria (opcional)</label>
+                        <input type="text" id="al-f-categoria" placeholder="Ex: Marketing" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="al-form-group">
+                    <label>Descrição (opcional)</label>
+                    <textarea id="al-f-descricao" rows="2" placeholder="Detalhes do alerta..."></textarea>
+                </div>
+
+                <div class="al-form-row">
+                    <div class="al-form-group al-form-grow">
+                        <label>📅 Data *</label>
+                        <input type="date" id="al-f-data">
+                    </div>
+                    <div class="al-form-group al-form-grow">
+                        <label>🕒 Hora *</label>
+                        <input type="time" id="al-f-hora">
+                    </div>
+                </div>
+
+                <div class="al-form-group">
+                    <label>🔁 Repetição</label>
+                    <select id="al-f-repeticao" onchange="Alertas.toggleCustomDias()">
+                        <option value="nenhuma">Uma vez</option>
+                        <option value="diario">Todo dia</option>
+                        <option value="semanal">Semanal</option>
+                        <option value="mensal">Mensal</option>
+                        <option value="quinzenal">A cada 15 dias</option>
+                        <option value="trinta">A cada 30 dias</option>
+                        <option value="custom">Personalizado (X dias)</option>
+                    </select>
+                </div>
+
+                <div class="al-form-group hidden" id="al-custom-dias-wrap">
+                    <label>Repetir a cada quantos dias?</label>
+                    <input type="number" id="al-f-custom-dias" min="1" max="365" value="7" placeholder="Ex: 7">
+                </div>
+
+                <div class="al-form-group" id="al-cmd-wrap">
+                    <label>⚡ Comando Vinculado (opcional)</label>
+                    <select id="al-f-comando">
+                        <option value="">— Nenhum —</option>
+                    </select>
+                </div>
+
+            </div>
+            <div class="al-modal-footer">
+                <button class="al-btn-cancelar" onclick="Alertas.fecharForm()">Cancelar</button>
+                <button class="al-btn-salvar" onclick="Alertas.salvar()">💾 Salvar Alerta</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script type="module" src="alertas.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>
