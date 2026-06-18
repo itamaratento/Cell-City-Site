@@ -3154,6 +3154,13 @@ class Dashboard {
     const aplicar = (collapsed) => {
       sidebar.classList.toggle('collapsed', collapsed);
       localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+      // Alterna sigla CCGE no brand header
+      const subtitle = document.querySelector('.brand-header-subtitle');
+      const divider  = document.querySelector('.brand-header-divider');
+      const abbrev   = document.querySelector('.brand-header-abbrev');
+      if (subtitle) subtitle.style.display = collapsed ? 'none' : '';
+      if (divider)  divider.style.display  = collapsed ? 'none' : '';
+      if (abbrev)   abbrev.style.display   = collapsed ? 'block' : 'none';
     };
     aplicar(localStorage.getItem(COLLAPSE_KEY) === '1');
     btn.addEventListener('click', () => aplicar(!sidebar.classList.contains('collapsed')));
