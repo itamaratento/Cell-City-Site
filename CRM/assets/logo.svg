@@ -33,12 +33,11 @@
        ══════════════════════════════════════════ -->
   <text x="180" y="37"
     text-anchor="middle"
-    font-family="'Arial Black','Helvetica Neue',Impact,sans-serif"
+    font-family="'Noto Sans','Liberation Sans',sans-serif"
     font-size="32"
-    font-weight="900"
+    font-weight="800"
     letter-spacing="5"
     fill="url(#cc-green)"
-    filter="url(#cc-glow)"
     text-rendering="optimizeLegibility">CELL CITY</text>
 
   <!-- Linha decorativa — mais ampla para cobrir a largura do texto -->
