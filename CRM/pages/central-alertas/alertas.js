@@ -2,6 +2,7 @@ import {
     db, collection, doc, getDocs, setDoc, deleteDoc,
     serverTimestamp, query, orderBy, where, authReady
 } from '../../scripts/firebase.js';
+import { ccTocarSom, ccLog, ccSonsHabilitados } from '../../shared/cc-audio.js';
 
 const COL          = 'alertas_usuario';
 const CMDS_CACHE   = 'cc_comandos_cache';
@@ -793,35 +794,22 @@ function salvarConfig() {
 }
 
 // ── Verificação de alertas vencidos ──────────────────────────────────────────
-function _ccRegistrarEvento(origem, evento, tipo = 'som') {
-    const entry = { ts: new Date().toISOString(), origem, evento, tipo };
-    try {
-        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-        log.unshift(entry); if (log.length > 300) log.length = 300;
-        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-        if (tipo === 'som') console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
-    } catch {}
+function _ccRegistrarEvento(origem, evento, tipo = 'som', extra = {}) {
+    ccLog(origem, evento, tipo, '', extra);
 }
 
 function _tocarSom(tituloAlerta = '') {
-    // Verifica AMBAS as portas: cc_sons_sistema global E cfg.somGlobal da Central
-    if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+    // Verifica AMBAS as portas: categoria 'alertas' (cc_sons_sistema) E cfg.somGlobal da Central
     const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    if (cfg.somGlobal === false) return;
-    _ccRegistrarEvento('Central de Alertas', `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`, 'som');
-    try {
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return;
-        const ctx = new Ctx();
-        const o = ctx.createOscillator(); const g = ctx.createGain();
-        o.connect(g); g.connect(ctx.destination);
-        o.type = 'sine'; o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, ctx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
-        o.start(); o.stop(ctx.currentTime + 0.35);
-        o.onended = () => { try { ctx.close(); } catch(_) {} };
-    } catch(_) {}
+    if (cfg.somGlobal === false) {
+        _ccRegistrarEvento('Central de Alertas', `Som bloqueado (cfg.somGlobal=false): ${tituloAlerta}`, 'bloqueado');
+        return;
+    }
+    ccTocarSom('alertas', 'Central de Alertas',
+        `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`,
+        { chave: `alerta_${tituloAlerta}`, cooldownMs: 0,
+          arquivo: 'AudioContext — sine 880 curto',
+          freq: 880, dur: 0.35, vol: 0.2 });
 }
 
 function verificarDisparos() {
@@ -1237,16 +1225,29 @@ function renderDiagnostico() {
     if (!el || st.secao !== 'diagnostico') return;
     const log = _lerLogDiag();
 
-    const filtrados = diag.filtroTipo ? log.filter(e => e.tipo === diag.filtroTipo) : log;
+    const filtrados = diag.filtroTipo
+        ? log.filter(e => diag.filtroTipo === 'bloqueado'
+            ? (e.tipo === 'bloqueado' || e.tipo === 'cooldown')
+            : e.tipo === diag.filtroTipo)
+        : log;
+
     const ultimoSom = log.find(e => e.tipo === 'som');
     const totalSons = log.filter(e => e.tipo === 'som').length;
     const totalNot  = log.filter(e => e.tipo === 'notificacao').length;
     const totalFire = log.filter(e => e.tipo === 'firestore').length;
     const totalBlq  = log.filter(e => e.tipo === 'bloqueado' || e.tipo === 'cooldown').length;
+    const bloqueados = log.filter(e => e.tipo === 'bloqueado' || e.tipo === 'cooldown').slice(0, 5);
 
     const fmtTs = iso => {
         const d = new Date(iso);
         return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    };
+
+    const statusBadge = e => {
+        const s = e.status || (e.tipo === 'som' ? 'EXECUTADO' : e.tipo === 'bloqueado' ? 'BLOQUEADO' : e.tipo === 'cooldown' ? 'COOLDOWN' : '');
+        if (!s) return '<span class="diag-status-empty">—</span>';
+        const cls = s === 'EXECUTADO' ? 'diag-status-ok' : s === 'BLOQUEADO' ? 'diag-status-blq' : s === 'COOLDOWN' ? 'diag-status-cd' : '';
+        return `<span class="diag-status-badge ${cls}">${s}</span>`;
     };
 
     const linhas = filtrados.slice(0, 200).map(e => `
@@ -1255,7 +1256,19 @@ function renderDiagnostico() {
             <td class="diag-tipo-badge">${DIAG_TIPOS[e.tipo] || e.tipo}</td>
             <td class="diag-origem">${esc(e.origem || '—')}</td>
             <td class="diag-evento">${esc(e.evento || '—')}</td>
+            <td class="diag-arquivo">${esc(e.arquivo || '—')}</td>
+            <td class="diag-status-col">${statusBadge(e)}</td>
+            <td class="diag-motivo">${e.motivo ? `<span class="diag-motivo-text">${esc(e.motivo)}</span>` : '—'}</td>
         </tr>`).join('');
+
+    const bloqRows = bloqueados.map(e => `
+        <div class="diag-blq-item">
+            <span class="diag-blq-ts">🕐 ${fmtTs(e.ts)}</span>
+            <span class="diag-blq-modulo">📂 ${esc(e.origem || '—')}</span>
+            <span class="diag-blq-evento">📋 ${esc(e.evento || '—')}</span>
+            <span class="diag-blq-badge">${e.tipo === 'cooldown' ? 'COOLDOWN' : 'BLOQUEADO'}</span>
+            ${e.motivo ? `<span class="diag-blq-motivo">Motivo: ${esc(e.motivo)}</span>` : ''}
+        </div>`).join('');
 
     el.innerHTML = `
     <div class="diag-header">
@@ -1276,8 +1289,15 @@ function renderDiagnostico() {
             <span class="diag-ultimo-ts">🕐 ${fmtTs(ultimoSom.ts)}</span>
             <span class="diag-ultimo-origem">📂 ${esc(ultimoSom.origem)}</span>
             <span class="diag-ultimo-evento">📋 ${esc(ultimoSom.evento)}</span>
+            ${ultimoSom.arquivo ? `<span class="diag-ultimo-arquivo">🎵 ${esc(ultimoSom.arquivo)}</span>` : ''}
         </div>
     </div>` : `<div class="diag-sem-som">✅ Nenhum som registrado nesta sessão.</div>`}
+
+    ${bloqueados.length ? `
+    <div class="diag-blq-secao">
+        <div class="diag-blq-titulo">🔇 Sons Bloqueados Recentes</div>
+        ${bloqRows}
+    </div>` : ''}
 
     <div class="diag-kpis">
         <div class="diag-kpi diag-kpi-som"><div class="diag-kpi-num">${totalSons}</div><div class="diag-kpi-lbl">Sons</div></div>
@@ -1300,6 +1320,7 @@ function renderDiagnostico() {
         <table class="diag-table">
             <thead><tr>
                 <th>Data/Hora</th><th>Tipo</th><th>Módulo</th><th>Evento</th>
+                <th>Arquivo de Áudio</th><th>Status</th><th>Motivo</th>
             </tr></thead>
             <tbody>${linhas}</tbody>
         </table>` : '<div class="diag-vazio">Nenhum evento registrado com este filtro.</div>'}

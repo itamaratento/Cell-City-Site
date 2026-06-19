@@ -5,6 +5,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
+import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 
 
 class Dashboard {
@@ -753,30 +754,11 @@ class Dashboard {
       const m = { critica: 'critico', alta: 'critico', media: 'atencao', baixa: 'crm' };
       return m[p] || 'crm';
     };
-    const _logSomSetup = (origem, evento) => {
-      const entry = { ts: new Date().toISOString(), origem, evento, tipo: 'som' };
-      try {
-        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-        log.unshift(entry); if (log.length > 300) log.length = 300;
-        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-      } catch {}
-      console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
-    };
     const tocarSomAlerta = (tituloAlerta = '') => {
-      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
-      _logSomSetup('Dashboard / Central de Alertas', `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`);
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
-        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
-        gain.gain.setValueAtTime(0.2, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
-      } catch {}
+      ccTocarSom('alertas', 'Dashboard / Central de Alertas',
+        `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`,
+        { chave: `alerta_${tituloAlerta}`, cooldownMs: 60000, arquivo: 'AudioContext — ding duplo',
+          freq: 880, freqEnd: 660, dur: 0.4, vol: 0.2 });
     };
 
     // Deep link: clique no badge abre Central de Alertas na seção certa
@@ -1412,50 +1394,22 @@ class Dashboard {
     };
 
     // ─── Toca som curto (para horário atual / próximos) ───
-    const _logSom = (origem, evento) => {
-      const entry = { ts: new Date().toISOString(), origem, evento, tipo: 'som' };
-      try {
-        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-        log.unshift(entry);
-        if (log.length > 300) log.length = 300;
-        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-      } catch {}
-      console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
-    };
-
+    // Sons via módulo centralizado — log + cooldown + controle de permissão
     const tocarSomCurto = (tituloEvento = '') => {
-      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
-      _logSom('Dashboard / Agenda', `Compromisso próximo${tituloEvento ? ': ' + tituloEvento : ''}`);
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator(); const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
-      } catch {}
+      ccTocarSom('agenda', 'Dashboard / Agenda',
+        `Compromisso próximo${tituloEvento ? ': ' + tituloEvento : ''}`,
+        { chave: `agenda_prox_${tituloEvento}`, cooldownMs: 5 * 60000,
+          arquivo: 'AudioContext — sine descendente 880→440',
+          freq: 880, freqEnd: 440, dur: 0.6, vol: 0.3 });
     };
 
     const tocarSomVencida = (tituloEvento = '') => {
-      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
-      _logSom('Dashboard / Agenda', `Tarefa vencida${tituloEvento ? ': ' + tituloEvento : ''}`);
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const beep = (freq, start, dur) => {
-          const osc = ctx.createOscillator(); const gain = ctx.createGain();
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.type = 'square'; osc.frequency.setValueAtTime(freq, start);
-          gain.gain.setValueAtTime(0.25, start);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
-          osc.start(start); osc.stop(start + dur);
-        };
-        beep(1047, ctx.currentTime, 0.15);
-        beep(784,  ctx.currentTime + 0.2, 0.15);
-        beep(1047, ctx.currentTime + 0.4, 0.15);
-      } catch {}
+      ccTocarSom('agenda', 'Dashboard / Agenda',
+        `Tarefa vencida${tituloEvento ? ': ' + tituloEvento : ''}`,
+        { chave: `agenda_venc_${tituloEvento}`, cooldownMs: 5 * 60000,
+          arquivo: 'AudioContext — 3 beeps square 1047/784',
+          tipo: 'beeps', vol: 0.25,
+          beeps: [[1047, 0, 0.15], [784, 0.2, 0.15], [1047, 0.4, 0.15]] });
     };
 
     const dispararAlerta = (evento, label, comSom = true) => {
@@ -2106,15 +2060,8 @@ class Dashboard {
 
     const gerarSomAlarme = (duracao = 2, vol = 0.8) => {
       if (isTocarAlarm) return;
-      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
-      // Log de diagnóstico
-      try {
-        const entry = { ts: new Date().toISOString(), origem: 'Dashboard / Alarme OS', evento: 'Alarme de OS nova disparado', tipo: 'som' };
-        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-        log.unshift(entry); if (log.length > 300) log.length = 300;
-        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-        console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | Dashboard / Alarme OS | Alarme disparado`, 'color:#fbbf24;font-weight:bold');
-      } catch {}
+      if (!ccSonsHabilitados('os')) return;
+      ccLog('Dashboard / Alarme OS', 'Alarme de OS nova disparado', 'som', `AudioContext — beeps repetidos ${duracao}s vol=${vol}`);
       isTocarAlarm = true;
 
       try {

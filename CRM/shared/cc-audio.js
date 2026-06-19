@@ -28,13 +28,15 @@ export function ccSonsHabilitados(categoria = 'geral') {
 }
 
 // ── Log de eventos ────────────────────────────────────────────────────────────
-export function ccLog(origem, evento, tipo = 'info', detalhe = '') {
+export function ccLog(origem, evento, tipo = 'info', detalhe = '', extra = {}) {
     const entry = {
         ts:      new Date().toISOString(),
         origem,
         evento,
-        tipo,    // 'som' | 'notificacao' | 'firestore' | 'automacao' | 'tarefa' | 'sistema'
-        detalhe,
+        tipo,    // 'som' | 'notificacao' | 'firestore' | 'bloqueado' | 'cooldown' | 'sistema'
+        arquivo: extra.arquivo || '',
+        status:  extra.status  || (tipo === 'som' ? 'EXECUTADO' : tipo === 'bloqueado' ? 'BLOQUEADO' : tipo === 'cooldown' ? 'COOLDOWN' : ''),
+        motivo:  extra.motivo  || detalhe,
     };
     try {
         const log = JSON.parse(localStorage.getItem(LS_LOG) || '[]');
@@ -42,10 +44,9 @@ export function ccLog(origem, evento, tipo = 'info', detalhe = '') {
         if (log.length > LOG_MAX) log.length = LOG_MAX;
         localStorage.setItem(LS_LOG, JSON.stringify(log));
     } catch {}
-    // Console trace para debug
     if (tipo === 'som') {
         console.log(
-            `%c[SOM EXECUTADO] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`,
+            `%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`,
             'color:#fbbf24;font-weight:bold'
         );
     }
@@ -100,27 +101,36 @@ function _oscilar(params) {
  * @param {object} opcoes     - { chave, cooldownMs, tipo, freq, freqEnd, dur, vol, beeps }
  */
 export function ccTocarSom(categoria, origem, evento, opcoes = {}) {
+    const arquivo = opcoes.arquivo || `AudioContext — ${opcoes.tipo === 'beeps' ? 'beeps' : 'sine'}`;
+    const chave   = opcoes.chave || `${categoria}_${evento}`;
+    const cooldown = opcoes.cooldownMs ?? (5 * 60 * 1000);
+
     // 1. Verificar permissão
     if (!ccSonsHabilitados(categoria)) {
-        ccLog(origem, evento, 'bloqueado', `[${categoria}] sons desabilitados`);
+        ccLog(origem, evento, 'bloqueado', '', {
+            arquivo,
+            status: 'BLOQUEADO',
+            motivo: `Categoria "${categoria}" desabilitada (cc_config_sons)`,
+        });
         return false;
     }
 
-    // 2. Cooldown (padrão 5 min para evitar spam)
-    const chave = opcoes.chave || `${categoria}_${evento}`;
-    const cooldown = opcoes.cooldownMs ?? (5 * 60 * 1000);
+    // 2. Cooldown anti-spam
     if (cooldown > 0 && !_podeTocadNow(chave, cooldown)) {
-        ccLog(origem, evento, 'cooldown', `[${chave}] aguardando cooldown`);
+        ccLog(origem, evento, 'cooldown', '', {
+            arquivo,
+            status: 'COOLDOWN',
+            motivo: `Aguardando ${Math.round(cooldown / 60000)}min entre repetições`,
+        });
         return false;
     }
 
-    // 3. Registrar no log
-    ccLog(origem, evento, 'som', opcoes.detalhe || '');
+    // 3. Registrar execução no log
+    ccLog(origem, evento, 'som', '', { arquivo, status: 'EXECUTADO' });
 
     // 4. Tocar
     const tipo = opcoes.tipo || 'alerta';
     if (tipo === 'beeps' && opcoes.beeps) {
-        // Sequência de beeps
         try {
             const Ctx = window.AudioContext || window.webkitAudioContext;
             if (!Ctx) return false;

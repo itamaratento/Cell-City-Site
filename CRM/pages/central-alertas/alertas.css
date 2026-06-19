@@ -1114,10 +1114,35 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 .diag-row.diag-tipo-notificacao td { border-left: 2px solid rgba(99,102,241,0.4); }
 .diag-row.diag-tipo-firestore td { border-left: 2px solid rgba(251,146,60,0.4); }
 .diag-row.diag-tipo-bloqueado td, .diag-row.diag-tipo-cooldown td { border-left: 2px solid rgba(148,163,184,0.3); opacity: 0.6; }
-.diag-evento { color: var(--text); max-width: 280px; }
+.diag-evento { color: var(--text); max-width: 200px; }
+.diag-arquivo { color: var(--text3); font-size: 11px; font-family: monospace; max-width: 180px; }
+.diag-status-col { white-space: nowrap; }
+.diag-status-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.diag-status-ok  { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+.diag-status-blq { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+.diag-status-cd  { background: rgba(148,163,184,0.1); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+.diag-status-empty { color: var(--text3); }
+.diag-motivo-text { font-size: 11px; color: var(--text3); font-style: italic; }
+.diag-motivo { max-width: 200px; }
+
+/* Seção sons bloqueados recentes */
+.diag-blq-secao { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
+.diag-blq-titulo { font-size: 13px; font-weight: 700; color: #f87171; margin-bottom: 10px; }
+.diag-blq-item { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(239,68,68,0.08); font-size: 12px; }
+.diag-blq-item:last-child { border-bottom: none; }
+.diag-blq-ts { color: var(--text3); font-family: monospace; white-space: nowrap; }
+.diag-blq-modulo { color: var(--text2); }
+.diag-blq-evento { color: var(--text); flex: 1; min-width: 120px; }
+.diag-blq-badge { padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 700; background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); white-space: nowrap; }
+.diag-blq-motivo { color: var(--text3); font-size: 11px; font-style: italic; width: 100%; padding-left: 4px; }
+
+/* Arquivo de áudio no último som */
+.diag-ultimo-arquivo { font-size: 11px; color: #fbbf24; font-family: monospace; padding: 2px 8px; background: rgba(251,191,36,0.08); border-radius: 4px; }
+
 .diag-vazio { padding: 32px; text-align: center; color: var(--text3); font-size: 13px; }
 
 @media (max-width: 640px) {
     .diag-kpis { grid-template-columns: repeat(3,1fr); }
-    .diag-table th:nth-child(3), .diag-table td:nth-child(3) { display: none; }
+    .diag-table th:nth-child(5), .diag-table td:nth-child(5),
+    .diag-table th:nth-child(7), .diag-table td:nth-child(7) { display: none; }
 }

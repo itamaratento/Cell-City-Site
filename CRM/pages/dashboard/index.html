@@ -815,8 +815,26 @@
   }
 
   function beep() {
-    // Sons do sistema desativados por padrão — só toca se o usuário habilitou
-    if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+    var origem = 'Dashboard / Widget Orçamentos';
+    var evento = 'Nova notificação de orçamento/agendamento';
+    // Verificar permissão global
+    if (localStorage.getItem('cc_sons_sistema') !== 'true') {
+      try {
+        var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+        log.unshift({ ts: new Date().toISOString(), origem: origem, evento: evento, tipo: 'bloqueado', arquivo: 'AudioContext — sine', motivo: 'cc_sons_sistema OFF', status: 'BLOQUEADO' });
+        if (log.length > 300) log.length = 300;
+        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+      } catch (e) {}
+      return;
+    }
+    // Registrar no log centralizado
+    try {
+      var logE = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+      logE.unshift({ ts: new Date().toISOString(), origem: origem, evento: evento, tipo: 'som', arquivo: 'AudioContext — sine 880', status: 'EXECUTADO' });
+      if (logE.length > 300) logE.length = 300;
+      localStorage.setItem('cc_eventos_log', JSON.stringify(logE));
+      console.log('%c[SOM] ' + new Date().toLocaleTimeString('pt-BR') + ' | ' + origem + ' | ' + evento, 'color:#fbbf24;font-weight:bold');
+    } catch (e) {}
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
       var ctx = new Ctx(); var o = ctx.createOscillator(); var g = ctx.createGain();

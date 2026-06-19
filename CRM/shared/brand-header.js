@@ -173,6 +173,67 @@
       .brand-header { padding: 6px 10px; }
     }
 
+    /* === Botão Global de Sons === */
+    .crm-audio-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: rgba(251,191,36,0.07);
+      border: 1px solid rgba(251,191,36,0.22);
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: background 180ms, border-color 180ms, box-shadow 180ms;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #fbbf24;
+      white-space: nowrap;
+      user-select: none;
+      position: relative;
+    }
+    .crm-audio-btn.sons-off {
+      background: rgba(148,163,184,0.06);
+      border-color: rgba(148,163,184,0.2);
+      color: #64748b;
+    }
+    .crm-audio-btn:hover { filter: brightness(1.15); }
+    .crm-audio-btn-icon { font-size: 15px; line-height: 1; }
+
+    /* Popup "Último Som" */
+    .crm-audio-popup {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      min-width: 260px;
+      background: #1a1d22;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      padding: 14px;
+      z-index: 99999;
+      display: none;
+      font-size: 12px;
+      color: #cbd5e1;
+      text-align: left;
+    }
+    .crm-audio-popup.open { display: block; }
+    .crm-audio-popup-title { font-weight: 700; color: #fbbf24; margin-bottom: 10px; font-size: 12px; }
+    .crm-audio-popup-row { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .crm-audio-popup-row:last-of-type { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .crm-audio-popup-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .crm-audio-popup-val { color: #e2e8f0; }
+    .crm-audio-popup-status-on { color: #4ade80; font-weight: 700; }
+    .crm-audio-popup-status-off { color: #f87171; font-weight: 700; }
+    .crm-audio-test-btn {
+      width: 100%; margin-top: 10px; padding: 7px 12px;
+      background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3);
+      border-radius: 7px; color: #fbbf24; font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: background 150ms;
+    }
+    .crm-audio-test-btn:hover { background: rgba(251,191,36,0.2); }
+    .crm-audio-test-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
     /* === Atalho Site Cell City === */
     .crm-site-cc-btn {
       display: inline-flex;
@@ -225,6 +286,184 @@
     style.id = 'crm-brand-header-style';
     style.textContent = CSS;
     document.head.appendChild(style);
+  }
+
+  // ── Botão Global de Sons ────────────────────────────────────────────────────
+  function _lerUltimoSom() {
+    try {
+      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+      return log.find(function(e) { return e.tipo === 'som'; }) || null;
+    } catch(e) { return null; }
+  }
+
+  function _logBloqueio(origem, evento, motivo) {
+    try {
+      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+      log.unshift({
+        ts: new Date().toISOString(),
+        origem: origem,
+        evento: evento,
+        tipo: 'bloqueado',
+        arquivo: '',
+        status: 'BLOQUEADO',
+        motivo: motivo
+      });
+      if (log.length > 300) log.length = 300;
+      localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+    } catch(e) {}
+  }
+
+  function _testarSom(btn) {
+    if (localStorage.getItem('cc_sons_sistema') !== 'true') {
+      _logBloqueio('Brand Header / Botão de Teste', 'Testar Som', 'cc_sons_sistema OFF');
+      btn.textContent = '🔇 Som bloqueado!';
+      setTimeout(function() { btn.textContent = '🔔 Testar Som'; }, 1500);
+      return;
+    }
+    try {
+      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+      log.unshift({ ts: new Date().toISOString(), origem: 'Brand Header / Botão de Teste', evento: 'Teste manual de som', tipo: 'som', arquivo: 'AudioContext — sine 880 curto', status: 'EXECUTADO' });
+      if (log.length > 300) log.length = 300;
+      localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+    } catch(e) {}
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      var ctx = new Ctx();
+      var osc = ctx.createOscillator(); var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.42);
+      osc.onended = function() { try { ctx.close(); } catch(e) {} };
+    } catch(e) {}
+    btn.textContent = '✅ Som tocado!';
+    setTimeout(function() { btn.textContent = '🔔 Testar Som'; }, 1500);
+  }
+
+  function _atualizarBotaoSom(btn) {
+    var on = localStorage.getItem('cc_sons_sistema') === 'true';
+    if (on) {
+      btn.innerHTML = '<span class="crm-audio-btn-icon">🔊</span><span class="crm-audio-btn-label">Sons ON</span>';
+      btn.classList.remove('sons-off');
+      btn.title = 'Sons ativados — clique para desativar';
+    } else {
+      btn.innerHTML = '<span class="crm-audio-btn-icon">🔇</span><span class="crm-audio-btn-label">Sons OFF</span>';
+      btn.classList.add('sons-off');
+      btn.title = 'Sons desativados — clique para ativar';
+    }
+  }
+
+  function _renderPopupAudio(popup) {
+    var on = localStorage.getItem('cc_sons_sistema') === 'true';
+    var ultimo = _lerUltimoSom();
+    var fmtTs = function(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      return [String(d.getHours()).padStart(2,'0'), String(d.getMinutes()).padStart(2,'0'), String(d.getSeconds()).padStart(2,'0')].join(':') +
+             ' — ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+    };
+    popup.innerHTML =
+      '<div class="crm-audio-popup-title">🎵 Central de Áudio</div>' +
+      '<div class="crm-audio-popup-row">' +
+        '<span class="crm-audio-popup-label">Status do Sistema</span>' +
+        '<span class="' + (on ? 'crm-audio-popup-status-on' : 'crm-audio-popup-status-off') + '">' + (on ? '🔊 ATIVADO' : '🔇 DESATIVADO') + '</span>' +
+      '</div>' +
+      '<div class="crm-audio-popup-row">' +
+        '<span class="crm-audio-popup-label">Horário</span>' +
+        '<span class="crm-audio-popup-val">' + (ultimo ? fmtTs(ultimo.ts) : '—') + '</span>' +
+      '</div>' +
+      '<div class="crm-audio-popup-row">' +
+        '<span class="crm-audio-popup-label">Módulo</span>' +
+        '<span class="crm-audio-popup-val">' + (ultimo ? ultimo.origem : '—') + '</span>' +
+      '</div>' +
+      '<div class="crm-audio-popup-row">' +
+        '<span class="crm-audio-popup-label">Evento</span>' +
+        '<span class="crm-audio-popup-val">' + (ultimo ? ultimo.evento : '—') + '</span>' +
+      '</div>' +
+      '<div class="crm-audio-popup-row">' +
+        '<span class="crm-audio-popup-label">Arquivo de Áudio</span>' +
+        '<span class="crm-audio-popup-val">' + (ultimo && ultimo.arquivo ? ultimo.arquivo : '—') + '</span>' +
+      '</div>' +
+      '<button class="crm-audio-test-btn" id="crm-audio-test-btn"' + (on ? '' : ' disabled') + '>🔔 Testar Som</button>';
+  }
+
+  function criarBotaoSom() {
+    if (document.getElementById('crm-audio-toggle')) return;
+
+    var btn = document.createElement('button');
+    btn.id = 'crm-audio-toggle';
+    btn.className = 'crm-audio-btn crm-bar-migrated';
+    _atualizarBotaoSom(btn);
+
+    var popup = document.createElement('div');
+    popup.className = 'crm-audio-popup';
+    popup.id = 'crm-audio-popup';
+    btn.appendChild(popup);
+
+    // Toggle ao clicar no botão (não no popup interno)
+    btn.addEventListener('click', function(e) {
+      if (e.target.id === 'crm-audio-test-btn') {
+        _testarSom(e.target);
+        return;
+      }
+      if (popup.contains(e.target) && e.target !== btn) return;
+      // Se popup está aberto, fechar; se está fechado, abrir/atualizar
+      if (popup.classList.contains('open')) {
+        popup.classList.remove('open');
+        return;
+      }
+      _renderPopupAudio(popup);
+      popup.classList.add('open');
+      e.stopPropagation();
+    });
+
+    // Click no ícone/label: toggle som
+    btn.addEventListener('mousedown', function(e) {
+      if (e.target.classList.contains('crm-audio-btn-icon') || e.target.classList.contains('crm-audio-btn-label') || e.target === btn) {
+        if (!popup.classList.contains('open')) {
+          // apenas abrir popup (não toggle)
+        }
+      }
+    });
+
+    // Fechar popup ao clicar fora
+    document.addEventListener('click', function(e) {
+      if (!btn.contains(e.target)) popup.classList.remove('open');
+    }, true);
+
+    // Botão do lado esquerdo do popup: click em icon/label → toggle som
+    var iconEl = btn.querySelector('.crm-audio-btn-icon');
+    if (iconEl) {
+      iconEl.style.pointerEvents = 'none';
+    }
+
+    // Adicionar duplo comportamento: área do texto = toggle, ícone de seta = popup
+    // Simplificação: clique único → toggle + popup
+    btn.addEventListener('dblclick', function(e) {
+      e.stopPropagation();
+      var on = localStorage.getItem('cc_sons_sistema') !== 'true';
+      localStorage.setItem('cc_sons_sistema', on ? 'true' : 'false');
+      _atualizarBotaoSom(btn);
+      popup.classList.remove('open');
+    });
+
+    return btn;
+  }
+
+  // Evento: clique esquerdo = abrir popup; clique duplo = toggle
+  // Na verdade vamos simplificar: clique = toggle (mais intuitivo para diagnóstico)
+  function _setupToggleDirecto(btn, popup) {
+    btn.addEventListener('click', function(e) {
+      if (popup.contains(e.target) && e.target !== btn) return;
+      var on = localStorage.getItem('cc_sons_sistema') !== 'true';
+      localStorage.setItem('cc_sons_sistema', on ? 'true' : 'false');
+      _atualizarBotaoSom(btn);
+      // Atualizar popup se estiver aberto
+      if (popup.classList.contains('open')) _renderPopupAudio(popup);
+    }, true);
   }
 
   function attachHandler(el) {
