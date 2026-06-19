@@ -65,7 +65,7 @@
     }
     .brand-header-logo {
       display: block;
-      height: 42px;
+      height: 46px;
       width: auto;
       position: relative;
       z-index: 1;
