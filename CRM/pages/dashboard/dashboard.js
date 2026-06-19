@@ -64,6 +64,9 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
+    this.setupSidebar();
+    this.setupPanelRight();
+    this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupAvisoAcoes();
@@ -1679,27 +1682,42 @@ class Dashboard {
   }
 
   navigateTo(module) {
+    if (module === 'central-alertas') {
+      window.location.href = '../../pages/central-alertas/index.html';
+      return;
+    }
     const routes = {
-      os: '../../pages/os/index.html',
-      'central-comandos': '../../pages/central-informacoes/index.html',
+      os:                    '../../pages/os/index.html',
+      'central-comandos':    '../../pages/central-comandos/index.html',
       'central-informacoes': '../../pages/central-informacoes/index.html',
-      autoatendimento: '../../pages/autoatendimento/index.html',
-      clientes: '../../pages/clientes/index.html',
-      caixa: '../../pages/caixa/index.html',
-      estoque: '../../pages/estoque/index.html',
-      campanhas: '../../pages/campanhas/index.html',
-      analise: '../../pages/analise/index.html',
-      'pos-venda': '../../pages/pos-venda/index.html',
-      config: '../../pages/config/index.html',
-      ferramentas: '../../pages/config/index.html',
-      fornecedor: '../../pages/fornecedor/index.html',
-      financeiro: '../../pages/financeiro/index.html',
-      'em-breve': '../../pages/em-breve/index.html',
-      'minha-semana':   '../../pages/minha-semana/index.html',
-      'acaodasemana':   '../../pages/acaodasemana/index.html',
-      'portal-cliente': '../../pages/portal-cliente/admin.html',
-      'portal-tecnico': '../../pages/portal-tecnico/index.html',
-      'diario': '../../pages/diario/index.html'
+      autoatendimento:       '../../pages/autoatendimento/index.html',
+      clientes:              '../../pages/clientes/index.html',
+      caixa:                 '../../pages/caixa/index.html',
+      estoque:               '../../pages/estoque/index.html',
+      campanhas:             '../../pages/campanhas/index.html',
+      analise:               '../../pages/analise/index.html',
+      relatorios:            '../../pages/relatorios/index.html',
+      'pos-venda':           '../../pages/pos-venda/index.html',
+      config:                '../../pages/config/index.html',
+      ferramentas:           '../../pages/config/index.html',
+      impressora:            '../../pages/config/index.html',
+      fornecedor:            '../../pages/fornecedor/index.html',
+      financeiro:            '../../pages/financeiro/index.html',
+      'em-breve':            '../../pages/em-breve/index.html',
+      'minha-semana':        '../../pages/minha-semana/index.html',
+      'acaodasemana':        '../../pages/acaodasemana/index.html',
+      'portal-cliente':      '../../pages/portal-cliente/admin.html',
+      'portal-tecnico':      '../../pages/portal-tecnico/index.html',
+      'diario':              '../../pages/diario/index.html',
+      'central-organizacao': '../../pages/central-organizacao/index.html',
+      'contas':              '../../pages/contas/index.html',
+      'catalogo':            '../../pages/catalogo/index.html',
+      'crm-comercial':       '../../pages/crm-comercial/index.html',
+      'compras':             '../../pages/compras/index.html',
+      'auditoria':           '../../pages/auditoria/index.html',
+      'pendencias':          '../../pages/pendencias/index.html',
+      'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
+      'venda-rapida':        '../../pages/venda-rapida/index.html',
     };
     const url = routes[module];
     if (url) {
@@ -2930,6 +2948,245 @@ class Dashboard {
       const alvo = !document.body.classList.contains('modo-compacto');
       aplicar(alvo);
     });
+  }
+
+  // ===== MODAL: LISTA DE OS DO ALERTA =====
+  mostrarAlertaOS(alerta) {
+    const modal   = document.getElementById('os-alerta-modal');
+    const titleEl = document.getElementById('os-modal-title');
+    const listEl  = document.getElementById('os-modal-list');
+    if (!modal || !titleEl || !listEl) return;
+
+    titleEl.textContent = alerta._titulo || alerta.title;
+    const labelDias = alerta._tipo === 'pronto_nao_retirado' ? 'aguardando retirada' : 'sem resposta';
+
+    listEl.innerHTML = alerta._osData.map(os => `
+      <div style="background:#1a1d1b;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">
+        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${os.id}</span>
+        <span style="font-size:14px;font-weight:700;color:#fff;">${os.clientName || '—'}</span>
+        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + os.phone : 'Sem telefone'}</span>
+        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${os._dias} dia(s) ${labelDias}</span>
+      </div>`).join('');
+
+    modal.style.display = 'flex';
+  }
+
+  // ===== SIDEBAR ESQUERDA — RECOLHER/EXPANDIR =====
+  setupSidebar() {
+    const sidebar = document.getElementById('sidebar-left');
+    const btn     = document.getElementById('sidebar-toggle');
+    const navEl   = document.getElementById('sidebar-nav');
+    if (!sidebar || !btn) return;
+
+    // ----- colapsar / expandir -----
+    const COLLAPSE_KEY = 'cc_sidebar_state';
+    const aplicar = (collapsed) => {
+      sidebar.classList.toggle('collapsed', collapsed);
+      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+    };
+    aplicar(localStorage.getItem(COLLAPSE_KEY) === '1');
+    btn.addEventListener('click', () => aplicar(!sidebar.classList.contains('collapsed')));
+
+    // ----- drag-and-drop reordering -----
+    if (!navEl) return;
+
+    const ORDER_KEY = 'cc_sidebar_order';
+
+    const saveOrder = () => {
+      const sids = [...navEl.querySelectorAll('.sidebar-item[data-sid]')].map(el => el.dataset.sid);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(sids));
+    };
+
+    const restoreOrder = () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+        if (!saved.length) return;
+        saved.forEach(sid => {
+          const el = navEl.querySelector(`[data-sid="${sid}"]`);
+          if (el) navEl.appendChild(el);
+        });
+      } catch (_) {}
+    };
+
+    restoreOrder();
+
+    let dragSrc = null;
+
+    navEl.addEventListener('dragstart', e => {
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (!item) return;
+      dragSrc = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    navEl.addEventListener('dragend', () => {
+      if (dragSrc) dragSrc.classList.remove('dragging');
+      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      dragSrc = null;
+    });
+
+    navEl.addEventListener('dragover', e => {
+      e.preventDefault();
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (!item || item === dragSrc) return;
+      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    navEl.addEventListener('dragleave', e => {
+      const item = e.target.closest('.sidebar-item[data-sid]');
+      if (item) item.classList.remove('drag-over');
+    });
+
+    navEl.addEventListener('drop', e => {
+      e.preventDefault();
+      const target = e.target.closest('.sidebar-item[data-sid]');
+      if (!target || !dragSrc || target === dragSrc) return;
+      target.classList.remove('drag-over');
+      const rect = target.getBoundingClientRect();
+      const after = e.clientY > rect.top + rect.height / 2;
+      navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
+      saveOrder();
+    });
+  }
+
+  // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====
+  setupPanelRight() {
+    const panel   = document.getElementById('panel-right');
+    const btnOpen = document.getElementById('panel-right-open-btn');
+    const btnClose= document.getElementById('panel-right-close-btn');
+    if (!panel) return;
+
+    const KEY = 'cc_panel_right_state';
+    const aplicar = (collapsed) => {
+      panel.classList.toggle('collapsed', collapsed);
+      localStorage.setItem(KEY, collapsed ? '1' : '0');
+    };
+
+    // Restaura estado salvo (default: expandido)
+    aplicar(localStorage.getItem(KEY) === '1');
+
+    if (btnOpen)  btnOpen.addEventListener('click',  () => aplicar(false));
+    if (btnClose) btnClose.addEventListener('click', () => aplicar(true));
+
+    // Toggle das seções internas (metas / alertas)
+    const _bindToggle = (btnId, bodyId) => {
+      const btn  = document.getElementById(btnId);
+      const body = document.getElementById(bodyId);
+      if (!btn || !body) return;
+      const KEY2 = 'cc_pr_' + btnId;
+      if (localStorage.getItem(KEY2) === '1') { body.classList.add('collapsed-body'); btn.textContent = '+'; }
+      btn.addEventListener('click', () => {
+        const col = body.classList.toggle('collapsed-body');
+        btn.textContent = col ? '+' : '−';
+        localStorage.setItem(KEY2, col ? '1' : '0');
+      });
+    };
+    _bindToggle('metas-toggle', 'metas-body');
+    _bindToggle('alertas-toggle', 'alertas-body');
+  }
+
+  // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
+  setupExecutivePanel() {
+    const fmt    = (v) => Number(v).toLocaleString('pt-BR');
+    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+    const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
+                           'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
+    const STATUS_ANDAMENTO = ['em_andamento', 'aguardando', 'diagnostico'];
+    const STATUS_AGUARDANDO_APROV = ['orcamento_enviado'];
+
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    const inicioSemana = (() => {
+      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
+    })();
+    const ha30dias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+    const atualizarOS = (snap) => {
+      let abertas = 0, andamento = 0, aguardAprov = 0, bancada = 0;
+      const clientesSet = new Set();
+      let somaValorEntregue = 0, countEntregue = 0;
+      let temposTotais = 0, countTempo = 0;
+      let orcamentosHoje = 0;
+
+      snap.forEach(d => {
+        const os = d.data();
+        const status = os.status || '';
+
+        if (STATUS_ABERTO.includes(status)) abertas++;
+        if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
+        if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
+
+        if (status === 'entregue' && os.valor) {
+          somaValorEntregue += Number(os.valor);
+          countEntregue++;
+        }
+
+        if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
+          const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
+          if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
+        }
+
+        if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
+          clientesSet.add(os.phone);
+        }
+
+        if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
+          orcamentosHoje++;
+        }
+      });
+
+      set('kpi-os-abertas', fmt(abertas));
+      set('kpi-os-andamento', fmt(andamento));
+      set('kpi-aguardando-aprov', fmt(aguardAprov));
+      set('kpi-bancada', fmt(bancada));
+      set('kpi-ticket-medio', countEntregue > 0 ? fmtBRL(somaValorEntregue / countEntregue) : '—');
+      set('kpi-tempo-entrega', countTempo > 0 ? `${(temposTotais / countTempo).toFixed(1)} dias` : '—');
+      set('kpi-clientes-ativos', fmt(clientesSet.size));
+      set('kpi-orcamentos-enviados', fmt(orcamentosHoje));
+    };
+
+    const atualizarCaixa = (snap) => {
+      let fatHoje = 0, lucroSemana = 0;
+      snap.forEach(d => {
+        const l = d.data();
+        const iso = l.dataISO || l.createdAtISO || '';
+        const val = Number(l.valor || 0);
+        const lucro = Number(l.lucro || 0);
+        if (iso.startsWith(hojeISO) && l.tipo !== 'saida') fatHoje += val;
+        if (iso >= inicioSemana) lucroSemana += lucro;
+      });
+      set('kpi-faturamento-hoje', fmtBRL(fatHoje));
+      set('kpi-lucro-semana', fmtBRL(lucroSemana));
+    };
+
+    const atualizarEstoque = (snap) => {
+      let pecasFalta = 0;
+      snap.forEach(d => {
+        const p = d.data();
+        const qty = Number(p.quantidade || p.estoque || 0);
+        const min = Number(p.estoqueMinimo || p.minimo || 1);
+        if (qty < min) pecasFalta++;
+      });
+      set('kpi-pecas-falta', fmt(pecasFalta));
+    };
+
+    const iniciar = () => {
+      try {
+        onSnapshot(collection(db, 'os'), atualizarOS,
+          err => console.warn('[KPI] os:', err && err.message));
+        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
+          err => console.warn('[KPI] caixa:', err && err.message));
+        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
+          err => console.warn('[KPI] estoque:', err && err.message));
+      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
+    };
+
+    if (db) iniciar();
+    else window.addEventListener('firebase-ready', iniciar, { once: true });
   }
 }
 
