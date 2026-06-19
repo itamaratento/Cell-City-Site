@@ -65,11 +65,13 @@
     }
     .brand-header-logo {
       display: block;
-      height: 38px;
+      height: 42px;
       width: auto;
       position: relative;
       z-index: 1;
       object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
     }
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
        Título sempre no centro ABSOLUTO da barra — fora do fluxo flex.
@@ -245,7 +247,7 @@
 
   const BRAND_HTML = `
     <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <img class="brand-header-logo" src="/CRM/assets/logo.png" alt="Cell City Gestão Empresarial" draggable="false">
+      <img class="brand-header-logo" src="/CRM/assets/logo.svg" alt="Cell City Gestão Empresarial" draggable="false">
     </div>
   `;
 
