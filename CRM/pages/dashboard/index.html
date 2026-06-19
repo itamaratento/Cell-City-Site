@@ -1026,8 +1026,10 @@
     try {
       var cache = localStorage.getItem('cc_alertas_cache');
       if (cache) {
-        var _hj = new Date().toISOString().slice(0,10);
-        var _hm = new Date().toTimeString().slice(0,5);
+        // Usar data/hora LOCAL (toISOString retorna UTC e quebraria em UTC-3)
+        var _n  = new Date();
+        var _hj = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0') + '-' + String(_n.getDate()).padStart(2,'0');
+        var _hm = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
         var todos = JSON.parse(cache);
         alertasUsuario = todos.filter(function(a) {
           if (a.status === 'concluido') return false;
@@ -1109,6 +1111,11 @@
     salvarVistoFirestore(key); recompute();
   }
 
+  // Converte Date → YYYY-MM-DD usando data LOCAL (não UTC)
+  function _isoLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
   // Calcula data efetiva para alertas recorrentes
   function _calcProxima(a) {
     var base = a.data; if (!base) return '';
@@ -1120,7 +1127,7 @@
       if (a.repeticao === 'mensal') d.setMonth(d.getMonth() + 1);
       else d.setDate(d.getDate() + dias);
     }
-    return d.toISOString().slice(0,10);
+    return _isoLocal(d);
   }
 
   var PRIO_COR = { critica:'#ef4444', alta:'#fb923c', media:'#fbbf24', baixa:'#6b7280' };
@@ -1131,7 +1138,7 @@
     var cor = PRIO_COR[a.prioridade] || PRIO_COR.media;
     var ico = TIPO_ICO[a.tipo] || '🔔';
     var hora = a.hora || '--:--';
-    var hoje = new Date().toISOString().slice(0,10);
+    var hoje = _isoLocal(new Date());
     var de = (a.repeticao && a.repeticao !== 'nenhuma') ? _calcProxima(a) : (a.data || '');
     var vencido = de < hoje;
     var tag = vencido
@@ -1153,8 +1160,12 @@
   window.addEventListener('storage', function(e) {
     if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge') recompute();
   });
-  // Reavalia a cada minuto para detectar alertas cujo horário chegou
-  setInterval(recompute, 60_000);
+  // Reavalia alinhado à virada do minuto (nunca antes, nunca depois do horário)
+  (function agendarMinutoDash() {
+    var n = new Date();
+    var ms = (60 - n.getSeconds()) * 1000 - n.getMilliseconds() + 50;
+    setTimeout(function() { recompute(); agendarMinutoDash(); }, ms);
+  })();
 
   function bind() {
     sino = document.getElementById('aprov-sino');

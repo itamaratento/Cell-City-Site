@@ -840,9 +840,18 @@ pedirPermissaoNotif();
 authReady.then(async () => {
     await carregar();
     verificarDisparos();
-    // Re-renderiza e dispara verificação a cada minuto para mover alertas de
-    // "Agendados" para "Hoje" automaticamente quando o horário chegar
-    setInterval(() => { render(); verificarDisparos(); _salvarBadgeGlobal(); }, 60_000);
+    // Agenda re-render alinhado à virada do minuto (ex: XX:55:00, não XX:55:37)
+    // para que os alertas apareçam exatamente no horário configurado
+    (function agendarMinuto() {
+        const agora = new Date();
+        const msAteVirada = (60 - agora.getSeconds()) * 1000 - agora.getMilliseconds() + 50;
+        setTimeout(() => {
+            render();
+            verificarDisparos();
+            _salvarBadgeGlobal();
+            agendarMinuto(); // reprogramar para o próximo minuto
+        }, msAteVirada);
+    })();
 });
 
 // ── Exposição global ──────────────────────────────────────────────────────────
