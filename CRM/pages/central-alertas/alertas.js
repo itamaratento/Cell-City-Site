@@ -187,34 +187,42 @@ function renderHome() {
     if (statsEl) {
         statsEl.innerHTML = `
         <div class="al-stat-card hoje" onclick="Alertas.navegar('hoje')">
+            <span class="al-stat-icon">📅</span>
             <span class="al-stat-num">${hoje.length}</span>
-            <span class="al-stat-lbl">📅 Hoje</span>
+            <span class="al-stat-lbl">Hoje</span>
         </div>
         <div class="al-stat-card pendente" onclick="Alertas.navegar('agendados')">
+            <span class="al-stat-icon">⏰</span>
             <span class="al-stat-num">${listaAgendados().length}</span>
-            <span class="al-stat-lbl">⏰ Agendados</span>
+            <span class="al-stat-lbl">Agendados</span>
         </div>
         <div class="al-stat-card vencido" onclick="Alertas.navegar('agendados')">
+            <span class="al-stat-icon">🚨</span>
             <span class="al-stat-num">${venc.length}</span>
-            <span class="al-stat-lbl">🚨 Vencidos</span>
+            <span class="al-stat-lbl">Vencidos</span>
         </div>
-        <div class="al-stat-card hoje" onclick="Alertas.navegar('comandos')">
+        <div class="al-stat-card cmd" onclick="Alertas.navegar('comandos')">
+            <span class="al-stat-icon">⚡</span>
             <span class="al-stat-num">${cmds.length}</span>
-            <span class="al-stat-lbl">⚡ Comandos</span>
+            <span class="al-stat-lbl">Comandos</span>
         </div>
-        <div class="al-stat-card pendente" onclick="Alertas.navegar('tarefas')">
+        <div class="al-stat-card tarefa" onclick="Alertas.navegar('tarefas')">
+            <span class="al-stat-icon">✅</span>
             <span class="al-stat-num">${tarefs.length}</span>
-            <span class="al-stat-lbl">✅ Tarefas</span>
+            <span class="al-stat-lbl">Tarefas</span>
         </div>`;
-        // Próximo alerta (card extra se existir)
+        // Próximo alerta — card full-width
         if (proximoAlerta) {
             const pe = dataEfetiva(proximoAlerta);
             const ph = proximoAlerta.hora || '--:--';
             const extra = document.createElement('div');
-            extra.className = 'al-stat-card';
-            extra.style.cssText = 'grid-column:1/-1;border-color:rgba(0,200,83,0.3);cursor:default;';
-            extra.innerHTML = `<span style="font-size:20px;font-weight:800;color:var(--green);">⏰ ${ph}</span>
-                <span style="font-size:11px;color:var(--text3);font-weight:600;">Próximo: ${esc(proximoAlerta.titulo)} — ${fmtData(pe)}</span>`;
+            extra.className = 'al-stat-proximo';
+            extra.innerHTML = `
+                <span class="al-stat-proximo-hora">⏰ ${ph}</span>
+                <div class="al-stat-proximo-info">
+                    <div class="al-stat-proximo-titulo">${esc(proximoAlerta.titulo)}</div>
+                    <div class="al-stat-proximo-data">Próximo • ${fmtData(pe)}</div>
+                </div>`;
             statsEl.appendChild(extra);
         }
     }
@@ -260,8 +268,9 @@ function htmlItem(a) {
     const repLabel  = { nenhuma:'', diario:'Diário', semanal:'Semanal', mensal:'Mensal', quinzenal:'15 dias', trinta:'30 dias', custom:`${a.customDias||7} dias` }[a.repeticao||'nenhuma'] || '';
     const cmd       = a.comandoId ? st.comandos.find(c=>c.id===a.comandoId) : null;
 
+    const prioCls = `prio-${a.prioridade||'media'}`;
     return `
-    <div class="al-item ${cls}" data-id="${a.id}">
+    <div class="al-item ${cls} ${prioCls}" data-id="${a.id}">
         <label class="al-item-check" title="Selecionar">
             <input type="checkbox" class="al-checkbox" data-id="${a.id}" onchange="Alertas._atualizarSelecao()">
         </label>

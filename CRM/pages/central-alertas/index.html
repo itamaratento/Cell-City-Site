@@ -81,11 +81,13 @@
             <div class="al-main">
 
                 <!-- Topbar mobile -->
-                <div class="al-topbar">
+                <div class="al-topbar" style="padding:10px 14px 8px;margin:0;">
                     <button class="al-btn-sb-open" id="al-sb-open" title="Menu">☰</button>
                     <span class="al-topbar-titulo" id="al-topbar-titulo">🏠 Home</span>
-                    <button class="al-btn-novo" id="al-btn-novo-top" onclick="Alertas.abrirForm()">➕ Novo Alerta</button>
+                    <button class="al-btn-novo" id="al-btn-novo-top" onclick="Alertas.abrirForm()">➕ Novo</button>
                 </div>
+
+                <div class="al-content">
 
                 <!-- ═══ HOME ═══ -->
                 <div class="al-panel active" id="panel-home">
@@ -213,7 +215,7 @@
                         <div class="al-config-sep">Modo de notificação</div>
                     <label class="al-config-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
                         <span>🔔 Como notificar ao disparar um alerta?</span>
-                        <select id="cfg-modo-notif" style="background:#111413;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 10px;color:#f0f2f1;font-size:13px;width:100%;outline:none;">
+                        <select id="cfg-modo-notif">
                             <option value="som_popup">🔊 Som + Popup</option>
                             <option value="som">🔊 Apenas Som</option>
                             <option value="popup">💬 Apenas Popup</option>
@@ -229,6 +231,7 @@
                     </div>
                 </div>
 
+                </div><!-- /al-content -->
             </div><!-- /al-main -->
         </div><!-- /al-layout -->
     </main>
