@@ -74,6 +74,7 @@ class Dashboard {
     this.monitorarCardAcaoSemana();
     this.setupAlarmeOS();
     this.setupCompactMode();
+    this.setupConfigAlertas();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -1344,7 +1345,7 @@ class Dashboard {
       'pos-venda':           '../../pages/pos-venda/index.html',
       config:                '../../pages/config/index.html',
       ferramentas:           '../../pages/config/index.html',
-      impressora:            '../../pages/config/index.html',
+      garantias:             '../../pages/clientes/index.html',
       fornecedor:            '../../pages/fornecedor/index.html',
       financeiro:            '../../pages/financeiro/index.html',
       'em-breve':            '../../pages/em-breve/index.html',
@@ -2818,6 +2819,137 @@ class Dashboard {
     if (db) iniciar();
     else window.addEventListener('firebase-ready', iniciar, { once: true });
   }
+
+  // ===== CONFIGURAÇÃO DE ALERTAS (persistência) =====
+  setupConfigAlertas() {
+    const modal      = document.getElementById('modal-config-alertas');
+    const btnFechar  = document.getElementById('btn-fechar-config-alertas');
+    const btnSalvar  = document.getElementById('btn-salvar-config');
+    const btnTestar  = document.getElementById('btn-testar-som');
+    const chkSilencio    = document.getElementById('config-silencio-ativo');
+    const camposSilencio = document.getElementById('config-silencio-campos');
+
+    if (!modal) return;
+
+    const abrirConfig = (e) => {
+      if (e) e.stopPropagation();
+      const listaModal = document.getElementById('modal-lista-alertas');
+      if (listaModal) listaModal.style.display = 'none';
+      this.carregarConfigAlertasUI();
+      modal.style.display = 'flex';
+    };
+
+    const btnAbrir = document.getElementById('btn-abrir-config-alertas');
+    if (btnAbrir) btnAbrir.addEventListener('click', abrirConfig);
+
+    const btnConfigModal = document.getElementById('btn-config-alertas-modal');
+    if (btnConfigModal) btnConfigModal.addEventListener('click', abrirConfig);
+
+    if (btnFechar) btnFechar.addEventListener('click', () => { modal.style.display = 'none'; });
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+    const btnFecharLista = document.getElementById('btn-fechar-lista-alertas');
+    const listaModal = document.getElementById('modal-lista-alertas');
+    if (btnFecharLista && listaModal) btnFecharLista.addEventListener('click', () => { listaModal.style.display = 'none'; });
+    if (listaModal) listaModal.addEventListener('click', (e) => { if (e.target === listaModal) listaModal.style.display = 'none'; });
+
+    if (chkSilencio && camposSilencio) {
+      chkSilencio.addEventListener('change', () => {
+        camposSilencio.style.display = chkSilencio.checked ? 'flex' : 'none';
+      });
+    }
+
+    if (btnSalvar) {
+      btnSalvar.addEventListener('click', () => {
+        this.salvarConfigAlertas();
+        modal.style.display = 'none';
+      });
+    }
+
+    if (btnTestar) {
+      btnTestar.addEventListener('click', () => {
+        if (this._tocarSomVencida) this._tocarSomVencida();
+      });
+    }
+  }
+
+  carregarConfigAlertas() {
+    try {
+      const raw = localStorage.getItem('cc_config_alertas');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      som: {
+        ativo: true,
+        horarioInicio: '08:00',
+        horarioFim: '18:00',
+        diasSemana: [1, 2, 3, 4, 5],
+        silencio: { ativo: false, inicio: '12:00', fim: '13:00' }
+      },
+      alertasComSom: {
+        acaoSemanaVencidas: true,
+        acaoSemanaAgora: false,
+        acaoSemanaProximas: false,
+        posVendaCritico: false,
+        osAguardandoCliente: false,
+        avaliacoesCriticas: false
+      },
+      pulsacao: { critico: true, atencao: false }
+    };
+  }
+
+  carregarConfigAlertasUI() {
+    const config = this.carregarConfigAlertas();
+    this._setChecked('config-som-ativo', config.som.ativo);
+    this._setValue('config-som-inicio', config.som.horarioInicio);
+    this._setValue('config-som-fim', config.som.horarioFim);
+    document.querySelectorAll('.config-dia-sem').forEach(chk => {
+      chk.checked = config.som.diasSemana.includes(parseInt(chk.value));
+    });
+    this._setChecked('config-silencio-ativo', config.som.silencio.ativo);
+    this._setValue('config-silencio-inicio', config.som.silencio.inicio);
+    this._setValue('config-silencio-fim', config.som.silencio.fim);
+    const camposSilencio = document.getElementById('config-silencio-campos');
+    if (camposSilencio) camposSilencio.style.display = config.som.silencio.ativo ? 'flex' : 'none';
+    document.querySelectorAll('.config-alerta-som').forEach(chk => {
+      const tipo = chk.getAttribute('data-tipo');
+      chk.checked = config.alertasComSom[tipo] === true;
+    });
+    document.querySelectorAll('.config-pulsacao').forEach(chk => {
+      const nivel = chk.getAttribute('data-nivel');
+      chk.checked = config.pulsacao[nivel] === true;
+    });
+  }
+
+  salvarConfigAlertas() {
+    const config = {
+      som: {
+        ativo: this._getChecked('config-som-ativo'),
+        horarioInicio: this._getValue('config-som-inicio', '08:00'),
+        horarioFim: this._getValue('config-som-fim', '18:00'),
+        diasSemana: Array.from(document.querySelectorAll('.config-dia-sem:checked')).map(c => parseInt(c.value)),
+        silencio: {
+          ativo: this._getChecked('config-silencio-ativo'),
+          inicio: this._getValue('config-silencio-inicio', '12:00'),
+          fim: this._getValue('config-silencio-fim', '13:00')
+        }
+      },
+      alertasComSom: {},
+      pulsacao: {
+        critico: document.querySelector('.config-pulsacao[data-nivel="critico"]')?.checked ?? true,
+        atencao: document.querySelector('.config-pulsacao[data-nivel="atencao"]')?.checked ?? false
+      }
+    };
+    document.querySelectorAll('.config-alerta-som').forEach(chk => {
+      config.alertasComSom[chk.getAttribute('data-tipo')] = chk.checked;
+    });
+    localStorage.setItem('cc_config_alertas', JSON.stringify(config));
+  }
+
+  _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
+  _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+  _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+  _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
 }
 
 // ===== INICIALIZAÇÃO =====
