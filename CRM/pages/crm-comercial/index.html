@@ -2,109 +2,136 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRM Comercial — Cell City</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>CRM Comercial — Cell City</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--cell-green:#00c853;--bg-base:#0a0b0d;--bg-surface:#121418;--bg-elevated:#1a1d23;--border-subtle:rgba(255,255,255,.06);--border-medium:rgba(255,255,255,.10);--text-primary:#f5f7fa;--text-secondary:#a1a8b3;--text-tertiary:#6b7280;--radius-md:12px;--radius-lg:16px}
-html,body{height:100%;background:var(--bg-base);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
-.page-header{display:flex;align-items:center;gap:12px;padding:16px 24px;background:rgba(10,11,13,.9);border-bottom:1px solid var(--border-subtle);position:sticky;top:0;z-index:10}
-.btn-voltar{background:none;border:1px solid var(--border-medium);border-radius:8px;color:var(--text-secondary);font-size:13px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .15s}
-.btn-voltar:hover{background:rgba(255,255,255,.06);color:var(--text-primary)}
-.page-title{font-size:18px;font-weight:800;color:var(--text-primary)}
-.page-sub{font-size:12px;color:var(--text-tertiary)}
-
-.shell-body{max-width:860px;margin:0 auto;padding:48px 24px}
-.shell-icon{font-size:64px;margin-bottom:16px;display:block;text-align:center}
-.shell-titulo{font-size:28px;font-weight:800;text-align:center;margin-bottom:8px}
-.shell-desc{font-size:15px;color:var(--text-secondary);text-align:center;line-height:1.6;margin-bottom:40px}
-
-.shell-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25);color:var(--cell-green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;margin:0 auto 40px;display:flex;width:fit-content}
-
-.funil{display:flex;flex-direction:column;gap:2px;max-width:480px;margin:0 auto 48px}
-.funil-etapa{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;font-size:13px;font-weight:500;color:var(--text-secondary)}
-.funil-etapa .num{width:24px;height:24px;border-radius:50%;background:var(--bg-elevated);border:1px solid var(--border-medium);color:var(--text-tertiary);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.funil-etapa .arrow{color:var(--text-muted);font-size:11px;margin:0 auto}
-
-.recursos{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;max-width:600px;margin:0 auto 48px}
-.recurso{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:12px}
-.recurso-icon{font-size:22px;flex-shrink:0}
-.recurso-titulo{font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:3px}
-.recurso-desc{font-size:11px;color:var(--text-tertiary);line-height:1.4}
-
-.shell-aviso{background:rgba(255,204,0,.06);border:1px solid rgba(255,204,0,.15);border-radius:12px;padding:16px 20px;font-size:13px;color:var(--text-secondary);text-align:center;max-width:480px;margin:0 auto}
-.shell-aviso strong{color:#ffcc00}
-</style>
+<link rel="stylesheet" href="crm.css">
+<link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
 
-<div class="page-header">
-  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
-  <div>
-    <div class="page-title">🎯 CRM Comercial</div>
-    <div class="page-sub">Leads, orçamentos e oportunidades</div>
+<!-- HEADER (migrado para brand-bar pelo brand-header.js) -->
+<header id="mainHeader">
+  <h1 id="headerTitle">🎯 CRM Comercial</h1>
+</header>
+
+<!-- CONTEÚDO PRINCIPAL -->
+<div class="crm-wrap">
+  <div class="crm-main">
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- Busca -->
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input type="text" placeholder="Buscar por nome, telefone, aparelho..." oninput="onSearchInput(this.value)">
+    </div>
+
+    <!-- Filtros de status -->
+    <div class="filter-tabs" id="filter-tabs"></div>
+
+    <!-- Lista de leads -->
+    <div class="leads-grid" id="leads-list">
+      <div class="empty-state">
+        <span class="empty-icon">🎯</span>
+        <h3>Carregando leads...</h3>
+        <p>Conectando ao banco de dados.</p>
+      </div>
+    </div>
+
   </div>
 </div>
 
-<div class="shell-body">
+<!-- FAB: novo lead -->
+<button class="fab" onclick="openModal()" title="Novo Lead">+</button>
 
-  <span class="shell-icon">🎯</span>
-  <h1 class="shell-titulo">CRM Comercial</h1>
-  <p class="shell-desc">Acompanhe clientes que solicitaram orçamento e ainda não aprovaram.<br>Controle o funil de vendas e nunca perca uma oportunidade.</p>
+<!-- ══════════════ MODAL: Novo / Editar Lead ══════════════ -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box">
 
-  <div class="shell-badge">🚧 Em desenvolvimento — Etapa futura</div>
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">➕ Novo Lead</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
 
-  <div class="funil">
-    <div class="funil-etapa"><span class="num">1</span>Novo Contato</div>
-    <div class="funil-etapa"><span class="num">↓</span></div>
-    <div class="funil-etapa"><span class="num">2</span>Orçamento Enviado</div>
-    <div class="funil-etapa"><span class="num">↓</span></div>
-    <div class="funil-etapa"><span class="num">3</span>Aguardando Resposta</div>
-    <div class="funil-etapa"><span class="num">↓</span></div>
-    <div class="funil-etapa"><span class="num">4</span>Negociação</div>
-    <div class="funil-etapa"><span class="num">↓</span></div>
-    <div class="funil-etapa"><span class="num">5</span>Fechado ✅ / Perdido ❌</div>
+    <form class="modal-body" onsubmit="submitForm(event)">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nome *</label>
+          <input type="text" id="f-nome" placeholder="Nome do cliente" required>
+        </div>
+        <div class="form-group">
+          <label>Telefone *</label>
+          <input type="tel" id="f-telefone" placeholder="(62) 99999-9999" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Aparelho / Produto</label>
+          <input type="text" id="f-aparelho" placeholder="Ex: iPhone 13, Notebook Dell">
+        </div>
+        <div class="form-group">
+          <label>Valor informado (R$)</label>
+          <input type="number" id="f-valor" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Serviço solicitado</label>
+        <input type="text" id="f-servico" placeholder="Ex: Troca de tela, Formatação...">
+      </div>
+
+      <div class="form-group">
+        <label>Status</label>
+        <select id="f-status">
+          <option value="novo_contato">Novo Contato</option>
+          <option value="orcamento_enviado">Orçamento Enviado</option>
+          <option value="aguardando_resposta">Aguardando Resposta</option>
+          <option value="negociacao">Negociação</option>
+          <option value="fechado">Fechado ✅</option>
+          <option value="perdido">Perdido ❌</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Observações</label>
+        <textarea id="f-obs" placeholder="Detalhes relevantes da negociação..."></textarea>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-ghost" onclick="closeModal()">Cancelar</button>
+        <button type="submit" class="btn-primary">Salvar Lead</button>
+      </div>
+
+    </form>
   </div>
-
-  <div class="recursos">
-    <div class="recurso">
-      <span class="recurso-icon">🔍</span>
-      <div>
-        <div class="recurso-titulo">Pesquisa rápida</div>
-        <div class="recurso-desc">Encontre qualquer lead por nome, telefone ou produto</div>
-      </div>
-    </div>
-    <div class="recurso">
-      <span class="recurso-icon">📋</span>
-      <div>
-        <div class="recurso-titulo">Histórico completo</div>
-        <div class="recurso-desc">Registro de todos os contatos e tentativas</div>
-      </div>
-    </div>
-    <div class="recurso">
-      <span class="recurso-icon">📝</span>
-      <div>
-        <div class="recurso-titulo">Observações</div>
-        <div class="recurso-desc">Anote detalhes relevantes de cada negociação</div>
-      </div>
-    </div>
-    <div class="recurso">
-      <span class="recurso-icon">⏰</span>
-      <div>
-        <div class="recurso-titulo">Lembretes automáticos</div>
-        <div class="recurso-desc">Alerta após X dias sem resposta do cliente</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="shell-aviso">
-    <strong>Exemplo de uso:</strong><br>
-    Cliente pergunta o valor da tela do iPhone 12 → Sistema registra o lead → Após 3 dias sem resposta → Gera alerta automático na Central de Alertas.
-  </div>
-
 </div>
+
+<!-- ══════════════ PAINEL DE DETALHE ══════════════ -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <span class="detail-title">📋 Detalhes do Lead</span>
+    <button class="modal-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body" id="detail-body"></div>
+  <div class="detail-footer" id="detail-footer"></div>
+</div>
+
+<!-- Toast -->
+<div class="crm-toast" id="crm-toast"></div>
+
+<!-- Scripts compartilhados -->
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script type="module" src="crm.js"></script>
+
 </body>
 </html>
