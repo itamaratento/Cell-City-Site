@@ -204,9 +204,17 @@
                         <div class="al-panel-titulo">⚙️ Configurações de Notificação</div>
                     </div>
                     <div class="al-config-box">
+                        <div class="al-config-sep" style="border-top:none;padding-top:0;">Sons do Sistema</div>
+                        <label class="al-config-row">
+                            <input type="checkbox" id="cfg-sons-sistema">
+                            <span>🔊 Sons do Sistema (menus, painel, notificações)</span>
+                        </label>
+                        <div style="font-size:11px;color:var(--text3);padding:0 10px 6px;">
+                            Padrão: Desligado. Quando desligado, apenas sons de alertas no horário programado são emitidos (controlados abaixo).
+                        </div>
                         <label class="al-config-row">
                             <input type="checkbox" id="cfg-som-global" checked>
-                            <span>🔊 Ativar som nas notificações</span>
+                            <span>🔔 Som ao disparar alerta no horário</span>
                         </label>
                         <label class="al-config-row">
                             <input type="checkbox" id="cfg-notif-browser" checked>

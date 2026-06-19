@@ -1784,6 +1784,7 @@ class Dashboard {
 
     // ─── Toca som curto (para horário atual / próximos) ───
     const tocarSomCurto = () => {
+      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -1803,6 +1804,7 @@ class Dashboard {
     // ─── Toca som PERSISTENTE (para tarefas atrasadas) ───
     // Toca 3 beeps consecutivos em tom mais agudo, mais perceptível
     const tocarSomVencida = () => {
+      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const beep = (freq, start, dur) => {
@@ -2465,6 +2467,7 @@ class Dashboard {
 
     const gerarSomAlarme = (duracao = 2, vol = 0.8) => {
       if (isTocarAlarm) return;
+      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
       isTocarAlarm = true;
 
       try {

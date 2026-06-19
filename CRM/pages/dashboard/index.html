@@ -816,6 +816,8 @@
   }
 
   function beep() {
+    // Sons do sistema desativados por padrão — só toca se o usuário habilitou
+    if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
       var ctx = new Ctx(); var o = ctx.createOscillator(); var g = ctx.createGain();

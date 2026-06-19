@@ -718,6 +718,8 @@ function carregarConfig() {
     const raw = localStorage.getItem(CFG_KEY);
     const cfg = raw ? JSON.parse(raw) : { somGlobal:true, notifBrowser:true, modoNotif:'som_popup', tipos:{ critico:true, alto:true, medio:true, baixo:false } };
     const el = (id) => document.getElementById(id);
+    // Sons do sistema (flag global — padrão desligado)
+    if (el('cfg-sons-sistema'))  el('cfg-sons-sistema').checked = localStorage.getItem('cc_sons_sistema') === 'true';
     if (el('cfg-som-global'))    el('cfg-som-global').checked = cfg.somGlobal !== false;
     if (el('cfg-notif-browser')) el('cfg-notif-browser').checked = cfg.notifBrowser !== false;
     if (el('cfg-modo-notif'))    el('cfg-modo-notif').value = cfg.modoNotif || 'som_popup';
@@ -727,6 +729,10 @@ function carregarConfig() {
 }
 
 function salvarConfig() {
+    // Sons do sistema — grava flag global lida por todos os módulos
+    const sonsSistema = document.getElementById('cfg-sons-sistema')?.checked ?? false;
+    localStorage.setItem('cc_sons_sistema', sonsSistema ? 'true' : 'false');
+
     const cfg = {
         somGlobal:    document.getElementById('cfg-som-global')?.checked ?? true,
         notifBrowser: document.getElementById('cfg-notif-browser')?.checked ?? true,
@@ -742,6 +748,7 @@ function salvarConfig() {
 
 // ── Verificação de alertas vencidos ──────────────────────────────────────────
 function _tocarSom() {
+    if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
