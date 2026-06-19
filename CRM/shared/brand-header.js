@@ -7,10 +7,16 @@
        recebe id=crm-brand-bar e perde a classe .top-bar, herdando todos
        os estilos abaixo — sem quebrar a estrutura interna (busca global,
        relógio, sino, etc.).                                        */
-    #crm-brand-bar,
-    .crm-brand-bar-unified {
-      position: sticky;
+    /* Barra fixa ao viewport — independente de padding-left do sidebar ou
+       layout do módulo. Garante que o logo fique SEMPRE na mesma posição
+       em todos os módulos. O dashboard sobrepõe com position:sticky via
+       dashboard.css (crm-brand-bar-unified). */
+    #crm-brand-bar {
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -23,9 +29,15 @@
       min-height: 56px;
       height: auto;
       flex-shrink: 0;
-      /* Folga vertical para o conteúdo logo abaixo da barra não ficar colado.
-         position:sticky já cria contexto de posicionamento para o título
-         centralizado em absolute abaixo. */
+      box-sizing: border-box;
+    }
+    /* Dashboard: .crm-brand-bar-unified retorna ao comportamento sticky
+       (a barra fica dentro do flex-column do body, não precisa de fixed). */
+    .crm-brand-bar-unified {
+      position: sticky !important;
+      left: auto !important;
+      right: auto !important;
+      width: auto !important;
       margin-bottom: 14px;
     }
 
@@ -527,6 +539,15 @@
 
     // Insere o brand bar como o 1º filho do body — completamente independente
     document.body.insertBefore(bar, document.body.firstChild);
+
+    // Empurra o conteúdo para baixo da barra fixa (56px altura + 14px folga).
+    // Usa !important para sobrepor qualquer padding-top do módulo.
+    if (!document.getElementById('crm-bar-body-offset')) {
+      const s = document.createElement('style');
+      s.id = 'crm-bar-body-offset';
+      s.textContent = 'body { padding-top: 70px !important; }';
+      document.head.appendChild(s);
+    }
   }
 
   if (document.readyState === 'loading') {
