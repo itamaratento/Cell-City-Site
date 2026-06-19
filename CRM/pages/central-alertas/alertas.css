@@ -430,6 +430,59 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 }
 .al-toast.hidden { opacity:0; pointer-events:none; }
 
+/* ── CHECKBOX DE SELEÇÃO ── */
+.al-item-check {
+    display:flex; align-items:flex-start; padding-top:2px; flex-shrink:0; cursor:pointer;
+}
+.al-checkbox {
+    width:15px; height:15px; cursor:pointer; accent-color:var(--green);
+    margin:0; flex-shrink:0;
+}
+
+/* ── TOOLBAR DE SELEÇÃO EM LOTE ── */
+.al-toolbar-lote {
+    display:none; position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
+    background:var(--surface3); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:10px 16px;
+    align-items:center; gap:10px; z-index:200;
+    box-shadow:0 8px 28px rgba(0,0,0,0.5); font-size:13px; color:var(--text2);
+    white-space:nowrap; max-width:calc(100vw - 260px);
+}
+.al-toolbar-lote.visible { display:flex; }
+.al-lote-btn {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:var(--radius-xs); color:var(--text2);
+    cursor:pointer; padding:6px 12px; font-size:12px; font-weight:600;
+    transition:all var(--transition); font-family:var(--font);
+}
+.al-lote-btn:hover { border-color:var(--border-hover); color:var(--text); }
+.al-lote-excluir:hover { border-color:var(--red); color:var(--red); }
+.al-lote-concluir:hover { border-color:var(--green); color:var(--green); }
+
+/* ── OVERFLOW FIXES ── */
+.al-main {
+    min-width:0; /* previne expansão acima do flex container */
+}
+.al-item {
+    min-width:0; /* garante que flex items não vazem */
+    flex-wrap:wrap; /* quando tela pequena, quebra ações para linha seguinte */
+}
+.al-item-body {
+    min-width:0; word-break:break-word;
+}
+.al-item-titulo {
+    white-space:normal; /* permite quebra de linha em títulos longos */
+    word-break:break-word;
+}
+/* Garante que as ações não empurrem os itens para fora */
+.al-item-acoes {
+    flex-shrink:0; max-width:100%;
+}
+/* Limita o grid de stats para não overflow em telas intermediárias */
+.al-stats-grid {
+    max-width:100%;
+}
+
 /* ── MOBILE ── */
 @media (max-width: 767px) {
     .al-sidebar {
@@ -445,9 +498,13 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     .al-form-priority { width:100%; }
     .al-cal-grid { gap:2px; }
     .al-cal-day-num { font-size:11px; }
+    .al-toolbar-lote { max-width:calc(100vw - 24px); flex-wrap:wrap; bottom:70px; }
+    .al-item { flex-wrap:wrap; }
+    .al-item-acoes { flex-wrap:wrap; gap:3px; }
 }
 @media (max-width: 420px) {
     .al-stats-grid { grid-template-columns:1fr 1fr; }
     .al-item-acoes { gap:3px; }
     .al-acao { padding:4px 6px; font-size:11px; }
+    .al-item-titulo { font-size:13px; }
 }

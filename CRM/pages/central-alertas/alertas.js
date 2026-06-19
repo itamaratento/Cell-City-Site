@@ -262,6 +262,9 @@ function htmlItem(a) {
 
     return `
     <div class="al-item ${cls}" data-id="${a.id}">
+        <label class="al-item-check" title="Selecionar">
+            <input type="checkbox" class="al-checkbox" data-id="${a.id}" onchange="Alertas._atualizarSelecao()">
+        </label>
         <div class="al-item-prioridade prioridade-${esc(a.prioridade||'media')}"></div>
         <div class="al-item-body">
             <div class="al-item-titulo">${esc(a.titulo)}</div>
@@ -308,6 +311,68 @@ function atualizarBadges() {
 function _salvarBadgeGlobal() {
     const total = listaHoje().length + listaVencidos().length;
     localStorage.setItem(BADGE_KEY, String(total));
+    // Dispara evento de storage para o dashboard atualizar em tempo real
+    try {
+        window.dispatchEvent(new StorageEvent('storage', { key: BADGE_KEY, newValue: String(total) }));
+    } catch(_) {}
+}
+
+// ── Seleção em lote ───────────────────────────────────────────────────────────
+function _atualizarSelecao() {
+    const selecionados = document.querySelectorAll('.al-checkbox:checked');
+    const toolbar = document.getElementById('al-toolbar-lote');
+    const count = document.getElementById('al-lote-count');
+    if (toolbar) toolbar.classList.toggle('visible', selecionados.length > 0);
+    if (count) count.textContent = selecionados.length;
+}
+
+function _getSelecionados() {
+    return [...document.querySelectorAll('.al-checkbox:checked')].map(el => el.dataset.id);
+}
+
+function selecionarTodos() {
+    const checkboxes = document.querySelectorAll('.al-checkbox');
+    const todosMarcados = [...checkboxes].every(c => c.checked);
+    checkboxes.forEach(c => c.checked = !todosMarcados);
+    _atualizarSelecao();
+}
+
+async function excluirSelecionados() {
+    const ids = _getSelecionados();
+    if (!ids.length) return;
+    const nomes = ids.map(id => {
+        const a = st.lista.find(x=>x.id===id);
+        return a ? `"${a.titulo}"` : id;
+    }).join(', ');
+    if (!confirm(`Excluir ${ids.length} alerta(s)?\n\n${nomes}\n\nEsta ação é permanente.`)) return;
+
+    let erros = 0;
+    for (const id of ids) {
+        try { await deleteDoc(doc(db, COL, id)); } catch { erros++; }
+        st.lista = st.lista.filter(x=>x.id!==id);
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    toast(erros ? `🗑️ ${ids.length - erros} excluído(s). ${erros} erro(s).` : `🗑️ ${ids.length} alerta(s) excluído(s).`);
+    render();
+    _salvarBadgeGlobal();
+}
+
+async function concluirSelecionados() {
+    const ids = _getSelecionados();
+    if (!ids.length) return;
+    if (!confirm(`Concluir ${ids.length} alerta(s)?`)) return;
+    for (const id of ids) {
+        const a = st.lista.find(x=>x.id===id);
+        if (!a || a.status === 'concluido') continue;
+        a.status = 'concluido';
+        try {
+            await setDoc(doc(db, COL, id), { status:'concluido', atualizadoEmISO: new Date().toISOString() }, { merge:true });
+        } catch {}
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    toast(`✅ ${ids.length} alerta(s) concluído(s).`);
+    render();
+    _salvarBadgeGlobal();
 }
 
 // ── Calendário ────────────────────────────────────────────────────────────────
@@ -627,10 +692,11 @@ function selDia(iso) {
 // ── Configurações ─────────────────────────────────────────────────────────────
 function carregarConfig() {
     const raw = localStorage.getItem(CFG_KEY);
-    const cfg = raw ? JSON.parse(raw) : { somGlobal:true, notifBrowser:true, tipos:{ critico:true, alto:true, medio:true, baixo:false } };
+    const cfg = raw ? JSON.parse(raw) : { somGlobal:true, notifBrowser:true, modoNotif:'som_popup', tipos:{ critico:true, alto:true, medio:true, baixo:false } };
     const el = (id) => document.getElementById(id);
     if (el('cfg-som-global'))    el('cfg-som-global').checked = cfg.somGlobal !== false;
     if (el('cfg-notif-browser')) el('cfg-notif-browser').checked = cfg.notifBrowser !== false;
+    if (el('cfg-modo-notif'))    el('cfg-modo-notif').value = cfg.modoNotif || 'som_popup';
     document.querySelectorAll('.cfg-tipo-som').forEach(chk => {
         chk.checked = cfg.tipos?.[chk.dataset.tipo] !== false;
     });
@@ -640,6 +706,7 @@ function salvarConfig() {
     const cfg = {
         somGlobal:    document.getElementById('cfg-som-global')?.checked ?? true,
         notifBrowser: document.getElementById('cfg-notif-browser')?.checked ?? true,
+        modoNotif:    document.getElementById('cfg-modo-notif')?.value || 'som_popup',
         tipos: {},
     };
     document.querySelectorAll('.cfg-tipo-som').forEach(chk => {
@@ -650,8 +717,23 @@ function salvarConfig() {
 }
 
 // ── Verificação de alertas vencidos ──────────────────────────────────────────
+function _tocarSom() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.connect(g); g.connect(ctx.destination);
+        o.type = 'sine'; o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+        o.start(); o.stop(ctx.currentTime + 0.35);
+        o.onended = () => { try { ctx.close(); } catch(_) {} };
+    } catch(_) {}
+}
+
 function verificarDisparos() {
-    const agora = new Date();
     const hj    = hojeISO();
     const hm    = agoraHHMM();
     const devem = st.lista.filter(a =>
@@ -660,9 +742,15 @@ function verificarDisparos() {
         a.hora <= hm
     );
     if (!devem.length) return;
-    const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    const cfg   = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    const modo  = cfg.modoNotif || 'som_popup';
+    const usaSom    = cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
+    const usaPopup  = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
+
+    if (usaSom) _tocarSom();
+
     devem.forEach(a => {
-        if (cfg.notifBrowser && 'Notification' in window && Notification.permission === 'granted') {
+        if (usaPopup && 'Notification' in window && Notification.permission === 'granted') {
             new Notification(`🔔 ${a.titulo}`, {
                 body: `${a.hora} — ${tipoLabel(a.tipo)}${a.descricao ? '\n'+a.descricao : ''}`,
                 icon: '/CRM/assets/logo.png',
@@ -738,4 +826,6 @@ window.Alertas = {
     abrirAdiar, fecharAdiar, adiar, adiarCustom,
     selDia, toggleCustomDias, salvarConfig,
     setCalView,
+    // Seleção em lote
+    _atualizarSelecao, selecionarTodos, excluirSelecionados, concluirSelecionados,
 };

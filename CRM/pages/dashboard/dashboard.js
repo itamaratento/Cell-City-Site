@@ -1159,6 +1159,39 @@ class Dashboard {
       lista = (nova && nova.length) ? nova : DICAS;
       idx = 0;
       mostrar(lista[0], true);
+
+      // Atualiza badge e subtítulo no card de módulo "Central de Alertas"
+      const badge   = document.getElementById('alertas-count-badge');
+      const cardSub = document.getElementById('alertas-card-sub');
+      const criticos = (nova || []).filter(a => a.cat === 'critico').length;
+      const total    = (nova || []).length;
+      if (badge) {
+        if (criticos > 0) {
+          badge.textContent = criticos;
+          badge.style.display = '';
+          badge.style.background = '#ef4444';
+        } else if (total > 0) {
+          badge.textContent = total;
+          badge.style.display = '';
+          badge.style.background = '';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+      if (cardSub) {
+        if (criticos > 0) cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
+        else if (total > 0) cardSub.textContent = `${total} alerta(s) pendente(s)`;
+        else cardSub.textContent = 'Sem pendências';
+      }
+
+      // Sincroniza badge com Central de Alertas via localStorage
+      const badgeUsuario = parseInt(localStorage.getItem('cc_alertas_badge') || '0');
+      if (badgeUsuario > 0 && badge && badge.style.display === 'none') {
+        badge.textContent = badgeUsuario;
+        badge.style.display = '';
+        badge.style.background = 'rgba(0,200,83,0.8)';
+        if (cardSub) cardSub.textContent = `${badgeUsuario} alerta(s) agendado(s)`;
+      }
     };
 
     // Verifica os módulos e atualiza a lista de alertas

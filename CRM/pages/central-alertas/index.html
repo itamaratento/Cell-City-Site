@@ -210,7 +210,17 @@
                             <input type="checkbox" id="cfg-notif-browser" checked>
                             <span>🌐 Notificação do navegador (fora da aba)</span>
                         </label>
-                        <div class="al-config-sep">Tipos de alerta com som</div>
+                        <div class="al-config-sep">Modo de notificação</div>
+                    <label class="al-config-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+                        <span>🔔 Como notificar ao disparar um alerta?</span>
+                        <select id="cfg-modo-notif" style="background:#111413;border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:7px 10px;color:#f0f2f1;font-size:13px;width:100%;outline:none;">
+                            <option value="som_popup">🔊 Som + Popup</option>
+                            <option value="som">🔊 Apenas Som</option>
+                            <option value="popup">💬 Apenas Popup</option>
+                            <option value="contador">🔢 Apenas Contador</option>
+                        </select>
+                    </label>
+                    <div class="al-config-sep">Tipos de alerta com som</div>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="critico" checked><span>🔴 Crítico</span></label>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="alto" checked><span>🟠 Alta prioridade</span></label>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="medio" checked><span>🟡 Média prioridade</span></label>
@@ -222,6 +232,14 @@
             </div><!-- /al-main -->
         </div><!-- /al-layout -->
     </main>
+
+    <!-- TOOLBAR SELEÇÃO EM LOTE -->
+    <div class="al-toolbar-lote" id="al-toolbar-lote">
+        <span id="al-lote-count">0</span> selecionado(s)
+        <button class="al-lote-btn al-lote-concluir" onclick="Alertas.concluirSelecionados()">✔ Concluir</button>
+        <button class="al-lote-btn al-lote-excluir" onclick="Alertas.excluirSelecionados()">🗑️ Excluir</button>
+        <button class="al-lote-btn" onclick="Alertas.selecionarTodos()">☑ Sel. Todos</button>
+    </div>
 
     <!-- TOAST -->
     <div class="al-toast hidden" id="al-toast"></div>

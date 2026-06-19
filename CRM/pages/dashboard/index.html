@@ -604,7 +604,7 @@
             <div class="alertas-loading">Carregando...</div>
           </div>
 
-          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../relatorios/index.html">Ver relatórios ›</a>
+          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../central-alertas/index.html">Ver Central de Alertas ›</a>
 
         </div>
       </div>
@@ -1020,8 +1020,27 @@
       return tb - ta;
     });
 
+    // Alertas criados pelo usuário na Central de Alertas
+    var alertasUsuario = [];
+    try {
+      var cache = localStorage.getItem('cc_alertas_cache');
+      if (cache) {
+        var hoje = new Date().toISOString().slice(0,10);
+        var agora = new Date().toTimeString().slice(0,5);
+        var todos = JSON.parse(cache);
+        alertasUsuario = todos.filter(function(a) {
+          if (a.status === 'concluido') return false;
+          var d = a.repeticao && a.repeticao !== 'nenhuma' ? _calcProxima(a) : (a.data || '');
+          return d <= hoje;
+        });
+        alertasUsuario.sort(function(a, b) {
+          return (a.hora || '').localeCompare(b.hora || '');
+        });
+      }
+    } catch(e) {}
+
     ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend;
-    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length;
+    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + alertasUsuario.length;
 
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline-flex' : 'none';
@@ -1047,6 +1066,7 @@
       footer.style.display = 'none';
     } else {
       var html = '';
+      if (alertasUsuario.length) html += '<div class="aprov-secao">🔔 Meus Alertas</div>' + alertasUsuario.map(alertaUsuarioHTML).join('');
       if (preOSPend.length) html += '<div class="aprov-secao">🆕 Novos Atendimentos do Site</div>' + preOSPend.map(preOSItemHTML).join('');
       if (diagPend.length) html += '<div class="aprov-secao">🔧 Solicitações de Diagnóstico</div>' + diagPend.map(diagItemHTML).join('');
       if (agPend.length) html += '<div class="aprov-secao">📅 Agendamentos</div>' + agPend.map(agItemHTML).join('');
@@ -1084,6 +1104,51 @@
     var v = getVistos(); if (v.indexOf(key) < 0) { v.push(key); setVistos(v); }
     salvarVistoFirestore(key); recompute();
   }
+
+  // Calcula data efetiva para alertas recorrentes
+  function _calcProxima(a) {
+    var base = a.data; if (!base) return '';
+    var d = new Date(base + 'T12:00:00');
+    var now = new Date();
+    while (d <= now) {
+      var dias = { diario:1, semanal:7, mensal:30, quinzenal:15, trinta:30,
+                   custom: parseInt(a.customDias) || 7 }[a.repeticao] || 1;
+      if (a.repeticao === 'mensal') d.setMonth(d.getMonth() + 1);
+      else d.setDate(d.getDate() + dias);
+    }
+    return d.toISOString().slice(0,10);
+  }
+
+  var PRIO_COR = { critica:'#ef4444', alta:'#fb923c', media:'#fbbf24', baixa:'#6b7280' };
+  var TIPO_ICO = { lembrete:'🔔', comando:'⚡', tarefa:'✅', whatsapp:'📱', instagram:'📸',
+                   financeiro:'💰', os:'🔧', cliente:'👤', fornecedor:'🏢', outro:'📌' };
+
+  function alertaUsuarioHTML(a) {
+    var cor = PRIO_COR[a.prioridade] || PRIO_COR.media;
+    var ico = TIPO_ICO[a.tipo] || '🔔';
+    var hora = a.hora || '--:--';
+    var hoje = new Date().toISOString().slice(0,10);
+    var de = (a.repeticao && a.repeticao !== 'nenhuma') ? _calcProxima(a) : (a.data || '');
+    var vencido = de < hoje;
+    var tag = vencido
+      ? '<span style="font-size:10px;background:#ef4444;color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;">VENCIDO</span>'
+      : '';
+    return '<div style="padding:10px 14px;border-left:3px solid '+cor+';background:#0d0f0e;border-radius:0 8px 8px 0;margin-bottom:6px;">'
+      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+      + '<span style="font-size:14px;">'+ico+'</span>'
+      + '<span style="font-size:13px;font-weight:700;color:#f0f2f1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(a.titulo)+'</span>'
+      + tag
+      + '</div>'
+      + '<div style="font-size:11px;color:#7a8480;">'+hora
+      + (a.descricao ? ' — '+esc(a.descricao.slice(0,60)) : '')+'</div>'
+      + '<div style="margin-top:6px;"><a href="/CRM/pages/central-alertas/index.html" style="font-size:11px;color:#00C853;text-decoration:none;">Ver Central de Alertas ›</a></div>'
+      + '</div>';
+  }
+
+  // Reler alertas do usuário quando localStorage mudar (outra aba salvou)
+  window.addEventListener('storage', function(e) {
+    if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge') recompute();
+  });
 
   function bind() {
     sino = document.getElementById('aprov-sino');
