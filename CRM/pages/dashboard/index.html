@@ -1021,17 +1021,21 @@
     });
 
     // Alertas criados pelo usuário na Central de Alertas
+    // Só exibe se data+hora já chegou (mesmo critério de jaDisp() em alertas.js)
     var alertasUsuario = [];
     try {
       var cache = localStorage.getItem('cc_alertas_cache');
       if (cache) {
-        var hoje = new Date().toISOString().slice(0,10);
-        var agora = new Date().toTimeString().slice(0,5);
+        var _hj = new Date().toISOString().slice(0,10);
+        var _hm = new Date().toTimeString().slice(0,5);
         var todos = JSON.parse(cache);
         alertasUsuario = todos.filter(function(a) {
           if (a.status === 'concluido') return false;
-          var d = a.repeticao && a.repeticao !== 'nenhuma' ? _calcProxima(a) : (a.data || '');
-          return d <= hoje;
+          var d = (a.repeticao && a.repeticao !== 'nenhuma') ? _calcProxima(a) : (a.data || '');
+          if (!d) return false;
+          if (d < _hj) return true;         // vencido
+          if (d > _hj) return false;        // data futura
+          return (a.hora || '00:00') <= _hm; // hoje: só se hora chegou
         });
         alertasUsuario.sort(function(a, b) {
           return (a.hora || '').localeCompare(b.hora || '');
@@ -1149,6 +1153,8 @@
   window.addEventListener('storage', function(e) {
     if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge') recompute();
   });
+  // Reavalia a cada minuto para detectar alertas cujo horário chegou
+  setInterval(recompute, 60_000);
 
   function bind() {
     sino = document.getElementById('aprov-sino');

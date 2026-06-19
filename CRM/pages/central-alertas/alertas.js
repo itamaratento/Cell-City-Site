@@ -156,13 +156,28 @@ function render() {
     atualizarBadges();
 }
 
-function listaHoje()        { const h=hojeISO(); return st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)===h).sort(sortHora); }
-function listaAgendados()   { const h=hojeISO(); return st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)>h).sort(sortData); }
+// Determina se um alerta já disparou (data+hora <= agora)
+function jaDisp(a) {
+    const h  = hojeISO();
+    const hm = agoraHHMM();
+    const de = dataEfetiva(a);
+    if (!de) return false;
+    if (de < h)  return true;                        // data passada → vencido, conta como disparado
+    if (de > h)  return false;                       // data futura
+    return (a.hora || '00:00') <= hm;               // hoje: só se hora já passou
+}
+
+// "Hoje" = alertas do dia atual CUJO HORÁRIO JÁ CHEGOU
+function listaHoje()        { const h=hojeISO(); const hm=agoraHHMM(); return st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)===h&&(a.hora||'00:00')<=hm).sort(sortHora); }
+// "Agendados" = data futura OU hoje mas horário ainda não chegou
+function listaAgendados()   { const h=hojeISO(); const hm=agoraHHMM(); return st.lista.filter(a=>a.status!=='concluido'&&(dataEfetiva(a)>h||(dataEfetiva(a)===h&&(a.hora||'00:00')>hm))).sort(sortData); }
 function listaRecorrentes() { return st.lista.filter(a=>a.status!=='concluido'&&a.repeticao&&a.repeticao!=='nenhuma').sort(sortData); }
 function listaConcluidos()  { return st.lista.filter(a=>a.status==='concluido').sort((a,b)=>(b.atualizadoEmISO||'').localeCompare(a.atualizadoEmISO||'')); }
 function listaVencidos()    { const h=hojeISO(); return st.lista.filter(a=>a.status!=='concluido'&&dataEfetiva(a)<h); }
-function listaComandos()   { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='comando').sort(sortData); }
-function listaTarefas()    { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='tarefa').sort(sortData); }
+function listaComandos()   { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='comando'&&jaDisp(a)).sort(sortData); }
+function listaTarefas()    { return st.lista.filter(a=>a.status!=='concluido'&&a.tipo==='tarefa'&&jaDisp(a)).sort(sortData); }
+// Ativos = disparados (usados para badge/sino)
+function listaAtivos()     { return st.lista.filter(a=>a.status!=='concluido'&&jaDisp(a)); }
 
 function dataEfetiva(a) {
     if (a.repeticao && a.repeticao !== 'nenhuma') return calcProxima(a);
@@ -318,7 +333,7 @@ function atualizarBadges() {
 }
 
 function _salvarBadgeGlobal() {
-    const total = listaHoje().length + listaVencidos().length;
+    const total = listaAtivos().length;
     localStorage.setItem(BADGE_KEY, String(total));
     // Dispara evento de storage para o dashboard atualizar em tempo real
     try {
@@ -825,7 +840,9 @@ pedirPermissaoNotif();
 authReady.then(async () => {
     await carregar();
     verificarDisparos();
-    setInterval(verificarDisparos, 60_000);
+    // Re-renderiza e dispara verificação a cada minuto para mover alertas de
+    // "Agendados" para "Hoje" automaticamente quando o horário chegar
+    setInterval(() => { render(); verificarDisparos(); _salvarBadgeGlobal(); }, 60_000);
 });
 
 // ── Exposição global ──────────────────────────────────────────────────────────
