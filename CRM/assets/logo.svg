@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" role="img" aria-label="Cell City Informática — Gestão Empresarial">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" role="img" aria-label="Cell City Informática — Gestão Empresarial">
   <defs>
     <!-- Verde Cell City — legível sobre fundo escuro -->
     <linearGradient id="cc-green" x1="0" y1="0" x2="0" y2="1">
@@ -53,19 +53,19 @@
     font-family="'Segoe UI','Arial',Helvetica,sans-serif"
     font-size="20"
     font-weight="400"
-    letter-spacing="9"
+    letter-spacing="11"
     fill="#c8e8d8"
     text-rendering="optimizeLegibility">INFORMÁTICA</text>
 
   <!-- ══════════════════════════════════════════
        GESTÃO EMPRESARIAL — mais visível
        ══════════════════════════════════════════ -->
-  <text x="180" y="87"
+  <text x="180" y="90"
     text-anchor="middle"
     font-family="'Segoe UI','Arial',Helvetica,sans-serif"
-    font-size="15"
+    font-size="20"
     font-weight="700"
-    letter-spacing="4.5"
+    letter-spacing="5.5"
     fill="url(#cc-gold)"
     text-rendering="optimizeLegibility">GESTÃO EMPRESARIAL</text>
 </svg>
