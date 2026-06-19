@@ -19,8 +19,8 @@
       <stop offset="100%" stop-color="rgba(0,200,83,0)"/>
     </linearGradient>
     <!-- Glow premium para CELL CITY -->
-    <filter id="cc-glow" x="-8%" y="-20%" width="116%" height="150%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur"/>
+    <filter id="cc-glow" x="-6%" y="-20%" width="112%" height="150%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0.9" result="blur"/>
       <feMerge>
         <feMergeNode in="blur"/>
         <feMergeNode in="SourceGraphic"/>
@@ -38,6 +38,7 @@
     font-weight="800"
     letter-spacing="5"
     fill="url(#cc-green)"
+    filter="url(#cc-glow)"
     text-rendering="optimizeLegibility">CELL CITY</text>
 
   <!-- Linha decorativa — mais ampla para cobrir a largura do texto -->
@@ -51,9 +52,9 @@
     text-anchor="middle"
     font-family="'Segoe UI','Arial',Helvetica,sans-serif"
     font-size="20"
-    font-weight="400"
+    font-weight="500"
     letter-spacing="11"
-    fill="#c8e8d8"
+    fill="#d2ede0"
     text-rendering="optimizeLegibility">INFORMÁTICA</text>
 
   <!-- ══════════════════════════════════════════
