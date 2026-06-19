@@ -7,7 +7,6 @@ const COL          = 'alertas_usuario';
 const CMDS_CACHE   = 'cc_comandos_cache';
 const CACHE_KEY    = 'cc_alertas_cache';
 const CFG_KEY      = 'cc_alertas_config';
-const BADGE_KEY    = 'cc_alertas_badge';
 
 // ── Estado ────────────────────────────────────────────────────────────────────
 const st = {
@@ -18,6 +17,9 @@ const st = {
     calView:  'mes',      // 'mes' | 'semana'
     calDiaSel: null,
     calSemanaOffset: 0,    // semanas para navegação na visão Semana
+    filtroBusca:     '',
+    filtroTipo:      '',
+    filtroPrioridade:'',
 };
 
 // ── Helpers de data ───────────────────────────────────────────────────────────
@@ -90,7 +92,6 @@ async function carregar() {
     }
     render();
     atualizarBadges();
-    _salvarBadgeGlobal();
 }
 
 function carregarComandos() {
@@ -127,6 +128,7 @@ const SECAO_TITULO = {
     recorrentes: '🔁 Recorrentes', concluidos: '✅ Concluídos',
     comandos: '⚡ Comandos', tarefas: '✅ Tarefas',
     calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
+    painel: '📊 Dashboard de Alertas',
 };
 
 function navegar(secao) {
@@ -141,19 +143,47 @@ function navegar(secao) {
     document.getElementById('al-sidebar')?.classList.remove('open');
     document.getElementById('al-overlay')?.classList.remove('open');
     if (secao === 'calendario') renderCalendario();
+    else if (secao === 'painel') renderPainel();
     else render();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
+function filtroItem(a) {
+    const termo = st.filtroBusca.toLowerCase().trim();
+    if (termo && !a.titulo?.toLowerCase().includes(termo) && !a.descricao?.toLowerCase().includes(termo)) return false;
+    if (st.filtroTipo && a.tipo !== st.filtroTipo) return false;
+    if (st.filtroPrioridade && a.prioridade !== st.filtroPrioridade) return false;
+    return true;
+}
+
 function render() {
     renderHome();
-    renderLista('hoje',       listaHoje());
-    renderLista('agendados',  listaAgendados());
-    renderLista('recorrentes',listaRecorrentes());
-    renderLista('concluidos', listaConcluidos());
-    renderLista('comandos',   listaComandos());
-    renderLista('tarefas',    listaTarefas());
+    renderLista('hoje',       listaHoje().filter(filtroItem));
+    renderLista('agendados',  listaAgendados().filter(filtroItem));
+    renderLista('recorrentes',listaRecorrentes().filter(filtroItem));
+    renderLista('concluidos', listaConcluidos().filter(filtroItem));
+    renderLista('comandos',   listaComandos().filter(filtroItem));
+    renderLista('tarefas',    listaTarefas().filter(filtroItem));
     atualizarBadges();
+}
+
+function setupBusca() {
+    const input = document.getElementById('al-search-input');
+    const clear = document.getElementById('al-search-clear');
+    const tipo  = document.getElementById('al-search-tipo');
+    const prio  = document.getElementById('al-search-prioridade');
+    if (!input) return;
+    const atualizar = () => {
+        st.filtroBusca     = input.value;
+        st.filtroTipo      = tipo?.value  || '';
+        st.filtroPrioridade= prio?.value  || '';
+        if (clear) clear.style.display = input.value ? '' : 'none';
+        render();
+    };
+    input.addEventListener('input', atualizar);
+    tipo?.addEventListener('change',  atualizar);
+    prio?.addEventListener('change',  atualizar);
+    clear?.addEventListener('click', () => { input.value = ''; atualizar(); input.focus(); });
 }
 
 // Determina se um alerta já disparou (data+hora <= agora)
@@ -274,6 +304,26 @@ function renderLista(secao, lista) {
     el.innerHTML = lista.map(htmlItem).join('');
 }
 
+// ── Ações Rápidas Contextuais ─────────────────────────────────────────────────
+const _ACAO_RAPIDA_MAP = {
+    os:         { label: '🔧 Abrir OS',          url: '../../pages/os/index.html' },
+    cliente:    { label: '👤 Abrir Cadastro',     url: '../../pages/clientes/index.html' },
+    agenda:     { label: '📅 Abrir Agenda',       url: '../../pages/agenda/index.html' },
+    whatsapp:   { label: '📱 Abrir WhatsApp',     url: '../../pages/whatsapp/index.html' },
+    financeiro: { label: '💰 Abrir Financeiro',   url: '../../pages/financeiro/index.html' },
+    estoque:    { label: '📦 Abrir Estoque',      url: '../../pages/estoque/index.html' },
+    meta:       { label: '🎯 Abrir Metas',        url: '../../pages/metas/index.html' },
+    fornecedor: { label: '🏢 Abrir Fornecedor',   url: '../../pages/fornecedores/index.html' },
+};
+
+function _acoesRapidasHTML(a) {
+    if (a.status === 'concluido') return '';
+    const destino = a.link || (_ACAO_RAPIDA_MAP[a.tipo]?.url ?? '');
+    const label   = a.link ? '🔗 Abrir link' : (_ACAO_RAPIDA_MAP[a.tipo]?.label ?? '');
+    if (!destino || !label) return '';
+    return `<a href="${esc(destino)}" class="al-acao-rapida" target="_blank" onclick="event.stopPropagation()">${label}</a>`;
+}
+
 function htmlItem(a) {
     const hoje      = hojeISO();
     const deISO     = dataEfetiva(a);
@@ -300,6 +350,8 @@ function htmlItem(a) {
             </div>
             ${a.descricao ? `<div class="al-item-descricao">${esc(a.descricao)}</div>` : ''}
             ${cmd ? `<div class="al-item-cmd">⚡ ${esc(cmd.titulo)}</div>` : ''}
+            ${_acoesRapidasHTML(a)}
+            ${a.concluidoEmISO ? `<div class="al-item-concluido-em">✅ Concluído em ${new Date(a.concluidoEmISO).toLocaleString('pt-BR')}</div>` : ''}
         </div>
         <div class="al-item-acoes">
             ${cmd ? `<button class="al-acao al-acao-executar" onclick="Alertas.executarComando('${a.id}')" title="Executar comando">▶</button>` : ''}
@@ -330,15 +382,6 @@ function atualizarBadges() {
     const tf = listaTarefas().length;
     const el4 = document.getElementById('sb-badge-tarefas');
     if (el4) { el4.textContent = tf || ''; el4.classList.toggle('show', tf > 0); }
-}
-
-function _salvarBadgeGlobal() {
-    const total = listaAtivos().length;
-    localStorage.setItem(BADGE_KEY, String(total));
-    // Dispara evento de storage para o dashboard atualizar em tempo real
-    try {
-        window.dispatchEvent(new StorageEvent('storage', { key: BADGE_KEY, newValue: String(total) }));
-    } catch(_) {}
 }
 
 // ── Seleção em lote ───────────────────────────────────────────────────────────
@@ -378,25 +421,25 @@ async function excluirSelecionados() {
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
     toast(erros ? `🗑️ ${ids.length - erros} excluído(s). ${erros} erro(s).` : `🗑️ ${ids.length} alerta(s) excluído(s).`);
     render();
-    _salvarBadgeGlobal();
 }
 
 async function concluirSelecionados() {
     const ids = _getSelecionados();
     if (!ids.length) return;
     if (!confirm(`Concluir ${ids.length} alerta(s)?`)) return;
+    const agoraISO = new Date().toISOString();
     for (const id of ids) {
         const a = st.lista.find(x=>x.id===id);
         if (!a || a.status === 'concluido') continue;
         a.status = 'concluido';
+        a.concluidoEmISO = agoraISO;
         try {
-            await setDoc(doc(db, COL, id), { status:'concluido', atualizadoEmISO: new Date().toISOString() }, { merge:true });
+            await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, atualizadoEmISO: agoraISO }, { merge:true });
         } catch {}
     }
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
     toast(`✅ ${ids.length} alerta(s) concluído(s).`);
     render();
-    _salvarBadgeGlobal();
 }
 
 // ── Calendário ────────────────────────────────────────────────────────────────
@@ -506,6 +549,7 @@ function abrirForm() {
     document.getElementById('al-f-hora').value        = agoraHHMM();
     document.getElementById('al-f-repeticao').value   = 'nenhuma';
     document.getElementById('al-f-comando').value     = '';
+    const linkEl = document.getElementById('al-f-link'); if (linkEl) linkEl.value = '';
     document.getElementById('al-custom-dias-wrap').classList.add('hidden');
     document.getElementById('al-modal').classList.add('active');
     setTimeout(() => document.getElementById('al-f-titulo')?.focus(), 80);
@@ -526,6 +570,7 @@ function editar(id) {
     document.getElementById('al-f-repeticao').value  = a.repeticao||'nenhuma';
     document.getElementById('al-f-comando').value    = a.comandoId||'';
     document.getElementById('al-f-custom-dias').value= a.customDias||7;
+    const linkElE = document.getElementById('al-f-link'); if (linkElE) linkElE.value = a.link||'';
     document.getElementById('al-custom-dias-wrap').classList.toggle('hidden', (a.repeticao||'nenhuma')!=='custom');
     document.getElementById('al-modal').classList.add('active');
 }
@@ -562,6 +607,7 @@ async function salvar() {
         repeticao:  repet,
         customDias: repet === 'custom' ? parseInt(document.getElementById('al-f-custom-dias').value)||7 : null,
         comandoId:  cmdId || null,
+        link:       (document.getElementById('al-f-link')?.value || '').trim() || null,
         status:     'pendente',
     };
 
@@ -595,7 +641,6 @@ async function salvar() {
     fecharForm();
     render();
     if (st.secao === 'calendario') renderCalendario();
-    _salvarBadgeGlobal();
 }
 
 async function excluir(id) {
@@ -607,20 +652,20 @@ async function excluir(id) {
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
     toast('🗑️ Alerta excluído.');
     render();
-    _salvarBadgeGlobal();
 }
 
 async function concluir(id) {
     const a = st.lista.find(x=>x.id===id);
     if (!a) return;
+    const agoraISO = new Date().toISOString();
     a.status = 'concluido';
+    a.concluidoEmISO = agoraISO;
     try {
-        await setDoc(doc(db, COL, id), { status:'concluido', atualizadoEm: serverTimestamp(), atualizadoEmISO: new Date().toISOString() }, { merge:true });
+        await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO }, { merge:true });
     } catch {}
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
     toast('✅ Alerta concluído!');
     render();
-    _salvarBadgeGlobal();
 }
 
 async function copiarComando(id) {
@@ -698,7 +743,6 @@ async function adiar(minutos) {
     fecharAdiar();
     render();
     if (st.secao === 'calendario') renderCalendario();
-    _salvarBadgeGlobal();
 }
 
 async function adiarCustom() {
@@ -840,6 +884,7 @@ st.cal.ano = agora.getFullYear();
 st.cal.mes = agora.getMonth();
 
 setupSidebar();
+setupBusca();
 carregarComandos();
 carregarConfig();
 pedirPermissaoNotif();
@@ -847,6 +892,11 @@ pedirPermissaoNotif();
 authReady.then(async () => {
     await carregar();
     verificarDisparos();
+    // Processa parâmetro ?foco= vindo do badge do Dashboard
+    const params = new URLSearchParams(window.location.search);
+    const foco = params.get('foco');
+    if (foco === 'criticos' || foco === 'critico') navegar('hoje');
+    else if (foco === 'pendentes') navegar('agendados');
     // Agenda re-render alinhado à virada do minuto (ex: XX:55:00, não XX:55:37)
     // para que os alertas apareçam exatamente no horário configurado
     (function agendarMinuto() {
@@ -855,11 +905,409 @@ authReady.then(async () => {
         setTimeout(() => {
             render();
             verificarDisparos();
-            _salvarBadgeGlobal();
             agendarMinuto(); // reprogramar para o próximo minuto
         }, msAteVirada);
     })();
 });
+
+// ── Exportar CSV ──────────────────────────────────────────────────────────────
+function exportarCSV() {
+    const cab = ['Título','Descrição','Tipo','Prioridade','Data','Hora','Repetição','Status','Categoria','Comando','Criado em','Concluído em','Link'];
+    const linhas = [cab];
+    st.lista.forEach(a => {
+        const cmd = a.comandoId ? st.comandos.find(c=>c.id===a.comandoId) : null;
+        linhas.push([
+            a.titulo||'', (a.descricao||'').replace(/\n/g,' '), a.tipo||'', a.prioridade||'',
+            a.data||'', a.hora||'', a.repeticao||'nenhuma', a.status||'', a.categoria||'',
+            cmd ? cmd.titulo : '',
+            a.criadoEmISO  ? new Date(a.criadoEmISO).toLocaleString('pt-BR')  : '',
+            a.concluidoEmISO ? new Date(a.concluidoEmISO).toLocaleString('pt-BR') : '',
+            a.link||''
+        ]);
+    });
+    const csv = linhas.map(l => l.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const el   = document.createElement('a');
+    el.href = url; el.download = `alertas_${hojeISO()}.csv`;
+    document.body.appendChild(el); el.click(); document.body.removeChild(el);
+    URL.revokeObjectURL(url);
+    toast(`📥 ${st.lista.length} alerta(s) exportados com sucesso!`);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DASHBOARD DE ALERTAS
+// ══════════════════════════════════════════════════════════════════════════════
+const painelState = { filtro: '30d', dateStart: '', dateEnd: '' };
+
+function _painelRangeMs() {
+    const agora = Date.now();
+    const f = painelState.filtro;
+    if (f === 'hoje')   return { ini: new Date(hojeISO()+'T00:00:00').getTime(), fim: agora };
+    if (f === '7d')     return { ini: agora - 7  * 864e5, fim: agora };
+    if (f === '30d')    return { ini: agora - 30 * 864e5, fim: agora };
+    if (f === 'custom') {
+        const ini = painelState.dateStart ? new Date(painelState.dateStart+'T00:00:00').getTime() : 0;
+        const fim = painelState.dateEnd   ? new Date(painelState.dateEnd+'T23:59:59').getTime()   : agora;
+        return { ini, fim };
+    }
+    return { ini: agora - 30 * 864e5, fim: agora };
+}
+
+function _painelFiltrar() {
+    const { ini, fim } = _painelRangeMs();
+    return st.lista.filter(a => {
+        const ts = a.criadoEmISO ? new Date(a.criadoEmISO).getTime()
+                 : (a.data ? new Date(a.data+'T00:00:00').getTime() : null);
+        if (ts === null) return true;
+        return ts >= ini && ts <= fim;
+    });
+}
+
+// ── SVG Helpers ──────────────────────────────────────────────────────────────
+function _svgDonut(segments, cx=80, cy=80, R=62, ri=40) {
+    const total = segments.reduce((s,d)=>s+d.v, 0);
+    if (!total) return `<svg viewBox="0 0 160 160" class="pd-donut-svg">
+        <circle cx="80" cy="80" r="62" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="22"/>
+        <text x="80" y="84" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="13">Sem dados</text></svg>`;
+    let ang = -Math.PI / 2;
+    const arcs = segments.map(d => {
+        if (!d.v) return '';
+        const sw = (d.v / total) * 2 * Math.PI;
+        const ea = ang + sw;
+        const x1=cx+R*Math.cos(ang), y1=cy+R*Math.sin(ang);
+        const x2=cx+R*Math.cos(ea),  y2=cy+R*Math.sin(ea);
+        const ix1=cx+ri*Math.cos(ang),iy1=cy+ri*Math.sin(ang);
+        const ix2=cx+ri*Math.cos(ea), iy2=cy+ri*Math.sin(ea);
+        const lg = sw > Math.PI ? 1 : 0;
+        const p = `M${x1} ${y1}A${R} ${R} 0 ${lg} 1 ${x2} ${y2}L${ix2} ${iy2}A${ri} ${ri} 0 ${lg} 0 ${ix1} ${iy1}Z`;
+        ang = ea;
+        return `<path d="${p}" fill="${d.color}"><title>${d.label}: ${d.v}</title></path>`;
+    });
+    return `<svg viewBox="0 0 160 160" class="pd-donut-svg">${arcs.join('')}
+        <text x="${cx}" y="${cy-7}" text-anchor="middle" fill="var(--text)" font-size="22" font-weight="800">${total}</text>
+        <text x="${cx}" y="${cy+11}" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="10">alertas</text></svg>`;
+}
+
+function _svgBarsH(rows) {
+    if (!rows.length) return '<div class="pd-empty">Sem dados</div>';
+    const maxV = Math.max(...rows.map(r=>r.v), 1);
+    const BH = 20, GAP = 10, LW = 85, BW = 180, NUM = 32;
+    const H = rows.length * (BH + GAP) + 4;
+    const lines = rows.map((r, i) => {
+        const y = i * (BH + GAP);
+        const w = Math.max(3, (r.v / maxV) * BW);
+        const pct = Math.round((r.v / maxV) * 100);
+        return `
+            <text x="0" y="${y+BH-4}" fill="rgba(255,255,255,0.5)" font-size="10.5">${r.label}</text>
+            <rect x="${LW}" y="${y}" width="${w}" height="${BH}" fill="${r.color}" rx="4" opacity="0.85"/>
+            <text x="${LW+w+5}" y="${y+BH-4}" fill="rgba(255,255,255,0.6)" font-size="10">${r.v}${r.v && maxV > 0 ? ` (${pct}%)` : ''}</text>`;
+    });
+    return `<svg viewBox="0 0 ${LW+BW+NUM} ${H}" style="width:100%;overflow:visible;display:block">${lines.join('')}</svg>`;
+}
+
+function _svgLine(series, labels) {
+    const W=340, H=120, padL=28, padB=24, padT=8, padR=10;
+    const IW = W - padL - padR, IH = H - padB - padT;
+    const allVals = series.flatMap(s => s.data);
+    const maxV = Math.max(...allVals, 1);
+    const n = labels.length;
+    const px = i => padL + (n > 1 ? (i/(n-1)) * IW : IW/2);
+    const py = v => padT + IH - (v/maxV)*IH;
+
+    const grid = [0,0.25,0.5,0.75,1].map(f => {
+        const yg = py(maxV * f); const lv = Math.round(maxV * f);
+        return `<line x1="${padL}" y1="${yg}" x2="${W-padR}" y2="${yg}" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                <text x="${padL-3}" y="${yg+3}" text-anchor="end" fill="rgba(255,255,255,0.25)" font-size="8">${lv}</text>`;
+    });
+
+    const xLabels = labels.map((l, i) => {
+        if (n <= 1 || i % Math.max(1, Math.floor(n/5)) !== 0) return '';
+        return `<text x="${px(i)}" y="${H-2}" text-anchor="middle" fill="rgba(255,255,255,0.25)" font-size="8">${l}</text>`;
+    });
+
+    const polylines = series.map(s => {
+        const pts = s.data.map((v,i) => `${px(i)},${py(v)}`).join(' ');
+        const dots = s.data.map((v,i) => v > 0 ? `<circle cx="${px(i)}" cy="${py(v)}" r="2.5" fill="${s.color}"/>` : '').join('');
+        return `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+    });
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block">${grid.join('')}${xLabels.join('')}${polylines.join('')}</svg>`;
+}
+
+// ── Render Painel ─────────────────────────────────────────────────────────────
+function renderPainel() {
+    const el = document.getElementById('panel-painel');
+    if (!el || st.secao !== 'painel') return;
+
+    const lista = _painelFiltrar();
+    const { ini, fim } = _painelRangeMs();
+    const hoje = hojeISO();
+
+    // ── KPIs
+    const ativos    = lista.filter(a => a.status !== 'concluido');
+    const concl     = lista.filter(a => a.status === 'concluido');
+    const vencidos  = ativos.filter(a => (a.data || '') < hoje);
+    const adiados   = lista.filter(a => a.adiadoPor);
+
+    const tempos = concl
+        .filter(a => a.criadoEmISO && a.concluidoEmISO)
+        .map(a => (new Date(a.concluidoEmISO) - new Date(a.criadoEmISO)) / 36e5);
+    const tempoMedio = tempos.length ? (tempos.reduce((s,t)=>s+t,0) / tempos.length) : null;
+    const tempoFmt = tempoMedio === null ? '—'
+        : tempoMedio < 1 ? `${Math.round(tempoMedio*60)} min`
+        : tempoMedio < 24 ? `${tempoMedio.toFixed(1).replace('.',',')}h`
+        : `${(tempoMedio/24).toFixed(1).replace('.',',')}d`;
+
+    // ── Donut prioridade
+    const prioCores = { critica:'#ef4444', alta:'#fb923c', media:'#fbbf24', baixa:'#94a3b8' };
+    const prioData = Object.entries(prioCores).map(([p,c]) => ({
+        label: { critica:'Crítica', alta:'Alta', media:'Média', baixa:'Baixa' }[p],
+        v: lista.filter(a => a.prioridade === p).length,
+        color: c,
+    }));
+
+    // ── Bars por tipo
+    const tipoNames = { os:'🔧 OS', cliente:'👤 Cliente', agenda:'📅 Agenda', whatsapp:'📱 WhatsApp',
+        financeiro:'💰 Financeiro', estoque:'📦 Estoque', meta:'🎯 Meta', lembrete:'🔔 Lembrete',
+        tarefa:'✅ Tarefa', comando:'⚡ Comando', fornecedor:'🏢 Fornecedor', outro:'📌 Outro' };
+    const tipoCores = { os:'#6366f1', cliente:'#22d3ee', agenda:'#a78bfa', whatsapp:'#4ade80',
+        financeiro:'#fbbf24', estoque:'#f97316', meta:'#ec4899', lembrete:'#94a3b8',
+        tarefa:'#4ade80', comando:'#818cf8', fornecedor:'#fb923c', outro:'#64748b' };
+    const tipoRows = Object.entries(tipoNames).map(([t,lbl]) => ({
+        label: lbl,
+        v: lista.filter(a => (a.tipo || 'lembrete') === t).length,
+        color: tipoCores[t] || '#64748b',
+    })).filter(r => r.v > 0).sort((a,b)=>b.v-a.v).slice(0,10);
+
+    // ── Linha temporal (criados vs concluídos)
+    const dias = painelState.filtro === 'hoje' ? 1
+               : painelState.filtro === '7d'   ? 7
+               : painelState.filtro === 'custom' && painelState.dateStart && painelState.dateEnd
+                 ? Math.max(1, Math.round((new Date(painelState.dateEnd) - new Date(painelState.dateStart)) / 864e5) + 1)
+               : 30;
+    const criados30 = [], concl30 = [], labels30 = [];
+    for (let d = 0; d < dias; d++) {
+        const dayMs = fim - (dias - 1 - d) * 864e5;
+        const dayISO = new Date(dayMs).toISOString().slice(0,10);
+        labels30.push(dayISO.slice(5));
+        criados30.push(lista.filter(a => {
+            const ts = a.criadoEmISO || (a.data ? a.data + 'T00:00:00' : null);
+            return ts && ts.slice(0,10) === dayISO;
+        }).length);
+        concl30.push(concl.filter(a => a.concluidoEmISO?.slice(0,10) === dayISO).length);
+    }
+    const lineSVG = _svgLine(
+        [{ data: criados30, color: '#6366f1' }, { data: concl30, color: '#4ade80' }],
+        labels30
+    );
+
+    // ── Render
+    el.innerHTML = `
+    <div class="pd-header">
+        <h2 class="pd-title">📊 Dashboard de Alertas</h2>
+        <div class="pd-filtros">
+            <button class="pd-filtro-btn${painelState.filtro==='hoje' ? ' active' : ''}" onclick="Alertas._painelSetFiltro('hoje')">Hoje</button>
+            <button class="pd-filtro-btn${painelState.filtro==='7d'   ? ' active' : ''}" onclick="Alertas._painelSetFiltro('7d')">7 dias</button>
+            <button class="pd-filtro-btn${painelState.filtro==='30d'  ? ' active' : ''}" onclick="Alertas._painelSetFiltro('30d')">30 dias</button>
+            <button class="pd-filtro-btn${painelState.filtro==='custom'?' active' : ''}" onclick="Alertas._painelSetFiltro('custom')">Personalizado</button>
+            <div class="pd-custom-range${painelState.filtro==='custom'?' visible':''}">
+                <input type="date" id="pd-date-start" value="${painelState.dateStart}" onchange="Alertas._painelCustomDate()" max="${hoje}">
+                <span>até</span>
+                <input type="date" id="pd-date-end"   value="${painelState.dateEnd}"   onchange="Alertas._painelCustomDate()" max="${hoje}">
+            </div>
+        </div>
+    </div>
+
+    <div class="pd-kpis">
+        <div class="pd-kpi pd-kpi-ativo">
+            <div class="pd-kpi-num">${ativos.length}</div>
+            <div class="pd-kpi-label">Ativos</div>
+        </div>
+        <div class="pd-kpi pd-kpi-concluido">
+            <div class="pd-kpi-num">${concl.length}</div>
+            <div class="pd-kpi-label">Concluídos</div>
+        </div>
+        <div class="pd-kpi pd-kpi-vencido">
+            <div class="pd-kpi-num">${vencidos.length}</div>
+            <div class="pd-kpi-label">Vencidos</div>
+        </div>
+        <div class="pd-kpi pd-kpi-adiado">
+            <div class="pd-kpi-num">${adiados.length}</div>
+            <div class="pd-kpi-label">Adiados</div>
+        </div>
+        <div class="pd-kpi pd-kpi-tempo">
+            <div class="pd-kpi-num">${tempoFmt}</div>
+            <div class="pd-kpi-label">Tempo médio</div>
+        </div>
+    </div>
+
+    <div class="pd-charts">
+        <div class="pd-chart-card">
+            <div class="pd-chart-titulo">Por Prioridade</div>
+            <div class="pd-donut-wrap">
+                ${_svgDonut(prioData)}
+                <div class="pd-donut-legend">
+                    ${prioData.map(d=>`<div class="pd-legend-item"><span class="pd-legend-dot" style="background:${d.color}"></span><span>${d.label}</span><strong>${d.v}</strong></div>`).join('')}
+                </div>
+            </div>
+        </div>
+
+        <div class="pd-chart-card">
+            <div class="pd-chart-titulo">Por Módulo / Tipo</div>
+            ${tipoRows.length ? _svgBarsH(tipoRows) : '<div class="pd-empty">Sem dados no período</div>'}
+        </div>
+    </div>
+
+    <div class="pd-chart-card pd-chart-card--full">
+        <div class="pd-chart-titulo">Criados <span style="color:#6366f1">▬</span> vs Concluídos <span style="color:#4ade80">▬</span></div>
+        ${lineSVG}
+    </div>
+
+    <div class="pd-taxa-row">
+        <div class="pd-taxa-card">
+            <div class="pd-taxa-label">Taxa de conclusão</div>
+            <div class="pd-taxa-bar-wrap"><div class="pd-taxa-bar" style="width:${lista.length ? Math.round((concl.length/lista.length)*100) : 0}%"></div></div>
+            <div class="pd-taxa-pct">${lista.length ? Math.round((concl.length/lista.length)*100) : 0}%</div>
+        </div>
+        <div class="pd-taxa-card">
+            <div class="pd-taxa-label">Taxa de vencimento</div>
+            <div class="pd-taxa-bar-wrap"><div class="pd-taxa-bar pd-taxa-bar--danger" style="width:${ativos.length ? Math.round((vencidos.length/ativos.length)*100) : 0}%"></div></div>
+            <div class="pd-taxa-pct">${ativos.length ? Math.round((vencidos.length/ativos.length)*100) : 0}%</div>
+        </div>
+    </div>`;
+}
+
+function _painelSetFiltro(f) {
+    painelState.filtro = f;
+    renderPainel();
+}
+function _painelCustomDate() {
+    const s = document.getElementById('pd-date-start');
+    const e = document.getElementById('pd-date-end');
+    if (s) painelState.dateStart = s.value;
+    if (e) painelState.dateEnd   = e.value;
+    renderPainel();
+}
+
+// ── Modo Foco ─────────────────────────────────────────────────────────────────
+const foco = { lista: [], idx: 0 };
+
+function _focoFila() {
+    const prioPeso = { critica: 0, alta: 1, media: 2, baixa: 3 };
+    const ativos = [
+        ...listaVencidos(),
+        ...listaHoje().filter(a => !listaVencidos().find(v => v.id === a.id)),
+        ...listaAtivos().filter(a => !listaVencidos().find(v => v.id === a.id) && !listaHoje().find(h => h.id === a.id)),
+    ];
+    const vistos = new Set();
+    return ativos.filter(a => { if (vistos.has(a.id)) return false; vistos.add(a.id); return true; })
+        .sort((a, b) => (prioPeso[a.prioridade] ?? 2) - (prioPeso[b.prioridade] ?? 2));
+}
+
+function abrirModoFoco() {
+    foco.lista = _focoFila();
+    foco.idx = 0;
+    if (!foco.lista.length) { toast('✅ Nenhum alerta pendente no momento!'); return; }
+    document.getElementById('al-modal-foco').classList.add('active');
+    _focoRender();
+}
+
+function fecharModoFoco() {
+    document.getElementById('al-modal-foco').classList.remove('active');
+}
+
+function _focoRender() {
+    const total = foco.lista.length;
+    const a = foco.lista[foco.idx];
+    const counter = document.getElementById('foco-counter');
+    const content = document.getElementById('foco-content');
+    const actions = document.getElementById('foco-actions');
+    const bar     = document.getElementById('foco-progress');
+
+    if (!a) {
+        if (counter) counter.textContent = '';
+        if (bar) bar.style.width = '100%';
+        if (content) content.innerHTML = `
+            <div class="foco-done">
+                <div class="foco-done-icon">🎉</div>
+                <div class="foco-done-title">Todos os alertas foram processados!</div>
+                <div class="foco-done-sub">Fila limpa. Bom trabalho!</div>
+                <button class="foco-btn-fechar" onclick="Alertas.fecharModoFoco()">Fechar</button>
+            </div>`;
+        if (actions) actions.style.display = 'none';
+        return;
+    }
+
+    if (counter) counter.textContent = `Alerta ${foco.idx + 1} de ${total}`;
+    if (bar) bar.style.width = total > 1 ? `${(foco.idx / (total - 1)) * 100}%` : '100%';
+    if (actions) actions.style.display = '';
+
+    const prioLabel = { critica: '🔴 Crítica', alta: '🟠 Alta', media: '🟡 Média', baixa: '⚪ Baixa' };
+    const tLabel = tipoLabel(a.tipo);
+    const dataFmt = a.data ? fmtData(dataEfetiva(a)) : '';
+    const cmd = a.comandoId ? st.comandos.find(c => c.id === a.comandoId) : null;
+
+    const destino = a.link || (_ACAO_RAPIDA_MAP[a.tipo]?.url ?? '');
+    const acaoLabel = a.link ? '🔗 Abrir Link' : (_ACAO_RAPIDA_MAP[a.tipo]?.label ?? '');
+
+    if (content) content.innerHTML = `
+        <div class="foco-prioridade prio-${a.prioridade || 'media'}">${prioLabel[a.prioridade] || '🟡 Média'}</div>
+        <h2 class="foco-titulo">${esc(a.titulo || 'Alerta')}</h2>
+        ${a.descricao ? `<p class="foco-descricao">${esc(a.descricao)}</p>` : ''}
+        <div class="foco-meta">
+            ${dataFmt ? `<span>📅 ${dataFmt}</span>` : ''}
+            ${a.hora   ? `<span>🕐 ${esc(a.hora)}</span>` : ''}
+            ${tLabel   ? `<span>${esc(tLabel)}</span>` : ''}
+            ${cmd      ? `<span>⚡ ${esc(cmd.titulo)}</span>` : ''}
+        </div>
+        ${destino ? `<a href="${esc(destino)}" class="foco-link" target="_blank" onclick="event.stopPropagation()">${acaoLabel}</a>` : ''}
+    `;
+
+    // atualiza botão "Abrir Link" nas actions
+    const btnLink = document.getElementById('foco-btn-link');
+    if (btnLink) {
+        btnLink.style.display = destino ? '' : 'none';
+        btnLink.textContent = acaoLabel || '🔗 Abrir Link';
+        btnLink.onclick = () => window.open(destino, '_blank');
+    }
+}
+
+async function focoConcluir() {
+    const a = foco.lista[foco.idx];
+    if (!a) return;
+    await concluir(a.id);
+    foco.lista = _focoFila();
+    if (foco.idx >= foco.lista.length) foco.idx = Math.max(0, foco.lista.length - 1);
+    _focoRender();
+}
+
+async function focoAdiar(minutos) {
+    const a = foco.lista[foco.idx];
+    if (!a) return;
+    const novaData = new Date(Date.now() + minutos * 60000);
+    const novaDataISO  = novaData.toISOString().slice(0, 10);
+    const novaHora     = `${String(novaData.getHours()).padStart(2,'0')}:${String(novaData.getMinutes()).padStart(2,'0')}`;
+    a.data = novaDataISO; a.hora = novaHora; a.adiadoEm = new Date().toISOString(); a.adiadoPor = minutos;
+    try {
+        await setDoc(doc(db, COL, a.id), {
+            data: novaDataISO, hora: novaHora, adiadoEm: a.adiadoEm, adiadoPor: minutos,
+            atualizadoEm: serverTimestamp(), atualizadoEmISO: a.adiadoEm
+        }, { merge: true });
+        toast(`⏰ Adiado ${minutos < 60 ? minutos + ' min' : (minutos/60) + 'h'} — novo horário: ${novaHora}`);
+    } catch { toast('⏰ Adiado localmente.'); }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    render();
+    foco.lista = _focoFila();
+    if (foco.idx >= foco.lista.length) foco.idx = Math.max(0, foco.lista.length - 1);
+    _focoRender();
+}
+
+function focoProximo() {
+    if (foco.idx < foco.lista.length - 1) { foco.idx++; }
+    else { foco.idx = foco.lista.length; } // dispara tela "concluído"
+    _focoRender();
+}
 
 // ── Exposição global ──────────────────────────────────────────────────────────
 window.Alertas = {
@@ -867,7 +1315,9 @@ window.Alertas = {
     copiarComando, executarComando,
     abrirAdiar, fecharAdiar, adiar, adiarCustom,
     selDia, toggleCustomDias, salvarConfig,
-    setCalView,
+    setCalView, exportarCSV,
+    abrirModoFoco, fecharModoFoco, focoConcluir, focoAdiar, focoProximo,
+    _painelSetFiltro, _painelCustomDate,
     // Seleção em lote
     _atualizarSelecao, selecionarTodos, excluirSelecionados, concluirSelecionados,
 };

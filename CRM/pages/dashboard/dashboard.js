@@ -641,451 +641,9 @@ class Dashboard {
     window.addEventListener('focus', verificar);
   }
 
-  // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
+  // ===== CENTRAL DE ALERTAS — alertas manuais via onSnapshot =====
   async gerarAlertas() {
-    const alertas = [];
-    const now = new Date();
-
-    // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
-    const getDeliveryDate = (os) => {
-      if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-      }
-      const ua = os.updatedAt;
-      if (!ua) return null;
-      if (typeof ua === 'string') return ua;
-      if (ua.toDate) return ua.toDate().toISOString();
-      return null;
-    };
-    const calcDias = (dateStr) => {
-      try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-
-    try {
-      // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (VENCIDAS + horário atual + próximas) =====
-      // Regras:
-      //   1. Vencidas de QUALQUER DIA aparecem sempre (CRÍTICO)
-      //   2. Horário atual aparece se não houver vencidas
-      //   3. Próximas (até 15min) aparece se não houver vencidas nem horário atual
-      const eventos = await this._lerAgenda();
-      const agora = Date.now();
-      const hojeISO = new Date().toISOString().slice(0, 10);
-      const d = new Date();
-      const minsAtual = d.getHours() * 60 + d.getMinutes();
-
-      // ─── Helper: verifica se evento está atrasado ───
-      const estaAtrasado = (e) => {
-        if (e.concluido || !e.data) return false;
-        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
-        return e.data < hojeISO; // sem horário — data passou
-      };
-
-      // ─── Helper: diff em minutos do evento ───
-      const diffMinEvento = (e) => {
-        if (!e.hora) return Infinity;
-        const [h, m] = e.hora.split(':').map(Number);
-        return (h * 60 + m) - minsAtual;
-      };
-
-      // Atrasadas de QUALQUER DIA (não concluídas, horário/data passou)
-      const atrasadas = (eventos || []).filter(estaAtrasado);
-      const atrasadasDiasAnteriores = atrasadas.filter(e => e.data < hojeISO);
-
-      // No horário atual (hoje, diff 0–5 min)
-      const noHorario = (eventos || []).filter(e => {
-        if (e.concluido || !e.data || !e.hora) return false;
-        if (e.data !== hojeISO) return false;
-        const diff = diffMinEvento(e);
-        return diff >= 0 && diff <= 5;
-      });
-
-      // Próximas (hoje, 6–15 min)
-      const proximas = (eventos || []).filter(e => {
-        if (e.concluido || !e.data || !e.hora) return false;
-        if (e.data !== hojeISO) return false;
-        const diff = diffMinEvento(e);
-        return diff > 5 && diff <= 15;
-      });
-
-      // ─── Gera alertas na ordem de prioridade ───
-
-      // ⚠ 1. PRIORIDADE MÁXIMA — VENCIDAS (inclui dias anteriores)
-      if (atrasadas.length > 0) {
-        const totalAtrasadas = atrasadas.length;
-        const _fmtAtraso = (min) => {
-          if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
-          if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
-          return `${min} min`;
-        };
-        const maisAntiga = atrasadas.sort((a, b) => {
-          const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
-          const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
-          return tsA - tsB;
-        })[0];
-        const tituloExemplo = maisAntiga.titulo;
-        const dtExemplo = new Date(`${maisAntiga.data}T${maisAntiga.hora || '00:00'}:00`);
-        const atrasoMin = Math.max(0, Math.round((agora - dtExemplo.getTime()) / 60000));
-
-        // Detail mais informativo: mostra quantas são de dias anteriores
-        const diasAntLabel = atrasadasDiasAnteriores.length > 0
-          ? ` (${atrasadasDiasAnteriores.length} de dias anteriores)`
-          : '';
-
-        alertas.push({
-          icon: '🔴', cat: 'critico', cor: 'critico',
-          title: `AÇÃO DA SEMANA · ${totalAtrasadas} pendente(s)${diasAntLabel}`,
-          sub: `🔴 Aguardando conclusão · ${_fmtAtraso(atrasoMin)} atrasado`,
-          detail: `${totalAtrasadas} tarefa(s) atrasada(s) — Ex.: "${tituloExemplo}". Conclua no módulo Ação da Semana para remover este alerta.`
-        });
-      }
-
-      // ⚠ 2. HORÁRIO ATUAL (só aparece se NÃO houver vencidas)
-      if (atrasadas.length === 0 && noHorario.length > 0) {
-        alertas.push({
-          icon: '⏰', cat: 'critico', cor: 'critico',
-          title: 'AÇÃO DA SEMANA · AGORA',
-          sub: noHorario.length === 1 ? 'Tarefa programada para AGORA' : `${noHorario.length} tarefas AGORA`,
-          detail: noHorario.map(e => `${e.hora} ${e.titulo}`).join(' · ')
-        });
-      }
-
-      // ⚠ 3. PRÓXIMAS (até 15 min) — só se não houver vencidas nem AGORA
-      if (atrasadas.length === 0 && noHorario.length === 0 && proximas.length > 0) {
-        alertas.push({
-          icon: '⏰', cat: 'atencao', cor: 'atencao',
-          title: 'AÇÃO DA SEMANA · Próximos',
-          sub: proximas.length === 1 ? `Em ${proximas[0].hora}` : `${proximas.length} tarefas em breve`,
-          detail: proximas.map(e => `${e.hora} ${e.titulo}`).join(' · ')
-        });
-      }
-
-      const osSnap = await getDocs(collection(db, 'os'));
-      const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
-
-      const contatosFeitos = new Set();
-      contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
-
-      const osList = [];
-      osSnap.forEach(d => osList.push({ firestoreId: d.id, ...d.data() }));
-
-      // ===== PRIORIDADE 1 — PÓS-VENDA =====
-      let pvPendentes = 0;
-      let pvVencidos = 0;
-      const pvVencidosClientes = [];
-
-      osList.forEach(os => {
-        if (os.status !== 'entregue') return;
-        const dd = getDeliveryDate(os);
-        if (!dd) return;
-        const dias = calcDias(dd);
-        const osId = os.id || os.firestoreId;
-        [5, 15, 30].forEach(prazo => {
-          if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-          const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
-          if (dias < prazo || dias >= proxPrazo) return;
-          pvPendentes++;
-          if (dias > prazo + 2) {
-            pvVencidos++;
-            pvVencidosClientes.push({ nome: os.clientName || 'Cliente', dias });
-          }
-        });
-      });
-
-      // Clientes vencidos específicos (crítico) — até 3
-      pvVencidosClientes.slice(0, 3).forEach(c => {
-        alertas.push({
-          icon: '💡', cat: 'critico', cor: 'critico',
-          title: 'PÓS-VENDA ATRASADO',
-          sub: `${c.nome} aguardando contato`,
-          detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`
-        });
-      });
-      if (pvVencidos > 0) {
-        alertas.push({
-          icon: '💡', cat: 'critico', cor: 'critico',
-          title: 'PÓS-VENDA ATRASADO',
-          sub: `${pvVencidos} contato(s) vencido(s)`,
-          detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`
-        });
-      }
-      if (pvPendentes > 0) {
-        alertas.push({
-          icon: '💡', cat: 'atencao', cor: 'atencao',
-          title: 'PÓS-VENDA PENDENTE',
-          sub: `${pvPendentes} cliente(s) pendente(s)`,
-          detail: `Existem ${pvPendentes} cliente(s) aguardando contato de pós-venda.`
-        });
-      }
-
-      // ===== PRIORIDADE 2 — ORDEM DE SERVIÇO =====
-      let osOrcamento = 0;
-      let osPronto = 0;
-      let osOrcamentoParado = 0;
-      osList.forEach(os => {
-        // 'orcamento_enviado' = novo fluxo; 'orcamento' = OS antigas
-        if (os.status === 'orcamento_enviado' || os.status === 'orcamento') {
-          osOrcamento++;
-          const ref = getDeliveryDate(os) || os.createdAt;
-          if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) {
-            osOrcamentoParado++;
-          }
-        }
-        // 'concluido' = novo fluxo; 'pronto' = OS antigas
-        if (os.status === 'concluido' || os.status === 'pronto') osPronto++;
-      });
-
-      if (osOrcamentoParado > 0) {
-        alertas.push({
-          icon: '💡', cat: 'critico', cor: 'critico',
-          title: 'OS AGUARDANDO CLIENTE',
-          sub: `${osOrcamentoParado} orçamento(s) parado(s)`,
-          detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`
-        });
-      }
-      if (osOrcamento > 0) {
-        alertas.push({
-          icon: '💡', cat: 'atencao', cor: 'atencao',
-          title: 'OS AGUARDANDO APROVAÇÃO',
-          sub: `${osOrcamento} aparelho(s) no orçamento`,
-          detail: `Existem ${osOrcamento} aparelho(s) aguardando aprovação do orçamento.`
-        });
-      }
-      if (osPronto > 0) {
-        alertas.push({
-          icon: '💡', cat: 'atencao', cor: 'atencao',
-          title: 'OS PRONTAS PARA ENTREGA',
-          sub: `${osPronto} OS pronta(s)`,
-          detail: `Existem ${osPronto} OS pronta(s) para entrega. Avise os clientes.`
-        });
-      }
-
-      // ===== PRIORIDADE 3 — CAIXA (META) =====
-      const meta = this.state && this.state.meta;
-      if (meta && meta.goal > 0) {
-        const percent = Math.round((meta.current / meta.goal) * 100);
-        const falta = Math.max(meta.goal - meta.current, 0);
-        const fmt = (v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
-        if (percent >= 100) {
-          alertas.push({
-            icon: '✅', cat: 'crm', cor: null,
-            title: 'META SEMANAL CONCLUÍDA',
-            sub: 'Parabéns! 🎉',
-            detail: `Meta semanal atingida (${percent}%). Excelente trabalho!`
-          });
-        } else {
-          alertas.push({
-            icon: '💡', cat: 'atencao', cor: 'atencao',
-            title: 'META SEMANAL',
-            sub: `Atingida em ${percent}%`,
-            detail: `Meta semanal em ${percent}%. Faltam ${fmt(falta)} para atingir o objetivo.`
-          });
-        }
-      }
-
-      // ===== PRIORIDADE 4 — PORTAL DO CLIENTE =====
-      try {
-        const portalMsgsSnap = await getDocs(
-          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
-        );
-        const msgsNaoLidas = [];
-        portalMsgsSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
-
-        if (msgsNaoLidas.length > 0) {
-          const badge = document.getElementById('portal-badge');
-          if (badge) {
-            badge.textContent = msgsNaoLidas.length;
-            badge.style.display = '';
-          }
-
-          alertas.push({
-            icon: '💬', cat: 'atencao', cor: 'atencao',
-            title: 'PORTAL DO CLIENTE',
-            sub: `${msgsNaoLidas.length} mensagem(ns) não lida(s)`,
-            detail: `${msgsNaoLidas.length} cliente(s) enviaram mensagem pelo Portal do Cliente. Acesse o módulo para responder.`
-          });
-
-          msgsNaoLidas.slice(0, 3).forEach(m => {
-            alertas.push({
-              icon: '💬', cat: 'crm', cor: null,
-              title: `📩 ${m.clientName || m.nome || 'Cliente'}`,
-              sub: (m.texto || '').slice(0, 60) + ((m.texto || '').length > 60 ? '...' : ''),
-              detail: `Cliente enviou mensagem pelo portal. Acesse o módulo Portal do Cliente para visualizar e responder.`
-            });
-          });
-        } else {
-          const badge = document.getElementById('portal-badge');
-          if (badge) badge.style.display = 'none';
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar mensagens do portal:', e);
-      }
-
-      // ===== AVALIAÇÕES DO PORTAL =====
-      try {
-        const avaliacoesSnap = await getDocs(
-          query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(5))
-        );
-        const avaliacoesRecentes = [];
-        avaliacoesSnap.forEach(d => avaliacoesRecentes.push({ id: d.id, ...d.data() }));
-
-        if (avaliacoesRecentes.length > 0) {
-          // Filtra avaliações de hoje para alerta
-          const hoje = new Date();
-          hoje.setHours(0, 0, 0, 0);
-          const hojeTs = hoje.toISOString();
-          const avaliacoesHoje = avaliacoesRecentes.filter(a => {
-            if (!a.createdAt) return false;
-            const dt = typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt));
-            return dt >= hoje;
-          });
-
-          if (avaliacoesHoje.length > 0) {
-            alertas.push({
-              icon: '⭐', cat: 'crm', cor: null,
-              title: 'AVALIAÇÕES RECEBIDAS',
-              sub: `${avaliacoesHoje.length} nova(s) avaliação(ões) hoje`,
-              detail: `${avaliacoesHoje.length} cliente(s) avaliaram o atendimento pelo Portal do Cliente hoje.`
-            });
-          }
-
-          // Alerta para avaliações baixas (nota <= 2)
-          const avaliacoesCriticas = avaliacoesRecentes.filter(a => a.nota && a.nota <= 2);
-          if (avaliacoesCriticas.length > 0) {
-            alertas.push({
-              icon: '🔴', cat: 'critico', cor: 'critico',
-              title: 'AVALIAÇÕES CRÍTICAS',
-              sub: `${avaliacoesCriticas.length} avaliação(ões) com nota baixa`,
-              detail: `${avaliacoesCriticas.length} cliente(s) deram nota baixa. Verifique o feedback e entre em contato.`
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar avaliações:', e);
-      }
-
-      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
-      try {
-        const solicitacoesSnap = await getDocs(
-          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
-        );
-        const solicitacoes = [];
-        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
-        // Este bloco complementa o de mensagens, focando em solicitações específicas
-        const solicitacoesServico = solicitacoes.filter(s =>
-          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
-                      s.texto.toLowerCase().includes('conserto') ||
-                      s.texto.toLowerCase().includes('reparo') ||
-                      s.texto.toLowerCase().includes('manutenção'))
-        );
-        if (solicitacoesServico.length > 0) {
-          alertas.push({
-            icon: '🔧', cat: 'atencao', cor: 'atencao',
-            title: 'SOLICITAÇÕES DE SERVIÇO',
-            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
-            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
-          });
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
-      }
-
-      // ===== AGENDAMENTOS DO PORTAL (aguardando confirmação) =====
-      // Centraliza no Painel de Alertas todo novo pedido de agendamento, evitando
-      // que a equipe precise abrir o módulo Portal/Painel Administrativo para vê-los.
-      try {
-        const agendamentosSnap = await getDocs(
-          query(collection(db, 'agendamentos'), where('status', '==', 'aguardando'))
-        );
-        const agPendentes = [];
-        agendamentosSnap.forEach(d => agPendentes.push({ id: d.id, ...d.data() }));
-
-        // "YYYY-MM-DD" → "DD/MM/YYYY" (sem conversão de fuso)
-        const fmtDataAg = (data) =>
-          (data && /^\d{4}-\d{2}-\d{2}$/.test(data)) ? data.split('-').reverse().join('/') : (data || 'Sem data');
-
-        if (agPendentes.length > 0) {
-          // Ordena pela data desejada (mais próxima primeiro)
-          agPendentes.sort((a, b) => (a.data || '9999-99-99') < (b.data || '9999-99-99') ? -1 : 1);
-
-          const badge = document.getElementById('agendamentos-badge');
-          if (badge) {
-            badge.textContent = agPendentes.length;
-            badge.style.display = '';
-          }
-
-          // Alerta-resumo
-          alertas.push({
-            icon: '📅', cat: 'atencao', cor: 'atencao',
-            title: 'AGENDAMENTOS PENDENTES',
-            sub: `${agPendentes.length} agendamento(s) aguardando confirmação`,
-            detail: `${agPendentes.length} cliente(s) solicitaram horário de atendimento pelo Portal. Acesse o Painel Administrativo do Portal para confirmar, reagendar ou cancelar.`
-          });
-
-          // Alertas individuais (até 3) — formato pedido pela equipe
-          agPendentes.slice(0, 3).forEach(a => {
-            alertas.push({
-              icon: '🔔', cat: 'crm', cor: null,
-              title: `🔔 Novo Agendamento · ${a.clientName || a.nome || 'Cliente'}`,
-              sub: `📅 ${fmtDataAg(a.data)}${a.horario ? ' · ⏰ ' + a.horario : ''}`,
-              detail: `Cliente: ${a.clientName || a.nome || 'Cliente'} · Data: ${fmtDataAg(a.data)}${a.horario ? ' · Horário: ' + a.horario : ''} · Status: Aguardando Confirmação. Confirme, reagende ou cancele no Painel Administrativo do Portal.`
-            });
-          });
-        } else {
-          const badge = document.getElementById('agendamentos-badge');
-          if (badge) badge.style.display = 'none';
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar agendamentos:', e);
-      }
-
-      // ===== SOLICITAÇÕES DE DIAGNÓSTICO DO PORTAL (aguardando atendimento) =====
-      // Centraliza no Painel de Alertas todo novo pedido de diagnóstico/orçamento
-      // enviado pelo módulo "🔧 Solicitar Diagnóstico Gratuito" do Portal do Cliente.
-      try {
-        const TIPO_EQUIP = { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora', outro: '🔧 Outro' };
-        const diagSnap = await getDocs(
-          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
-        );
-        const diagPend = [];
-        diagSnap.forEach(d => diagPend.push({ id: d.id, ...d.data() }));
-
-        const equipDe = (s) => {
-          const partes = [s.marca, s.modelo].filter(Boolean).join(' ').trim();
-          return partes || TIPO_EQUIP[s.tipoEquipamento] || (s.tipoEquipamento || 'Equipamento não informado');
-        };
-
-        if (diagPend.length > 0) {
-          // Mais recentes primeiro
-          diagPend.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
-
-          // Alerta-resumo
-          alertas.push({
-            icon: '🔧', cat: 'atencao', cor: 'atencao',
-            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
-            sub: `${diagPend.length} solicitação(ões) aguardando atendimento`,
-            detail: `${diagPend.length} cliente(s) solicitaram diagnóstico/orçamento pelo Portal. Abra o Painel de Alertas (🔔) para atender ou descartar.`
-          });
-
-          // Alertas individuais (até 3) — formato pedido pela equipe
-          diagPend.slice(0, 3).forEach(s => {
-            alertas.push({
-              icon: '🔔', cat: 'crm', cor: null,
-              title: `🔔 Nova Solicitação de Diagnóstico · ${s.clientName || 'Cliente'}`,
-              sub: `🔧 ${equipDe(s)}${s.descricao ? ' · 📝 ' + s.descricao : ''}`,
-              detail: `Cliente: ${s.clientName || 'Cliente'} · Equipamento: ${equipDe(s)}${s.descricao ? ' · Motivo: ' + s.descricao : ''} · Status: Aguardando Atendimento.`
-            });
-          });
-        }
-      } catch (e) {
-        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
-      }
-
-    } catch (e) {
-      console.warn('Central de Alertas — erro ao gerar:', e);
-    }
-
-    return alertas;
+    return [];
   }
 
   // ===== ALERTAS + DICAS ROTATIVAS =====
@@ -1184,38 +742,98 @@ class Dashboard {
         else cardSub.textContent = 'Sem pendências';
       }
 
-      // Sincroniza badge com Central de Alertas via localStorage
-      const badgeUsuario = parseInt(localStorage.getItem('cc_alertas_badge') || '0');
-      if (badgeUsuario > 0 && badge && badge.style.display === 'none') {
-        badge.textContent = badgeUsuario;
-        badge.style.display = '';
-        badge.style.background = 'rgba(0,200,83,0.8)';
-        if (cardSub) cardSub.textContent = `${badgeUsuario} alerta(s) agendado(s)`;
-      }
     };
 
-    // Verifica os módulos e atualiza a lista de alertas
-    const atualizarAlertas = async () => {
+    // Funções auxiliares para prioridade do alerta manual
+    const prioParaIcone = (p) => {
+      const m = { critica: '🔴', alta: '🟠', media: '🟡', baixa: '⚪' };
+      return m[p] || '🔔';
+    };
+    const prioParaCategoria = (p) => {
+      const m = { critica: 'critico', alta: 'critico', media: 'atencao', baixa: 'crm' };
+      return m[p] || 'crm';
+    };
+    const tocarSomAlerta = () => {
       try {
-        const alertas = await this.gerarAlertas();
-        aplicarLista(alertas);
-      } catch (e) {
-        console.warn('Central de Alertas:', e);
-        aplicarLista(DICAS);
-      }
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      } catch {}
     };
 
-    // Primeira verificação ao abrir
-    atualizarAlertas();
+    // Deep link: clique no badge abre Central de Alertas na seção certa
+    let _badgeDeepLinkSetup = false;
+
+    // Ouve alertas manuais em tempo real via Firestore
+    onSnapshot(collection(db, 'alertas_usuario'), (snap) => {
+      const todos = [];
+      snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
+      const ativos = todos.filter(a => a.status !== 'concluido');
+      const criticos = ativos.filter(a => a.prioridade === 'critica' || a.prioridade === 'alta').length;
+
+      // Badge e subtítulo
+      const badge   = document.getElementById('alertas-count-badge');
+      const cardSub = document.getElementById('alertas-card-sub');
+      if (badge) {
+        if (criticos > 0) { badge.textContent = criticos; badge.style.display = ''; badge.style.background = '#ef4444'; }
+        else if (ativos.length > 0) { badge.textContent = ativos.length; badge.style.display = ''; badge.style.background = ''; }
+        else { badge.style.display = 'none'; }
+        // Deep link — configura uma vez
+        if (!_badgeDeepLinkSetup) {
+          _badgeDeepLinkSetup = true;
+          badge.style.cursor = 'pointer';
+          badge.title = 'Abrir Central de Alertas';
+          badge.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const foco = criticos > 0 ? 'criticos' : (ativos.length > 0 ? 'pendentes' : '');
+            window.location.href = `../../pages/central-alertas/index.html${foco ? '?foco=' + foco : ''}`;
+          });
+        }
+      }
+      if (cardSub) {
+        if (criticos > 0) cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
+        else if (ativos.length > 0) cardSub.textContent = `${ativos.length} alerta(s) pendente(s)`;
+        else cardSub.textContent = 'Sem pendências';
+      }
+
+      // Card pulsante — alertas que dispararam nos últimos 60s
+      const agora60 = Date.now();
+      const disparando = ativos.filter(a => {
+        if (!a.data || !a.hora) return false;
+        const ts = new Date(`${a.data}T${a.hora}:00`).getTime();
+        return !isNaN(ts) && agora60 - ts >= 0 && agora60 - ts < 60000;
+      });
+      const alertCard = document.querySelector('.alerts-card');
+      if (disparando.length > 0 && alertCard) {
+        alertCard.classList.add('alert-card-pulsing');
+        if (localStorage.getItem('cc_sons_sistema') === 'true') tocarSomAlerta();
+        setTimeout(() => alertCard.classList.remove('alert-card-pulsing'), 10000);
+      } else if (alertCard) {
+        alertCard.classList.remove('alert-card-pulsing');
+      }
+
+      // Alimenta card rotativo com alertas ativos (fallback para DICAS se vazio)
+      aplicarLista(ativos.slice(0, 10).map(a => ({
+        icon: prioParaIcone(a.prioridade || 'media'),
+        cat: prioParaCategoria(a.prioridade || 'media'),
+        title: a.titulo || 'Alerta',
+        sub: a.descricao || '',
+        detail: `${a.data || ''}${a.hora ? ' às ' + a.hora : ''}`,
+      })));
+    });
 
     // Rotaciona o que estiver na tela (alertas ou dicas)
     setInterval(() => {
       idx = (idx + 1) % lista.length;
       mostrar(lista[idx], true);
     }, DURATION); // 120 segundos
-
-    // Re-verifica os módulos a cada 3 minutos
-    setInterval(atualizarAlertas, 180000);
   }
 
   // ===== MINI CALENDÁRIO =====

@@ -71,6 +71,10 @@
                     <span class="al-sb-icon">🗓️</span>
                     <span class="al-sb-label">Calendário</span>
                 </div>
+                <div class="al-sb-item" data-nav="painel">
+                    <span class="al-sb-icon">📊</span>
+                    <span class="al-sb-label">Dashboard</span>
+                </div>
                 <div class="al-sb-item" data-nav="configuracoes">
                     <span class="al-sb-icon">⚙️</span>
                     <span class="al-sb-label">Configurações</span>
@@ -89,11 +93,42 @@
 
                 <div class="al-content">
 
+                <!-- ═══ BARRA DE BUSCA E FILTROS ═══ -->
+                <div class="al-search-bar">
+                    <div class="al-search-field">
+                        <span class="al-search-icon">🔍</span>
+                        <input type="text" id="al-search-input" placeholder="Buscar por título ou descrição..." autocomplete="off">
+                        <button class="al-search-clear" id="al-search-clear" style="display:none">✕</button>
+                    </div>
+                    <select id="al-search-tipo" class="al-search-select">
+                        <option value="">Todos os tipos</option>
+                        <option value="lembrete">🔔 Lembrete</option>
+                        <option value="comando">⚡ Comando</option>
+                        <option value="tarefa">✅ Tarefa</option>
+                        <option value="whatsapp">📱 WhatsApp</option>
+                        <option value="instagram">📸 Instagram</option>
+                        <option value="financeiro">💰 Financeiro</option>
+                        <option value="os">🔧 OS</option>
+                        <option value="cliente">👤 Cliente</option>
+                    </select>
+                    <select id="al-search-prioridade" class="al-search-select">
+                        <option value="">Todas prioridades</option>
+                        <option value="critica">🔴 Crítica</option>
+                        <option value="alta">🟠 Alta</option>
+                        <option value="media">🟡 Média</option>
+                        <option value="baixa">⚪ Baixa</option>
+                    </select>
+                </div>
+
                 <!-- ═══ HOME ═══ -->
                 <div class="al-panel active" id="panel-home">
                     <div class="al-home-header">
                         <h2 class="al-home-titulo">Central de Alertas</h2>
-                        <button class="al-btn-novo al-btn-novo-lg" onclick="Alertas.abrirForm()">➕ Novo Alerta</button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="al-btn-foco" onclick="Alertas.abrirModoFoco()">🎯 Modo Foco</button>
+                            <button class="al-btn-exportar" onclick="Alertas.exportarCSV()">📥 Exportar</button>
+                            <button class="al-btn-novo al-btn-novo-lg" onclick="Alertas.abrirForm()">➕ Novo Alerta</button>
+                        </div>
                     </div>
 
                     <div class="al-stats-grid" id="home-stats"></div>
@@ -237,6 +272,15 @@
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="baixo"><span>⚪ Baixa prioridade</span></label>
                         <button class="al-btn-salvar-cfg" onclick="Alertas.salvarConfig()">💾 Salvar Configurações</button>
                     </div>
+                    <div class="al-config-box" style="margin-top:16px;">
+                        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Exportar todos os alertas (ativos e concluídos) para planilha.</div>
+                        <button class="al-btn-salvar-cfg" onclick="Alertas.exportarCSV()">📥 Exportar CSV</button>
+                    </div>
+                </div>
+
+                <!-- ═══ DASHBOARD / PAINEL ═══ -->
+                <div class="al-panel" id="panel-painel">
+                    <!-- Conteúdo gerado dinamicamente por renderPainel() -->
                 </div>
 
                 </div><!-- /al-content -->
@@ -344,6 +388,14 @@
                     </select>
                 </div>
 
+                <div class="al-form-group">
+                    <label>🔗 Link (opcional)</label>
+                    <div class="al-link-input-wrap">
+                        <input type="text" id="al-f-link" placeholder="Ex: /CRM/pages/os/index.html" autocomplete="off">
+                        <button class="al-link-test" id="al-link-test" title="Testar link" type="button" onclick="if(document.getElementById('al-f-link').value)window.open(document.getElementById('al-f-link').value,'_blank')">▶</button>
+                    </div>
+                </div>
+
             </div>
             <div class="al-modal-footer">
                 <button class="al-btn-cancelar" onclick="Alertas.fecharForm()">Cancelar</button>
@@ -375,6 +427,32 @@
                     <input type="number" id="al-adiar-custom" min="1" max="10080" placeholder="Ex: 45" style="width:100%;">
                     <button class="al-btn-salvar" onclick="Alertas.adiarCustom()" style="margin-top:8px;width:100%;">Aplicar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════ MODAL: MODO FOCO ═══════ -->
+    <div id="al-modal-foco" class="al-modal-foco">
+        <div class="al-foco-container">
+            <div class="al-foco-header">
+                <span class="al-foco-label">🎯 Modo Foco</span>
+                <div class="al-foco-header-right">
+                    <span id="foco-counter" class="foco-counter"></span>
+                    <button class="al-foco-close" onclick="Alertas.fecharModoFoco()" title="Fechar Modo Foco">✕</button>
+                </div>
+            </div>
+            <div class="al-foco-progress-wrap">
+                <div class="al-foco-progress" id="foco-progress"></div>
+            </div>
+            <div class="al-foco-content-wrap">
+                <div id="foco-content" class="al-foco-content"></div>
+            </div>
+            <div class="al-foco-actions" id="foco-actions">
+                <button class="foco-btn foco-btn-concluir" onclick="Alertas.focoConcluir()">✔ Concluir</button>
+                <button class="foco-btn foco-btn-adiar" onclick="Alertas.focoAdiar(15)">⏰ 15 min</button>
+                <button class="foco-btn foco-btn-adiar" onclick="Alertas.focoAdiar(60)">⏰ 1 hora</button>
+                <button id="foco-btn-link" class="foco-btn foco-btn-link" style="display:none">🔗 Abrir Link</button>
+                <button class="foco-btn foco-btn-proximo" onclick="Alertas.focoProximo()">Próximo →</button>
             </div>
         </div>
     </div>
