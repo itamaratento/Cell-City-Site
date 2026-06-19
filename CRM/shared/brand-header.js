@@ -63,39 +63,13 @@
       transform: translateY(0px) scale(0.98);
       opacity: 0.9;
     }
-    .brand-header-text {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.15;
+    .brand-header-logo {
+      display: block;
+      height: 38px;
+      width: auto;
       position: relative;
       z-index: 1;
-    }
-    .brand-header-title {
-      font-size: 15px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      white-space: nowrap;
-      background: linear-gradient(135deg, #00e676 0%, #00c853 60%, #00b248 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 6px rgba(0, 200, 83, 0.25));
-    }
-    .brand-header-divider {
-      height: 1px;
-      background: linear-gradient(90deg, rgba(0, 200, 83, 0.6) 0%, rgba(0, 200, 83, 0.15) 60%, transparent 100%);
-      margin: 2px 0 3px;
-      width: 100%;
-      opacity: 0.6;
-      border-radius: 1px;
-    }
-    .brand-header-subtitle {
-      font-size: 10px;
-      color: rgba(161, 168, 179, 0.85);
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      white-space: nowrap;
-      text-transform: uppercase;
+      object-fit: contain;
     }
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
        Título sempre no centro ABSOLUTO da barra — fora do fluxo flex.
@@ -271,11 +245,7 @@
 
   const BRAND_HTML = `
     <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <div class="brand-header-text">
-        <div class="brand-header-title">Cell City Informática</div>
-        <div class="brand-header-divider"></div>
-        <div class="brand-header-subtitle">Gestão Empresarial</div>
-      </div>
+      <img class="brand-header-logo" src="/CRM/assets/logo.png" alt="Cell City Gestão Empresarial" draggable="false">
     </div>
   `;
 
