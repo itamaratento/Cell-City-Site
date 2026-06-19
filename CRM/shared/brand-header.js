@@ -96,7 +96,7 @@
       text-transform: uppercase;
     }
     .brand-header-abbrev {
-      display: none;
+      display: inline;
       font-size: 10px;
       color: #a1a8b3;
       font-weight: 700;
@@ -177,8 +177,6 @@
 
     /* Logo compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header-divider,
-      .brand-header-subtitle { display: none; }
       .brand-header-abbrev { display: block; }
       .brand-header { padding: 6px 10px; }
     }
