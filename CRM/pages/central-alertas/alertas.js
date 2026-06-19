@@ -129,6 +129,7 @@ const SECAO_TITULO = {
     comandos: '⚡ Comandos', tarefas: '✅ Tarefas',
     calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
     painel: '📊 Dashboard de Alertas',
+    diagnostico: '🔎 Diagnóstico do Sistema',
 };
 
 function navegar(secao) {
@@ -144,6 +145,7 @@ function navegar(secao) {
     document.getElementById('al-overlay')?.classList.remove('open');
     if (secao === 'calendario') renderCalendario();
     else if (secao === 'painel') renderPainel();
+    else if (secao === 'diagnostico') renderDiagnostico();
     else render();
 }
 
@@ -791,8 +793,22 @@ function salvarConfig() {
 }
 
 // ── Verificação de alertas vencidos ──────────────────────────────────────────
-function _tocarSom() {
+function _ccRegistrarEvento(origem, evento, tipo = 'som') {
+    const entry = { ts: new Date().toISOString(), origem, evento, tipo };
+    try {
+        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+        log.unshift(entry); if (log.length > 300) log.length = 300;
+        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+        if (tipo === 'som') console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
+    } catch {}
+}
+
+function _tocarSom(tituloAlerta = '') {
+    // Verifica AMBAS as portas: cc_sons_sistema global E cfg.somGlobal da Central
     if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+    const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    if (cfg.somGlobal === false) return;
+    _ccRegistrarEvento('Central de Alertas', `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`, 'som');
     try {
         const Ctx = window.AudioContext || window.webkitAudioContext;
         if (!Ctx) return;
@@ -817,14 +833,17 @@ function verificarDisparos() {
         a.hora <= hm
     );
     if (!devem.length) return;
-    const cfg   = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    const modo  = cfg.modoNotif || 'som_popup';
-    const usaSom    = cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
-    const usaPopup  = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
+    const cfg    = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    const modo   = cfg.modoNotif || 'som_popup';
+    // Dupla verificação: porta global (cc_sons_sistema) E porta da Central (cfg.somGlobal)
+    const sonsSistema = localStorage.getItem('cc_sons_sistema') === 'true';
+    const usaSom   = sonsSistema && cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
+    const usaPopup = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
 
-    if (usaSom) _tocarSom();
+    if (usaSom) _tocarSom(devem[0]?.titulo || '');
 
     devem.forEach(a => {
+        _ccRegistrarEvento('Central de Alertas', `Notificação: ${a.titulo}`, 'notificacao');
         if (usaPopup && 'Notification' in window && Notification.permission === 'granted') {
             new Notification(`🔔 ${a.titulo}`, {
                 body: `${a.hora} — ${tipoLabel(a.tipo)}${a.descricao ? '\n'+a.descricao : ''}`,
@@ -1190,6 +1209,110 @@ function _painelCustomDate() {
     renderPainel();
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// DIAGNÓSTICO DO SISTEMA — Log de Sons e Eventos
+// ══════════════════════════════════════════════════════════════════════════════
+const DIAG_LS = 'cc_eventos_log';
+const DIAG_TIPOS = { som:'🔊 Som', notificacao:'🔔 Notif.', firestore:'🔥 Firestore', bloqueado:'🔇 Bloq.', cooldown:'⏳ Cooldown', automacao:'🤖 Auto', sistema:'⚙️ Sistema', info:'ℹ️ Info' };
+const diag = { filtroTipo: '' };
+
+function _lerLogDiag() {
+    try { return JSON.parse(localStorage.getItem(DIAG_LS) || '[]'); }
+    catch { return []; }
+}
+function _limparLogDiag() {
+    localStorage.removeItem(DIAG_LS);
+    renderDiagnostico();
+    _atualizarBadgeDiag();
+}
+function _atualizarBadgeDiag() {
+    const log = _lerLogDiag();
+    const sons = log.filter(e => e.tipo === 'som' && Date.now() - new Date(e.ts).getTime() < 3600000).length;
+    const badge = document.getElementById('sb-badge-diagnostico');
+    if (badge) { badge.textContent = sons || ''; badge.classList.toggle('show', sons > 0); }
+}
+
+function renderDiagnostico() {
+    const el = document.getElementById('panel-diagnostico');
+    if (!el || st.secao !== 'diagnostico') return;
+    const log = _lerLogDiag();
+
+    const filtrados = diag.filtroTipo ? log.filter(e => e.tipo === diag.filtroTipo) : log;
+    const ultimoSom = log.find(e => e.tipo === 'som');
+    const totalSons = log.filter(e => e.tipo === 'som').length;
+    const totalNot  = log.filter(e => e.tipo === 'notificacao').length;
+    const totalFire = log.filter(e => e.tipo === 'firestore').length;
+    const totalBlq  = log.filter(e => e.tipo === 'bloqueado' || e.tipo === 'cooldown').length;
+
+    const fmtTs = iso => {
+        const d = new Date(iso);
+        return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+    };
+
+    const linhas = filtrados.slice(0, 200).map(e => `
+        <tr class="diag-row diag-tipo-${e.tipo}">
+            <td class="diag-ts">${fmtTs(e.ts)}</td>
+            <td class="diag-tipo-badge">${DIAG_TIPOS[e.tipo] || e.tipo}</td>
+            <td class="diag-origem">${esc(e.origem || '—')}</td>
+            <td class="diag-evento">${esc(e.evento || '—')}</td>
+        </tr>`).join('');
+
+    el.innerHTML = `
+    <div class="diag-header">
+        <div>
+            <h2 class="diag-title">🔎 Diagnóstico do Sistema</h2>
+            <div class="diag-sub">Rastreamento de todos os sons, notificações e eventos internos em tempo real.</div>
+        </div>
+        <div class="diag-actions">
+            <button class="diag-btn-clear" onclick="Alertas._limparLogDiag()">🗑️ Limpar Log</button>
+            <button class="diag-btn-refresh" onclick="Alertas.renderDiagnostico()">↺ Atualizar</button>
+        </div>
+    </div>
+
+    ${ultimoSom ? `
+    <div class="diag-ultimo-som">
+        <div class="diag-ultimo-label">🔊 Último Som Executado</div>
+        <div class="diag-ultimo-info">
+            <span class="diag-ultimo-ts">🕐 ${fmtTs(ultimoSom.ts)}</span>
+            <span class="diag-ultimo-origem">📂 ${esc(ultimoSom.origem)}</span>
+            <span class="diag-ultimo-evento">📋 ${esc(ultimoSom.evento)}</span>
+        </div>
+    </div>` : `<div class="diag-sem-som">✅ Nenhum som registrado nesta sessão.</div>`}
+
+    <div class="diag-kpis">
+        <div class="diag-kpi diag-kpi-som"><div class="diag-kpi-num">${totalSons}</div><div class="diag-kpi-lbl">Sons</div></div>
+        <div class="diag-kpi diag-kpi-not"><div class="diag-kpi-num">${totalNot}</div><div class="diag-kpi-lbl">Notificações</div></div>
+        <div class="diag-kpi diag-kpi-fire"><div class="diag-kpi-num">${totalFire}</div><div class="diag-kpi-lbl">Firestore</div></div>
+        <div class="diag-kpi diag-kpi-blq"><div class="diag-kpi-num">${totalBlq}</div><div class="diag-kpi-lbl">Bloqueados</div></div>
+        <div class="diag-kpi diag-kpi-total"><div class="diag-kpi-num">${log.length}</div><div class="diag-kpi-lbl">Total</div></div>
+    </div>
+
+    <div class="diag-filtros">
+        <button class="diag-fil${!diag.filtroTipo?' active':''}" onclick="Alertas._diagFiltro('')">Todos</button>
+        <button class="diag-fil${diag.filtroTipo==='som'?' active':''}" onclick="Alertas._diagFiltro('som')">🔊 Sons</button>
+        <button class="diag-fil${diag.filtroTipo==='notificacao'?' active':''}" onclick="Alertas._diagFiltro('notificacao')">🔔 Notif.</button>
+        <button class="diag-fil${diag.filtroTipo==='firestore'?' active':''}" onclick="Alertas._diagFiltro('firestore')">🔥 Firestore</button>
+        <button class="diag-fil${diag.filtroTipo==='bloqueado'?' active':''}" onclick="Alertas._diagFiltro('bloqueado')">🔇 Bloqueados</button>
+    </div>
+
+    <div class="diag-table-wrap">
+        ${filtrados.length ? `
+        <table class="diag-table">
+            <thead><tr>
+                <th>Data/Hora</th><th>Tipo</th><th>Módulo</th><th>Evento</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>` : '<div class="diag-vazio">Nenhum evento registrado com este filtro.</div>'}
+    </div>`;
+
+    _atualizarBadgeDiag();
+}
+
+function _diagFiltro(tipo) {
+    diag.filtroTipo = tipo;
+    renderDiagnostico();
+}
+
 // ── Modo Foco ─────────────────────────────────────────────────────────────────
 const foco = { lista: [], idx: 0 };
 
@@ -1318,6 +1441,7 @@ window.Alertas = {
     setCalView, exportarCSV,
     abrirModoFoco, fecharModoFoco, focoConcluir, focoAdiar, focoProximo,
     _painelSetFiltro, _painelCustomDate,
+    renderDiagnostico, _limparLogDiag, _diagFiltro,
     // Seleção em lote
     _atualizarSelecao, selecionarTodos, excluirSelecionados, concluirSelecionados,
 };

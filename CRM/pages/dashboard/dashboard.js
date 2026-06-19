@@ -753,7 +753,18 @@ class Dashboard {
       const m = { critica: 'critico', alta: 'critico', media: 'atencao', baixa: 'crm' };
       return m[p] || 'crm';
     };
-    const tocarSomAlerta = () => {
+    const _logSomSetup = (origem, evento) => {
+      const entry = { ts: new Date().toISOString(), origem, evento, tipo: 'som' };
+      try {
+        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+        log.unshift(entry); if (log.length > 300) log.length = 300;
+        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+      } catch {}
+      console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
+    };
+    const tocarSomAlerta = (tituloAlerta = '') => {
+      if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+      _logSomSetup('Dashboard / Central de Alertas', `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`);
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator(); const gain = ctx.createGain();
@@ -1380,12 +1391,12 @@ class Dashboard {
   }
 
   // ===== AVISO DE EVENTOS DA AGENDA =====
-  // Prioridade: 1. Atrasados (qualquer dia), 2. Horário atual, 3. Próximos (até 15 min)
-  // ⚠ O alerta sonoro REPETE a cada ciclo ENQUANTO houver tarefas vencidas não concluídas.
-  // Só para quando TODAS as tarefas atrasadas forem concluídas.
+  // Prioridade: 1. Atrasados, 2. Horário atual, 3. Próximos (até 15 min)
+  // Som de atrasados respeita cooldown de 5 min por item para não spammar.
   setupAvisoAcoes() {
-    let ultimoAvisoKey = ''; // controla para não repetir o mesmo aviso (usado apenas para não-atrasados)
-    let cicloAtrasados = 0;  // contador de ciclos com atrasados — para alternar som
+    let ultimoAvisoKey = '';
+    let cicloAtrasados = 0;
+    const _somAtrasadoCooldown = {}; // chave → timestamp do último som
 
     const _fmtAtraso = (min) => {
       const abs = Math.abs(min);
@@ -1401,51 +1412,53 @@ class Dashboard {
     };
 
     // ─── Toca som curto (para horário atual / próximos) ───
-    const tocarSomCurto = () => {
+    const _logSom = (origem, evento) => {
+      const entry = { ts: new Date().toISOString(), origem, evento, tipo: 'som' };
+      try {
+        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+        log.unshift(entry);
+        if (log.length > 300) log.length = 300;
+        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+      } catch {}
+      console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | ${origem} | ${evento}`, 'color:#fbbf24;font-weight:bold');
+    };
+
+    const tocarSomCurto = (tituloEvento = '') => {
       if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+      _logSom('Dashboard / Agenda', `Compromisso próximo${tituloEvento ? ': ' + tituloEvento : ''}`);
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
+        const osc = ctx.createOscillator(); const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(880, ctx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
         gain.gain.setValueAtTime(0.3, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.6);
       } catch {}
     };
 
-    // ─── Toca som PERSISTENTE (para tarefas atrasadas) ───
-    // Toca 3 beeps consecutivos em tom mais agudo, mais perceptível
-    const tocarSomVencida = () => {
+    const tocarSomVencida = (tituloEvento = '') => {
       if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+      _logSom('Dashboard / Agenda', `Tarefa vencida${tituloEvento ? ': ' + tituloEvento : ''}`);
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const beep = (freq, start, dur) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(freq, start);
+          const osc = ctx.createOscillator(); const gain = ctx.createGain();
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.type = 'square'; osc.frequency.setValueAtTime(freq, start);
           gain.gain.setValueAtTime(0.25, start);
           gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
-          osc.start(start);
-          osc.stop(start + dur);
+          osc.start(start); osc.stop(start + dur);
         };
-        // Três beeps: agudo → médio → agudo
         beep(1047, ctx.currentTime, 0.15);
-        beep(784, ctx.currentTime + 0.2, 0.15);
+        beep(784,  ctx.currentTime + 0.2, 0.15);
         beep(1047, ctx.currentTime + 0.4, 0.15);
-        ctx.start();
       } catch {}
     };
 
-    const dispararAlerta = (evento, label, isAtrasado = false) => {
+    const dispararAlerta = (evento, label, comSom = true) => {
       const card = document.querySelector('.alerts-card');
       const titleEl    = document.querySelector('.alert-title');
       const subtitleEl = document.querySelector('.alert-subtitle');
@@ -1453,6 +1466,7 @@ class Dashboard {
       const iconEl     = document.getElementById('alert-cat-icon');
       if (!card || !titleEl) return;
 
+      const isAtrasado = label.includes('VENCIDA') || label.includes('PENDENTE');
       const horaFmt = evento.hora || '';
       const dataFmt = evento.data ? _fmtData(evento.data) : '';
       if (iconEl) iconEl.textContent = isAtrasado ? '🔴' : '⏰';
@@ -1462,12 +1476,10 @@ class Dashboard {
       if (detailEl) detailEl.textContent = horaFmt ? `Horário: ${horaFmt}${dataFmt ? ` (${dataFmt})` : ''}` : (dataFmt ? `Data: ${dataFmt}` : '');
 
       card.classList.add('alert-card-pulsing');
-      if (isAtrasado) {
-        tocarSomVencida(); // som mais intenso para vencidas
-      } else {
-        tocarSomCurto();
+      if (comSom) {
+        if (isAtrasado) tocarSomVencida(evento.titulo);
+        else            tocarSomCurto(evento.titulo);
       }
-      // Remove pulsação após 10s (o card da Central de Alertas continua intacto)
       setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
     };
 
@@ -1495,7 +1507,6 @@ class Dashboard {
         const atrasados = (eventos || []).filter(estaAtrasado);
 
         if (atrasados.length > 0) {
-          // Ordena: mais atrasado primeiro
           const pior = atrasados.sort((a, b) => {
             const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
             const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
@@ -1505,16 +1516,26 @@ class Dashboard {
           const diffMin = Math.round((agoraTs - dtPior.getTime()) / 60000);
           const key = `atrasado_${pior.data}_${pior.hora}`;
 
-          // Sempre dispara o alerta visual + sonoro em cada ciclo (30s)
-          // Alterna o label para dar sensação de "renovação" do alerta
           cicloAtrasados++;
           const labelAtraso = cicloAtrasados % 2 === 0
             ? `🔴 VENCIDA · ${_fmtAtraso(diffMin)} atrasado`
             : `🔴 TAREFA PENDENTE · ${_fmtAtraso(diffMin)} atrasado`;
 
-          dispararAlerta(pior, labelAtraso, true);
-          ultimoAvisoKey = key; // atualiza apenas para registro
-          return; // atrasado tem prioridade total
+          // CORREÇÃO: som apenas uma vez a cada 5 minutos por item atrasado
+          const COOLDOWN_ATRASADO = 5 * 60 * 1000;
+          const agora5 = Date.now();
+          const podeTocarSomAgora = !_somAtrasadoCooldown[key] ||
+            (agora5 - _somAtrasadoCooldown[key]) >= COOLDOWN_ATRASADO;
+
+          if (podeTocarSomAgora) {
+            _somAtrasadoCooldown[key] = agora5;
+            dispararAlerta(pior, labelAtraso, true); // com som
+          } else {
+            // Atualiza visual sem som (passa false no 3º param não-sonoro)
+            dispararAlerta(pior, labelAtraso, false);
+          }
+          ultimoAvisoKey = key;
+          return;
         }
 
         // Se chegou aqui, não há atrasados — reseta contador
@@ -2086,6 +2107,14 @@ class Dashboard {
     const gerarSomAlarme = (duracao = 2, vol = 0.8) => {
       if (isTocarAlarm) return;
       if (localStorage.getItem('cc_sons_sistema') !== 'true') return;
+      // Log de diagnóstico
+      try {
+        const entry = { ts: new Date().toISOString(), origem: 'Dashboard / Alarme OS', evento: 'Alarme de OS nova disparado', tipo: 'som' };
+        const log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
+        log.unshift(entry); if (log.length > 300) log.length = 300;
+        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
+        console.log(`%c[SOM] ${new Date().toLocaleTimeString('pt-BR')} | Dashboard / Alarme OS | Alarme disparado`, 'color:#fbbf24;font-weight:bold');
+      } catch {}
       isTocarAlarm = true;
 
       try {
