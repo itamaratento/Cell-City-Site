@@ -49,55 +49,9 @@ class Dashboard {
         ]
       }
     };
-    this._limparAlertasCache();
     this.init();
   }
 
-  /** ===== LIMPA TODOS OS ALERTAS E CACHES ANTIGOS ===== */
-  _limparAlertasCache() {
-    // Remove todas as chaves do localStorage relacionadas a alertas
-    const keysParaLimpar = [
-      'cc_alertas_badge',
-      'cc_config_alertas', 
-      'alarme_os_config',
-      'cc_nota_uid',
-      'cellcity_note_',
-    ];
-    keysParaLimpar.forEach(key => {
-      try { localStorage.removeItem(key); } catch {}
-    });
-    // Remove apenas chaves de alertas conhecidas (não remove cc_bk_ ou outras importantes)
-    try {
-      const alertKeys = ['cc_alertas_badge', 'cc_config_alertas', 'alarme_os_config', 'cc_nota_uid'];
-      alertKeys.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-      // Remove notas do calendário (cellcity_note_*)  
-      Object.keys(localStorage).forEach(k => {
-        if (k.startsWith('cellcity_note_')) {
-          try { localStorage.removeItem(k); } catch {}
-        }
-      });
-    } catch {}
-    console.log('🧹 [_limparAlertasCache] Cache de alertas limpo');
-    
-    // Tenta desregistrar Service Worker para parar notificações do Ubuntu
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(reg => {
-          reg.unregister().then(success => {
-            console.log('🧹 [SW] Service Worker desregistrado:', success);
-          });
-        });
-      }).catch(e => console.warn('🧹 [SW] Erro ao desregistrar:', e));
-    }
-    
-    // Limpa IndexedDB (onde o SW salva config)
-    try {
-      const req = indexedDB.deleteDatabase('AlarmeOSDB');
-      req.onsuccess = () => console.log('🧹 [IndexedDB] AlarmeOSDB removido');
-    } catch {}
-  }
-
-  /** ===== INICIALIZAÇÃO DO DASHBOARD ===== */
   init() {
     this._verificarFechamentoCaixa();
     this.setupNotas();
@@ -110,16 +64,12 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
-    this.setupSidebar();
-    this.setupPanelRight();
-    this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
-    this.setupConfigAlertas();
-    this.atualizarCardAcaoSemana();
+    this.setupAvisoAcoes();
+    this.monitorarCardAcaoSemana();
     this.setupAlarmeOS();
     this.setupCompactMode();
-    this.setupPainelLateralGerencial();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -471,10 +421,10 @@ class Dashboard {
 
         if (dados.recorrencia) {
           // ===== TAREFA RECORRENTE =====
-          // 🔧 CORREÇÃO: alerta auto-ativa se tiver horário definido, mesmo sem checkbox marcado
-          const alertaEfetivo = dados.alertaDashboard === true || (dados.alertaHora && dados.alertaHora.length > 0);
-          console.log('🔍 [_lerAgenda] Recorrente dia:', dia, 'alertaEfetivo:', alertaEfetivo, 'alertaDashboard:', dados.alertaDashboard, 'hora:', dados.alertaHora);
-          if (!alertaEfetivo) return;
+          // Só gera alerta no Dashboard se "Exibir alerta no painel" estiver marcado.
+          // (Mesma regra das tarefas não-recorrentes — antes esse ramo ignorava o flag,
+          //  gerando alertas-fantasma de tarefas que não aparecem na Ação da Semana.)
+          if (dados.alertaDashboard !== true) return;
 
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
@@ -505,19 +455,15 @@ class Dashboard {
           }
         } else {
           // ===== TAREFA NÃO RECORRENTE =====
-          // 🔧 CORREÇÃO: alerta auto-ativa se tiver horário definido, mesmo sem checkbox marcado
-          const alertaEfetivo = dados.alertaDashboard === true || (dados.alertaHora && dados.alertaHora.length > 0);
-          console.log('🔍 [_lerAgenda] Não-recorrente dia:', dia, 'alertaEfetivo:', alertaEfetivo, 'alertaDashboard:', dados.alertaDashboard, 'hora:', dados.alertaHora);
-          if (!alertaEfetivo) {
-            console.log('🔍 [_lerAgenda] ⏭️ Pulando dia', dia, 'sem alerta efetivo');
-            return;
-          }
+          // Só gera eventos se o usuário ativou explicitamente o alerta no Dashboard.
+          // Caso contrário, a tarefa é apenas um lembrete local no calendário
+          // e NÃO deve aparecer na Central de Alertas / Ação da Semana.
+          if (dados.alertaDashboard !== true) return;
 
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
           // Gera evento para a DATA ORIGINAL (passada, hoje ou futura)
           // Se for passada, aparecerá como atrasada no Dashboard
-          console.log('🔍 [_lerAgenda] ✅ Gerando eventos para:', dia, 'horaPadrao:', horaPadrao);
           gerarEventosDoDia(dia, horaPadrao);
         }
       });
@@ -570,24 +516,125 @@ class Dashboard {
   //   2. Tarefas do HORÁRIO ATUAL (hoje, janela 0–5 min)
   //   3. Tarefas PRÓXIMAS (hoje, 6–15 min)
   // O card SÓ para de destacar quando TODAS as tarefas vencidas forem concluídas
-  // ===== DESTAQUE NO CARD DO MÓDULO AÇÃO DA SEMANA =====
-  // Apenas adiciona/remove classe visual — sem som, sem sobrepor a Central de Alertas
-  atualizarCardAcaoSemana() {
+  monitorarCardAcaoSemana() {
+    const card = document.querySelector('.module-card[data-module="acaodasemana"]');
+    if (!card) return;
+    const subEl = card.querySelector('.module-sub');
+    const subOriginal = 'Agenda Inteligente';
+
+    const _fmtAtraso = (min) => {
+      if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
+      if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
+      return `${min} min`;
+    };
+
+    const _fmtData = (dataISO) => {
+      if (!dataISO) return '';
+      const [y, m, d] = dataISO.split('-').map(Number);
+      return `${d}/${m}`;
+    };
+
     const verificar = async () => {
-      const card = document.querySelector('.module-card[data-module="acaodasemana"]');
-      if (!card) return;
       const eventos = await this._lerAgenda();
       const agora = Date.now();
       const hojeISO = new Date().toISOString().slice(0, 10);
-      const temVencidas = (eventos || []).some(e => {
+      const d = new Date();
+      const minsAtual = d.getHours() * 60 + d.getMinutes();
+
+      // ─── Helper para determinar se um evento está atrasado ───
+      const estaAtrasado = (e) => {
         if (e.concluido || !e.data) return false;
-        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        if (e.hora) {
+          return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        }
+        // Sem horário — considera atrasado se a data já passou
         return e.data < hojeISO;
+      };
+
+      // ─── Helper para calcular minutos entre agora e o evento ───
+      const diffMinEvento = (e) => {
+        if (!e.hora) return Infinity; // sem horário, não calcula diff
+        const [h, m] = e.hora.split(':').map(Number);
+        return (h * 60 + m) - minsAtual;
+      };
+
+      // ─── Separa atrasados entre dias anteriores e hoje ───
+      const atrasados = (eventos || []).filter(estaAtrasado);
+      const atrasadosDiasAnteriores = atrasados.filter(e => e.data < hojeISO);
+      const atrasadosHoje = atrasados.filter(e => e.data === hojeISO);
+
+      // 2. HORÁRIO ATUAL — tarefas de hoje com hora exata agora (janela 0–5 min)
+      const noHorario = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff >= 0 && diff <= 5;
       });
-      card.classList.toggle('acao-vencida', temVencidas);
+
+      // 3. PRÓXIMOS — tarefas de hoje até 15 min
+      const proximos = (eventos || []).filter(e => {
+        if (e.concluido || !e.data || !e.hora) return false;
+        if (e.data !== hojeISO) return false;
+        const diff = diffMinEvento(e);
+        return diff > 5 && diff <= 15;
+      });
+
+      // ─── Prioridade: atrasados > noHorario > proximos > padrão ───
+      const totalPendentes = atrasados.length + noHorario.length;
+      const contador = totalPendentes > 1 ? `(${totalPendentes}) ` : '';
+
+      if (atrasados.length > 0) {
+        // ⚠ PRIORIDADE 1 — Tarefas VENCIDAS (inclui dias anteriores)
+        // Destaca o card ENQUANTO houver pelo menos uma não concluída
+        card.classList.add('acao-vencida');
+
+        // Pega a MAIS atrasada (mais antiga primeiro)
+        const pior = atrasados.sort((a, b) => {
+          const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
+          const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
+          return tsA - tsB;
+        })[0];
+
+        if (subEl) {
+          const dt = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
+          const atrasoMin = Math.max(0, Math.round((agora - dt.getTime()) / 60000));
+          const rot = pior.rotulo || `${pior.hora || ''} ${pior.titulo}`;
+
+          // Se tem tarefas de dias anteriores, mostra indicador extra
+          if (atrasadosDiasAnteriores.length > 0 && atrasadosHoje.length > 0) {
+            subEl.textContent = `🔴 ${contador}${atrasadosDiasAnteriores.length} de ontem · ${atrasadosHoje.length} de hoje · ${_fmtAtraso(atrasoMin)} atrasado`;
+          } else if (atrasadosDiasAnteriores.length > 0) {
+            subEl.textContent = `🔴 ${contador}${rot} · ${_fmtAtraso(atrasoMin)} atrasado (${_fmtData(pior.data)})`;
+          } else {
+            subEl.textContent = `🔴 ${contador}${rot} · ${_fmtAtraso(atrasoMin)} atrasado`;
+          }
+        }
+      } else if (noHorario.length > 0) {
+        // ⚠ PRIORIDADE 2 — Tarefas no HORÁRIO ATUAL
+        card.classList.add('acao-vencida');
+        if (subEl) {
+          const ev = noHorario[0];
+          const rot = ev.rotulo || `${ev.hora} ${ev.titulo}`;
+          subEl.textContent = `🔴 ${contador}${rot} · AGORA!`;
+        }
+      } else {
+        // ✅ Nenhuma tarefa urgente — estado normal
+        card.classList.remove('acao-vencida');
+        if (subEl) {
+          // Próximo compromisso futuro
+          const prox = this._proximoCompromisso(eventos);
+          if (prox) {
+            const rotProx = prox.rotulo || `${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`;
+            subEl.textContent = `📅 Próx.: ${rotProx}`;
+          } else {
+            subEl.textContent = subOriginal;
+          }
+        }
+      }
     };
+
     verificar();
-    setInterval(verificar, 30000);
+    setInterval(verificar, 30000); // verifica a cada 30s para resposta mais rápida
     window.addEventListener('focus', verificar);
   }
 
@@ -595,16 +642,6 @@ class Dashboard {
   async gerarAlertas() {
     const alertas = [];
     const now = new Date();
-    
-    // ═══════════════════════════════════════════════════════════════
-    // 🚫 ALERTAS AUTOMÁTICOS DESATIVADOS
-    // Para reativar, mude esta flag para false ou remova este bloco
-    // ═══════════════════════════════════════════════════════════════
-    if (this._alertasAutomaticosDesativados !== false) {
-      console.log('🔇 [gerarAlertas] Alertas automáticos DESATIVADOS (retornando apenas agenda)');
-      // Ainda gera alertas da Ação da Semana (Agenda) que são manuais
-    }
-    // ═══════════════════════════════════════════════════════════════
 
     // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
     const getDeliveryDate = (os) => {
@@ -696,8 +733,7 @@ class Dashboard {
           icon: '🔴', cat: 'critico', cor: 'critico',
           title: `AÇÃO DA SEMANA · ${totalAtrasadas} pendente(s)${diasAntLabel}`,
           sub: `🔴 Aguardando conclusão · ${_fmtAtraso(atrasoMin)} atrasado`,
-          detail: `${totalAtrasadas} tarefa(s) atrasada(s) — Ex.: "${tituloExemplo}". Conclua no módulo Ação da Semana para remover este alerta.`,
-          som: true, pulsar: true, repetir: true, tipo: 'acaoSemanaVencidas'
+          detail: `${totalAtrasadas} tarefa(s) atrasada(s) — Ex.: "${tituloExemplo}". Conclua no módulo Ação da Semana para remover este alerta.`
         });
       }
 
@@ -707,8 +743,7 @@ class Dashboard {
           icon: '⏰', cat: 'critico', cor: 'critico',
           title: 'AÇÃO DA SEMANA · AGORA',
           sub: noHorario.length === 1 ? 'Tarefa programada para AGORA' : `${noHorario.length} tarefas AGORA`,
-          detail: noHorario.map(e => `${e.hora} ${e.titulo}`).join(' · '),
-          som: true, pulsar: true, repetir: false, tipo: 'acaoSemanaAgora'
+          detail: noHorario.map(e => `${e.hora} ${e.titulo}`).join(' · ')
         });
       }
 
@@ -718,13 +753,10 @@ class Dashboard {
           icon: '⏰', cat: 'atencao', cor: 'atencao',
           title: 'AÇÃO DA SEMANA · Próximos',
           sub: proximas.length === 1 ? `Em ${proximas[0].hora}` : `${proximas.length} tarefas em breve`,
-          detail: proximas.map(e => `${e.hora} ${e.titulo}`).join(' · '),
-          som: true, pulsar: false, repetir: false, tipo: 'acaoSemanaProximas'
+          detail: proximas.map(e => `${e.hora} ${e.titulo}`).join(' · ')
         });
       }
 
-      // ===== BLOCO DE ALERTAS AUTOMÁTICOS (desativados via flag) =====
-      if (this._alertasAutomaticosDesativados === false) {
       const osSnap = await getDocs(collection(db, 'os'));
       const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
 
@@ -763,8 +795,7 @@ class Dashboard {
           icon: '💡', cat: 'critico', cor: 'critico',
           title: 'PÓS-VENDA ATRASADO',
           sub: `${c.nome} aguardando contato`,
-          detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`,
-          som: true, pulsar: true, repetir: false, tipo: 'posVendaCritico'
+          detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`
         });
       });
       if (pvVencidos > 0) {
@@ -772,8 +803,7 @@ class Dashboard {
           icon: '💡', cat: 'critico', cor: 'critico',
           title: 'PÓS-VENDA ATRASADO',
           sub: `${pvVencidos} contato(s) vencido(s)`,
-          detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`,
-          som: true, pulsar: true, repetir: false, tipo: 'posVendaCritico'
+          detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`
         });
       }
       if (pvPendentes > 0) {
@@ -807,8 +837,7 @@ class Dashboard {
           icon: '💡', cat: 'critico', cor: 'critico',
           title: 'OS AGUARDANDO CLIENTE',
           sub: `${osOrcamentoParado} orçamento(s) parado(s)`,
-          detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`,
-          som: true, pulsar: true, repetir: false, tipo: 'osAguardandoCliente'
+          detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`
         });
       }
       if (osOrcamento > 0) {
@@ -924,8 +953,7 @@ class Dashboard {
               icon: '🔴', cat: 'critico', cor: 'critico',
               title: 'AVALIAÇÕES CRÍTICAS',
               sub: `${avaliacoesCriticas.length} avaliação(ões) com nota baixa`,
-              detail: `${avaliacoesCriticas.length} cliente(s) deram nota baixa. Verifique o feedback e entre em contato.`,
-              som: true, pulsar: true, repetir: false, tipo: 'avaliacoesCriticas'
+              detail: `${avaliacoesCriticas.length} cliente(s) deram nota baixa. Verifique o feedback e entre em contato.`
             });
           }
         }
@@ -933,70 +961,126 @@ class Dashboard {
         console.warn('Central de Alertas — erro ao buscar avaliações:', e);
       }
 
+      // ===== SOLICITAÇÕES DO PORTAL (mensagens não lidas) =====
+      try {
+        const solicitacoesSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        );
+        const solicitacoes = [];
+        solicitacoesSnap.forEach(d => solicitacoes.push({ id: d.id, ...d.data() }));
+        // Este bloco complementa o de mensagens, focando em solicitações específicas
+        const solicitacoesServico = solicitacoes.filter(s =>
+          s.texto && (s.texto.toLowerCase().includes('orçamento') ||
+                      s.texto.toLowerCase().includes('conserto') ||
+                      s.texto.toLowerCase().includes('reparo') ||
+                      s.texto.toLowerCase().includes('manutenção'))
+        );
+        if (solicitacoesServico.length > 0) {
+          alertas.push({
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE SERVIÇO',
+            sub: `${solicitacoesServico.length} solicitação(ões) de serviço`,
+            detail: `${solicitacoesServico.length} cliente(s) solicitaram serviço pelo Portal do Cliente.`
+          });
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar solicitações:', e);
+      }
+
+      // ===== AGENDAMENTOS DO PORTAL (aguardando confirmação) =====
+      // Centraliza no Painel de Alertas todo novo pedido de agendamento, evitando
+      // que a equipe precise abrir o módulo Portal/Painel Administrativo para vê-los.
+      try {
+        const agendamentosSnap = await getDocs(
+          query(collection(db, 'agendamentos'), where('status', '==', 'aguardando'))
+        );
+        const agPendentes = [];
+        agendamentosSnap.forEach(d => agPendentes.push({ id: d.id, ...d.data() }));
+
+        // "YYYY-MM-DD" → "DD/MM/YYYY" (sem conversão de fuso)
+        const fmtDataAg = (data) =>
+          (data && /^\d{4}-\d{2}-\d{2}$/.test(data)) ? data.split('-').reverse().join('/') : (data || 'Sem data');
+
+        if (agPendentes.length > 0) {
+          // Ordena pela data desejada (mais próxima primeiro)
+          agPendentes.sort((a, b) => (a.data || '9999-99-99') < (b.data || '9999-99-99') ? -1 : 1);
+
+          const badge = document.getElementById('agendamentos-badge');
+          if (badge) {
+            badge.textContent = agPendentes.length;
+            badge.style.display = '';
+          }
+
+          // Alerta-resumo
+          alertas.push({
+            icon: '📅', cat: 'atencao', cor: 'atencao',
+            title: 'AGENDAMENTOS PENDENTES',
+            sub: `${agPendentes.length} agendamento(s) aguardando confirmação`,
+            detail: `${agPendentes.length} cliente(s) solicitaram horário de atendimento pelo Portal. Acesse o Painel Administrativo do Portal para confirmar, reagendar ou cancelar.`
+          });
+
+          // Alertas individuais (até 3) — formato pedido pela equipe
+          agPendentes.slice(0, 3).forEach(a => {
+            alertas.push({
+              icon: '🔔', cat: 'crm', cor: null,
+              title: `🔔 Novo Agendamento · ${a.clientName || a.nome || 'Cliente'}`,
+              sub: `📅 ${fmtDataAg(a.data)}${a.horario ? ' · ⏰ ' + a.horario : ''}`,
+              detail: `Cliente: ${a.clientName || a.nome || 'Cliente'} · Data: ${fmtDataAg(a.data)}${a.horario ? ' · Horário: ' + a.horario : ''} · Status: Aguardando Confirmação. Confirme, reagende ou cancele no Painel Administrativo do Portal.`
+            });
+          });
+        } else {
+          const badge = document.getElementById('agendamentos-badge');
+          if (badge) badge.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar agendamentos:', e);
+      }
+
+      // ===== SOLICITAÇÕES DE DIAGNÓSTICO DO PORTAL (aguardando atendimento) =====
+      // Centraliza no Painel de Alertas todo novo pedido de diagnóstico/orçamento
+      // enviado pelo módulo "🔧 Solicitar Diagnóstico Gratuito" do Portal do Cliente.
+      try {
+        const TIPO_EQUIP = { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora', outro: '🔧 Outro' };
+        const diagSnap = await getDocs(
+          query(collection(db, 'solicitacoes_diagnostico'), where('status', '==', 'pendente'))
+        );
+        const diagPend = [];
+        diagSnap.forEach(d => diagPend.push({ id: d.id, ...d.data() }));
+
+        const equipDe = (s) => {
+          const partes = [s.marca, s.modelo].filter(Boolean).join(' ').trim();
+          return partes || TIPO_EQUIP[s.tipoEquipamento] || (s.tipoEquipamento || 'Equipamento não informado');
+        };
+
+        if (diagPend.length > 0) {
+          // Mais recentes primeiro
+          diagPend.sort((a, b) => ((b.createdAt && b.createdAt.seconds) || 0) - ((a.createdAt && a.createdAt.seconds) || 0));
+
+          // Alerta-resumo
+          alertas.push({
+            icon: '🔧', cat: 'atencao', cor: 'atencao',
+            title: 'SOLICITAÇÕES DE DIAGNÓSTICO',
+            sub: `${diagPend.length} solicitação(ões) aguardando atendimento`,
+            detail: `${diagPend.length} cliente(s) solicitaram diagnóstico/orçamento pelo Portal. Abra o Painel de Alertas (🔔) para atender ou descartar.`
+          });
+
+          // Alertas individuais (até 3) — formato pedido pela equipe
+          diagPend.slice(0, 3).forEach(s => {
+            alertas.push({
+              icon: '🔔', cat: 'crm', cor: null,
+              title: `🔔 Nova Solicitação de Diagnóstico · ${s.clientName || 'Cliente'}`,
+              sub: `🔧 ${equipDe(s)}${s.descricao ? ' · 📝 ' + s.descricao : ''}`,
+              detail: `Cliente: ${s.clientName || 'Cliente'} · Equipamento: ${equipDe(s)}${s.descricao ? ' · Motivo: ' + s.descricao : ''} · Status: Aguardando Atendimento.`
+            });
+          });
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar solicitações de diagnóstico:', e);
+      }
+
     } catch (e) {
       console.warn('Central de Alertas — erro ao gerar:', e);
     }
-
-    // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
-    try {
-      const prontoSnap = await getDocs(
-        query(collection(db, 'os'), where('status', '==', 'concluido'))
-      );
-      const prontos = [];
-      prontoSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        let dataConcluido = null;
-        if (Array.isArray(os.timeline)) {
-          const entry = [...os.timeline].reverse().find(t =>
-            typeof t.text === 'string' && t.text.includes('→ Concluído')
-          );
-          if (entry?.date) dataConcluido = entry.date;
-        }
-        if (!dataConcluido) dataConcluido = os.updatedAt;
-        if (!dataConcluido) return;
-        const dias = calcDias(dataConcluido);
-        if (dias > 3) prontos.push({ ...os, _dias: dias });
-      });
-      if (prontos.length > 0) {
-        prontos.sort((a, b) => b._dias - a._dias);
-        alertas.push({
-          icon: '📦', cat: 'atencao', cor: 'atencao',
-          title: 'APARELHOS NÃO RETIRADOS',
-          sub: `${prontos.length} aparelho(s) pronto(s) há mais de 3 dias`,
-          detail: `Toque para ver a lista. Ex.: ${prontos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
-          _osData: prontos,
-          _tipo: 'pronto_nao_retirado',
-          _titulo: 'Aparelhos Prontos — Não Retirados',
-        });
-      }
-    } catch (e) { console.warn('Central de Alertas — OS prontas:', e); }
-
-    // ===== ORÇAMENTOS SEM RESPOSTA =====
-    try {
-      const orcSnap = await getDocs(
-        query(collection(db, 'os'), where('status', 'in', ['orcamento', 'orcamento_enviado']))
-      );
-      const orcamentos = [];
-      orcSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        const dias = calcDias(os.updatedAt);
-        if (dias > 2) orcamentos.push({ ...os, _dias: dias });
-      });
-      if (orcamentos.length > 0) {
-        orcamentos.sort((a, b) => b._dias - a._dias);
-        alertas.push({
-          icon: '💬', cat: 'atencao', cor: 'atencao',
-          title: 'ORÇAMENTOS SEM RESPOSTA',
-          sub: `${orcamentos.length} orçamento(s) sem resposta há mais de 2 dias`,
-          detail: `Toque para ver a lista. Ex.: ${orcamentos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
-          _osData: orcamentos,
-          _tipo: 'orcamento_abandonado',
-          _titulo: 'Orçamentos Sem Resposta',
-        });
-      }
-      }
-      // ===== FIM DO BLOCO DE ALERTAS AUTOMÁTICOS =====
-    } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
 
     return alertas;
   }
@@ -1009,74 +1093,6 @@ class Dashboard {
     const iconEl     = document.getElementById('alert-cat-icon');
     const progressEl = document.getElementById('alert-progress-bar');
     if (!titleEl || !subtitleEl || !detailEl) return;
-
-    // ─── Funções de som ───
-    const tocarSomCurto = () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.6);
-      } catch {}
-    };
-    const tocarSomVencida = () => {
-      try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const beep = (freq, start, dur) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(freq, start);
-          gain.gain.setValueAtTime(0.25, start);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
-          osc.start(start);
-          osc.stop(start + dur);
-        };
-        beep(1047, ctx.currentTime, 0.15);
-        beep(784, ctx.currentTime + 0.2, 0.15);
-        beep(1047, ctx.currentTime + 0.4, 0.15);
-      } catch {}
-    };
-    // Expõe para o botão "Testar Som" do modal
-    this._tocarSomVencida = tocarSomVencida;
-
-    // ─── Verifica se pode tocar som para o tipo de alerta ───
-    const verificarConfigSom = (tipoAlerta) => {
-      const config = this.carregarConfigAlertas();
-      if (!config.som.ativo) return false;
-      const agora = new Date();
-      const hAtual = agora.getHours() * 60 + agora.getMinutes();
-      const [hIni, mIni] = config.som.horarioInicio.split(':').map(Number);
-      const [hFim, mFim] = config.som.horarioFim.split(':').map(Number);
-      if (hAtual < hIni * 60 + mIni || hAtual >= hFim * 60 + mFim) return false;
-      if (!config.som.diasSemana.includes(agora.getDay())) return false;
-      if (config.som.silencio.ativo) {
-        const [hSil, mSil] = config.som.silencio.inicio.split(':').map(Number);
-        const [hSilF, mSilF] = config.som.silencio.fim.split(':').map(Number);
-        if (hAtual >= hSil * 60 + mSil && hAtual < hSilF * 60 + mSilF) return false;
-      }
-      if (tipoAlerta && config.alertasComSom[tipoAlerta] === false) return false;
-      return true;
-    };
-
-    // ─── Verifica se alerta deve pulsar ───
-    const verificarPulsacao = (alerta) => {
-      if (!alerta.pulsar) return false;
-      const config = this.carregarConfigAlertas();
-      if (alerta.cat === 'critico' && config.pulsacao.critico) return true;
-      if (alerta.cat === 'atencao' && config.pulsacao.atencao) return true;
-      return false;
-    };
 
     const DICAS = [
       { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Cadastre seus clientes',         detail: 'Registre o histórico de cada atendimento para fidelizar melhor.' },
@@ -1111,26 +1127,6 @@ class Dashboard {
     };
 
     const mostrar = (dica, animacao) => {
-      this._alertaAtual = dica;
-      const card = document.getElementById('alerts-card');
-      if (card) card.style.cursor = dica._osData?.length ? 'pointer' : '';
-
-      const aplicarSomEPulsacao = () => {
-        // Som
-        if (dica.som && verificarConfigSom(dica.tipo)) {
-          if (dica.cat === 'critico') {
-            tocarSomVencida();
-          } else {
-            tocarSomCurto();
-          }
-        }
-        // Pulsação visual
-        if (card && verificarPulsacao(dica)) {
-          card.classList.add('alert-card-pulsing');
-          setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
-        }
-      };
-
       if (animacao) {
         [titleEl, subtitleEl, detailEl].forEach(el => {
           el.style.transition = 'opacity 0.4s ease';
@@ -1144,7 +1140,6 @@ class Dashboard {
           aplicarCategoria(dica);
           [titleEl, subtitleEl, detailEl].forEach(el => el.style.opacity = '1');
           if (iconEl) iconEl.style.opacity = '1';
-          aplicarSomEPulsacao();
         }, 400);
       } else {
         titleEl.textContent    = dica.title;
@@ -1154,14 +1149,6 @@ class Dashboard {
       }
     };
 
-    // Click no card de alertas abre lista quando for alerta de OS
-    const alertsCard = document.getElementById('alerts-card');
-    if (alertsCard) {
-      alertsCard.addEventListener('click', () => {
-        if (this._alertaAtual?._osData?.length) this.mostrarAlertaOS(this._alertaAtual);
-      });
-    }
-
     mostrar(DICAS[0], false);
 
     // Aplica nova lista (alertas reais ou dicas) reiniciando o ciclo
@@ -1169,210 +1156,6 @@ class Dashboard {
       lista = (nova && nova.length) ? nova : DICAS;
       idx = 0;
       mostrar(lista[0], true);
-
-      // Atualiza badge e subtítulo no card de módulo "Central de Alertas"
-      const badge = document.getElementById('alertas-count-badge');
-      const cardSub = document.getElementById('alertas-card-sub');
-      const criticos = (nova || []).filter(a => a.cat === 'critico').length;
-      const userAlertas = parseInt(localStorage.getItem('cc_alertas_badge') || '0');
-      const total = (nova || []).length + userAlertas;
-      const totalCrit = criticos;
-      if (badge) {
-        if (totalCrit > 0) {
-          badge.textContent = totalCrit;
-          badge.style.display = '';
-          badge.style.background = '#ef4444';
-        } else if (total > 0) {
-          badge.textContent = total;
-          badge.style.display = '';
-          badge.style.background = '';
-        } else {
-          badge.style.display = 'none';
-        }
-      }
-      if (cardSub) {
-        if (totalCrit > 0) {
-          cardSub.textContent = `${totalCrit} alerta(s) crítico(s)`;
-        } else if (total > 0) {
-          cardSub.textContent = `${total} alerta(s) pendente(s)`;
-        } else {
-          cardSub.textContent = 'Sem pendências';
-        }
-      }
-    };
-
-    // ════════════════════════════════════════════════════════════
-    // 🚀 POPUP VISUAL IN-APP (notificação flutuante no CRM)
-    // ════════════════════════════════════════════════════════════
-    // Injeta o HTML do container de popup uma única vez
-    if (!document.getElementById('alert-popup-container')) {
-      const popupContainer = document.createElement('div');
-      popupContainer.id = 'alert-popup-container';
-      popupContainer.style.cssText = `
-        position: fixed;
-        top: 16px;
-        right: 16px;
-        z-index: 99999;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        pointer-events: none;
-        max-width: 380px;
-      `;
-      document.body.appendChild(popupContainer);
-
-      // Estilos únicos injetados uma vez
-      const styleEl = document.createElement('style');
-      styleEl.id = 'alert-popup-styles';
-      styleEl.textContent = `
-        @keyframes popup-slide-in {
-          from { transform: translateX(120%); opacity: 0; }
-          to   { transform: translateX(0);    opacity: 1; }
-        }
-        @keyframes popup-slide-out {
-          from { transform: translateX(0);    opacity: 1; }
-          to   { transform: translateX(120%); opacity: 0; }
-        }
-        @keyframes popup-pulse-border {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
-          50%      { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
-        }
-        .alert-popup-toast {
-          background: #1a1a2e;
-          border: 1px solid rgba(239,68,68,0.3);
-          border-left: 4px solid #ef4444;
-          border-radius: 10px;
-          padding: 14px 18px;
-          color: #e0e0e0;
-          font-family: 'Segoe UI', system-ui, sans-serif;
-          font-size: 13px;
-          line-height: 1.5;
-          pointer-events: auto;
-          cursor: pointer;
-          animation: popup-slide-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          transition: all 0.2s;
-          position: relative;
-          overflow: hidden;
-        }
-        .alert-popup-toast:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 12px 40px rgba(0,0,0,0.5);
-          border-color: rgba(239,68,68,0.6);
-        }
-        .alert-popup-toast.popup-critico {
-          border-left-color: #ef4444;
-          animation: popup-pulse-border 2s ease-in-out 3;
-        }
-        .alert-popup-toast.popup-atencao {
-          border-left-color: #f59e0b;
-        }
-        .alert-popup-toast.popup-fechando {
-          animation: popup-slide-out 0.3s ease-in forwards;
-        }
-        .alert-popup-icon {
-          font-size: 22px;
-          flex-shrink: 0;
-          margin-top: 1px;
-        }
-        .alert-popup-body {
-          flex: 1;
-          min-width: 0;
-        }
-        .alert-popup-title {
-          font-weight: 700;
-          font-size: 13px;
-          color: #ef4444;
-          margin-bottom: 3px;
-          text-transform: uppercase;
-          letter-spacing: 0.3px;
-        }
-        .alert-popup-toast.popup-atencao .alert-popup-title {
-          color: #f59e0b;
-        }
-        .alert-popup-sub {
-          font-size: 12px;
-          color: #ccc;
-          margin-bottom: 2px;
-        }
-        .alert-popup-detail {
-          font-size: 11px;
-          color: #999;
-        }
-        .alert-popup-close {
-          position: absolute;
-          top: 6px;
-          right: 8px;
-          background: none;
-          border: none;
-          color: #666;
-          font-size: 16px;
-          cursor: pointer;
-          padding: 2px 6px;
-          border-radius: 4px;
-          transition: all 0.2s;
-          line-height: 1;
-        }
-        .alert-popup-close:hover {
-          background: rgba(255,255,255,0.1);
-          color: #fff;
-        }
-      `;
-      document.head.appendChild(styleEl);
-    }
-
-    // Função para mostrar um popup visual na tela
-    const mostrarPopupVisual = (alerta) => {
-      if (!alerta || !alerta.cat || alerta.cat === 'crm') return; // só mostra crítico/atenção
-
-      const container = document.getElementById('alert-popup-container');
-      if (!container) return;
-
-      // Verifica popup recente para evitar duplicatas (mesmo title nos últimos 10s)
-      const recentes = Array.from(container.children).map(el => el.dataset.popupTitle).filter(Boolean);
-      if (recentes.includes(alerta.title)) return;
-
-      const popup = document.createElement('div');
-      popup.className = `alert-popup-toast popup-${alerta.cat || 'atencao'}`;
-      popup.dataset.popupTitle = alerta.title || '';
-      popup.innerHTML = `
-        <span class="alert-popup-icon">${alerta.icon || '🔔'}</span>
-        <div class="alert-popup-body">
-          <div class="alert-popup-title">${this.escapeHtml(alerta.title || 'Alerta')}</div>
-          <div class="alert-popup-sub">${this.escapeHtml(alerta.sub || '')}</div>
-          ${alerta.detail ? `<div class="alert-popup-detail">${this.escapeHtml(alerta.detail)}</div>` : ''}
-        </div>
-        <button class="alert-popup-close">&times;</button>
-      `;
-
-      // Botão fechar
-      popup.querySelector('.alert-popup-close').addEventListener('click', (e) => {
-        e.stopPropagation();
-        popup.classList.add('popup-fechando');
-        setTimeout(() => popup.remove(), 300);
-      });
-
-      // Clique no popup → abre a lista de alertas
-      popup.addEventListener('click', (e) => {
-        if (e.target.closest('.alert-popup-close')) return;
-        popup.classList.add('popup-fechando');
-        setTimeout(() => popup.remove(), 300);
-        // Abre o modal da lista
-        this.abrirListaAlertas();
-      });
-
-      container.appendChild(popup);
-
-      // Auto-remove após 12 segundos
-      setTimeout(() => {
-        if (popup.parentNode) {
-          popup.classList.add('popup-fechando');
-          setTimeout(() => popup.remove(), 300);
-        }
-      }, 12000);
     };
 
     // Verifica os módulos e atualiza a lista de alertas
@@ -1380,10 +1163,6 @@ class Dashboard {
       try {
         const alertas = await this.gerarAlertas();
         aplicarLista(alertas);
-        // 🚀 Mostra popup visual para alertas críticos/atenção
-        if (alertas && alertas.length) {
-          alertas.forEach(a => mostrarPopupVisual(a));
-        }
       } catch (e) {
         console.warn('Central de Alertas:', e);
         aplicarLista(DICAS);
@@ -1398,15 +1177,6 @@ class Dashboard {
       idx = (idx + 1) % lista.length;
       mostrar(lista[idx], true);
     }, DURATION); // 120 segundos
-
-    // Re-toca som a cada 30s se o alerta atual tiver repetir:true (ex: vencidas)
-    setInterval(() => {
-      const atual = lista[idx];
-      if (atual && atual.repetir && atual.som && verificarConfigSom(atual.tipo)) {
-        if (atual.cat === 'critico') tocarSomVencida();
-        else tocarSomCurto();
-      }
-    }, 30000);
 
     // Re-verifica os módulos a cada 3 minutos
     setInterval(atualizarAlertas, 180000);
@@ -1591,7 +1361,7 @@ class Dashboard {
     if (this._searchLoading) return this._searchLoading;
 
     this._searchLoading = (async () => {
-      const idx = { os: [], clientes: [], produtos: [], fornecedores: [], compras: [] };
+      const idx = { os: [], clientes: [], produtos: [] };
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
       try {
@@ -1646,38 +1416,6 @@ class Dashboard {
         });
       } catch (e) { console.warn('[Busca] Produtos:', e); }
 
-      // ----- Fornecedores -----
-      try {
-        const snap = await getDocs(collection(db, 'fornecedores'));
-        snap.forEach(d => {
-          const f = { ...d.data() };
-          const tel = f.telefone1 || f.whatsapp || '';
-          idx.fornecedores.push({
-            id: d.id,
-            title: f.nome || '—',
-            sub: `🏢 ${f.empresa || ''}${tel ? ' · 📞 ' + tel : ''}${f.cidade ? ' · ' + f.cidade : ''}`,
-            search: `${f.nome || ''} ${f.empresa || ''} ${tel} ${f.cidade || ''}`.toLowerCase(),
-            url: `../../pages/fornecedor/index.html`
-          });
-        });
-      } catch (e) { console.warn('[Busca] Fornecedores:', e); }
-
-      // ----- Lista de Compras -----
-      try {
-        const snap = await getDocs(collection(db, 'fornecedor_compras'));
-        snap.forEach(d => {
-          const c = { ...d.data() };
-          if (c.status === 'feita') return;
-          idx.compras.push({
-            id: d.id,
-            title: c.nome || '—',
-            sub: `🛒 Qtd: ${c.quantidade || 1} · ${c.urgencia || 'media'}${c.obs ? ' · ' + c.obs : ''}`,
-            search: `${c.nome || ''} ${c.obs || ''}`.toLowerCase(),
-            url: `../../pages/fornecedor/index.html`
-          });
-        });
-      } catch (e) { console.warn('[Busca] Compras:', e); }
-
       this._searchIndex = idx;
       this._searchLoadedAt = Date.now();
       this._searchLoading = null;
@@ -1707,11 +1445,9 @@ class Dashboard {
     }
 
     const groups = [];
-    const osR = filt(idx.os);            if (osR.length) groups.push({ title: 'Ordens de Serviço', icon: '📋', items: osR });
-    const clR = filt(idx.clientes);      if (clR.length) groups.push({ title: 'Clientes', icon: '👤', items: clR });
-    const prR = filt(idx.produtos);      if (prR.length) groups.push({ title: 'Estoque', icon: '📦', items: prR });
-    const fnR = filt(idx.fornecedores);  if (fnR.length) groups.push({ title: 'Fornecedores', icon: '🏢', items: fnR });
-    const cpR = filt(idx.compras);       if (cpR.length) groups.push({ title: 'Lista de Compras', icon: '🛒', items: cpR });
+    const osR = filt(idx.os);       if (osR.length) groups.push({ title: 'Ordens de Serviço', icon: '📦', items: osR });
+    const clR = filt(idx.clientes); if (clR.length) groups.push({ title: 'Clientes', icon: '👥', items: clR });
+    const prR = filt(idx.produtos); if (prR.length) groups.push({ title: 'Produtos / Estoque', icon: '📦', items: prR });
 
     // Módulos (lista estática já existente em state.searchData.modulos)
     const modR = (this.state.searchData.modulos || [])
@@ -1945,7 +1681,7 @@ class Dashboard {
   navigateTo(module) {
     const routes = {
       os: '../../pages/os/index.html',
-      'central-comandos': '../../pages/central-comandos/index.html',
+      'central-comandos': '../../pages/central-informacoes/index.html',
       'central-informacoes': '../../pages/central-informacoes/index.html',
       autoatendimento: '../../pages/autoatendimento/index.html',
       clientes: '../../pages/clientes/index.html',
@@ -1953,32 +1689,18 @@ class Dashboard {
       estoque: '../../pages/estoque/index.html',
       campanhas: '../../pages/campanhas/index.html',
       analise: '../../pages/analise/index.html',
-      relatorios: '../../pages/relatorios/index.html',
       'pos-venda': '../../pages/pos-venda/index.html',
       config: '../../pages/config/index.html',
       ferramentas: '../../pages/config/index.html',
-      impressora: '../../pages/config/index.html',
       fornecedor: '../../pages/fornecedor/index.html',
       financeiro: '../../pages/financeiro/index.html',
       'em-breve': '../../pages/em-breve/index.html',
-      'minha-semana':        '../../pages/minha-semana/index.html',
-      'acaodasemana':        '../../pages/acaodasemana/index.html',
-      'portal-cliente':      '../../pages/portal-cliente/admin.html',
-      'portal-tecnico':      '../../pages/portal-tecnico/index.html',
-      'diario':              '../../pages/diario/index.html',
-      'central-organizacao': '../../pages/central-organizacao/index.html',
-      'contas':              '../../pages/contas/index.html',
-      'catalogo':            '../../pages/catalogo/index.html',
-      'relatorios':          '../../pages/relatorios/index.html',
-      'crm-comercial':       '../../pages/crm-comercial/index.html',
-      'compras':             '../../pages/compras/index.html',
-      'auditoria':           '../../pages/auditoria/index.html',
-      'pendencias':          '../../pages/pendencias/index.html'
+      'minha-semana':   '../../pages/minha-semana/index.html',
+      'acaodasemana':   '../../pages/acaodasemana/index.html',
+      'portal-cliente': '../../pages/portal-cliente/admin.html',
+      'portal-tecnico': '../../pages/portal-tecnico/index.html',
+      'diario': '../../pages/diario/index.html'
     };
-    if (module === 'central-alertas') {
-      window.location.href = '../../pages/central-alertas/index.html';
-      return;
-    }
     const url = routes[module];
     if (url) {
       console.log(`[Router] Navegando para: ${module}`);
@@ -1988,422 +1710,189 @@ class Dashboard {
     }
   }
 
-  async abrirListaAlertas() {
-    const modal = document.getElementById('modal-lista-alertas');
-    const body = document.getElementById('lista-alertas-body');
-    if (!modal) return;
-
-    modal.style.display = 'flex';
-    if (body) body.innerHTML = '<div class="lista-alertas-loading">Carregando alertas...</div>';
-
-    try {
-      const alertas = await this.gerarAlertas();
-      if (!body) return;
-
-      if (!alertas || alertas.length === 0) {
-        body.innerHTML = '<div class="lista-alertas-vazia">✅ Nenhum alerta pendente no momento.</div>';
-        return;
-      }
-
-      const CAT_COR = { critico: '#ef4444', atencao: '#f59e0b', crm: '#3b82f6' };
-      
-      // Monta lista de alertas + botão "Excluir Todos"
-      const alertasHtml = alertas.map(a => {
-        const cor = CAT_COR[a.cat] || '#6b7280';
-        return `<div class="lista-alerta-item" style="border-left-color:${cor};">
-          <div class="lista-alerta-topo">
-            <span class="lista-alerta-icon">${a.icon || '💡'}</span>
-            <span class="lista-alerta-title" style="color:${cor};">${this.escapeHtml(a.title)}</span>
-          </div>
-          <div class="lista-alerta-sub">${this.escapeHtml(a.sub || '')}</div>
-          ${a.detail ? `<div class="lista-alerta-detail">${this.escapeHtml(a.detail)}</div>` : ''}
-        </div>`;
-      }).join('');
-      
-      body.innerHTML = `
-        <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
-          <button id="btn-excluir-todos-alertas" class="btn-excluir-todos" style="
-            background: #ef4444; color: white; border: none; border-radius: 8px;
-            padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer;
-            transition: all 0.2s; display: flex; align-items: center; gap: 6px;
-          " onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
-            🗑 Excluir Todos os Alertas
-          </button>
-          <span style="color: var(--text-tertiary); font-size: 12px;">\${alertas.length} alerta(s) encontrado(s)</span>
-        </div>
-        \${alertasHtml}
-      `;
-      
-      // Handler do botão "Excluir Todos"
-      const btnExcluir = document.getElementById('btn-excluir-todos-alertas');
-      if (btnExcluir) {
-        btnExcluir.addEventListener('click', () => {
-          // Cria modal de confirmação
-          const confirmOverlay = document.createElement('div');
-          confirmOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:100000;display:flex;align-items:center;justify-content:center;';
-          confirmOverlay.innerHTML = `
-            <div style="background:#1e1e32;border-radius:16px;padding:32px 36px;max-width:420px;width:90%;text-align:center;border:1px solid rgba(239,68,68,0.2);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
-              <div style="font-size:48px;margin-bottom:16px;">🗑️</div>
-              <h3 style="color:#fff;margin:0 0 8px;font-size:18px;">Excluir Todos os Alertas?</h3>
-              <p style="color:#999;margin:0 0 24px;font-size:14px;line-height:1.5;">
-                Tem certeza que deseja excluir <strong style="color:#ef4444;">todos</strong> os \${alertas.length} alerta(s)?
-                <br>Esta ação limpa o cache local e dispensa todos os alertas atuais.
-              </p>
-              <div style="display:flex;gap:12px;justify-content:center;">
-                <button id="btn-cancelar-exclusao" style="background:#2a2a40;color:#ccc;border:none;border-radius:10px;padding:12px 28px;font-size:14px;cursor:pointer;flex:1;" onmouseover="this.style.background='#333'" onmouseout="this.style.background='#2a2a40'">Cancelar</button>
-                <button id="btn-confirmar-exclusao" style="background:#ef4444;color:#fff;border:none;border-radius:10px;padding:12px 28px;font-size:14px;font-weight:600;cursor:pointer;flex:1;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">🗑 Excluir Todos</button>
-              </div>
-            </div>
-          `;
-          document.body.appendChild(confirmOverlay);
-          
-          document.getElementById('btn-cancelar-exclusao').addEventListener('click', () => confirmOverlay.remove());
-          document.getElementById('btn-confirmar-exclusao').addEventListener('click', () => {
-            // Limpa TODOS os alertas
-            try {
-              // 1. Limpa localStorage
-              const keysParaLimpar = [
-                'cc_alertas_badge', 'cc_config_alertas', 'alarme_os_config',
-                'cc_nota_uid',
-              ];
-              keysParaLimpar.forEach(k => { try { localStorage.removeItem(k); } catch {} });
-              // Remove chaves com prefixo
-              Object.keys(localStorage).forEach(k => {
-                if (k.startsWith('cellcity_note_') || k.startsWith('cc_')) {
-                  try { localStorage.removeItem(k); } catch {}
-                }
-              });
-              
-              // 2. Desregistra Service Worker
-              if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.getRegistrations().then(regs => {
-                  regs.forEach(r => r.unregister());
-                });
-              }
-              
-              // 3. Remove IndexedDB
-              try { indexedDB.deleteDatabase('AlarmeOSDB'); } catch {}
-              
-              console.log('🧹 Todos os alertas excluídos!');
-            } catch (e) { console.warn('Erro ao excluir alertas:', e); }
-            
-            confirmOverlay.remove();
-            modal.style.display = 'none';
-            
-            // Recarrega a página para reset completo
-            setTimeout(() => window.location.reload(), 300);
-          });
-        });
-      }
-    } catch (e) {
-      if (body) body.innerHTML = '<div class="lista-alertas-loading">Erro ao carregar alertas.</div>';
-      console.warn('abrirListaAlertas:', e);
-    }
-  }
-
   // ===== AVISO DE EVENTOS DA AGENDA =====
   // Prioridade: 1. Atrasados (qualquer dia), 2. Horário atual, 3. Próximos (até 15 min)
   // ⚠ O alerta sonoro REPETE a cada ciclo ENQUANTO houver tarefas vencidas não concluídas.
   // Só para quando TODAS as tarefas atrasadas forem concluídas.
-  // ===== CONFIGURAÇÃO DE ALERTAS =====
-  setupConfigAlertas() {
-    const modal = document.getElementById('modal-config-alertas');
-    const btnFechar = document.getElementById('btn-fechar-config-alertas');
-    const btnSalvar = document.getElementById('btn-salvar-config');
-    const btnTestar = document.getElementById('btn-testar-som');
-    const chkSilencio = document.getElementById('config-silencio-ativo');
-    const camposSilencio = document.getElementById('config-silencio-campos');
+  setupAvisoAcoes() {
+    let ultimoAvisoKey = ''; // controla para não repetir o mesmo aviso (usado apenas para não-atrasados)
+    let cicloAtrasados = 0;  // contador de ciclos com atrasados — para alternar som
 
-    if (!modal) return;
-
-    // Abre a config de alertas (chamado por qualquer botão ⚙️)
-    const abrirConfig = (e) => {
-      if (e) e.stopPropagation();
-      // Fecha modal de lista se estiver aberto
-      const listaModal = document.getElementById('modal-lista-alertas');
-      if (listaModal) listaModal.style.display = 'none';
-      this.carregarConfigAlertasUI();
-      modal.style.display = 'flex';
+    const _fmtAtraso = (min) => {
+      const abs = Math.abs(min);
+      if (abs >= 1440) return `${Math.floor(abs/1440)}d ${Math.floor((abs%1440)/60)}h`;
+      if (abs >= 60)   return `${Math.floor(abs/60)}h${abs%60 ? ' '+(abs%60)+'min' : ''}`;
+      return `${abs} min`;
     };
 
-    // Botão ⚙️ dentro do card oculto (fallback)
-    const btnAbrir = document.getElementById('btn-abrir-config-alertas');
-    if (btnAbrir) btnAbrir.addEventListener('click', abrirConfig);
-
-    // Botão ⚙️ no modal da lista de alertas
-    const btnConfigModal = document.getElementById('btn-config-alertas-modal');
-    if (btnConfigModal) btnConfigModal.addEventListener('click', abrirConfig);
-
-    if (btnFechar) {
-      btnFechar.addEventListener('click', () => { modal.style.display = 'none'; });
-    }
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) modal.style.display = 'none';
-    });
-
-    // Fechamento do modal da lista de alertas
-    const btnFecharLista = document.getElementById('btn-fechar-lista-alertas');
-    const listaModal = document.getElementById('modal-lista-alertas');
-    if (btnFecharLista && listaModal) {
-      btnFecharLista.addEventListener('click', () => { listaModal.style.display = 'none'; });
-    }
-    if (listaModal) {
-      listaModal.addEventListener('click', (e) => {
-        if (e.target === listaModal) listaModal.style.display = 'none';
-      });
-    }
-    if (chkSilencio && camposSilencio) {
-      chkSilencio.addEventListener('change', () => {
-        camposSilencio.style.display = chkSilencio.checked ? 'flex' : 'none';
-      });
-    }
-    if (btnSalvar) {
-      btnSalvar.addEventListener('click', () => {
-        this.salvarConfigAlertas();
-        modal.style.display = 'none';
-      });
-    }
-    if (btnTestar) {
-      btnTestar.addEventListener('click', () => {
-        if (this._tocarSomVencida) this._tocarSomVencida();
-      });
-    }
-  }
-
-  carregarConfigAlertas() {
-    try {
-      const raw = localStorage.getItem('cc_config_alertas');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return {
-      som: {
-        ativo: true,
-        horarioInicio: '08:00',
-        horarioFim: '18:00',
-        diasSemana: [1, 2, 3, 4, 5],
-        silencio: { ativo: false, inicio: '12:00', fim: '13:00' }
-      },
-      alertasComSom: {
-        acaoSemanaVencidas: true,
-        acaoSemanaAgora: false,
-        acaoSemanaProximas: false,
-        posVendaCritico: false,
-        osAguardandoCliente: false,
-        avaliacoesCriticas: false
-      },
-      pulsacao: { critico: true, atencao: false }
-    };
-  }
-
-  carregarConfigAlertasUI() {
-    const config = this.carregarConfigAlertas();
-    this._setChecked('config-som-ativo', config.som.ativo);
-    this._setValue('config-som-inicio', config.som.horarioInicio);
-    this._setValue('config-som-fim', config.som.horarioFim);
-    document.querySelectorAll('.config-dia-sem').forEach(chk => {
-      chk.checked = config.som.diasSemana.includes(parseInt(chk.value));
-    });
-    this._setChecked('config-silencio-ativo', config.som.silencio.ativo);
-    this._setValue('config-silencio-inicio', config.som.silencio.inicio);
-    this._setValue('config-silencio-fim', config.som.silencio.fim);
-    const camposSilencio = document.getElementById('config-silencio-campos');
-    if (camposSilencio) {
-      camposSilencio.style.display = config.som.silencio.ativo ? 'flex' : 'none';
-    }
-    document.querySelectorAll('.config-alerta-som').forEach(chk => {
-      const tipo = chk.getAttribute('data-tipo');
-      chk.checked = config.alertasComSom[tipo] === true;
-    });
-    document.querySelectorAll('.config-pulsacao').forEach(chk => {
-      const nivel = chk.getAttribute('data-nivel');
-      chk.checked = config.pulsacao[nivel] === true;
-    });
-  }
-
-  salvarConfigAlertas() {
-    const config = {
-      som: {
-        ativo: this._getChecked('config-som-ativo'),
-        horarioInicio: this._getValue('config-som-inicio', '08:00'),
-        horarioFim: this._getValue('config-som-fim', '18:00'),
-        diasSemana: Array.from(document.querySelectorAll('.config-dia-sem:checked')).map(c => parseInt(c.value)),
-        silencio: {
-          ativo: this._getChecked('config-silencio-ativo'),
-          inicio: this._getValue('config-silencio-inicio', '12:00'),
-          fim: this._getValue('config-silencio-fim', '13:00')
-        }
-      },
-      alertasComSom: {},
-      pulsacao: {
-        critico: document.querySelector('.config-pulsacao[data-nivel="critico"]')?.checked ?? true,
-        atencao: document.querySelector('.config-pulsacao[data-nivel="atencao"]')?.checked ?? false
-      }
-    };
-    document.querySelectorAll('.config-alerta-som').forEach(chk => {
-      config.alertasComSom[chk.getAttribute('data-tipo')] = chk.checked;
-    });
-    localStorage.setItem('cc_config_alertas', JSON.stringify(config));
-    console.log('✅ Configuração de alertas salva:', config);
-  }
-
-  _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
-  _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
-  _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
-  _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
-
-  // ===== PAINEL LATERAL DIREITO — MONITORAMENTO GERENCIAL =====
-  setupPainelLateralGerencial() {
-    const lista = document.getElementById('alertas-direita-list');
-    if (!lista) return;
-
-    const headerSpan = document.querySelector('.pr-section.pr-alertas .pr-section-header > span');
-    if (headerSpan) headerSpan.textContent = '📊 MONITORAMENTO';
-    const linkVerTodos = document.getElementById('alertas-ver-todos');
-    if (linkVerTodos) { linkVerTodos.textContent = 'Ver relatórios ›'; linkVerTodos.href = '../relatorios/index.html'; }
-
-    const calcDias = (dateStr) => {
-      try { return Math.floor((Date.now() - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const getDeliveryDate = (os) => {
-      if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-      }
-      const ua = os.updatedAt;
-      if (!ua) return null;
-      if (typeof ua === 'string') return ua;
-      if (ua.toDate) return ua.toDate().toISOString();
-      return null;
+    const _fmtData = (dataISO) => {
+      if (!dataISO) return '';
+      const [y, m, d] = dataISO.split('-').map(Number);
+      return `${d}/${m}`;
     };
 
-    const renderizar = ({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas }) => {
-      const items = [];
-
-      if (metaPct !== null) {
-        const cor = metaPct >= 100 ? '#00e676' : metaPct >= 60 ? '#f59e0b' : '#ef4444';
-        const txt = metaPct >= 100 ? '✅ Meta atingida' : `${metaPct}% da meta`;
-        items.push({ icon: '🎯', label: 'Meta Semanal', value: txt, cor, href: '../relatorios/index.html' });
-      }
-
-      if (ticketMedio) {
-        items.push({ icon: '💰', label: 'Ticket Médio', value: ticketMedio, cor: '#3b82f6', href: '../relatorios/index.html' });
-      }
-
-      if (pvAtrasados > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda atrasado', value: `${pvAtrasados} cliente(s)`, cor: '#ef4444', href: '../pos-venda/index.html' });
-      } else if (pvPendentes > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda pendente', value: `${pvPendentes} cliente(s)`, cor: '#f59e0b', href: '../pos-venda/index.html' });
-      }
-
-      if (avalCriticas > 0) {
-        items.push({ icon: '⭐', label: 'Avaliações críticas', value: `${avalCriticas}`, cor: '#ef4444', href: '../portal-cliente/admin.html' });
-      }
-
-      if (estoqueBaixo > 0) {
-        items.push({ icon: '📦', label: 'Estoque baixo', value: `${estoqueBaixo} item(s)`, cor: '#f59e0b', href: '../estoque/index.html' });
-      }
-
-      if (aparelhos > 0) {
-        items.push({ icon: '🔧', label: 'Ap. não retirados', value: `${aparelhos}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (orcSemResposta > 0) {
-        items.push({ icon: '💬', label: 'Orç. sem resposta', value: `${orcSemResposta}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (!items.length) {
-        lista.innerHTML = '<div class="alertas-vazio">✅ Tudo em dia</div>';
-        return;
-      }
-
-      lista.innerHTML = items.map(a =>
-        `<a class="alerta-item" href="${a.href}" style="border-left-color:${a.cor};">` +
-        `<span class="alerta-icon" style="color:${a.cor};">${a.icon}</span>` +
-        `<div class="alerta-texto"><div class="alerta-label">${esc(a.label)}</div></div>` +
-        `<span class="alerta-count" style="background:${a.cor};">${esc(a.value)}</span>` +
-        `</a>`
-      ).join('');
-    };
-
-    const atualizar = async () => {
+    // ─── Toca som curto (para horário atual / próximos) ───
+    const tocarSomCurto = () => {
       try {
-        const meta = this.state && this.state.meta;
-        const metaPct = meta && meta.goal > 0 ? Math.round((meta.current / meta.goal) * 100) : null;
-        const ticketEl = document.getElementById('kpi-ticket-medio');
-        const ticketMedio = ticketEl ? ticketEl.textContent.trim() : null;
-
-        const [osSnap, contatosSnap] = await Promise.all([
-          getDocs(collection(db, 'os')),
-          getDocs(collection(db, 'posvenda_contatos'))
-        ]);
-
-        const contatosFeitos = new Set();
-        contatosSnap.forEach(d => { const c = d.data(); if (c.ativo !== false) contatosFeitos.add(`${c.osId}_${c.prazo}`); });
-
-        let pvAtrasados = 0, pvPendentes = 0, aparelhos = 0, orcSemResposta = 0;
-        osSnap.forEach(d => {
-          const os = { _id: d.id, ...d.data() };
-
-          if (os.status === 'entregue') {
-            const dd = getDeliveryDate(os);
-            if (dd) {
-              const dias = calcDias(dd);
-              const osId = os.id || os._id;
-              [5, 15, 30].forEach(prazo => {
-                if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-                const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
-                if (dias < prazo || dias >= proxPrazo) return;
-                pvPendentes++;
-                if (dias > prazo + 2) pvAtrasados++;
-              });
-            }
-          }
-
-          if (os.status === 'concluido' || os.status === 'pronto') {
-            let dataConcl = null;
-            if (Array.isArray(os.timeline)) {
-              const e = [...os.timeline].reverse().find(t => typeof t.text === 'string' && t.text.includes('→ Concluído'));
-              if (e?.date) dataConcl = e.date;
-            }
-            if (!dataConcl) dataConcl = typeof os.updatedAt === 'string' ? os.updatedAt : (os.updatedAt && os.updatedAt.toDate ? os.updatedAt.toDate().toISOString() : null);
-            if (dataConcl && calcDias(dataConcl) > 3) aparelhos++;
-          }
-
-          if (os.status === 'orcamento' || os.status === 'orcamento_enviado') {
-            const ref = os.updatedAt || os.createdAt;
-            const refStr = typeof ref === 'string' ? ref : (ref && ref.toDate ? ref.toDate().toISOString() : null);
-            if (refStr && calcDias(refStr) > 2) orcSemResposta++;
-          }
-        });
-
-        let estoqueBaixo = 0;
-        try {
-          const estSnap = await getDocs(collection(db, 'estoque'));
-          estSnap.forEach(d => {
-            const p = d.data();
-            const qty = Number(p.quantidade ?? p.estoque ?? 0);
-            const min = Number(p.estoqueMinimo ?? p.minimo ?? 1);
-            if (qty < min) estoqueBaixo++;
-          });
-        } catch (e) { console.warn('[Painel] estoque:', e); }
-
-        let avalCriticas = 0;
-        try {
-          const avalSnap = await getDocs(query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(10)));
-          avalSnap.forEach(d => { if ((d.data().nota || 0) <= 2) avalCriticas++; });
-        } catch (e) { console.warn('[Painel] avaliações:', e); }
-
-        renderizar({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas });
-      } catch (e) {
-        console.warn('[Painel Gerencial] erro:', e);
-      }
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+      } catch {}
     };
 
-    atualizar();
-    setInterval(atualizar, 180000);
-    window.addEventListener('focus', atualizar);
+    // ─── Toca som PERSISTENTE (para tarefas atrasadas) ───
+    // Toca 3 beeps consecutivos em tom mais agudo, mais perceptível
+    const tocarSomVencida = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const beep = (freq, start, dur) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.25, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+          osc.start(start);
+          osc.stop(start + dur);
+        };
+        // Três beeps: agudo → médio → agudo
+        beep(1047, ctx.currentTime, 0.15);
+        beep(784, ctx.currentTime + 0.2, 0.15);
+        beep(1047, ctx.currentTime + 0.4, 0.15);
+        ctx.start();
+      } catch {}
+    };
+
+    const dispararAlerta = (evento, label, isAtrasado = false) => {
+      const card = document.querySelector('.alerts-card');
+      const titleEl    = document.querySelector('.alert-title');
+      const subtitleEl = document.querySelector('.alert-subtitle');
+      const detailEl   = document.querySelector('.alert-detail');
+      const iconEl     = document.getElementById('alert-cat-icon');
+      if (!card || !titleEl) return;
+
+      const horaFmt = evento.hora || '';
+      const dataFmt = evento.data ? _fmtData(evento.data) : '';
+      if (iconEl) iconEl.textContent = isAtrasado ? '🔴' : '⏰';
+      titleEl.textContent = `AGENDA — ${label}`;
+      titleEl.className = 'alert-title cat-alerta-acao';
+      if (subtitleEl) subtitleEl.textContent = evento.titulo;
+      if (detailEl) detailEl.textContent = horaFmt ? `Horário: ${horaFmt}${dataFmt ? ` (${dataFmt})` : ''}` : (dataFmt ? `Data: ${dataFmt}` : '');
+
+      card.classList.add('alert-card-pulsing');
+      if (isAtrasado) {
+        tocarSomVencida(); // som mais intenso para vencidas
+      } else {
+        tocarSomCurto();
+      }
+      // Remove pulsação após 10s (o card da Central de Alertas continua intacto)
+      setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
+    };
+
+    const verificar = async () => {
+      try {
+        const eventos = await this._lerAgenda();
+        const agora = new Date();
+        const agoraTs = Date.now();
+        const hojeISO = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
+        const hAtual = agora.getHours();
+        const mAtual = agora.getMinutes();
+        const minsAtual = hAtual * 60 + mAtual;
+
+        // ─── Helper: verifica se evento está atrasado ───
+        const estaAtrasado = (e) => {
+          if (e.concluido || e.alerta === false || !e.data) return false;
+          if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agoraTs;
+          return e.data < hojeISO; // sem horário — data passou
+        };
+
+        // 1. PRIORIDADE MÁXIMA — ATRASADOS (qualquer dia/hora no passado, não concluído)
+        // ⚠ DIFERENTE dos demais: aqui NÃO usa ultimoAvisoKey para bloquear.
+        // O som toca em CADA CICLO enquanto houver vencidas, garantindo que
+        // o usuário será alertado repetidamente até concluir a tarefa.
+        const atrasados = (eventos || []).filter(estaAtrasado);
+
+        if (atrasados.length > 0) {
+          // Ordena: mais atrasado primeiro
+          const pior = atrasados.sort((a, b) => {
+            const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
+            const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
+            return tsA - tsB;
+          })[0];
+          const dtPior = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
+          const diffMin = Math.round((agoraTs - dtPior.getTime()) / 60000);
+          const key = `atrasado_${pior.data}_${pior.hora}`;
+
+          // Sempre dispara o alerta visual + sonoro em cada ciclo (30s)
+          // Alterna o label para dar sensação de "renovação" do alerta
+          cicloAtrasados++;
+          const labelAtraso = cicloAtrasados % 2 === 0
+            ? `🔴 VENCIDA · ${_fmtAtraso(diffMin)} atrasado`
+            : `🔴 TAREFA PENDENTE · ${_fmtAtraso(diffMin)} atrasado`;
+
+          dispararAlerta(pior, labelAtraso, true);
+          ultimoAvisoKey = key; // atualiza apenas para registro
+          return; // atrasado tem prioridade total
+        }
+
+        // Se chegou aqui, não há atrasados — reseta contador
+        cicloAtrasados = 0;
+
+        // 2. SEGUNDA PRIORIDADE — HORÁRIO ATUAL (hoje, diff 0–5 min)
+        for (const evento of eventos) {
+          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
+          if (evento.data !== hojeISO) continue;
+          const [hEv, mEv] = evento.hora.split(':').map(Number);
+          const evMin = hEv * 60 + mEv;
+          const diff = evMin - minsAtual;
+
+          if (diff >= 0 && diff <= 5) {
+            const key = `agora_${evento.hora}`;
+            if (ultimoAvisoKey !== key) {
+              ultimoAvisoKey = key;
+              dispararAlerta(evento, diff === 0 ? 'AGORA!' : `em ${diff} min`, false);
+            }
+            return;
+          }
+        }
+
+        // 3. TERCEIRA PRIORIDADE — PRÓXIMOS (hoje, 6–15 min)
+        for (const evento of eventos) {
+          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
+          if (evento.data !== hojeISO) continue;
+          const [hEv, mEv] = evento.hora.split(':').map(Number);
+          const evMin = hEv * 60 + mEv;
+          const diff = evMin - minsAtual;
+
+          if (diff > 5 && diff <= 15) {
+            const key = `prox_${evento.hora}`;
+            if (ultimoAvisoKey !== key) {
+              ultimoAvisoKey = key;
+              dispararAlerta(evento, `em ${diff} min`, false);
+            }
+            return;
+          }
+        }
+
+        // Nada a alertar — reseta para permitir novos avisos
+        ultimoAvisoKey = '';
+
+      } catch {}
+    };
+
+    verificar();
+    setInterval(verificar, 30000); // 30s para resposta mais rápida em vencidas
   }
 
   // ===== ALARME PARA OS NOVA =====
@@ -3441,286 +2930,6 @@ class Dashboard {
       const alvo = !document.body.classList.contains('modo-compacto');
       aplicar(alvo);
     });
-  }
-
-  // ===== MODAL: LISTA DE OS DO ALERTA =====
-  mostrarAlertaOS(alerta) {
-    const modal   = document.getElementById('os-alerta-modal');
-    const titleEl = document.getElementById('os-modal-title');
-    const listEl  = document.getElementById('os-modal-list');
-    if (!modal || !titleEl || !listEl) return;
-
-    titleEl.textContent = alerta._titulo || alerta.title;
-    const labelDias = alerta._tipo === 'pronto_nao_retirado' ? 'aguardando retirada' : 'sem resposta';
-
-    listEl.innerHTML = alerta._osData.map(os => `
-      <div style="background:#1a1d1b;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">
-        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${os.id}</span>
-        <span style="font-size:14px;font-weight:700;color:#fff;">${os.clientName || '—'}</span>
-        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + os.phone : 'Sem telefone'}</span>
-        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${os._dias} dia(s) ${labelDias}</span>
-      </div>`).join('');
-
-    modal.style.display = 'flex';
-  }
-
-  // ===== SIDEBAR ESQUERDA — RECOLHER/EXPANDIR =====
-  setupSidebar() {
-    const sidebar = document.getElementById('sidebar-left');
-    const btn     = document.getElementById('sidebar-toggle');
-    const navEl   = document.getElementById('sidebar-nav');
-    if (!sidebar || !btn) return;
-
-    // ----- colapsar / expandir -----
-    const COLLAPSE_KEY = 'cc_sidebar_state';
-    const aplicar = (collapsed) => {
-      sidebar.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
-      // Alterna sigla CCGE no brand header
-      const subtitle = document.querySelector('.brand-header-subtitle');
-      const divider  = document.querySelector('.brand-header-divider');
-      const abbrev   = document.querySelector('.brand-header-abbrev');
-      if (subtitle) subtitle.style.display = collapsed ? 'none' : '';
-      if (divider)  divider.style.display  = collapsed ? 'none' : '';
-      if (abbrev)   abbrev.style.display   = collapsed ? 'block' : 'none';
-    };
-    aplicar(localStorage.getItem(COLLAPSE_KEY) === '1');
-    btn.addEventListener('click', () => aplicar(!sidebar.classList.contains('collapsed')));
-
-    // ----- drag-and-drop reordering -----
-    if (!navEl) return;
-
-    const ORDER_KEY = 'cc_sidebar_order';
-
-    const saveOrder = () => {
-      const sids = [...navEl.querySelectorAll('.sidebar-item[data-sid]')].map(el => el.dataset.sid);
-      localStorage.setItem(ORDER_KEY, JSON.stringify(sids));
-    };
-
-    const restoreOrder = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
-        if (!saved.length) return;
-        saved.forEach(sid => {
-          const el = navEl.querySelector(`[data-sid="${sid}"]`);
-          if (el) navEl.appendChild(el);
-        });
-      } catch (_) {}
-    };
-
-    restoreOrder();
-
-    let dragSrc = null;
-
-    navEl.addEventListener('dragstart', e => {
-      const item = e.target.closest('.sidebar-item[data-sid]');
-      if (!item) return;
-      dragSrc = item;
-      item.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-
-    navEl.addEventListener('dragend', () => {
-      if (dragSrc) dragSrc.classList.remove('dragging');
-      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      dragSrc = null;
-    });
-
-    navEl.addEventListener('dragover', e => {
-      e.preventDefault();
-      const item = e.target.closest('.sidebar-item[data-sid]');
-      if (!item || item === dragSrc) return;
-      navEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-      item.classList.add('drag-over');
-      e.dataTransfer.dropEffect = 'move';
-    });
-
-    navEl.addEventListener('dragleave', e => {
-      const item = e.target.closest('.sidebar-item[data-sid]');
-      if (item) item.classList.remove('drag-over');
-    });
-
-    navEl.addEventListener('drop', e => {
-      e.preventDefault();
-      const target = e.target.closest('.sidebar-item[data-sid]');
-      if (!target || !dragSrc || target === dragSrc) return;
-      target.classList.remove('drag-over');
-      const rect = target.getBoundingClientRect();
-      const after = e.clientY > rect.top + rect.height / 2;
-      navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
-      saveOrder();
-    });
-
-    // ----- tooltip dos módulos (body-level, bypassa overflow:hidden) -----
-    const tip = document.createElement('div');
-    tip.id = 'cc-sidebar-tooltip';
-    document.body.appendChild(tip);
-
-    const showTip = (item) => {
-      const label = item.dataset.tip;
-      if (!label) return;
-      const rect = item.getBoundingClientRect();
-      tip.textContent = label;
-      tip.style.top  = `${rect.top + rect.height / 2 - 14}px`;
-      tip.style.left = `${rect.right + 10}px`;
-      tip.classList.add('visible');
-    };
-    const hideTip = () => tip.classList.remove('visible');
-
-    document.querySelectorAll('#sidebar-nav [data-tip], #sidebar-left .sidebar-footer [data-tip]')
-      .forEach(item => {
-        item.addEventListener('mouseenter', () => showTip(item));
-        item.addEventListener('mouseleave', hideTip);
-      });
-  }
-
-  // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====
-  setupPanelRight() {
-    const panel   = document.getElementById('panel-right');
-    const btnOpen = document.getElementById('panel-right-open-btn');
-    const btnClose= document.getElementById('panel-right-close-btn');
-    if (!panel) return;
-
-    const KEY = 'cc_panel_right_state';
-    const aplicar = (collapsed) => {
-      panel.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo (default: expandido)
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    if (btnOpen)  btnOpen.addEventListener('click',  () => aplicar(false));
-    if (btnClose) btnClose.addEventListener('click', () => aplicar(true));
-
-    // Toggle das seções internas (metas / alertas)
-    const _bindToggle = (btnId, bodyId) => {
-      const btn  = document.getElementById(btnId);
-      const body = document.getElementById(bodyId);
-      if (!btn || !body) return;
-      const KEY2 = 'cc_pr_' + btnId;
-      if (localStorage.getItem(KEY2) === '1') { body.classList.add('collapsed-body'); btn.textContent = '+'; }
-      btn.addEventListener('click', () => {
-        const col = body.classList.toggle('collapsed-body');
-        btn.textContent = col ? '+' : '−';
-        localStorage.setItem(KEY2, col ? '1' : '0');
-      });
-    };
-    _bindToggle('metas-toggle', 'metas-body');
-    _bindToggle('alertas-toggle', 'alertas-body');
-  }
-
-  // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  setupExecutivePanel() {
-    const fmt    = (v) => Number(v).toLocaleString('pt-BR');
-    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const setDelta = (id, val, prefix = '') => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = prefix + val;
-      el.className = 'exec-card-delta' + (String(val).startsWith('-') ? ' down' : ' up');
-    };
-
-    const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
-                           'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
-    const STATUS_ANDAMENTO = ['em_andamento', 'aguardando', 'diagnostico'];
-    const STATUS_AGUARDANDO_APROV = ['orcamento_enviado'];
-
-    const hojeISO = new Date().toISOString().slice(0, 10);
-    const inicioSemana = (() => {
-      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-    })();
-    const ha30dias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-
-    const atualizarOS = (snap) => {
-      let abertas = 0, andamento = 0, aguardAprov = 0, bancada = 0;
-      const clientesSet = new Set();
-      let somaValorEntregue = 0, countEntregue = 0;
-      let temposTotais = 0, countTempo = 0;
-      let orcamentosHoje = 0;
-
-      snap.forEach(d => {
-        const os = d.data();
-        const status = os.status || '';
-
-        if (STATUS_ABERTO.includes(status)) abertas++;
-        if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
-        if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
-
-        // Ticket médio: OS entregues este mês
-        if (status === 'entregue' && os.valor) {
-          somaValorEntregue += Number(os.valor);
-          countEntregue++;
-        }
-
-        // Tempo médio: OS entregues com datas
-        if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
-          const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
-          if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
-        }
-
-        // Clientes ativos (30 dias)
-        if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
-          clientesSet.add(os.phone);
-        }
-
-        // Orçamentos enviados hoje
-        if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
-          orcamentosHoje++;
-        }
-      });
-
-      set('kpi-os-abertas', fmt(abertas));
-      set('kpi-os-andamento', fmt(andamento));
-      set('kpi-aguardando-aprov', fmt(aguardAprov));
-      set('kpi-bancada', fmt(bancada));
-      set('kpi-ticket-medio', countEntregue > 0 ? fmtBRL(somaValorEntregue / countEntregue) : '—');
-      set('kpi-tempo-entrega', countTempo > 0 ? `${(temposTotais / countTempo).toFixed(1)} dias` : '—');
-      set('kpi-clientes-ativos', fmt(clientesSet.size));
-      set('kpi-orcamentos-enviados', fmt(orcamentosHoje));
-    };
-
-    const atualizarCaixa = (snap) => {
-      let fatHoje = 0, lucroSemana = 0;
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        const val = Number(l.valor || 0);
-        const lucro = Number(l.lucro || 0);
-        if (iso.startsWith(hojeISO) && l.tipo !== 'saida') fatHoje += val;
-        if (iso >= inicioSemana) lucroSemana += lucro;
-      });
-      set('kpi-faturamento-hoje', fmtBRL(fatHoje));
-      set('kpi-lucro-semana', fmtBRL(lucroSemana));
-    };
-
-    const atualizarEstoque = (snap) => {
-      let pecasFalta = 0;
-      snap.forEach(d => {
-        const p = d.data();
-        const qty = Number(p.quantidade || p.estoque || 0);
-        const min = Number(p.estoqueMinimo || p.minimo || 1);
-        if (qty < min) pecasFalta++;
-      });
-      set('kpi-pecas-falta', fmt(pecasFalta));
-    };
-
-    // Inicia listeners quando Firestore estiver pronto
-    const iniciar = () => {
-      try {
-        onSnapshot(collection(db, 'os'), atualizarOS,
-          err => console.warn('[KPI] os:', err && err.message));
-        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
-          err => console.warn('[KPI] caixa:', err && err.message));
-        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
-          err => console.warn('[KPI] estoque:', err && err.message));
-      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
-    };
-
-    // Aguarda firebase-ready se necessário (db vem do módulo importado no topo)
-    if (db) iniciar();
-    else window.addEventListener('firebase-ready', iniciar, { once: true });
   }
 }
 

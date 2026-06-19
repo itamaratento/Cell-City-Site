@@ -33,15 +33,40 @@ self.addEventListener('activate', (event) => {
 });
 
 // Mostra notificação persistente
-// 🚫 REMOVIDO: Notificação do Ubuntu/SO desativada
 async function mostrarNotificacaoPersistente(config) {
-  console.log('📌 [SW] Notificação do Ubuntu bloqueada (apenas in-app)');
+  try {
+    await self.registration.showNotification('🔔 Alarme CRM Ativo', {
+      body: `Horário: ${config.horaInicio} | Monitorando...`,
+      icon: '/CRM/assets/logo.png',
+      badge: '/CRM/assets/logo.png',
+      tag: 'alarme-persistente',
+      requireInteraction: true,
+      silent: true, // Não faz som agora (só quando dispara)
+      actions: [
+        { action: 'abrir', title: '👀 Abrir' },
+        { action: 'parar', title: '⏹️ Parar' }
+      ]
+    });
+    console.log('📌 [SW] Notificação persistente mostrada');
+  } catch (e) {
+    console.warn('❌ [SW] Erro notificação:', e);
+  }
 }
 
 // Atualiza notificação a cada mudança
-// 🚫 REMOVIDO: Notificações do SO desativadas
 async function atualizarNotificacao(config) {
-  console.log('📌 [SW] Notificações do SO desativadas');
+  if (!config.ativo) {
+    try {
+      await self.registration.getNotifications({ tag: 'alarme-persistente' }).then(notifs => {
+        notifs.forEach(n => n.close());
+      });
+      console.log('📌 [SW] Notificação fechada');
+    } catch (e) {
+      console.warn('Erro ao fechar notificação:', e);
+    }
+  } else {
+    await mostrarNotificacaoPersistente(config);
+  }
 }
 
 self.addEventListener('message', (event) => {
@@ -252,8 +277,21 @@ async function iniciarRelogioBackground(config) {
           // Função para disparar notificação COM SOM
           const dispararAlarme = async () => {
             try {
-              // 🚫 REMOVIDO: Notificação do Ubuntu/SO desativada
-              console.log('📢 [SW] Disparo de alarme (notificação Ubuntu bloqueada):', alarme.anotacao);
+              // Mostra notificação persistente
+              await self.registration.showNotification('🔔 ALARME - OS NOVA', {
+                body: `⏰ ${horaInicioFormatada} - ${alarme.anotacao}`,
+                icon: '/CRM/assets/logo.png',
+                badge: '/CRM/assets/logo.png',
+                tag: 'alarme-disparo',
+                requireInteraction: true,
+                vibrate: [200, 100, 200, 100, 200],
+                actions: [
+                  { action: 'abrir', title: '👀 Abrir App' },
+                  { action: 'fechar', title: '⏹️ Parar' }
+                ]
+              });
+
+              console.log('📢 [SW] Notificação exibida com vibração');
 
               // Envia mensagem a todos os clientes (tabs abertas)
               const clients = await self.clients.matchAll();
@@ -313,8 +351,39 @@ function pararRelogioBackground() {
   console.log('⏹️ [SW] Relógio parado');
 }
 
-// 🚫 REMOVIDO: Notificações do SO desativadas
-self.addEventListener('notificationclick', () => {});
+// Quando clica na notificação
+self.addEventListener('notificationclick', (event) => {
+  // NÃO fecha a notificação persistente automaticamente
+  if (event.notification.tag !== 'alarme-persistente') {
+    event.notification.close();
+  }
+
+  if (event.action === 'abrir' || !event.action) {
+    // Clicou no corpo da notificação ou botão "Abrir"
+    event.waitUntil(
+      clients.matchAll({ type: 'window' }).then((clientList) => {
+        for (let client of clientList) {
+          if (client.url.includes('/CRM/') && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow('/CRM/pages/dashboard/?alarme=1');
+        }
+      })
+    );
+  }
+
+  if (event.action === 'parar') {
+    // Clicou em "Parar" - para o alarme
+    console.log('⏹️ [SW] Usuário clicou em Parar');
+    ultimoDisparo = null;
+    configAtual = { ...configAtual, ativo: false };
+
+    // Fecha a notificação
+    event.notification.close();
+  }
+});
 
 // Background Sync (sincronizar com Firebase)
 self.addEventListener('sync', (event) => {
