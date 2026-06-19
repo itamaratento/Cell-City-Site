@@ -289,144 +289,118 @@
   }
 
   // ── Botão Global de Sons ────────────────────────────────────────────────────
-  function _lerUltimoSom() {
-    try {
-      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-      return log.find(function(e) { return e.tipo === 'som'; }) || null;
-    } catch(e) { return null; }
-  }
+  var _CC_LS_SONS = 'cc_sons_sistema';
+  var _CC_LS_LOG  = 'cc_eventos_log';
 
-  function _logBloqueio(origem, evento, motivo) {
+  function _somLog(ts, origem, evento, tipo, arquivo, status, motivo) {
     try {
-      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-      log.unshift({
-        ts: new Date().toISOString(),
-        origem: origem,
-        evento: evento,
-        tipo: 'bloqueado',
-        arquivo: '',
-        status: 'BLOQUEADO',
-        motivo: motivo
-      });
+      var log = JSON.parse(localStorage.getItem(_CC_LS_LOG) || '[]');
+      log.unshift({ ts: ts, origem: origem, evento: evento, tipo: tipo,
+                    arquivo: arquivo || '', status: status || '', motivo: motivo || '' });
       if (log.length > 300) log.length = 300;
-      localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-    } catch(e) {}
+      localStorage.setItem(_CC_LS_LOG, JSON.stringify(log));
+    } catch(ex) {}
   }
 
-  function _testarSom(btn) {
-    if (localStorage.getItem('cc_sons_sistema') !== 'true') {
-      _logBloqueio('Brand Header / Botão de Teste', 'Testar Som', 'cc_sons_sistema OFF');
-      btn.textContent = '🔇 Som bloqueado!';
-      setTimeout(function() { btn.textContent = '🔔 Testar Som'; }, 1500);
-      return;
-    }
-    try {
-      var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-      log.unshift({ ts: new Date().toISOString(), origem: 'Brand Header / Botão de Teste', evento: 'Teste manual de som', tipo: 'som', arquivo: 'AudioContext — sine 880 curto', status: 'EXECUTADO' });
-      if (log.length > 300) log.length = 300;
-      localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-    } catch(e) {}
-    try {
-      var Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      var ctx = new Ctx();
-      var osc = ctx.createOscillator(); var gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine'; osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.42);
-      osc.onended = function() { try { ctx.close(); } catch(e) {} };
-    } catch(e) {}
-    btn.textContent = '✅ Som tocado!';
-    setTimeout(function() { btn.textContent = '🔔 Testar Som'; }, 1500);
+  function _somUltimo() {
+    try { return (JSON.parse(localStorage.getItem(_CC_LS_LOG) || '[]')).find(function(e) { return e.tipo === 'som'; }) || null; }
+    catch(ex) { return null; }
   }
 
-  function _atualizarBotaoSom(btn) {
-    var on = localStorage.getItem('cc_sons_sistema') === 'true';
-    if (on) {
-      btn.innerHTML = '<span class="crm-audio-btn-icon">🔊</span><span class="crm-audio-btn-label">Sons ON</span>';
+  function _somFmt(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    return [d.getHours(), d.getMinutes(), d.getSeconds()].map(function(n) { return String(n).padStart(2,'0'); }).join(':')
+      + ' — ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
+  }
+
+  function _somOn() { return localStorage.getItem(_CC_LS_SONS) === 'true'; }
+
+  function _somBtnAtualizar(btn) {
+    if (_somOn()) {
+      btn.innerHTML = '<span class="crm-audio-btn-icon">🔊</span><span class="crm-audio-btn-label">Sons do Sistema</span>';
       btn.classList.remove('sons-off');
-      btn.title = 'Sons ativados — clique para desativar';
+      btn.title = 'Sons ATIVADOS — clique para desativar';
     } else {
-      btn.innerHTML = '<span class="crm-audio-btn-icon">🔇</span><span class="crm-audio-btn-label">Sons OFF</span>';
+      btn.innerHTML = '<span class="crm-audio-btn-icon">🔇</span><span class="crm-audio-btn-label">Sons do Sistema</span>';
       btn.classList.add('sons-off');
-      btn.title = 'Sons desativados — clique para ativar';
+      btn.title = 'Sons DESATIVADOS — clique para ativar';
     }
   }
 
-  function _renderPopupAudio(popup) {
-    var on = localStorage.getItem('cc_sons_sistema') === 'true';
-    var ultimo = _lerUltimoSom();
-    var fmtTs = function(iso) {
-      if (!iso) return '—';
-      var d = new Date(iso);
-      return [String(d.getHours()).padStart(2,'0'), String(d.getMinutes()).padStart(2,'0'), String(d.getSeconds()).padStart(2,'0')].join(':') +
-             ' — ' + String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0');
-    };
+  function _somPopupRender(popup, btn) {
+    var on = _somOn();
+    var ult = _somUltimo();
+    var statusCls = on ? 'crm-audio-popup-status-on' : 'crm-audio-popup-status-off';
     popup.innerHTML =
-      '<div class="crm-audio-popup-title">🎵 Central de Áudio</div>' +
+      '<div class="crm-audio-popup-title">🎵 Sons do Sistema</div>' +
       '<div class="crm-audio-popup-row">' +
-        '<span class="crm-audio-popup-label">Status do Sistema</span>' +
-        '<span class="' + (on ? 'crm-audio-popup-status-on' : 'crm-audio-popup-status-off') + '">' + (on ? '🔊 ATIVADO' : '🔇 DESATIVADO') + '</span>' +
+        '<span class="crm-audio-popup-label">Status atual</span>' +
+        '<span class="' + statusCls + '">' + (on ? '🔊 ATIVADOS' : '🔇 DESATIVADOS') + '</span>' +
       '</div>' +
-      '<div class="crm-audio-popup-row">' +
-        '<span class="crm-audio-popup-label">Horário</span>' +
-        '<span class="crm-audio-popup-val">' + (ultimo ? fmtTs(ultimo.ts) : '—') + '</span>' +
-      '</div>' +
-      '<div class="crm-audio-popup-row">' +
-        '<span class="crm-audio-popup-label">Módulo</span>' +
-        '<span class="crm-audio-popup-val">' + (ultimo ? ultimo.origem : '—') + '</span>' +
-      '</div>' +
-      '<div class="crm-audio-popup-row">' +
-        '<span class="crm-audio-popup-label">Evento</span>' +
-        '<span class="crm-audio-popup-val">' + (ultimo ? ultimo.evento : '—') + '</span>' +
-      '</div>' +
-      '<div class="crm-audio-popup-row">' +
-        '<span class="crm-audio-popup-label">Arquivo de Áudio</span>' +
-        '<span class="crm-audio-popup-val">' + (ultimo && ultimo.arquivo ? ultimo.arquivo : '—') + '</span>' +
-      '</div>' +
-      '<button class="crm-audio-test-btn" id="crm-audio-test-btn"' + (on ? '' : ' disabled') + '>🔔 Testar Som</button>';
+      (ult ? (
+        '<div class="crm-audio-popup-row"><span class="crm-audio-popup-label">Horário</span><span class="crm-audio-popup-val">' + _somFmt(ult.ts) + '</span></div>' +
+        '<div class="crm-audio-popup-row"><span class="crm-audio-popup-label">Módulo</span><span class="crm-audio-popup-val">' + (ult.origem || '—') + '</span></div>' +
+        '<div class="crm-audio-popup-row"><span class="crm-audio-popup-label">Evento</span><span class="crm-audio-popup-val">' + (ult.evento || '—') + '</span></div>' +
+        '<div class="crm-audio-popup-row"><span class="crm-audio-popup-label">Arquivo de Áudio</span><span class="crm-audio-popup-val">' + (ult.arquivo || '—') + '</span></div>'
+      ) : '<div class="crm-audio-popup-row"><span class="crm-audio-popup-label">Último som</span><span class="crm-audio-popup-val">Nenhum registrado</span></div>') +
+      '<button class="crm-audio-test-btn"' + (on ? '' : ' disabled') + '>🔔 Testar Som</button>';
+    popup.querySelector('.crm-audio-test-btn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      var b = e.currentTarget;
+      if (!_somOn()) {
+        _somLog(new Date().toISOString(), 'Botão Testar Som', 'Teste manual', 'bloqueado', '', 'BLOQUEADO', 'cc_sons_sistema = false');
+        b.textContent = '🔇 Bloqueado!';
+        setTimeout(function() { b.textContent = '🔔 Testar Som'; }, 1500);
+        return;
+      }
+      var ts = new Date().toISOString();
+      _somLog(ts, 'Botão Testar Som', 'Teste manual de som', 'som', 'AudioContext — sine 880', 'EXECUTADO', '');
+      try {
+        var C = window.AudioContext || window.webkitAudioContext;
+        var ctx = new C(); var osc = ctx.createOscillator(); var g = ctx.createGain();
+        osc.connect(g); g.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.25, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.42);
+        osc.onended = function() { try { ctx.close(); } catch(ex) {} };
+      } catch(ex) {}
+      b.textContent = '✅ Som tocado!';
+      setTimeout(function() { b.textContent = '🔔 Testar Som'; }, 1500);
+    });
   }
 
-  function criarBotaoSom() {
+  function criarBotaoSom(bar) {
     if (document.getElementById('crm-audio-toggle')) return;
+
+    // Default: sons desativados até o usuário ativar explicitamente
+    if (localStorage.getItem(_CC_LS_SONS) === null) localStorage.setItem(_CC_LS_SONS, 'false');
 
     var btn = document.createElement('button');
     btn.id = 'crm-audio-toggle';
     btn.className = 'crm-audio-btn crm-bar-migrated';
-    _atualizarBotaoSom(btn);
+    _somBtnAtualizar(btn);
 
     var popup = document.createElement('div');
     popup.className = 'crm-audio-popup';
-    popup.id = 'crm-audio-popup';
     btn.appendChild(popup);
 
-    // Toggle ao clicar no botão (não no popup interno)
+    // Clique no botão: toggle ON/OFF + abrir popup com info
     btn.addEventListener('click', function(e) {
-      if (e.target.id === 'crm-audio-test-btn') {
-        _testarSom(e.target);
-        return;
+      if (popup.contains(e.target)) return;
+      // Toggle
+      var novoEstado = !_somOn();
+      localStorage.setItem(_CC_LS_SONS, novoEstado ? 'true' : 'false');
+      if (!novoEstado) {
+        _somLog(new Date().toISOString(), 'Botão Global de Sons', 'Sons do Sistema desativados', 'sistema', '', '', 'Usuário desativou manualmente');
       }
-      if (popup.contains(e.target) && e.target !== btn) return;
-      // Se popup está aberto, fechar; se está fechado, abrir/atualizar
-      if (popup.classList.contains('open')) {
-        popup.classList.remove('open');
-        return;
-      }
-      _renderPopupAudio(popup);
+      _somBtnAtualizar(btn);
+      _somPopupRender(popup, btn);
       popup.classList.add('open');
       e.stopPropagation();
-    });
-
-    // Click no ícone/label: toggle som
-    btn.addEventListener('mousedown', function(e) {
-      if (e.target.classList.contains('crm-audio-btn-icon') || e.target.classList.contains('crm-audio-btn-label') || e.target === btn) {
-        if (!popup.classList.contains('open')) {
-          // apenas abrir popup (não toggle)
-        }
-      }
     });
 
     // Fechar popup ao clicar fora
@@ -434,36 +408,9 @@
       if (!btn.contains(e.target)) popup.classList.remove('open');
     }, true);
 
-    // Botão do lado esquerdo do popup: click em icon/label → toggle som
-    var iconEl = btn.querySelector('.crm-audio-btn-icon');
-    if (iconEl) {
-      iconEl.style.pointerEvents = 'none';
-    }
-
-    // Adicionar duplo comportamento: área do texto = toggle, ícone de seta = popup
-    // Simplificação: clique único → toggle + popup
-    btn.addEventListener('dblclick', function(e) {
-      e.stopPropagation();
-      var on = localStorage.getItem('cc_sons_sistema') !== 'true';
-      localStorage.setItem('cc_sons_sistema', on ? 'true' : 'false');
-      _atualizarBotaoSom(btn);
-      popup.classList.remove('open');
-    });
-
-    return btn;
-  }
-
-  // Evento: clique esquerdo = abrir popup; clique duplo = toggle
-  // Na verdade vamos simplificar: clique = toggle (mais intuitivo para diagnóstico)
-  function _setupToggleDirecto(btn, popup) {
-    btn.addEventListener('click', function(e) {
-      if (popup.contains(e.target) && e.target !== btn) return;
-      var on = localStorage.getItem('cc_sons_sistema') !== 'true';
-      localStorage.setItem('cc_sons_sistema', on ? 'true' : 'false');
-      _atualizarBotaoSom(btn);
-      // Atualizar popup se estiver aberto
-      if (popup.classList.contains('open')) _renderPopupAudio(popup);
-    }, true);
+    var siteBtn = bar.querySelector('.crm-site-cc-btn, .site-cc-btn');
+    if (siteBtn) bar.insertBefore(btn, siteBtn);
+    else bar.appendChild(btn);
   }
 
   function attachHandler(el) {
@@ -541,6 +488,8 @@
           siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
           right.prepend(siteBtn);
         }
+        // Injeta botão de som no dashboard
+        criarBotaoSom(right || topBar);
       }
       return;
     }
@@ -601,6 +550,9 @@
 
       if (titleEl) installTitle(bar, titleEl);
     }
+
+    // Injeta botão de som (antes do siteBtn, que criarBotaoSom detecta automaticamente)
+    criarBotaoSom(bar);
 
     // Insere o brand bar como o 1º filho do body — completamente independente
     document.body.insertBefore(bar, document.body.firstChild);

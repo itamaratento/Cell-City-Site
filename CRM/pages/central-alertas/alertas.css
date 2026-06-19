@@ -1125,6 +1125,14 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 .diag-motivo-text { font-size: 11px; color: var(--text3); font-style: italic; }
 .diag-motivo { max-width: 200px; }
 
+/* Status Atual dos Sons */
+.diag-status-atual { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: rgba(255,255,255,0.02); margin-bottom: 14px; }
+.diag-status-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); white-space: nowrap; }
+.diag-status-valor { font-size: 15px; font-weight: 800; letter-spacing: 0.02em; white-space: nowrap; }
+.diag-status-on  { color: #4ade80; }
+.diag-status-off { color: #f87171; }
+.diag-status-hint { font-size: 11.5px; color: var(--text3); flex: 1; }
+
 /* Seção sons bloqueados recentes */
 .diag-blq-secao { background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; }
 .diag-blq-titulo { font-size: 13px; font-weight: 700; color: #f87171; margin-bottom: 10px; }

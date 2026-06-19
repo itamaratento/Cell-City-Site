@@ -19,10 +19,11 @@ function _lerConfig() {
 }
 
 export function ccSonsHabilitados(categoria = 'geral') {
+    // Verificar chave global do botão do header (controle primário do usuário)
+    if (localStorage.getItem('cc_sons_sistema') !== 'true') return false;
+    // Verificar config detalhada por categoria
     const cfg = _lerConfig();
-    // Sistema inteiro desligado
     if (cfg.sonsSistema === false) return false;
-    // Categoria específica desligada
     if (categoria && cfg[categoria] === false) return false;
     return true;
 }

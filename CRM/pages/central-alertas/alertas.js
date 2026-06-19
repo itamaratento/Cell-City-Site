@@ -1293,6 +1293,16 @@ function renderDiagnostico() {
         </div>
     </div>` : `<div class="diag-sem-som">✅ Nenhum som registrado nesta sessão.</div>`}
 
+    <div class="diag-status-atual">
+        <div class="diag-status-titulo">Sons do Sistema</div>
+        <div class="diag-status-valor ${localStorage.getItem('cc_sons_sistema') === 'true' ? 'diag-status-on' : 'diag-status-off'}">
+            ${localStorage.getItem('cc_sons_sistema') === 'true' ? '🔊 ATIVADOS' : '🔇 DESATIVADOS'}
+        </div>
+        <div class="diag-status-hint">${localStorage.getItem('cc_sons_sistema') === 'true'
+            ? 'O botão 🔊 Sons do Sistema no cabeçalho está ON.'
+            : 'O botão 🔇 Sons do Sistema no cabeçalho está OFF — nenhum som será executado.'}</div>
+    </div>
+
     ${bloqueados.length ? `
     <div class="diag-blq-secao">
         <div class="diag-blq-titulo">🔇 Sons Bloqueados Recentes</div>
