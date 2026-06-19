@@ -238,9 +238,7 @@ body {
    específicas do Dashboard.
    ============================================= */
 
-body:has(#sidebar-left.collapsed) .brand-header-abbrev {
-  display: inline;
-}
+
 
 /* ============ RELÓGIO PREMIUM (REPOSICIONADO) ============ */
 .meta-clock {

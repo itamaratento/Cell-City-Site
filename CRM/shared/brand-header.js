@@ -33,34 +33,35 @@
     .brand-header {
       display: flex;
       align-items: center;
-      padding: 6px 14px;
-      background: rgba(0, 200, 83, 0.06);
-      border: 1px solid rgba(0, 200, 83, 0.25);
-      border-radius: 12px;
-      transition: all 250ms cubic-bezier(0.4,0,0.2,1);
+      padding: 5px 16px;
+      background: linear-gradient(135deg, rgba(0, 200, 83, 0.08) 0%, rgba(0, 200, 83, 0.02) 100%);
+      border: 1px solid rgba(0, 200, 83, 0.2);
+      border-radius: 10px;
+      transition: all 300ms cubic-bezier(0.22, 1, 0.36, 1);
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
       position: relative;
-      box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.1);
+      box-shadow: 0 0 12px rgba(0, 200, 83, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.04);
     }
     .brand-header::before {
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
-      opacity: 0.6;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(0, 230, 118, 0.12) 0%, transparent 60%);
+      opacity: 0.5;
       pointer-events: none;
     }
     .brand-header:hover {
-      background: rgba(0, 200, 83, 0.10);
-      border-color: rgba(0, 200, 83, 0.45);
-      box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.15);
+      background: linear-gradient(135deg, rgba(0, 200, 83, 0.14) 0%, rgba(0, 200, 83, 0.04) 100%);
+      border-color: rgba(0, 200, 83, 0.4);
+      box-shadow: 0 0 24px rgba(0, 200, 83, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      transform: translateY(-1px);
     }
     .brand-header:active {
-      transform: translateY(0);
-      opacity: 0.85;
+      transform: translateY(0px) scale(0.98);
+      opacity: 0.9;
     }
     .brand-header-text {
       display: flex;
@@ -71,40 +72,31 @@
     }
     .brand-header-title {
       font-size: 15px;
-      font-weight: 900;
-      letter-spacing: -0.03em;
+      font-weight: 800;
+      letter-spacing: -0.02em;
       white-space: nowrap;
-      background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+      background: linear-gradient(135deg, #00e676 0%, #00c853 60%, #00b248 100%);
       -webkit-background-clip: text;
       background-clip: text;
       -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 8px rgba(0, 200, 83, 0.4));
+      filter: drop-shadow(0 0 6px rgba(0, 200, 83, 0.25));
     }
     .brand-header-divider {
       height: 1px;
-      background: linear-gradient(90deg, #00c853 0%, rgba(0, 200, 83, 0.2) 70%, transparent 100%);
-      margin: 2px 0;
+      background: linear-gradient(90deg, rgba(0, 200, 83, 0.6) 0%, rgba(0, 200, 83, 0.15) 60%, transparent 100%);
+      margin: 2px 0 3px;
       width: 100%;
-      opacity: 0.7;
+      opacity: 0.6;
+      border-radius: 1px;
     }
     .brand-header-subtitle {
-      font-size: 10.5px;
-      color: #a1a8b3;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-      text-transform: uppercase;
-    }
-    .brand-header-abbrev {
-      display: inline;
       font-size: 10px;
-      color: #a1a8b3;
-      font-weight: 700;
+      color: rgba(161, 168, 179, 0.85);
+      font-weight: 500;
       letter-spacing: 0.12em;
       white-space: nowrap;
       text-transform: uppercase;
     }
-
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
        Título sempre no centro ABSOLUTO da barra — fora do fluxo flex.
        Isso garante centralização visual real independente da largura do
@@ -177,7 +169,6 @@
 
     /* Logo compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header-abbrev { display: block; }
       .brand-header { padding: 6px 10px; }
     }
 
@@ -284,7 +275,6 @@
         <div class="brand-header-title">Cell City Informática</div>
         <div class="brand-header-divider"></div>
         <div class="brand-header-subtitle">Gestão Empresarial</div>
-        <div class="brand-header-abbrev">GESTÃO</div>
       </div>
     </div>
   `;
