@@ -579,6 +579,28 @@ main { padding: 0; }
 /* ── Stats financeiras (itens largos) ── */
 .crm-stat-wide { grid-column: span 1; }
 
+/* ── PRE-OS badge ── */
+.crm-preos-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a78bfa;
+  background: rgba(167,139,250,0.12);
+  border: 1px solid rgba(167,139,250,0.25);
+  border-radius: 100px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+.crm-preos-detalhe {
+  font-size: 12px;
+  font-weight: 700;
+  color: #a78bfa;
+  margin-top: 3px;
+  letter-spacing: 0.04em;
+}
+
 /* ── Banco de Leads — filtros ── */
 .crm-filtros-bar {
   background: var(--bg-surface);

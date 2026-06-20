@@ -1,6 +1,6 @@
 import {
   db, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc,
-  query, orderBy, onSnapshot, serverTimestamp
+  query, orderBy, where, getDocs, onSnapshot, serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
 
 // ── Status do funil ──────────────────────────────────────────
@@ -26,6 +26,23 @@ const MOTIVOS_PERDA = [
 ];
 
 function getMotivo(key) { return MOTIVOS_PERDA.find(m => m.key === key)?.label || key || '—'; }
+
+// ── PRE-OS: numeração sequencial ──────────────────────────────
+async function gerarPreOsId() {
+  const counterRef = doc(db, 'config', 'crm_pre_os_counter');
+  let num = 1;
+  try {
+    await runTransaction(db, async tx => {
+      const snap = await tx.get(counterRef);
+      num = (snap.exists() ? (snap.data().ultimo || 0) : 0) + 1;
+      tx.set(counterRef, { ultimo: num }, { merge: true });
+    });
+  } catch(e) {
+    console.warn('Erro ao gerar PRE-OS:', e);
+    num = Date.now() % 10000;
+  }
+  return `PRE-OS-${String(num).padStart(3, '0')}`;
+}
 
 // ── Estado ────────────────────────────────────────────────────
 let leads              = [];
@@ -477,7 +494,7 @@ function renderLista() {
       <div class="crm-card-top">
         <span class="crm-card-icon">${st.icon}</span>
         <div class="crm-card-main">
-          <div class="crm-card-nome">${esc(lead.nome || '—')}</div>
+          <div class="crm-card-nome">${esc(lead.nome || '—')}${lead.preOsId ? `<span class="crm-preos-badge">${esc(lead.preOsId)}</span>` : ''}</div>
           <div class="crm-card-meta">
             <span class="crm-badge ${st.badgeClass}">${st.label}</span>
             ${hist}
@@ -510,6 +527,7 @@ function buildDetalheHtml(lead) {
       <div>
         <div class="crm-detalhe-nome">${esc(lead.nome || '—')}</div>
         <div class="crm-detalhe-phone">📞 ${esc(lead.telefone || '—')}</div>
+        ${lead.preOsId ? `<div class="crm-preos-detalhe">${esc(lead.preOsId)}</div>` : ''}
       </div>
       <span class="crm-badge ${st.badgeClass}" style="font-size:12px;padding:4px 10px">${st.label}</span>
     </div>
@@ -725,8 +743,10 @@ window.submitForm = async function(e) {
     if (editingId) {
       await updateDoc(doc(db, 'crm_leads', editingId), { ...data, atualizadoEm: serverTimestamp() });
     } else {
+      const preOsId = await gerarPreOsId();
       const ref = await addDoc(collection(db, 'crm_leads'), {
         ...data,
+        preOsId,
         criadoEm:     serverTimestamp(),
         atualizadoEm: serverTimestamp()
       });
@@ -820,7 +840,8 @@ window.converterEmOS = async function(id) {
     defeito:   lead.servico  || '',
     valor:     lead.valor    ? String(lead.valor) : '',
     obs:       lead.obs      || '',
-    crmLeadId: id
+    crmLeadId: id,
+    preOsId:   lead.preOsId || ''
   }));
 
   try {
