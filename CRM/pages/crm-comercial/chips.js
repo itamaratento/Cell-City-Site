@@ -603,4 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('crm-sb')?.classList.remove('open');
     document.getElementById('crm-sb-overlay')?.classList.remove('open');
   });
+
+  const msg = sessionStorage.getItem('chips_msg');
+  if (msg) { sessionStorage.removeItem('chips_msg'); setTimeout(() => showToast(msg), 600); }
 });
