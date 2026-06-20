@@ -98,6 +98,22 @@
            placeholder="(62) 99999-9999" inputmode="numeric">
   </div>
 
+  <!-- SENHA DO CELULAR -->
+  <div class="ent-field">
+    <label class="ent-label">🔑 Senha PIN / Numérica</label>
+    <input type="text" id="f-senha" class="ent-input"
+           placeholder="Ex: 1234" inputmode="numeric" autocomplete="off">
+  </div>
+
+  <!-- SENHA PADRÃO -->
+  <div class="ent-field">
+    <label class="ent-label">🔒 Senha Padrão (Desenho)</label>
+    <button type="button" class="ent-btn-pattern" onclick="openChipPattern()">
+      📱 Registrar Padrão Android
+    </button>
+    <div id="chip-padrao-summary" style="display:none" class="ent-padrao-ok"></div>
+  </div>
+
   <!-- OBSERVAÇÕES (recolhido) -->
   <div class="ent-mais-wrap">
     <button type="button" class="ent-mais-toggle" id="mais-btn" onclick="toggleMais()">
@@ -127,6 +143,20 @@
 </main>
 
 <div class="ent-toast" id="ent-toast"></div>
+
+<!-- Modal Padrão Android -->
+<div class="ent-overlay" id="chip-pattern-overlay" onclick="closeChipPattern(event)">
+  <div class="ent-pattern-modal">
+    <h3 class="ent-pattern-title">📱 Registrar Padrão Android</h3>
+    <p class="ent-pattern-hint">Arraste para conectar os pontos na ordem do padrão</p>
+    <canvas id="chip-pattern-canvas" width="300" height="300" class="ent-pattern-canvas"></canvas>
+    <div class="ent-pattern-btns">
+      <button type="button" class="ent-pattern-btn-sec" onclick="clearChipPattern()">🗑️ Limpar</button>
+      <button type="button" class="ent-pattern-btn-pri" onclick="saveChipPattern()">💾 Salvar</button>
+    </div>
+    <button type="button" class="ent-pattern-btn-cancel" onclick="closeChipPattern()">Cancelar</button>
+  </div>
+</div>
 
 <script type="module" src="chips-entrada.js"></script>
 </body>

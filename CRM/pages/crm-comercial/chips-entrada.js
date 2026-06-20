@@ -26,6 +26,132 @@ const CHIP_STATUS = [
 // ── Estado ────────────────────────────────────────────────────
 let operadoraSelecionada = '';
 let statusSelecionado    = 'novo_cadastro';
+let tempPattern          = null;
+
+// ── Pattern lock ──────────────────────────────────────────────
+let _patCanvas = null, _patCtx = null, _patPoints = [];
+let _patSeq = [], _patPath = [], _patDrawing = false;
+
+function initPatCanvas() {
+  _patCanvas = document.getElementById('chip-pattern-canvas');
+  if (!_patCanvas) return;
+  _patCtx = _patCanvas.getContext('2d');
+  const sz = 300, pd = 50, sp = (sz - 2 * pd) / 2;
+  _patPoints = [];
+  for (let r = 0; r < 3; r++)
+    for (let c = 0; c < 3; c++)
+      _patPoints.push({ x: pd + c * sp, y: pd + r * sp, index: r * 3 + c });
+  _patSeq = []; _patPath = [];
+  drawDots();
+  _patCanvas.removeEventListener('mousedown', patStart);
+  _patCanvas.addEventListener('mousedown', patStart);
+  _patCanvas.addEventListener('mousemove', patMove);
+  _patCanvas.addEventListener('mouseup',   patStop);
+  _patCanvas.addEventListener('mouseout',  patStop);
+  _patCanvas.addEventListener('touchstart', e => { e.preventDefault(); patStart(touchEv(e)); }, { passive: false });
+  _patCanvas.addEventListener('touchmove',  e => { e.preventDefault(); patMove(touchEv(e)); },  { passive: false });
+  _patCanvas.addEventListener('touchend',   e => { e.preventDefault(); patStop(); },             { passive: false });
+}
+
+function touchEv(e) {
+  const r = _patCanvas.getBoundingClientRect();
+  const scaleX = _patCanvas.width  / r.width;
+  const scaleY = _patCanvas.height / r.height;
+  return { offsetX: (e.touches[0].clientX - r.left) * scaleX, offsetY: (e.touches[0].clientY - r.top) * scaleY };
+}
+
+function nearestPt(x, y) {
+  let c = null, m = Infinity;
+  for (const p of _patPoints) {
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < 28 && d < m) { m = d; c = p; }
+  }
+  return c;
+}
+
+function patStart(e) {
+  _patDrawing = true; _patPath = []; _patSeq = [];
+  const p = nearestPt(e.offsetX, e.offsetY);
+  if (p) { _patPath.push(p); _patSeq.push(p.index); drawDots(); }
+}
+
+function patMove(e) {
+  if (!_patDrawing) return;
+  const p = nearestPt(e.offsetX, e.offsetY);
+  if (p && !_patPath.includes(p)) { _patPath.push(p); _patSeq.push(p.index); drawDots(); }
+}
+
+function patStop() {
+  if (!_patDrawing) return;
+  _patDrawing = false;
+  if (_patSeq.length < 2) { _patSeq = []; _patPath = []; drawDots(); }
+}
+
+function drawDots() {
+  if (!_patCtx || !_patCanvas) return;
+  _patCtx.clearRect(0, 0, _patCanvas.width, _patCanvas.height);
+  if (_patPath.length > 1) {
+    _patCtx.strokeStyle = '#00C853'; _patCtx.lineWidth = 3;
+    _patCtx.lineCap = 'round'; _patCtx.lineJoin = 'round';
+    _patCtx.shadowBlur = 10; _patCtx.shadowColor = 'rgba(0,200,83,0.5)';
+    _patCtx.beginPath();
+    _patCtx.moveTo(_patPath[0].x, _patPath[0].y);
+    for (let i = 1; i < _patPath.length; i++) _patCtx.lineTo(_patPath[i].x, _patPath[i].y);
+    _patCtx.stroke(); _patCtx.shadowBlur = 0;
+  }
+  for (const p of _patPoints) {
+    const conn = _patPath.includes(p);
+    const last = p === _patPath[_patPath.length - 1];
+    _patCtx.beginPath();
+    _patCtx.arc(p.x, p.y, conn ? 14 : 10, 0, Math.PI * 2);
+    if      (last) { _patCtx.fillStyle = '#00E676'; _patCtx.shadowBlur = 15; _patCtx.shadowColor = 'rgba(0,200,83,0.6)'; }
+    else if (conn) { _patCtx.fillStyle = '#00C853'; _patCtx.shadowBlur = 8;  _patCtx.shadowColor = 'rgba(0,200,83,0.4)'; }
+    else           { _patCtx.fillStyle = '#6b7280'; _patCtx.shadowBlur = 0; }
+    _patCtx.fill(); _patCtx.shadowBlur = 0;
+  }
+}
+
+window.openChipPattern = function() {
+  document.getElementById('chip-pattern-overlay')?.classList.add('open');
+  setTimeout(initPatCanvas, 80);
+};
+
+window.closeChipPattern = function(e) {
+  if (e && e.target?.id !== 'chip-pattern-overlay') return;
+  document.getElementById('chip-pattern-overlay')?.classList.remove('open');
+};
+
+window.clearChipPattern = function() { _patSeq = []; _patPath = []; drawDots(); };
+
+window.saveChipPattern = function() {
+  if (_patSeq.length < 4) { showToast('⚠️ O padrão precisa de pelo menos 4 pontos'); return; }
+  tempPattern = [..._patSeq];
+  document.getElementById('chip-pattern-overlay')?.classList.remove('open');
+  refreshPadraoSummary();
+  showToast('✅ Padrão registrado!');
+};
+
+function refreshPadraoSummary() {
+  const el = document.getElementById('chip-padrao-summary');
+  if (!el) return;
+  if (tempPattern?.length) {
+    el.style.display = '';
+    el.innerHTML = `
+      <div class="ent-padrao-ok-title">✅ Padrão registrado (${tempPattern.length} pontos)</div>
+      <div class="ent-padrao-ok-btns">
+        <button type="button" onclick="openChipPattern()">✏️ Editar</button>
+        <button type="button" onclick="limparChipPadrao()">🗑️ Limpar</button>
+      </div>`;
+  } else {
+    el.style.display = 'none'; el.innerHTML = '';
+  }
+}
+
+window.limparChipPadrao = function() {
+  tempPattern = null;
+  refreshPadraoSummary();
+  showToast('🗑️ Padrão removido');
+};
 
 // ── Render chips de operadora ─────────────────────────────────
 function renderOperadoras() {
@@ -161,6 +287,8 @@ window.salvarChip = async function(e) {
       dataNascimento: nasc,
       telefone:       (document.getElementById('f-telefone')?.value || '').trim(),
       numeroGerado:   (document.getElementById('f-numero')?.value   || '').trim(),
+      senhaPin:        (document.getElementById('f-senha')?.value || '').trim(),
+      patternSequence: tempPattern ? [...tempPattern] : null,
       obs:            (document.getElementById('f-obs')?.value      || '').trim(),
       status:         statusSelecionado,
       historico:      [{ acao: 'Criado', data: new Date().toISOString() }],
