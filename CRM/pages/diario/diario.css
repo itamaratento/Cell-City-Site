@@ -931,6 +931,260 @@ main { padding: 0; }
 .dia-modal-titulo { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
 .dia-modal-body { font-size: 14px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.5; }
 
+/* ====================================================================
+   METAS — Abas do editor + Cards + Formulário + Lista Geral
+   ==================================================================== */
+
+/* ── Abas Conteúdo / Metas ── */
+.dia-editor-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--border-subtle);
+}
+.dia-editor-tab {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 16px 9px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dia-editor-tab:hover { color: var(--text-primary); }
+.dia-editor-tab.active {
+  color: var(--cell-green);
+  border-bottom-color: var(--cell-green);
+}
+.dia-metas-tab-count {
+  background: var(--cell-green);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+.dia-editor-tab-panel { display: none; }
+.dia-editor-tab-panel.active { display: block; }
+
+/* ── Seção de Metas (dentro do editor) ── */
+.dia-metas-novo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.dia-btn-meta-nova {
+  background: var(--cell-green);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s;
+}
+.dia-btn-meta-nova:hover { background: var(--cell-green-light); }
+.dia-metas-hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+/* ── Formulário inline de meta ── */
+.dia-form-meta {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.dia-form-meta-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.dia-meta-modo-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.dia-meta-modo-btn {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.dia-meta-modo-btn.active {
+  background: var(--cell-green);
+  color: #000;
+  border-color: var(--cell-green);
+}
+.dia-meta-form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dia-meta-form-row .dia-form-group { min-width: 120px; }
+.dia-meta-lote-dica {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 4px;
+}
+.dia-meta-btns { margin-top: 4px; }
+
+/* ── Card de Meta ── */
+.dia-meta-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  transition: border-color .15s;
+}
+.dia-meta-card:hover { border-color: var(--border-medium); }
+.dia-meta-card.meta-concluida { opacity: 0.6; }
+.dia-meta-card.meta-prio-urgente { border-left: 3px solid #f87171; }
+.dia-meta-card.meta-prio-alta    { border-left: 3px solid #ef4444; }
+.dia-meta-card.meta-prio-media   { border-left: 3px solid #facc15; }
+.dia-meta-card.meta-prio-baixa   { border-left: 3px solid #4ade80; }
+
+.dia-meta-card-left { flex-shrink: 0; padding-top: 1px; }
+.dia-meta-check {
+  background: none;
+  border: 2px solid var(--border-strong);
+  border-radius: 4px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-secondary);
+  transition: all .15s;
+}
+.dia-meta-check:hover { border-color: var(--cell-green); color: var(--cell-green); }
+.dia-meta-check.checked { border-color: var(--cell-green); background: var(--cell-green); color: #000; }
+
+.dia-meta-card-body { flex: 1; min-width: 0; }
+.dia-meta-nome {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.meta-concluida .dia-meta-nome { text-decoration: line-through; color: var(--text-tertiary); }
+.dia-meta-obs {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.dia-meta-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.dia-meta-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.dia-meta-badge.prio-urgente { background: rgba(248,113,113,.18); color: #f87171; }
+.dia-meta-badge.prio-alta    { background: rgba(239,68,68,.15);  color: #ef4444; }
+.dia-meta-badge.prio-media   { background: rgba(250,204,21,.15); color: #facc15; }
+.dia-meta-badge.prio-baixa   { background: rgba(74,222,128,.15); color: #4ade80; }
+.dia-meta-badge.status-pendente     { background: rgba(161,168,179,.12); color: var(--text-secondary); }
+.dia-meta-badge.status-em_andamento { background: rgba(59,130,246,.15); color: #60a5fa; }
+.dia-meta-badge.status-concluida    { background: rgba(0,200,83,.15);   color: var(--cell-green); }
+.dia-meta-badge.status-cancelada    { background: rgba(239,68,68,.12);  color: #f87171; }
+
+.dia-meta-card-acoes {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.dia-meta-acao-btn {
+  background: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 4px 7px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all .15s;
+}
+.dia-meta-acao-btn:hover { background: var(--bg-hover); border-color: var(--border-medium); color: var(--text-primary); }
+.dia-meta-acao-btn.dia-meta-acao-del:hover { color: var(--accent-red); border-color: var(--accent-red); }
+
+.dia-metas-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  border: 1px dashed var(--border-subtle);
+}
+
+/* ── Lista Geral de Metas ── */
+.dia-metas-geral { margin-top: 4px; }
+.dia-metas-geral-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.dia-mg-grupo { margin-bottom: 18px; }
+.dia-mg-grupo-titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: var(--bg-elevated);
+  border-radius: 7px;
+  border: 1px solid var(--border-subtle);
+}
+.dia-mg-btn-abrir {
+  background: none;
+  border: 1px solid var(--border-medium);
+  border-radius: 5px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all .15s;
+}
+.dia-mg-btn-abrir:hover { color: var(--cell-green); border-color: var(--cell-green); }
+.dia-mg-card { margin-left: 10px; }
+
 /* ── Responsivo ── */
 @media (max-width: 760px) {
   .dia-resumo { grid-template-columns: repeat(3, 1fr); }

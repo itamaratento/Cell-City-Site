@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Diário</title>
-    <link rel="stylesheet" href="diario.css?v=20260617b">
+    <link rel="stylesheet" href="diario.css?v=20260620a">
     <link rel="stylesheet" href="../../shared/dock.css">
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -45,6 +45,11 @@
                     <span class="dia-sb-icon">🔔</span>
                     <span class="dia-sb-label">Revisões</span>
                     <span class="dia-sb-count" id="dia-sb-count-rev">0</span>
+                </div>
+                <div class="dia-sb-item" data-cat="__metas__" data-sub="">
+                    <span class="dia-sb-icon">📋</span>
+                    <span class="dia-sb-label">Metas</span>
+                    <span class="dia-sb-count" id="dia-sb-count-metas">0</span>
                 </div>
 
                 <div class="dia-sb-sep"></div>
@@ -86,8 +91,93 @@
                         <input type="text" id="dia-inp-titulo" class="dia-titulo-input" placeholder="Título do registro..." maxlength="200">
                     </div>
 
-                    <div class="dia-form-group dia-editor-conteudo">
-                        <textarea id="dia-inp-conteudo" class="dia-conteudo-big" placeholder="Comece a escrever..."></textarea>
+                    <!-- Abas Conteúdo / Metas -->
+                    <div class="dia-editor-tabs">
+                        <button class="dia-editor-tab active" data-tab="conteudo">📝 Conteúdo</button>
+                        <button class="dia-editor-tab" data-tab="metas">📋 Metas <span class="dia-metas-tab-count" id="dia-metas-tab-count"></span></button>
+                    </div>
+
+                    <!-- Painel: Conteúdo -->
+                    <div class="dia-editor-tab-panel active" id="dia-tab-conteudo">
+                        <div class="dia-form-group dia-editor-conteudo">
+                            <textarea id="dia-inp-conteudo" class="dia-conteudo-big" placeholder="Comece a escrever..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Painel: Metas -->
+                    <div class="dia-editor-tab-panel" id="dia-tab-metas">
+
+                        <div class="dia-metas-novo-wrap" id="dia-metas-novo-wrap">
+                            <button class="dia-btn-meta-nova" id="dia-btn-nova-meta">＋ Adicionar Meta</button>
+                            <span class="dia-metas-hint" id="dia-metas-hint" style="display:none">Salve um título para adicionar metas</span>
+                        </div>
+
+                        <!-- Formulário de nova/editar meta -->
+                        <div class="dia-form-meta" id="dia-form-meta" style="display:none">
+                            <div class="dia-form-meta-titulo" id="dia-form-meta-titulo">Nova Meta</div>
+
+                            <!-- Toggle individual / lote -->
+                            <div class="dia-meta-modo-toggle" id="dia-meta-modo-toggle">
+                                <button class="dia-meta-modo-btn active" id="dia-meta-modo-individual" onclick="DiarMetas.setModo('individual')">1 Meta</button>
+                                <button class="dia-meta-modo-btn" id="dia-meta-modo-lote" onclick="DiarMetas.setModo('lote')">📋 Várias de uma vez</button>
+                            </div>
+
+                            <!-- Campos individuais -->
+                            <div id="dia-meta-campos-individual">
+                                <div class="dia-meta-form-row">
+                                    <div class="dia-form-group" style="flex:1">
+                                        <label>Nome da Meta *</label>
+                                        <input type="text" id="dia-meta-inp-nome" placeholder="Ex: Definir valor da entrada..." maxlength="200">
+                                    </div>
+                                </div>
+                                <div class="dia-meta-form-row">
+                                    <div class="dia-form-group">
+                                        <label>Prioridade</label>
+                                        <select id="dia-meta-inp-prio">
+                                            <option value="baixa">🟢 Baixa</option>
+                                            <option value="media" selected>🟡 Média</option>
+                                            <option value="alta">🔴 Alta</option>
+                                            <option value="urgente">🚨 Urgente</option>
+                                        </select>
+                                    </div>
+                                    <div class="dia-form-group">
+                                        <label>Status</label>
+                                        <select id="dia-meta-inp-status">
+                                            <option value="pendente" selected>⏳ Pendente</option>
+                                            <option value="em_andamento">🔄 Em andamento</option>
+                                            <option value="concluida">✅ Concluída</option>
+                                            <option value="cancelada">❌ Cancelada</option>
+                                        </select>
+                                    </div>
+                                    <div class="dia-form-group" style="flex:1">
+                                        <label>Observação (opcional)</label>
+                                        <input type="text" id="dia-meta-inp-obs" placeholder="Detalhes adicionais..." maxlength="300">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Modo lote -->
+                            <div id="dia-meta-campos-lote" style="display:none">
+                                <div class="dia-form-group">
+                                    <label>Uma meta por linha:</label>
+                                    <textarea id="dia-meta-inp-lote" rows="6"
+                                        placeholder="Definir valor da entrada&#10;Escolher terreno&#10;Planejar mudança&#10;Organizar documentos"></textarea>
+                                </div>
+                                <div class="dia-meta-lote-dica">Cada linha vira uma meta separada automaticamente.</div>
+                            </div>
+
+                            <div class="dia-form-btns dia-meta-btns">
+                                <button class="dia-btn-salvar" onclick="DiarMetas.salvar()">Salvar</button>
+                                <button class="dia-btn-cancelar" onclick="DiarMetas.fecharForm()">Cancelar</button>
+                            </div>
+                        </div>
+
+                        <!-- Lista de metas do registro -->
+                        <div id="dia-metas-lista"></div>
+                        <div class="dia-metas-empty" id="dia-metas-empty" style="display:none">
+                            <span>📋</span>
+                            <span>Nenhuma meta ainda. Clique em <strong>＋ Adicionar Meta</strong> para começar.</span>
+                        </div>
                     </div>
 
                     <div class="dia-detalhes" id="dia-detalhes">
@@ -200,6 +290,35 @@
                         <div class="dia-empty-sub">Clique em <strong>＋ Novo</strong> para começar.</div>
                     </div>
                 </section>
+
+                <!-- Lista Geral de Metas (painel lateral, ativado pela sidebar) -->
+                <div class="dia-metas-geral" id="dia-metas-geral" style="display:none">
+                    <div class="dia-metas-geral-toolbar">
+                        <select id="dia-mg-filtro-status" class="dia-filtro">
+                            <option value="">⏺ Todos status</option>
+                            <option value="pendente">⏳ Pendente</option>
+                            <option value="em_andamento">🔄 Em andamento</option>
+                            <option value="concluida">✅ Concluída</option>
+                            <option value="cancelada">❌ Cancelada</option>
+                        </select>
+                        <select id="dia-mg-filtro-prio" class="dia-filtro">
+                            <option value="">🚩 Todas prioridades</option>
+                            <option value="urgente">🚨 Urgente</option>
+                            <option value="alta">🔴 Alta</option>
+                            <option value="media">🟡 Média</option>
+                            <option value="baixa">🟢 Baixa</option>
+                        </select>
+                    </div>
+                    <div class="dia-loading" id="dia-mg-loading" style="display:none">
+                        <div class="dia-spinner"></div><span>Carregando metas...</span>
+                    </div>
+                    <div id="dia-mg-lista"></div>
+                    <div class="dia-empty" id="dia-mg-empty" style="display:none">
+                        <div class="dia-empty-icon">📋</div>
+                        <div class="dia-empty-title">Nenhuma meta encontrada</div>
+                        <div class="dia-empty-sub">As metas aparecem conforme você as adiciona nos registros.</div>
+                    </div>
+                </div>
 
                 <!-- ============ PAINÉIS INFERIORES (recolhíveis) ============ -->
 
@@ -358,7 +477,7 @@
 
     <script src="../../shared/brand-header.js"></script>
 <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="diario.js?v=20260617b"></script>
+    <script type="module" src="diario.js?v=20260620a"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

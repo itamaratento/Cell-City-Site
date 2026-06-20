@@ -10,6 +10,7 @@ const STATUS = [
   { key: 'aguardando_resposta', label: 'Aguardando Resposta', icon: '⏳', dotColor: '#a78bfa',  badgeClass: 'crm-badge-aguardando' },
   { key: 'negociacao',          label: 'Negociação',          icon: '🤝', dotColor: '#fb923c',  badgeClass: 'crm-badge-negociacao' },
   { key: 'fechado',             label: 'Fechado',             icon: '✅', dotColor: '#00c853',  badgeClass: 'crm-badge-fechado' },
+  { key: 'pre_os',              label: 'Pré-OS',              icon: '📋', dotColor: '#f59e0b',  badgeClass: 'crm-badge-preos' },
   { key: 'perdido',             label: 'Perdido',             icon: '❌', dotColor: '#f87171',  badgeClass: 'crm-badge-perdido' }
 ];
 
@@ -297,6 +298,13 @@ function renderHomeGrid() {
   const grid = document.getElementById('crm-home-grid');
   if (!grid) return;
 
+  // Card destacado: Novo Cliente
+  const novoCard = `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
+    <span class="crm-home-icon">👤</span>
+    <span class="crm-home-nome">Novo Cliente</span>
+    <span class="crm-home-count" style="color:var(--cell-green);background:rgba(0,200,83,0.15);font-size:20px;font-weight:900">＋</span>
+  </div>`;
+
   const cards = STATUS.map(s => {
     const n   = count(s.key);
     const cls = n === 0 ? 'crm-home-count crm-home-count-zero' : 'crm-home-count';
@@ -319,7 +327,7 @@ function renderHomeGrid() {
     <span class="crm-home-count">${leads.length}</span>
   </div>`);
 
-  grid.innerHTML = cards.join('');
+  grid.innerHTML = novoCard + cards.join('');
 }
 
 // ── Painel de estatísticas ───────────────────────────────────
@@ -509,11 +517,17 @@ function renderLista() {
   }).join('');
 }
 
+// ── Lock label helper ────────────────────────────────────────
+function getLockLabel(t) {
+  return { Numerica: 'PIN / Numérica', Padrao: 'Padrão (desenho)', Biometria: 'Biometria / Face ID' }[t] || t;
+}
+
 // ── Detalhe do lead ──────────────────────────────────────────
 function buildDetalheHtml(lead) {
   const st       = getStatus(lead.status);
   const valor    = lead.valor ? fmtValor(lead.valor) : '—';
   const isFechado = lead.status === 'fechado';
+  const isPreOS   = lead.status === 'pre_os';
 
   const statusOpts = STATUS.map(s => `
     <div class="crm-status-opt ${lead.status === s.key ? 'selected' : ''}"
@@ -553,6 +567,18 @@ function buildDetalheHtml(lead) {
         <span class="crm-det-label">Criado em</span>
         <span class="crm-det-value" style="color:var(--text-tertiary)">${fmtDate(lead.criadoEm)}</span>
       </div>
+      ${lead.lockType ? `<div class="crm-det-field">
+        <span class="crm-det-label">Tipo de bloqueio</span>
+        <span class="crm-det-value">🔒 ${getLockLabel(lead.lockType)}</span>
+      </div>` : ''}
+      ${lead.senha ? `<div class="crm-det-field">
+        <span class="crm-det-label">Senha</span>
+        <span class="crm-det-value" style="color:#fbbf24;font-weight:700;font-size:16px">🔑 ${esc(lead.senha)}</span>
+      </div>` : ''}
+      ${lead.patternSequence?.length ? `<div class="crm-det-field">
+        <span class="crm-det-label">Padrão Android</span>
+        <span class="crm-det-value" style="color:#a78bfa">✅ ${lead.patternSequence.length} pontos registrados</span>
+      </div>` : ''}
     </div>
 
     ${lead.obs ? `<div class="crm-det-field" style="margin-bottom:14px">
@@ -569,7 +595,7 @@ function buildDetalheHtml(lead) {
     </div>` : ''}
 
     <div class="crm-detalhe-acoes">
-      ${isFechado ? `<button class="crm-btn-os" onclick="converterEmOS('${lead.id}')">🔧 Converter em O.S.</button>` : ''}
+      ${(isPreOS || isFechado) && !lead.osConvertido ? `<button class="crm-btn-os" onclick="converterEmOS('${lead.id}')">🔧 ${isPreOS ? 'Abrir OS' : 'Converter em O.S.'}</button>` : ''}
       <button class="crm-btn-wpp"    onclick="abrirWhatsApp('${lead.id}')">💬 WhatsApp</button>
       <button class="crm-btn-editar" onclick="abrirForm('${lead.id}')">✏️ Editar Lead</button>
       <button class="crm-btn-excluir" onclick="confirmarExclusao('${lead.id}')">🗑️ Excluir</button>
@@ -834,19 +860,22 @@ window.converterEmOS = async function(id) {
   if (!lead) return;
 
   sessionStorage.setItem('cc_crm_prefill', JSON.stringify({
-    nome:      lead.nome     || '',
-    telefone:  lead.telefone || '',
-    modelo:    lead.aparelho || '',
-    defeito:   lead.servico  || '',
-    valor:     lead.valor    ? String(lead.valor) : '',
-    obs:       lead.obs      || '',
-    crmLeadId: id,
-    preOsId:   lead.preOsId || ''
+    nome:            lead.nome     || '',
+    telefone:        lead.telefone || '',
+    modelo:          lead.aparelho || '',
+    defeito:         lead.servico  || '',
+    valor:           lead.valor    ? String(lead.valor) : '',
+    obs:             lead.obs      || '',
+    senha:           lead.lockType === 'Padrao' ? '' : (lead.senha || ''),
+    lockType:        lead.lockType || '',
+    patternSequence: lead.lockType === 'Padrao' ? (lead.patternSequence || null) : null,
+    crmLeadId:       id,
+    preOsId:         lead.preOsId || ''
   }));
 
   try {
     await updateDoc(doc(db, 'crm_leads', id), {
-      osConvertido:    true,
+      osConvertido:   true,
       osConvertidoEm: serverTimestamp(),
       atualizadoEm:   serverTimestamp()
     });
@@ -930,4 +959,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('crm-sb')?.classList.remove('open');
     document.getElementById('crm-sb-overlay')?.classList.remove('open');
   });
+  // Toast de retorno da tela de entrada
+  const msg = sessionStorage.getItem('cc_crm_msg');
+  if (msg) { sessionStorage.removeItem('cc_crm_msg'); setTimeout(() => showToast(msg), 600); }
 });

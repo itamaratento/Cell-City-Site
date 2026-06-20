@@ -888,6 +888,47 @@ main { padding: 0; }
   margin: 14px 0 6px;
 }
 
+/* ── Pré-OS status ── */
+:root { --s-preos: #f59e0b; }
+.crm-badge-preos { background: rgba(245,158,11,0.14); color: var(--s-preos); border-color: rgba(245,158,11,0.3); }
+.crm-card[data-status="pre_os"] { border-left-color: var(--s-preos); }
+.crm-home-block[data-status="pre_os"]:hover { border-color: var(--s-preos); background: rgba(245,158,11,0.06); }
+.crm-home-block[data-status="pre_os"] .crm-home-count { color: var(--s-preos); background: rgba(245,158,11,0.12); }
+
+/* ── Card Novo Cliente (destaque na home grid) ── */
+.crm-novo-cliente-block {
+  border-color: rgba(0,200,83,0.30);
+  background: rgba(0,200,83,0.04);
+}
+.crm-novo-cliente-block:hover {
+  border-color: var(--cell-green) !important;
+  background: rgba(0,200,83,0.12) !important;
+  box-shadow: 0 10px 28px rgba(0,200,83,0.22);
+}
+.crm-novo-cliente-block .crm-home-nome { color: var(--cell-green-light); }
+
+/* ── Botão Chegou na topbar ── */
+.crm-btn-chegou {
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: var(--cell-green);
+  border: none;
+  border-radius: 10px;
+  color: #031a0a;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+}
+.crm-btn-chegou:hover {
+  background: var(--cell-green-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,200,83,0.35);
+}
+.crm-btn-chegou:active { transform: translateY(0); }
+
 /* ── Responsivo mobile ── */
 @media (max-width: 767px) {
   .crm-sb {
