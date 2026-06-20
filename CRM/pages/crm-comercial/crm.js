@@ -327,6 +327,12 @@ function renderHomeGrid() {
     <span class="crm-home-count">${leads.length}</span>
   </div>`);
 
+  cards.push(`<div class="crm-home-block" onclick="window.location.href='chips.html'" style="border-color:rgba(99,102,241,0.22)">
+    <span class="crm-home-icon">📱</span>
+    <span class="crm-home-nome">Cadastro de Chip</span>
+    <span class="crm-home-count" style="color:#a5b4fc;background:rgba(99,102,241,0.12);font-size:11px;padding:3px 9px">Ativar</span>
+  </div>`);
+
   grid.innerHTML = novoCard + cards.join('');
 }
 
