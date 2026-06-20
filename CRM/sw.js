@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.5 (PIN como acesso principal)
-const CACHE = 'cellcity-crm-v11';
+// Cell City CRM — Service Worker v1.6 (módulo clientes + garantias)
+const CACHE = 'cellcity-crm-v12';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -29,6 +29,13 @@ const SHELL = [
   '/CRM/pages/config/config.js',
   '/CRM/pages/config/config.css',
   '/CRM/scripts/firebase.js',
+  '/CRM/shared/sidebar.js',
+  '/CRM/pages/garantias/index.html',
+  '/CRM/pages/garantias/garantias.js',
+  '/CRM/pages/garantias/garantias.css',
+  '/CRM/pages/clientes/index.html',
+  '/CRM/pages/clientes/clientes.js',
+  '/CRM/pages/clientes/clientes.css',
 ];
 
 // ── Install: pré-carrega o shell
