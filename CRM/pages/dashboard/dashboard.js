@@ -1345,7 +1345,7 @@ class Dashboard {
       'pos-venda':           '../../pages/pos-venda/index.html',
       config:                '../../pages/config/index.html',
       ferramentas:           '../../pages/config/index.html',
-      garantias:             '../../pages/clientes/index.html',
+      garantias:             '../../pages/garantias/index.html',
       fornecedor:            '../../pages/fornecedor/index.html',
       financeiro:            '../../pages/financeiro/index.html',
       'em-breve':            '../../pages/em-breve/index.html',
