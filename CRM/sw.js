@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.6 (módulo clientes + garantias)
-const CACHE = 'cellcity-crm-v12';
+// Cell City CRM — Service Worker v1.7 (force-reload após update)
+const CACHE = 'cellcity-crm-v13';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -45,12 +45,14 @@ self.addEventListener('install', e => {
   );
 });
 
-// ── Activate: limpa caches antigos
+// ── Activate: limpa caches antigos e força reload nas abas abertas
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window' }))
+      .then(clients => clients.forEach(client => client.navigate(client.url)))
   );
 });
 
