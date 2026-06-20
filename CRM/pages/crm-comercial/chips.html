@@ -57,7 +57,7 @@
         <div class="crm-busca-wrap">
           <input type="search" id="chip-search" class="crm-search" autocomplete="off"
                  oninput="onSearchInput(this.value)"
-                 placeholder="🔍 Buscar por nome, CPF, número, ICCID ou operadora...">
+                 placeholder="🔍 Buscar por nome, CPF ou número...">
         </div>
         <button class="crm-btn-chegou" onclick="abrirForm(null)" title="Novo cadastro de chip">📱 Novo Chip</button>
       </div>
@@ -77,22 +77,11 @@
       <div class="crm-form" id="chip-form">
         <div class="crm-form-titulo" id="chip-form-titulo">📱 Novo Cadastro de Chip</div>
         <form onsubmit="submitForm(event)">
+          <div class="chip-stack">
 
-          <!-- Vincular cliente existente -->
-          <div class="chip-vincular-area">
-            <div class="chip-vincular-label">Vincular cliente existente (opcional)</div>
-            <input type="tel" id="chip-busca-telefone" class="chip-busca-input"
-                   placeholder="📞 Digite o telefone do cliente já cadastrado..."
-                   oninput="onVincularLookup(this.value)">
-            <div id="chip-vincular-banner" style="display:none;margin-top:6px"></div>
-          </div>
-
-          <div class="crm-form-grid chip-form-grid">
-
-            <!-- Operadora -->
-            <div class="crm-form-group">
+            <div class="chip-field">
               <label>Operadora *</label>
-              <select id="f-operadora" required>
+              <select id="f-operadora" class="chip-input" required>
                 <option value="">Selecionar...</option>
                 <option value="TIM">TIM</option>
                 <option value="Vivo">Vivo</option>
@@ -103,10 +92,30 @@
               </select>
             </div>
 
-            <!-- Status -->
-            <div class="crm-form-group">
-              <label>Status do Cadastro *</label>
-              <select id="f-status" onchange="toggleStatusDependentes(this.value)">
+            <div class="chip-field">
+              <label>Nome Completo *</label>
+              <input type="text" id="f-nome" class="chip-input"
+                     placeholder="Nome completo" autocomplete="name" required>
+            </div>
+
+            <div class="chip-field">
+              <label>CPF *</label>
+              <input type="text" id="f-cpf" class="chip-input"
+                     placeholder="000.000.000-00" inputmode="numeric"
+                     oninput="formatarCPF(this)" maxlength="14" required>
+              <div id="chip-cpf-status" class="chip-cpf-status"></div>
+            </div>
+
+            <div class="chip-field">
+              <label>Data de Nascimento *</label>
+              <input type="text" id="f-nascimento" class="chip-input"
+                     placeholder="DD/MM/AAAA" inputmode="numeric"
+                     oninput="formatarData(this)" maxlength="10" required>
+            </div>
+
+            <div class="chip-field">
+              <label>Status</label>
+              <select id="f-status" class="chip-input">
                 <option value="novo_cadastro">🆕 Novo Cadastro</option>
                 <option value="dados_coletados">📋 Dados Coletados</option>
                 <option value="aguardando_ativacao">⏳ Aguardando Ativação</option>
@@ -117,122 +126,22 @@
               </select>
             </div>
 
-            <!-- Nome -->
-            <div class="crm-form-group">
-              <label>Nome Completo *</label>
-              <input type="text" id="f-nome" placeholder="Nome completo do cliente" required>
+            <div class="chip-field">
+              <label>Número Gerado</label>
+              <input type="tel" id="f-numero-gerado" class="chip-input"
+                     placeholder="(62) 99999-9999" autocomplete="tel">
             </div>
 
-            <!-- CPF -->
-            <div class="crm-form-group">
-              <label>CPF *</label>
-              <input type="text" id="f-cpf" placeholder="000.000.000-00" required
-                     oninput="formatarCPF(this)" maxlength="14">
-              <div id="chip-cpf-status" class="chip-cpf-status"></div>
-            </div>
-
-            <!-- Data de Nascimento -->
-            <div class="crm-form-group">
-              <label>Data de Nascimento *</label>
-              <input type="date" id="f-nascimento" required>
-            </div>
-
-            <!-- Estado do CPF -->
-            <div class="crm-form-group">
-              <label>Estado de Cadastro do CPF</label>
-              <select id="f-estado-cpf">
-                <option value="">Selecionar estado...</option>
-                <option value="AC">Acre (AC)</option>
-                <option value="AL">Alagoas (AL)</option>
-                <option value="AP">Amapá (AP)</option>
-                <option value="AM">Amazonas (AM)</option>
-                <option value="BA">Bahia (BA)</option>
-                <option value="CE">Ceará (CE)</option>
-                <option value="DF">Distrito Federal (DF)</option>
-                <option value="ES">Espírito Santo (ES)</option>
-                <option value="GO">Goiás (GO)</option>
-                <option value="MA">Maranhão (MA)</option>
-                <option value="MT">Mato Grosso (MT)</option>
-                <option value="MS">Mato Grosso do Sul (MS)</option>
-                <option value="MG">Minas Gerais (MG)</option>
-                <option value="PA">Pará (PA)</option>
-                <option value="PB">Paraíba (PB)</option>
-                <option value="PR">Paraná (PR)</option>
-                <option value="PE">Pernambuco (PE)</option>
-                <option value="PI">Piauí (PI)</option>
-                <option value="RJ">Rio de Janeiro (RJ)</option>
-                <option value="RN">Rio Grande do Norte (RN)</option>
-                <option value="RS">Rio Grande do Sul (RS)</option>
-                <option value="RO">Rondônia (RO)</option>
-                <option value="RR">Roraima (RR)</option>
-                <option value="SC">Santa Catarina (SC)</option>
-                <option value="SP">São Paulo (SP)</option>
-                <option value="SE">Sergipe (SE)</option>
-                <option value="TO">Tocantins (TO)</option>
-              </select>
-            </div>
-
-            <!-- ICCID -->
-            <div class="crm-form-group">
-              <label>ICCID do Chip</label>
-              <input type="text" id="f-iccid" placeholder="Ex: 89551234567890123456" maxlength="22"
-                     style="font-family:monospace">
-            </div>
-
-            <!-- Número Gerado -->
-            <div class="crm-form-group">
-              <label>Número de Telefone Gerado</label>
-              <input type="tel" id="f-numero-gerado" placeholder="(62) 99999-9999">
-            </div>
-
-            <!-- Valor da Venda -->
-            <div class="crm-form-group">
-              <label>Valor da Venda (R$)</label>
-              <input type="number" id="f-valor" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
-            </div>
-
-            <!-- Comissão -->
-            <div class="crm-form-group">
-              <label>Comissão (R$)</label>
-              <input type="number" id="f-comissao" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
-            </div>
-
-            <!-- Responsável -->
-            <div class="crm-form-group crm-span2">
-              <label>Responsável pelo Cadastro</label>
-              <input type="text" id="f-responsavel" placeholder="Nome do atendente">
-            </div>
-
-            <!-- Data de Ativação (condicional) -->
-            <div class="crm-form-group" id="wrap-data-ativacao" style="display:none">
-              <label>Data da Ativação</label>
-              <input type="date" id="f-data-ativacao">
-            </div>
-
-            <!-- Motivo do Erro (condicional) -->
-            <div class="crm-form-group" id="wrap-motivo-erro" style="display:none">
-              <label>Motivo do Erro</label>
-              <select id="f-motivo-erro">
-                <option value="">Selecione...</option>
-                <option value="cpf_divergente">CPF divergente</option>
-                <option value="nascimento_incorreto">Data de nascimento incorreta</option>
-                <option value="estado_incorreto">Estado incorreto</option>
-                <option value="documento_bloqueado">Documento bloqueado</option>
-                <option value="outro">Outro</option>
-              </select>
-            </div>
-
-            <!-- Observações -->
-            <div class="crm-form-group crm-span2">
+            <div class="chip-field">
               <label>Observações</label>
-              <textarea id="f-obs" rows="3" placeholder="Detalhes adicionais sobre o cadastro..."></textarea>
+              <textarea id="f-obs" class="chip-input chip-obs" rows="4"
+                        placeholder="Anotações, erros, pendências..."></textarea>
             </div>
 
           </div>
-
-          <div class="crm-form-btns">
-            <button type="submit" class="crm-btn-salvar">Salvar Cadastro</button>
-            <button type="button" class="crm-btn-cancelar" onclick="fecharForm()">Cancelar</button>
+          <div class="chip-btns">
+            <button type="submit" class="chip-btn-ok">Salvar</button>
+            <button type="button" class="chip-btn-cancel" onclick="fecharForm()">Cancelar</button>
           </div>
         </form>
       </div>
