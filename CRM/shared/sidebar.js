@@ -25,6 +25,7 @@
     { id: 'fornecedor',         href: '/CRM/pages/fornecedor/index.html',          icon: '🏭', label: 'Fornecedor' },
     { id: 'pendencias',         href: '/CRM/pages/pendencias/index.html',          icon: '🗂️', label: 'Pendências e Contas',   badge: 'Novo' },
     { id: 'pos-venda',          href: '/CRM/pages/pos-venda/index.html',           icon: '💝', label: 'Pós-venda' },
+    { id: 'garantias',          href: '/CRM/pages/garantias/index.html',           icon: '🛡️', label: 'Garantias' },
     { id: 'relatorios',         href: '/CRM/pages/relatorios/index.html',          icon: '📊', label: 'Relatórios' },
     { id: 'agenda',             href: '/CRM/pages/acaodasemana/index.html',        icon: '📅', label: 'Agenda' },
     { id: 'portal-tecnico',     href: '/CRM/pages/portal-tecnico/index.html',     icon: '🔓', label: 'Portal Técnico' },
