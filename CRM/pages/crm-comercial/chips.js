@@ -123,6 +123,7 @@ function getFiltered() {
       (c.nome      || '').toLowerCase().includes(ql) ||
       (c.operadora || '').toLowerCase().includes(ql) ||
       (qd && (c.cpf          || '').replace(/\D/g, '').includes(qd)) ||
+      (qd && (c.telefone     || '').replace(/\D/g, '').includes(qd)) ||
       (qd && (c.numeroGerado || '').replace(/\D/g, '').includes(qd))
     );
   }
@@ -281,7 +282,8 @@ function renderLista() {
             <span class="crm-card-date">${fmtDate(chip.criadoEm)}</span>
           </div>
           ${chip.cpf ? `<div class="crm-card-info">🆔 ${esc(mascaraCPF(chip.cpf))}</div>` : ''}
-          ${chip.numeroGerado ? `<div class="crm-card-info">📞 ${esc(chip.numeroGerado)}</div>` : ''}
+          ${chip.telefone ? `<div class="crm-card-info">📞 ${esc(chip.telefone)}</div>` : ''}
+          ${chip.numeroGerado ? `<div class="crm-card-info">📲 ${esc(chip.numeroGerado)}</div>` : ''}
         </div>
       </div>
     </div>`;
@@ -331,13 +333,21 @@ function buildDetalheHtml(chip) {
         <span class="crm-det-label">CPF</span>
         <span class="crm-det-value" style="font-family:monospace">🆔 ${esc(chip.cpf)}</span>
       </div>` : ''}
+      ${chip.estadoCpf ? `<div class="crm-det-field">
+        <span class="crm-det-label">Estado do CPF</span>
+        <span class="crm-det-value">📍 ${esc(chip.estadoCpf)}</span>
+      </div>` : ''}
       ${chip.dataNascimento ? `<div class="crm-det-field">
         <span class="crm-det-label">Nascimento</span>
         <span class="crm-det-value">🎂 ${esc(chip.dataNascimento)}</span>
       </div>` : ''}
+      ${chip.telefone ? `<div class="crm-det-field">
+        <span class="crm-det-label">Telefone de Contato</span>
+        <span class="crm-det-value">📞 ${esc(chip.telefone)}</span>
+      </div>` : ''}
       ${chip.numeroGerado ? `<div class="crm-det-field">
         <span class="crm-det-label">Número Gerado</span>
-        <span class="crm-det-value">📞 ${esc(chip.numeroGerado)}</span>
+        <span class="crm-det-value">📲 ${esc(chip.numeroGerado)}</span>
       </div>` : ''}
       <div class="crm-det-field">
         <span class="crm-det-label">Cadastrado em</span>
@@ -404,10 +414,11 @@ window.copiarDados = async function(id) {
   const chip  = chips.find(c => c.id === id);
   if (!chip) return;
   const linhas = [
-    chip.nome           ? `Nome: ${chip.nome}`           : '',
-    chip.cpf            ? `CPF: ${chip.cpf}`             : '',
+    chip.nome           ? `Nome: ${chip.nome}`               : '',
+    chip.cpf            ? `CPF: ${chip.cpf}`                 : '',
     chip.dataNascimento ? `Nascimento: ${chip.dataNascimento}` : '',
-    chip.numeroGerado   ? `Número: ${chip.numeroGerado}` : ''
+    chip.estadoCpf      ? `Estado: ${chip.estadoCpf}`        : '',
+    chip.numeroGerado   ? `Número: ${chip.numeroGerado}`     : ''
   ].filter(Boolean);
   try {
     await navigator.clipboard.writeText(linhas.join('\n'));
@@ -430,13 +441,15 @@ window.abrirForm = function(id = null) {
   if (titulo) titulo.textContent = id ? '✏️ Editar Cadastro' : '📱 Novo Cadastro de Chip';
 
   const setV = (fid, v) => { const e = document.getElementById(fid); if (e) e.value = v ?? ''; };
-  setV('f-operadora',    chip?.operadora);
-  setV('f-nome',         chip?.nome);
-  setV('f-cpf',          chip?.cpf);
-  setV('f-nascimento',   chip?.dataNascimento);
-  setV('f-status',       chip?.status || 'novo_cadastro');
+  setV('f-operadora',     chip?.operadora);
+  setV('f-nome',          chip?.nome);
+  setV('f-cpf',           chip?.cpf);
+  setV('f-estado-cpf',    chip?.estadoCpf);
+  setV('f-nascimento',    chip?.dataNascimento);
+  setV('f-telefone',      chip?.telefone);
+  setV('f-status',        chip?.status || 'novo_cadastro');
   setV('f-numero-gerado', chip?.numeroGerado);
-  setV('f-obs',          chip?.obs);
+  setV('f-obs',           chip?.obs);
 
   const cpfInput = document.getElementById('f-cpf');
   if (cpfInput?.value) window.formatarCPF(cpfInput);
@@ -479,11 +492,13 @@ window.submitForm = async function(e) {
   const data = {
     operadora,
     nome,
-    cpf:           cpfInput?.value || '',
+    cpf:            cpfInput?.value || '',
+    estadoCpf:      document.getElementById('f-estado-cpf')?.value || '',
     dataNascimento: nasc,
-    status:        document.getElementById('f-status')?.value || 'novo_cadastro',
-    numeroGerado:  (document.getElementById('f-numero-gerado')?.value || '').trim(),
-    obs:           (document.getElementById('f-obs')?.value || '').trim()
+    telefone:       (document.getElementById('f-telefone')?.value || '').trim(),
+    status:         document.getElementById('f-status')?.value || 'novo_cadastro',
+    numeroGerado:   (document.getElementById('f-numero-gerado')?.value || '').trim(),
+    obs:            (document.getElementById('f-obs')?.value || '').trim()
   };
 
   const btn = document.querySelector('#chip-form button[type="submit"]');
