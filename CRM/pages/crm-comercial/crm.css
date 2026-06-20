@@ -503,6 +503,157 @@ main { padding: 0; }
 .crm-det-value.valor { color: #4ade80; font-weight: 700; font-size: 16px; }
 .crm-det-obs { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
 
+/* ── Perfil do cliente no detalhe (async) ── */
+.crm-det-cliente-wrap {
+  margin: 10px 0 14px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+.crm-det-loading-wrap { color: var(--text-tertiary); }
+.crm-det-loading-txt  { font-size: 12px; color: var(--text-tertiary); }
+.crm-det-cliente-ok   { border-color: rgba(0, 200, 83, 0.25); background: rgba(0, 200, 83, 0.06); }
+.crm-det-cliente-novo { color: var(--text-tertiary); }
+
+.crm-det-cli-titulo { font-weight: 700; font-size: 13px; color: var(--cell-green); margin-bottom: 4px; }
+.crm-det-cli-meta   { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+.crm-det-cli-stats  { display: flex; gap: 16px; font-size: 12px; color: var(--text-tertiary); }
+
+/* ── Histórico de O.S. no detalhe ── */
+.crm-det-hist-wrap {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.crm-hist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.crm-hist-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--cell-green);
+  flex-shrink: 0;
+}
+.crm-hist-link {
+  font-size: 13px;
+  color: #93c5fd;
+  text-decoration: none;
+  font-weight: 600;
+}
+.crm-hist-link:hover { text-decoration: underline; }
+
+/* ── Banner de lookup de telefone no formulário ── */
+#crm-cliente-banner {
+  margin-top: 6px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.crm-lookup-loading { font-size: 12px; color: var(--text-tertiary); padding: 6px 0; display: block; }
+.crm-lookup-ok {
+  background: rgba(0, 200, 83, 0.08);
+  border: 1px solid rgba(0, 200, 83, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.crm-lookup-titulo { font-size: 13px; color: var(--cell-green); }
+.crm-lookup-meta   { font-size: 12px; color: var(--text-tertiary); margin-left: auto; }
+.crm-lookup-new {
+  background: rgba(148, 163, 184, 0.08);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* ── Stats financeiras (itens largos) ── */
+.crm-stat-wide { grid-column: span 1; }
+
+/* ── Banco de Leads — filtros ── */
+.crm-filtros-bar {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.crm-filtros-titulo {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+.crm-filtros-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.crm-filtro-sel {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 13px;
+  padding: 6px 10px;
+  outline: none;
+  flex: 1;
+  min-width: 140px;
+}
+.crm-filtro-sel:focus { border-color: var(--cell-green); }
+.crm-filtro-clear {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.crm-filtro-clear:hover { border-color: var(--accent-red); color: var(--accent-red); }
+
+/* ── Remarketing — botões de reativação ── */
+.crm-reativar-wrap {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+.crm-reativar-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.crm-btn-reativar {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+}
+.crm-btn-reativar:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+  background: rgba(251,191,36,0.06);
+}
+
 /* Seletor de status no detalhe */
 .crm-status-sel {
   display: grid;
