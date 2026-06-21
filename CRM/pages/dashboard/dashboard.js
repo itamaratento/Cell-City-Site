@@ -1364,6 +1364,7 @@ class Dashboard {
       'auditoria':           '../../pages/auditoria/index.html',
       'lixeira':             '../../pages/lixeira/index.html',
       'integridade':         '../../pages/integridade/index.html',
+      'homologacao':         '../../pages/homologacao/index.html',
       'pendencias':          '../../pages/pendencias/index.html',
       'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
       'venda-rapida':        '../../pages/venda-rapida/index.html',
@@ -2566,22 +2567,43 @@ class Dashboard {
     const btn = document.getElementById('compact-mode-toggle');
     if (!btn) return;
 
-    const aplicar = (compacto) => {
+    // Path multiusuário: usuarios/{uid}/preferencias/layout
+    const prefRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'layout');
+
+    const aplicar = (compacto, salvar = true) => {
       document.body.classList.toggle('modo-compacto', compacto);
       btn.classList.toggle('ativo', compacto);
       btn.textContent = compacto ? '▣ Compacto' : '▢ Compactar';
       btn.title = compacto ? 'Alternar para modo normal' : 'Alternar para modo compacto';
       localStorage.setItem(COMPACT_KEY, compacto ? 'true' : '');
+      if (salvar) {
+        setDoc(prefRef(getUid()), { sidebarCompacta: compacto, atualizadoEm: serverTimestamp() }, { merge: true })
+          .catch(e => console.warn('[Preferências] salvar sidebarCompacta:', e?.message));
+      }
     };
 
-    // Carregar preferência salva
-    const salvo = localStorage.getItem(COMPACT_KEY) === 'true';
-    aplicar(salvo);
+    // 1. localStorage → imediato
+    aplicar(localStorage.getItem(COMPACT_KEY) === 'true', false);
+
+    // 2. Firestore → assíncrono (carrega e aplica; não conflita com preferência local)
+    onUid(async (uid) => {
+      try {
+        const snap = await getDoc(prefRef(uid));
+        if (snap.exists()) {
+          const d = snap.data();
+          if (typeof d.sidebarCompacta === 'boolean') {
+            const local = localStorage.getItem(COMPACT_KEY) === 'true';
+            if (d.sidebarCompacta !== local) aplicar(d.sidebarCompacta, false);
+          }
+        }
+      } catch (e) {
+        console.warn('[Preferências] carregar sidebarCompacta:', e?.message);
+      }
+    });
 
     // Toggle ao clicar
     btn.addEventListener('click', () => {
-      const alvo = !document.body.classList.contains('modo-compacto');
-      aplicar(alvo);
+      aplicar(!document.body.classList.contains('modo-compacto'), true);
     });
   }
 

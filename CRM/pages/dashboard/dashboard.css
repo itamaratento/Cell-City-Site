@@ -3881,38 +3881,38 @@ body {
 }
 
 /* ── Modo MÓDULOS (padrão): painéis ocultos ── */
-body[data-home-mode="modulos"] .executive-panel,
-body[data-home-mode="modulos"] .fin-exec-panel {
+html[data-home-mode="modulos"] .executive-panel,
+html[data-home-mode="modulos"] .fin-exec-panel {
   display: none !important;
 }
-body[data-home-mode="modulos"] .panel-right {
+html[data-home-mode="modulos"] .panel-right {
   display: none !important;
 }
 
 /* ── Modo DASHBOARD: módulos ocultos, painéis visíveis ── */
-body[data-home-mode="dashboard"] .modules-section {
+html[data-home-mode="dashboard"] .modules-section {
   display: none !important;
 }
-body[data-home-mode="dashboard"] .executive-panel,
-body[data-home-mode="dashboard"] .fin-exec-panel {
+html[data-home-mode="dashboard"] .executive-panel,
+html[data-home-mode="dashboard"] .fin-exec-panel {
   display: block !important;
 }
-body[data-home-mode="dashboard"] .panel-right {
+html[data-home-mode="dashboard"] .panel-right {
   display: flex !important;
 }
 
 /* ── Modo COMPLETO: tudo visível ── */
-body[data-home-mode="completo"] .executive-panel,
-body[data-home-mode="completo"] .fin-exec-panel {
+html[data-home-mode="completo"] .executive-panel,
+html[data-home-mode="completo"] .fin-exec-panel {
   display: block !important;
 }
-body[data-home-mode="completo"] .panel-right {
+html[data-home-mode="completo"] .panel-right {
   display: flex !important;
 }
 
 /* Ocultar panel-right por padrão (sem modo definido = módulos) */
-body:not([data-home-mode]) .executive-panel,
-body:not([data-home-mode]) .fin-exec-panel,
-body:not([data-home-mode]) .panel-right {
+html:not([data-home-mode]) .executive-panel,
+html:not([data-home-mode]) .fin-exec-panel,
+html:not([data-home-mode]) .panel-right {
   display: none !important;
 }

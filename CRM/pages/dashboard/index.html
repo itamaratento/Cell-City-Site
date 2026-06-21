@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');try{document.documentElement.setAttribute('data-home-mode',localStorage.getItem('cc_home_mode')||'modulos');}catch(e){}</script>
 <link rel="stylesheet" href="dashboard.css">
 <link rel="manifest" href="/CRM/manifest.json">
 <meta name="theme-color" content="#00C853">
@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Cell City">
 <link rel="apple-touch-icon" href="/CRM/assets/logo.png">
 </head>
-<body data-home-mode="modulos">
+<body>
 
 <!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
 <header class="top-bar">
@@ -662,6 +662,16 @@
           <div class="module-info">
             <h3>Integridade</h3>
             <p class="module-sub">Verificar consistência dos dados</p>
+          </div>
+        </div>
+
+        <div class="module-card module-card--new" data-module="homologacao">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
+          <div class="module-icon">🧪</div>
+          <div class="module-info">
+            <h3>Homologação</h3>
+            <p class="module-sub">Auditoria completa de integrações</p>
           </div>
         </div>
 
@@ -1742,67 +1752,87 @@
 (function () {
   var LS_KEY = 'cc_home_mode';
   var MODOS = ['modulos', 'dashboard', 'completo'];
+  // UID da conta (padrão da loja; atualizado via cc-uid-changed quando Auth mudar)
+  var _uid = 'loja-cellcity';
 
-  function aplicarModo(modo) {
+  // Path preparado para multiusuário: usuarios/{uid}/preferencias/layout
+  function prefDoc() {
+    var db = window.dbFirestore, FB = window.FirebaseFirestore;
+    if (!db || !FB || !FB.doc) return null;
+    return FB.doc(db, 'usuarios', _uid, 'preferencias', 'layout');
+  }
+
+  function aplicarModo(modo, salvar) {
     if (MODOS.indexOf(modo) < 0) modo = 'modulos';
-    document.body.setAttribute('data-home-mode', modo);
+    // Atributo no <html> (definido também no head para evitar flash)
+    document.documentElement.setAttribute('data-home-mode', modo);
     document.querySelectorAll('.home-mode-btn').forEach(function (btn) {
       btn.classList.toggle('active', btn.dataset.mode === modo);
     });
     localStorage.setItem(LS_KEY, modo);
-    // Salvar no Firestore se disponível
-    salvarNoFirestore(modo);
+    if (salvar) salvarNoFirestore(modo);
   }
 
   function salvarNoFirestore(modo) {
-    var db = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!db || !FB || !FB.setDoc || !FB.doc) return;
+    var ref = prefDoc(), FB = window.FirebaseFirestore;
+    if (!ref || !FB) return;
     try {
-      FB.setDoc(FB.doc(db, 'preferencias_sistema', 'layout_home'), {
-        modo: modo,
+      FB.setDoc(ref, {
+        modoHome: modo,
         atualizadoEm: (FB.serverTimestamp ? FB.serverTimestamp() : new Date().toISOString())
       }, { merge: true }).catch(function(e) {
-        console.warn('[HomeMode] Firestore salvar:', e && e.message);
-      });
-    } catch (e) { console.warn('[HomeMode] erro Firestore:', e); }
-  }
-
-  function carregarDoFirestore() {
-    var db = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!db || !FB || !FB.getDoc || !FB.doc) return;
-    try {
-      FB.getDoc(FB.doc(db, 'preferencias_sistema', 'layout_home')).then(function(snap) {
-        if (snap && snap.exists && snap.exists()) {
-          var d = snap.data();
-          if (d && d.modo && MODOS.indexOf(d.modo) >= 0) {
-            aplicarModo(d.modo);
-          }
-        }
-      }).catch(function(e) {
-        console.warn('[HomeMode] Firestore carregar:', e && e.message);
+        console.warn('[Preferências] salvar modoHome:', e && e.message);
       });
     } catch (e) {}
   }
 
-  function init() {
-    // Restaurar preferência salva (localStorage primeiro, Firestore depois)
-    var salvo = localStorage.getItem(LS_KEY) || 'modulos';
-    aplicarModo(salvo);
+  function carregarDoFirestore() {
+    var ref = prefDoc(), FB = window.FirebaseFirestore;
+    if (!ref || !FB) return;
+    try {
+      FB.getDoc(ref).then(function(snap) {
+        if (snap && snap.exists && snap.exists()) {
+          var d = snap.data();
+          if (d && d.modoHome && MODOS.indexOf(d.modoHome) >= 0) {
+            // Firestore prevalece apenas se diferente do local
+            // (evita sobrescrever mudança recente do usuário neste dispositivo)
+            var local = localStorage.getItem(LS_KEY) || 'modulos';
+            if (d.modoHome !== local) aplicarModo(d.modoHome, false);
+          }
+        }
+      }).catch(function(e) {
+        console.warn('[Preferências] carregar modoHome:', e && e.message);
+      });
+    } catch (e) {}
+  }
 
-    // Tentar carregar do Firestore (sobrescreve se diferente)
+  // Atualiza UID e re-sincroniza quando a sessão mudar (Firebase Auth)
+  window.addEventListener('cc-uid-changed', function(e) {
+    if (e.detail && e.detail.uid) {
+      _uid = e.detail.uid;
+      carregarDoFirestore();
+    }
+  });
+
+  function init() {
+    // 1. localStorage → instantâneo, head script já evitou flash
+    var salvo = localStorage.getItem(LS_KEY) || 'modulos';
+    aplicarModo(salvo, false);
+
+    // 2. Firestore → assíncrono, sem flash
     if (window.dbFirestore && window.FirebaseFirestore) {
       carregarDoFirestore();
     } else {
       window.addEventListener('firebase-ready', carregarDoFirestore, { once: true });
     }
 
-    // Botões de alternância
+    // 3. Botões de alternância
     var grupo = document.getElementById('home-mode-group');
     if (grupo) {
       grupo.addEventListener('click', function (e) {
         var btn = e.target.closest('.home-mode-btn');
         if (!btn || !btn.dataset.mode) return;
-        aplicarModo(btn.dataset.mode);
+        aplicarModo(btn.dataset.mode, true);
       });
     }
   }
