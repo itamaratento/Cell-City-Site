@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lixeira — Cell City CRM</title>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<link rel="stylesheet" href="../../shared/brand-header.css">
+<link rel="stylesheet" href="lixeira.css?v=20260620a">
+</head>
+<body data-fav-key="lixeira" data-fav-icon="🗑️">
+
+<main class="lx-layout">
+    <div class="lx-header">
+        <div class="lx-titulo">🗑️ Lixeira</div>
+        <div class="lx-subtitulo">Itens excluídos podem ser restaurados ou apagados permanentemente.</div>
+        <div class="lx-filtros" id="lx-filtros"></div>
+    </div>
+
+    <div class="lx-loading" id="lx-loading"><div class="lx-spinner"></div><span>Carregando lixeira...</span></div>
+    <div class="lx-vazio" id="lx-vazio" style="display:none">
+        <div class="lx-vazio-icone">✅</div>
+        <div class="lx-vazio-texto">Lixeira vazia</div>
+        <div class="lx-vazio-sub">Nenhum item excluído encontrado.</div>
+    </div>
+
+    <div id="lx-lista" class="lx-lista" style="display:none"></div>
+</main>
+
+<div class="lx-toast" id="lx-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module" src="lixeira.js?v=20260620a"></script>
+</body>
+</html>

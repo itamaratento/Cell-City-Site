@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Cell City">
 <link rel="apple-touch-icon" href="/CRM/assets/logo.png">
 </head>
-<body>
+<body data-home-mode="modulos">
 
 <!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
 <header class="top-bar">
@@ -46,6 +46,11 @@
       <span class="site-cc-label">Site</span>
     </a>
     <button class="compact-toggle" id="compact-mode-toggle" title="Alternar para modo compacto">▢ Compactar</button>
+    <div class="home-mode-group" id="home-mode-group" title="Modo de exibição da Home">
+      <button class="home-mode-btn active" data-mode="modulos" title="Apenas Módulos">📦 Módulos</button>
+      <button class="home-mode-btn" data-mode="dashboard" title="Dashboard Financeiro">📊 Dashboard</button>
+      <button class="home-mode-btn" data-mode="completo" title="Visão Completa">⊞ Completo</button>
+    </div>
     <button class="aprov-sino" id="aprov-sino" title="Painel de Alertas" aria-label="Painel de Alertas">🔔<span class="aprov-badge" id="aprov-badge" style="display:none;">0</span></button>
     <span class="status-pill online">Online</span>
   </div>
@@ -203,14 +208,31 @@
   <!-- ===== ÁREA PRINCIPAL ===== -->
   <main class="main-content" id="main-content">
 
-    <!-- PAINEL EXECUTIVO -->
+
+    <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
+    <section class="alerts-section" id="alerts-section" style="display:none;">
+      <div class="module-card alerts-card" id="alerts-card">
+        <div class="alerts-main">
+          <div class="alert-header-row">
+            <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
+            <div class="alert-title">DICA DO CRM</div>
+            <button class="btn-config-alertas" id="btn-abrir-config-alertas" title="Configurar alertas">⚙️</button>
+          </div>
+          <div class="alert-subtitle">Carregando alertas...</div>
+          <div class="alert-detail"></div>
+        </div>
+        <div class="alert-progress-track">
+          <div class="alert-progress-bar" id="alert-progress-bar"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAINEL EXECUTIVO (oculto em modo Módulos) -->
     <section class="executive-panel" id="executive-panel">
       <div class="exec-header">
         <span class="exec-title">📊 PAINEL EXECUTIVO</span>
         <span class="exec-auto">Atualização automática <span class="exec-dot"></span></span>
       </div>
-
-      <!-- Linha 1 -->
       <div class="exec-row">
         <div class="exec-card exec-card--os" title="Ordens abertas (não entregues/canceladas)">
           <div class="exec-card-label">OS Abertas</div>
@@ -249,8 +271,6 @@
           <div class="exec-card-delta" id="kpi-pecas-delta"></div>
         </div>
       </div>
-
-      <!-- Linha 2 -->
       <div class="exec-row exec-row--2">
         <div class="exec-card exec-card--sm" title="Aparelhos atualmente na bancada">
           <div class="exec-card-label">Aparelhos em Bancada</div>
@@ -280,9 +300,7 @@
       </div>
     </section>
 
-    <!-- ══════════════════════════════════════════
-         PAINEL FINANCEIRO INTELIGENTE
-         ══════════════════════════════════════════ -->
+    <!-- PAINEL FINANCEIRO (oculto em modo Módulos) -->
     <section class="fin-exec-panel" id="fin-exec-panel">
       <div class="exec-header">
         <span class="exec-title">💰 PAINEL FINANCEIRO</span>
@@ -292,8 +310,6 @@
           <button class="fin-exec-period" data-period="hoje">Hoje</button>
         </div>
       </div>
-
-      <!-- Linha Financeira -->
       <div class="exec-row fin-exec-row">
         <div class="fin-card fin-card--saldo">
           <div class="fin-card-icon">🏦</div>
@@ -336,8 +352,6 @@
           <div class="fin-card-lbl">Contas Vencidas</div>
         </div>
       </div>
-
-      <!-- Linha Operacional -->
       <div class="exec-row fin-exec-row fin-exec-row--op">
         <div class="fin-card fin-card--op">
           <div class="fin-card-icon">🛒</div>
@@ -365,8 +379,6 @@
           <div class="fin-card-lbl">Mais Lucrativo</div>
         </div>
       </div>
-
-      <!-- Meta Mensal -->
       <div class="fin-meta-row">
         <div class="fin-meta-card">
           <div class="fin-meta-header">
@@ -383,8 +395,6 @@
             <span class="fin-meta-falta" id="fin-meta-falta"></span>
           </div>
         </div>
-
-        <!-- Alertas Destaque -->
         <div class="fin-alertas-card" id="fin-alertas-card">
           <div class="fin-alertas-titulo">⚠️ Alertas</div>
           <div class="fin-alertas-lista" id="fin-alertas-lista">
@@ -392,8 +402,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Gráfico: Últimos 6 meses -->
       <div class="fin-chart-card">
         <div class="fin-chart-titulo">📊 Últimos 6 meses — Receita vs Lucro</div>
         <div class="fin-chart-legenda">
@@ -402,24 +410,6 @@
         </div>
         <div class="fin-chart-area" id="fin-chart-area">
           <div class="fin-chart-loading">Carregando gráfico...</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
-    <section class="alerts-section" id="alerts-section" style="display:none;">
-      <div class="module-card alerts-card" id="alerts-card">
-        <div class="alerts-main">
-          <div class="alert-header-row">
-            <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
-            <div class="alert-title">DICA DO CRM</div>
-            <button class="btn-config-alertas" id="btn-abrir-config-alertas" title="Configurar alertas">⚙️</button>
-          </div>
-          <div class="alert-subtitle">Carregando alertas...</div>
-          <div class="alert-detail"></div>
-        </div>
-        <div class="alert-progress-track">
-          <div class="alert-progress-bar" id="alert-progress-bar"></div>
         </div>
       </div>
     </section>
@@ -652,6 +642,26 @@
           <div class="module-info">
             <h3>Auditoria</h3>
             <p class="module-sub">Logs e rastreamento</p>
+          </div>
+        </div>
+
+        <div class="module-card module-card--new" data-module="lixeira">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
+          <div class="module-icon">🗑️</div>
+          <div class="module-info">
+            <h3>Lixeira</h3>
+            <p class="module-sub">Restaurar itens excluídos</p>
+          </div>
+        </div>
+
+        <div class="module-card module-card--new" data-module="integridade">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
+          <div class="module-icon">🛡️</div>
+          <div class="module-info">
+            <h3>Integridade</h3>
+            <p class="module-sub">Verificar consistência dos dados</p>
           </div>
         </div>
 
@@ -1726,6 +1736,84 @@
     </div>
   </div>
 </div>
+
+<!-- ===== CONTROLE DE MODO DA HOME ===== -->
+<script>
+(function () {
+  var LS_KEY = 'cc_home_mode';
+  var MODOS = ['modulos', 'dashboard', 'completo'];
+
+  function aplicarModo(modo) {
+    if (MODOS.indexOf(modo) < 0) modo = 'modulos';
+    document.body.setAttribute('data-home-mode', modo);
+    document.querySelectorAll('.home-mode-btn').forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.mode === modo);
+    });
+    localStorage.setItem(LS_KEY, modo);
+    // Salvar no Firestore se disponível
+    salvarNoFirestore(modo);
+  }
+
+  function salvarNoFirestore(modo) {
+    var db = window.dbFirestore, FB = window.FirebaseFirestore;
+    if (!db || !FB || !FB.setDoc || !FB.doc) return;
+    try {
+      FB.setDoc(FB.doc(db, 'preferencias_sistema', 'layout_home'), {
+        modo: modo,
+        atualizadoEm: (FB.serverTimestamp ? FB.serverTimestamp() : new Date().toISOString())
+      }, { merge: true }).catch(function(e) {
+        console.warn('[HomeMode] Firestore salvar:', e && e.message);
+      });
+    } catch (e) { console.warn('[HomeMode] erro Firestore:', e); }
+  }
+
+  function carregarDoFirestore() {
+    var db = window.dbFirestore, FB = window.FirebaseFirestore;
+    if (!db || !FB || !FB.getDoc || !FB.doc) return;
+    try {
+      FB.getDoc(FB.doc(db, 'preferencias_sistema', 'layout_home')).then(function(snap) {
+        if (snap && snap.exists && snap.exists()) {
+          var d = snap.data();
+          if (d && d.modo && MODOS.indexOf(d.modo) >= 0) {
+            aplicarModo(d.modo);
+          }
+        }
+      }).catch(function(e) {
+        console.warn('[HomeMode] Firestore carregar:', e && e.message);
+      });
+    } catch (e) {}
+  }
+
+  function init() {
+    // Restaurar preferência salva (localStorage primeiro, Firestore depois)
+    var salvo = localStorage.getItem(LS_KEY) || 'modulos';
+    aplicarModo(salvo);
+
+    // Tentar carregar do Firestore (sobrescreve se diferente)
+    if (window.dbFirestore && window.FirebaseFirestore) {
+      carregarDoFirestore();
+    } else {
+      window.addEventListener('firebase-ready', carregarDoFirestore, { once: true });
+    }
+
+    // Botões de alternância
+    var grupo = document.getElementById('home-mode-group');
+    if (grupo) {
+      grupo.addEventListener('click', function (e) {
+        var btn = e.target.closest('.home-mode-btn');
+        if (!btn || !btn.dataset.mode) return;
+        aplicarModo(btn.dataset.mode);
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
 
 </body>
 </html>

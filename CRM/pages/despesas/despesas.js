@@ -8,6 +8,10 @@
 import {
     db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp
 } from '../../scripts/firebase.js';
+import { logAudit }                   from '../../shared/auditoria.js';
+import { moverParaLixeira }           from '../../shared/lixeira.js';
+import { mostrarMenuExportar }        from '../../shared/exportar.js';
+import { uploadAnexo, renderAnexos, selecionarArquivo } from '../../shared/anexos.js';
 
 const COL_DESPESAS  = 'financeiro_despesas';
 const COL_CATS      = 'financeiro_cat_despesas';
@@ -47,6 +51,7 @@ let centrosCustom  = [];
 let secaoAtiva     = 'home';
 let filtroTipo     = 'todos';
 let editandoId     = null;
+let _anexosForm    = [];   // anexos em memória durante edição do form
 let excluirCallback = null;
 
 // contexto de modal rápido (nova cat ou novo centro a partir do form)
@@ -277,6 +282,7 @@ async function carregar() {
     popularSelectCentros();
     atualizarContadores();
     renderLista();
+    gerarRecorrentesAutomaticas();
 }
 
 /* ── Contadores ──────────────────────────────────────────────── */
@@ -560,6 +566,11 @@ function abrirFormNovo() {
     $('dsp-centro').value    = '';
     $('dsp-obs').value       = '';
     $('dsp-recorrente').checked = false;
+    const fw = $('dsp-frequencia-wrap');
+    if (fw) fw.style.display = 'none';
+    _anexosForm = [];
+    const al = $('dsp-anexos-lista');
+    if (al) al.innerHTML = '';
     $('dsp-form').style.display = 'flex';
     setTimeout(() => $('dsp-descricao')?.focus(), 50);
 }
@@ -578,6 +589,15 @@ function abrirFormEditar(id) {
     $('dsp-centro').value    = d.centro || '';
     $('dsp-obs').value       = d.obs || '';
     $('dsp-recorrente').checked = !!d.recorrente;
+    const fw2 = $('dsp-frequencia-wrap');
+    if (fw2) fw2.style.display = d.recorrente ? 'block' : 'none';
+    const freqEl = $('dsp-frequencia');
+    if (freqEl) freqEl.value = d.frequencia || 'mensal';
+    _anexosForm = Array.isArray(d.anexos) ? [...d.anexos] : [];
+    renderAnexos($('dsp-anexos-lista'), _anexosForm, (idx) => {
+        _anexosForm.splice(idx, 1);
+        renderAnexos($('dsp-anexos-lista'), _anexosForm, arguments.callee);
+    });
     if (!LISTA_SECS.includes(secaoAtiva)) navegar('todas');
     $('dsp-form').style.display = 'flex';
     setTimeout(() => $('dsp-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
@@ -602,24 +622,39 @@ async function salvarDespesa() {
     if (!data)      { toast('⚠ Informe a data.');      $('dsp-data')?.focus();      return; }
     if (!categoria) { toast('⚠ Selecione a categoria.'); $('dsp-categoria')?.focus(); return; }
 
+    const isRecorrente = !!$('dsp-recorrente')?.checked;
     const id = editandoId || `dsp_${Date.now()}`;
+    const dadosAntes = editandoId ? { ...despesasData.find(x => x.id === editandoId) } : null;
+
     const despesa = {
         descricao,
         valor,
         data,
         categoria,
-        tipo:        $('dsp-tipo')?.value        || 'empresarial',
-        pagamento:   $('dsp-pagamento')?.value   || 'dinheiro',
-        centro:      $('dsp-centro')?.value       || '',
-        obs:         $('dsp-obs')?.value.trim()   || '',
-        recorrente:  !!$('dsp-recorrente')?.checked,
+        tipo:         $('dsp-tipo')?.value        || 'empresarial',
+        pagamento:    $('dsp-pagamento')?.value   || 'dinheiro',
+        centro:       $('dsp-centro')?.value      || '',
+        obs:          $('dsp-obs')?.value.trim()  || '',
+        recorrente:   isRecorrente,
+        frequencia:   isRecorrente ? ($('dsp-frequencia')?.value || 'mensal') : '',
+        ultimaGeracao: isRecorrente ? (data || hoje()) : '',
+        anexos:       _anexosForm,
         atualizadoEm: serverTimestamp(),
     };
     if (!editandoId) despesa.criadoEm = serverTimestamp();
 
     try {
         await setDoc(doc(db, COL_DESPESAS, id), despesa);
+        await logAudit({
+            modulo: 'despesas',
+            acao:   editandoId ? 'edicao' : 'criacao',
+            id,
+            antes:  dadosAntes,
+            depois: despesa,
+            descricao,
+        });
         toast(editandoId ? '✏️ Despesa atualizada!' : '✅ Despesa registrada!');
+        _anexosForm = [];
         fecharForm();
         await recarregar();
     } catch (e) {
@@ -631,13 +666,15 @@ async function salvarDespesa() {
 async function excluirDespesa(id) {
     const d = despesasData.find(x => x.id === id);
     if (!d) return;
-    confirmar(`Excluir despesa "${d.descricao}"?`, async () => {
+    confirmar(`Mover despesa "${d.descricao}" para a Lixeira?`, async () => {
         try {
-            await deleteDoc(doc(db, COL_DESPESAS, id));
+            const ok = await moverParaLixeira(COL_DESPESAS, id, d);
+            if (!ok) { toast('⚠ Erro ao mover para lixeira.'); return; }
+            await logAudit({ modulo: 'despesas', acao: 'exclusao', id, antes: d, descricao: d.descricao });
             despesasData = despesasData.filter(x => x.id !== id);
             atualizarContadores();
             renderLista();
-            toast('🗑️ Despesa excluída.');
+            toast('🗑️ Movido para a Lixeira. Pode ser restaurado.');
         } catch { toast('⚠ Erro ao excluir.'); }
     });
 }
@@ -653,6 +690,107 @@ async function recarregar() {
     atualizarContadores();
     renderLista();
     if (secaoAtiva === 'resumo') renderResumo();
+}
+
+/* ── Frequência (recorrentes) ─────────────────────────────────── */
+window.toggleFrequencia = function(checked) {
+    const fw = $('dsp-frequencia-wrap');
+    if (fw) fw.style.display = checked ? 'block' : 'none';
+};
+
+/* ── Anexos ──────────────────────────────────────────────────── */
+window.adicionarAnexo = async function() {
+    const file = await selecionarArquivo();
+    if (!file) return;
+
+    const progWrap = $('dsp-anexo-progress');
+    const progBar  = $('dsp-anexo-bar');
+    if (progWrap) progWrap.style.display = 'block';
+
+    try {
+        const docId = editandoId || `dsp_${Date.now()}`;
+        const anexo = await uploadAnexo(file, COL_DESPESAS, docId, pct => {
+            if (progBar) progBar.style.width = `${pct}%`;
+        });
+        _anexosForm.push(anexo);
+        renderAnexos($('dsp-anexos-lista'), _anexosForm, idx => {
+            _anexosForm.splice(idx, 1);
+            renderAnexos($('dsp-anexos-lista'), _anexosForm, arguments.callee);
+        });
+        toast('📎 Anexo adicionado!');
+    } catch (e) {
+        toast(`⚠ ${e.message}`);
+    } finally {
+        if (progWrap) progWrap.style.display = 'none';
+        if (progBar)  progBar.style.width = '0%';
+    }
+};
+
+/* ── Exportar ────────────────────────────────────────────────── */
+window.exportarDespesas = function() {
+    const cols = ['descricao', 'categoria', 'valor', 'data', 'tipo', 'pagamento', 'centro', 'recorrente'];
+    const hdrs = {
+        descricao: 'Descrição', categoria: 'Categoria', valor: 'Valor (R$)',
+        data: 'Data', tipo: 'Tipo', pagamento: 'Forma Pagamento',
+        centro: 'Centro de Custo', recorrente: 'Recorrente',
+    };
+    mostrarMenuExportar(despesasData, cols, hdrs, 'despesas');
+};
+
+/* ── Recorrentes Automáticas ─────────────────────────────────── */
+async function gerarRecorrentesAutomaticas() {
+    const hoje_str = hoje();
+    const recorrentes = despesasData.filter(d => d.recorrente && d.ultimaGeracao);
+    let geradas = 0;
+
+    for (const d of recorrentes) {
+        const proxima = calcularProximaData(d.ultimaGeracao, d.frequencia || 'mensal');
+        if (!proxima || proxima > hoje_str) continue;
+
+        const novoId = `dsp_rec_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        const nova = {
+            descricao:    d.descricao,
+            valor:        d.valor,
+            data:         proxima,
+            categoria:    d.categoria,
+            tipo:         d.tipo,
+            pagamento:    d.pagamento || 'dinheiro',
+            centro:       d.centro || '',
+            obs:          d.obs   || '',
+            recorrente:   false,
+            origemRecorrente: d.id,
+            criadoEm:    serverTimestamp(),
+            atualizadoEm: serverTimestamp(),
+        };
+        try {
+            await setDoc(doc(db, COL_DESPESAS, novoId), nova);
+            // Atualiza ultimaGeracao da fonte
+            await setDoc(doc(db, COL_DESPESAS, d.id), { ...d, ultimaGeracao: proxima, atualizadoEm: serverTimestamp() }, { merge: true });
+            geradas++;
+        } catch (e) {
+            console.warn('[Recorrentes] Erro ao gerar:', e);
+        }
+    }
+
+    if (geradas > 0) {
+        toast(`🔄 ${geradas} despesa${geradas > 1 ? 's' : ''} recorrente${geradas > 1 ? 's' : ''} gerada${geradas > 1 ? 's' : ''} automaticamente.`);
+        await recarregar();
+    }
+}
+
+function calcularProximaData(ultimaISO, frequencia) {
+    if (!ultimaISO) return null;
+    const d = new Date(ultimaISO + 'T12:00:00');
+    switch (frequencia) {
+        case 'semanal':     d.setDate(d.getDate() + 7);    break;
+        case 'quinzenal':   d.setDate(d.getDate() + 15);   break;
+        case 'mensal':      d.setMonth(d.getMonth() + 1);  break;
+        case 'trimestral':  d.setMonth(d.getMonth() + 3);  break;
+        case 'semestral':   d.setMonth(d.getMonth() + 6);  break;
+        case 'anual':       d.setFullYear(d.getFullYear() + 1); break;
+        default:            return null;
+    }
+    return d.toISOString().slice(0, 10);
 }
 
 /* ── Init ────────────────────────────────────────────────────── */

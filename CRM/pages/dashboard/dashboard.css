@@ -3841,3 +3841,78 @@ body {
     .fin-exec-row--op { grid-template-columns: repeat(2, 1fr); }
     .fin-meta-row    { grid-template-columns: 1fr; }
 }
+
+/* ═══════════════════════════════════════════════
+   SELETOR DE MODO DA HOME
+   ═══════════════════════════════════════════════ */
+
+/* Botão seletor no topo */
+.home-mode-group {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.home-mode-btn {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary, #9ca3a0);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+  white-space: nowrap;
+}
+
+.home-mode-btn:hover {
+  background: rgba(0,200,83,0.10);
+  color: var(--cell-green, #00C853);
+}
+
+.home-mode-btn.active {
+  background: rgba(0,200,83,0.16);
+  color: var(--cell-green, #00C853);
+}
+
+/* ── Modo MÓDULOS (padrão): painéis ocultos ── */
+body[data-home-mode="modulos"] .executive-panel,
+body[data-home-mode="modulos"] .fin-exec-panel {
+  display: none !important;
+}
+body[data-home-mode="modulos"] .panel-right {
+  display: none !important;
+}
+
+/* ── Modo DASHBOARD: módulos ocultos, painéis visíveis ── */
+body[data-home-mode="dashboard"] .modules-section {
+  display: none !important;
+}
+body[data-home-mode="dashboard"] .executive-panel,
+body[data-home-mode="dashboard"] .fin-exec-panel {
+  display: block !important;
+}
+body[data-home-mode="dashboard"] .panel-right {
+  display: flex !important;
+}
+
+/* ── Modo COMPLETO: tudo visível ── */
+body[data-home-mode="completo"] .executive-panel,
+body[data-home-mode="completo"] .fin-exec-panel {
+  display: block !important;
+}
+body[data-home-mode="completo"] .panel-right {
+  display: flex !important;
+}
+
+/* Ocultar panel-right por padrão (sem modo definido = módulos) */
+body:not([data-home-mode]) .executive-panel,
+body:not([data-home-mode]) .fin-exec-panel,
+body:not([data-home-mode]) .panel-right {
+  display: none !important;
+}

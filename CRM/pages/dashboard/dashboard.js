@@ -1362,6 +1362,8 @@ class Dashboard {
       'compras':             '../../pages/compras/index.html',
       'fechamento':          '../../pages/fechamento/index.html',
       'auditoria':           '../../pages/auditoria/index.html',
+      'lixeira':             '../../pages/lixeira/index.html',
+      'integridade':         '../../pages/integridade/index.html',
       'pendencias':          '../../pages/pendencias/index.html',
       'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
       'venda-rapida':        '../../pages/venda-rapida/index.html',

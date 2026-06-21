@@ -607,3 +607,28 @@ button { cursor: pointer; }
     .dsp-resumo-grid { grid-template-columns: 1fr 1fr; }
     .dsp-cat-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Frequência (recorrentes) */
+#dsp-frequencia-wrap { margin-top: -4px; }
+
+/* ── Anexos */
+.dsp-anexos-wrap { display: flex; flex-direction: column; gap: 8px; }
+.dsp-btn-anexo {
+    padding: 7px 14px; background: var(--bg-elevated); border: 1px dashed var(--dsp-border);
+    border-radius: 8px; color: var(--dsp-text-sec); font-size: 12px; cursor: pointer;
+    transition: border-color 0.15s; text-align: left;
+}
+.dsp-btn-anexo:hover { border-color: var(--cell-green); color: var(--cell-green); }
+.dsp-anexos-lista { display: flex; flex-direction: column; gap: 5px; }
+.dsp-anexo-progress { height: 4px; background: var(--bg-elevated); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+.dsp-anexo-bar { height: 100%; background: var(--cell-green); border-radius: 2px; transition: width 0.2s; }
+
+/* Estilos compartilhados para renderAnexos() */
+.anexo-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: var(--bg-elevated); border-radius: 6px; }
+.anexo-icone { font-size: 14px; }
+.anexo-nome  { flex: 1; font-size: 11px; color: var(--dsp-text-sec); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.anexo-nome:hover { color: var(--cell-green); }
+.anexo-tam   { font-size: 10px; color: var(--dsp-text-muted); white-space: nowrap; }
+.anexo-rm    { background: none; border: none; color: var(--dsp-text-muted); cursor: pointer; font-size: 12px; padding: 0 4px; }
+.anexo-rm:hover { color: #ef5350; }
+.anexo-vazio { font-size: 11px; color: var(--dsp-text-muted); }

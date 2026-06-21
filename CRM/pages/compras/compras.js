@@ -8,6 +8,9 @@
 import {
     db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, getDoc, runTransaction
 } from '../../scripts/firebase.js';
+import { logAudit }           from '../../shared/auditoria.js';
+import { moverParaLixeira }   from '../../shared/lixeira.js';
+import { mostrarMenuExportar } from '../../shared/exportar.js';
 
 const COL_COMPRAS      = 'compras_financeiras';
 const COL_FORNECEDORES = 'fornecedores';
@@ -374,23 +377,29 @@ async function marcarStatus(id, novoStatus) {
 function excluirCompra(id) {
     const c = comprasData.find(x => x.id === id);
     if (!c) return;
-    confirmar(`Excluir compra de "${c.fornecedorNome}"? Os itens e o lançamento financeiro associado também serão removidos.`, async () => {
+    confirmar(`Mover compra de "${c.fornecedorNome}" para a Lixeira?`, async () => {
         try {
-            // Excluir itens
+            // Salva itens como parte dos dados para o histórico
             const snap = await getDocs(collection(db, `${COL_COMPRAS}/${id}/itens`));
+            const itens = snap.docs.map(d => d.data());
+
+            // Move para lixeira com dados completos
+            await moverParaLixeira(COL_COMPRAS, id, { ...c, _itens: itens });
+            await logAudit({ modulo: 'compras', acao: 'exclusao', id, antes: c, descricao: `Compra ${c.fornecedorNome} — ${fmt(c.valorTotal)}` });
+
+            // Remove subcoleção de itens
             for (const d of snap.docs) await deleteDoc(d.ref);
 
-            // Excluir lançamento financeiro se existir
+            // Remove lançamento financeiro associado
             if (c.finPagarId) {
                 await deleteDoc(doc(db, COL_FIN_PAGAR, c.finPagarId)).catch(() => {});
             }
 
-            await deleteDoc(doc(db, COL_COMPRAS, id));
             comprasData = comprasData.filter(x => x.id !== id);
             delete itensExpandidos[id];
             atualizarContadores();
             renderLista();
-            toast('🗑️ Compra excluída.');
+            toast('🗑️ Compra movida para a Lixeira.');
         } catch { toast('⚠ Erro ao excluir.'); }
     });
 }
@@ -570,6 +579,12 @@ async function salvarCompra() {
             await atualizarEstoqueComCompra(itensForm);
         }
 
+        await logAudit({
+            modulo:    'compras',
+            acao:      editandoId ? 'edicao' : 'criacao',
+            id:        docRef.id,
+            descricao: `Compra ${$('cmp-fornecedor')?.value || ''} — ${$('cmp-valor-total')?.textContent || ''}`,
+        });
         toast(editandoId ? '✏️ Compra atualizada!' : '✅ Compra registrada!');
         fecharForm();
         await recarregar();
@@ -662,6 +677,16 @@ async function recarregar() {
     atualizarContadores();
     renderLista();
 }
+
+/* ── Exportar ────────────────────────────────────────────────── */
+window.exportarCompras = function() {
+    const cols = ['fornecedorNome', 'valorTotal', 'data', 'status', 'formaPagamento', 'obs'];
+    const hdrs = {
+        fornecedorNome: 'Fornecedor', valorTotal: 'Valor Total (R$)',
+        data: 'Data', status: 'Status', formaPagamento: 'Forma de Pagamento', obs: 'Obs',
+    };
+    mostrarMenuExportar(comprasData, cols, hdrs, 'compras');
+};
 
 /* ── Init ────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => carregar());
