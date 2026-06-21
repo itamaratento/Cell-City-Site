@@ -1046,6 +1046,18 @@ body {
 .module-card:hover::before { opacity: 1; }
 .module-card:active { transform: translateY(0) scale(0.99); }
 
+/* ── Drag-and-drop nos cards da home ── */
+.module-card[data-module].mc-dragging {
+  opacity: .35;
+  cursor: grabbing;
+  transform: scale(.97);
+}
+.module-card[data-module].mc-drag-over {
+  outline: 2px dashed rgba(0,200,83,.6);
+  outline-offset: 3px;
+  background: rgba(0,200,83,.05);
+}
+
 .module-icon {
   font-size: 20px;
   width: 42px;

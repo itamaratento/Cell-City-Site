@@ -7,7 +7,7 @@ import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapsh
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged } from "../../shared/central-modulos.js";
-import { init as initHomePrefs, getPrefs as getHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
+import { init as initHomePrefs, getPrefs as getHomePrefs, setPrefs as setHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
 
 
 class Dashboard {
@@ -1172,6 +1172,82 @@ class Dashboard {
     };
     applyHomePrefs();
     window.addEventListener('cc-home-changed', applyHomePrefs);
+
+    // ----- drag-and-drop para reordenar cards -----
+    const grid = document.querySelector('.modules-grid');
+    if (grid) {
+      let _dragId = null;
+
+      cards.forEach(card => {
+        card.setAttribute('draggable', 'true');
+
+        card.addEventListener('dragstart', e => {
+          _dragId = card.getAttribute('data-module');
+          card.classList.add('mc-dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', _dragId);
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('mc-dragging');
+          cards.forEach(c => c.classList.remove('mc-drag-over'));
+          _dragId = null;
+        });
+
+        card.addEventListener('dragover', e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          if (!_dragId || card.getAttribute('data-module') === _dragId) return;
+          cards.forEach(c => c.classList.remove('mc-drag-over'));
+          card.classList.add('mc-drag-over');
+        });
+
+        card.addEventListener('dragleave', () => {
+          card.classList.remove('mc-drag-over');
+        });
+
+        card.addEventListener('drop', e => {
+          e.preventDefault();
+          card.classList.remove('mc-drag-over');
+          const tgtId = card.getAttribute('data-module');
+          if (!_dragId || tgtId === _dragId) return;
+
+          const prefs = getHomePrefs();
+          const todos = cards.map(c => c.getAttribute('data-module'));
+          let ordem = Array.isArray(prefs.modulosOrdem) && prefs.modulosOrdem.length > 0
+            ? [...prefs.modulosOrdem]
+            : [...todos];
+
+          // Garante que todos os cards visíveis existem na lista de ordem
+          todos.forEach(id => { if (!ordem.includes(id)) ordem.push(id); });
+
+          const fromIdx = ordem.indexOf(_dragId);
+          const toIdx   = ordem.indexOf(tgtId);
+          if (fromIdx < 0 || toIdx < 0) return;
+
+          // Insere antes ou depois do alvo conforme posição do cursor
+          const rect  = card.getBoundingClientRect();
+          const isLista = document.documentElement.dataset.cardMode === 'lista';
+          const after = isLista
+            ? e.clientY > rect.top + rect.height / 2
+            : e.clientX > rect.left + rect.width  / 2;
+
+          ordem.splice(fromIdx, 1);
+          const newTo = ordem.indexOf(tgtId);
+          ordem.splice(after ? newTo + 1 : newTo, 0, _dragId);
+
+          // Aplica visualmente de imediato
+          cards.forEach(c => {
+            const id  = c.getAttribute('data-module');
+            const pos = ordem.indexOf(id);
+            c.style.order = pos >= 0 ? String(pos) : '';
+          });
+
+          // Salva nas preferências
+          setHomePrefs({ ...prefs, modulosOrdem: ordem });
+        });
+      });
+    }
 
     // Mostra/oculta cards conforme favoritos — sem estrelas na home
     const aplicar = () => {
