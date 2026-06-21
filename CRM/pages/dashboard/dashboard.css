@@ -4082,6 +4082,29 @@ html:not([data-home-mode]) .panel-right {
     font-size: 13px;
   }
 
+  /* ── Alça de drag (arraste para reordenar) ── */
+  .mob-drag-handle {
+    flex-shrink: 0;
+    width: 32px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    color: #374151;
+    font-size: 20px;
+    cursor: grab;
+    touch-action: none;
+    padding: 0;
+    margin-left: -4px;
+    border-radius: 4px;
+    transition: color 150ms;
+    line-height: 1;
+  }
+  .mob-drag-handle:active { cursor: grabbing; color: #00c853; }
+  .mob-drag-handle:hover  { color: #6b7280; }
+
   /* ── Item de módulo (modo lista) ── */
   .mob-item {
     display: flex;

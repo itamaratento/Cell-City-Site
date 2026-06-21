@@ -206,8 +206,9 @@
 
     renderMobileModules();
 
-    /* Atualiza quando favoritos mudam */
+    /* Atualiza quando favoritos ou ordem mudam */
     window.addEventListener('cc-modulos-changed', renderMobileModules);
+    window.addEventListener('cc-mod-order-changed', renderMobileModules);
   }
 
   /* ── Renderiza toda a lista mobile ──────────────────────── */
@@ -221,11 +222,12 @@
     let favHtml = '';
     const favIds = favs && favs.length > 0 ? favs : [];
 
-    // Coleta módulos favoritos na ordem do catálogo
-    const favModulos = [];
+    // Coleta módulos favoritos e ordena pela ordem salva
+    let favModulos = [];
     TODOS_MODULOS.forEach(mod => {
       if (favIds.includes(mod.id)) favModulos.push(mod);
     });
+    if (window.CCModOrder) favModulos = window.CCModOrder.sort(favModulos, m => m.id);
 
     if (favModulos.length > 0) {
       favHtml = favModulos.map(mod => renderItem(mod)).join('');
@@ -238,6 +240,9 @@
     /* ── Seção TODOS OS MÓDULOS (por categoria, accordion) ── */
     const catsHtml = CATEGORIAS.map((cat, idx) => {
       const collapsed = idx >= 2 ? 'collapsed' : '';
+      const ordered = window.CCModOrder
+        ? window.CCModOrder.sort(cat.modulos, m => m.id)
+        : cat.modulos;
       return `
         <div class="mob-cat-section">
           <div class="mob-cat-header ${collapsed}" data-cat="${esc(cat.id)}">
@@ -248,7 +253,7 @@
             </div>
           </div>
           <div class="mob-cat-body ${collapsed}">
-            ${cat.modulos.map(mod => renderItem(mod)).join('')}
+            ${ordered.map(mod => renderItem(mod)).join('')}
           </div>
         </div>`;
     }).join('');
@@ -293,6 +298,11 @@
 
     /* Aplica view atual */
     applyView(getView());
+
+    /* Ativa drag por alça (precisa de CCModOrder do modules-order.js) */
+    if (window.CCModOrder && window.CCModOrder.setupTouchDrag) {
+      window.CCModOrder.setupTouchDrag(container);
+    }
   }
 
   /* ── Gera HTML de um item de módulo ─────────────────────── */
@@ -304,6 +314,7 @@
       role="button"
       tabindex="0"
       aria-label="${esc(mod.nome)}">
+      <button class="mob-drag-handle" title="Arrastar para reordenar" aria-label="Reordenar" tabindex="-1">⠿</button>
       <div class="mob-item-icon">${mod.icone}</div>
       <div class="mob-item-info">
         <div class="mob-item-nome">${esc(mod.nome)}</div>
