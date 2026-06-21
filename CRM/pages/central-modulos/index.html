@@ -491,10 +491,300 @@ body {
 }
 #cm-pg-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+/* ════════════════════════════════════════
+   TAB 3 — MENUS SUPERIORES
+   ════════════════════════════════════════ */
+
+.tb-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Painel editor */
+.tb-editor {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tb-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tb-editor-titulo { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.tb-editor-sub    { font-size: 11.5px; color: var(--text-muted); }
+
+/* Lista principal (itens do topbar) */
+.tb-list { padding: 8px 0; }
+
+.tb-item {
+  position: relative;
+}
+.tb-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 8px;
+  cursor: default;
+  transition: background var(--tr);
+}
+.tb-item-row:hover { background: var(--bg-hover); }
+.tb-item.tb-dragging { opacity: .35; }
+.tb-item.tb-drag-over .tb-item-row {
+  background: rgba(0,200,83,.06);
+  outline: 1px dashed rgba(0,200,83,.3);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tb-drag-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: grab;
+  opacity: .35;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  transition: opacity var(--tr);
+}
+.tb-item-row:hover .tb-drag-handle { opacity: .8; }
+
+.tb-pin-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: .2;
+  transition: opacity var(--tr), background var(--tr);
+  user-select: none;
+}
+.tb-pin-btn:hover  { opacity: .8; background: rgba(255,255,255,.06); }
+.tb-pin-btn.pinned { opacity: 1; }
+.tb-item-row:not(:hover) .tb-pin-btn:not(.pinned) { opacity: .08; }
+
+.tb-ico  { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.tb-name { flex: 1; font-size: 13px; font-weight: 500; min-width: 0; }
+.tb-name.oculto { color: var(--text-muted); text-decoration: line-through; opacity: .5; }
+.tb-cat-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Botão expandir submenu */
+.tb-expand-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--tr), border-color var(--tr);
+  white-space: nowrap;
+}
+.tb-expand-btn:hover { color: var(--text-primary); border-color: var(--border-med); }
+.tb-expand-btn.open  { color: var(--cell-green); border-color: var(--green-border); }
+
+/* Toggle switch (re-usa .sb-toggle) */
+
+/* Submenus expandidos */
+.tb-submenus {
+  display: none;
+  background: rgba(0,0,0,.2);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 6px 52px;
+}
+.tb-submenus.open { display: block; }
+
+.tb-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 0;
+  font-size: 12px;
+  color: var(--text-sec);
+}
+.tb-sub-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,.04); }
+.tb-sub-ico  { font-size: 14px; width: 20px; text-align: center; }
+.tb-sub-lbl  { flex: 1; }
+.tb-sub-vis  { flex-shrink: 0; }
+
+/* Toggle (reutiliza estilo do sb-toggle mas em miniatura) */
+.tb-sub-toggle {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 15px;
+  cursor: pointer;
+}
+.tb-sub-toggle input { opacity: 0; width: 0; height: 0; }
+.tb-sub-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.1);
+  border-radius: 99px;
+  transition: background .2s;
+}
+.tb-sub-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 2px; top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.tb-sub-toggle input:checked + .tb-sub-toggle-track { background: var(--cell-green); }
+.tb-sub-toggle input:checked + .tb-sub-toggle-track::before { transform: translateX(13px); }
+
+/* Separador de seção */
+.tb-sec-label {
+  padding: 10px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.tb-sec-label:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; }
+
+/* ── Preview da barra superior ── */
+.tb-preview-wrap {
+  position: sticky;
+  top: 80px;
+}
+.tb-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.tb-preview {
+  background: rgba(8,9,10,.97);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  overflow: visible;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tb-pv-logo {
+  background: rgba(0,200,83,.1);
+  border: 1px solid rgba(0,200,83,.2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tb-pv-sep { flex: 1; }
+.tb-pv-items {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.tb-pv-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.5);
+  cursor: default;
+  white-space: nowrap;
+}
+.tb-pv-item.pv-fixado { color: #00c853; font-weight: 700; }
+.tb-pv-item-ico { font-size: 12px; }
+.tb-pv-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.tb-pv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tb-pv-btn.pv-som   { color: #fbbf24; background: rgba(251,191,36,.08); }
+.tb-pv-btn.pv-site  { color: #22c55e; background: rgba(34,197,94,.06); }
+
+/* Dropdown hover no preview */
+.tb-pv-item { position: relative; }
+.tb-pv-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #111418;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 150px;
+  z-index: 10;
+  display: none;
+}
+.tb-pv-item:hover .tb-pv-dropdown { display: block; }
+.tb-pv-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  white-space: nowrap;
+}
+.tb-pv-sub:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+/* Stats */
+.tb-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 /* ── Responsivo ── */
 @media (max-width: 860px) {
-  .sb-layout { grid-template-columns: 1fr; }
-  .sb-preview-wrap { position: static; }
+  .sb-layout, .tb-layout { grid-template-columns: 1fr; }
+  .sb-preview-wrap, .tb-preview-wrap { position: static; }
   .sb-preview { width: 100%; }
 }
 @media (max-width: 640px) {
@@ -519,6 +809,7 @@ body {
   <div class="ctr-tabs">
     <button class="ctr-tab active" data-tab="modulos">🧩 Módulos</button>
     <button class="ctr-tab" data-tab="sidebar">📋 Barra Lateral</button>
+    <button class="ctr-tab" data-tab="topbar">🔝 Menus Superiores</button>
   </div>
 
   <!-- ── TAB 1: MÓDULOS ── -->
@@ -534,6 +825,40 @@ body {
       <span class="cm-stat-favs" id="cm-stat-favs">— favoritos na home</span>
     </div>
     <div class="cm-pg-grid" id="cm-pg-grid"></div>
+  </div>
+
+  <!-- ── TAB 3: MENUS SUPERIORES ── -->
+  <div id="ctr-tab-topbar" class="ctr-panel">
+    <div class="tb-layout">
+
+      <!-- Editor -->
+      <div class="tb-editor">
+        <div class="tb-editor-header">
+          <div>
+            <div class="tb-editor-titulo">Menu Rápido da Barra Superior</div>
+            <div class="tb-editor-sub">⠿ arraste para reordenar · 👁 mostra/oculta · 📌 fixa · ▸ submenus</div>
+          </div>
+          <button class="sb-reset" id="tb-reset-btn">↺ Restaurar padrão</button>
+        </div>
+        <div class="tb-list" id="tb-list"></div>
+      </div>
+
+      <!-- Preview em tempo real -->
+      <div class="tb-preview-wrap">
+        <div class="tb-preview-label">Pré-visualização da Barra Superior</div>
+        <div class="tb-preview">
+          <div class="tb-pv-logo">🟢 Cell City</div>
+          <div class="tb-pv-items" id="tb-pv-items"></div>
+          <div class="tb-pv-sep"></div>
+          <div class="tb-pv-right">
+            <div class="tb-pv-btn pv-som">🔊 Sons</div>
+            <div class="tb-pv-btn pv-site">🌐 Site</div>
+          </div>
+        </div>
+        <div class="tb-stats" id="tb-stats"></div>
+      </div>
+
+    </div>
   </div>
 
   <!-- ── TAB 2: BARRA LATERAL ── -->
@@ -598,6 +923,15 @@ import {
   getDefaultPrefs,
   onPrefsChanged
 } from '../../shared/sidebar-prefs.js';
+
+import {
+  ITENS_TOPBAR,
+  init            as initTbPrefs,
+  getPrefs        as getTbPrefs,
+  setPrefs        as setTbPrefs,
+  getDefaultPrefs as getDefaultTbPrefs,
+  onPrefsChanged  as onTbPrefsChanged
+} from '../../shared/topbar-prefs.js';
 
 window.abrirCentralModulos = abrirCentralModulos;
 
@@ -956,6 +1290,278 @@ function _saveSb() {
     await setSbPrefs(_stateToPrefs());
   }, 400);
 }
+
+// ════════════════════════════════════
+// TAB 3 — MENUS SUPERIORES (TOPBAR)
+// ════════════════════════════════════
+
+let _tbState = []; // array de { ...item, visivel, fixado, ordem, submenus:[{id,visivel}] }
+
+function _buildTbState(prefs) {
+  const itensPrefs = (prefs && Array.isArray(prefs.itens)) ? prefs.itens : [];
+  const defaults   = getDefaultTbPrefs().itens;
+
+  return ITENS_TOPBAR.map((item, i) => {
+    const pref = itensPrefs.find(p => p.id === item.id)
+              || defaults.find(p => p.id === item.id)
+              || { id: item.id, visivel: false, fixado: false, ordem: i, submenus: [] };
+
+    const subPrefs = Array.isArray(pref.submenus) ? pref.submenus : [];
+
+    return {
+      ...item,
+      visivel: pref.visivel !== false,
+      fixado:  !!pref.fixado,
+      ordem:   pref.ordem ?? i,
+      submenus: item.submenus.map(sub => {
+        const sp = subPrefs.find(s => s.id === sub.id) || { id: sub.id, visivel: true };
+        return { ...sub, visivel: sp.visivel !== false };
+      })
+    };
+  }).sort((a, b) => {
+    if (a.fixado && !b.fixado) return -1;
+    if (!a.fixado && b.fixado) return 1;
+    return a.ordem - b.ordem;
+  });
+}
+
+function _tbStateToPrefs() {
+  return {
+    itens: _tbState.map((item, i) => ({
+      id:       item.id,
+      visivel:  item.visivel,
+      fixado:   item.fixado,
+      ordem:    i,
+      href:     item.href,
+      icon:     item.icon,
+      label:    item.label,
+      submenus: item.submenus.map(s => ({ id: s.id, visivel: s.visivel, icon: s.icon, label: s.label, href: s.href }))
+    }))
+  };
+}
+
+function renderTbPreview() {
+  const items = document.getElementById('tb-pv-items');
+  const stats = document.getElementById('tb-stats');
+  if (!items) return;
+
+  const visiveis = _tbState.filter(i => i.visivel);
+
+  items.innerHTML = visiveis.map(item => {
+    const visibleSubs = item.submenus.filter(s => s.visivel);
+    const hasSubs = visibleSubs.length > 0;
+    return `<div class="tb-pv-item ${item.fixado ? 'pv-fixado' : ''}">
+      <span class="tb-pv-item-ico">${item.icon}</span>
+      <span>${esc(item.label)}</span>
+      ${hasSubs ? '<span style="font-size:8px;opacity:.5">▾</span>' : ''}
+      ${hasSubs ? `<div class="tb-pv-dropdown">
+        ${visibleSubs.map(s =>
+          `<div class="tb-pv-sub"><span>${s.icon}</span><span>${esc(s.label)}</span></div>`
+        ).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  if (stats) stats.textContent = `${visiveis.length} de ${_tbState.length} itens visíveis`;
+}
+
+function renderTbList() {
+  const list = document.getElementById('tb-list');
+  if (!list) return;
+
+  const fixados = _tbState.filter(i => i.fixado);
+  const normais = _tbState.filter(i => !i.fixado);
+
+  let html = '';
+  if (fixados.length) {
+    html += `<div class="tb-sec-label">📌 Fixados no topo</div>`;
+    fixados.forEach(item => { html += _renderTbItem(item); });
+  }
+  if (normais.length) {
+    if (fixados.length) html += `<div class="tb-sec-label">Outros itens</div>`;
+    normais.forEach(item => { html += _renderTbItem(item); });
+  }
+
+  list.innerHTML = html;
+  _setupTbListEvents(list);
+}
+
+function _renderTbItem(item) {
+  const hasSubs = item.submenus && item.submenus.length > 0;
+  return `<div class="tb-item" data-id="${item.id}" draggable="true">
+    <div class="tb-item-row">
+      <span class="tb-drag-handle" title="Arrastar para reordenar">⠿</span>
+      <span class="tb-pin-btn ${item.fixado ? 'pinned' : ''}" data-id="${item.id}"
+        title="${item.fixado ? 'Desafixar' : 'Fixar no topo'}">📌</span>
+      <span class="tb-ico">${item.icon}</span>
+      <span class="tb-name ${item.visivel ? '' : 'oculto'}">${esc(item.label)}</span>
+      <span class="tb-cat-chip">${esc(item.categoria)}</span>
+      ${hasSubs
+        ? `<button class="tb-expand-btn" data-id="${item.id}">▸ ${item.submenus.length} submenus</button>`
+        : ''}
+      <div class="sb-toggle-wrap">
+        <label class="sb-toggle" title="${item.visivel ? 'Ocultar' : 'Mostrar'}">
+          <input type="checkbox" class="tb-vis-chk" data-id="${item.id}" ${item.visivel ? 'checked' : ''}>
+          <span class="sb-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+    ${hasSubs ? `
+    <div class="tb-submenus" id="tb-subs-${item.id}">
+      ${item.submenus.map(sub => `
+        <div class="tb-sub-item">
+          <span class="tb-sub-ico">${sub.icon}</span>
+          <span class="tb-sub-lbl">${esc(sub.label)}</span>
+          <div class="tb-sub-vis">
+            <label class="tb-sub-toggle" title="${sub.visivel ? 'Ocultar' : 'Mostrar'}">
+              <input type="checkbox" class="tb-sub-vis-chk" data-id="${item.id}" data-subid="${sub.id}" ${sub.visivel ? 'checked' : ''}>
+              <span class="tb-sub-toggle-track"></span>
+            </label>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+function _setupTbListEvents(list) {
+  // Toggle visibilidade item
+  list.querySelectorAll('.tb-vis-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const idx = _tbState.findIndex(i => i.id === chk.dataset.id);
+      if (idx < 0) return;
+      _tbState[idx].visivel = chk.checked;
+      renderTbList();
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Toggle visibilidade submenu
+  list.querySelectorAll('.tb-sub-vis-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const itemIdx = _tbState.findIndex(i => i.id === chk.dataset.id);
+      if (itemIdx < 0) return;
+      const subIdx = _tbState[itemIdx].submenus.findIndex(s => s.id === chk.dataset.subid);
+      if (subIdx < 0) return;
+      _tbState[itemIdx].submenus[subIdx].visivel = chk.checked;
+      // Não re-renderiza a lista inteira; só atualiza o preview
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Toggle expandir submenus
+  list.querySelectorAll('.tb-expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.id;
+      const sub = document.getElementById(`tb-subs-${id}`);
+      if (!sub) return;
+      const open = sub.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.textContent = open
+        ? `▾ fechar submenus`
+        : `▸ ${_tbState.find(i => i.id === id)?.submenus.length || 0} submenus`;
+    });
+  });
+
+  // Toggle fixado
+  list.querySelectorAll('.tb-pin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = _tbState.findIndex(i => i.id === btn.dataset.id);
+      if (idx < 0) return;
+      _tbState[idx].fixado = !_tbState[idx].fixado;
+      _tbState.sort((a, b) => {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return 0;
+      });
+      renderTbList();
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Drag & drop reordenação
+  let _dragSrc = null;
+  list.addEventListener('dragstart', e => {
+    const row = e.target.closest('.tb-item');
+    if (!row) return;
+    _dragSrc = row;
+    row.classList.add('tb-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    if (_dragSrc) _dragSrc.classList.remove('tb-dragging');
+    list.querySelectorAll('.tb-drag-over').forEach(el => el.classList.remove('tb-drag-over'));
+    _dragSrc = null;
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const row = e.target.closest('.tb-item');
+    if (!row || row === _dragSrc) return;
+    list.querySelectorAll('.tb-drag-over').forEach(el => el.classList.remove('tb-drag-over'));
+    row.classList.add('tb-drag-over');
+  });
+  list.addEventListener('dragleave', e => {
+    const row = e.target.closest('.tb-item');
+    if (row) row.classList.remove('tb-drag-over');
+  });
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.tb-item');
+    if (!target || !_dragSrc || target === _dragSrc) return;
+    target.classList.remove('tb-drag-over');
+
+    const srcId  = _dragSrc.dataset.id;
+    const tgtId  = target.dataset.id;
+    const srcIdx = _tbState.findIndex(i => i.id === srcId);
+    const tgtIdx = _tbState.findIndex(i => i.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    const [moved] = _tbState.splice(srcIdx, 1);
+    const newTgt  = _tbState.findIndex(i => i.id === tgtId);
+    const after   = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+    _tbState.splice(after ? newTgt + 1 : newTgt, 0, moved);
+
+    renderTbList();
+    renderTbPreview();
+    _saveTb();
+  });
+}
+
+let _tbSaveTimer;
+function _saveTb() {
+  clearTimeout(_tbSaveTimer);
+  _tbSaveTimer = setTimeout(async () => {
+    await setTbPrefs(_tbStateToPrefs());
+  }, 400);
+}
+
+// Restaurar padrão topbar
+document.getElementById('tb-reset-btn')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar menu superior para a configuração padrão?')) return;
+  _tbState = _buildTbState(getDefaultTbPrefs());
+  renderTbList();
+  renderTbPreview();
+  await setTbPrefs(getDefaultTbPrefs());
+  toast('Menu superior restaurado para o padrão.');
+});
+
+// Init topbar tab
+initTbPrefs();
+onTbPrefsChanged(prefs => {
+  _tbState = _buildTbState(prefs);
+  renderTbList();
+  renderTbPreview();
+});
+
+_tbState = _buildTbState(getTbPrefs());
+renderTbList();
+renderTbPreview();
+
+// ════════════════════════════════════
+// RESTAURAR PADRÃO SIDEBAR
+// ════════════════════════════════════
 
 // Restaurar padrão
 document.getElementById('sb-reset-btn')?.addEventListener('click', async () => {

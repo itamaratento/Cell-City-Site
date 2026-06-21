@@ -160,6 +160,98 @@
       .brand-header { padding: 6px 10px; }
     }
 
+    /* ── Menu rápido na barra superior (quicknav) ── */
+    #crm-quicknav {
+      display: flex;
+      align-items: center;
+      gap: 1px;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+    .crm-qn-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 7px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.5);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 140ms, color 140ms;
+      position: relative;
+      white-space: nowrap;
+      font-family: inherit;
+      line-height: 1;
+      user-select: none;
+    }
+    .crm-qn-item:hover,
+    .crm-qn-item:focus-within {
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.9);
+    }
+    .crm-qn-item.qn-fixado { color: #00c853; font-weight: 700; }
+    .crm-qn-item.qn-fixado:hover { color: #4ade80; }
+    .crm-qn-ico   { font-size: 14px; line-height: 1; }
+    .crm-qn-lbl   { line-height: 1; }
+    .crm-qn-arrow { font-size: 8px; opacity: .55; margin-left: 1px; }
+
+    /* Dropdown */
+    .crm-qn-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 180px;
+      background: #111418;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 10px;
+      padding: 6px;
+      z-index: 99998;
+      box-shadow: 0 8px 32px rgba(0,0,0,.55);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: opacity .14s, transform .14s;
+    }
+    .crm-qn-item:hover .crm-qn-dropdown,
+    .crm-qn-item:focus-within .crm-qn-dropdown {
+      opacity: 1;
+      pointer-events: all;
+      transform: translateY(0);
+    }
+    /* Ponte invisível: evita gap entre botão e dropdown */
+    .crm-qn-dropdown::before {
+      content: '';
+      position: absolute;
+      top: -8px; left: 0; right: 0;
+      height: 8px;
+    }
+    .crm-qn-sub {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 7px;
+      color: rgba(255,255,255,.6);
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 120ms, color 120ms;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+    .crm-qn-sub:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .crm-qn-sub-ico   { font-size: 13px; width: 18px; text-align: center; }
+    .crm-qn-divider   {
+      height: 1px;
+      background: rgba(255,255,255,.07);
+      margin: 4px 6px;
+    }
+    @media (max-width: 760px) { #crm-quicknav { display: none; } }
+
     /* === Botão Global de Sons === */
     .crm-audio-btn {
       display: inline-flex;
@@ -396,6 +488,100 @@
     else bar.appendChild(btn);
   }
 
+  // ── Menu rápido (quicknav) ────────────────────────────────────
+  var TOPBAR_LS = 'cc_topbar_prefs';
+
+  function _topbarPrefs() {
+    try { return JSON.parse(localStorage.getItem(TOPBAR_LS) || 'null'); } catch(ex) { return null; }
+  }
+
+  function _buildQuicknav() {
+    var prefs = _topbarPrefs();
+    if (!prefs || !Array.isArray(prefs.itens) || !prefs.itens.length) return null;
+
+    var visiveis = prefs.itens
+      .filter(function(i) { return i.visivel !== false; })
+      .sort(function(a, b) {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return (a.ordem || 0) - (b.ordem || 0);
+      });
+
+    if (!visiveis.length) return null;
+
+    // Precisamos do catálogo para pegar submenus, icon, href
+    // Lemos do localStorage de catalog cache (salvo por topbar-prefs.js via cc_topbar_prefs)
+    var nav = document.createElement('nav');
+    nav.id = 'crm-quicknav';
+    nav.setAttribute('aria-label', 'Menu rápido');
+
+    visiveis.forEach(function(conf) {
+      var subConfs = Array.isArray(conf.submenus) ? conf.submenus.filter(function(s) { return s.visivel !== false; }) : [];
+      var hasSub   = subConfs.length > 0;
+
+      var el = document.createElement('a');
+      el.className = 'crm-qn-item' + (conf.fixado ? ' qn-fixado' : '');
+      el.href      = conf.href || '#';
+      el.setAttribute('data-qnid', conf.id);
+      el.innerHTML =
+        '<span class="crm-qn-ico">' + (conf.icon || '📌') + '</span>' +
+        '<span class="crm-qn-lbl">' + (conf.label || conf.id) + '</span>' +
+        (hasSub ? '<span class="crm-qn-arrow">▾</span>' : '');
+
+      if (hasSub) {
+        var dd = document.createElement('div');
+        dd.className = 'crm-qn-dropdown';
+        // Link principal no topo do dropdown
+        if (conf.href && conf.href !== '#') {
+          var mainLink = document.createElement('a');
+          mainLink.className = 'crm-qn-sub';
+          mainLink.href = conf.href;
+          mainLink.innerHTML =
+            '<span class="crm-qn-sub-ico">' + (conf.icon || '🔗') + '</span>' +
+            '<span>Abrir ' + (conf.label || '') + '</span>';
+          dd.appendChild(mainLink);
+          var div = document.createElement('div');
+          div.className = 'crm-qn-divider';
+          dd.appendChild(div);
+        }
+        subConfs.forEach(function(sub) {
+          var s = document.createElement('a');
+          s.className = 'crm-qn-sub';
+          s.href = sub.href || '#';
+          s.innerHTML =
+            '<span class="crm-qn-sub-ico">' + (sub.icon || '›') + '</span>' +
+            '<span>' + (sub.label || sub.id) + '</span>';
+          dd.appendChild(s);
+        });
+        el.appendChild(dd);
+      }
+
+      nav.appendChild(el);
+    });
+
+    return nav;
+  }
+
+  function _insertQuicknav(bar) {
+    var old = document.getElementById('crm-quicknav');
+    if (old) old.remove();
+
+    var nav = _buildQuicknav();
+    if (!nav) return;
+
+    // Insere após o logo, antes do spacer ou da busca global
+    var anchor = bar.querySelector('.crm-bar-spacer, .global-search-wrapper, .top-meta-right');
+    if (anchor) bar.insertBefore(nav, anchor);
+    else bar.appendChild(nav);
+  }
+
+  function _refreshQuicknav() {
+    var bar = document.getElementById('crm-brand-bar');
+    if (bar) _insertQuicknav(bar);
+  }
+
+  window.addEventListener('cc-topbar-changed', _refreshQuicknav);
+
   function attachHandler(el) {
     el.title = 'Voltar ao painel';
     el.addEventListener('click', function () {
@@ -474,6 +660,7 @@
         // Injeta botão de som no dashboard
         criarBotaoSom(right || topBar);
       }
+      _insertQuicknav(topBar || existing.parentElement);
       return;
     }
 
@@ -536,6 +723,9 @@
 
     // Injeta botão de som (antes do siteBtn, que criarBotaoSom detecta automaticamente)
     criarBotaoSom(bar);
+
+    // Injeta menu rápido da barra superior
+    _insertQuicknav(bar);
 
     // Insere o brand bar como o 1º filho do body — completamente independente
     document.body.insertBefore(bar, document.body.firstChild);
