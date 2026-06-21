@@ -1189,10 +1189,12 @@ class Dashboard {
     onModulosChanged(aplicar);
   }
 
-  // ===== BOTÃO CENTRAL DE MÓDULOS NA SIDEBAR NATIVA =====
+  // ===== BOTÃO CENTRAL DE CONTROLE NA SIDEBAR NATIVA =====
   setupBtnCentralModulos() {
     const btn = document.getElementById('btnCentralModulos');
-    if (btn) btn.addEventListener('click', () => abrirCentralModulos());
+    if (btn) btn.addEventListener('click', () => {
+      window.location.href = '/CRM/pages/central-modulos/index.html';
+    });
   }
 
   // ===== CONSULTA DE PEÇAS SEA =====

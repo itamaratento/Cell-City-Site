@@ -36,6 +36,7 @@
 
   const COLLAPSE_KEY = 'cc_sidebar_state';
   const ORDER_KEY    = 'cc_sidebar_order';
+  const PREFS_KEY    = 'cc_sidebar_prefs';
   const W_EXPANDED   = 240;
   const W_COLLAPSED  = 72;
   const BAR_HEIGHT   = 56; // altura do brand-header
@@ -216,6 +217,13 @@
     /* Drag visual */
     .cc-si.cc-dragging { opacity: 0.4; }
     .cc-si.cc-drag-over { background: var(--bg-hover, rgba(255,255,255,0.06)); }
+
+    /* Item fixado — pin visual no modo expandido */
+    #cc-global-sidebar:not(.cc-collapsed) .cc-si.cc-pinned .cc-si-label::after {
+      content: ' 📌';
+      font-size: 9px;
+      opacity: 0.45;
+    }
 
     /* Rodapé */
     #cc-sidebar-footer {
@@ -443,17 +451,59 @@
     });
   }
 
+  // ── Aplica preferências de sidebar (visibilidade + ordem) ────
+  function _applyPrefs() {
+    const navEl = document.getElementById('cc-sidebar-nav');
+    if (!navEl) return;
+
+    let prefs = null;
+    try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch {}
+
+    if (!prefs || !Array.isArray(prefs.itens) || !prefs.itens.length) {
+      // Nenhuma pref salva — aplica só a ordenação antiga (drag nativo)
+      try {
+        const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
+        if (saved.length) {
+          saved.forEach(sid => {
+            const el = navEl.querySelector(`[data-sid="${sid}"]`);
+            if (el) navEl.appendChild(el);
+          });
+        }
+      } catch {}
+      return;
+    }
+
+    const itens = prefs.itens;
+
+    // Aplica visibilidade
+    navEl.querySelectorAll('.cc-si[data-sid]').forEach(el => {
+      const conf = itens.find(i => i.id === el.dataset.sid);
+      el.style.display = (conf && conf.visivel === false) ? 'none' : '';
+      el.classList.toggle('cc-pinned', !!(conf && conf.fixado));
+    });
+
+    // Reordena: fixados primeiro, depois por ordem
+    const sorted = [...itens]
+      .filter(i => i.visivel !== false)
+      .sort((a, b) => {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return (a.ordem ?? 999) - (b.ordem ?? 999);
+      });
+
+    sorted.forEach(conf => {
+      const el = navEl.querySelector(`[data-sid="${conf.id}"]`);
+      if (el) navEl.appendChild(el);
+    });
+  }
+
   // ── Central de Módulos button ─────────────────────────────────
   function setupCentralModulosBtn() {
     const btn = document.getElementById('cc-btn-central-modulos');
     if (!btn) return;
     btn.addEventListener('click', () => {
-      if (typeof window.abrirCentralModulos === 'function') {
-        window.abrirCentralModulos();
-      } else {
-        // Em páginas sem central-modulos.js: navega para o dashboard e abre
-        window.location.href = '/CRM/pages/dashboard/index.html?abrir=central-modulos';
-      }
+      // Navega direto para a Central de Controle
+      window.location.href = '/CRM/pages/central-modulos/index.html';
     });
   }
 
@@ -473,6 +523,10 @@
     setupTooltip(sidebar);
     setupNotasButton(navEl);
     setupCentralModulosBtn();
+
+    // Aplica prefs salvas imediatamente (localStorage) e ao receber evento
+    _applyPrefs();
+    window.addEventListener('cc-sidebar-changed', _applyPrefs);
   }
 
   if (document.readyState === 'loading') {

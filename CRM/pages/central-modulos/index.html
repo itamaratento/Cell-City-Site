@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Central de Módulos — Cell City Gestão Empresarial</title>
+<title>Central de Controle — Cell City Gestão Empresarial</title>
 <script>
   var _h = location.hostname;
   if (_h !== '127.0.0.1' && _h !== 'localhost' && sessionStorage.getItem('cc_acesso') !== 'ok')
@@ -25,8 +25,8 @@
   --text-primary: #f1f3f5;
   --text-sec:     #9ca3af;
   --text-muted:   #6b7280;
-  --radius-card:  12px;
-  --transition:   150ms ease;
+  --radius:       12px;
+  --tr:           150ms ease;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -37,18 +37,16 @@ body {
   min-height: 100vh;
 }
 
-/* ── Layout ── */
-.cm-pg {
-  max-width: 1100px;
+/* ── Página ── */
+.ctr-pg {
+  max-width: 1140px;
   margin: 0 auto;
   padding: 80px 24px 60px;
 }
 
-/* ── Cabeçalho da página ── */
-.cm-pg-header {
-  margin-bottom: 28px;
-}
-.cm-pg-titulo {
+/* ── Cabeçalho ── */
+.ctr-header { margin-bottom: 28px; }
+.ctr-titulo {
   font-size: 24px;
   font-weight: 800;
   letter-spacing: -.3px;
@@ -57,24 +55,46 @@ body {
   gap: 10px;
   margin-bottom: 4px;
 }
-.cm-pg-sub {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 20px;
-}
+.ctr-sub { font-size: 13px; color: var(--text-muted); }
 
-/* ── Barra de busca ── */
-.cm-pg-busca-wrap {
-  position: relative;
-  max-width: 500px;
+/* ── Tabs ── */
+.ctr-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
 }
-.cm-pg-busca-ico {
-  position: absolute;
-  left: 13px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 15px;
-  pointer-events: none;
+.ctr-tab {
+  padding: 9px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--tr), border-color var(--tr);
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.ctr-tab:hover  { color: var(--text-sec); }
+.ctr-tab.active { color: var(--cell-green); border-bottom-color: var(--cell-green); }
+
+/* ── Tab panels ── */
+.ctr-panel { display: none; }
+.ctr-panel.active { display: block; }
+
+/* ════════════════════════════════════════
+   TAB 1 — MÓDULOS
+   ════════════════════════════════════════ */
+
+/* Barra de busca */
+.cm-pg-busca-wrap { position: relative; max-width: 500px; margin-bottom: 20px; }
+.cm-pg-busca-ico  {
+  position: absolute; left: 13px; top: 50%;
+  transform: translateY(-50%); font-size: 15px; pointer-events: none;
 }
 #cm-pg-busca {
   width: 100%;
@@ -86,18 +106,13 @@ body {
   font-size: 13.5px;
   font-family: inherit;
   outline: none;
-  transition: border-color var(--transition);
+  transition: border-color var(--tr);
 }
 #cm-pg-busca:focus { border-color: var(--cell-green); }
 #cm-pg-busca::placeholder { color: var(--text-muted); }
 
-/* ── Filtros de categoria ── */
-.cm-pg-cats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 10px;
-}
+/* Filtros de categoria */
+.cm-pg-cats { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
 .cat-pill {
   padding: 5px 13px;
   border: 1px solid var(--border-med);
@@ -107,7 +122,7 @@ body {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  transition: background var(--tr), color var(--tr), border-color var(--tr);
   white-space: nowrap;
   font-family: inherit;
 }
@@ -119,7 +134,7 @@ body {
   font-weight: 600;
 }
 
-/* ── Stats ── */
+/* Stats */
 .cm-pg-stats {
   font-size: 12px;
   color: var(--text-muted);
@@ -131,14 +146,10 @@ body {
 .cm-stat-sep { opacity: .4; }
 .cm-stat-favs { color: #f5a623; font-weight: 600; }
 
-/* ── Grid de módulos ── */
-.cm-pg-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 14px;
-}
+/* Grid de módulos */
+.cm-pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
 
-/* ── Card de módulo ── */
+/* Card de módulo */
 .cm-card {
   display: flex;
   align-items: center;
@@ -146,17 +157,13 @@ body {
   padding: 16px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background var(--transition), border-color var(--transition), transform 120ms ease;
+  transition: background var(--tr), border-color var(--tr), transform 120ms ease;
   position: relative;
   user-select: none;
 }
-.cm-card:hover {
-  background: var(--bg-elevated);
-  border-color: var(--border-med);
-  transform: translateY(-1px);
-}
+.cm-card:hover { background: var(--bg-elevated); border-color: var(--border-med); transform: translateY(-1px); }
 .cm-card-ico {
   font-size: 28px;
   width: 44px;
@@ -172,7 +179,6 @@ body {
 .cm-card-nome {
   font-size: 13.5px;
   font-weight: 700;
-  color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -198,7 +204,7 @@ body {
   padding: 1px 7px;
 }
 
-/* ── Botão estrela ── */
+/* Estrela */
 .cm-card-star {
   flex-shrink: 0;
   background: none;
@@ -209,37 +215,20 @@ body {
   padding: 6px 8px;
   cursor: pointer;
   color: var(--text-muted);
-  transition: background var(--transition), border-color var(--transition),
-              color var(--transition), transform 120ms ease;
+  transition: background var(--tr), border-color var(--tr), color var(--tr), transform 120ms ease;
   opacity: 0;
 }
 .cm-card:hover .cm-card-star { opacity: 1; }
-.cm-card-star.on {
-  opacity: 1;
-  color: #f5a623;
-  border-color: rgba(245,166,35,.35);
-  background: rgba(245,166,35,.10);
-}
-.cm-card-star:hover {
-  transform: scale(1.18);
-  background: rgba(245,166,35,.14);
-  border-color: rgba(245,166,35,.5);
-  color: #f5a623;
-}
+.cm-card-star.on { opacity: 1; color: #f5a623; border-color: rgba(245,166,35,.35); background: rgba(245,166,35,.10); }
+.cm-card-star:hover { transform: scale(1.18); background: rgba(245,166,35,.14); border-color: rgba(245,166,35,.5); color: #f5a623; }
 
-/* ── Estado vazio ── */
-.cm-pg-vazio {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 48px 24px;
-  color: var(--text-muted);
-}
+/* Estado vazio */
+.cm-pg-vazio { grid-column: 1/-1; text-align: center; padding: 48px 24px; color: var(--text-muted); }
 .cm-pg-vazio-ico { font-size: 44px; margin-bottom: 12px; }
-.cm-pg-vazio-txt { font-size: 14px; }
 
-/* ── Seção de categoria (modo agrupado) ── */
+/* Cabeçalho de categoria */
 .cm-cat-sec-titulo {
-  grid-column: 1 / -1;
+  grid-column: 1/-1;
   font-size: 11px;
   font-weight: 700;
   color: var(--text-muted);
@@ -253,6 +242,234 @@ body {
   gap: 8px;
 }
 .cm-cat-sec-titulo:first-child { padding-top: 0; }
+
+/* ════════════════════════════════════════
+   TAB 2 — BARRA LATERAL
+   ════════════════════════════════════════ */
+
+.sb-layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Editor panel */
+.sb-editor {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.sb-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sb-editor-titulo { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.sb-editor-sub    { font-size: 11.5px; color: var(--text-muted); }
+.sb-reset {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--tr), border-color var(--tr);
+  white-space: nowrap;
+}
+.sb-reset:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+/* Lista de itens */
+.sb-list { padding: 8px 0; }
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 8px;
+  cursor: default;
+  transition: background var(--tr);
+  position: relative;
+}
+.sb-item:hover { background: var(--bg-hover); }
+.sb-item.sb-dragging { opacity: .35; }
+.sb-item.sb-drag-over { background: rgba(0,200,83,.06); outline: 1px dashed rgba(0,200,83,.3); outline-offset: -2px; border-radius: 6px; }
+
+/* Separador de seção na lista */
+.sb-sec-label {
+  padding: 10px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  opacity: .7;
+}
+.sb-sec-label:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; }
+
+.sb-drag-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: grab;
+  opacity: .4;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  transition: opacity var(--tr);
+}
+.sb-item:hover .sb-drag-handle { opacity: .9; }
+.sb-drag-handle:active { cursor: grabbing; }
+
+.sb-pin-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: .3;
+  transition: opacity var(--tr), background var(--tr);
+  user-select: none;
+}
+.sb-pin-btn:hover        { opacity: .8; background: rgba(255,255,255,.06); }
+.sb-pin-btn.pinned       { opacity: 1; filter: none; }
+.sb-item:not(:hover) .sb-pin-btn:not(.pinned) { opacity: .1; }
+
+.sb-ico  { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
+.sb-name { flex: 1; font-size: 13px; font-weight: 500; min-width: 0; }
+.sb-name.oculto { color: var(--text-muted); text-decoration: line-through; opacity: .5; }
+.sb-cat-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.sb-toggle-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.sb-toggle {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  cursor: pointer;
+}
+.sb-toggle input { opacity: 0; width: 0; height: 0; }
+.sb-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.1);
+  border-radius: 99px;
+  transition: background .2s;
+}
+.sb-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.sb-toggle input:checked + .sb-toggle-track { background: var(--cell-green); }
+.sb-toggle input:checked + .sb-toggle-track::before { transform: translateX(16px); }
+
+/* ── Preview panel ── */
+.sb-preview-wrap {
+  position: sticky;
+  top: 80px;
+}
+.sb-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.sb-preview {
+  background: #0d0e10;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 220px;
+}
+.sb-pv-toggle {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  color: rgba(255,255,255,.3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+  user-select: none;
+}
+.sb-pv-nav {
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.sb-pv-nav::-webkit-scrollbar { width: 3px; }
+.sb-pv-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+.sb-pv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.55);
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-pv-item.pv-highlight {
+  color: #00c853;
+  font-weight: 700;
+}
+.sb-pv-item.pv-pinned::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--cell-green);
+  border-radius: 0 2px 2px 0;
+}
+.sb-pv-ico   { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.sb-pv-lbl   { overflow: hidden; text-overflow: ellipsis; }
+.sb-pv-footer {
+  border-top: 1px solid rgba(255,255,255,.05);
+  padding: 6px 0;
+}
+.sb-pv-item.pv-footer { color: rgba(255,255,255,.35); font-size: 11px; }
+
+/* Contador de itens visíveis */
+.sb-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
 
 /* ── Toast ── */
 #cm-pg-toast {
@@ -275,39 +492,84 @@ body {
 #cm-pg-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 /* ── Responsivo ── */
+@media (max-width: 860px) {
+  .sb-layout { grid-template-columns: 1fr; }
+  .sb-preview-wrap { position: static; }
+  .sb-preview { width: 100%; }
+}
 @media (max-width: 640px) {
-  .cm-pg { padding: 72px 16px 40px; }
+  .ctr-pg { padding: 72px 16px 40px; }
   .cm-pg-grid { grid-template-columns: 1fr; }
   .cm-card-star { opacity: 1; }
+  .ctr-tab { padding: 8px 12px; font-size: 12px; }
 }
 </style>
 </head>
-<body data-fav-key="central-modulos" data-fav-icon="🧩" data-fav-label="Central de Módulos">
+<body data-fav-key="central-modulos" data-fav-icon="⚙️" data-fav-label="Central de Controle">
 
-<div class="cm-pg">
+<div class="ctr-pg">
 
   <!-- Cabeçalho -->
-  <div class="cm-pg-header">
-    <div class="cm-pg-titulo">🧩 Central de Módulos</div>
-    <div class="cm-pg-sub">Todos os módulos do sistema em um só lugar. ⭐ = aparece na sua home.</div>
+  <div class="ctr-header">
+    <div class="ctr-titulo">⚙️ Central de Controle</div>
+    <div class="ctr-sub">Gerencie módulos, barra lateral e aparência do sistema.</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="ctr-tabs">
+    <button class="ctr-tab active" data-tab="modulos">🧩 Módulos</button>
+    <button class="ctr-tab" data-tab="sidebar">📋 Barra Lateral</button>
+  </div>
+
+  <!-- ── TAB 1: MÓDULOS ── -->
+  <div id="ctr-tab-modulos" class="ctr-panel active">
     <div class="cm-pg-busca-wrap">
       <span class="cm-pg-busca-ico">🔍</span>
       <input id="cm-pg-busca" type="text" placeholder="Buscar módulo por nome, descrição ou categoria…" autocomplete="off">
     </div>
+    <div class="cm-pg-cats"  id="cm-pg-cats"></div>
+    <div class="cm-pg-stats" id="cm-pg-stats">
+      <span id="cm-stat-total">—</span>
+      <span class="cm-stat-sep">·</span>
+      <span class="cm-stat-favs" id="cm-stat-favs">— favoritos na home</span>
+    </div>
+    <div class="cm-pg-grid" id="cm-pg-grid"></div>
   </div>
 
-  <!-- Filtros de categoria -->
-  <div class="cm-pg-cats" id="cm-pg-cats"></div>
+  <!-- ── TAB 2: BARRA LATERAL ── -->
+  <div id="ctr-tab-sidebar" class="ctr-panel">
+    <div class="sb-layout">
 
-  <!-- Stats -->
-  <div class="cm-pg-stats" id="cm-pg-stats">
-    <span id="cm-stat-total">—</span>
-    <span class="cm-stat-sep">·</span>
-    <span class="cm-stat-favs" id="cm-stat-favs">— favoritos na home</span>
+      <!-- Lista editável -->
+      <div class="sb-editor">
+        <div class="sb-editor-header">
+          <div>
+            <div class="sb-editor-titulo">Itens da Barra Lateral</div>
+            <div class="sb-editor-sub">⠿ arraste para reordenar · 👁 mostra/oculta · 📌 fixa no topo</div>
+          </div>
+          <button class="sb-reset" id="sb-reset-btn">↺ Restaurar padrão</button>
+        </div>
+        <div class="sb-list" id="sb-list"></div>
+      </div>
+
+      <!-- Preview em tempo real -->
+      <div class="sb-preview-wrap">
+        <div class="sb-preview-label">Pré-visualização</div>
+        <div class="sb-preview">
+          <div class="sb-pv-toggle">◀ Menu</div>
+          <div class="sb-pv-nav" id="sb-pv-nav"></div>
+          <div class="sb-pv-footer">
+            <div class="sb-pv-item pv-footer">
+              <span class="sb-pv-ico">⚙️</span>
+              <span class="sb-pv-lbl">Central de Controle</span>
+            </div>
+          </div>
+        </div>
+        <div class="sb-stats" id="sb-stats"></div>
+      </div>
+
+    </div>
   </div>
-
-  <!-- Grid de módulos -->
-  <div class="cm-pg-grid" id="cm-pg-grid"></div>
 
 </div>
 
@@ -321,21 +583,55 @@ body {
 <script type="module">
 import {
   TODOS_MODULOS,
-  init as initCentral,
+  init     as initCentral,
   getFavoritosHome,
   toggleFavorito,
   onModulosChanged,
   abrirCentralModulos
 } from '../../shared/central-modulos.js';
 
-// Expõe para sidebar.js poder abrir o modal (mesma instância)
+import {
+  ITENS_SIDEBAR,
+  init         as initSbPrefs,
+  getPrefs     as getSbPrefs,
+  setPrefs     as setSbPrefs,
+  getDefaultPrefs,
+  onPrefsChanged
+} from '../../shared/sidebar-prefs.js';
+
 window.abrirCentralModulos = abrirCentralModulos;
 
-// ── Estado da página ─────────────────────────────────────────
-let _catAtiva = '';
-let _busca    = '';
+// ════════════════════════════════════
+// UTILITÁRIOS
+// ════════════════════════════════════
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('cm-pg-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
 
-// ── Rotas para navegação ──────────────────────────────────────
+// ════════════════════════════════════
+// TABS
+// ════════════════════════════════════
+document.querySelectorAll('.ctr-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctr-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ctr-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('ctr-tab-' + btn.dataset.tab)?.classList.add('active');
+  });
+});
+
+// ════════════════════════════════════
+// TAB 1 — MÓDULOS
+// ════════════════════════════════════
 const ROTAS = {
   'os':                  '/CRM/pages/os/index.html',
   'caixa':               '/CRM/pages/caixa/index.html',
@@ -367,22 +663,9 @@ const ROTAS = {
   'config':              '/CRM/pages/config/index.html',
 };
 
-// ── Utilidades ────────────────────────────────────────────────
-function esc(s) {
-  return String(s ?? '').replace(/[&<>"]/g, c =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
+let _catAtiva = '';
+let _busca    = '';
 
-let _toastTimer;
-function toast(msg) {
-  const el = document.getElementById('cm-pg-toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-// ── Categorias ────────────────────────────────────────────────
 function buildCats() {
   const cats = ['Todos', ...new Set(TODOS_MODULOS.map(m => m.categoria))];
   const wrap = document.getElementById('cm-pg-cats');
@@ -395,25 +678,20 @@ function buildCats() {
       wrap.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       _catAtiva = btn.dataset.cat;
-      render();
+      renderModulos();
     });
   });
 }
 
-// ── Stats ─────────────────────────────────────────────────────
 function updateStats(visivel) {
-  const favs = getFavoritosHome();
+  const favs  = getFavoritosHome();
   const nFavs = favs ? favs.length : 0;
-  document.getElementById('cm-stat-total').textContent =
-    `${visivel} módulo${visivel !== 1 ? 's' : ''}`;
-  document.getElementById('cm-stat-favs').textContent =
-    favs !== null
-      ? `${nFavs} favorito${nFavs !== 1 ? 's' : ''} na home`
-      : 'Home mostrando todos';
+  document.getElementById('cm-stat-total').textContent = `${visivel} módulo${visivel !== 1 ? 's' : ''}`;
+  document.getElementById('cm-stat-favs').textContent  =
+    favs !== null ? `${nFavs} favorito${nFavs !== 1 ? 's' : ''} na home` : 'Home mostrando todos';
 }
 
-// ── Render principal ──────────────────────────────────────────
-function render() {
+function renderModulos() {
   const favs   = getFavoritosHome();
   const grid   = document.getElementById('cm-pg-grid');
   const busca  = _busca.toLowerCase();
@@ -429,15 +707,13 @@ function render() {
   updateStats(lista.length);
 
   if (lista.length === 0) {
-    grid.innerHTML = `
-      <div class="cm-pg-vazio">
-        <div class="cm-pg-vazio-ico">🔍</div>
-        <div class="cm-pg-vazio-txt">Nenhum módulo encontrado para <strong>"${esc(_busca)}"</strong></div>
-      </div>`;
+    grid.innerHTML = `<div class="cm-pg-vazio">
+      <div class="cm-pg-vazio-ico">🔍</div>
+      <div>Nenhum módulo encontrado para <strong>"${esc(_busca)}"</strong></div>
+    </div>`;
     return;
   }
 
-  // Agrupa por categoria se não há filtro de categoria ativo
   const agrupar = !_catAtiva && !busca;
   const grupos  = {};
   const ordem   = [];
@@ -460,19 +736,15 @@ function render() {
     </div>`;
   };
 
-  if (agrupar) {
-    grid.innerHTML = ordem.map(cat => `
-      <div class="cm-cat-sec-titulo">
-        <span>${esc(cat)}</span>
-        <span style="font-weight:400;opacity:.5">${grupos[cat].length}</span>
-      </div>
-      ${grupos[cat].map(renderCard).join('')}
-    `).join('');
-  } else {
-    grid.innerHTML = lista.map(renderCard).join('');
-  }
+  grid.innerHTML = agrupar
+    ? ordem.map(cat => `
+        <div class="cm-cat-sec-titulo">
+          <span>${esc(cat)}</span>
+          <span style="font-weight:400;opacity:.5">${grupos[cat].length}</span>
+        </div>
+        ${grupos[cat].map(renderCard).join('')}`).join('')
+    : lista.map(renderCard).join('');
 
-  // Clique no card → navega para o módulo
   grid.querySelectorAll('.cm-card').forEach(card => {
     card.addEventListener('click', (e) => {
       if (e.target.closest('.cm-card-star')) return;
@@ -480,28 +752,233 @@ function render() {
       if (url) window.location.href = url;
     });
   });
-
-  // Clique na estrela → toggle favorito
   grid.querySelectorAll('.cm-card-star').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation();
       const ok = await toggleFavorito(btn.dataset.id);
-      if (ok === false) toast(`Limite de 24 favoritos atingido.`);
-      // render() será chamado pelo onModulosChanged
+      if (ok === false) toast('Limite de 24 favoritos atingido.');
     });
   });
 }
 
-// ── Init ──────────────────────────────────────────────────────
 initCentral();
 buildCats();
-render();
-onModulosChanged(() => render());
+renderModulos();
+onModulosChanged(() => renderModulos());
 
 document.getElementById('cm-pg-busca').addEventListener('input', (e) => {
   _busca = e.target.value.trim();
-  render();
+  renderModulos();
 });
+
+// ════════════════════════════════════
+// TAB 2 — BARRA LATERAL
+// ════════════════════════════════════
+
+// Estado local da sidebar
+let _sbState = []; // array de { ...item, visivel, fixado, ordem }
+
+function _buildState(prefs) {
+  const itensPrefs = (prefs && Array.isArray(prefs.itens)) ? prefs.itens : [];
+  const defaults   = getDefaultPrefs().itens;
+
+  return ITENS_SIDEBAR.map((item, i) => {
+    const pref = itensPrefs.find(p => p.id === item.id)
+              || defaults.find(p => p.id === item.id)
+              || { id: item.id, visivel: true, fixado: false, ordem: i };
+    return {
+      ...item,
+      visivel: pref.visivel !== false,
+      fixado:  !!pref.fixado,
+      ordem:   pref.ordem ?? i
+    };
+  }).sort((a, b) => {
+    if (a.fixado && !b.fixado) return -1;
+    if (!a.fixado && b.fixado) return 1;
+    return a.ordem - b.ordem;
+  });
+}
+
+function _stateToPrefs() {
+  return {
+    itens: _sbState.map((item, i) => ({
+      id:      item.id,
+      visivel: item.visivel,
+      fixado:  item.fixado,
+      ordem:   i
+    }))
+  };
+}
+
+function renderSbPreview() {
+  const nav = document.getElementById('sb-pv-nav');
+  const stats = document.getElementById('sb-stats');
+  if (!nav) return;
+
+  const visiveis = _sbState.filter(i => i.visivel);
+
+  nav.innerHTML = visiveis.map(item => `
+    <div class="sb-pv-item ${item.highlight ? 'pv-highlight' : ''} ${item.fixado ? 'pv-pinned' : ''}">
+      <span class="sb-pv-ico">${item.icon}</span>
+      <span class="sb-pv-lbl">${esc(item.label)}</span>
+    </div>
+  `).join('');
+
+  if (stats) stats.textContent = `${visiveis.length} de ${_sbState.length} itens visíveis`;
+}
+
+function renderSbList() {
+  const list = document.getElementById('sb-list');
+  if (!list) return;
+
+  // Separa fixados e não-fixados para exibição em seções
+  const fixados   = _sbState.filter(i => i.fixado);
+  const normais   = _sbState.filter(i => !i.fixado);
+
+  let html = '';
+  if (fixados.length) {
+    html += `<div class="sb-sec-label">📌 Fixados no topo</div>`;
+    fixados.forEach(item => { html += _renderSbItem(item); });
+  }
+  if (normais.length) {
+    if (fixados.length) html += `<div class="sb-sec-label">Outros itens</div>`;
+    normais.forEach(item => { html += _renderSbItem(item); });
+  }
+
+  list.innerHTML = html;
+  _setupSbListEvents(list);
+}
+
+function _renderSbItem(item) {
+  return `<div class="sb-item" data-id="${item.id}" draggable="true">
+    <span class="sb-drag-handle" title="Arrastar para reordenar">⠿</span>
+    <span class="sb-pin-btn ${item.fixado ? 'pinned' : ''}" data-id="${item.id}"
+      title="${item.fixado ? 'Desafixar do topo' : 'Fixar no topo'}">📌</span>
+    <span class="sb-ico">${item.icon}</span>
+    <span class="sb-name ${item.visivel ? '' : 'oculto'}">${esc(item.label)}</span>
+    <span class="sb-cat-chip">${esc(item.categoria)}</span>
+    <div class="sb-toggle-wrap">
+      <label class="sb-toggle" title="${item.visivel ? 'Ocultar item' : 'Mostrar item'}">
+        <input type="checkbox" data-id="${item.id}" ${item.visivel ? 'checked' : ''}>
+        <span class="sb-toggle-track"></span>
+      </label>
+    </div>
+  </div>`;
+}
+
+function _setupSbListEvents(list) {
+  // Toggle visibilidade
+  list.querySelectorAll('.sb-toggle input').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const id  = chk.dataset.id;
+      const idx = _sbState.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      _sbState[idx].visivel = chk.checked;
+      renderSbList();
+      renderSbPreview();
+      _saveSb();
+    });
+  });
+
+  // Toggle fixado
+  list.querySelectorAll('.sb-pin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.id;
+      const idx = _sbState.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      _sbState[idx].fixado = !_sbState[idx].fixado;
+      // Reordena: fixados primeiro
+      _sbState.sort((a, b) => {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return 0;
+      });
+      renderSbList();
+      renderSbPreview();
+      _saveSb();
+    });
+  });
+
+  // Drag & drop reordenação
+  let _dragSrc = null;
+  list.addEventListener('dragstart', e => {
+    const row = e.target.closest('.sb-item');
+    if (!row) return;
+    _dragSrc = row;
+    row.classList.add('sb-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    if (_dragSrc) _dragSrc.classList.remove('sb-dragging');
+    list.querySelectorAll('.sb-drag-over').forEach(el => el.classList.remove('sb-drag-over'));
+    _dragSrc = null;
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const row = e.target.closest('.sb-item');
+    if (!row || row === _dragSrc) return;
+    list.querySelectorAll('.sb-drag-over').forEach(el => el.classList.remove('sb-drag-over'));
+    row.classList.add('sb-drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  list.addEventListener('dragleave', e => {
+    const row = e.target.closest('.sb-item');
+    if (row) row.classList.remove('sb-drag-over');
+  });
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.sb-item');
+    if (!target || !_dragSrc || target === _dragSrc) return;
+    target.classList.remove('sb-drag-over');
+
+    const srcId = _dragSrc.dataset.id;
+    const tgtId = target.dataset.id;
+    const srcIdx = _sbState.findIndex(i => i.id === srcId);
+    const tgtIdx = _sbState.findIndex(i => i.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    // Move item
+    const [moved] = _sbState.splice(srcIdx, 1);
+    const newTgt  = _sbState.findIndex(i => i.id === tgtId);
+    const after   = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+    _sbState.splice(after ? newTgt + 1 : newTgt, 0, moved);
+
+    renderSbList();
+    renderSbPreview();
+    _saveSb();
+  });
+}
+
+let _sbSaveTimer;
+function _saveSb() {
+  clearTimeout(_sbSaveTimer);
+  _sbSaveTimer = setTimeout(async () => {
+    await setSbPrefs(_stateToPrefs());
+  }, 400);
+}
+
+// Restaurar padrão
+document.getElementById('sb-reset-btn')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar a barra lateral para a configuração padrão?')) return;
+  _sbState = _buildState(getDefaultPrefs());
+  renderSbList();
+  renderSbPreview();
+  await setSbPrefs(getDefaultPrefs());
+  toast('Barra lateral restaurada para o padrão.');
+});
+
+// Init sidebar tab
+initSbPrefs();
+onPrefsChanged(prefs => {
+  _sbState = _buildState(prefs);
+  renderSbList();
+  renderSbPreview();
+});
+
+// Renderiza imediatamente com o que tiver no localStorage
+_sbState = _buildState(getSbPrefs());
+renderSbList();
+renderSbPreview();
 </script>
 </body>
 </html>
