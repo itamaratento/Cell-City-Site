@@ -223,6 +223,9 @@
       border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
       padding: 4px 0;
     }
+    .cc-si--central-modulos:hover {
+      color: var(--cell-green, #00c853) !important;
+    }
 
     /* Tooltip (modo recolhido) */
     #cc-sidebar-tip {
@@ -285,7 +288,13 @@
         <span class="cc-toggle-icon">◀</span>
       </button>
       <div id="cc-sidebar-nav">${itemsHTML}</div>
-      <div id="cc-sidebar-footer"></div>
+      <div id="cc-sidebar-footer">
+        <button class="cc-si cc-si--central-modulos" id="cc-btn-central-modulos"
+          data-tip="Central de Módulos" title="Central de Módulos — todos os módulos do sistema">
+          <span class="cc-si-icon">🧩</span>
+          <span class="cc-si-label">Central de Módulos</span>
+        </button>
+      </div>
     `;
   }
 
@@ -428,11 +437,23 @@
     const btn = navEl.querySelector('[data-sid="notas"]');
     if (!btn) return;
     btn.addEventListener('click', () => {
-      // Tenta abrir via dock-notas (injetado pelo dock.js)
       const dockNotas = document.getElementById('dock-notas');
       if (dockNotas) { dockNotas.click(); return; }
-      // Fallback: evento customizado para qualquer listener
       document.dispatchEvent(new CustomEvent('cc:open-notas'));
+    });
+  }
+
+  // ── Central de Módulos button ─────────────────────────────────
+  function setupCentralModulosBtn() {
+    const btn = document.getElementById('cc-btn-central-modulos');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      if (typeof window.abrirCentralModulos === 'function') {
+        window.abrirCentralModulos();
+      } else {
+        // Em páginas sem central-modulos.js: navega para o dashboard e abre
+        window.location.href = '/CRM/pages/dashboard/index.html?abrir=central-modulos';
+      }
     });
   }
 
@@ -451,6 +472,7 @@
     setupDrag(navEl);
     setupTooltip(sidebar);
     setupNotasButton(navEl);
+    setupCentralModulosBtn();
   }
 
   if (document.readyState === 'loading') {

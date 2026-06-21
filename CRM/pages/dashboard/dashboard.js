@@ -6,6 +6,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
+import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, toggleFavorito, onModulosChanged } from "../../shared/central-modulos.js";
 
 
 class Dashboard {
@@ -54,6 +55,11 @@ class Dashboard {
   }
 
   init() {
+    // Central de Módulos deve iniciar antes de setupModules
+    initCentralModulos();
+    window.abrirCentralModulos = abrirCentralModulos;
+    window.__cmNavigate = (id) => this.navigateTo(id);
+
     this._verificarFechamentoCaixa();
     this.setupNotas();
     this.setupClock();
@@ -77,7 +83,8 @@ class Dashboard {
     this.setupCompactMode();
     this.setupConfigAlertas();
     this.setupPainelFinanceiro();
-    console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
+    this.setupBtnCentralModulos();
+    console.log('✅ Dashboard Cell City v4.3 — Central de Módulos ativa.');
   }
 
   
@@ -1139,14 +1146,80 @@ class Dashboard {
     resultsBox.classList.add('visible');
   }
 
-  // ===== MÓDULOS =====
+  // ===== MÓDULOS + FAVORITOS =====
   setupModules() {
-    document.querySelectorAll('.module-card[data-module]').forEach(card => {
-      card.addEventListener('click', () => {
-        const module = card.getAttribute('data-module');
-        this.navigateTo(module);
+    const cards = Array.from(document.querySelectorAll('.module-card[data-module]'));
+
+    // Adiciona botão ⭐ e handler de clique em cada card
+    cards.forEach(card => {
+      const id = card.getAttribute('data-module');
+
+      // Navegação (ignora clique no botão estrela)
+      card.addEventListener('click', (e) => {
+        if (e.target.closest('.mc-star')) return;
+        this.navigateTo(id);
       });
+
+      // Botão estrela
+      const star = document.createElement('button');
+      star.className = 'mc-star';
+      star.dataset.mid = id;
+      star.title = 'Favoritar módulo';
+      star.textContent = '☆';
+      star.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await toggleFavorito(id);
+      });
+      card.appendChild(star);
     });
+
+    // Aplica filtro de favoritos e atualiza estado das estrelas
+    const aplicar = () => {
+      const favs = getFavoritosHome();
+      let visivel = 0;
+
+      cards.forEach(card => {
+        const id   = card.getAttribute('data-module');
+        const show = favs === null || favs.includes(id);
+        card.style.display = show ? '' : 'none';
+        if (show) visivel++;
+
+        const star = card.querySelector('.mc-star');
+        if (star) {
+          const on = favs !== null && favs.includes(id);
+          star.classList.toggle('on', on);
+          star.textContent = on ? '⭐' : '☆';
+          star.title = on ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
+        }
+      });
+
+      // Estado vazio
+      const sec = document.querySelector('.modules-section');
+      let empty = document.getElementById('cm-home-empty');
+      const nenhum = favs !== null && visivel === 0;
+
+      if (nenhum && !empty && sec) {
+        empty = document.createElement('div');
+        empty.id = 'cm-home-empty';
+        empty.innerHTML = `
+          <div class="cm-empty-ico">🧩</div>
+          <div class="cm-empty-tit">Nenhum módulo favorito</div>
+          <div class="cm-empty-sub">Use a Central de Módulos para escolher o que aparece aqui.</div>
+          <button class="cm-empty-cta" id="cm-empty-open">🧩 Abrir Central de Módulos</button>`;
+        sec.appendChild(empty);
+        document.getElementById('cm-empty-open')?.addEventListener('click', () => abrirCentralModulos());
+      }
+      if (empty) empty.style.display = nenhum ? 'flex' : 'none';
+    };
+
+    aplicar();
+    onModulosChanged(aplicar);
+  }
+
+  // ===== BOTÃO CENTRAL DE MÓDULOS NA SIDEBAR NATIVA =====
+  setupBtnCentralModulos() {
+    const btn = document.getElementById('btnCentralModulos');
+    if (btn) btn.addEventListener('click', () => abrirCentralModulos());
   }
 
   // ===== CONSULTA DE PEÇAS SEA =====

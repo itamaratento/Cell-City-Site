@@ -2764,6 +2764,10 @@ body {
   transform: scale(1.08);
 }
 
+/* Botão Central de Módulos */
+.sidebar-item--central-modulos { border-bottom: 1px solid var(--border-subtle); }
+.sidebar-item--central-modulos:hover { color: var(--cell-green) !important; }
+
 /* Drag handle: aparece só ao hover e só quando expandido */
 .drag-handle {
   font-size: 11px;
