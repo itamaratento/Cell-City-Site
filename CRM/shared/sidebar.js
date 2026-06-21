@@ -1,5 +1,5 @@
 /* ============================================================
-   SIDEBAR GLOBAL — Cell City CRM
+   SIDEBAR GLOBAL — Cell City Gestão Empresarial
    Injeta o menu lateral em todos os módulos.
    Uso: <script src="../../shared/sidebar.js"></script>
    ============================================================ */

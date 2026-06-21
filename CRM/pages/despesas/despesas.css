@@ -1,5 +1,5 @@
 /* ============================================================
-   DESPESAS — Módulo de despesas Cell City CRM
+   DESPESAS — Módulo de despesas Cell City Gestão Empresarial
    Prefixo: dsp-
    ============================================================ */
 
@@ -99,6 +99,19 @@ button { cursor: pointer; }
     height: 1px;
     background: var(--border);
     margin: 6px 0;
+}
+.dsp-sb-parent {
+    color: var(--cell-green) !important;
+    font-size: 12px;
+    opacity: 0.75;
+    text-decoration: none;
+    border-left-color: transparent !important;
+    background: rgba(0,200,83,0.04) !important;
+}
+.dsp-sb-parent:hover {
+    opacity: 1;
+    background: rgba(0,200,83,0.10) !important;
+    color: var(--cell-green) !important;
 }
 .dsp-sb-label-sect {
     font-size: 10px;

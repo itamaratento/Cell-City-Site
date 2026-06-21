@@ -13,7 +13,8 @@ let currentView  = '__home__';
 let searchQuery  = '';
 let clienteAtual = null;
 let editingId    = null;
-let unsub        = null;
+let unsub           = null;
+let equipamentosCache = {};
 
 // ── Utilitários ─────────────────────────────────────────────────────────
 function esc(s) {
@@ -392,31 +393,35 @@ window.abrirCliente = async function(id) {
   const cliente = clientes.find(c => c.id === id);
   if (!cliente) { detalhe.innerHTML = '<div class="cli-loading">Cliente não encontrado.</div>'; return; }
 
-  let crmLeads = [], orders = [];
+  let crmLeads = [], orders = [], equipamentos = [];
   try {
     const digits = fone(cliente.phone);
-    const [crmSnap, osSnap] = await Promise.all([
+    const [crmSnap, osSnap, equipSnap] = await Promise.all([
       getDocs(query(collection(db, 'crm_leads'), where('telefone', '==', cliente.phone))),
-      digits ? getDocs(query(collection(db, 'os'), where('phone', '==', cliente.phone))) : Promise.resolve({ docs: [] })
+      digits ? getDocs(query(collection(db, 'os'), where('phone', '==', cliente.phone))) : Promise.resolve({ docs: [] }),
+      getDocs(collection(db, 'clientes', id, 'equipamentos'))
     ]);
-    crmLeads = crmSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    orders   = osSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    crmLeads     = crmSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    orders       = osSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    equipamentos = equipSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.dataCadastro?.seconds || 0) - (a.dataCadastro?.seconds || 0));
     if (!orders.length && digits && digits !== cliente.phone) {
       const fb = await getDocs(query(collection(db, 'os'), where('phone', '==', digits)));
       orders = fb.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     }
   } catch(e) { console.warn('Histórico:', e); }
+  equipamentosCache[id] = equipamentos;
 
   const totalGasto = orders.reduce((s, o) => s + (Number(o.valor) || 0), 0);
   const nivel      = calcNivel(orders.length, totalGasto);
-  detalhe.innerHTML = buildPerfilHtml(cliente, crmLeads, orders, totalGasto, nivel);
+  detalhe.innerHTML = buildPerfilHtml(cliente, crmLeads, orders, totalGasto, nivel, equipamentos);
 
   // Enriquece o documento Firestore com dados computados
   if (orders.length || crmLeads.length) lazyEnrichCliente(id, orders, crmLeads, totalGasto, nivel.nivel);
 };
 
 // ── Construção do perfil ───────────────────────────────────────────────
-function buildPerfilHtml(c, crmLeads, orders, totalGasto, nivel) {
+function buildPerfilHtml(c, crmLeads, orders, totalGasto, nivel, equipamentos = []) {
   const ticketMedio = orders.length > 0 ? totalGasto / orders.length : 0;
   const datas = [
     ...orders.map(o => o.createdAt || ''),
@@ -502,7 +507,8 @@ function buildPerfilHtml(c, crmLeads, orders, totalGasto, nivel) {
     : '<div class="cli-hist-vazio">Nenhuma O.S. encontrada.</div>';
 
   // ── Aba Oportunidades ────────────────────────────────────────────
-  const opHtml = buildOportunidadesHtml(c, crmLeads, orders);
+  const opHtml    = buildOportunidadesHtml(c, crmLeads, orders);
+  const equipHtml = buildEquipamentosHtml(c.id, equipamentos);
 
   return `
     <div class="cli-perfil-header">
@@ -528,12 +534,14 @@ function buildPerfilHtml(c, crmLeads, orders, totalGasto, nivel) {
       <button class="cli-tab"        data-tab="op"          onclick="switchTab('op')">💡 Oportunidades</button>
       <button class="cli-tab"        data-tab="crm"         onclick="switchTab('crm')">🎯 CRM (${crmLeads.length})</button>
       <button class="cli-tab"        data-tab="os"          onclick="switchTab('os')">🔧 O.S. (${orders.length})</button>
+      <button class="cli-tab"        data-tab="equip"       onclick="switchTab('equip')">📱 Equipamentos${equipamentos.length ? ` (${equipamentos.length})` : ''}</button>
     </div>
     <div class="cli-tab-content" id="cli-tab-dados">${dadosHtml}</div>
     <div class="cli-tab-content" id="cli-tab-timeline" style="display:none">${timelineHtml}</div>
     <div class="cli-tab-content" id="cli-tab-op"       style="display:none">${opHtml}</div>
     <div class="cli-tab-content" id="cli-tab-crm"      style="display:none">${crmHtml}</div>
-    <div class="cli-tab-content" id="cli-tab-os"       style="display:none">${osHtml}</div>`;
+    <div class="cli-tab-content" id="cli-tab-os"       style="display:none">${osHtml}</div>
+    <div class="cli-tab-content" id="cli-tab-equip"    style="display:none">${equipHtml}</div>`;
 }
 
 // ── Timeline 360° ──────────────────────────────────────────────────────
@@ -668,7 +676,7 @@ function buildOportunidadesHtml(c, crmLeads, orders) {
 // ── Tabs ───────────────────────────────────────────────────────────────
 window.switchTab = function(tab) {
   document.querySelectorAll('.cli-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  ['dados','timeline','op','crm','os'].forEach(t => {
+  ['dados','timeline','op','crm','os','equip'].forEach(t => {
     const el = document.getElementById(`cli-tab-${t}`);
     if (el) el.style.display = t === tab ? '' : 'none';
   });
@@ -825,6 +833,253 @@ function showToast(msg) {
   clearTimeout(_tt);
   _tt = setTimeout(() => el.classList.remove('show'), 2600);
 }
+
+// ── Equipamentos ──────────────────────────────────────────────────────
+function buildEquipamentosHtml(clienteId, equipamentos) {
+  const catIcon  = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
+  const statusCls = s => ({ 'Ativo':'equip-s-ativo', 'Em manutenção':'equip-s-manut', 'Vendido':'equip-s-vendido', 'Inativo':'equip-s-inativo' }[s] || 'equip-s-ativo');
+
+  const cardsHtml = equipamentos.map(eq => {
+    const nome = esc(((eq.marca || '') + ' ' + (eq.modelo || '')).trim()) || 'Equipamento';
+    const nomeRaw = ((eq.marca || '') + ' ' + (eq.modelo || '')).trim();
+    return `
+    <div class="cli-equip-card">
+      <div class="cli-equip-card-header">
+        <span class="cli-equip-cat-icon">${catIcon(eq.categoria)}</span>
+        <div class="cli-equip-card-title">
+          <span class="cli-equip-card-name">${nome}</span>
+          <span class="cli-equip-status ${statusCls(eq.status)}">${esc(eq.status || 'Ativo')}</span>
+        </div>
+      </div>
+      <div class="cli-equip-card-body">
+        ${eq.categoria  ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Categoria</span><span>${esc(eq.categoria)}</span></div>` : ''}
+        ${eq.cor        ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Cor</span><span>${esc(eq.cor)}</span></div>` : ''}
+        ${eq.imei       ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">IMEI</span><span class="cli-equip-imei">${esc(eq.imei)}</span></div>` : ''}
+        ${eq.serial     ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Serial</span><span>${esc(eq.serial)}</span></div>` : ''}
+        ${eq.observacoes? `<div class="cli-equip-obs">${esc(eq.observacoes)}</div>` : ''}
+      </div>
+      <div class="cli-equip-card-actions">
+        <button class="cli-equip-btn-hist" onclick="abrirHistoricoEquip('${esc(clienteId)}','${esc(eq.id)}','${esc(nomeRaw)}')">📋 Histórico</button>
+        <button class="cli-equip-btn-edit" onclick="abrirModalEquipamento('${esc(clienteId)}','${esc(eq.id)}')">✏️</button>
+        <button class="cli-equip-btn-del"  onclick="excluirEquipamento('${esc(clienteId)}','${esc(eq.id)}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="cli-equip-wrap">
+      <div class="cli-equip-topbar">
+        <span class="cli-equip-count">${equipamentos.length} equipamento${equipamentos.length !== 1 ? 's' : ''}</span>
+        <button class="cli-equip-btn-add" onclick="abrirModalEquipamento('${esc(clienteId)}')">➕ Adicionar</button>
+      </div>
+      ${equipamentos.length
+        ? `<div class="cli-equip-cards">${cardsHtml}</div>`
+        : `<div class="cli-hist-vazio">Nenhum equipamento cadastrado.<br><small style="color:var(--text3)">Clique em "Adicionar" para começar.</small></div>`}
+    </div>`;
+}
+
+function openEquipModal(html) {
+  let overlay = document.getElementById('cli-equip-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'cli-equip-overlay';
+    overlay.className = 'cli-equip-overlay';
+    overlay.onclick = e => { if (e.target === overlay) closeEquipModal(); };
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `<div class="cli-equip-modal-box">${html}</div>`;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.querySelector('input:not([type="date"]), select, textarea')?.focus(), 80);
+}
+
+window.closeEquipModal = function() {
+  document.getElementById('cli-equip-overlay')?.classList.remove('active');
+};
+
+window.abrirModalEquipamento = function(clienteId, equipId) {
+  const eq       = equipId ? (equipamentosCache[clienteId] || []).find(e => e.id === equipId) : null;
+  const cats     = ['Celular', 'Notebook', 'Tablet', 'Smartwatch', 'TV', 'Outro'];
+  const statuses = ['Ativo', 'Em manutenção', 'Vendido', 'Inativo'];
+  const catOpts  = cats.map(c => `<option value="${c}"${eq?.categoria === c ? ' selected' : ''}>${c}</option>`).join('');
+  const stOpts   = statuses.map(s => `<option value="${s}"${(eq?.status || 'Ativo') === s ? ' selected' : ''}>${s}</option>`).join('');
+
+  openEquipModal(`
+    <div class="cli-equip-modal-header">
+      <span>${equipId ? '✏️ Editar' : '➕ Novo'} Equipamento</span>
+      <button class="cli-equip-modal-close" onclick="closeEquipModal()">✕</button>
+    </div>
+    <form onsubmit="salvarEquipamento(event,'${esc(clienteId)}','${esc(equipId||'')}')" class="cli-equip-form">
+      <div class="cli-equip-form-grid">
+        <div class="cli-edit-field">
+          <label>Categoria</label>
+          <select name="categoria">${catOpts}</select>
+        </div>
+        <div class="cli-edit-field">
+          <label>Status</label>
+          <select name="status">${stOpts}</select>
+        </div>
+        <div class="cli-edit-field">
+          <label>Marca</label>
+          <input type="text" name="marca" value="${esc(eq?.marca||'')}" placeholder="Samsung, Apple, Dell...">
+        </div>
+        <div class="cli-edit-field">
+          <label>Modelo</label>
+          <input type="text" name="modelo" value="${esc(eq?.modelo||'')}" placeholder="Galaxy A54, iPhone 13...">
+        </div>
+        <div class="cli-edit-field">
+          <label>IMEI</label>
+          <input type="text" name="imei" value="${esc(eq?.imei||'')}" placeholder="000000000000000" inputmode="numeric">
+        </div>
+        <div class="cli-edit-field">
+          <label>Serial Number</label>
+          <input type="text" name="serial" value="${esc(eq?.serial||'')}" placeholder="SN-XXXX">
+        </div>
+        <div class="cli-edit-field">
+          <label>Cor</label>
+          <input type="text" name="cor" value="${esc(eq?.cor||'')}" placeholder="Preto, Branco, Dourado...">
+        </div>
+        <div class="cli-edit-field cli-span2">
+          <label>Observações</label>
+          <textarea name="observacoes" rows="3" placeholder="Defeitos recorrentes, senha de tela, acessórios entregues...">${esc(eq?.observacoes||'')}</textarea>
+        </div>
+      </div>
+      <div class="cli-edit-btns">
+        <button type="submit" class="cli-btn-salvar">💾 Salvar</button>
+        <button type="button" class="cli-btn-cancelar" onclick="closeEquipModal()">Cancelar</button>
+      </div>
+    </form>`);
+};
+
+window.salvarEquipamento = async function(e, clienteId, equipId) {
+  e.preventDefault();
+  const data = {};
+  new FormData(e.target).forEach((v, k) => { data[k] = v.toString().trim(); });
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+  try {
+    if (equipId) {
+      await updateDoc(doc(db, 'clientes', clienteId, 'equipamentos', equipId), { ...data, atualizadoEm: serverTimestamp() });
+    } else {
+      const ref = doc(collection(db, 'clientes', clienteId, 'equipamentos'));
+      await setDoc(ref, { ...data, dataCadastro: serverTimestamp() });
+    }
+    closeEquipModal();
+    showToast(equipId ? '✅ Equipamento atualizado' : '✅ Equipamento cadastrado');
+    await window.abrirCliente(clienteId);
+    window.switchTab('equip');
+  } catch(err) {
+    console.error(err);
+    showToast('❌ Erro ao salvar equipamento');
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Salvar'; }
+  }
+};
+
+window.excluirEquipamento = async function(clienteId, equipId) {
+  if (!confirm('Excluir este equipamento? Esta ação não pode ser desfeita.')) return;
+  try {
+    await deleteDoc(doc(db, 'clientes', clienteId, 'equipamentos', equipId));
+    showToast('🗑️ Equipamento excluído');
+    await window.abrirCliente(clienteId);
+    window.switchTab('equip');
+  } catch(err) {
+    console.error(err);
+    showToast('❌ Erro ao excluir');
+  }
+};
+
+async function recarregarListaHistorico(clienteId, equipId) {
+  const listEl = document.getElementById('equip-hist-list');
+  const loadEl = document.getElementById('equip-hist-loading');
+  if (!listEl) return;
+  if (loadEl) { loadEl.style.display = ''; loadEl.textContent = '⏳ Carregando...'; }
+  listEl.style.display = 'none';
+  try {
+    const snap  = await getDocs(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'historico'));
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.data?.seconds || 0) - (a.data?.seconds || 0));
+    if (loadEl) loadEl.style.display = 'none';
+    listEl.style.display = '';
+    listEl.innerHTML = items.length
+      ? items.map(h => `
+          <div class="cli-equip-hist-item">
+            <div class="cli-equip-hist-data">${fmtDate(h.data)}</div>
+            <div class="cli-equip-hist-body">
+              <div class="cli-equip-hist-tipo">${esc(h.tipo || '')}</div>
+              ${h.descricao ? `<div class="cli-equip-hist-desc">${esc(h.descricao)}</div>` : ''}
+              ${h.valor     ? `<div class="cli-equip-hist-valor">${fmtValor(Number(h.valor))}</div>` : ''}
+            </div>
+          </div>`).join('')
+      : '<div class="cli-hist-vazio" style="padding:12px 0">Nenhum evento registrado ainda.</div>';
+  } catch(err) {
+    console.error(err);
+    if (loadEl) { loadEl.style.display = ''; loadEl.textContent = 'Erro ao carregar histórico.'; }
+  }
+}
+
+window.abrirHistoricoEquip = async function(clienteId, equipId, equipNome) {
+  openEquipModal(`
+    <div class="cli-equip-modal-header">
+      <span>📋 Histórico — ${esc(equipNome || 'Equipamento')}</span>
+      <button class="cli-equip-modal-close" onclick="closeEquipModal()">✕</button>
+    </div>
+    <div id="equip-hist-loading" style="padding:20px;text-align:center;color:var(--text3)">⏳ Carregando...</div>
+    <div id="equip-hist-list" class="cli-equip-hist-list" style="display:none"></div>
+    <div class="cli-equip-hist-form">
+      <div class="cli-equip-hist-form-titulo">➕ Registrar Evento</div>
+      <form onsubmit="addHistoricoEquip(event,'${esc(clienteId)}','${esc(equipId)}')">
+        <div class="cli-equip-form-grid">
+          <div class="cli-edit-field cli-span2">
+            <label>Tipo / Serviço</label>
+            <input type="text" name="tipo" placeholder="Troca de Tela, Bateria, Diagnóstico..." required>
+          </div>
+          <div class="cli-edit-field cli-span2">
+            <label>Descrição</label>
+            <input type="text" name="descricao" placeholder="Detalhes do serviço realizado">
+          </div>
+          <div class="cli-edit-field">
+            <label>Valor (R$)</label>
+            <input type="number" name="valor" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <div class="cli-edit-field">
+            <label>Data</label>
+            <input type="date" name="data" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="cli-edit-btns">
+          <button type="submit" class="cli-btn-salvar">📝 Registrar</button>
+        </div>
+      </form>
+    </div>`);
+  await recarregarListaHistorico(clienteId, equipId);
+};
+
+window.addHistoricoEquip = async function(e, clienteId, equipId) {
+  e.preventDefault();
+  const data = {};
+  new FormData(e.target).forEach((v, k) => { data[k] = v.toString().trim(); });
+  if (!data.tipo) return;
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+  try {
+    const ref = doc(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'historico'));
+    await setDoc(ref, {
+      tipo:      data.tipo,
+      descricao: data.descricao || '',
+      valor:     data.valor ? Number(data.valor) : null,
+      data:      data.data ? new Date(data.data + 'T12:00:00') : new Date(),
+      criadoEm:  serverTimestamp()
+    });
+    showToast('✅ Evento registrado');
+    e.target.reset();
+    e.target.querySelector('[name="data"]').value = new Date().toISOString().split('T')[0];
+    await recarregarListaHistorico(clienteId, equipId);
+  } catch(err) {
+    console.error(err);
+    showToast('❌ Erro ao registrar');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📝 Registrar'; }
+  }
+};
 
 // ── Init ───────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {

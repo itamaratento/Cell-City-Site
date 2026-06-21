@@ -1,5 +1,5 @@
 /* ============================================================
-   FECHAMENTO MENSAL — Cell City CRM
+   FECHAMENTO MENSAL — Cell City Gestão Empresarial
    Coleção principal: relatorio_mensal/{YYYY-MM}
    Lê de: resumo_live, caixa_lancamentos, financeiro_pagar,
            financeiro_receber, financeiro_despesas,

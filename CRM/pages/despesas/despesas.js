@@ -1,5 +1,5 @@
 /* ============================================================
-   DESPESAS — Módulo de despesas Cell City CRM
+   DESPESAS — Módulo de despesas Cell City Gestão Empresarial
    Coleções Firestore:
      financeiro_despesas          — registros de despesas
      financeiro_cat_despesas      — categorias personalizadas

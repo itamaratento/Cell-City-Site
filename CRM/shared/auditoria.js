@@ -1,5 +1,5 @@
 /* ============================================================
-   AUDITORIA — Cell City CRM
+   AUDITORIA — Cell City Gestão Empresarial
    Registra criação, edição e exclusão em auditoria_logs.
    Uso: import { logAudit } from '../shared/auditoria.js';
         await logAudit({ modulo, acao, id, antes, depois });

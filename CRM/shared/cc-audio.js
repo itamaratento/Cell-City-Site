@@ -1,5 +1,5 @@
 /**
- * cc-audio.js — Cell City CRM
+ * cc-audio.js — Cell City Gestão Empresarial
  * Módulo centralizado de áudio e log de eventos sonoros/notificações.
  *
  * TODOS os sons e notificações do sistema devem passar por aqui.

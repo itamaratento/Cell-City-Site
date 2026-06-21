@@ -1,5 +1,5 @@
 /* ============================================================
-   LIXEIRA — Cell City CRM
+   LIXEIRA — Cell City Gestão Empresarial
    Visualiza, restaura e exclui permanentemente itens da coleção 'lixeira'
    ============================================================ */
 import { listarLixeira, restaurarDaLixeira, excluirPermanente } from '../../shared/lixeira.js';

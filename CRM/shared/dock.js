@@ -1,5 +1,5 @@
 /* ============================================
-   DOCK LATERAL COMPARTILHADO — Cell City CRM
+   DOCK LATERAL COMPARTILHADO — Cell City Gestão Empresarial
    Inclua em cada página como:
    <script type="module" src="../../shared/dock.js"></script>
    

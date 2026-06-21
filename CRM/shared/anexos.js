@@ -1,5 +1,5 @@
 /* ============================================================
-   ANEXOS — Cell City CRM (Firebase Storage)
+   ANEXOS — Cell City Gestão Empresarial (Firebase Storage)
    Upload e gestão de comprovantes, notas fiscais, etc.
    Uso:
      import { uploadAnexo, renderAnexos, removerAnexo } from '../shared/anexos.js';

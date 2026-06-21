@@ -1,5 +1,5 @@
 /**
- * alertas-auto.js — Cell City CRM
+ * alertas-auto.js — Cell City Gestão Empresarial
  * Motor de geração automática de alertas para alertas_usuario.
  *
  * Executa verificações periódicas em múltiplos módulos e cria

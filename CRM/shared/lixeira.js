@@ -1,5 +1,5 @@
 /* ============================================================
-   LIXEIRA — Cell City CRM
+   LIXEIRA — Cell City Gestão Empresarial
    Soft-delete: move para 'lixeira' antes de excluir.
    ============================================================ */
 import {

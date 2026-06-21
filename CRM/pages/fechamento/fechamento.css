@@ -1,5 +1,5 @@
 /* ══════════════════════════════════════════════════════════
-   FECHAMENTO MENSAL — Cell City CRM
+   FECHAMENTO MENSAL — Cell City Gestão Empresarial
    ══════════════════════════════════════════════════════════ */
 
 :root {
@@ -53,6 +53,18 @@ body { background: var(--bg-base); color: var(--text-primary); font-family: 'Int
     letter-spacing: 0.8px;
 }
 .fec-sb-nav { padding: 0 8px; }
+.fec-sb-sep { height: 1px; background: var(--border); margin: 6px 0; }
+.fec-sb-parent {
+    color: var(--cell-green) !important;
+    font-size: 12px;
+    opacity: 0.75;
+    text-decoration: none;
+}
+.fec-sb-parent:hover {
+    opacity: 1;
+    background: rgba(0,200,83,0.10) !important;
+    color: var(--cell-green) !important;
+}
 .fec-sb-item {
     display: flex;
     align-items: center;

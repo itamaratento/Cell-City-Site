@@ -1,5 +1,5 @@
 /* ============================================================
-   COMPRAS — Módulo de compras financeiras Cell City CRM
+   COMPRAS — Módulo de compras financeiras Cell City Gestão Empresarial
    Coleções Firestore:
      compras_financeiras        — cabeçalho da compra
      compras_financeiras/{id}/itens — itens de cada compra

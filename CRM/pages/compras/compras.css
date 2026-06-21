@@ -1,5 +1,5 @@
 /* ============================================================
-   COMPRAS — Módulo de compras financeiras Cell City CRM
+   COMPRAS — Módulo de compras financeiras Cell City Gestão Empresarial
    Padrão visual idêntico ao Financeiro / Diário
    ============================================================ */
 :root {
@@ -111,6 +111,19 @@ main { padding: 0; }
     color: var(--cell-green-light);
 }
 .cmp-sb-sep { height: 1px; background: var(--border-subtle); margin: 5px 0; }
+.cmp-sb-parent {
+    color: var(--cell-green) !important;
+    font-size: 12px;
+    opacity: 0.75;
+    text-decoration: none;
+    border-left-color: transparent !important;
+    background: rgba(0,200,83,0.04) !important;
+}
+.cmp-sb-parent:hover {
+    opacity: 1;
+    background: rgba(0,200,83,0.10) !important;
+    color: var(--cell-green) !important;
+}
 
 /* ── Overlay mobile ── */
 .cmp-sb-overlay {

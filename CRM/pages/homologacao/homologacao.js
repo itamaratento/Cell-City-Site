@@ -1,5 +1,5 @@
 /* ============================================================
-   HOMOLOGAÇÃO DO SISTEMA — Cell City CRM
+   HOMOLOGAÇÃO DO SISTEMA — Cell City Gestão Empresarial
    Executa suítes de teste para validar integrações do CRM.
    Read-only: não grava dados de produção.
    ============================================================ */

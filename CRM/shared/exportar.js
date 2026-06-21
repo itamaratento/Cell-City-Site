@@ -1,5 +1,5 @@
 /* ============================================================
-   EXPORTAR — Cell City CRM
+   EXPORTAR — Cell City Gestão Empresarial
    Exportação de dados: CSV, JSON, impressão PDF.
    Uso:
      import { exportarCSV, exportarJSON, imprimirTabela } from '../shared/exportar.js';
@@ -78,7 +78,7 @@ export function imprimirTabela(dados, colunas, cabecalhos = {}, titulo = 'Relat�
     </style>
     </head><body>
     <h1>${titulo}</h1>
-    <p class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')} — Cell City CRM</p>
+    <p class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')} — Cell City Gestão Empresarial</p>
     <table>
       <thead><tr>${colunas.map(c => `<th>${cabecalhos[c] || c}</th>`).join('')}</tr></thead>
       <tbody>${linhas}</tbody>
