@@ -6,7 +6,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
-import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, toggleFavorito, onModulosChanged } from "../../shared/central-modulos.js";
+import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged } from "../../shared/central-modulos.js";
 
 
 class Dashboard {
@@ -1150,50 +1150,23 @@ class Dashboard {
   setupModules() {
     const cards = Array.from(document.querySelectorAll('.module-card[data-module]'));
 
-    // Adiciona botão ⭐ e handler de clique em cada card
     cards.forEach(card => {
       const id = card.getAttribute('data-module');
-
-      // Navegação (ignora clique no botão estrela)
-      card.addEventListener('click', (e) => {
-        if (e.target.closest('.mc-star')) return;
-        this.navigateTo(id);
-      });
-
-      // Botão estrela
-      const star = document.createElement('button');
-      star.className = 'mc-star';
-      star.dataset.mid = id;
-      star.title = 'Favoritar módulo';
-      star.textContent = '☆';
-      star.addEventListener('click', async (e) => {
-        e.stopPropagation();
-        await toggleFavorito(id);
-      });
-      card.appendChild(star);
+      card.addEventListener('click', () => this.navigateTo(id));
     });
 
-    // Aplica filtro de favoritos e atualiza estado das estrelas
+    // Mostra/oculta cards conforme favoritos — sem estrelas na home
     const aplicar = () => {
       const favs = getFavoritosHome();
       let visivel = 0;
 
       cards.forEach(card => {
-        const id   = card.getAttribute('data-module');
-        const show = favs === null || favs.includes(id);
+        const show = favs === null || favs.includes(card.getAttribute('data-module'));
         card.style.display = show ? '' : 'none';
         if (show) visivel++;
-
-        const star = card.querySelector('.mc-star');
-        if (star) {
-          const on = favs !== null && favs.includes(id);
-          star.classList.toggle('on', on);
-          star.textContent = on ? '⭐' : '☆';
-          star.title = on ? 'Remover dos favoritos' : 'Adicionar aos favoritos';
-        }
       });
 
-      // Estado vazio
+      // Estado vazio — nenhum favorito selecionado
       const sec = document.querySelector('.modules-section');
       let empty = document.getElementById('cm-home-empty');
       const nenhum = favs !== null && visivel === 0;

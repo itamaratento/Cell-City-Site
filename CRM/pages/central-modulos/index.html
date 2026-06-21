@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central de Módulos — Cell City Gestão Empresarial</title>
+<script>
+  var _h = location.hostname;
+  if (_h !== '127.0.0.1' && _h !== 'localhost' && sessionStorage.getItem('cc_acesso') !== 'ok')
+    window.location.replace('/CRM/pages/config/index.html');
+</script>
+<link rel="stylesheet" href="../../shared/brand-header.css">
+<style>
+/* ── Variáveis ── */
+:root {
+  --bg-base:      #080a0c;
+  --bg-surface:   #101214;
+  --bg-elevated:  #181b20;
+  --bg-hover:     rgba(255,255,255,.04);
+  --cell-green:   #00c853;
+  --green-dim:    rgba(0,200,83,.12);
+  --green-border: rgba(0,200,83,.35);
+  --border:       rgba(255,255,255,.07);
+  --border-med:   rgba(255,255,255,.11);
+  --text-primary: #f1f3f5;
+  --text-sec:     #9ca3af;
+  --text-muted:   #6b7280;
+  --radius-card:  12px;
+  --transition:   150ms ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── Layout ── */
+.cm-pg {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 80px 24px 60px;
+}
+
+/* ── Cabeçalho da página ── */
+.cm-pg-header {
+  margin-bottom: 28px;
+}
+.cm-pg-titulo {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.cm-pg-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* ── Barra de busca ── */
+.cm-pg-busca-wrap {
+  position: relative;
+  max-width: 500px;
+}
+.cm-pg-busca-ico {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 15px;
+  pointer-events: none;
+}
+#cm-pg-busca {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 10px;
+  padding: 10px 14px 10px 38px;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+}
+#cm-pg-busca:focus { border-color: var(--cell-green); }
+#cm-pg-busca::placeholder { color: var(--text-muted); }
+
+/* ── Filtros de categoria ── */
+.cm-pg-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.cat-pill {
+  padding: 5px 13px;
+  border: 1px solid var(--border-med);
+  border-radius: 99px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.cat-pill:hover  { border-color: var(--cell-green); color: var(--cell-green); }
+.cat-pill.active {
+  background: var(--green-dim);
+  border-color: var(--green-border);
+  color: var(--cell-green);
+  font-weight: 600;
+}
+
+/* ── Stats ── */
+.cm-pg-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cm-stat-sep { opacity: .4; }
+.cm-stat-favs { color: #f5a623; font-weight: 600; }
+
+/* ── Grid de módulos ── */
+.cm-pg-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+/* ── Card de módulo ── */
+.cm-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition), transform 120ms ease;
+  position: relative;
+  user-select: none;
+}
+.cm-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-med);
+  transform: translateY(-1px);
+}
+.cm-card-ico {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.cm-card-info { flex: 1; min-width: 0; }
+.cm-card-nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.cm-card-desc {
+  font-size: 11.5px;
+  color: var(--text-sec);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-card-cat {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+
+/* ── Botão estrela ── */
+.cm-card-star {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background var(--transition), border-color var(--transition),
+              color var(--transition), transform 120ms ease;
+  opacity: 0;
+}
+.cm-card:hover .cm-card-star { opacity: 1; }
+.cm-card-star.on {
+  opacity: 1;
+  color: #f5a623;
+  border-color: rgba(245,166,35,.35);
+  background: rgba(245,166,35,.10);
+}
+.cm-card-star:hover {
+  transform: scale(1.18);
+  background: rgba(245,166,35,.14);
+  border-color: rgba(245,166,35,.5);
+  color: #f5a623;
+}
+
+/* ── Estado vazio ── */
+.cm-pg-vazio {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-muted);
+}
+.cm-pg-vazio-ico { font-size: 44px; margin-bottom: 12px; }
+.cm-pg-vazio-txt { font-size: 14px; }
+
+/* ── Seção de categoria (modo agrupado) ── */
+.cm-cat-sec-titulo {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 20px 2px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-cat-sec-titulo:first-child { padding-top: 0; }
+
+/* ── Toast ── */
+#cm-pg-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #151920;
+  border: 1px solid rgba(0,200,83,.3);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+}
+#cm-pg-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Responsivo ── */
+@media (max-width: 640px) {
+  .cm-pg { padding: 72px 16px 40px; }
+  .cm-pg-grid { grid-template-columns: 1fr; }
+  .cm-card-star { opacity: 1; }
+}
+</style>
+</head>
+<body data-fav-key="central-modulos" data-fav-icon="🧩" data-fav-label="Central de Módulos">
+
+<div class="cm-pg">
+
+  <!-- Cabeçalho -->
+  <div class="cm-pg-header">
+    <div class="cm-pg-titulo">🧩 Central de Módulos</div>
+    <div class="cm-pg-sub">Todos os módulos do sistema em um só lugar. ⭐ = aparece na sua home.</div>
+    <div class="cm-pg-busca-wrap">
+      <span class="cm-pg-busca-ico">🔍</span>
+      <input id="cm-pg-busca" type="text" placeholder="Buscar módulo por nome, descrição ou categoria…" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- Filtros de categoria -->
+  <div class="cm-pg-cats" id="cm-pg-cats"></div>
+
+  <!-- Stats -->
+  <div class="cm-pg-stats" id="cm-pg-stats">
+    <span id="cm-stat-total">—</span>
+    <span class="cm-stat-sep">·</span>
+    <span class="cm-stat-favs" id="cm-stat-favs">— favoritos na home</span>
+  </div>
+
+  <!-- Grid de módulos -->
+  <div class="cm-pg-grid" id="cm-pg-grid"></div>
+
+</div>
+
+<!-- Toast -->
+<div id="cm-pg-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script src="../../shared/favoritos.js" type="module"></script>
+
+<script type="module">
+import {
+  TODOS_MODULOS,
+  init as initCentral,
+  getFavoritosHome,
+  toggleFavorito,
+  onModulosChanged,
+  abrirCentralModulos
+} from '../../shared/central-modulos.js';
+
+// Expõe para sidebar.js poder abrir o modal (mesma instância)
+window.abrirCentralModulos = abrirCentralModulos;
+
+// ── Estado da página ─────────────────────────────────────────
+let _catAtiva = '';
+let _busca    = '';
+
+// ── Rotas para navegação ──────────────────────────────────────
+const ROTAS = {
+  'os':                  '/CRM/pages/os/index.html',
+  'caixa':               '/CRM/pages/caixa/index.html',
+  'central-alertas':     '/CRM/pages/central-alertas/index.html',
+  'clientes':            '/CRM/pages/clientes/index.html',
+  'estoque':             '/CRM/pages/estoque/index.html',
+  'acaodasemana':        '/CRM/pages/acaodasemana/index.html',
+  'autoatendimento':     '/CRM/pages/autoatendimento/index.html',
+  'garantias':           '/CRM/pages/garantias/index.html',
+  'financeiro':          '/CRM/pages/financeiro/index.html',
+  'compras':             '/CRM/pages/compras/index.html',
+  'fechamento':          '/CRM/pages/fechamento/index.html',
+  'pendencias':          '/CRM/pages/pendencias/index.html',
+  'crm-comercial':       '/CRM/pages/crm-comercial/index.html',
+  'fornecedor':          '/CRM/pages/fornecedor/index.html',
+  'pos-venda':           '/CRM/pages/pos-venda/index.html',
+  'catalogo':            '/CRM/pages/catalogo/index.html',
+  'relatorios':          '/CRM/pages/relatorios/index.html',
+  'central-comandos':    '/CRM/pages/central-comandos/index.html',
+  'central-organizacao': '/CRM/pages/central-organizacao/index.html',
+  'central-informacoes': '/CRM/pages/central-informacoes/index.html',
+  'portal-cliente':      '/CRM/pages/portal-cliente/admin.html',
+  'portal-tecnico':      '/CRM/pages/portal-tecnico/index.html',
+  'diario':              '/CRM/pages/diario/index.html',
+  'auditoria':           '/CRM/pages/auditoria/index.html',
+  'lixeira':             '/CRM/pages/lixeira/index.html',
+  'integridade':         '/CRM/pages/integridade/index.html',
+  'homologacao':         '/CRM/pages/homologacao/index.html',
+  'config':              '/CRM/pages/config/index.html',
+};
+
+// ── Utilidades ────────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('cm-pg-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── Categorias ────────────────────────────────────────────────
+function buildCats() {
+  const cats = ['Todos', ...new Set(TODOS_MODULOS.map(m => m.categoria))];
+  const wrap = document.getElementById('cm-pg-cats');
+  wrap.innerHTML = cats.map(c => `
+    <button class="cat-pill ${c === 'Todos' ? 'active' : ''}" data-cat="${esc(c === 'Todos' ? '' : c)}">
+      ${esc(c)}
+    </button>`).join('');
+  wrap.querySelectorAll('.cat-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _catAtiva = btn.dataset.cat;
+      render();
+    });
+  });
+}
+
+// ── Stats ─────────────────────────────────────────────────────
+function updateStats(visivel) {
+  const favs = getFavoritosHome();
+  const nFavs = favs ? favs.length : 0;
+  document.getElementById('cm-stat-total').textContent =
+    `${visivel} módulo${visivel !== 1 ? 's' : ''}`;
+  document.getElementById('cm-stat-favs').textContent =
+    favs !== null
+      ? `${nFavs} favorito${nFavs !== 1 ? 's' : ''} na home`
+      : 'Home mostrando todos';
+}
+
+// ── Render principal ──────────────────────────────────────────
+function render() {
+  const favs   = getFavoritosHome();
+  const grid   = document.getElementById('cm-pg-grid');
+  const busca  = _busca.toLowerCase();
+
+  let lista = TODOS_MODULOS;
+  if (_catAtiva) lista = lista.filter(m => m.categoria === _catAtiva);
+  if (busca)     lista = lista.filter(m =>
+    m.nome.toLowerCase().includes(busca) ||
+    m.descricao.toLowerCase().includes(busca) ||
+    m.categoria.toLowerCase().includes(busca)
+  );
+
+  updateStats(lista.length);
+
+  if (lista.length === 0) {
+    grid.innerHTML = `
+      <div class="cm-pg-vazio">
+        <div class="cm-pg-vazio-ico">🔍</div>
+        <div class="cm-pg-vazio-txt">Nenhum módulo encontrado para <strong>"${esc(_busca)}"</strong></div>
+      </div>`;
+    return;
+  }
+
+  // Agrupa por categoria se não há filtro de categoria ativo
+  const agrupar = !_catAtiva && !busca;
+  const grupos  = {};
+  const ordem   = [];
+  lista.forEach(m => {
+    if (!grupos[m.categoria]) { grupos[m.categoria] = []; ordem.push(m.categoria); }
+    grupos[m.categoria].push(m);
+  });
+
+  const renderCard = (m) => {
+    const on = favs !== null && favs.includes(m.id);
+    return `<div class="cm-card" data-id="${m.id}">
+      <div class="cm-card-ico">${m.icone}</div>
+      <div class="cm-card-info">
+        <div class="cm-card-nome">${esc(m.nome)}</div>
+        <div class="cm-card-desc">${esc(m.descricao)}</div>
+        <span class="cm-card-cat">${esc(m.categoria)}</span>
+      </div>
+      <button class="cm-card-star ${on ? 'on' : ''}" data-id="${m.id}"
+        title="${on ? 'Remover da home' : 'Adicionar à home'}">${on ? '⭐' : '☆'}</button>
+    </div>`;
+  };
+
+  if (agrupar) {
+    grid.innerHTML = ordem.map(cat => `
+      <div class="cm-cat-sec-titulo">
+        <span>${esc(cat)}</span>
+        <span style="font-weight:400;opacity:.5">${grupos[cat].length}</span>
+      </div>
+      ${grupos[cat].map(renderCard).join('')}
+    `).join('');
+  } else {
+    grid.innerHTML = lista.map(renderCard).join('');
+  }
+
+  // Clique no card → navega para o módulo
+  grid.querySelectorAll('.cm-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.cm-card-star')) return;
+      const url = ROTAS[card.dataset.id];
+      if (url) window.location.href = url;
+    });
+  });
+
+  // Clique na estrela → toggle favorito
+  grid.querySelectorAll('.cm-card-star').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ok = await toggleFavorito(btn.dataset.id);
+      if (ok === false) toast(`Limite de 24 favoritos atingido.`);
+      // render() será chamado pelo onModulosChanged
+    });
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────
+initCentral();
+buildCats();
+render();
+onModulosChanged(() => render());
+
+document.getElementById('cm-pg-busca').addEventListener('input', (e) => {
+  _busca = e.target.value.trim();
+  render();
+});
+</script>
+</body>
+</html>
