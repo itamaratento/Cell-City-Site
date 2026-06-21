@@ -60,6 +60,13 @@
                     <span class="est-sb-label">Categorias</span>
                     <span class="est-sb-count" id="sb-count-cats">—</span>
                 </div>
+
+                <div class="est-sb-sep"></div>
+
+                <div class="est-sb-item" data-nav="rentabilidade">
+                    <span class="est-sb-icon">📊</span>
+                    <span class="est-sb-label">Rentabilidade</span>
+                </div>
             </aside>
 
             <!-- ═══════════════════════════════════════════════ -->
@@ -278,6 +285,46 @@
 
                     <!-- Lista de categorias -->
                     <div id="est-cat-lista"></div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: RENTABILIDADE                        -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-rentabilidade">
+
+                    <!-- Ordenação -->
+                    <div class="est-rent-filtros">
+                        <button class="est-rent-filtro active" data-ord="receita">💵 Mais Receita</button>
+                        <button class="est-rent-filtro" data-ord="lucro">💎 Mais Lucrativos</button>
+                        <button class="est-rent-filtro" data-ord="margem">📉 Menor Margem</button>
+                        <button class="est-rent-filtro" data-ord="qtd">📦 Mais Vendidos</button>
+                    </div>
+
+                    <!-- Cards resumo -->
+                    <div class="est-rent-resumo" id="est-rent-resumo">
+                        <div class="est-rent-card">
+                            <div class="est-rent-val" id="rent-receita-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">Receita Total</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-custo" id="rent-cpv-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">CPV (Custo)</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-lucro" id="rent-lucro-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">Lucro Bruto</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-margem" id="rent-margem-total">0%</div>
+                            <div class="est-rent-lbl">Margem Média</div>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="est-loading" id="rent-loading"><div class="est-spinner"></div><span>Carregando dados...</span></div>
+
+                    <!-- Tabela de produtos -->
+                    <div id="est-rent-tabela"></div>
                 </div>
 
             </div><!-- /est-main -->

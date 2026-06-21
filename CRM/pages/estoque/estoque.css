@@ -498,3 +498,112 @@ body {
     .est-home-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
     .est-home-card { padding:12px 6px 10px; }
 }
+
+/* ──────────────────────────────────────────
+   PAINEL RENTABILIDADE
+   ────────────────────────────────────────── */
+.est-rent-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.est-rent-filtro {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.est-rent-filtro.active,
+.est-rent-filtro:hover {
+    border-color: var(--cell-green);
+    color: var(--cell-green);
+    background: rgba(0,200,83,0.08);
+}
+
+.est-rent-resumo {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.est-rent-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 10px;
+    text-align: center;
+}
+.est-rent-val {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+.est-rent-val.est-rent-custo  { color: #f44336; }
+.est-rent-val.est-rent-lucro  { color: var(--cell-green); }
+.est-rent-val.est-rent-margem { color: #29b6f6; }
+.est-rent-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+/* Tabela */
+.est-rent-table {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+.est-rent-thead {
+    display: grid;
+    grid-template-columns: 1fr 60px 110px 110px 110px 80px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+}
+.est-rent-th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.est-rent-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 110px 110px 110px 80px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+.est-rent-row:last-child { border-bottom: none; }
+.est-rent-row:hover { background: var(--bg-elevated); }
+.est-rent-td {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+}
+.est-rent-col-nome { font-weight: 500; color: var(--text-primary); }
+.est-rent-col-num  { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.est-rent-td.est-rent-custo { color: #ef9a9a; }
+.est-rent-td.est-rent-lucro { color: #69f0ae; }
+
+.est-sb-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 8px;
+}
+
+@media (max-width:768px) {
+    .est-rent-resumo { grid-template-columns: repeat(2,1fr); }
+    .est-rent-thead { grid-template-columns: 1fr 50px 90px 80px; }
+    .est-rent-row   { grid-template-columns: 1fr 50px 90px 80px; }
+    .est-rent-th:nth-child(3),
+    .est-rent-td:nth-child(3),
+    .est-rent-th:nth-child(4),
+    .est-rent-td:nth-child(4) { display: none; }
+}

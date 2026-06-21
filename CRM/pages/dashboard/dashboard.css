@@ -3652,3 +3652,192 @@ body {
   border: 1px solid var(--border, #2a2a4a);
 }
 .config-btn-secondary:hover { background: rgba(255,255,255,0.05); }
+
+/* ══════════════════════════════════════════════════════
+   PAINEL FINANCEIRO INTELIGENTE
+   ══════════════════════════════════════════════════════ */
+.fin-exec-panel {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.fin-exec-period-btns {
+    display: flex;
+    gap: 4px;
+}
+.fin-exec-period {
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.fin-exec-period.active,
+.fin-exec-period:hover {
+    border-color: var(--cell-green);
+    color: var(--cell-green);
+    background: rgba(0,200,83,0.08);
+}
+
+/* Linha financeira */
+.fin-exec-row {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+}
+.fin-exec-row--op {
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.fin-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 12px 8px;
+    text-align: center;
+    border-top: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+.fin-card--saldo     { border-top-color: #29b6f6; }
+.fin-card--receita   { border-top-color: var(--cell-green); }
+.fin-card--despesa   { border-top-color: #f44336; }
+.fin-card--lucro     { border-top-color: var(--cell-green); }
+.fin-card--prejuizo  { border-top-color: #f44336; }
+.fin-card--compras   { border-top-color: #ff9800; }
+.fin-card--pagar     { border-top-color: #ef5350; }
+.fin-card--receber   { border-top-color: #66bb6a; }
+.fin-card--vencida   { border-top-color: #78909c; }
+.fin-card--alerta    { border-top-color: #f44336; background: rgba(244,67,54,0.07); }
+.fin-card--op        { border-top-color: #7c4dff; }
+.fin-card--lowstock  { border-top-color: #ff9800; }
+.fin-card--best      { border-top-color: #ffd700; }
+.fin-card--lucro-prod { border-top-color: var(--cell-green); }
+
+.fin-card-icon {
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+.fin-card-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 3px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fin-card-val--sm { font-size: 11px; white-space: normal; }
+.fin-card-lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    line-height: 1.1;
+}
+
+/* Meta + Alertas row */
+.fin-meta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 8px 0;
+}
+.fin-meta-card,
+.fin-alertas-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 14px;
+}
+.fin-meta-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.fin-meta-titulo { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.fin-meta-pct    { font-size: 18px; font-weight: 800; color: var(--cell-green); }
+.fin-meta-track  { height: 8px; background: var(--surface); border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
+.fin-meta-fill   { height: 100%; background: var(--cell-green); border-radius: 4px; transition: width 0.6s ease; }
+.fin-meta-info   { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
+.fin-meta-sep    { color: var(--text-muted); }
+.fin-meta-falta  { margin-left: auto; font-weight: 600; color: #f9a825; font-size: 11px; }
+
+.fin-alertas-titulo { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+.fin-alertas-lista  { display: flex; flex-direction: column; gap: 5px; }
+.fin-alerta-item {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+}
+.fin-al-red    { background: rgba(244,67,54,0.12); color: #ef9a9a; }
+.fin-al-orange { background: rgba(255,152,0,0.12); color: #ffb74d; }
+.fin-al-yellow { background: rgba(249,168,37,0.12); color: #ffd54f; }
+.fin-al-green  { background: rgba(76,175,80,0.12);  color: #81c784; }
+.fin-alerta-ok  { font-size: 12px; color: var(--cell-green); }
+.fin-alerta-vazio { font-size: 12px; color: var(--text-muted); }
+
+/* Gráfico 6 meses */
+.fin-chart-card {
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 8px;
+}
+.fin-chart-titulo { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.fin-chart-legenda { display: flex; gap: 12px; margin-bottom: 10px; }
+.fin-leg { font-size: 11px; color: var(--text-muted); }
+.fin-leg-receita::before { content: '■'; color: var(--cell-green); margin-right: 4px; }
+.fin-leg-lucro::before   { content: '■'; color: #29b6f6;           margin-right: 4px; }
+
+.fin-chart-area {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 80px;
+    padding: 0 4px;
+}
+.fin-chart-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+}
+.fin-chart-bars {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    width: 100%;
+    justify-content: center;
+}
+.fin-chart-bar {
+    width: 40%;
+    min-height: 2px;
+    border-radius: 3px 3px 0 0;
+    transition: height 0.5s ease;
+}
+.fin-bar-receita { background: var(--cell-green); opacity: 0.7; }
+.fin-bar-lucro   { background: #29b6f6; }
+.fin-chart-lbl   { font-size: 10px; color: var(--text-muted); text-transform: capitalize; }
+.fin-chart-loading { color: var(--text-muted); font-size: 12px; margin: auto; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .fin-exec-row    { grid-template-columns: repeat(4, 1fr); }
+    .fin-exec-row--op { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+    .fin-exec-row    { grid-template-columns: repeat(2, 1fr); }
+    .fin-exec-row--op { grid-template-columns: repeat(2, 1fr); }
+    .fin-meta-row    { grid-template-columns: 1fr; }
+}

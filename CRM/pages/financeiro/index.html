@@ -48,20 +48,28 @@
                 </div>
                 <div class="fin-sb-item" data-sec="resumo">
                     <span class="fin-sb-icon">📊</span>
-                    <span class="fin-sb-label">Resumo Financeiro</span>
+                    <span class="fin-sb-label">Resultado Financeiro</span>
+                </div>
+                <div class="fin-sb-item" data-sec="fluxo">
+                    <span class="fin-sb-icon">📈</span>
+                    <span class="fin-sb-label">Fluxo de Caixa</span>
                 </div>
 
                 <div class="fin-sb-sep"></div>
 
-                <div class="fin-sb-label-soon">Em breve</div>
-                <div class="fin-sb-item fin-sb-disabled">
+                <div class="fin-sb-label-soon">Módulos</div>
+                <a class="fin-sb-item" href="/CRM/pages/despesas/" style="text-decoration:none">
+                    <span class="fin-sb-icon">💸</span>
+                    <span class="fin-sb-label">Despesas</span>
+                </a>
+                <a class="fin-sb-item" href="/CRM/pages/compras/" style="text-decoration:none">
                     <span class="fin-sb-icon">📦</span>
                     <span class="fin-sb-label">Compras</span>
-                </div>
-                <div class="fin-sb-item fin-sb-disabled">
+                </a>
+                <a class="fin-sb-item" href="/CRM/pages/fornecedor/" style="text-decoration:none">
                     <span class="fin-sb-icon">🏢</span>
                     <span class="fin-sb-label">Fornecedores</span>
-                </div>
+                </a>
                 <div class="fin-sb-item fin-sb-disabled">
                     <span class="fin-sb-icon">📈</span>
                     <span class="fin-sb-label">Resultado</span>
@@ -102,36 +110,36 @@
                         <div class="fin-home-nome">Contas a Receber</div>
                         <div class="fin-home-count fin-home-count-zero" id="hc-receber">0</div>
                     </div>
-                    <div class="fin-home-block fin-home-block-soon">
+                    <a class="fin-home-block" href="/CRM/pages/compras/" style="text-decoration:none;color:inherit">
                         <div class="fin-home-icon">📦</div>
                         <div class="fin-home-nome">Compras</div>
-                        <div class="fin-home-badge-soon">Em breve</div>
-                    </div>
-                    <div class="fin-home-block fin-home-block-soon">
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
+                    <a class="fin-home-block" href="/CRM/pages/fornecedor/" style="text-decoration:none;color:inherit">
                         <div class="fin-home-icon">🏢</div>
                         <div class="fin-home-nome">Fornecedores</div>
-                        <div class="fin-home-badge-soon">Em breve</div>
-                    </div>
-                    <div class="fin-home-block fin-home-block-soon">
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
+                    <div class="fin-home-block" data-sec="fluxo">
                         <div class="fin-home-icon">📊</div>
                         <div class="fin-home-nome">Fluxo de Caixa</div>
-                        <div class="fin-home-badge-soon">Em breve</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
                     </div>
                     <div class="fin-home-block" data-sec="resumo">
                         <div class="fin-home-icon">📈</div>
                         <div class="fin-home-nome">Resultado Financeiro</div>
-                        <div class="fin-home-count fin-count-info" id="hc-resumo">Ver</div>
+                        <div class="fin-home-count fin-count-info" id="hc-resumo">Abrir</div>
                     </div>
                     <div class="fin-home-block" data-sec="fixas">
                         <div class="fin-home-icon">📅</div>
                         <div class="fin-home-nome">Despesas Fixas</div>
                         <div class="fin-home-count fin-home-count-zero" id="hc-fixas">0</div>
                     </div>
-                    <div class="fin-home-block fin-home-block-soon">
-                        <div class="fin-home-icon">🎯</div>
-                        <div class="fin-home-nome">Metas Financeiras</div>
-                        <div class="fin-home-badge-soon">Em breve</div>
-                    </div>
+                    <a class="fin-home-block" href="/CRM/pages/despesas/" style="text-decoration:none;color:inherit">
+                        <div class="fin-home-icon">💸</div>
+                        <div class="fin-home-nome">Despesas</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
                 </div>
 
                 <!-- ===== SEÇÃO: CONTAS A PAGAR ===== -->
@@ -156,6 +164,7 @@
                                 <label>Categoria</label>
                                 <select id="fp-cat">
                                     <option value="Aluguel">🏠 Aluguel</option>
+                                    <option value="Compras de Mercadorias">🛒 Compras de Mercadorias</option>
                                     <option value="Fornecedor">📦 Fornecedor</option>
                                     <option value="Serviços">⚡ Serviços</option>
                                     <option value="Salário">👤 Salário</option>
@@ -309,32 +318,150 @@
                     </div>
                 </div>
 
-                <!-- ===== SEÇÃO: RESUMO FINANCEIRO ===== -->
+                <!-- ===== SEÇÃO: RESULTADO FINANCEIRO (INTELIGENTE) ===== -->
                 <div class="fin-section" id="fin-sec-resumo" style="display:none">
-                    <div class="fin-resumo-grid">
-                        <div class="fin-resumo-card fin-rc-pagar">
-                            <div class="fin-rc-icon">💸</div>
-                            <div class="fin-rc-valor" id="res-pagar">R$ 0,00</div>
-                            <div class="fin-rc-label">A Pagar (pendente)</div>
-                            <div class="fin-rc-count" id="res-pagar-count">0 contas</div>
+
+                    <!-- Filtros de período -->
+                    <div class="fin-periodo-filtros">
+                        <button class="fin-pfiltro active" data-p="mes">Este Mês</button>
+                        <button class="fin-pfiltro" data-p="hoje">Hoje</button>
+                        <button class="fin-pfiltro" data-p="semana">Semana</button>
+                        <button class="fin-pfiltro" data-p="ano">Este Ano</button>
+                        <button class="fin-pfiltro" data-p="custom">📅 Período</button>
+                    </div>
+                    <div id="fin-custom-range" class="fin-custom-range" style="display:none">
+                        <input type="date" id="fin-data-ini" class="fin-date-input">
+                        <span>até</span>
+                        <input type="date" id="fin-data-fim" class="fin-date-input">
+                        <button class="fin-btn-aplicar-periodo" id="fin-btn-aplicar-periodo">Aplicar</button>
+                    </div>
+
+                    <!-- Indicadores gerenciais -->
+                    <div class="fin-resultado-grid" id="fin-resultado-grid">
+                        <div class="fin-res-card fin-res-receita">
+                            <div class="fin-res-icon">💵</div>
+                            <div class="fin-res-valor" id="ri-receita">R$ 0,00</div>
+                            <div class="fin-res-label">Receita Total</div>
+                            <div class="fin-res-sub" id="ri-receita-sub">— contas recebidas</div>
                         </div>
-                        <div class="fin-resumo-card fin-rc-receber">
-                            <div class="fin-rc-icon">💵</div>
-                            <div class="fin-rc-valor" id="res-receber">R$ 0,00</div>
-                            <div class="fin-rc-label">A Receber (pendente)</div>
-                            <div class="fin-rc-count" id="res-receber-count">0 contas</div>
+                        <div class="fin-res-card fin-res-despesa">
+                            <div class="fin-res-icon">💸</div>
+                            <div class="fin-res-valor" id="ri-despesas">R$ 0,00</div>
+                            <div class="fin-res-label">Despesas Totais</div>
+                            <div class="fin-res-sub" id="ri-despesas-sub">— registros</div>
                         </div>
-                        <div class="fin-resumo-card fin-rc-fixas">
-                            <div class="fin-rc-icon">📅</div>
-                            <div class="fin-rc-valor" id="res-fixas">R$ 0,00</div>
-                            <div class="fin-rc-label">Despesas Fixas / mês</div>
-                            <div class="fin-rc-count" id="res-fixas-count">0 itens</div>
+                        <div class="fin-res-card fin-res-compras">
+                            <div class="fin-res-icon">📦</div>
+                            <div class="fin-res-valor" id="ri-compras">R$ 0,00</div>
+                            <div class="fin-res-label">Compras</div>
+                            <div class="fin-res-sub" id="ri-compras-sub">— compras pagas</div>
                         </div>
-                        <div class="fin-resumo-card fin-rc-alerta">
-                            <div class="fin-rc-icon">⚠️</div>
-                            <div class="fin-rc-valor fin-rc-alerta-val" id="res-vencidas">0</div>
-                            <div class="fin-rc-label">Contas Vencidas</div>
-                            <div class="fin-rc-count" id="res-vencidas-label">pagar + receber</div>
+                        <div class="fin-res-card fin-res-pagar">
+                            <div class="fin-res-icon">⏳</div>
+                            <div class="fin-res-valor" id="ri-pagar">R$ 0,00</div>
+                            <div class="fin-res-label">A Pagar (pendente)</div>
+                            <div class="fin-res-sub" id="ri-pagar-sub">— contas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-receber">
+                            <div class="fin-res-icon">📥</div>
+                            <div class="fin-res-valor" id="ri-receber">R$ 0,00</div>
+                            <div class="fin-res-label">A Receber (pendente)</div>
+                            <div class="fin-res-sub" id="ri-receber-sub">— contas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-fixas">
+                            <div class="fin-res-icon">📅</div>
+                            <div class="fin-res-valor" id="ri-fixas">R$ 0,00</div>
+                            <div class="fin-res-label">Despesas Fixas / mês</div>
+                            <div class="fin-res-sub" id="ri-fixas-sub">— itens</div>
+                        </div>
+                        <div class="fin-res-card fin-res-lucro" id="fin-res-lucro-card">
+                            <div class="fin-res-icon">💎</div>
+                            <div class="fin-res-valor" id="ri-lucro">R$ 0,00</div>
+                            <div class="fin-res-label">Lucro Líquido</div>
+                            <div class="fin-res-sub">Receita − Despesas − Compras</div>
+                        </div>
+                        <div class="fin-res-card fin-res-saldo" id="fin-res-saldo-card">
+                            <div class="fin-res-icon">🏦</div>
+                            <div class="fin-res-valor" id="ri-saldo">R$ 0,00</div>
+                            <div class="fin-res-label">Saldo Atual</div>
+                            <div class="fin-res-sub">Receber − Pagar pendente</div>
+                        </div>
+                    </div>
+
+                    <!-- Indicadores do Caixa (CPV / Lucro Bruto / Margem) -->
+                    <div class="fin-res-caixa-titulo">📦 Análise de Produtos (Caixa)</div>
+                    <div class="fin-resultado-grid fin-resultado-caixa-grid">
+                        <div class="fin-res-card fin-res-compras">
+                            <div class="fin-res-icon">🏷️</div>
+                            <div class="fin-res-valor" id="ri-cpv">R$ 0,00</div>
+                            <div class="fin-res-label">CPV</div>
+                            <div class="fin-res-sub" id="ri-cpv-sub">0 vendas no caixa</div>
+                        </div>
+                        <div class="fin-res-card fin-res-lucro" id="fin-res-lucro-bruto-card">
+                            <div class="fin-res-icon">💵</div>
+                            <div class="fin-res-valor" id="ri-lucro-bruto">R$ 0,00</div>
+                            <div class="fin-res-label">Lucro Bruto</div>
+                            <div class="fin-res-sub" id="ri-lucro-bruto-sub">Receita Caixa: R$ 0,00</div>
+                        </div>
+                        <div class="fin-res-card fin-res-receber">
+                            <div class="fin-res-icon">📊</div>
+                            <div class="fin-res-valor" id="ri-margem">0,0%</div>
+                            <div class="fin-res-label">Margem Bruta</div>
+                            <div class="fin-res-sub" id="ri-margem-sub">Margem bruta (Caixa)</div>
+                        </div>
+                    </div>
+
+                    <!-- Resumo de vencidas -->
+                    <div class="fin-res-alerta" id="fin-res-alerta" style="display:none">
+                        ⚠️ <span id="fin-res-alerta-txt"></span>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: FLUXO DE CAIXA UNIFICADO ===== -->
+                <div class="fin-section" id="fin-sec-fluxo" style="display:none">
+                    <div class="fin-loading" id="fluxo-loading"><div class="fin-spinner"></div><span>Carregando fluxo...</span></div>
+
+                    <div id="fin-fluxo-content" style="display:none">
+                        <!-- Filtros de período -->
+                        <div class="fin-periodo-filtros">
+                            <button class="fin-pfiltro-fluxo active" data-p="mes">Este Mês</button>
+                            <button class="fin-pfiltro-fluxo" data-p="hoje">Hoje</button>
+                            <button class="fin-pfiltro-fluxo" data-p="semana">Semana</button>
+                            <button class="fin-pfiltro-fluxo" data-p="ano">Este Ano</button>
+                        </div>
+
+                        <!-- Cards principais -->
+                        <div class="fin-fluxo-cards">
+                            <div class="fin-fluxo-card fin-fluxo-entrada">
+                                <div class="fin-fc-icon">📈</div>
+                                <div class="fin-fc-valor" id="fluxo-entradas">R$ 0,00</div>
+                                <div class="fin-fc-label">Entradas Totais</div>
+                                <div class="fin-fc-sub" id="fluxo-entradas-sub"></div>
+                            </div>
+                            <div class="fin-fluxo-card fin-fluxo-saida">
+                                <div class="fin-fc-icon">📉</div>
+                                <div class="fin-fc-valor" id="fluxo-saidas">R$ 0,00</div>
+                                <div class="fin-fc-label">Saídas Totais</div>
+                                <div class="fin-fc-sub" id="fluxo-saidas-sub"></div>
+                            </div>
+                            <div class="fin-fluxo-card fin-fluxo-saldo" id="fin-fluxo-saldo-card">
+                                <div class="fin-fc-icon">⚖️</div>
+                                <div class="fin-fc-valor" id="fluxo-saldo">R$ 0,00</div>
+                                <div class="fin-fc-label">Saldo do Período</div>
+                                <div class="fin-fc-sub">Entradas − Saídas</div>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown por fonte -->
+                        <div class="fin-fluxo-breakdown">
+                            <div class="fin-fluxo-breakdown-titulo">🔍 Detalhamento por Fonte</div>
+                            <div id="fin-fluxo-fontes"></div>
+                        </div>
+
+                        <!-- Timeline de movimentações -->
+                        <div class="fin-fluxo-breakdown">
+                            <div class="fin-fluxo-breakdown-titulo">📋 Movimentações do Período <span class="fin-fluxo-count" id="fluxo-mov-count"></span></div>
+                            <div id="fin-fluxo-lista"></div>
                         </div>
                     </div>
                 </div>
@@ -347,7 +474,7 @@
 
     <script src="../../shared/brand-header.js"></script>
     <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="financeiro.js?v=20260620a"></script>
+    <script type="module" src="financeiro.js?v=20260620b"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

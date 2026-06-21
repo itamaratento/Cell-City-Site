@@ -137,7 +137,9 @@ function fornCardHtml(f) {
             ${f.whatsapp  ? `<span>💬 ${fmtTel(f.whatsapp)}</span>`  : ''}
             ${f.instagram ? `<span>📷 ${esc(f.instagram)}</span>`    : ''}
             ${f.endereco  ? `<span>📍 ${esc(f.endereco)}</span>`     : ''}
-            ${f.cidade    ? `<span>🌆 ${esc(f.cidade)}</span>`       : ''}
+            ${f.cidade    ? `<span>🌆 ${esc(f.cidade)}${f.estado ? ` — ${esc(f.estado)}` : ''}</span>` : ''}
+          ${f.cnpj      ? `<span>🏢 ${esc(f.cnpj)}</span>`         : ''}
+          ${f.email     ? `<span>✉️ ${esc(f.email)}</span>`         : ''}
           </div>
           ${f.obs ? `<div class="forn-card-forn-obs">${esc(f.obs)}</div>` : ''}
         </div>
@@ -149,6 +151,7 @@ function fornCardHtml(f) {
         </button>
         ${wppLink ? `<a class="forn-btn-acc forn-btn-wpp" href="${wppLink}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : ''}
         ${f.site ? `<a class="forn-btn-acc forn-btn-site" href="${esc(f.site)}" target="_blank" rel="noopener" title="Abrir Site">🌐</a>` : ''}
+        <a class="forn-btn-acc forn-btn-compras" href="/CRM/pages/compras/" title="Ver Compras deste Fornecedor">🛒</a>
         <button class="forn-btn-acc forn-btn-edit" onclick="Forn.editar('${f.id}')" title="Editar">✏️</button>
         <button class="forn-btn-acc forn-btn-del" onclick="Forn.excluir('${f.id}')" title="Excluir">🗑️</button>
       </div>
@@ -185,6 +188,9 @@ function abrirFormForn(id) {
     document.getElementById('ff-tel2').value       = f.telefone2 || '';
     document.getElementById('ff-whatsapp').value   = f.whatsapp || '';
     document.getElementById('ff-instagram').value  = f.instagram || '';
+    if (document.getElementById('ff-cnpj'))   document.getElementById('ff-cnpj').value   = f.cnpj  || '';
+    if (document.getElementById('ff-email'))  document.getElementById('ff-email').value  = f.email || '';
+    if (document.getElementById('ff-estado')) document.getElementById('ff-estado').value = f.estado || '';
     document.getElementById('ff-site').value       = f.site || '';
     document.getElementById('ff-endereco').value   = f.endereco || '';
     document.getElementById('ff-cidade').value     = f.cidade || '';
@@ -193,8 +199,10 @@ function abrirFormForn(id) {
     state.editandoForn = id;
   } else {
     ['ff-id','ff-nome','ff-empresa','ff-tel1','ff-tel2','ff-whatsapp',
-     'ff-instagram','ff-site','ff-endereco','ff-cidade','ff-obs'
-    ].forEach(k => document.getElementById(k).value = '');
+     'ff-instagram','ff-cnpj','ff-email','ff-site','ff-endereco','ff-cidade','ff-obs'
+    ].forEach(k => { const el = document.getElementById(k); if (el) el.value = ''; });
+    const ffEstado = document.getElementById('ff-estado');
+    if (ffEstado) ffEstado.value = '';
     document.getElementById('form-forn-titulo').textContent = 'Novo Fornecedor';
     state.editandoForn = null;
   }
@@ -225,6 +233,9 @@ async function salvarForn() {
     site:       document.getElementById('ff-site').value.trim(),
     endereco:   document.getElementById('ff-endereco').value.trim(),
     cidade:     document.getElementById('ff-cidade').value.trim(),
+    estado:     document.getElementById('ff-estado')?.value || '',
+    cnpj:       document.getElementById('ff-cnpj')?.value.trim() || '',
+    email:      document.getElementById('ff-email')?.value.trim() || '',
     obs:        document.getElementById('ff-obs').value.trim(),
     favorito:   false,
     atualizadoEm: serverTimestamp(),

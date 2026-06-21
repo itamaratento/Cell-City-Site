@@ -280,6 +280,132 @@
       </div>
     </section>
 
+    <!-- ══════════════════════════════════════════
+         PAINEL FINANCEIRO INTELIGENTE
+         ══════════════════════════════════════════ -->
+    <section class="fin-exec-panel" id="fin-exec-panel">
+      <div class="exec-header">
+        <span class="exec-title">💰 PAINEL FINANCEIRO</span>
+        <div class="fin-exec-period-btns">
+          <button class="fin-exec-period active" data-period="mes">Mês</button>
+          <button class="fin-exec-period" data-period="semana">Semana</button>
+          <button class="fin-exec-period" data-period="hoje">Hoje</button>
+        </div>
+      </div>
+
+      <!-- Linha Financeira -->
+      <div class="exec-row fin-exec-row">
+        <div class="fin-card fin-card--saldo">
+          <div class="fin-card-icon">🏦</div>
+          <div class="fin-card-val" id="fin-saldo-caixa">R$ 0,00</div>
+          <div class="fin-card-lbl">Saldo (Caixa)</div>
+        </div>
+        <div class="fin-card fin-card--receita">
+          <div class="fin-card-icon">📈</div>
+          <div class="fin-card-val" id="fin-receita-periodo">R$ 0,00</div>
+          <div class="fin-card-lbl" id="fin-receita-lbl">Receita do Mês</div>
+        </div>
+        <div class="fin-card fin-card--despesa">
+          <div class="fin-card-icon">📉</div>
+          <div class="fin-card-val" id="fin-despesas-periodo">R$ 0,00</div>
+          <div class="fin-card-lbl" id="fin-despesas-lbl">Despesas do Mês</div>
+        </div>
+        <div class="fin-card fin-card--lucro" id="fin-card-lucro">
+          <div class="fin-card-icon">💎</div>
+          <div class="fin-card-val" id="fin-lucro-periodo">R$ 0,00</div>
+          <div class="fin-card-lbl" id="fin-lucro-lbl">Lucro do Mês</div>
+        </div>
+        <div class="fin-card fin-card--compras">
+          <div class="fin-card-icon">📦</div>
+          <div class="fin-card-val" id="fin-compras-mes">R$ 0,00</div>
+          <div class="fin-card-lbl">Compras do Mês</div>
+        </div>
+        <div class="fin-card fin-card--pagar">
+          <div class="fin-card-icon">🏢</div>
+          <div class="fin-card-val" id="fin-a-pagar">R$ 0,00</div>
+          <div class="fin-card-lbl">Contas a Pagar</div>
+        </div>
+        <div class="fin-card fin-card--receber">
+          <div class="fin-card-icon">🧾</div>
+          <div class="fin-card-val" id="fin-a-receber">R$ 0,00</div>
+          <div class="fin-card-lbl">Contas a Receber</div>
+        </div>
+        <div class="fin-card fin-card--vencida" id="fin-card-vencidas">
+          <div class="fin-card-icon">⚠️</div>
+          <div class="fin-card-val" id="fin-vencidas">0</div>
+          <div class="fin-card-lbl">Contas Vencidas</div>
+        </div>
+      </div>
+
+      <!-- Linha Operacional -->
+      <div class="exec-row fin-exec-row fin-exec-row--op">
+        <div class="fin-card fin-card--op">
+          <div class="fin-card-icon">🛒</div>
+          <div class="fin-card-val" id="fin-produtos-vendidos">—</div>
+          <div class="fin-card-lbl">Produtos Vendidos</div>
+        </div>
+        <div class="fin-card fin-card--op">
+          <div class="fin-card-icon">💲</div>
+          <div class="fin-card-val" id="fin-ticket-medio">—</div>
+          <div class="fin-card-lbl">Ticket Médio</div>
+        </div>
+        <div class="fin-card fin-card--op fin-card--lowstock">
+          <div class="fin-card-icon">📦</div>
+          <div class="fin-card-val" id="fin-estoque-baixo">—</div>
+          <div class="fin-card-lbl">Estoque Baixo</div>
+        </div>
+        <div class="fin-card fin-card--op fin-card--best">
+          <div class="fin-card-icon">🏆</div>
+          <div class="fin-card-val fin-card-val--sm" id="fin-mais-vendido">—</div>
+          <div class="fin-card-lbl">Mais Vendido</div>
+        </div>
+        <div class="fin-card fin-card--op fin-card--lucro-prod">
+          <div class="fin-card-icon">💰</div>
+          <div class="fin-card-val fin-card-val--sm" id="fin-mais-lucrativo">—</div>
+          <div class="fin-card-lbl">Mais Lucrativo</div>
+        </div>
+      </div>
+
+      <!-- Meta Mensal -->
+      <div class="fin-meta-row">
+        <div class="fin-meta-card">
+          <div class="fin-meta-header">
+            <span class="fin-meta-titulo">🎯 Meta Mensal</span>
+            <span class="fin-meta-pct" id="fin-meta-pct">0%</span>
+          </div>
+          <div class="fin-meta-track">
+            <div class="fin-meta-fill" id="fin-meta-fill" style="width:0%"></div>
+          </div>
+          <div class="fin-meta-info">
+            <span id="fin-meta-atual">R$ 0,00</span>
+            <span class="fin-meta-sep">de</span>
+            <span id="fin-meta-goal">R$ 0,00</span>
+            <span class="fin-meta-falta" id="fin-meta-falta"></span>
+          </div>
+        </div>
+
+        <!-- Alertas Destaque -->
+        <div class="fin-alertas-card" id="fin-alertas-card">
+          <div class="fin-alertas-titulo">⚠️ Alertas</div>
+          <div class="fin-alertas-lista" id="fin-alertas-lista">
+            <div class="fin-alerta-vazio">Carregando...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfico: Últimos 6 meses -->
+      <div class="fin-chart-card">
+        <div class="fin-chart-titulo">📊 Últimos 6 meses — Receita vs Lucro</div>
+        <div class="fin-chart-legenda">
+          <span class="fin-leg fin-leg-receita">■ Receita</span>
+          <span class="fin-leg fin-leg-lucro">■ Lucro</span>
+        </div>
+        <div class="fin-chart-area" id="fin-chart-area">
+          <div class="fin-chart-loading">Carregando gráfico...</div>
+        </div>
+      </div>
+    </section>
+
     <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
     <section class="alerts-section" id="alerts-section" style="display:none;">
       <div class="module-card alerts-card" id="alerts-card">

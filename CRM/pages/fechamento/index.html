@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fechamento Mensal — Cell City CRM</title>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<link rel="stylesheet" href="../../shared/brand-header.css">
+<link rel="stylesheet" href="fechamento.css?v=20260620a">
+</head>
+<body data-fav-key="fechamento" data-fav-icon="🔒">
+
+<main class="fec-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="fec-sidebar" id="fec-sidebar">
+        <div class="fec-sb-header">
+            <span class="fec-sb-title">🔒 Fechamento</span>
+        </div>
+
+        <nav class="fec-sb-nav">
+            <div class="fec-sb-item active" data-sec="home">
+                <span class="fec-sb-icon">🏠</span>
+                <span class="fec-sb-label">Visão Geral</span>
+            </div>
+            <div class="fec-sb-item" data-sec="fechar">
+                <span class="fec-sb-icon">🔒</span>
+                <span class="fec-sb-label">Fechar Mês</span>
+            </div>
+            <div class="fec-sb-item" data-sec="historico">
+                <span class="fec-sb-icon">📋</span>
+                <span class="fec-sb-label">Histórico</span>
+            </div>
+            <div class="fec-sb-item" data-sec="comparacao">
+                <span class="fec-sb-icon">⚖️</span>
+                <span class="fec-sb-label">Comparação</span>
+            </div>
+            <div class="fec-sb-item" data-sec="evolucao">
+                <span class="fec-sb-icon">📈</span>
+                <span class="fec-sb-label">Evolução</span>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="fec-main" id="fec-main">
+
+        <!-- ══ HOME ══ -->
+        <section class="fec-section" id="fec-sec-home">
+            <div class="fec-page-titulo">🏠 Visão Geral — <span id="fec-mes-titulo">—</span></div>
+            <div class="fec-loading" id="home-loading"><div class="fec-spinner"></div><span>Carregando...</span></div>
+
+            <!-- Cards do mês atual -->
+            <div class="fec-home-grid" id="fec-home-grid" style="display:none">
+                <div class="fec-home-card fec-hc-receita">
+                    <div class="fec-hc-icon">💰</div>
+                    <div class="fec-hc-val" id="hc-receita">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Receita Total</div>
+                </div>
+                <div class="fec-home-card fec-hc-despesa">
+                    <div class="fec-hc-icon">📉</div>
+                    <div class="fec-hc-val" id="hc-despesas">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Despesas Totais</div>
+                </div>
+                <div class="fec-home-card fec-hc-compras">
+                    <div class="fec-hc-icon">📦</div>
+                    <div class="fec-hc-val" id="hc-compras">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Compras</div>
+                </div>
+                <div class="fec-home-card" id="hc-lucro-card">
+                    <div class="fec-hc-icon">💎</div>
+                    <div class="fec-hc-val" id="hc-lucro">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Lucro Líquido</div>
+                </div>
+                <div class="fec-home-card fec-hc-saldo">
+                    <div class="fec-hc-icon">🏦</div>
+                    <div class="fec-hc-val" id="hc-saldo">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Saldo (Caixa)</div>
+                </div>
+                <div class="fec-home-card fec-hc-pagar">
+                    <div class="fec-hc-icon">🏢</div>
+                    <div class="fec-hc-val" id="hc-pagar-pend">R$ 0,00</div>
+                    <div class="fec-hc-lbl">Contas Pendentes</div>
+                </div>
+                <div class="fec-home-card fec-hc-meta">
+                    <div class="fec-hc-icon">🎯</div>
+                    <div class="fec-hc-val" id="hc-meta-pct">0%</div>
+                    <div class="fec-hc-lbl">Meta Atingida</div>
+                </div>
+                <div class="fec-home-card fec-hc-os">
+                    <div class="fec-hc-icon">📱</div>
+                    <div class="fec-hc-val" id="hc-total-os">—</div>
+                    <div class="fec-hc-lbl">Ordens de Serviço</div>
+                </div>
+            </div>
+
+            <!-- Variação vs mês anterior -->
+            <div class="fec-variacao-row" id="fec-variacao-row" style="display:none">
+                <div class="fec-var-titulo">📊 Variação vs mês anterior</div>
+                <div class="fec-var-grid">
+                    <div class="fec-var-item">
+                        <div class="fec-var-val" id="var-receita">—</div>
+                        <div class="fec-var-lbl">Receita</div>
+                    </div>
+                    <div class="fec-var-item">
+                        <div class="fec-var-val" id="var-despesas">—</div>
+                        <div class="fec-var-lbl">Despesas</div>
+                    </div>
+                    <div class="fec-var-item">
+                        <div class="fec-var-val" id="var-lucro">—</div>
+                        <div class="fec-var-lbl">Lucro</div>
+                    </div>
+                    <div class="fec-var-item">
+                        <div class="fec-var-val" id="var-meta">—</div>
+                        <div class="fec-var-lbl">Meta</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status do fechamento -->
+            <div class="fec-status-card" id="fec-status-card" style="display:none">
+                <div class="fec-status-icone" id="fec-status-icone">📊</div>
+                <div class="fec-status-body">
+                    <div class="fec-status-titulo" id="fec-status-titulo">Relatório não gerado</div>
+                    <div class="fec-status-sub" id="fec-status-sub">Clique em "Fechar Mês" para gerar o relatório consolidado.</div>
+                </div>
+                <button class="fec-btn-fechar" onclick="Fechamento.irParaFechar()">🔒 Fechar Mês</button>
+            </div>
+        </section>
+
+        <!-- ══ FECHAR MÊS ══ -->
+        <section class="fec-section" id="fec-sec-fechar" style="display:none">
+            <div class="fec-page-titulo">🔒 Fechar Mês</div>
+
+            <div class="fec-fechar-form">
+                <div class="fec-fechar-hdr">
+                    <label class="fec-label">Mês de referência</label>
+                    <input type="month" id="fec-mes-input" class="fec-mes-input">
+                </div>
+
+                <div class="fec-fechar-aviso" id="fec-fechar-aviso" style="display:none">
+                    <span id="fec-fechar-aviso-txt"></span>
+                </div>
+
+                <!-- Preview dos dados que serão consolidados -->
+                <div class="fec-preview" id="fec-preview" style="display:none">
+                    <div class="fec-preview-titulo">📋 Dados a consolidar</div>
+                    <div class="fec-preview-grid" id="fec-preview-grid"></div>
+                </div>
+
+                <div class="fec-fechar-btns">
+                    <button class="fec-btn-preview" id="fec-btn-preview" onclick="Fechamento.previewFechamento()">
+                        👁 Visualizar Dados
+                    </button>
+                    <button class="fec-btn-gerar" id="fec-btn-gerar" onclick="Fechamento.gerarFechamento()" disabled>
+                        🔒 Gerar Relatório Mensal
+                    </button>
+                </div>
+
+                <div class="fec-fechar-loading" id="fec-fechar-loading" style="display:none">
+                    <div class="fec-spinner"></div><span>Consolidando dados de todas as coleções...</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ══ HISTÓRICO ══ -->
+        <section class="fec-section" id="fec-sec-historico" style="display:none">
+            <div class="fec-page-titulo">📋 Histórico de Fechamentos</div>
+            <div class="fec-loading" id="hist-loading"><div class="fec-spinner"></div><span>Carregando...</span></div>
+            <div id="fec-hist-lista"></div>
+        </section>
+
+        <!-- ══ COMPARAÇÃO ══ -->
+        <section class="fec-section" id="fec-sec-comparacao" style="display:none">
+            <div class="fec-page-titulo">⚖️ Comparação entre Meses</div>
+
+            <div class="fec-comp-selects">
+                <div class="fec-comp-select-wrap">
+                    <label class="fec-label">Mês A</label>
+                    <select id="fec-comp-a" class="fec-select" onchange="Fechamento.renderComparacao()">
+                        <option value="">— Selecione —</option>
+                    </select>
+                </div>
+                <div class="fec-comp-vs">vs</div>
+                <div class="fec-comp-select-wrap">
+                    <label class="fec-label">Mês B</label>
+                    <select id="fec-comp-b" class="fec-select" onchange="Fechamento.renderComparacao()">
+                        <option value="">— Selecione —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="fec-comp-resultado"></div>
+        </section>
+
+        <!-- ══ EVOLUÇÃO ══ -->
+        <section class="fec-section" id="fec-sec-evolucao" style="display:none">
+            <div class="fec-page-titulo">📈 Evolução Financeira</div>
+            <div class="fec-loading" id="evol-loading"><div class="fec-spinner"></div><span>Carregando...</span></div>
+
+            <!-- Filtro de quantidade de meses -->
+            <div class="fec-evol-filtros" id="fec-evol-filtros" style="display:none">
+                <button class="fec-evol-filtro active" data-n="6">6 meses</button>
+                <button class="fec-evol-filtro" data-n="12">12 meses</button>
+                <button class="fec-evol-filtro" data-n="24">2 anos</button>
+            </div>
+
+            <div id="fec-evol-conteudo"></div>
+        </section>
+
+    </div><!-- /fec-main -->
+</main>
+
+<!-- MODAL DE RELATÓRIO DETALHADO -->
+<div class="fec-modal-overlay" id="fec-modal-overlay" style="display:none" onclick="Fechamento.fecharModal()">
+    <div class="fec-modal" onclick="event.stopPropagation()">
+        <button class="fec-modal-fechar" onclick="Fechamento.fecharModal()">✕</button>
+        <div id="fec-modal-conteudo"></div>
+    </div>
+</div>
+
+<div class="fec-toast" id="fec-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module" src="fechamento.js?v=20260620a"></script>
+</body>
+</html>

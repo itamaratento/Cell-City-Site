@@ -4,9 +4,10 @@ import {
 } from "../../scripts/firebase.js";
 
 // ── Coleções ───────────────────────────────────────────────────────────────────
-const COL    = 'estoque_produtos';
-const CAT_COL = 'estoque_config';
-const CAT_ID  = 'categorias';
+const COL        = 'estoque_produtos';
+const CAT_COL    = 'estoque_config';
+const CAT_ID     = 'categorias';
+const COL_CAIXA  = 'caixa_lancamentos';
 
 // ── Estado ─────────────────────────────────────────────────────────────────────
 let produtos   = [];
@@ -35,12 +36,13 @@ const ICON_SUGESTOES = [
 
 // ── Títulos de seção ───────────────────────────────────────────────────────────
 const NAV_TITULOS = {
-    home:       '🏠 Home',
-    produtos:   '📦 Produtos',
-    favoritos:  '⭐ Favoritos',
-    baixo:      '⚠️ Estoque Baixo',
-    zerado:     '🚫 Sem Estoque',
-    categorias: '📁 Categorias',
+    home:           '🏠 Home',
+    produtos:       '📦 Produtos',
+    favoritos:      '⭐ Favoritos',
+    baixo:          '⚠️ Estoque Baixo',
+    zerado:         '🚫 Sem Estoque',
+    categorias:     '📁 Categorias',
+    rentabilidade:  '📊 Rentabilidade',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -97,11 +99,12 @@ function navegarPara(secao) {
     document.getElementById('est-sb-overlay')?.classList.remove('open');
 
     // Renderiza o painel
-    if (secao === 'home')       renderHome();
-    if (secao === 'baixo')      renderPainelSimples('baixo',    p => p.quantidade > 0 && p.quantidade <= p.quantidadeMinima);
-    if (secao === 'zerado')     renderPainelSimples('zerado',   p => p.quantidade <= 0);
-    if (secao === 'favoritos')  renderPainelSimples('favoritos',p => p.favorito);
-    if (secao === 'categorias') renderCategorias();
+    if (secao === 'home')           renderHome();
+    if (secao === 'baixo')          renderPainelSimples('baixo',    p => p.quantidade > 0 && p.quantidade <= p.quantidadeMinima);
+    if (secao === 'zerado')         renderPainelSimples('zerado',   p => p.quantidade <= 0);
+    if (secao === 'favoritos')      renderPainelSimples('favoritos',p => p.favorito);
+    if (secao === 'categorias')     renderCategorias();
+    if (secao === 'rentabilidade')  renderRentabilidade();
 }
 
 // Sidebar clicks + mobile toggle
@@ -923,4 +926,108 @@ export async function buscarPorCodigoBarras(codigo) {
         snap.forEach(d => { if (d.data().codigoBarras === codigo) found = { id: d.id, ...d.data() }; });
         return found;
     } catch { return null; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENTABILIDADE — Painel de análise de lucratividade por produto
+// ─────────────────────────────────────────────────────────────────────────────
+let _rentOrdem = 'receita';
+let _rentCache = null; // {lancamentos}
+
+async function renderRentabilidade() {
+    const loadEl = document.getElementById('rent-loading');
+    if (loadEl) loadEl.style.display = 'flex';
+
+    // Bind botões de ordem
+    document.querySelectorAll('.est-rent-filtro').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.est-rent-filtro').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _rentOrdem = btn.dataset.ord;
+            _renderRentTabela(_rentCache);
+        };
+    });
+
+    // Carrega caixa_lancamentos (cache simples p/ sessão)
+    if (!_rentCache) {
+        try {
+            const snap = await getDocs(collection(db, COL_CAIXA));
+            _rentCache = [];
+            snap.forEach(d => _rentCache.push({ id: d.id, ...d.data() }));
+        } catch { _rentCache = []; }
+    }
+    if (loadEl) loadEl.style.display = 'none';
+    _renderRentTabela(_rentCache);
+}
+
+function _renderRentTabela(lancamentos) {
+    // Agrupa apenas entradas e serviços (vendas) por descrição
+    const vendas = (lancamentos || []).filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+
+    // Mapa: nome_produto → { qtd, receita, custo }
+    const mapa = {};
+    for (const l of vendas) {
+        const nome = (l.descricao || '').trim();
+        if (!nome) continue;
+        const custo = Number(l.custo || 0);
+        if (!mapa[nome]) mapa[nome] = { nome, qtd: 0, receita: 0, custo: 0 };
+        mapa[nome].qtd++;
+        mapa[nome].receita += Number(l.valor || 0);
+        mapa[nome].custo   += custo;
+    }
+
+    let lista = Object.values(mapa).map(p => ({
+        ...p,
+        lucro:  p.receita - p.custo,
+        margem: p.receita > 0 ? ((p.receita - p.custo) / p.receita) * 100 : 0,
+    }));
+
+    // Ordenação
+    if (_rentOrdem === 'receita') lista.sort((a, b) => b.receita - a.receita);
+    if (_rentOrdem === 'lucro')   lista.sort((a, b) => b.lucro - a.lucro);
+    if (_rentOrdem === 'margem')  lista.sort((a, b) => a.margem - b.margem);
+    if (_rentOrdem === 'qtd')     lista.sort((a, b) => b.qtd - a.qtd);
+
+    // Totais
+    const totReceita = lista.reduce((s, p) => s + p.receita, 0);
+    const totCPV     = lista.reduce((s, p) => s + p.custo, 0);
+    const totLucro   = totReceita - totCPV;
+    const totMargem  = totReceita > 0 ? (totLucro / totReceita) * 100 : 0;
+
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('rent-receita-total', fmtR(totReceita));
+    setEl('rent-cpv-total',     fmtR(totCPV));
+    setEl('rent-lucro-total',   fmtR(totLucro));
+    setEl('rent-margem-total',  `${totMargem.toFixed(1)}%`);
+
+    const tabelaEl = document.getElementById('est-rent-tabela');
+    if (!tabelaEl) return;
+
+    if (!lista.length) {
+        tabelaEl.innerHTML = '<div class="est-empty"><div class="est-empty-icon">📊</div><div class="est-empty-title">Sem dados de vendas</div><div class="est-empty-sub">As vendas registradas no Caixa aparecerão aqui com custo automático.</div></div>';
+        return;
+    }
+
+    tabelaEl.innerHTML = `
+        <div class="est-rent-table">
+            <div class="est-rent-thead">
+                <div class="est-rent-th est-rent-col-nome">Produto</div>
+                <div class="est-rent-th est-rent-col-num">Vendas</div>
+                <div class="est-rent-th est-rent-col-num">Receita</div>
+                <div class="est-rent-th est-rent-col-num">CPV</div>
+                <div class="est-rent-th est-rent-col-num">Lucro</div>
+                <div class="est-rent-th est-rent-col-num">Margem</div>
+            </div>
+            ${lista.slice(0, 50).map(p => {
+                const margemCor = p.margem >= 40 ? '#00c853' : p.margem >= 20 ? '#f9a825' : '#f44336';
+                return `<div class="est-rent-row">
+                    <div class="est-rent-td est-rent-col-nome">${escHtml(p.nome)}</div>
+                    <div class="est-rent-td est-rent-col-num">${p.qtd}</div>
+                    <div class="est-rent-td est-rent-col-num">${fmtR(p.receita)}</div>
+                    <div class="est-rent-td est-rent-col-num est-rent-custo">${fmtR(p.custo)}</div>
+                    <div class="est-rent-td est-rent-col-num est-rent-lucro">${fmtR(p.lucro)}</div>
+                    <div class="est-rent-td est-rent-col-num" style="color:${margemCor};font-weight:700">${p.margem.toFixed(1)}%</div>
+                </div>`;
+            }).join('')}
+        </div>`;
 }

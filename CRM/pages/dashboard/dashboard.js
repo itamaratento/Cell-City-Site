@@ -75,6 +75,7 @@ class Dashboard {
     this.setupAlarmeOS();
     this.setupCompactMode();
     this.setupConfigAlertas();
+    this.setupPainelFinanceiro();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -2950,7 +2951,234 @@ class Dashboard {
   _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
   _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
   _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
-}
+
+  // ══════════════════════════════════════════════════════════════════
+  // 💰 PAINEL FINANCEIRO INTELIGENTE
+  // Usa: resumo_live (caixa), financeiro_pagar/receber, estoque_produtos
+  // ══════════════════════════════════════════════════════════════════
+  setupPainelFinanceiro() {
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    const R = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+    const now = new Date();
+    const mesKey     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const semanaKey  = (() => {
+      const d = new Date(now); d.setHours(0,0,0,0);
+      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+      const jan1 = new Date(d.getFullYear(), 0, 1);
+      const w = Math.ceil(((d - jan1) / 86400000 + 1) / 7);
+      return `${d.getFullYear()}-W${String(w).padStart(2,'0')}`;
+    })();
+    const hojeKey = now.toISOString().slice(0, 10);
+
+    let _period = 'mes';
+    let _liveDocs = {};
+
+    const _getLiveKey = () => ({
+      mes:    `mes_${mesKey}`,
+      semana: `semana_${semanaKey}`,
+      hoje:   `dia_${hojeKey}`,
+    })[_period];
+
+    const _lbl = { mes: 'do Mês', semana: 'da Semana', hoje: 'de Hoje' };
+
+    const _updatePeriodo = () => {
+      const key  = _getLiveKey();
+      const data = _liveDocs[key] || {};
+      set('fin-receita-periodo',  R(data.entradas   || 0));
+      set('fin-despesas-periodo', R(data.saidas     || 0));
+      set('fin-lucro-periodo',    R(data.lucro      || 0));
+      set('fin-receita-lbl',  `Receita ${_lbl[_period]}`);
+      set('fin-despesas-lbl', `Saídas ${_lbl[_period]}`);
+      set('fin-lucro-lbl',    `Lucro ${_lbl[_period]}`);
+      const lucroCard = document.getElementById('fin-card-lucro');
+      if (lucroCard) lucroCard.className = 'fin-card ' + ((data.lucro || 0) >= 0 ? 'fin-card--lucro' : 'fin-card--prejuizo');
+
+      const total = (data.entradas || 0);
+      const qtdVendas = data.totalLancamentos || 0;
+      set('fin-produtos-vendidos', qtdVendas);
+      set('fin-ticket-medio',  qtdVendas > 0 ? R(total / qtdVendas) : '—');
+    };
+
+    // Botões de período
+    document.querySelectorAll('.fin-exec-period').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.fin-exec-period').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _period = btn.dataset.period;
+        _updatePeriodo();
+      });
+    });
+
+    const _carregar = async () => {
+      if (!db) return;
+
+      try {
+        // 1. Resumo Live (caixa pre-calculado)
+        const liveSnap = await getDocs(collection(db, 'resumo_live'));
+        liveSnap.forEach(d => { _liveDocs[d.id] = d.data(); });
+
+        // Saldo = soma de todos os entradas − saídas de todos os documentos mensais/semanais?
+        // Melhor: soma cumulativa de todos os dias
+        let saldoTotal = 0;
+        liveSnap.forEach(d => {
+          const data = d.data();
+          if (data.tipo === 'diario') saldoTotal += (data.saldo || 0);
+        });
+        // Evita double-count: usa apenas dados mensais históricos + dia atual
+        // Abordagem simples: soma lancamentos do saldo já está no live do mes atual
+        const mesDat = _liveDocs[`mes_${mesKey}`] || {};
+        set('fin-saldo-caixa', R(mesDat.saldo || 0));
+
+        _updatePeriodo();
+
+        // Gráfico (últimos 6 meses)
+        const meses6 = [];
+        for (let i = 5; i >= 0; i--) {
+          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+          const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          const nome = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+          const doc_ = _liveDocs[`mes_${k}`] || {};
+          meses6.push({ nome, receita: doc_.entradas || 0, lucro: doc_.lucro || 0 });
+        }
+        this._renderFinChart(meses6);
+
+        // 2. Compras do mês (compras_financeiras)
+        const compSnap = await getDocs(collection(db, 'compras_financeiras'));
+        let comprasMes = 0;
+        compSnap.forEach(d => {
+          const c = d.data();
+          if ((c.data || '').startsWith(mesKey) || (c.criadoEm?.toDate?.().toISOString() || '').startsWith(mesKey)) {
+            comprasMes += Number(c.valorTotal || 0);
+          }
+        });
+        set('fin-compras-mes', R(comprasMes));
+
+        // 3. Contas a pagar
+        const pagarSnap = await getDocs(collection(db, 'financeiro_pagar'));
+        let aPagar = 0, vencidas = 0;
+        const hojeStr = hojeKey;
+        pagarSnap.forEach(d => {
+          const c = d.data();
+          if (c.status !== 'pago') {
+            aPagar += Number(c.valor || 0);
+            if (c.vencimento && c.vencimento < hojeStr) vencidas++;
+          }
+        });
+
+        // 4. Contas a receber
+        const receberSnap = await getDocs(collection(db, 'financeiro_receber'));
+        let aReceber = 0;
+        receberSnap.forEach(d => {
+          const c = d.data();
+          if (c.status !== 'recebido') {
+            aReceber += Number(c.valor || 0);
+            if (c.status !== 'recebido' && c.vencimento && c.vencimento < hojeStr) vencidas++;
+          }
+        });
+
+        set('fin-a-pagar',  R(aPagar));
+        set('fin-a-receber', R(aReceber));
+        set('fin-vencidas',  vencidas || '—');
+        const vcCard = document.getElementById('fin-card-vencidas');
+        if (vcCard) vcCard.className = 'fin-card ' + (vencidas > 0 ? 'fin-card--vencida fin-card--alerta' : 'fin-card--vencida');
+
+        // 5. Estoque baixo (estoque_produtos)
+        const estSnap = await getDocs(collection(db, 'estoque_produtos'));
+        let baixo = 0, maisVendidoNome = '—', maisLucrativoNome = '—';
+        const prodMap = {};
+        estSnap.forEach(d => {
+          const p = d.data();
+          const qty = Number(p.quantidade || 0);
+          const min = Number(p.quantidadeMinima || p.estoqueMinimo || 1);
+          if (qty > 0 && qty <= min) baixo++;
+          prodMap[(p.nome || '').toUpperCase()] = { ...p, id: d.id };
+        });
+        set('fin-estoque-baixo', baixo || '—');
+
+        // 6. Produto mais vendido / mais lucrativo (dos lançamentos do mês)
+        const caixaSnap = await getDocs(collection(db, 'caixa_lancamentos'));
+        const vendMap = {};
+        caixaSnap.forEach(d => {
+          const l = d.data();
+          const iso = l.dataISO || '';
+          if (!iso.startsWith(mesKey)) return;
+          if (l.tipo !== 'entrada' && l.tipo !== 'servico') return;
+          const nome = (l.descricao || '').trim().toUpperCase();
+          if (!nome) return;
+          if (!vendMap[nome]) vendMap[nome] = { nome: l.descricao || nome, qtd: 0, receita: 0, lucro: 0 };
+          vendMap[nome].qtd++;
+          vendMap[nome].receita += Number(l.valor || 0);
+          vendMap[nome].lucro   += Number(l.lucro || 0);
+        });
+        const vendList = Object.values(vendMap);
+        if (vendList.length) {
+          vendList.sort((a, b) => b.qtd - a.qtd);
+          maisVendidoNome = vendList[0].nome;
+          vendList.sort((a, b) => b.lucro - a.lucro);
+          maisLucrativoNome = vendList[0].nome;
+        }
+        set('fin-mais-vendido',    maisVendidoNome);
+        set('fin-mais-lucrativo',  maisLucrativoNome);
+
+        // 7. Meta mensal: usa mesKey para calcular receita do caixa no mês vs meta
+        const metaGoal = this.state?.meta?.goal || 0;
+        const metaAtual = mesDat.entradas || 0;
+        const metaPct = metaGoal > 0 ? Math.min((metaAtual / metaGoal) * 100, 100) : 0;
+        set('fin-meta-atual', R(metaAtual));
+        set('fin-meta-goal',  R(metaGoal));
+        set('fin-meta-pct',   `${metaPct.toFixed(0)}%`);
+        const fill = document.getElementById('fin-meta-fill');
+        if (fill) requestAnimationFrame(() => { fill.style.width = `${metaPct}%`; });
+        const falta = Math.max(metaGoal - metaAtual, 0);
+        set('fin-meta-falta', falta > 0 ? `Faltam ${R(falta)}` : '✅ Meta atingida!');
+
+        // 8. Alertas destaque
+        this._renderFinAlertas({ vencidas, baixo, aPagar, aReceber });
+
+      } catch (e) {
+        console.warn('[FinPanel] Erro ao carregar:', e);
+      }
+    };
+
+    if (db) _carregar();
+    else window.addEventListener('firebase-ready', _carregar, { once: true });
+  }
+
+  _renderFinChart(meses) {
+    const area = document.getElementById('fin-chart-area');
+    if (!area) return;
+    const maxVal = Math.max(...meses.map(m => m.receita), 1);
+    area.innerHTML = meses.map(m => {
+      const pctR = (m.receita / maxVal * 100).toFixed(1);
+      const pctL = (Math.max(m.lucro, 0) / maxVal * 100).toFixed(1);
+      return `<div class="fin-chart-col">
+        <div class="fin-chart-bars">
+          <div class="fin-chart-bar fin-bar-receita" style="height:${pctR}%" title="Receita: R$ ${m.receita.toLocaleString('pt-BR', {minimumFractionDigits:2})}"></div>
+          <div class="fin-chart-bar fin-bar-lucro"   style="height:${pctL}%" title="Lucro: R$ ${m.lucro.toLocaleString('pt-BR',  {minimumFractionDigits:2})}"></div>
+        </div>
+        <div class="fin-chart-lbl">${m.nome}</div>
+      </div>`;
+    }).join('');
+  }
+
+  _renderFinAlertas({ vencidas, baixo, aPagar, aReceber }) {
+    const lista = document.getElementById('fin-alertas-lista');
+    if (!lista) return;
+    const R = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    const alertas = [];
+    if (vencidas > 0) alertas.push({ cor: 'fin-al-red',    txt: `${vencidas} conta${vencidas>1?'s':''} vencida${vencidas>1?'s':''}`, ico: '⚠️' });
+    if (baixo > 0)    alertas.push({ cor: 'fin-al-orange', txt: `${baixo} produto${baixo>1?'s':''} com estoque baixo`, ico: '📦' });
+    if (aPagar > 0)   alertas.push({ cor: 'fin-al-yellow', txt: `${R(aPagar)} em contas a pagar`, ico: '🏢' });
+    if (aReceber > 0) alertas.push({ cor: 'fin-al-green',  txt: `${R(aReceber)} a receber`, ico: '🧾' });
+    if (!alertas.length) {
+      lista.innerHTML = '<div class="fin-alerta-ok">✅ Tudo em dia</div>';
+      return;
+    }
+    lista.innerHTML = alertas.map(a =>
+      `<div class="fin-alerta-item ${a.cor}">${a.ico} ${a.txt}</div>`
+    ).join('');
+  }
 
 // ===== INICIALIZAÇÃO =====
 if (document.readyState === 'loading') {

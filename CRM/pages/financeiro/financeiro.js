@@ -1,21 +1,31 @@
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
 
-const COL_PAGAR   = 'financeiro_pagar';
-const COL_FIXAS   = 'financeiro_fixas';
-const COL_RECEBER = 'financeiro_receber';
+const COL_PAGAR     = 'financeiro_pagar';
+const COL_FIXAS     = 'financeiro_fixas';
+const COL_RECEBER   = 'financeiro_receber';
+const COL_DESPESAS  = 'financeiro_despesas';
+const COL_COMPRAS   = 'compras_financeiras';
+const COL_CAIXA     = 'caixa_lancamentos';
 
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const hoje = () => new Date().toISOString().slice(0, 10);
 const $ = id => document.getElementById(id);
 
-let dadosPagar   = [];
-let dadosFixas   = [];
-let dadosReceber = [];
+let dadosPagar     = [];
+let dadosFixas     = [];
+let dadosReceber   = [];
+let dadosDespesas  = [];
+let dadosCompras   = [];
+let dadosCaixa     = [];
 let filtroStatusPagar   = 'todos';
 let filtroStatusReceber = 'todos';
 let editandoId = null;
 let editandoColecao = null;
 let secaoAtiva = 'home';
+let periodoResumo = 'mes';
+let periodoFluxo  = 'mes';
+let customDataIni = '';
+let customDataFim = '';
 
 // ── Toast ──────────────────────────────────────────────────────────────
 const toastEl = $('fin-toast');
@@ -45,11 +55,12 @@ overlayEl?.addEventListener('click', fecharSidebar);
 
 // ── Navegação por seções ───────────────────────────────────────────────
 const SEC_META = {
-    home:    { titulo: '💹 Financeiro',         novo: false },
-    pagar:   { titulo: '💰 Contas a Pagar',      novo: true  },
-    receber: { titulo: '💵 Contas a Receber',    novo: true  },
-    fixas:   { titulo: '📅 Despesas Fixas',      novo: true  },
-    resumo:  { titulo: '📊 Resumo Financeiro',   novo: false },
+    home:    { titulo: '💹 Financeiro',              novo: false },
+    pagar:   { titulo: '💰 Contas a Pagar',           novo: true  },
+    receber: { titulo: '💵 Contas a Receber',         novo: true  },
+    fixas:   { titulo: '📅 Despesas Fixas',           novo: true  },
+    resumo:  { titulo: '📊 Resultado Financeiro',     novo: false },
+    fluxo:   { titulo: '📈 Fluxo de Caixa Unificado', novo: false },
 };
 
 function navegar(sec) {
@@ -67,9 +78,11 @@ function navegar(sec) {
 
     // mostrar/ocultar home grid e seções
     $('fin-home-grid').style.display = sec === 'home' ? '' : 'none';
-    ['pagar','receber','fixas','resumo'].forEach(s => {
+    ['pagar','receber','fixas','resumo','fluxo'].forEach(s => {
         $('fin-sec-' + s).style.display = s === sec ? '' : 'none';
     });
+    if (sec === 'resumo') renderResultado();
+    if (sec === 'fluxo')  renderFluxo();
 
     // botão ＋ Novo
     const btnNovo = $('fin-btn-novo');
@@ -96,16 +109,23 @@ $('fin-btn-novo')?.addEventListener('click', () => {
 // ── Carregar dados ─────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const [sp, sf, sr] = await Promise.all([
+        const [sp, sf, sr, sd, sc, scx] = await Promise.all([
             getDocs(collection(db, COL_PAGAR)),
             getDocs(collection(db, COL_FIXAS)),
-            getDocs(collection(db, COL_RECEBER))
+            getDocs(collection(db, COL_RECEBER)),
+            getDocs(collection(db, COL_DESPESAS)),
+            getDocs(collection(db, COL_COMPRAS)),
+            getDocs(collection(db, COL_CAIXA)),
         ]);
-        dadosPagar   = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
-        dadosFixas   = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
-        dadosReceber = []; sr.forEach(d => dadosReceber.push({ id: d.id, ...d.data() }));
+        dadosPagar    = []; sp.forEach(d  => dadosPagar.push({ id: d.id, ...d.data() }));
+        dadosFixas    = []; sf.forEach(d  => dadosFixas.push({ id: d.id, ...d.data() }));
+        dadosReceber  = []; sr.forEach(d  => dadosReceber.push({ id: d.id, ...d.data() }));
+        dadosDespesas = []; sd.forEach(d  => dadosDespesas.push({ id: d.id, ...d.data() }));
+        dadosCompras  = []; sc.forEach(d  => dadosCompras.push({ id: d.id, ...d.data() }));
+        dadosCaixa    = []; scx.forEach(d => dadosCaixa.push({ id: d.id, ...d.data() }));
     } catch {
         dadosPagar = []; dadosFixas = []; dadosReceber = [];
+        dadosDespesas = []; dadosCompras = []; dadosCaixa = [];
     }
     dadosPagar   = dadosPagar.map(c => calcStatus(c, 'pago'));
     dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
@@ -118,6 +138,8 @@ async function carregar() {
     renderFixas(dadosFixas);
     renderReceber(dadosReceber);
     atualizarContadores();
+    bindPeriodoResumo();
+    bindPeriodoFluxo();
 }
 
 function calcStatus(item, pago) {
@@ -535,6 +557,293 @@ document.querySelectorAll('[data-s2]').forEach(btn => {
         renderReceber(dadosReceber);
     });
 });
+
+// ──────────────────────────────────────────────────────────────────────
+// 📊 RESULTADO FINANCEIRO INTELIGENTE
+// ──────────────────────────────────────────────────────────────────────
+function bindPeriodoResumo() {
+    document.querySelectorAll('.fin-pfiltro').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.fin-pfiltro').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            periodoResumo = btn.dataset.p;
+            $('fin-custom-range').style.display = periodoResumo === 'custom' ? 'flex' : 'none';
+            if (periodoResumo !== 'custom') renderResultado();
+        });
+    });
+    $('fin-btn-aplicar-periodo')?.addEventListener('click', () => {
+        customDataIni = $('fin-data-ini')?.value || '';
+        customDataFim = $('fin-data-fim')?.value || '';
+        if (customDataIni && customDataFim) renderResultado();
+    });
+}
+
+function filtrarPorPeriodo(lista, campoData) {
+    const agora = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const anoAtual  = agora.getFullYear();
+    const mesAtual  = pad(agora.getMonth() + 1);
+    const diaAtual  = pad(agora.getDate());
+    const hojeStr   = `${anoAtual}-${mesAtual}-${diaAtual}`;
+    const mesStr    = `${anoAtual}-${mesAtual}`;
+    const anoStr    = String(anoAtual);
+
+    // Início da semana (segunda)
+    const dow  = agora.getDay() || 7;
+    const seg  = new Date(agora); seg.setDate(agora.getDate() - dow + 1);
+    const segStr = seg.toISOString().slice(0, 10);
+
+    return lista.filter(item => {
+        const d = item[campoData] || item.data || item.vencimento || item.dia || '';
+        // caixa_lancamentos usa .dia = "YYYY-MM-DD"
+        const dStr = typeof d === 'string' ? d.slice(0, 10) : '';
+        switch (periodoResumo) {
+            case 'hoje':   return dStr === hojeStr;
+            case 'semana': return dStr >= segStr && dStr <= hojeStr;
+            case 'mes':    return dStr.startsWith(mesStr);
+            case 'ano':    return dStr.startsWith(anoStr);
+            case 'custom': return dStr >= customDataIni && dStr <= customDataFim;
+            default:       return true;
+        }
+    });
+}
+
+function renderResultado() {
+    const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+    // Receitas recebidas no período
+    const recebidas = filtrarPorPeriodo(dadosReceber, 'vencimento')
+        .filter(c => c.status === 'recebido');
+    const totalReceita = recebidas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // Despesas (módulo Despesas) no período
+    const despPeriodo = filtrarPorPeriodo(dadosDespesas, 'data');
+    const totalDespesas = despPeriodo.reduce((s, d) => s + Number(d.valor || 0), 0);
+
+    // Compras pagas no período
+    const comprasP = filtrarPorPeriodo(dadosCompras, 'data').filter(c => c.status === 'pago');
+    const totalCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
+
+    // A Pagar pendente (geral, sem filtro — posição atual)
+    const pendPagar  = dadosPagar.filter(c => c.status !== 'pago');
+    const totalPagar = pendPagar.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // A Receber pendente (geral)
+    const pendReceber  = dadosReceber.filter(c => c.status !== 'recebido');
+    const totalReceber = pendReceber.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // Despesas Fixas (total mensal)
+    const totalFixas = dadosFixas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // CPV — custo dos produtos vendidos via Caixa no período
+    const caixaPeriodo = filtrarPorPeriodo(dadosCaixa, 'dataISO');
+    const vendasCaixa  = caixaPeriodo.filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+    const receitaCaixa = vendasCaixa.reduce((s, l) => s + Number(l.valor || 0), 0);
+    const cpvTotal     = vendasCaixa.reduce((s, l) => s + Number(l.custo || 0), 0);
+    const lucroBruto   = receitaCaixa - cpvTotal;
+    const margemBruta  = receitaCaixa > 0 ? (lucroBruto / receitaCaixa) * 100 : 0;
+
+    // Lucro Líquido = Receita Financeiro − Despesas − Compras
+    const lucro = totalReceita - totalDespesas - totalCompras;
+
+    // Saldo Atual = A Receber − A Pagar
+    const saldo = totalReceber - totalPagar;
+
+    set('ri-receita',       fmt(totalReceita));
+    set('ri-receita-sub',   `${recebidas.length} conta${recebidas.length !== 1 ? 's' : ''} recebida${recebidas.length !== 1 ? 's' : ''}`);
+    set('ri-despesas',      fmt(totalDespesas));
+    set('ri-despesas-sub',  `${despPeriodo.length} registro${despPeriodo.length !== 1 ? 's' : ''}`);
+    set('ri-compras',       fmt(totalCompras));
+    set('ri-compras-sub',   `${comprasP.length} compra${comprasP.length !== 1 ? 's' : ''} paga${comprasP.length !== 1 ? 's' : ''}`);
+    set('ri-pagar',         fmt(totalPagar));
+    set('ri-pagar-sub',     `${pendPagar.length} conta${pendPagar.length !== 1 ? 's' : ''}`);
+    set('ri-receber',       fmt(totalReceber));
+    set('ri-receber-sub',   `${pendReceber.length} conta${pendReceber.length !== 1 ? 's' : ''}`);
+    set('ri-fixas',         fmt(totalFixas));
+    set('ri-fixas-sub',     `${dadosFixas.length} item${dadosFixas.length !== 1 ? 's' : ''}`);
+    set('ri-lucro',         fmt(lucro));
+    set('ri-saldo',         fmt(saldo));
+
+    // Cards CPV / Lucro Bruto / Margem
+    set('ri-cpv',           fmt(cpvTotal));
+    set('ri-cpv-sub',       `${vendasCaixa.length} venda${vendasCaixa.length !== 1 ? 's' : ''} no caixa`);
+    set('ri-lucro-bruto',   fmt(lucroBruto));
+    set('ri-lucro-bruto-sub', `Receita Caixa: ${fmt(receitaCaixa)}`);
+    set('ri-margem',        `${margemBruta.toFixed(1)}%`);
+    set('ri-margem-sub',    'Margem bruta (Caixa)');
+
+    // Cor card Lucro Bruto
+    const lbCard = $('fin-res-lucro-bruto-card');
+    if (lbCard) lbCard.className = 'fin-res-card ' + (lucroBruto >= 0 ? 'fin-res-lucro' : 'fin-res-prejuizo');
+
+    // Cor do card Lucro
+    const lucroCard = $('fin-res-lucro-card');
+    if (lucroCard) lucroCard.className = 'fin-res-card ' + (lucro >= 0 ? 'fin-res-lucro' : 'fin-res-prejuizo');
+    const saldoCard = $('fin-res-saldo-card');
+    if (saldoCard) saldoCard.className = 'fin-res-card ' + (saldo >= 0 ? 'fin-res-saldo' : 'fin-res-prejuizo');
+
+    // Alerta vencidas
+    const vencPagar   = dadosPagar.filter(c => c.status === 'vencido').length;
+    const vencReceber = dadosReceber.filter(c => c.status === 'vencido').length;
+    const alertaEl = $('fin-res-alerta');
+    if (alertaEl && (vencPagar + vencReceber) > 0) {
+        $('fin-res-alerta-txt').textContent =
+            `${vencPagar} conta${vencPagar !== 1 ? 's' : ''} a pagar e ${vencReceber} conta${vencReceber !== 1 ? 's' : ''} a receber estão vencidas.`;
+        alertaEl.style.display = 'flex';
+    } else if (alertaEl) {
+        alertaEl.style.display = 'none';
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 📈 FLUXO DE CAIXA UNIFICADO
+// ──────────────────────────────────────────────────────────────────────
+function bindPeriodoFluxo() {
+    document.querySelectorAll('.fin-pfiltro-fluxo').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.fin-pfiltro-fluxo').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            periodoFluxo = btn.dataset.p;
+            renderFluxo();
+        });
+    });
+}
+
+function filtrarFluxo(lista, campoData) {
+    const agora = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const anoAtual = agora.getFullYear();
+    const mesAtual = pad(agora.getMonth() + 1);
+    const diaAtual = pad(agora.getDate());
+    const hojeStr  = `${anoAtual}-${mesAtual}-${diaAtual}`;
+    const mesStr   = `${anoAtual}-${mesAtual}`;
+    const anoStr   = String(anoAtual);
+    const dow = agora.getDay() || 7;
+    const seg = new Date(agora); seg.setDate(agora.getDate() - dow + 1);
+    const segStr = seg.toISOString().slice(0, 10);
+
+    return lista.filter(item => {
+        const raw = item[campoData] || item.data || item.vencimento || item.dia || item.dataISO || '';
+        const dStr = typeof raw === 'string' ? raw.slice(0, 10) : '';
+        switch (periodoFluxo) {
+            case 'hoje':   return dStr === hojeStr;
+            case 'semana': return dStr >= segStr && dStr <= hojeStr;
+            case 'mes':    return dStr.startsWith(mesStr);
+            case 'ano':    return dStr.startsWith(anoStr);
+            default:       return true;
+        }
+    });
+}
+
+function renderFluxo() {
+    const loadEl = $('fluxo-loading');
+    const contEl = $('fin-fluxo-content');
+    if (loadEl) loadEl.style.display = 'none';
+    if (contEl) contEl.style.display = '';
+
+    const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+    // ── Entradas ──────────────────────────────────────────────────────
+    // Caixa: tipo = entrada | servico
+    const caixaEntradas = filtrarFluxo(dadosCaixa, 'dia')
+        .filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+    const valCaixaEnt = caixaEntradas.reduce((s, l) => s + Number(l.valor || 0), 0);
+
+    // Contas recebidas
+    const recebidas = filtrarFluxo(dadosReceber, 'vencimento').filter(c => c.status === 'recebido');
+    const valRecebidas = recebidas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    const totalEntradas = valCaixaEnt + valRecebidas;
+
+    // ── Saídas ────────────────────────────────────────────────────────
+    // Caixa: tipo = saida
+    const caixaSaidas = filtrarFluxo(dadosCaixa, 'dia').filter(l => l.tipo === 'saida');
+    const valCaixaSai = caixaSaidas.reduce((s, l) => s + Number(l.valor || 0), 0);
+
+    // Despesas do módulo Despesas
+    const despPeriodo = filtrarFluxo(dadosDespesas, 'data');
+    const valDespesas = despPeriodo.reduce((s, d) => s + Number(d.valor || 0), 0);
+
+    // Compras pagas
+    const comprasP = filtrarFluxo(dadosCompras, 'data').filter(c => c.status === 'pago');
+    const valCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
+
+    // Contas pagas (pagar)
+    const contasPagas = filtrarFluxo(dadosPagar, 'vencimento').filter(c => c.status === 'pago');
+    const valContasPagas = contasPagas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    const totalSaidas = valCaixaSai + valDespesas + valCompras + valContasPagas;
+    const saldo = totalEntradas - totalSaidas;
+
+    set('fluxo-entradas', fmt(totalEntradas));
+    set('fluxo-entradas-sub', `Caixa: ${fmt(valCaixaEnt)} · Recebidas: ${fmt(valRecebidas)}`);
+    set('fluxo-saidas', fmt(totalSaidas));
+    set('fluxo-saidas-sub', `Despesas: ${fmt(valDespesas)} · Compras: ${fmt(valCompras)} · Contas: ${fmt(valContasPagas)} · Caixa: ${fmt(valCaixaSai)}`);
+    set('fluxo-saldo', fmt(saldo));
+
+    const saldoCard = $('fin-fluxo-saldo-card');
+    if (saldoCard) saldoCard.className = 'fin-fluxo-card ' + (saldo >= 0 ? 'fin-fluxo-saldo-pos' : 'fin-fluxo-saldo-neg');
+
+    // Fontes
+    const fontesEl = $('fin-fluxo-fontes');
+    if (fontesEl) {
+        const fontes = [
+            { nome: '💰 Caixa Operacional (entradas)', valor: valCaixaEnt, tipo: 'entrada' },
+            { nome: '📥 Contas a Receber (recebidas)',  valor: valRecebidas, tipo: 'entrada' },
+            { nome: '🔴 Caixa Operacional (saídas)',    valor: valCaixaSai,  tipo: 'saida' },
+            { nome: '💸 Despesas',                      valor: valDespesas,  tipo: 'saida' },
+            { nome: '📦 Compras (pagas)',                valor: valCompras,   tipo: 'saida' },
+            { nome: '💰 Contas a Pagar (pagas)',         valor: valContasPagas, tipo: 'saida' },
+        ].filter(f => f.valor > 0);
+
+        const maxVal = Math.max(...fontes.map(f => f.valor), 1);
+        fontesEl.innerHTML = fontes.map(f => {
+            const pct = Math.round((f.valor / maxVal) * 100);
+            const cor = f.tipo === 'entrada' ? '#00c853' : '#f44336';
+            return `<div class="fin-barra-item">
+                <div class="fin-barra-nome">${f.nome}</div>
+                <div class="fin-barra-track"><div class="fin-barra-fill" style="width:${pct}%;background:${cor}"></div></div>
+                <div class="fin-barra-val">${fmt(f.valor)}</div>
+            </div>`;
+        }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:10px">Nenhuma movimentação neste período.</div>';
+    }
+
+    // Timeline movimentações
+    const movEl = $('fin-fluxo-lista');
+    if (movEl) {
+        // Construir lista unificada
+        const movs = [];
+        caixaEntradas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'entrada', fonte: 'Caixa' }));
+        recebidas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || c.cliente || '—', valor: c.valor, tipo: 'entrada', fonte: 'Contas a Receber' }));
+        caixaSaidas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'saida', fonte: 'Caixa' }));
+        despPeriodo.forEach(d => movs.push({ data: d.data || '', desc: d.descricao || '—', valor: d.valor, tipo: 'saida', fonte: 'Despesas' }));
+        comprasP.forEach(c => movs.push({ data: c.data || '', desc: c.fornecedorNome || '—', valor: c.valorTotal, tipo: 'saida', fonte: 'Compras' }));
+        contasPagas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || '—', valor: c.valor, tipo: 'saida', fonte: 'Contas a Pagar' }));
+        movs.sort((a, b) => b.data.localeCompare(a.data));
+
+        set('fluxo-mov-count', `(${movs.length})`);
+
+        if (!movs.length) {
+            movEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px">Nenhuma movimentação no período.</div>';
+        } else {
+            movEl.innerHTML = movs.slice(0, 80).map(m => {
+                const cor = m.tipo === 'entrada' ? '#00c853' : '#f44336';
+                const sinal = m.tipo === 'entrada' ? '+' : '−';
+                const dFormatada = m.data ? m.data.split('-').reverse().join('/') : '';
+                return `<div class="fin-fluxo-mov-item">
+                    <span class="fin-fluxo-mov-data">${dFormatada}</span>
+                    <span class="fin-fluxo-mov-desc">${escHtml(m.desc)}</span>
+                    <span class="fin-fluxo-mov-fonte">${m.fonte}</span>
+                    <span class="fin-fluxo-mov-val" style="color:${cor}">${sinal} ${fmt(m.valor)}</span>
+                </div>`;
+            }).join('');
+        }
+    }
+}
+
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
 // ── Inicialização ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => carregar());
