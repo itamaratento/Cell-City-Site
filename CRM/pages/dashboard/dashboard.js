@@ -7,6 +7,7 @@ import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapsh
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged } from "../../shared/central-modulos.js";
+import { init as initHomePrefs, getPrefs as getHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
 
 
 class Dashboard {
@@ -55,7 +56,8 @@ class Dashboard {
   }
 
   init() {
-    // Central de Módulos deve iniciar antes de setupModules
+    // Home prefs + Central de Módulos iniciam antes de setupModules
+    initHomePrefs();
     initCentralModulos();
     window.abrirCentralModulos = abrirCentralModulos;
     window.__cmNavigate = (id) => this.navigateTo(id);
@@ -1154,6 +1156,22 @@ class Dashboard {
       const id = card.getAttribute('data-module');
       card.addEventListener('click', () => this.navigateTo(id));
     });
+
+    // Aplica modo/tamanho/ordem do Painel Central
+    const applyHomePrefs = () => {
+      const prefs = getHomePrefs();
+      const html = document.documentElement;
+      html.dataset.cardMode = prefs.modo   || 'grade';
+      html.dataset.cardSize = prefs.tamanho || 'medio';
+      const ordem = Array.isArray(prefs.modulosOrdem) ? prefs.modulosOrdem : [];
+      cards.forEach(card => {
+        const id  = card.getAttribute('data-module');
+        const pos = ordem.indexOf(id);
+        card.style.order = pos >= 0 ? String(pos) : '';
+      });
+    };
+    applyHomePrefs();
+    window.addEventListener('cc-home-changed', applyHomePrefs);
 
     // Mostra/oculta cards conforme favoritos — sem estrelas na home
     const aplicar = () => {

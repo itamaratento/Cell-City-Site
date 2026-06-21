@@ -781,10 +781,316 @@ body {
   text-align: center;
 }
 
+/* ════════════════════════════════════════
+   PAINEL CENTRAL — Tab 4
+   ════════════════════════════════════════ */
+.hp-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Editor ── */
+.hp-editor {}
+.hp-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.hp-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 14px;
+}
+
+/* Seletor de modo */
+.hp-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.hp-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--tr), background var(--tr);
+  text-align: center;
+}
+.hp-mode-btn:hover { border-color: rgba(0,200,83,.3); background: rgba(0,200,83,.04); }
+.hp-mode-btn.active { border-color: var(--cell-green); background: rgba(0,200,83,.08); }
+.hp-mode-ico { font-size: 22px; line-height: 1; }
+.hp-mode-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.hp-mode-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+/* Seletor de tamanho */
+.hp-sizes {
+  display: flex;
+  gap: 8px;
+}
+.hp-size-btn {
+  flex: 1;
+  padding: 8px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--tr), color var(--tr);
+  text-align: center;
+}
+.hp-size-btn:hover { border-color: rgba(0,200,83,.3); color: var(--text-primary); }
+.hp-size-btn.active { border-color: var(--cell-green); color: var(--cell-green); background: rgba(0,200,83,.06); }
+
+/* Toggle opções */
+.hp-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+.hp-toggle-label { font-size: 13px; color: var(--text-sec); }
+.hp-toggle {
+  width: 36px; height: 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 99px;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--tr), border-color var(--tr);
+  flex-shrink: 0;
+}
+.hp-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: left var(--tr), background var(--tr);
+}
+.hp-toggle.on { background: rgba(0,200,83,.18); border-color: rgba(0,200,83,.45); }
+.hp-toggle.on::after { left: 19px; background: var(--cell-green); }
+
+/* Lista de módulos da home */
+.hp-mod-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.hp-mod-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid transparent;
+  cursor: grab;
+  transition: border-color var(--tr), background var(--tr), opacity var(--tr);
+  user-select: none;
+}
+.hp-mod-item.dragging { opacity: .4; }
+.hp-mod-item.drag-over { border-color: var(--cell-green); background: rgba(0,200,83,.06); }
+.hp-mod-item.mod-oculto { opacity: .42; }
+.hp-mod-drag { color: var(--text-muted); font-size: 14px; cursor: grab; flex-shrink: 0; }
+.hp-mod-ico { font-size: 16px; flex-shrink: 0; }
+.hp-mod-name { flex: 1; font-size: 13px; font-weight: 600; }
+.hp-mod-cat { font-size: 10px; color: var(--text-muted); }
+.hp-mod-eye {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: .5;
+  padding: 2px 4px;
+  transition: opacity var(--tr);
+  line-height: 1;
+}
+.hp-mod-eye:hover { opacity: 1; }
+
+/* Widgets */
+.hp-widget-list { display: flex; flex-direction: column; gap: 6px; }
+.hp-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  opacity: .6;
+}
+.hp-widget-ico { font-size: 16px; }
+.hp-widget-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-sec); }
+.hp-widget-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.07);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Preview ── */
+.hp-preview-wrap {
+  position: sticky;
+  top: 24px;
+}
+.hp-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+.hp-preview {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: hidden;
+}
+.hp-pv-header {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hp-pv-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cell-green); }
+
+/* Grid de preview — herda o modo selecionado */
+.hp-pv-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  transition: grid-template-columns .2s;
+}
+.hp-pv-grid[data-mode="lista"]     { grid-template-columns: 1fr; }
+.hp-pv-grid[data-mode="executivo"] { grid-template-columns: repeat(3, 1fr); }
+.hp-pv-grid[data-mode="compacto"]  { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+
+/* Card do preview */
+.hp-pvc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  text-align: center;
+  transition: all .18s;
+  min-height: 56px;
+  cursor: default;
+}
+/* Card em modo lista */
+.hp-pv-grid[data-mode="lista"] .hp-pvc {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 6px 10px;
+  gap: 8px;
+  min-height: 36px;
+  text-align: left;
+}
+/* Card em modo compacto */
+.hp-pv-grid[data-mode="compacto"] .hp-pvc {
+  padding: 6px 3px;
+  min-height: 40px;
+  gap: 2px;
+}
+.hp-pv-grid[data-mode="compacto"] .hp-pvc-name { font-size: 9px; }
+/* Card em modo executivo */
+.hp-pv-grid[data-mode="executivo"] .hp-pvc {
+  padding: 14px 6px;
+  min-height: 70px;
+}
+.hp-pv-grid[data-mode="executivo"] .hp-pvc-ico { font-size: 20px; }
+.hp-pv-grid[data-mode="executivo"] .hp-pvc-name { font-size: 11px; font-weight: 700; }
+
+/* Tamanhos no preview */
+.hp-pv-grid[data-size="pequeno"] .hp-pvc { padding: 5px 3px; min-height: 44px; }
+.hp-pv-grid[data-size="pequeno"] .hp-pvc-ico { font-size: 12px; }
+.hp-pv-grid[data-size="pequeno"] .hp-pvc-name { font-size: 9px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc { padding: 14px 6px; min-height: 72px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc-ico { font-size: 22px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc-name { font-size: 12px; font-weight: 700; }
+
+.hp-pvc-ico  { font-size: 16px; line-height: 1; }
+.hp-pvc-name { font-size: 10px; font-weight: 600; color: var(--text-sec); line-height: 1.2; }
+
+.hp-preview-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Botões de ação */
+.hp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.hp-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: background var(--tr), opacity var(--tr);
+  white-space: nowrap;
+}
+.hp-btn-save   { background: var(--cell-green); color: #000; }
+.hp-btn-save:hover { opacity: .88; }
+.hp-btn-reset  { background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec); }
+.hp-btn-reset:hover { border-color: rgba(0,200,83,.3); color: var(--text-primary); }
+.hp-btn-corp   { background: rgba(0,200,83,.10); border: 1px solid rgba(0,200,83,.2); color: var(--cell-green); }
+.hp-btn-corp:hover { background: rgba(0,200,83,.18); }
+
+/* Layout por usuário */
+.hp-layout-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0,200,83,.06);
+  border: 1px solid rgba(0,200,83,.18);
+  font-size: 12px;
+  color: var(--cell-green);
+  font-weight: 600;
+}
+.hp-layout-source-ico { font-size: 14px; }
+
 /* ── Responsivo ── */
 @media (max-width: 860px) {
-  .sb-layout, .tb-layout { grid-template-columns: 1fr; }
-  .sb-preview-wrap, .tb-preview-wrap { position: static; }
+  .sb-layout, .tb-layout, .hp-layout { grid-template-columns: 1fr; }
+  .sb-preview-wrap, .tb-preview-wrap, .hp-preview-wrap { position: static; }
   .sb-preview { width: 100%; }
 }
 @media (max-width: 640px) {
@@ -792,6 +1098,8 @@ body {
   .cm-pg-grid { grid-template-columns: 1fr; }
   .cm-card-star { opacity: 1; }
   .ctr-tab { padding: 8px 12px; font-size: 12px; }
+  .hp-modes { grid-template-columns: repeat(4, 1fr); }
+  .hp-mode-desc { display: none; }
 }
 </style>
 </head>
@@ -810,6 +1118,7 @@ body {
     <button class="ctr-tab active" data-tab="modulos">🧩 Módulos</button>
     <button class="ctr-tab" data-tab="sidebar">📋 Barra Lateral</button>
     <button class="ctr-tab" data-tab="topbar">🔝 Menus Superiores</button>
+    <button class="ctr-tab" data-tab="painel">🏠 Painel Central</button>
   </div>
 
   <!-- ── TAB 1: MÓDULOS ── -->
@@ -896,6 +1205,83 @@ body {
     </div>
   </div>
 
+  <!-- ── TAB 4: PAINEL CENTRAL ── -->
+  <div id="ctr-tab-painel" class="ctr-panel">
+    <div class="hp-layout">
+
+      <!-- Coluna esquerda: controles -->
+      <div class="hp-editor">
+
+        <!-- Modo de exibição -->
+        <div class="hp-section">
+          <div class="hp-section-title">Modo de Exibição</div>
+          <div class="hp-modes" id="hp-modes"></div>
+        </div>
+
+        <!-- Tamanho dos cards -->
+        <div class="hp-section">
+          <div class="hp-section-title">Tamanho dos Cards</div>
+          <div class="hp-sizes" id="hp-sizes"></div>
+        </div>
+
+        <!-- Configurações extras -->
+        <div class="hp-section">
+          <div class="hp-section-title">Configurações</div>
+          <div class="hp-toggle-row">
+            <span class="hp-toggle-label">Agrupar por categorias</span>
+            <div class="hp-toggle" id="hp-toggle-cats"></div>
+          </div>
+        </div>
+
+        <!-- Ordem dos módulos -->
+        <div class="hp-section">
+          <div class="hp-section-title">Ordem dos Módulos na Home</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+            ⠿ arraste para reordenar · 👁 mostra/oculta favorito
+          </div>
+          <div class="hp-mod-list" id="hp-mod-list"></div>
+        </div>
+
+        <!-- Widgets futuros -->
+        <div class="hp-section">
+          <div class="hp-section-title">Widgets da Home <span style="font-size:10px;opacity:.5;font-weight:400;text-transform:none">(em breve)</span></div>
+          <div class="hp-widget-list" id="hp-widget-list"></div>
+        </div>
+
+        <!-- Layout por usuário -->
+        <div class="hp-section">
+          <div class="hp-section-title">Fonte do Layout</div>
+          <div class="hp-layout-source" id="hp-layout-source">
+            <span class="hp-layout-source-ico">👤</span>
+            <span id="hp-layout-fonte-txt">Layout Pessoal (ativo)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Coluna direita: preview -->
+      <div class="hp-preview-wrap">
+        <div class="hp-preview-label">Pré-visualização da Home</div>
+        <div class="hp-preview">
+          <div class="hp-pv-header">
+            <div class="hp-pv-dot"></div>
+            <span>Módulos da Home</span>
+          </div>
+          <div class="hp-pv-grid" id="hp-pv-grid" data-mode="grade" data-size="medio"></div>
+        </div>
+        <div class="hp-preview-stats" id="hp-preview-stats"></div>
+
+        <!-- Botões de ação -->
+        <div class="hp-actions">
+          <button class="hp-btn hp-btn-save"  id="hp-btn-save">💾 Salvar</button>
+          <button class="hp-btn hp-btn-reset" id="hp-btn-reset">↺ Restaurar padrão</button>
+          <button class="hp-btn hp-btn-corp"  id="hp-btn-corp" title="Salva como layout padrão para toda a empresa">🏢 Padrão da empresa</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </div>
 
 <!-- Toast -->
@@ -932,6 +1318,16 @@ import {
   getDefaultPrefs as getDefaultTbPrefs,
   onPrefsChanged  as onTbPrefsChanged
 } from '../../shared/topbar-prefs.js';
+
+import {
+  MODOS, TAMANHOS, WIDGETS_FUTUROS,
+  init            as initHpPrefs,
+  getPrefs        as getHpPrefs,
+  setPrefs        as setHpPrefs,
+  getDefaultPrefs as getDefaultHpPrefs,
+  onPrefsChanged  as onHpPrefsChanged,
+  salvarPadraoEmpresa
+} from '../../shared/home-prefs.js';
 
 window.abrirCentralModulos = abrirCentralModulos;
 
@@ -1585,6 +1981,250 @@ onPrefsChanged(prefs => {
 _sbState = _buildState(getSbPrefs());
 renderSbList();
 renderSbPreview();
+
+// ════════════════════════════════════════════════════════
+// TAB 4 — PAINEL CENTRAL
+// ════════════════════════════════════════════════════════
+
+let _hpPrefs = getDefaultHpPrefs();
+let _hpDirty = false;   // marcado quando o usuário muda algo antes de salvar
+let _hpSaveTimer;
+
+// Estado local dos módulos (ordem + visibilidade vinda dos favoritos)
+let _hpModOrder = [];   // array de IDs na ordem customizada
+
+function _buildHpModOrder(prefs) {
+  const ordem  = Array.isArray(prefs.modulosOrdem) ? prefs.modulosOrdem : [];
+  const favs   = getFavoritosHome();           // null = todos favoritados
+  const todos  = TODOS_MODULOS.map(m => m.id);
+
+  // Começa com a ordem salva, depois adiciona os que faltam
+  const result = [...ordem.filter(id => todos.includes(id))];
+  todos.forEach(id => { if (!result.includes(id)) result.push(id); });
+  return result;
+}
+
+// ── Seletor de modo ──
+function renderHpModes() {
+  const el = document.getElementById('hp-modes');
+  if (!el) return;
+  el.innerHTML = MODOS.map(m => `
+    <button class="hp-mode-btn${_hpPrefs.modo === m.id ? ' active' : ''}" data-mode="${esc(m.id)}">
+      <div class="hp-mode-ico">${esc(m.icone)}</div>
+      <div class="hp-mode-name">${esc(m.label)}</div>
+      <div class="hp-mode-desc">${esc(m.desc)}</div>
+    </button>`).join('');
+
+  el.querySelectorAll('.hp-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _hpPrefs = { ..._hpPrefs, modo: btn.dataset.mode };
+      renderHpModes();
+      renderHpSizes();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+  });
+}
+
+// ── Seletor de tamanho ──
+function renderHpSizes() {
+  const el = document.getElementById('hp-sizes');
+  if (!el) return;
+  el.innerHTML = TAMANHOS.map(t => `
+    <button class="hp-size-btn${_hpPrefs.tamanho === t.id ? ' active' : ''}" data-size="${esc(t.id)}">${esc(t.label)}</button>
+  `).join('');
+
+  el.querySelectorAll('.hp-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _hpPrefs = { ..._hpPrefs, tamanho: btn.dataset.size };
+      renderHpSizes();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+  });
+}
+
+// ── Toggle categorias ──
+function renderHpToggleCats() {
+  const el = document.getElementById('hp-toggle-cats');
+  if (!el) return;
+  el.className = 'hp-toggle' + (_hpPrefs.agruparCategorias ? ' on' : '');
+  el.onclick = () => {
+    _hpPrefs = { ..._hpPrefs, agruparCategorias: !_hpPrefs.agruparCategorias };
+    renderHpToggleCats();
+    _hpScheduleSave();
+  };
+}
+
+// ── Lista de módulos (drag-and-drop + toggle favorito) ──
+function renderHpModList() {
+  const el = document.getElementById('hp-mod-list');
+  if (!el) return;
+  const favs = getFavoritosHome();  // null = todos, array = explícitos
+
+  el.innerHTML = _hpModOrder.map(id => {
+    const mod    = TODOS_MODULOS.find(m => m.id === id);
+    if (!mod) return '';
+    const visivel = favs === null || favs.includes(id);
+    return `<div class="hp-mod-item${visivel ? '' : ' mod-oculto'}" data-id="${esc(id)}" draggable="true">
+      <span class="hp-mod-drag">⠿</span>
+      <span class="hp-mod-ico">${esc(mod.icon || '📦')}</span>
+      <span class="hp-mod-name">${esc(mod.label)}</span>
+      <span class="hp-mod-cat">${esc(mod.categoria || '')}</span>
+      <button class="hp-mod-eye" title="${visivel ? 'Remover da home' : 'Adicionar à home'}">${visivel ? '👁' : '🚫'}</button>
+    </div>`;
+  }).join('');
+
+  // Drag-and-drop
+  let _dragId = null;
+  el.querySelectorAll('.hp-mod-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      _dragId = item.dataset.id;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      el.querySelectorAll('.hp-mod-item').forEach(i => i.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (!_dragId || _dragId === item.dataset.id) return;
+      const fromIdx = _hpModOrder.indexOf(_dragId);
+      const toIdx   = _hpModOrder.indexOf(item.dataset.id);
+      if (fromIdx < 0 || toIdx < 0) return;
+      _hpModOrder.splice(fromIdx, 1);
+      _hpModOrder.splice(toIdx, 0, _dragId);
+      _hpPrefs = { ..._hpPrefs, modulosOrdem: [..._hpModOrder] };
+      renderHpModList();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+
+    // Toggle favorito
+    item.querySelector('.hp-mod-eye')?.addEventListener('click', async () => {
+      await toggleFavorito(item.dataset.id);
+      renderHpModList();
+      renderHpPreview();
+    });
+  });
+}
+
+// ── Widgets (Em breve) ──
+function renderHpWidgets() {
+  const el = document.getElementById('hp-widget-list');
+  if (!el) return;
+  el.innerHTML = WIDGETS_FUTUROS.map(w => `
+    <div class="hp-widget-item">
+      <span class="hp-widget-ico">${esc(w.icone)}</span>
+      <span class="hp-widget-name">${esc(w.label)}</span>
+      <span class="hp-widget-badge">Em breve</span>
+    </div>`).join('');
+}
+
+// ── Fonte do layout ──
+function renderHpFonte() {
+  const el = document.getElementById('hp-layout-fonte-txt');
+  if (!el) return;
+  const fonte = _hpPrefs._fonte;
+  if (fonte === 'empresa') {
+    el.textContent = 'Layout da Empresa (aplicado)';
+  } else {
+    el.textContent = 'Layout Pessoal (ativo)';
+  }
+}
+
+// ── Preview em tempo real ──
+function renderHpPreview() {
+  const grid  = document.getElementById('hp-pv-grid');
+  const stats = document.getElementById('hp-preview-stats');
+  if (!grid) return;
+
+  grid.dataset.mode = _hpPrefs.modo   || 'grade';
+  grid.dataset.size = _hpPrefs.tamanho || 'medio';
+
+  const favs    = getFavoritosHome();
+  const visiveis = _hpModOrder.filter(id => favs === null || favs.includes(id));
+  const max      = Math.min(_hpPrefs.maxModulos || 24, visiveis.length);
+  const exibindo = visiveis.slice(0, max);
+
+  grid.innerHTML = exibindo.map(id => {
+    const mod = TODOS_MODULOS.find(m => m.id === id);
+    if (!mod) return '';
+    return `<div class="hp-pvc" title="${esc(mod.label)}">
+      <span class="hp-pvc-ico">${esc(mod.icon || '📦')}</span>
+      <span class="hp-pvc-name">${esc(mod.label)}</span>
+    </div>`;
+  }).join('');
+
+  if (stats) {
+    stats.textContent = visiveis.length === 0
+      ? 'Nenhum módulo na home — adicione favoritos na aba Módulos'
+      : `${visiveis.length} módulo${visiveis.length !== 1 ? 's' : ''} · modo ${_hpPrefs.modo} · ${_hpPrefs.tamanho}`;
+  }
+}
+
+function renderHpAll() {
+  renderHpModes();
+  renderHpSizes();
+  renderHpToggleCats();
+  renderHpModList();
+  renderHpWidgets();
+  renderHpFonte();
+  renderHpPreview();
+}
+
+// ── Salvar com debounce (setHpPrefs já dispara cc-home-changed) ──
+function _hpScheduleSave() {
+  clearTimeout(_hpSaveTimer);
+  _hpSaveTimer = setTimeout(async () => {
+    await setHpPrefs({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  }, 400);
+}
+
+// ── Botões ──
+document.getElementById('hp-btn-save')?.addEventListener('click', async () => {
+  clearTimeout(_hpSaveTimer);
+  await setHpPrefs({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  toast('Layout da Home salvo!');
+});
+
+document.getElementById('hp-btn-reset')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar o Painel Central para a configuração padrão?')) return;
+  _hpPrefs   = getDefaultHpPrefs();
+  _hpModOrder = _buildHpModOrder(_hpPrefs);
+  renderHpAll();
+  await setHpPrefs(_hpPrefs);
+  toast('Painel Central restaurado para o padrão.');
+});
+
+document.getElementById('hp-btn-corp')?.addEventListener('click', async () => {
+  if (!confirm('Salvar este layout como padrão da empresa?\n\nTodos os usuários sem layout pessoal passarão a usar esta configuração.')) return;
+  const ok = await salvarPadraoEmpresa({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  toast(ok ? 'Layout salvo como padrão da empresa!' : 'Erro ao salvar — verifique as permissões.');
+});
+
+// ── Reage a mudanças externas de favoritos ──
+onModulosChanged(() => {
+  renderHpModList();
+  renderHpPreview();
+});
+
+// ── Init ──
+initHpPrefs();
+onHpPrefsChanged(prefs => {
+  _hpPrefs    = prefs;
+  _hpModOrder = _buildHpModOrder(prefs);
+  renderHpAll();
+});
+
+_hpPrefs    = getHpPrefs();
+_hpModOrder = _buildHpModOrder(_hpPrefs);
+renderHpAll();
 </script>
 </body>
 </html>

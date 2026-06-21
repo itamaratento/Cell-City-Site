@@ -3926,6 +3926,77 @@ html:not([data-home-mode]) .panel-right {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   PAINEL CENTRAL — Modos de exibição (data-card-mode) e tamanhos (data-card-size)
+   Controlados pela Central de Controle → Painel Central
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Lista: 1 coluna, cards horizontais */
+html[data-card-mode="lista"] .modules-grid {
+  grid-template-columns: 1fr !important;
+  gap: 8px !important;
+}
+html[data-card-mode="lista"] .modules-grid .module-card {
+  flex-direction: row !important;
+  text-align: left !important;
+  min-height: 68px !important;
+  padding: 12px 18px !important;
+  justify-content: flex-start !important;
+  gap: 14px !important;
+}
+html[data-card-mode="lista"] .modules-grid .module-card .module-info { text-align: left !important; }
+html[data-card-mode="lista"] .modules-grid .module-card .module-info h3 { text-align: left !important; font-size: 14px !important; }
+html[data-card-mode="lista"] .modules-grid .module-card .module-sub { text-align: left !important; }
+html[data-card-mode="lista"] .modules-grid .module-card .module-icon { font-size: 22px !important; width: 36px !important; height: 36px !important; flex-shrink: 0 !important; }
+html[data-card-mode="lista"] .modules-grid .module-card .module-indicator { position: static !important; margin-left: auto !important; }
+
+/* Executivo: 3 colunas, cards altos */
+html[data-card-mode="executivo"] .modules-grid {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+html[data-card-mode="executivo"] .modules-grid .module-card {
+  min-height: 196px !important;
+  padding: 28px 16px !important;
+  gap: 14px !important;
+}
+html[data-card-mode="executivo"] .modules-grid .module-card .module-icon { font-size: 40px !important; width: 60px !important; height: 60px !important; }
+html[data-card-mode="executivo"] .modules-grid .module-card .module-info h3 { font-size: 16px !important; font-weight: 800 !important; }
+html[data-card-mode="executivo"] .modules-grid .module-card .module-sub { font-size: 12px !important; }
+
+/* Compacto: muitas colunas, cards mini */
+html[data-card-mode="compacto"] .modules-grid {
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)) !important;
+  gap: 10px !important;
+}
+html[data-card-mode="compacto"] .modules-grid .module-card {
+  min-height: 88px !important;
+  padding: 10px 6px !important;
+  gap: 4px !important;
+}
+html[data-card-mode="compacto"] .modules-grid .module-card .module-icon { font-size: 20px !important; width: 32px !important; height: 32px !important; }
+html[data-card-mode="compacto"] .modules-grid .module-card .module-info h3 { font-size: 11px !important; font-weight: 700 !important; }
+html[data-card-mode="compacto"] .modules-grid .module-card .module-sub { display: none !important; }
+
+/* Tamanho — Pequeno (grade e executivo) */
+html[data-card-size="pequeno"] .modules-grid .module-card {
+  min-height: 106px;
+  padding: 10px 10px;
+  gap: 6px;
+}
+html[data-card-size="pequeno"] .modules-grid .module-card .module-icon { font-size: 20px; width: 32px; height: 32px; }
+html[data-card-size="pequeno"] .modules-grid .module-card .module-info h3 { font-size: 12px; }
+html[data-card-size="pequeno"] .modules-grid .module-card .module-sub { font-size: 10px; }
+
+/* Tamanho — Grande (grade apenas; executivo já é grande) */
+html[data-card-size="grande"] .modules-grid .module-card {
+  min-height: 178px;
+  padding: 24px 14px;
+  gap: 12px;
+}
+html[data-card-size="grande"] .modules-grid .module-card .module-icon { font-size: 38px; width: 56px; height: 56px; }
+html[data-card-size="grande"] .modules-grid .module-card .module-info h3 { font-size: 16px; font-weight: 800; }
+html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size: 12px; }
+
+/* ═══════════════════════════════════════════════════════════════
    MODO MOBILE PROFISSIONAL — Cell City
    Breakpoint: ≤768px
    ═══════════════════════════════════════════════════════════════ */
