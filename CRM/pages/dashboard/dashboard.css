@@ -2760,6 +2760,10 @@ body {
   font-family: inherit;
 }
 
+#btnSea:hover {
+  transform: scale(1.08);
+}
+
 /* Drag handle: aparece só ao hover e só quando expandido */
 .drag-handle {
   font-size: 11px;

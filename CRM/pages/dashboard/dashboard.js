@@ -65,6 +65,7 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
+    this.setupSea();
     this.setupSidebar();
     this.setupPanelRight();
     this.setupExecutivePanel();
@@ -1145,6 +1146,15 @@ class Dashboard {
         const module = card.getAttribute('data-module');
         this.navigateTo(module);
       });
+    });
+  }
+
+  // ===== CONSULTA DE PEÇAS SEA =====
+  setupSea() {
+    const btn = document.getElementById('btnSea');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      window.open('https://chat.likezap.com.br/sea9190', '_blank', 'noopener,noreferrer');
     });
   }
 
