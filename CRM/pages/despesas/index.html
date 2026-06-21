@@ -175,13 +175,33 @@
 
                             <div class="dsp-form-group dsp-span2 dsp-form-check-row">
                                 <label class="dsp-check-label">
-                                    <input type="checkbox" id="dsp-recorrente">
-                                    <span>🔄 Despesa Recorrente (se repete todo mês)</span>
+                                    <input type="checkbox" id="dsp-recorrente" onchange="toggleFrequencia(this.checked)">
+                                    <span>🔄 Despesa Recorrente</span>
                                 </label>
                             </div>
 
-                            <div class="dsp-form-group dsp-span2 dsp-comprovante-hint">
-                                <span>📎 Comprovante: <em>funcionalidade em breve (requer Firebase Storage)</em></span>
+                            <div class="dsp-form-group" id="dsp-frequencia-wrap" style="display:none">
+                                <label>Frequência</label>
+                                <select id="dsp-frequencia">
+                                    <option value="mensal">Mensal</option>
+                                    <option value="semanal">Semanal</option>
+                                    <option value="quinzenal">Quinzenal</option>
+                                    <option value="trimestral">Trimestral</option>
+                                    <option value="semestral">Semestral</option>
+                                    <option value="anual">Anual</option>
+                                </select>
+                            </div>
+
+                            <!-- Anexos -->
+                            <div class="dsp-form-group dsp-span2">
+                                <label>📎 Comprovantes</label>
+                                <div class="dsp-anexos-wrap">
+                                    <div id="dsp-anexos-lista" class="dsp-anexos-lista"></div>
+                                    <button type="button" class="dsp-btn-anexo" id="dsp-btn-anexo" onclick="adicionarAnexo()">＋ Adicionar arquivo</button>
+                                    <div class="dsp-anexo-progress" id="dsp-anexo-progress" style="display:none">
+                                        <div class="dsp-anexo-bar" id="dsp-anexo-bar" style="width:0%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

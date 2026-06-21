@@ -1360,6 +1360,7 @@ class Dashboard {
       'catalogo':            '../../pages/catalogo/index.html',
       'crm-comercial':       '../../pages/crm-comercial/index.html',
       'compras':             '../../pages/compras/index.html',
+      'fechamento':          '../../pages/fechamento/index.html',
       'auditoria':           '../../pages/auditoria/index.html',
       'pendencias':          '../../pages/pendencias/index.html',
       'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
@@ -3179,6 +3180,7 @@ class Dashboard {
       `<div class="fin-alerta-item ${a.cor}">${a.ico} ${a.txt}</div>`
     ).join('');
   }
+}
 
 // ===== INICIALIZAÇÃO =====
 if (document.readyState === 'loading') {

@@ -23,6 +23,13 @@ import {
   signInAnonymously,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -35,7 +42,8 @@ const firebaseConfig = {
 
 // Inicializa
 const app = initializeApp(firebaseConfig);
- const db = getFirestore(app);
+const db      = getFirestore(app);
+const storage = getStorage(app);
 
 // ===== AUTENTICAÇÃO ANÔNIMA (compartilhada por todas as páginas) =====
 // Garante que TODAS as páginas que importam este arquivo tenham um usuário
@@ -64,12 +72,13 @@ const authReady = new Promise((resolve) => {
 // ===== EXPORTS PARA USO DIRETO (opcional) =====
 export {
   db,
+  storage,
   auth,
   authReady,
   collection,
   addDoc,
   getDocs,
-  getDoc,      // ← ESSENCIAL para documentos únicos
+  getDoc,
   doc,
   setDoc,
   updateDoc,
@@ -80,7 +89,12 @@ export {
   onSnapshot,
   runTransaction,
   serverTimestamp,
-  limit
+  limit,
+  // Firebase Storage
+  storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
 };
 
 // ===== GLOBALS PARA DEBUG (opcional) =====
