@@ -1,7 +1,7 @@
 import {
   db, collection, doc, updateDoc, setDoc,
   deleteDoc, getDocs, query, where, orderBy,
-  onSnapshot, serverTimestamp, increment
+  onSnapshot, serverTimestamp, increment, arrayUnion
 } from '../../scripts/firebase.js';
 
 // ── Constantes ─────────────────────────────────────────────────────────
@@ -846,6 +846,43 @@ function calcScore(osVinc) {
   return                             { label: '🟢 Excelente', cls: 'score-excelente' };
 }
 
+function calcInteligencia(osVinc, eq) {
+  const hasVendas = (eq.vendasCount || 0) > 0;
+  if (!osVinc.length && !hasVendas) return null;
+
+  // Retornos: OS consecutivas com intervalo < 30 dias (lista sorted desc)
+  let retornos = 0;
+  for (let i = 1; i < osVinc.length; i++) {
+    const gap = (new Date(osVinc[i - 1].createdAt) - new Date(osVinc[i].createdAt)) / 864e5;
+    if (gap >= 0 && gap < 30) retornos++;
+  }
+  const taxaRetorno = osVinc.length > 0 ? Math.round(retornos / osVinc.length * 100) : 0;
+
+  // Ticket acumulado (OS + acessórios)
+  const totalOS    = osVinc.reduce((s, o) => s + (parseFloat(o.valor) || 0) + (parseFloat(o.valorCartao) || 0), 0);
+  const ticket     = totalOS + (eq.vendasTotal || 0);
+
+  // Sugestões baseadas em defeitos e histórico de compras
+  const cats    = (eq.vendasCategorias || []).map(c => c.toLowerCase());
+  const defects = osVinc.map(o => (o.defect || '').toLowerCase());
+  const diasSem = osVinc[0]?.createdAt ? Math.round((Date.now() - new Date(osVinc[0].createdAt)) / 864e5) : 999;
+  const sugs = [];
+  if (!cats.some(c => c.includes('película') || c.includes('pelicula'))) sugs.push('Oferecer película');
+  if (!cats.some(c => c.includes('capinha') || c.includes('capa')))      sugs.push('Oferecer capinha');
+  if (defects.some(d => d.includes('bateria') || d.includes('carregamento')))          sugs.push('Verificar bateria');
+  else if (diasSem > 180)                                                               sugs.push('Revisão preventiva');
+  if (defects.some(d => d.includes('carregad') || d.includes('cabo')) &&
+      !cats.some(c => c.includes('carregad') || c.includes('cabo')))                   sugs.push('Oferecer carregador');
+
+  return {
+    retornos,
+    taxaRetorno,
+    ticket,
+    vip:       ticket >= 2000,
+    sugestoes: sugs.slice(0, 3)
+  };
+}
+
 function buildEquipamentosHtml(clienteId, equipamentos, orders = [], clientePhone = '') {
   const catIcon   = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
   const statusCls = s => ({ 'Ativo':'equip-s-ativo', 'Em manutenção':'equip-s-manut', 'Vendido':'equip-s-vendido', 'Inativo':'equip-s-inativo' }[s] || 'equip-s-ativo');
@@ -867,6 +904,7 @@ function buildEquipamentosHtml(clienteId, equipamentos, orders = [], clientePhon
     const osVinc   = matchOS(eq);
     const ultimaOS = osVinc[0];
     const score    = calcScore(osVinc);
+    const intel    = calcInteligencia(osVinc, eq);
     equipOSCache[eq.id] = osVinc;
 
     // totais financeiros
@@ -924,6 +962,17 @@ function buildEquipamentosHtml(clienteId, equipamentos, orders = [], clientePhon
         <div class="cli-equip-detail"><span class="cli-equip-dlabel">Em acessórios</span><span class="cli-equip-total">${fmtValor(eq.vendasTotal || 0)}</span></div>` : ''}
         ${eq.observacoes ? `<div class="cli-equip-obs">${esc(eq.observacoes)}</div>` : ''}
       </div>
+      ${intel ? `
+      <div class="cli-equip-intel">
+        <div class="cli-equip-intel-hd">📊 Inteligência</div>
+        <div class="cli-equip-intel-grid">
+          <span class="cli-equip-intel-lbl">💰 Ticket Total</span>
+          <span class="cli-equip-intel-val">${fmtValor(intel.ticket)}</span>
+          ${intel.retornos > 0 ? `<span class="cli-equip-intel-lbl">🔁 Taxa Retorno</span><span class="cli-equip-intel-val${intel.taxaRetorno >= 40 ? ' cli-equip-intel-alerta' : ''}">${intel.retornos} retorno${intel.retornos > 1 ? 's' : ''} · ${intel.taxaRetorno}%</span>` : ''}
+        </div>
+        ${intel.vip ? `<div class="cli-equip-vip">⭐ Cliente VIP neste equipamento</div>` : ''}
+        ${intel.sugestoes.length ? `<div class="cli-equip-sugestoes">${intel.sugestoes.map(s => `<span class="cli-equip-sug">💡 ${s}</span>`).join('')}</div>` : ''}
+      </div>` : ''}
       ${osVinc.length ? `
       <div class="cli-equip-os-section" id="cli-equip-os-${esc(eq.id)}" style="display:none">
         <div class="cli-equip-os-list">${osListHtml}</div>
@@ -1247,8 +1296,9 @@ window.adicionarVendaEquip = async function(e, clienteId, equipId) {
       criadoEm:  serverTimestamp()
     });
     await updateDoc(doc(db, 'clientes', clienteId, 'equipamentos', equipId), {
-      vendasCount: increment(1),
-      vendasTotal: increment(valor)
+      vendasCount:       increment(1),
+      vendasTotal:       increment(valor),
+      vendasCategorias:  arrayUnion(data.categoria || 'Outro Acessório')
     });
     showToast('✅ Produto registrado');
     e.target.reset();

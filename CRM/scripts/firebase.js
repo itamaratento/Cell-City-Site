@@ -17,7 +17,8 @@ import {
   runTransaction,
   serverTimestamp,
   limit,
-  increment
+  increment,
+  arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
@@ -92,6 +93,7 @@ export {
   serverTimestamp,
   limit,
   increment,
+  arrayUnion,
   // Firebase Storage
   storageRef,
   uploadBytes,
