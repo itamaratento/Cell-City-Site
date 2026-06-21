@@ -134,6 +134,9 @@ button { cursor: pointer; }
     flex: 1;
     padding: 20px 20px 80px;
     min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 .dsp-topbar {
     display: flex;
@@ -173,8 +176,64 @@ button { cursor: pointer; }
     font-weight: 700;
 }
 .dsp-btn-novo-mini:hover { background: var(--cell-green-light); }
-.dsp-main-header { margin-bottom: 16px; }
+.dsp-main-header { margin-bottom: 12px; }
 .dsp-main-titulo { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+
+/* ── Barra de Ações Rápidas ──────────────────────────────────── */
+.dsp-acoes {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
+.dsp-acao-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-size: 12.5px;
+    font-weight: 600;
+    font-family: inherit;
+    transition: background .15s, border-color .15s, color .15s, transform .1s;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.dsp-acao-btn:hover {
+    background: rgba(0,200,83,.08);
+    border-color: rgba(0,200,83,.35);
+    color: var(--cell-green);
+    transform: translateY(-1px);
+}
+.dsp-acao-btn:active { transform: translateY(0); }
+.dsp-acao-primary {
+    background: var(--cell-green) !important;
+    border-color: var(--cell-green) !important;
+    color: #000 !important;
+}
+.dsp-acao-primary:hover {
+    background: var(--cell-green-light) !important;
+    border-color: var(--cell-green-light) !important;
+    color: #000 !important;
+    transform: translateY(-1px);
+}
+.dsp-acao-ico { font-size: 14px; line-height: 1; flex-shrink: 0; }
+.dsp-acao-label { letter-spacing: .01em; }
+@media (max-width: 700px) {
+    .dsp-acoes { gap: 6px; padding: 8px 10px; }
+    .dsp-acao-btn { padding: 7px 11px; font-size: 12px; }
+    .dsp-acao-label { display: none; }
+    .dsp-acao-ico { font-size: 16px; }
+    .dsp-acao-primary .dsp-acao-label { display: inline; }
+}
 
 /* ── Home Grid ───────────────────────────────────────────────── */
 .dsp-home-grid {
@@ -211,11 +270,21 @@ button { cursor: pointer; }
 .dsp-count-alerta { color: var(--cell-yellow) !important; }
 
 /* ── Section ─────────────────────────────────────────────────── */
-.dsp-section { display: block; }
+.dsp-section {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+#dsp-lista {
+    width: 100%;
+    max-width: 100%;
+}
 
 /* ── Filtros rápidos ─────────────────────────────────────────── */
 .dsp-filtros {
     display: flex;
+    align-items: center;
     gap: 8px;
     margin-bottom: 14px;
     flex-wrap: wrap;
@@ -235,6 +304,22 @@ button { cursor: pointer; }
     font-weight: 600;
 }
 .dsp-filtro-btn:hover { border-color: var(--cell-green); color: var(--text-primary); }
+.dsp-filtros-nova {
+    margin-left: auto;
+    white-space: nowrap;
+    background: rgba(0,200,83,0.12);
+    border: 1px solid rgba(0,200,83,0.35);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--cell-green);
+    transition: background .15s, border-color .15s;
+}
+.dsp-filtros-nova:hover {
+    background: rgba(0,200,83,0.22);
+    border-color: var(--cell-green);
+}
 
 /* ── Formulário ──────────────────────────────────────────────── */
 .dsp-form {
@@ -354,6 +439,9 @@ button { cursor: pointer; }
     padding: 14px 16px;
     margin-bottom: 10px;
     transition: border-color .15s;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 .dsp-card:hover { border-color: var(--border-light); }
 
@@ -619,6 +707,9 @@ button { cursor: pointer; }
     .dsp-span2 { grid-column: span 1; }
     .dsp-resumo-grid { grid-template-columns: 1fr 1fr; }
     .dsp-cat-grid { grid-template-columns: 1fr; }
+    .dsp-filtros-nova { margin-left: 0; width: 100%; justify-content: center; border-radius: var(--radius-sm); }
+    .dsp-card-top { flex-wrap: wrap; }
+    .dsp-topbar { flex-wrap: wrap; }
 }
 
 /* ── Frequência (recorrentes) */

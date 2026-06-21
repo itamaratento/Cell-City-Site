@@ -1,11 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt-BR" data-fav-key="despesas" data-fav-label="Despesas" data-fav-icon="💸" data-fav-url="/CRM/pages/despesas/index.html">
+<html lang="pt-BR"
+  data-fav-key="despesas" data-fav-label="Despesas" data-fav-icon="💸" data-fav-url="/CRM/pages/despesas/index.html"
+  data-bc='[{"icon":"💹","label":"Financeiro","url":"/CRM/pages/financeiro/"},{"icon":"💸","label":"Despesas"}]'
+  data-bc-before=".dsp-main-header">
 <head>
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cell City — Despesas</title>
-    <link rel="stylesheet" href="despesas.css?v=20260621a">
+    <link rel="stylesheet" href="despesas.css?v=20260621b">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -103,6 +106,31 @@
 
                 <div class="dsp-main-header">
                     <span class="dsp-main-titulo" id="dsp-main-titulo">💸 Despesas</span>
+                </div>
+
+                <!-- ===== AÇÕES RÁPIDAS ===== -->
+                <div class="dsp-acoes" id="dsp-acoes">
+                    <button class="dsp-acao-btn dsp-acao-primary" id="dsp-acao-nova"
+                            onclick="document.getElementById('dsp-btn-novo').click()">
+                        <span class="dsp-acao-ico">➕</span>
+                        <span class="dsp-acao-label">Nova Despesa</span>
+                    </button>
+                    <button class="dsp-acao-btn" onclick="exportarDespesas()">
+                        <span class="dsp-acao-ico">📤</span>
+                        <span class="dsp-acao-label">Exportar</span>
+                    </button>
+                    <button class="dsp-acao-btn" onclick="dspNavegar('resumo')">
+                        <span class="dsp-acao-ico">📊</span>
+                        <span class="dsp-acao-label">Relatórios</span>
+                    </button>
+                    <button class="dsp-acao-btn" onclick="dspNavegar('categorias')">
+                        <span class="dsp-acao-ico">🏷️</span>
+                        <span class="dsp-acao-label">Categorias</span>
+                    </button>
+                    <button class="dsp-acao-btn" onclick="dspNavegar('centros')">
+                        <span class="dsp-acao-ico">🏢</span>
+                        <span class="dsp-acao-label">Centros de Custo</span>
+                    </button>
                 </div>
 
                 <!-- ===== HOME GRID ===== -->
@@ -233,6 +261,7 @@
                         <button class="dsp-filtro-btn active" data-filtro="todos">Todos</button>
                         <button class="dsp-filtro-btn" data-filtro="empresarial">🏢 Empresarial</button>
                         <button class="dsp-filtro-btn" data-filtro="pessoal">👤 Pessoal</button>
+                        <button class="dsp-filtros-nova" onclick="document.getElementById('dsp-btn-novo').click()" title="Nova Despesa">＋ Nova Despesa</button>
                     </div>
 
                     <!-- LISTA -->
@@ -381,8 +410,9 @@
     </div>
 
     <script src="../../shared/brand-header.js"></script>
+    <script src="../../shared/breadcrumb.js"></script>
     <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="despesas.js?v=20260620a"></script>
+    <script type="module" src="despesas.js?v=20260621a"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

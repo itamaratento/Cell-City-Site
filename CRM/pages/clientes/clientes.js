@@ -1,7 +1,7 @@
 import {
   db, collection, doc, updateDoc, setDoc,
   deleteDoc, getDocs, query, where, orderBy,
-  onSnapshot, serverTimestamp
+  onSnapshot, serverTimestamp, increment
 } from '../../scripts/firebase.js';
 
 // ── Constantes ─────────────────────────────────────────────────────────
@@ -15,6 +15,7 @@ let clienteAtual = null;
 let editingId    = null;
 let unsub           = null;
 let equipamentosCache = {};
+let equipOSCache      = {};
 
 // ── Utilitários ─────────────────────────────────────────────────────────
 function esc(s) {
@@ -508,7 +509,7 @@ function buildPerfilHtml(c, crmLeads, orders, totalGasto, nivel, equipamentos = 
 
   // ── Aba Oportunidades ────────────────────────────────────────────
   const opHtml    = buildOportunidadesHtml(c, crmLeads, orders);
-  const equipHtml = buildEquipamentosHtml(c.id, equipamentos);
+  const equipHtml = buildEquipamentosHtml(c.id, equipamentos, orders, c.phone);
 
   return `
     <div class="cli-perfil-header">
@@ -835,13 +836,66 @@ function showToast(msg) {
 }
 
 // ── Equipamentos ──────────────────────────────────────────────────────
-function buildEquipamentosHtml(clienteId, equipamentos) {
-  const catIcon  = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
+function calcScore(osVinc) {
+  if (!osVinc.length) return null;
+  const count    = osVinc.length;
+  const defects  = osVinc.map(o => (o.defect || '').toLowerCase().substring(0, 30).trim()).filter(Boolean);
+  const reincide = defects.length > 1 && new Set(defects).size < defects.length;
+  if (count > 5 || reincide) return { label: '🔴 Crítico',   cls: 'score-critico'   };
+  if (count >= 3)             return { label: '🟡 Atenção',   cls: 'score-atencao'   };
+  return                             { label: '🟢 Excelente', cls: 'score-excelente' };
+}
+
+function buildEquipamentosHtml(clienteId, equipamentos, orders = [], clientePhone = '') {
+  const catIcon   = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
   const statusCls = s => ({ 'Ativo':'equip-s-ativo', 'Em manutenção':'equip-s-manut', 'Vendido':'equip-s-vendido', 'Inativo':'equip-s-inativo' }[s] || 'equip-s-ativo');
+  const foneNum   = (clientePhone || '').replace(/\D/g, '');
+
+  function matchOS(eq) {
+    return orders.filter(o => {
+      if (o.equipamentoId && o.equipamentoId === eq.id) return true;
+      if (!eq.modelo) return false;
+      const phoneOk = (o.phone || '').replace(/\D/g, '') === foneNum;
+      const modelOk = (o.model || '').toLowerCase().trim() === (eq.modelo || '').toLowerCase().trim();
+      return phoneOk && modelOk;
+    }).sort((a, b) => (b.createdAt || '') > (a.createdAt || '') ? 1 : -1);
+  }
 
   const cardsHtml = equipamentos.map(eq => {
-    const nome = esc(((eq.marca || '') + ' ' + (eq.modelo || '')).trim()) || 'Equipamento';
-    const nomeRaw = ((eq.marca || '') + ' ' + (eq.modelo || '')).trim();
+    const nomeRaw  = ((eq.marca || '') + ' ' + (eq.modelo || '')).trim();
+    const nome     = esc(nomeRaw) || 'Equipamento';
+    const osVinc   = matchOS(eq);
+    const ultimaOS = osVinc[0];
+    const score    = calcScore(osVinc);
+    equipOSCache[eq.id] = osVinc;
+
+    // totais financeiros
+    const totalOS = osVinc.reduce((s, o) => s + (parseFloat(o.valor) || 0) + (parseFloat(o.valorCartao) || 0), 0);
+
+    // garantia
+    let garantiaHtml = '';
+    if (ultimaOS && ultimaOS.createdAt) {
+      const prazo  = parseInt(ultimaOS.prazoGarantia) || 90;
+      const dataOS = new Date(ultimaOS.createdAt);
+      const expiry = new Date(dataOS.getTime() + prazo * 864e5);
+      const dias   = Math.round((expiry - Date.now()) / 864e5);
+      if (dias > 0) {
+        garantiaHtml = `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Garantia</span><span class="cli-equip-garantia-ok">✅ Em garantia · ${dias}d</span></div>`;
+      } else {
+        garantiaHtml = `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Garantia</span><span class="cli-equip-garantia-exp">⚠️ Expirada</span></div>`;
+      }
+    }
+
+    // OS expandível
+    const osListHtml = osVinc.map(o => `
+      <div class="cli-equip-os-item">
+        <div class="cli-equip-os-id">${esc(o.id)}</div>
+        <div class="cli-equip-os-body">
+          <div class="cli-equip-os-servico">${esc((o.defect || '').substring(0, 55))}</div>
+          <div class="cli-equip-os-meta">${fmtDate(o.createdAt)}${o.valor ? ` · ${fmtValor(o.valor)}` : ''} · ${esc(o.status || '')}</div>
+        </div>
+      </div>`).join('');
+
     return `
     <div class="cli-equip-card">
       <div class="cli-equip-card-header">
@@ -850,16 +904,34 @@ function buildEquipamentosHtml(clienteId, equipamentos) {
           <span class="cli-equip-card-name">${nome}</span>
           <span class="cli-equip-status ${statusCls(eq.status)}">${esc(eq.status || 'Ativo')}</span>
         </div>
+        ${score ? `<span class="cli-equip-score cli-equip-${score.cls}">${score.label}</span>` : ''}
       </div>
       <div class="cli-equip-card-body">
         ${eq.categoria  ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Categoria</span><span>${esc(eq.categoria)}</span></div>` : ''}
         ${eq.cor        ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Cor</span><span>${esc(eq.cor)}</span></div>` : ''}
         ${eq.imei       ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">IMEI</span><span class="cli-equip-imei">${esc(eq.imei)}</span></div>` : ''}
         ${eq.serial     ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Serial</span><span>${esc(eq.serial)}</span></div>` : ''}
-        ${eq.observacoes? `<div class="cli-equip-obs">${esc(eq.observacoes)}</div>` : ''}
+        <div class="cli-equip-detail">
+          <span class="cli-equip-dlabel">Serviços</span>
+          <span class="${osVinc.length ? 'cli-equip-os-badge' : ''}">${osVinc.length > 0 ? `🔧 ${osVinc.length}` : '—'}</span>
+        </div>
+        ${ultimaOS ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Último</span><span>${fmtDate(ultimaOS.createdAt)}</span></div>` : ''}
+        ${ultimaOS ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Última OS</span><span class="cli-equip-os-ref">${esc(ultimaOS.id)}</span></div>` : ''}
+        ${totalOS > 0 ? `<div class="cli-equip-detail"><span class="cli-equip-dlabel">Investido</span><span class="cli-equip-total">${fmtValor(totalOS)}</span></div>` : ''}
+        ${garantiaHtml}
+        ${eq.vendasCount > 0 ? `
+        <div class="cli-equip-detail"><span class="cli-equip-dlabel">📦 Produtos</span><span>${eq.vendasCount} compra${eq.vendasCount !== 1 ? 's' : ''}</span></div>
+        <div class="cli-equip-detail"><span class="cli-equip-dlabel">Em acessórios</span><span class="cli-equip-total">${fmtValor(eq.vendasTotal || 0)}</span></div>` : ''}
+        ${eq.observacoes ? `<div class="cli-equip-obs">${esc(eq.observacoes)}</div>` : ''}
       </div>
+      ${osVinc.length ? `
+      <div class="cli-equip-os-section" id="cli-equip-os-${esc(eq.id)}" style="display:none">
+        <div class="cli-equip-os-list">${osListHtml}</div>
+      </div>` : ''}
       <div class="cli-equip-card-actions">
-        <button class="cli-equip-btn-hist" onclick="abrirHistoricoEquip('${esc(clienteId)}','${esc(eq.id)}','${esc(nomeRaw)}')">📋 Histórico</button>
+        ${osVinc.length ? `<button class="cli-equip-btn-os" onclick="toggleEquipOS('${esc(eq.id)}')">🔧 ${osVinc.length} OS</button>` : ''}
+        <button class="cli-equip-btn-nova-os" onclick="novaOSParaEquip('${esc(clienteId)}','${esc(eq.id)}','${esc(nomeRaw)}')">➕ OS</button>
+        <button class="cli-equip-btn-hist" onclick="abrirHistoricoEquip('${esc(clienteId)}','${esc(eq.id)}','${esc(nomeRaw)}')">⏱️ Timeline</button>
         <button class="cli-equip-btn-edit" onclick="abrirModalEquipamento('${esc(clienteId)}','${esc(eq.id)}')">✏️</button>
         <button class="cli-equip-btn-del"  onclick="excluirEquipamento('${esc(clienteId)}','${esc(eq.id)}')">🗑️</button>
       </div>
@@ -891,6 +963,26 @@ function openEquipModal(html) {
   overlay.classList.add('active');
   setTimeout(() => overlay.querySelector('input:not([type="date"]), select, textarea')?.focus(), 80);
 }
+
+window.toggleEquipOS = function(equipId) {
+  const el = document.getElementById(`cli-equip-os-${equipId}`);
+  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+};
+
+window.novaOSParaEquip = function(clienteId, equipId, equipNome) {
+  const c = clientes.find(x => x.id === clienteId);
+  const eq = (equipamentosCache[clienteId] || []).find(e => e.id === equipId);
+  sessionStorage.setItem('cc_equip_prefill', JSON.stringify({
+    clienteId,
+    equipamentoId: equipId,
+    nome:     c?.name     || '',
+    telefone: c?.phone    || '',
+    marca:    eq?.marca   || '',
+    modelo:   eq?.modelo  || equipNome || '',
+    imei:     eq?.imei    || ''
+  }));
+  window.location.href = '../../pages/os/index.html';
+};
 
 window.closeEquipModal = function() {
   document.getElementById('cli-equip-overlay')?.classList.remove('active');
@@ -990,23 +1082,66 @@ window.excluirEquipamento = async function(clienteId, equipId) {
 async function recarregarListaHistorico(clienteId, equipId) {
   const listEl = document.getElementById('equip-hist-list');
   const loadEl = document.getElementById('equip-hist-loading');
+  const totEl  = document.getElementById('equip-hist-total');
   if (!listEl) return;
   if (loadEl) { loadEl.style.display = ''; loadEl.textContent = '⏳ Carregando...'; }
   listEl.style.display = 'none';
   try {
-    const snap  = await getDocs(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'historico'));
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => (b.data?.seconds || 0) - (a.data?.seconds || 0));
+    // busca historico manual + vendas em paralelo
+    const [histSnap, vendasSnap] = await Promise.all([
+      getDocs(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'historico')),
+      getDocs(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'vendas'))
+    ]);
+    const histItems   = histSnap.docs.map(d => ({ id: d.id, ...d.data(), _src: 'manual' }));
+    const vendasItems = vendasSnap.docs.map(d => ({
+      id: d.id, ...d.data(),
+      tipo:      d.data().produto,
+      descricao: d.data().categoria || '',
+      _src:      'venda'
+    }));
+
+    // converte OS do cache para formato unificado
+    const osItems = (equipOSCache[equipId] || []).map(o => ({
+      tipo:      o.defect || 'Serviço realizado',
+      descricao: `${o.id}${o.model ? ' — ' + o.model : ''}`,
+      valor:     (parseFloat(o.valor) || 0) + (parseFloat(o.valorCartao) || 0),
+      data:      o.createdAt ? new Date(o.createdAt) : null,
+      origemOS:  o.id,
+      _src:      'os'
+    })).filter(o => o.data);
+
+    // merge e ordena por data desc
+    function toDate(d) {
+      if (!d) return new Date(0);
+      if (d.toDate) return d.toDate();
+      if (d instanceof Date) return d;
+      return new Date(d);
+    }
+    const all = [...histItems, ...vendasItems, ...osItems]
+      .map(h => ({ ...h, _d: toDate(h.data) }))
+      .sort((a, b) => b._d - a._d);
+
+    // total consolidado (OS + histórico + vendas)
+    const totalGeral = all.reduce((s, h) => s + (parseFloat(h.valor) || 0), 0);
+
     if (loadEl) loadEl.style.display = 'none';
     listEl.style.display = '';
-    listEl.innerHTML = items.length
-      ? items.map(h => `
-          <div class="cli-equip-hist-item">
-            <div class="cli-equip-hist-data">${fmtDate(h.data)}</div>
+    if (totEl && totalGeral > 0) {
+      totEl.textContent = `Total registrado: ${fmtValor(totalGeral)}`;
+      totEl.style.display = '';
+    }
+
+    listEl.innerHTML = all.length
+      ? all.map(h => `
+          <div class="cli-equip-hist-item cli-equip-hist-${h._src}">
+            <div class="cli-equip-hist-left">
+              <div class="cli-equip-hist-data">${fmtDate(h._d)}</div>
+              <div class="cli-equip-hist-badge-${h._src}">${h._src === 'os' ? '🔧 OS' : h._src === 'venda' ? '📦' : '📝'}</div>
+            </div>
             <div class="cli-equip-hist-body">
               <div class="cli-equip-hist-tipo">${esc(h.tipo || '')}</div>
               ${h.descricao ? `<div class="cli-equip-hist-desc">${esc(h.descricao)}</div>` : ''}
-              ${h.valor     ? `<div class="cli-equip-hist-valor">${fmtValor(Number(h.valor))}</div>` : ''}
+              ${h.valor > 0 ? `<div class="cli-equip-hist-valor">${fmtValor(Number(h.valor))}</div>` : ''}
             </div>
           </div>`).join('')
       : '<div class="cli-hist-vazio" style="padding:12px 0">Nenhum evento registrado ainda.</div>';
@@ -1019,13 +1154,17 @@ async function recarregarListaHistorico(clienteId, equipId) {
 window.abrirHistoricoEquip = async function(clienteId, equipId, equipNome) {
   openEquipModal(`
     <div class="cli-equip-modal-header">
-      <span>📋 Histórico — ${esc(equipNome || 'Equipamento')}</span>
+      <span>⏱️ Timeline — ${esc(equipNome || 'Equipamento')}</span>
       <button class="cli-equip-modal-close" onclick="closeEquipModal()">✕</button>
     </div>
+    <div id="equip-hist-total" class="cli-equip-hist-total" style="display:none"></div>
     <div id="equip-hist-loading" style="padding:20px;text-align:center;color:var(--text3)">⏳ Carregando...</div>
     <div id="equip-hist-list" class="cli-equip-hist-list" style="display:none"></div>
-    <div class="cli-equip-hist-form">
-      <div class="cli-equip-hist-form-titulo">➕ Registrar Evento</div>
+    <div class="cli-equip-form-tabs">
+      <button class="cli-equip-form-tab active" onclick="switchHistTab('evento',this)">📝 Evento Manual</button>
+      <button class="cli-equip-form-tab"        onclick="switchHistTab('venda',this)">📦 Produto / Venda</button>
+    </div>
+    <div id="hist-tab-evento" class="cli-equip-hist-form">
       <form onsubmit="addHistoricoEquip(event,'${esc(clienteId)}','${esc(equipId)}')">
         <div class="cli-equip-form-grid">
           <div class="cli-edit-field cli-span2">
@@ -1049,8 +1188,78 @@ window.abrirHistoricoEquip = async function(clienteId, equipId, equipNome) {
           <button type="submit" class="cli-btn-salvar">📝 Registrar</button>
         </div>
       </form>
+    </div>
+    <div id="hist-tab-venda" class="cli-equip-hist-form" style="display:none">
+      <form onsubmit="adicionarVendaEquip(event,'${esc(clienteId)}','${esc(equipId)}')">
+        <div class="cli-equip-form-grid">
+          <div class="cli-edit-field cli-span2">
+            <label>Produto</label>
+            <input type="text" name="produto" placeholder="Película 3D, Capinha, Carregador..." required>
+          </div>
+          <div class="cli-edit-field">
+            <label>Categoria</label>
+            <select name="categoria">
+              <option>Película</option><option>Capinha</option><option>Carregador</option>
+              <option>Cabo</option><option>Fone</option><option>Suporte</option><option>Outro Acessório</option>
+            </select>
+          </div>
+          <div class="cli-edit-field">
+            <label>Valor (R$)</label>
+            <input type="number" name="valor" step="0.01" min="0" placeholder="0,00">
+          </div>
+          <div class="cli-edit-field cli-span2">
+            <label>Data</label>
+            <input type="date" name="data" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+        </div>
+        <div class="cli-edit-btns">
+          <button type="submit" class="cli-btn-salvar">📦 Registrar Produto</button>
+        </div>
+      </form>
     </div>`);
   await recarregarListaHistorico(clienteId, equipId);
+};
+
+window.switchHistTab = function(tab, btn) {
+  ['evento', 'venda'].forEach(t => {
+    const el = document.getElementById(`hist-tab-${t}`);
+    if (el) el.style.display = t === tab ? '' : 'none';
+  });
+  document.querySelectorAll('.cli-equip-form-tab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+};
+
+window.adicionarVendaEquip = async function(e, clienteId, equipId) {
+  e.preventDefault();
+  const data = {};
+  new FormData(e.target).forEach((v, k) => { data[k] = v.toString().trim(); });
+  if (!data.produto) return;
+  const btn = e.target.querySelector('button[type="submit"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+  try {
+    const ref = doc(collection(db, 'clientes', clienteId, 'equipamentos', equipId, 'vendas'));
+    const valor = data.valor ? Number(data.valor) : 0;
+    await setDoc(ref, {
+      produto:   data.produto,
+      categoria: data.categoria || 'Outro Acessório',
+      valor,
+      data:      data.data ? new Date(data.data + 'T12:00:00') : new Date(),
+      criadoEm:  serverTimestamp()
+    });
+    await updateDoc(doc(db, 'clientes', clienteId, 'equipamentos', equipId), {
+      vendasCount: increment(1),
+      vendasTotal: increment(valor)
+    });
+    showToast('✅ Produto registrado');
+    e.target.reset();
+    e.target.querySelector('[name="data"]').value = new Date().toISOString().split('T')[0];
+    await recarregarListaHistorico(clienteId, equipId);
+  } catch(err) {
+    console.error(err);
+    showToast('❌ Erro ao registrar produto');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '📦 Registrar Produto'; }
+  }
 };
 
 window.addHistoricoEquip = async function(e, clienteId, equipId) {

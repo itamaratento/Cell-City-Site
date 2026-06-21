@@ -793,5 +793,8 @@ function calcularProximaData(ultimaISO, frequencia) {
     return d.toISOString().slice(0, 10);
 }
 
+/* ── API pública (chamada por botões inline da barra de ações) ── */
+window.dspNavegar = (sec) => navegar(sec);
+
 /* ── Init ────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => carregar());

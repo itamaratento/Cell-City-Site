@@ -488,7 +488,12 @@ function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="$
 
 // ===== CREATE OS =====
 function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); // Prefill vindo do CRM Comercial (via sessionStorage)
-    try { const _p = JSON.parse(sessionStorage.getItem('cc_crm_prefill') || 'null'); if (_p) { const _s = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; }; _s('f-nome', _p.nome); _s('f-telefone', _p.telefone); _s('f-modelo', _p.modelo); _s('f-defeito', _p.defeito); _s('f-valor', _p.valor); _s('f-obs', _p.obs); if (_p.senha) _s('f-senha', _p.senha); if (_p.lockType) { const lk = document.getElementById('lock-type'); if (lk) { lk.value = _p.lockType; if (typeof toggleLockType === 'function') toggleLockType(); } } if (_p.lockType === 'Padrao' && Array.isArray(_p.patternSequence) && _p.patternSequence.length >= 4) { window.tempPatternSequence = [..._p.patternSequence]; const ps = document.getElementById('pattern-summary'); if (ps) ps.style.display = 'block'; } if (_p.crmLeadId) crmLeadPendente = _p.crmLeadId; if (_p.preOsId) window._crmPreOsId = _p.preOsId; sessionStorage.removeItem('cc_crm_prefill'); } } catch(e) {} window.markSaved(); showScreen('form'); }
+    try { const _p = JSON.parse(sessionStorage.getItem('cc_crm_prefill') || 'null'); if (_p) { const _s = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; }; _s('f-nome', _p.nome); _s('f-telefone', _p.telefone); _s('f-modelo', _p.modelo); _s('f-defeito', _p.defeito); _s('f-valor', _p.valor); _s('f-obs', _p.obs); if (_p.senha) _s('f-senha', _p.senha); if (_p.lockType) { const lk = document.getElementById('lock-type'); if (lk) { lk.value = _p.lockType; if (typeof toggleLockType === 'function') toggleLockType(); } } if (_p.lockType === 'Padrao' && Array.isArray(_p.patternSequence) && _p.patternSequence.length >= 4) { window.tempPatternSequence = [..._p.patternSequence]; const ps = document.getElementById('pattern-summary'); if (ps) ps.style.display = 'block'; } if (_p.crmLeadId) crmLeadPendente = _p.crmLeadId; if (_p.preOsId) window._crmPreOsId = _p.preOsId; sessionStorage.removeItem('cc_crm_prefill'); } } catch(e) {}
+    // Equipamento prefill (vindo do módulo Clientes)
+    const _eqSel = document.getElementById('os-equip-selector'); if (_eqSel) _eqSel.style.display = 'none';
+    const _eqId  = document.getElementById('os-equip-id');       if (_eqId)  _eqId.value = '';
+    try { const _ep = JSON.parse(sessionStorage.getItem('cc_equip_prefill') || 'null'); if (_ep) { const _s2 = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; }; _s2('f-nome', _ep.nome); _s2('f-telefone', _ep.telefone); _s2('f-marca', _ep.marca || ''); _s2('f-modelo', _ep.modelo || ''); _s2('f-imei', _ep.imei || ''); const _cEl = document.getElementById('os-cliente-id'); if (_cEl && _ep.clienteId) _cEl.value = _ep.clienteId; if (_eqId && _ep.equipamentoId) _eqId.value = _ep.equipamentoId; if (_ep.clienteId) setTimeout(() => carregarEquipamentosOS(_ep.clienteId, _ep.equipamentoId), 400); sessionStorage.removeItem('cc_equip_prefill'); } } catch(e2) {}
+    window.markSaved(); showScreen('form'); }
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
@@ -515,7 +520,9 @@ async function saveOS() {
         internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
         orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        origem: crmLeadPendente ? 'crm' : portalOSPendente ? 'portal' : 'presencial', crmLeadId: crmLeadPendente || null, preOsId: window._crmPreOsId || null, solicitacaoId: portalOSPendente || null
+        origem: crmLeadPendente ? 'crm' : portalOSPendente ? 'portal' : 'presencial', crmLeadId: crmLeadPendente || null, preOsId: window._crmPreOsId || null, solicitacaoId: portalOSPendente || null,
+        equipamentoId: document.getElementById('os-equip-id')?.value || null,
+        clienteId:     document.getElementById('os-cliente-id')?.value || null
     };
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
         os.patternSequence = window.tempPatternSequence;
@@ -1099,6 +1106,7 @@ async function changeStatus(newStatus) {
     if (newStatus === 'entregue') {
         await gerarLancamentoFinanceiro(currentOS);
         await agendarPosVenda(currentOS);
+        await vincularOSaEquipamento(currentOS);
     }
     renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved();
 }
@@ -1137,6 +1145,7 @@ async function markDelivered() {
     await saveCurrentOS();
     await gerarLancamentoFinanceiro(currentOS);
     await agendarPosVenda(currentOS);
+    await vincularOSaEquipamento(currentOS);
     renderDetail(); showToast('✅ Entregue'); window.markSaved();
 }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
@@ -2378,7 +2387,10 @@ async function buscarClientePorTelefone(telefone) {
         let snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', digitos)));
         if (snap.empty) snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', telefone.trim())));
         if (snap.empty) return;
-        preencherOScomCliente(snap.docs[0].id, snap.docs[0].data());
+        const _cId  = snap.docs[0].id;
+        const _cDat = snap.docs[0].data();
+        preencherOScomCliente(_cId, _cDat);
+        carregarEquipamentosOS(_cId);
     } catch (e) {
         console.warn('[Integração] Erro ao buscar cliente:', e);
     }
@@ -2458,6 +2470,76 @@ function notificarClienteOS(osId) {
     window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
 }
 window.notificarClienteOS = notificarClienteOS;
+
+// ===== INTEGRAÇÃO EQUIPAMENTOS =====
+
+function _escAttr(s) { return (s || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+
+async function carregarEquipamentosOS(clienteId, preSelId) {
+    if (!clienteId) return;
+    try {
+        const snap = await getDocs(collection(db, 'clientes', clienteId, 'equipamentos'));
+        const equips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        mostrarEquipamentosCliente(equips, preSelId);
+    } catch(e) { console.warn('[Equipamentos] Erro ao carregar:', e); }
+}
+
+function mostrarEquipamentosCliente(equips, preSelId) {
+    const container = document.getElementById('os-equip-selector');
+    if (!container) return;
+    if (!equips.length) { container.style.display = 'none'; return; }
+    const catIcon = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
+    container.innerHTML = `
+        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">
+            📱 Vincular ao Equipamento <span style="font-weight:400">(opcional)</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+            ${equips.map(eq => {
+                const label = _escAttr(((eq.marca||'')+' '+(eq.modelo||'')).trim()) || 'Equipamento';
+                return `<button type="button" class="os-equip-pill${preSelId === eq.id ? ' selected' : ''}" id="os-equip-pill-${eq.id}"
+                    onclick="selecionarEquipamento('${eq.id}','${_escAttr(eq.marca||'')}','${_escAttr(eq.modelo||'')}','${_escAttr(eq.imei||'')}')">
+                    ${catIcon(eq.categoria)} ${label}
+                </button>`;
+            }).join('')}
+            <button type="button" class="os-equip-pill os-equip-pill-none${!preSelId ? ' selected' : ''}" onclick="selecionarEquipamento('','','','')">
+                ✕ Sem vínculo
+            </button>
+        </div>`;
+    container.style.display = 'block';
+    if (preSelId) selecionarEquipamento(preSelId, '', '', '');
+}
+
+window.selecionarEquipamento = function(equipId, marca, modelo, imei) {
+    const hidden = document.getElementById('os-equip-id');
+    if (hidden) hidden.value = equipId;
+    // Preenche campos do aparelho se estiverem vazios
+    const setIfEmpty = (id, v) => { if (!v) return; const el = document.getElementById(id); if (el && !el.value) el.value = v; };
+    setIfEmpty('f-marca',  marca);
+    setIfEmpty('f-modelo', modelo);
+    setIfEmpty('f-imei',   imei);
+    // Destaca pill selecionada
+    document.querySelectorAll('.os-equip-pill').forEach(p => p.classList.remove('selected'));
+    if (equipId) document.getElementById(`os-equip-pill-${equipId}`)?.classList.add('selected');
+    else document.querySelector('.os-equip-pill-none')?.classList.add('selected');
+};
+
+async function vincularOSaEquipamento(os) {
+    const eqId = os.equipamentoId;
+    const cId  = os.clienteId;
+    if (!eqId || !cId) return;
+    try {
+        const ref = doc(collection(db, 'clientes', cId, 'equipamentos', eqId, 'historico'));
+        await setDoc(ref, {
+            tipo:      os.defect || 'Serviço realizado',
+            descricao: `OS ${os.id}${os.model ? ' — ' + os.model : ''}`,
+            valor:     (parseFloat(os.valor) || 0) + (parseFloat(os.valorCartao) || 0) || null,
+            data:      new Date(),
+            origemOS:  os.id,
+            criadoEm:  serverTimestamp()
+        });
+        console.log('[Equipamentos] Histórico criado para equipamento', eqId, 'via OS', os.id);
+    } catch(e) { console.warn('[Equipamentos] Erro ao criar histórico:', e); }
+}
 
 // ===== INIT =====
 async function init() {
