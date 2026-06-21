@@ -1101,6 +1101,237 @@ body {
   .hp-modes { grid-template-columns: repeat(4, 1fr); }
   .hp-mode-desc { display: none; }
 }
+
+/* ════════════════════════════════════════
+   TAB 5 — LAYOUTS PRONTOS
+   ════════════════════════════════════════ */
+
+.ly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ly-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--tr), background var(--tr);
+}
+.ly-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--ly-cor, var(--cell-green));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.ly-card:hover { background: var(--bg-elevated); border-color: var(--border-med); }
+.ly-card.ativo { border-color: var(--cell-green); background: rgba(0,200,83,.04); }
+
+.ly-card-header { display: flex; align-items: flex-start; gap: 12px; }
+.ly-card-ico {
+  font-size: 26px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  flex-shrink: 0;
+}
+.ly-card-info { flex: 1; min-width: 0; }
+.ly-card-nome  { font-size: 15px; font-weight: 800; margin-bottom: 2px; }
+.ly-card-foco  { font-size: 11.5px; color: var(--text-muted); }
+.ly-card-desc  { font-size: 12px; color: var(--text-sec); line-height: 1.55; }
+
+.ly-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.ly-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 3px 9px; border-radius: 99px;
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-badge-modo {
+  background: rgba(0,200,83,.10); border-color: rgba(0,200,83,.25); color: var(--cell-green);
+}
+
+.ly-mods { display: flex; flex-wrap: wrap; gap: 5px; }
+.ly-mod-pill {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: rgba(255,255,255,.06); color: var(--text-muted); border: 1px solid var(--border);
+}
+
+.ly-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 2px; }
+.ly-btn {
+  flex: 1; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; border: none;
+  transition: opacity var(--tr), background var(--tr), color var(--tr), border-color var(--tr);
+  text-align: center;
+}
+.ly-btn-preview {
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-btn-preview:hover { color: var(--text-primary); border-color: var(--border); }
+.ly-btn-aplicar { background: var(--cell-green); color: #000; }
+.ly-btn-aplicar:hover { opacity: .88; }
+
+.ly-ativo-badge {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+  background: var(--green-dim); border: 1px solid var(--green-border); color: var(--cell-green);
+}
+
+/* Seção Padrões */
+.ly-standards {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.ly-standards-title {
+  font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px;
+}
+.ly-priority-chain { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.ly-priority-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; padding: 6px 12px;
+  border-radius: 8px; background: var(--bg-elevated);
+  border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-priority-item.ativo { color: var(--cell-green); border-color: var(--green-border); }
+.ly-priority-arrow { color: var(--text-muted); font-size: 12px; }
+
+.ly-extras { display: flex; gap: 8px; flex-wrap: wrap; }
+.ly-extra-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit;
+  cursor: pointer; background: var(--bg-elevated); border: 1px solid var(--border-med);
+  color: var(--text-sec); transition: color var(--tr), border-color var(--tr);
+}
+.ly-extra-btn:hover { color: var(--text-primary); border-color: var(--border); }
+
+/* ── Modal de Preview ── */
+#ly-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 2000;
+  align-items: flex-start; justify-content: center;
+  padding: 24px 16px; box-sizing: border-box; overflow-y: auto;
+}
+#ly-modal-overlay.open { display: flex; }
+#ly-modal {
+  background: var(--bg-surface); border: 1px solid var(--border-med);
+  border-radius: 16px; width: 100%; max-width: 680px;
+  overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.7); margin: auto;
+}
+.ly-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 16px; border-bottom: 1px solid var(--border);
+}
+.ly-modal-title { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.ly-modal-close {
+  background: none; border: none; color: var(--text-muted); font-size: 20px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+  transition: background var(--tr), color var(--tr);
+}
+.ly-modal-close:hover { background: rgba(255,80,80,.12); color: #ff6b6b; }
+
+.ly-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+.ly-pv-section { display: flex; flex-direction: column; gap: 7px; }
+.ly-pv-label {
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+
+/* Mini topbar preview */
+.ly-pv-topbar {
+  background: rgba(8,9,10,.97); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 8px 14px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.ly-pv-tb-logo {
+  background: rgba(0,200,83,.1); border: 1px solid rgba(0,200,83,.2);
+  border-radius: 5px; padding: 3px 8px;
+  font-size: 10px; font-weight: 700; color: #4ade80; flex-shrink: 0;
+}
+.ly-pv-tb-item { font-size: 10px; font-weight: 500; color: rgba(255,255,255,.5); padding: 3px 7px; border-radius: 4px; }
+.ly-pv-tb-item.fixado { color: var(--cell-green); font-weight: 700; }
+.ly-pv-tb-sep { flex: 1; }
+
+/* Layout sidebar + panel side by side */
+.ly-pv-layout { display: flex; gap: 10px; align-items: flex-start; }
+
+/* Mini sidebar preview */
+.ly-pv-sidebar {
+  background: #0d0e10; border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 6px 0;
+  display: flex; flex-direction: column; width: 160px; flex-shrink: 0;
+}
+.ly-pv-sb-header {
+  padding: 4px 12px 6px; font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.04); margin-bottom: 4px;
+}
+.ly-pv-sb-item {
+  display: flex; align-items: center; gap: 7px; padding: 5px 12px;
+  font-size: 10.5px; color: rgba(255,255,255,.5); position: relative;
+}
+.ly-pv-sb-item.fixado { color: var(--cell-green); font-weight: 700; }
+.ly-pv-sb-item.fixado::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%); width: 2px; height: 16px;
+  background: var(--cell-green); border-radius: 0 2px 2px 0;
+}
+
+/* Mini panel grid */
+.ly-pv-panel-wrap { flex: 1; }
+.ly-pv-panel-grid { display: grid; gap: 5px; }
+.ly-pv-panel-grid[data-mode="grade"]     { grid-template-columns: repeat(4, 1fr); }
+.ly-pv-panel-grid[data-mode="lista"]     { grid-template-columns: 1fr; }
+.ly-pv-panel-grid[data-mode="executivo"] { grid-template-columns: repeat(3, 1fr); }
+.ly-pv-panel-grid[data-mode="compacto"]  { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+
+.ly-pv-card {
+  background: var(--bg-elevated); border: 1px solid var(--border-med);
+  border-radius: 7px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 7px 4px; gap: 3px; min-height: 46px; text-align: center;
+}
+.ly-pv-panel-grid[data-mode="lista"] .ly-pv-card {
+  flex-direction: row; justify-content: flex-start; padding: 5px 10px; min-height: 30px; gap: 7px;
+}
+.ly-pv-panel-grid[data-mode="compacto"] .ly-pv-card { min-height: 38px; padding: 4px 3px; gap: 2px; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card { min-height: 56px; padding: 10px 4px; }
+.ly-pv-card-ico  { font-size: 13px; line-height: 1; }
+.ly-pv-card-name { font-size: 9px; font-weight: 600; color: var(--text-muted); line-height: 1.2; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card-ico  { font-size: 18px; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card-name { font-size: 10px; font-weight: 700; }
+.ly-pv-panel-grid[data-mode="compacto"]  .ly-pv-card-name { font-size: 8.5px; }
+
+.ly-modal-footer {
+  padding: 14px 22px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.ly-modal-btn {
+  padding: 9px 22px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer; border: none; transition: opacity var(--tr);
+}
+.ly-modal-btn-cancel {
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-modal-btn-cancel:hover { color: var(--text-primary); }
+.ly-modal-btn-apply { background: var(--cell-green); color: #000; }
+.ly-modal-btn-apply:hover { opacity: .88; }
+
+@media (max-width: 640px) {
+  .ly-grid { grid-template-columns: 1fr; }
+  .ly-pv-layout { flex-direction: column; }
+  .ly-pv-sidebar { width: 100%; }
+}
 </style>
 </head>
 <body data-fav-key="central-modulos" data-fav-icon="⚙️" data-fav-label="Central de Controle">
@@ -1119,6 +1350,7 @@ body {
     <button class="ctr-tab" data-tab="sidebar">📋 Barra Lateral</button>
     <button class="ctr-tab" data-tab="topbar">🔝 Menus Superiores</button>
     <button class="ctr-tab" data-tab="painel">🏠 Painel Central</button>
+    <button class="ctr-tab" data-tab="layouts">🎨 Layouts</button>
   </div>
 
   <!-- ── TAB 1: MÓDULOS ── -->
@@ -1282,6 +1514,46 @@ body {
     </div>
   </div>
 
+  <!-- ── TAB 5: LAYOUTS PRONTOS ── -->
+  <div id="ctr-tab-layouts" class="ctr-panel">
+
+    <div class="ly-grid" id="ly-grid"></div>
+
+    <!-- Padrões e recursos -->
+    <div class="ly-standards">
+      <div class="ly-standards-title">Prioridade de Layouts</div>
+      <div class="ly-priority-chain">
+        <div class="ly-priority-item ativo">👤 Pessoal</div>
+        <span class="ly-priority-arrow">↓</span>
+        <div class="ly-priority-item">🏢 Empresa</div>
+        <span class="ly-priority-arrow">↓</span>
+        <div class="ly-priority-item">⚙️ Sistema</div>
+      </div>
+      <div class="ly-extras">
+        <button class="ly-extra-btn" id="ly-btn-restaurar">↺ Restaurar todos os padrões</button>
+        <button class="ly-extra-btn" id="ly-btn-exportar">⬇ Exportar configuração</button>
+        <button class="ly-extra-btn" id="ly-btn-importar">⬆ Importar configuração</button>
+        <input type="file" id="ly-import-file" accept=".json" style="display:none">
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal de Preview de Layout -->
+<div id="ly-modal-overlay">
+  <div id="ly-modal">
+    <div class="ly-modal-header">
+      <div class="ly-modal-title" id="ly-modal-title">Preview do Layout</div>
+      <button class="ly-modal-close" id="ly-modal-close">✕</button>
+    </div>
+    <div class="ly-modal-body" id="ly-modal-body"></div>
+    <div class="ly-modal-footer">
+      <button class="ly-modal-btn ly-modal-btn-cancel" id="ly-modal-cancel">Cancelar</button>
+      <button class="ly-modal-btn ly-modal-btn-apply" id="ly-modal-apply">✓ Aplicar este Layout</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -1297,6 +1569,7 @@ import {
   init     as initCentral,
   getFavoritosHome,
   toggleFavorito,
+  setFavoritos,
   onModulosChanged,
   abrirCentralModulos
 } from '../../shared/central-modulos.js';
@@ -2225,6 +2498,336 @@ onHpPrefsChanged(prefs => {
 _hpPrefs    = getHpPrefs();
 _hpModOrder = _buildHpModOrder(_hpPrefs);
 renderHpAll();
+
+// ════════════════════════════════════════════════════════
+// TAB 5 — LAYOUTS PRONTOS
+// ════════════════════════════════════════════════════════
+
+const LAYOUTS_PRONTOS = [
+  {
+    id: 'executivo',
+    nome: 'Executivo',
+    icone: '📈',
+    cor: '#6366f1',
+    foco: 'Indicadores e gestão',
+    descricao: 'Visão gerencial com métricas financeiras, relatórios e indicadores em modo executivo.',
+    panelModo: 'executivo',
+    panelTamanho: 'grande',
+    favoritosHome:   ['financeiro', 'relatorios', 'central-alertas', 'acaodasemana', 'caixa', 'pendencias', 'fechamento'],
+    sidebarVisiveis: ['os', 'caixa', 'financeiro', 'relatorios', 'pendencias', 'agenda', 'clientes', 'config'],
+    sidebarFixados:  ['financeiro'],
+    topbarVisiveis:  ['financeiro', 'relatorios', 'caixa', 'os'],
+    topbarFixados:   ['financeiro'],
+  },
+  {
+    id: 'tecnico',
+    nome: 'Técnico',
+    icone: '🔧',
+    cor: '#f59e0b',
+    foco: 'Operação da assistência',
+    descricao: 'Focado em ordens de serviço, equipamentos, clientes e garantias com visão em lista.',
+    panelModo: 'lista',
+    panelTamanho: 'medio',
+    favoritosHome:   ['os', 'estoque', 'clientes', 'garantias', 'central-comandos', 'caixa', 'central-alertas'],
+    sidebarVisiveis: ['os', 'caixa', 'clientes', 'estoque', 'garantias', 'central-comandos', 'config'],
+    sidebarFixados:  ['os'],
+    topbarVisiveis:  ['os', 'central-comandos', 'estoque'],
+    topbarFixados:   ['os'],
+  },
+  {
+    id: 'comercial',
+    nome: 'Comercial',
+    icone: '🎯',
+    cor: '#10b981',
+    foco: 'Vendas e CRM',
+    descricao: 'CRM, clientes, agenda e pós-venda com visão em grade.',
+    panelModo: 'grade',
+    panelTamanho: 'medio',
+    favoritosHome:   ['crm-comercial', 'clientes', 'acaodasemana', 'pos-venda', 'caixa', 'catalogo', 'fornecedor'],
+    sidebarVisiveis: ['caixa', 'clientes', 'crm-comercial', 'pos-venda', 'fornecedor', 'agenda', 'config'],
+    sidebarFixados:  ['crm-comercial'],
+    topbarVisiveis:  ['crm', 'caixa', 'os'],
+    topbarFixados:   ['crm'],
+  },
+  {
+    id: 'financeiro',
+    nome: 'Financeiro',
+    icone: '💹',
+    cor: '#3b82f6',
+    foco: 'Controle financeiro',
+    descricao: 'Caixa, contas, fluxo de caixa e relatórios com cards em modo executivo.',
+    panelModo: 'executivo',
+    panelTamanho: 'grande',
+    favoritosHome:   ['caixa', 'pendencias', 'financeiro', 'relatorios', 'fechamento', 'compras'],
+    sidebarVisiveis: ['caixa', 'financeiro', 'pendencias', 'relatorios', 'compras', 'config'],
+    sidebarFixados:  ['financeiro', 'caixa'],
+    topbarVisiveis:  ['financeiro', 'caixa', 'relatorios'],
+    topbarFixados:   ['financeiro'],
+  },
+  {
+    id: 'mobile',
+    nome: 'Mobile',
+    icone: '📱',
+    cor: '#8b5cf6',
+    foco: 'Uso em celular',
+    descricao: 'Ícones compactos e sidebar simplificada para telas pequenas.',
+    panelModo: 'compacto',
+    panelTamanho: 'pequeno',
+    favoritosHome:   ['os', 'caixa', 'clientes', 'central-alertas', 'acaodasemana', 'central-comandos'],
+    sidebarVisiveis: ['os', 'caixa', 'clientes', 'config'],
+    sidebarFixados:  ['os'],
+    topbarVisiveis:  ['os', 'caixa'],
+    topbarFixados:   ['os'],
+  },
+];
+
+const LS_LAYOUT_ATIVO = 'cc_layout_ativo';
+function _getLayoutAtivo()  { try { return localStorage.getItem(LS_LAYOUT_ATIVO) || null; } catch { return null; } }
+function _setLayoutAtivo(id){ try { localStorage.setItem(LS_LAYOUT_ATIVO, id); } catch {} }
+
+// ── Renderiza cards ────────────────────────────────────────────
+function renderLayouts() {
+  const grid = document.getElementById('ly-grid');
+  if (!grid) return;
+  const ativo = _getLayoutAtivo();
+
+  grid.innerHTML = LAYOUTS_PRONTOS.map(ly => {
+    const modo = MODOS.find(m => m.id === ly.panelModo);
+    const tam  = TAMANHOS.find(t => t.id === ly.panelTamanho);
+    const mods = ly.favoritosHome.slice(0, 5).map(id => {
+      const m = TODOS_MODULOS.find(x => x.id === id);
+      return m ? `<span class="ly-mod-pill">${m.icone} ${esc(m.nome)}</span>` : '';
+    }).join('');
+
+    return `<div class="ly-card${ativo === ly.id ? ' ativo' : ''}" style="--ly-cor:${ly.cor}">
+      ${ativo === ly.id ? '<div class="ly-ativo-badge">✓ Ativo</div>' : ''}
+      <div class="ly-card-header">
+        <div class="ly-card-ico">${ly.icone}</div>
+        <div class="ly-card-info">
+          <div class="ly-card-nome">${esc(ly.nome)}</div>
+          <div class="ly-card-foco">${esc(ly.foco)}</div>
+        </div>
+      </div>
+      <div class="ly-card-desc">${esc(ly.descricao)}</div>
+      <div class="ly-badges">
+        <span class="ly-badge ly-badge-modo">${modo?.icone || ''} ${esc(modo?.label || ly.panelModo)}</span>
+        <span class="ly-badge">${esc(tam?.label || ly.panelTamanho)}</span>
+      </div>
+      <div class="ly-mods">${mods}</div>
+      <div class="ly-card-actions">
+        <button class="ly-btn ly-btn-preview" data-lid="${ly.id}">👁 Preview</button>
+        <button class="ly-btn ly-btn-aplicar" data-lid="${ly.id}">▶ Aplicar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.ly-btn-preview').forEach(btn => {
+    btn.addEventListener('click', () => _abrirPreview(btn.dataset.lid));
+  });
+  grid.querySelectorAll('.ly-btn-aplicar').forEach(btn => {
+    btn.addEventListener('click', () => _abrirPreview(btn.dataset.lid));
+  });
+}
+
+// ── Preview Modal ──────────────────────────────────────────────
+let _previewLid = null;
+
+function _abrirPreview(lid) {
+  const ly = LAYOUTS_PRONTOS.find(l => l.id === lid);
+  if (!ly) return;
+  _previewLid = lid;
+
+  document.getElementById('ly-modal-title').innerHTML = `${ly.icone} Layout ${esc(ly.nome)}`;
+
+  const body = document.getElementById('ly-modal-body');
+  if (!body) return;
+
+  // topbar
+  const tbItems = ly.topbarVisiveis.map(id => {
+    const item = ITENS_TOPBAR.find(i => i.id === id);
+    if (!item) return '';
+    const fixado = ly.topbarFixados.includes(id);
+    return `<div class="ly-pv-tb-item${fixado ? ' fixado' : ''}">${item.icon} ${esc(item.label)}</div>`;
+  }).join('');
+
+  // sidebar
+  const sbItems = ly.sidebarVisiveis.map(id => {
+    const item = ITENS_SIDEBAR.find(i => i.id === id);
+    if (!item) return '';
+    const fixado = ly.sidebarFixados.includes(id);
+    return `<div class="ly-pv-sb-item${fixado ? ' fixado' : ''}">
+      <span>${item.icon}</span><span>${esc(item.label)}</span>
+    </div>`;
+  }).join('');
+
+  // panel cards
+  const maxCards = ly.panelModo === 'lista' ? 6 : ly.panelModo === 'executivo' ? 9 : ly.panelModo === 'compacto' ? 12 : 8;
+  const panelCards = ly.favoritosHome.slice(0, maxCards).map(id => {
+    const m = TODOS_MODULOS.find(x => x.id === id);
+    if (!m) return '';
+    return `<div class="ly-pv-card">
+      <span class="ly-pv-card-ico">${m.icone}</span>
+      <span class="ly-pv-card-name">${esc(m.nome)}</span>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px;">${esc(ly.foco)}</div>
+      <div style="font-size:12px;color:var(--text-sec);">${esc(ly.descricao)}</div>
+    </div>
+    <div class="ly-pv-section">
+      <div class="ly-pv-label">🔝 Menus Superiores</div>
+      <div class="ly-pv-topbar">
+        <div class="ly-pv-tb-logo">🟢 Cell City</div>
+        ${tbItems}
+        <div class="ly-pv-tb-sep"></div>
+      </div>
+    </div>
+    <div class="ly-pv-section">
+      <div class="ly-pv-label">🏠 Sidebar + Painel Central — Modo ${esc(ly.panelModo)}</div>
+      <div class="ly-pv-layout">
+        <div class="ly-pv-sidebar">
+          <div class="ly-pv-sb-header">◀ Menu</div>
+          ${sbItems}
+        </div>
+        <div class="ly-pv-panel-wrap">
+          <div class="ly-pv-panel-grid" data-mode="${esc(ly.panelModo)}">
+            ${panelCards}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('ly-modal-overlay').classList.add('open');
+}
+
+function _fecharModal() {
+  document.getElementById('ly-modal-overlay').classList.remove('open');
+  _previewLid = null;
+}
+
+// ── Aplica o layout ───────────────────────────────────────────
+async function _aplicarLayout(lid) {
+  const ly = LAYOUTS_PRONTOS.find(l => l.id === lid);
+  if (!ly) return;
+
+  // 1. Painel Central (home-prefs)
+  await setHpPrefs({
+    ...getHpPrefs(),
+    modo:          ly.panelModo,
+    tamanho:       ly.panelTamanho,
+    modulosOrdem:  [...ly.favoritosHome],
+  });
+
+  // 2. Favoritos da home
+  await setFavoritos([...ly.favoritosHome]);
+
+  // 3. Sidebar
+  await setSbPrefs({
+    itens: ITENS_SIDEBAR.map((item, i) => {
+      const ordemVis = ly.sidebarVisiveis.indexOf(item.id);
+      return {
+        id:      item.id,
+        visivel: ly.sidebarVisiveis.includes(item.id),
+        fixado:  ly.sidebarFixados.includes(item.id),
+        ordem:   ordemVis >= 0 ? ordemVis : ly.sidebarVisiveis.length + i,
+      };
+    })
+  });
+
+  // 4. Topbar
+  await setTbPrefs({
+    itens: ITENS_TOPBAR.map((item, i) => {
+      const ordemVis = ly.topbarVisiveis.indexOf(item.id);
+      return {
+        id:       item.id,
+        visivel:  ly.topbarVisiveis.includes(item.id),
+        fixado:   ly.topbarFixados.includes(item.id),
+        ordem:    ordemVis >= 0 ? ordemVis : ly.topbarVisiveis.length + i,
+        submenus: item.submenus.map(s => ({ id: s.id, visivel: true })),
+      };
+    })
+  });
+
+  _setLayoutAtivo(lid);
+  renderLayouts();
+  toast(`Layout ${ly.nome} aplicado!`);
+}
+
+// ── Eventos do modal ──────────────────────────────────────────
+document.getElementById('ly-modal-close')?.addEventListener('click', _fecharModal);
+document.getElementById('ly-modal-cancel')?.addEventListener('click', _fecharModal);
+document.getElementById('ly-modal-overlay')?.addEventListener('click', e => {
+  if (e.target.id === 'ly-modal-overlay') _fecharModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('ly-modal-overlay')?.classList.contains('open'))
+    _fecharModal();
+});
+document.getElementById('ly-modal-apply')?.addEventListener('click', async () => {
+  if (!_previewLid) return;
+  const lid = _previewLid;
+  _fecharModal();
+  await _aplicarLayout(lid);
+});
+
+// ── Recursos extras ───────────────────────────────────────────
+
+document.getElementById('ly-btn-exportar')?.addEventListener('click', () => {
+  const config = {
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    home:    getHpPrefs(),
+    sidebar: getSbPrefs(),
+    topbar:  getTbPrefs(),
+    modulos: { favoritos: getFavoritosHome() },
+  };
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `cellcity-layout-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Configuração exportada com sucesso!');
+});
+
+document.getElementById('ly-btn-importar')?.addEventListener('click', () => {
+  document.getElementById('ly-import-file').click();
+});
+
+document.getElementById('ly-import-file')?.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text   = await file.text();
+    const config = JSON.parse(text);
+    if (!config.versao || !config.home) { toast('Arquivo inválido ou formato não reconhecido.'); return; }
+    if (!confirm(`Importar configuração de ${config.exportadoEm?.slice(0,10) || '?'}?\n\nIsso substituirá suas configurações atuais.`)) return;
+    if (config.home)              await setHpPrefs(config.home);
+    if (config.sidebar)           await setSbPrefs(config.sidebar);
+    if (config.topbar)            await setTbPrefs(config.topbar);
+    if (config.modulos?.favoritos !== undefined) await setFavoritos(config.modulos.favoritos);
+    renderLayouts();
+    toast('Configuração importada com sucesso!');
+  } catch { toast('Erro ao ler o arquivo — verifique se é um JSON válido.'); }
+  e.target.value = '';
+});
+
+document.getElementById('ly-btn-restaurar')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar TODAS as configurações para o padrão do sistema?\n\nSidebar, menus, painel central e módulos da home serão redefinidos.')) return;
+  await setHpPrefs(getDefaultHpPrefs());
+  await setSbPrefs(getDefaultPrefs());
+  await setTbPrefs(getDefaultTbPrefs());
+  await setFavoritos(null);
+  _setLayoutAtivo(null);
+  renderLayouts();
+  toast('Todas as configurações foram restauradas para o padrão.');
+});
+
+// ── Init ──────────────────────────────────────────────────────
+renderLayouts();
 </script>
 </body>
 </html>

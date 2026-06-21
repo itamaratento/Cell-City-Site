@@ -86,6 +86,18 @@ export function isFavorito(id) {
 export function onModulosChanged(fn) { _listeners.push(fn); }
 
 /**
+ * Define diretamente os favoritos da home — usado ao aplicar layouts prontos.
+ * Passa null para limpar e mostrar todos os módulos.
+ */
+export async function setFavoritos(ids) {
+  _favs = Array.isArray(ids) ? ids.slice(0, MAX_FAVS) : null;
+  if (_favs !== null) _writeCache(_favs);
+  else { try { localStorage.removeItem(LS_KEY); } catch {} }
+  _notify();
+  await _salvar();
+}
+
+/**
  * Alterna o favorito de um módulo.
  * Retorna false se o limite MAX_FAVS foi atingido ao adicionar.
  */
