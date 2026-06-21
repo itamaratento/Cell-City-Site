@@ -688,5 +688,8 @@ window.exportarCompras = function() {
     mostrarMenuExportar(comprasData, cols, hdrs, 'compras');
 };
 
+/* ── API pública (chamada pela barra de ações rápidas) ──────── */
+window.cmpNavegar = (sec) => navegar(sec);
+
 /* ── Init ────────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => carregar());

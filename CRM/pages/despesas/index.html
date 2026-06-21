@@ -109,29 +109,7 @@
                 </div>
 
                 <!-- ===== AÇÕES RÁPIDAS ===== -->
-                <div class="dsp-acoes" id="dsp-acoes">
-                    <button class="dsp-acao-btn dsp-acao-primary" id="dsp-acao-nova"
-                            onclick="document.getElementById('dsp-btn-novo').click()">
-                        <span class="dsp-acao-ico">➕</span>
-                        <span class="dsp-acao-label">Nova Despesa</span>
-                    </button>
-                    <button class="dsp-acao-btn" onclick="exportarDespesas()">
-                        <span class="dsp-acao-ico">📤</span>
-                        <span class="dsp-acao-label">Exportar</span>
-                    </button>
-                    <button class="dsp-acao-btn" onclick="dspNavegar('resumo')">
-                        <span class="dsp-acao-ico">📊</span>
-                        <span class="dsp-acao-label">Relatórios</span>
-                    </button>
-                    <button class="dsp-acao-btn" onclick="dspNavegar('categorias')">
-                        <span class="dsp-acao-ico">🏷️</span>
-                        <span class="dsp-acao-label">Categorias</span>
-                    </button>
-                    <button class="dsp-acao-btn" onclick="dspNavegar('centros')">
-                        <span class="dsp-acao-ico">🏢</span>
-                        <span class="dsp-acao-label">Centros de Custo</span>
-                    </button>
-                </div>
+                <div data-qa="despesas"></div>
 
                 <!-- ===== HOME GRID ===== -->
                 <div class="dsp-home-grid" id="dsp-sec-home">
@@ -411,8 +389,9 @@
 
     <script src="../../shared/brand-header.js"></script>
     <script src="../../shared/breadcrumb.js"></script>
+    <script src="../../shared/quick-actions.js"></script>
     <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="despesas.js?v=20260621a"></script>
+    <script type="module" src="despesas.js?v=20260621b"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
