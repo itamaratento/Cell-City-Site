@@ -1517,6 +1517,7 @@ class Dashboard {
       'lixeira':             '../../pages/lixeira/index.html',
       'integridade':         '../../pages/integridade/index.html',
       'homologacao':         '../../pages/homologacao/index.html',
+      'backup':              '../../pages/backup/index.html',
       'pendencias':          '../../pages/pendencias/index.html',
       'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
       'venda-rapida':        '../../pages/venda-rapida/index.html',

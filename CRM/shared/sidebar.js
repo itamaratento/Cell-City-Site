@@ -31,6 +31,7 @@
     { id: 'portal-tecnico',     href: '/CRM/pages/portal-tecnico/index.html',     icon: '🔓', label: 'Portal Técnico' },
     { id: 'central-automacao',  href: '/CRM/pages/central-organizacao/index.html', icon: '🤖', label: 'Central de Automação' },
     { id: 'portal-cliente',     href: '/CRM/pages/portal-cliente/admin.html',     icon: '🔷', label: 'Portal do Cliente' },
+    { id: 'backup',             href: '/CRM/pages/backup/index.html',              icon: '🛡️', label: 'Backup do Sistema' },
     { id: 'config',             href: '/CRM/pages/config/index.html',              icon: '⚙️', label: 'Configurações' },
   ];
 

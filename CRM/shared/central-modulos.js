@@ -49,6 +49,7 @@ export const TODOS_MODULOS = [
   { id: 'lixeira',             nome: 'Lixeira',                 icone: '🗑️', descricao: 'Restaurar itens excluídos',            categoria: 'Administração' },
   { id: 'integridade',         nome: 'Integridade',             icone: '🛡️', descricao: 'Verificar consistência dos dados',     categoria: 'Administração' },
   { id: 'homologacao',         nome: 'Homologação',             icone: '🧪', descricao: 'Auditoria completa de integrações',     categoria: 'Administração' },
+  { id: 'backup',              nome: 'Backup do Sistema',       icone: '🛡️', descricao: 'Exportar dados e backup do código',    categoria: 'Administração' },
   { id: 'config',              nome: 'Configurações',           icone: '⚙️', descricao: 'Ferramentas e configurações do sistema',categoria: 'Administração' },
 ];
 

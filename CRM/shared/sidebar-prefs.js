@@ -30,6 +30,7 @@ export const ITENS_SIDEBAR = [
   { id: 'portal-tecnico',    icon: '🔓', label: 'Portal Técnico',       categoria: 'Administração' },
   { id: 'central-automacao', icon: '🤖', label: 'Central de Automação', categoria: 'Ferramentas' },
   { id: 'portal-cliente',    icon: '🔷', label: 'Portal do Cliente',    categoria: 'Administração' },
+  { id: 'backup',            icon: '🛡️',  label: 'Backup do Sistema',    categoria: 'Administração' },
   { id: 'config',            icon: '⚙️',  label: 'Configurações',        categoria: 'Administração' },
 ];
 

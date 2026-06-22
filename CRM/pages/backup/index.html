@@ -709,12 +709,92 @@ document.getElementById('btn-refresh-git').addEventListener('click', carregarGit
 
 // ── Baixar backup.sh ───────────────────────────────────────────
 document.getElementById('btn-baixar-script').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.href = '../../backup.sh';
-  a.download = 'backup.sh';
-  // Fallback: abre numa nova aba se o fetch falhar
-  a.target = '_blank';
-  a.click();
+  const conteudo = `#!/bin/bash
+# ============================================================
+#  BACKUP DO SISTEMA — Cell City CRM
+#
+#  Uso: bash ~/Músicas/backup.sh
+#  Uso com versão: bash ~/Músicas/backup.sh "v1.2" "Descrição"
+#
+#  Gera ZIP do código em ~/Músicas/backups/
+#  Registra info do Git em git-info.json (lido pela UI do CRM)
+#  Mantém os últimos MAX_BACKUPS arquivos
+# ============================================================
+
+set -e
+
+PROJ_DIR="/home/cellcity/Músicas/projetos/Cell-City-Site/CRM"
+BACKUP_DIR="/home/cellcity/Músicas/backups"
+GIT_INFO="$PROJ_DIR/git-info.json"
+MAX_BACKUPS=10
+
+VERSION="\${1:-v1.0}"
+OBSERVACAO="\${2:-}"
+DATE=$(date +"%Y-%m-%d")
+TIME=$(date +"%H%M")
+NOME="CellCity-\${VERSION}-\${DATE}-\${TIME}"
+
+mkdir -p "$BACKUP_DIR"
+
+echo ""
+echo "╔══════════════════════════════════════════╗"
+echo "║     BACKUP DO SISTEMA — Cell City CRM    ║"
+echo "╚══════════════════════════════════════════╝"
+echo ""
+
+GIT_BRANCH=$(git -C "$PROJ_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "N/A")
+GIT_COMMIT=$(git -C "$PROJ_DIR" rev-parse --short HEAD 2>/dev/null || echo "N/A")
+GIT_COMMIT_FULL=$(git -C "$PROJ_DIR" rev-parse HEAD 2>/dev/null || echo "N/A")
+GIT_DATE=$(git -C "$PROJ_DIR" log -1 --format="%ci" 2>/dev/null || echo "N/A")
+GIT_MSG=$(git -C "$PROJ_DIR" log -1 --format="%s" 2>/dev/null || echo "N/A")
+GIT_AUTHOR=$(git -C "$PROJ_DIR" log -1 --format="%an" 2>/dev/null || echo "N/A")
+
+echo "🌿 Branch: $GIT_BRANCH  📌 Commit: $GIT_COMMIT"
+echo ""
+
+cat > "$GIT_INFO" <<GITEOF
+{
+  "branch": "$GIT_BRANCH",
+  "commit": "$GIT_COMMIT",
+  "commitFull": "$GIT_COMMIT_FULL",
+  "mensagem": "$GIT_MSG",
+  "autor": "$GIT_AUTHOR",
+  "dataCommit": "$GIT_DATE",
+  "geradoEm": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "backupNome": "$NOME"
+}
+GITEOF
+
+PROJ_PAI=$(dirname "$PROJ_DIR")
+PROJ_NOME=$(basename "$PROJ_DIR")
+cd "$PROJ_PAI"
+
+zip -r "$BACKUP_DIR/$NOME.zip" "$PROJ_NOME" \\
+  --exclude "*/.git/*" --exclude "*/node_modules/*" \\
+  --exclude "*/.DS_Store" --exclude "*/Thumbs.db" -q
+
+SIZE=$(du -sh "$BACKUP_DIR/$NOME.zip" | cut -f1)
+echo "✅ ZIP criado: $NOME.zip ($SIZE)"
+
+META_FILE="$BACKUP_DIR/historico.log"
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | $VERSION | $NOME.zip | $SIZE | $GIT_BRANCH | $GIT_COMMIT | $OBSERVACAO" >> "$META_FILE"
+
+TOTAL_ZIPS=$(ls "$BACKUP_DIR"/*.zip 2>/dev/null | wc -l)
+if [ "$TOTAL_ZIPS" -gt "$MAX_BACKUPS" ]; then
+  REMOVER=$(($TOTAL_ZIPS - $MAX_BACKUPS))
+  ls -t "$BACKUP_DIR"/*.zip | tail -n "$REMOVER" | xargs rm -f
+fi
+
+echo ""
+echo "✅ BACKUP CONCLUÍDO: $NOME.zip ($SIZE)"
+echo ""
+`;
+  const blob = new Blob([conteudo], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'backup.sh'; a.click();
+  URL.revokeObjectURL(url);
+  toast('backup.sh baixado! Coloque em ~/Músicas/ e dê permissão: chmod +x ~/Músicas/backup.sh');
 });
 
 // ── Exportar Configurações ─────────────────────────────────────
