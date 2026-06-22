@@ -607,6 +607,27 @@ main { padding: 0; }
     .fin-resultado-grid { grid-template-columns: 1fr 1fr; }
     .fin-fluxo-cards { grid-template-columns: 1fr; }
     .fin-custom-range { flex-wrap: wrap; }
+
+    /* Formulário full-screen no mobile */
+    .fin-form {
+        position: fixed;
+        inset: 0;
+        z-index: 300;
+        border-radius: 0;
+        border: none;
+        margin: 0;
+        padding: 18px 16px 100px;
+        background: var(--bg-base);
+        overflow-y: auto;
+        animation: slideUp 0.22s ease;
+    }
+    .fin-form-titulo { font-size: 17px; }
+    .fin-form-btns { position: sticky; bottom: 0; background: var(--bg-base); padding: 12px 0 4px; }
+}
+
+@keyframes slideUp {
+    from { transform: translateY(30px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
 }
 
 /* ══════════════════════════════════════════════════════════════

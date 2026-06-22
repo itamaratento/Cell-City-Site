@@ -18,7 +18,7 @@ export const TODOS_MODULOS = [
   // Operacional
   { id: 'os',                  nome: 'Ordem de Serviço',       icone: '📦', descricao: 'Gestão técnica de reparos',              categoria: 'Operacional'   },
   { id: 'caixa',               nome: 'Caixa',                   icone: '💰', descricao: 'Fluxo financeiro diário',                categoria: 'Financeiro'    },
-  { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '⚠️', descricao: 'Alertas e pendências do sistema',       categoria: 'Operacional'   },
+  { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '🔔', descricao: 'Alertas e pendências do sistema',       categoria: 'Operacional'   },
   { id: 'clientes',            nome: 'Clientes',                icone: '👥', descricao: 'Base de clientes',                      categoria: 'Operacional'   },
   { id: 'estoque',             nome: 'Estoque',                 icone: '📱', descricao: 'Peças e produtos',                      categoria: 'Estoque'       },
   { id: 'acaodasemana',        nome: 'Agenda',                  icone: '📅', descricao: 'Agenda inteligente e tarefas',          categoria: 'Operacional'   },

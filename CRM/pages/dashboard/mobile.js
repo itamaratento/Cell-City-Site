@@ -13,7 +13,7 @@
   const CATEGORIAS = [
     { id: 'operacional', label: '📦 Operacional', modulos: [
       { id: 'os',               nome: 'Ordem de Serviço',     icone: '📦', desc: 'Gestão técnica de reparos' },
-      { id: 'central-alertas',  nome: 'Central de Alertas',   icone: '⚠️', desc: 'Alertas e pendências do sistema' },
+      { id: 'central-alertas',  nome: 'Central de Alertas',   icone: '🔔', desc: 'Alertas e pendências do sistema' },
       { id: 'clientes',         nome: 'Clientes',             icone: '👥', desc: 'Base de clientes' },
       { id: 'estoque',          nome: 'Estoque',              icone: '📱', desc: 'Peças e produtos' },
       { id: 'acaodasemana',     nome: 'Agenda',               icone: '📅', desc: 'Agenda inteligente e tarefas' },
