@@ -218,17 +218,18 @@
     const container = document.getElementById('mob-modules');
     if (!container) return;
 
-    const favs = getFavs(); // null = todos | array = selecionados
+    const favs = getFavs(); // null = nenhum definido → mostra todos (igual ao desktop)
 
     /* ── Seção FAVORITOS ── */
     let favHtml = '';
-    const favIds = favs && favs.length > 0 ? favs : [];
 
-    // Coleta módulos favoritos e ordena pela ordem salva
-    let favModulos = [];
-    TODOS_MODULOS.forEach(mod => {
-      if (favIds.includes(mod.id)) favModulos.push(mod);
-    });
+    // null = sem favoritos definidos → comportamento igual ao desktop: exibe todos
+    let favModulos;
+    if (favs === null) {
+      favModulos = [...TODOS_MODULOS];
+    } else {
+      favModulos = TODOS_MODULOS.filter(mod => favs.includes(mod.id));
+    }
     if (window.CCModOrder) favModulos = window.CCModOrder.sort(favModulos, m => m.id);
 
     if (favModulos.length > 0) {
