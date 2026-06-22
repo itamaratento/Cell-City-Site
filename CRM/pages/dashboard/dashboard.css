@@ -4061,26 +4061,48 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   .alerts-section,
   .dock,
   #ccfav-bar,
-  .search-kbd { display: none !important; }
+  .search-kbd,
+  .brand-header,
+  #date-display,
+  .meta-clock { display: none !important; }
 
-  /* ── Top bar mobile: flex compacto ── */
+  /* ── Top bar mobile: [☰] [🔍 Busca em destaque] [🌐🔔🟢] ── */
   .top-bar {
     display: flex !important;
     flex-direction: row;
     align-items: center;
-    gap: 8px;
-    padding: 0 12px;
+    gap: 6px;
+    padding: 0 10px;
     height: 56px !important;
     min-height: 56px !important;
     position: sticky;
     top: 0;
     z-index: 100;
   }
-  .top-meta-left  { flex: 0 0 auto; gap: 6px; }
+  .top-meta-left  { flex: 0 0 auto; gap: 4px; }
   .top-meta-right { flex: 0 0 auto; gap: 6px; }
+
+  /* ── Busca em destaque — prioridade visual máxima no mobile ── */
   .global-search-wrapper { flex: 1 1 auto; min-width: 0; margin: 0; }
-  .global-search { max-width: 100% !important; padding: 7px 10px; }
-  .meta-clock    { font-size: 12px; padding: 4px 8px 4px 10px; }
+  .global-search {
+    max-width: 100% !important;
+    padding: 0 12px;
+    min-height: 44px;
+    border: 1.5px solid rgba(0, 200, 83, 0.3) !important;
+    border-radius: 10px !important;
+    gap: 8px;
+  }
+  .global-search:focus-within {
+    border-color: var(--cell-green) !important;
+    box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.15) !important;
+  }
+  #global-search-input {
+    font-size: 16px; /* impede zoom automático no iOS */
+  }
+  .search-icon {
+    font-size: 16px;
+    color: rgba(0, 200, 83, 0.6);
+  }
   .site-cc-btn .site-cc-label { display: none; }
 
   /* Oculta a seção original de módulos — a mobile renderiza a sua própria */
@@ -4461,6 +4483,58 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
     border-radius: 4px; padding: 1px 5px;
     flex-shrink: 0;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BREAKPOINTS MOBILE FINOS — Barra Superior
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 480px: ajustes de espaço ── */
+@media (max-width: 480px) {
+  .top-bar { gap: 5px; padding: 0 8px; }
+  .top-meta-right { gap: 4px; }
+  #mob-menu-btn { width: 38px; height: 38px; font-size: 18px; }
+  .global-search { padding: 0 10px; min-height: 44px; }
+  .aprov-sino { font-size: 18px; }
+}
+
+/* ── 412px: Galaxy A / Pixel ── */
+@media (max-width: 412px) {
+  .top-bar { gap: 4px; padding: 0 6px; }
+  .status-pill {
+    color: transparent !important;
+    font-size: 0 !important;
+    padding: 4px !important;
+    min-width: 14px;
+    border-radius: 50% !important;
+  }
+  .status-pill.online::before { margin: 0; }
+}
+
+/* ── 390px: iPhone 14/15 / Pixel 7 ── */
+@media (max-width: 390px) {
+  .top-bar { gap: 3px; padding: 0 5px; }
+  #mob-menu-btn { width: 36px; height: 36px; font-size: 17px; }
+  .global-search { padding: 0 8px; gap: 6px; }
+  .search-icon { font-size: 15px; }
+  .aprov-sino { padding: 6px; font-size: 17px; }
+  .site-cc-btn { padding: 5px 7px; }
+}
+
+/* ── 360px: Galaxy S standard ── */
+@media (max-width: 360px) {
+  .top-bar { gap: 2px; padding: 0 4px; }
+  #mob-menu-btn { width: 34px; height: 34px; }
+  .global-search { padding: 0 6px; gap: 5px; }
+  .aprov-sino { font-size: 16px; }
+}
+
+/* ── 320px: mínimo absoluto (iPhone SE 1ª geração) ── */
+@media (max-width: 320px) {
+  .top-bar { gap: 2px; padding: 0 3px; height: 52px !important; min-height: 52px !important; }
+  #mob-menu-btn { width: 32px; height: 32px; font-size: 16px; }
+  .global-search { padding: 0 5px; min-height: 40px; }
+  .site-cc-btn { display: none !important; }
 }
 
 /* ── Desktop: oculta todos os elementos injetados pelo mobile.js ── */

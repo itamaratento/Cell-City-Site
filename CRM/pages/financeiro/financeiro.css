@@ -823,3 +823,94 @@ main { padding: 0; }
 @media (max-width:600px) {
     .fin-resultado-caixa-grid { grid-template-columns: 1fr 1fr !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   📅 DESPESAS FIXAS — Dashboard, Alertas, Badges
+   ══════════════════════════════════════════════════════════════ */
+
+.fin-fixas-dash {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.fin-fixas-dash-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 14px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    text-align: center;
+}
+.fin-fdc-icon  { font-size: 20px; line-height: 1; }
+.fin-fdc-valor { font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.fin-fdc-label { font-size: 11px; color: var(--text-tertiary); }
+
+.fin-fdc-mensal .fin-fdc-valor { color: var(--cell-green-light); }
+.fin-fdc-warn   { border-color: rgba(251,191,36,0.25); }
+.fin-fdc-warn   .fin-fdc-valor { color: var(--yellow); }
+.fin-fdc-danger { border-color: rgba(239,68,68,0.25); }
+.fin-fdc-danger .fin-fdc-valor { color: var(--red); }
+
+/* Alertas */
+.fin-fixas-alertas-titulo {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: 6px;
+}
+.fin-fixas-alerta-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 13px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    font-size: 13px;
+}
+.fin-fixas-alerta-vencendo {
+    background: rgba(251,191,36,0.07);
+    border: 1px solid rgba(251,191,36,0.2);
+    color: var(--yellow);
+}
+.fin-fixas-alerta-vencida {
+    background: rgba(239,68,68,0.07);
+    border: 1px solid rgba(239,68,68,0.2);
+    color: var(--red);
+}
+.fin-fixas-alerta-nome {
+    font-weight: 600;
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fin-fixas-alerta-msg  { font-size: 11px; opacity: .85; white-space: nowrap; flex-shrink: 0; }
+.fin-fixas-alerta-val  { font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+.fin-fixas-alertas-wrap { margin-bottom: 14px; }
+
+/* Badges status ativa/inativa */
+.badge-ativa   { background: rgba(0,200,83,0.12);    color: var(--cell-green-light); border: 1px solid rgba(0,200,83,0.25); }
+.badge-inativa { background: rgba(107,114,128,0.12); color: #9ca3af;                border: 1px solid rgba(107,114,128,0.2); }
+
+/* Badge recorrência */
+.badge-recorr {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 100px;
+    background: rgba(59,130,246,0.12);
+    color: #93c5fd;
+    border: 1px solid rgba(59,130,246,0.2);
+    white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+    .fin-fixas-dash { grid-template-columns: repeat(2, 1fr); }
+}

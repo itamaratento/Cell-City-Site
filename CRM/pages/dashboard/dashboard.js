@@ -6,7 +6,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
-import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos } from "../../shared/central-modulos.js";
+import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos, TODOS_MODULOS } from "../../shared/central-modulos.js";
 import { init as initHomePrefs, getPrefs as getHomePrefs, setPrefs as setHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
 
 
@@ -1108,11 +1108,30 @@ class Dashboard {
     const clR = filt(idx.clientes); if (clR.length) groups.push({ title: 'Clientes', icon: '👥', items: clR });
     const prR = filt(idx.produtos); if (prR.length) groups.push({ title: 'Produtos / Estoque', icon: '📦', items: prR });
 
-    // Módulos (lista estática já existente em state.searchData.modulos)
-    const modR = (this.state.searchData.modulos || [])
-      .filter(m => m.title.toLowerCase().includes(term) || m.id.toLowerCase().includes(term))
+    // Favoritos: módulos marcados pelo usuário que batem com o termo
+    const _favIds = getFavoritosHome() || [];
+    const favR = TODOS_MODULOS
+      .filter(m => _favIds.includes(m.id))
+      .filter(m =>
+        m.nome.toLowerCase().includes(term) ||
+        m.id.toLowerCase().includes(term) ||
+        (m.descricao || '').toLowerCase().includes(term)
+      )
       .slice(0, 5)
-      .map(m => ({ id: m.id, title: m.title, sub: 'Módulo', module: m.id }));
+      .map(m => ({ id: m.id, title: m.nome, sub: `${m.icone} Favorito`, module: m.id }));
+    if (favR.length) groups.push({ title: 'Favoritos', icon: '⭐', items: favR });
+
+    // Módulos: catálogo completo (exclui os já listados nos Favoritos)
+    const _favSet = new Set(favR.map(m => m.id));
+    const modR = TODOS_MODULOS
+      .filter(m => !_favSet.has(m.id))
+      .filter(m =>
+        m.nome.toLowerCase().includes(term) ||
+        m.id.toLowerCase().includes(term) ||
+        (m.descricao || '').toLowerCase().includes(term)
+      )
+      .slice(0, 5)
+      .map(m => ({ id: m.id, title: m.nome, sub: `${m.icone} ${m.categoria || 'Módulo'}`, module: m.id }));
     if (modR.length) groups.push({ title: 'Módulos', icon: '🧩', items: modR });
 
     this._searchActiveIdx = -1;

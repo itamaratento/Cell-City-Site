@@ -19,6 +19,7 @@ let dadosCompras   = [];
 let dadosCaixa     = [];
 let filtroStatusPagar   = 'todos';
 let filtroStatusReceber = 'todos';
+let filtroStatusFixas   = 'todas';
 let editandoId = null;
 let editandoColecao = null;
 let secaoAtiva = 'home';
@@ -176,16 +177,7 @@ function atualizarContadores() {
     hcFixas.textContent = dadosFixas.length;
     hcFixas.className = 'fin-home-count' + (dadosFixas.length === 0 ? ' fin-home-count-zero' : '');
 
-    // Resumo Financeiro
-    $('res-pagar').textContent         = fmt(totalPagar);
-    $('res-pagar-count').textContent   = pendPagar.length + (pendPagar.length === 1 ? ' conta' : ' contas');
-    $('res-receber').textContent       = fmt(totalReceber);
-    $('res-receber-count').textContent = pendReceber.length + (pendReceber.length === 1 ? ' conta' : ' contas');
-    $('res-fixas').textContent         = fmt(totalFixas);
-    $('res-fixas-count').textContent   = dadosFixas.length + (dadosFixas.length === 1 ? ' item' : ' itens');
-    const totalVenc = vencPagar + vencReceber;
-    $('res-vencidas').textContent = totalVenc;
-    $('res-vencidas-label').textContent = `${vencPagar} pagar + ${vencReceber} receber`;
+    // (indicadores legados removidos — renderResultado() cuida do painel)
 }
 
 // ── Busca global ───────────────────────────────────────────────────────
@@ -228,8 +220,210 @@ const CAT_ICON = {
     Aluguel: '🏠', Fornecedor: '📦', Serviços: '⚡', Salário: '👤',
     Imposto: '🧾', Equipamento: '🔧', Assinatura: '📱',
     Energia: '💡', Água: '💧', Internet: '🌐', Sistema: '💻',
-    Marketing: '📢', Fornecedores: '📦', Transporte: '🚗', Outro: '📌'
+    Marketing: '📢', Fornecedores: '📦', Transporte: '🚗',
+    Contador: '📋', Telefone: '📞', 'Pró-labore': '💼', Outro: '📌'
 };
+const RECORR_LABEL = { mensal: 'Mensal', quinzenal: 'Quinzenal', semanal: 'Semanal', anual: 'Anual' };
+const PAG_ICON = {
+    'Boleto': '🧾', 'Débito Automático': '🔄', 'PIX': '💚',
+    'Cartão': '💳', 'Dinheiro': '💵', 'TED/DOC': '🏦'
+};
+
+// ── Próxima ocorrência por dia-do-mês (compat. registros antigos) ────────
+function proximaOcorrenciaStr(dia) {
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = agora.getMonth();
+    let d = new Date(ano, mes, dia, 12, 0, 0);
+    if (d <= agora) d = new Date(ano, mes + 1, dia, 12, 0, 0);
+    return d.toISOString().slice(0, 10);
+}
+
+// ── Próxima ocorrência real com avanço de ciclo ──────────────────────────
+function computarProximaOcorrencia(dados) {
+    const recorrencia = dados.recorrencia || 'mensal';
+    const agora = new Date();
+
+    let base;
+    if (dados.data_inicio) {
+        base = new Date(dados.data_inicio + 'T12:00:00');
+    } else {
+        const dia = Number(dados.dia) || 10;
+        base = new Date(agora.getFullYear(), agora.getMonth(), dia, 12, 0, 0);
+        if (base <= agora) base = new Date(agora.getFullYear(), agora.getMonth() + 1, dia, 12, 0, 0);
+        return base.toISOString().slice(0, 10);
+    }
+
+    if (base > agora) return base.toISOString().slice(0, 10);
+
+    const diaDoMes = base.getDate();
+    let curr = new Date(base);
+    let guard = 0;
+    while (curr <= agora && guard++ < 500) {
+        switch (recorrencia) {
+            case 'mensal':    curr = new Date(curr.getFullYear(), curr.getMonth() + 1, diaDoMes, 12, 0, 0); break;
+            case 'quinzenal': curr = new Date(curr.getTime() + 15 * 86400000); break;
+            case 'semanal':   curr = new Date(curr.getTime() +  7 * 86400000); break;
+            case 'anual':     curr = new Date(curr.getFullYear() + 1, curr.getMonth(), diaDoMes, 12, 0, 0); break;
+            default:          return curr.toISOString().slice(0, 10);
+        }
+    }
+    return curr.toISOString().slice(0, 10);
+}
+
+// ── Calcular lista de ocorrências futuras para gerar lançamentos ─────────
+function calcularOcorrencias(dados, maxOcorr) {
+    const recorrencia = dados.recorrencia || 'mensal';
+    const agora = new Date();
+    let base;
+
+    if (dados.data_inicio) {
+        base = new Date(dados.data_inicio + 'T12:00:00');
+    } else {
+        const dia = Number(dados.dia) || 10;
+        base = new Date(agora.getFullYear(), agora.getMonth(), dia, 12, 0, 0);
+        if (base <= agora) base = new Date(agora.getFullYear(), agora.getMonth() + 1, dia, 12, 0, 0);
+    }
+
+    // Avança até >= hoje caso data_inicio seja antiga
+    const diaDoMes = base.getDate();
+    let guard = 0;
+    while (base < agora && guard++ < 500) {
+        switch (recorrencia) {
+            case 'mensal':    base = new Date(base.getFullYear(), base.getMonth() + 1, diaDoMes, 12, 0, 0); break;
+            case 'quinzenal': base = new Date(base.getTime() + 15 * 86400000); break;
+            case 'semanal':   base = new Date(base.getTime() +  7 * 86400000); break;
+            case 'anual':     base = new Date(base.getFullYear() + 1, base.getMonth(), diaDoMes, 12, 0, 0); break;
+            default: guard = 9999;
+        }
+    }
+
+    const datas = [];
+    for (let i = 0; i < maxOcorr; i++) {
+        datas.push(base.toISOString().slice(0, 10));
+        switch (recorrencia) {
+            case 'mensal':    base = new Date(base.getFullYear(), base.getMonth() + 1, diaDoMes, 12, 0, 0); break;
+            case 'quinzenal': base = new Date(base.getTime() + 15 * 86400000); break;
+            case 'semanal':   base = new Date(base.getTime() +  7 * 86400000); break;
+            case 'anual':     base = new Date(base.getFullYear() + 1, base.getMonth(), diaDoMes, 12, 0, 0); break;
+        }
+    }
+    return datas;
+}
+
+// ── Gerar lançamentos automáticos em Contas a Pagar ──────────────────────
+async function gerarLancamentos(fixaId, dados) {
+    if ((dados.status || 'ativa') !== 'ativa') return;
+
+    // Remove apenas os pendentes gerados automaticamente por esta fixa
+    const antigos = dadosPagar.filter(p => p.fixaId === fixaId && p.status !== 'pago');
+    for (const p of antigos) {
+        try { await deleteDoc(doc(db, COL_PAGAR, p.id)); } catch {}
+    }
+
+    const recorrencia = dados.recorrencia || 'mensal';
+    const maxOcorr = recorrencia === 'anual' ? 3 : recorrencia === 'semanal' ? 12 : 12;
+    const datas = calcularOcorrencias(dados, maxOcorr);
+
+    for (const vencimento of datas) {
+        const jaExistePago = dadosPagar.some(
+            p => p.fixaId === fixaId && p.vencimento === vencimento && p.status === 'pago'
+        );
+        if (jaExistePago) continue;
+
+        const lancId = `pag_fix_${fixaId}_${vencimento.replace(/-/g, '')}`;
+        await setDoc(doc(db, COL_PAGAR, lancId), {
+            descricao:    dados.descricao,
+            categoria:    dados.categoria,
+            vencimento,
+            valor:        dados.valor,
+            status:       'pendente',
+            obs:          dados.obs || '',
+            fixaId,
+            origem:       'despesa_fixa',
+            atualizadoEm: serverTimestamp()
+        });
+    }
+}
+
+// ── Dashboard Despesas Fixas ──────────────────────────────────────────────
+function renderDashboardFixas() {
+    const ativas = dadosFixas.filter(f => (f.status || 'ativa') === 'ativa');
+    const totalMensal = ativas.reduce((s, f) => {
+        const v = Number(f.valor || 0);
+        const r = f.recorrencia || 'mensal';
+        if (r === 'semanal')   return s + v * 4.33;
+        if (r === 'quinzenal') return s + v * 2;
+        if (r === 'anual')     return s + v / 12;
+        return s + v;
+    }, 0);
+
+    const agora = new Date();
+    let proximas = 0, vencidasCount = 0;
+    ativas.forEach(f => {
+        const prox = computarProximaOcorrencia(f);
+        const d = new Date(prox + 'T12:00:00');
+        const diff = Math.ceil((d - agora) / 86400000);
+        if (diff < 0)       vencidasCount++;
+        else if (diff <= 7) proximas++;
+    });
+
+    const el = id => document.getElementById(id);
+    if (el('fdash-total'))    el('fdash-total').textContent    = ativas.length;
+    if (el('fdash-mensal'))   el('fdash-mensal').textContent   = fmt(totalMensal);
+    if (el('fdash-proximas')) el('fdash-proximas').textContent = proximas;
+    if (el('fdash-vencidas')) el('fdash-vencidas').textContent = vencidasCount;
+}
+
+// ── Alertas Despesas Fixas ────────────────────────────────────────────────
+function renderAlertasFixas() {
+    const alertasEl = $('fixas-alertas');
+    if (!alertasEl) return;
+
+    const agora = new Date();
+    const vencendo = [], vencidas = [];
+
+    dadosFixas
+        .filter(f => (f.status || 'ativa') === 'ativa')
+        .forEach(f => {
+            const prox = computarProximaOcorrencia(f);
+            const d = new Date(prox + 'T12:00:00');
+            const diff = Math.ceil((d - agora) / 86400000);
+            if (diff < 0)       vencidas.push({ ...f, diff, prox });
+            else if (diff <= 7) vencendo.push({ ...f, diff, prox });
+        });
+
+    const items = [
+        ...vencidas.map(f => ({
+            cls: 'fin-fixas-alerta-vencida',
+            icon: '🔴',
+            nome: f.descricao,
+            val:  fmt(f.valor),
+            msg:  `Venceu há ${Math.abs(f.diff)} dia${Math.abs(f.diff) !== 1 ? 's' : ''}`
+        })),
+        ...vencendo.map(f => ({
+            cls: 'fin-fixas-alerta-vencendo',
+            icon: '⚠️',
+            nome: f.descricao,
+            val:  fmt(f.valor),
+            msg:  f.diff === 0 ? 'Vence hoje' : `Vence em ${f.diff} dia${f.diff !== 1 ? 's' : ''}`
+        }))
+    ];
+
+    if (!items.length) { alertasEl.innerHTML = ''; return; }
+
+    alertasEl.innerHTML = `
+        <div class="fin-fixas-alertas-wrap">
+            <div class="fin-fixas-alertas-titulo">⚡ Alertas</div>
+            ${items.map(i => `
+            <div class="fin-fixas-alerta-item ${i.cls}">
+                <span>${i.icon}</span>
+                <span class="fin-fixas-alerta-nome">${escHtml(i.nome)}</span>
+                <span class="fin-fixas-alerta-msg">${i.msg}</span>
+                <span class="fin-fixas-alerta-val">${i.val}</span>
+            </div>`).join('')}
+        </div>`;
+}
 
 // ── Render Contas a Pagar ──────────────────────────────────────────────
 function renderPagar(lista) {
@@ -263,27 +457,55 @@ function renderPagar(lista) {
 
 // ── Render Despesas Fixas ──────────────────────────────────────────────
 function renderFixas(lista) {
+    renderDashboardFixas();
+    renderAlertasFixas();
+
     const listaEl = $('fixas-lista');
     const emptyEl = $('fixas-empty');
-    if (!lista.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
+
+    let f = filtroStatusFixas !== 'todas'
+        ? lista.filter(c => (c.status || 'ativa') === filtroStatusFixas)
+        : lista;
+
+    f = f.sort((a, b) => {
+        const dA = computarProximaOcorrencia(a);
+        const dB = computarProximaOcorrencia(b);
+        return dA.localeCompare(dB);
+    });
+
+    if (!f.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
     emptyEl.style.display = 'none';
-    listaEl.innerHTML = lista.map(c => `
-        <div class="fin-card">
+
+    listaEl.innerHTML = f.map(c => {
+        const status  = c.status || 'ativa';
+        const recorr  = c.recorrencia || 'mensal';
+        const proxVenc = computarProximaOcorrencia(c);
+        const inativo  = status === 'inativa' ? ' fin-card-pago' : '';
+        const pagIcon  = PAG_ICON[c.forma_pagamento] || '';
+
+        return `
+        <div class="fin-card${inativo}">
             <div class="fin-card-left">
                 <span class="fin-cat-icon">${CAT_ICON[c.categoria] || '📌'}</span>
                 <div class="fin-card-info">
                     <div class="fin-card-desc">${escHtml(c.descricao)}</div>
-                    <div class="fin-card-sub">Vence todo dia <strong>${c.dia || '?'}</strong></div>
+                    <div class="fin-card-sub">
+                        📅 Próx: ${formatarData(proxVenc)} &nbsp;·&nbsp; ${RECORR_LABEL[recorr] || recorr}
+                        ${c.forma_pagamento ? ` &nbsp;·&nbsp; ${pagIcon} ${escHtml(c.forma_pagamento)}` : ''}
+                        ${c.obs ? ` &nbsp;·&nbsp; ${escHtml(c.obs)}` : ''}
+                    </div>
                 </div>
             </div>
             <div class="fin-card-right">
                 <div class="fin-card-valor">${fmt(c.valor)}/mês</div>
+                <span class="fin-badge ${status === 'ativa' ? 'badge-ativa' : 'badge-inativa'}">${status === 'ativa' ? 'Ativa' : 'Inativa'}</span>
                 <div class="fin-card-acoes">
                     <button class="fin-card-edit-btn" data-id="${c.id}" data-col="fixa" title="Editar">✏️</button>
                     <button class="fin-card-del-btn" data-id="${c.id}" data-col="fixa" title="Excluir">🗑️</button>
                 </div>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
     bindCardEvents(listaEl);
 }
 
@@ -354,14 +576,35 @@ async function marcarStatus(id, col, novoStatus) {
 
 // ── Excluir ────────────────────────────────────────────────────────────
 async function excluir(id, col) {
+    if (col === 'fixa') {
+        const temLanc = dadosPagar.some(p => p.fixaId === id);
+        let msg = 'Excluir esta despesa fixa?';
+        if (temLanc) msg += '\n\nOs lançamentos pendentes em Contas a Pagar gerados por ela também serão removidos.';
+        if (!confirm(msg)) return;
+        try {
+            if (temLanc) {
+                const pendentes = dadosPagar.filter(p => p.fixaId === id && p.status !== 'pago');
+                for (const p of pendentes) {
+                    await deleteDoc(doc(db, COL_PAGAR, p.id));
+                }
+            }
+            await deleteDoc(doc(db, COL_FIXAS, id));
+            dadosFixas = dadosFixas.filter(c => c.id !== id);
+            renderFixas(dadosFixas);
+            atualizarContadores();
+            toast('🗑️ Despesa fixa removida.');
+            await recarregar('pagar');
+        } catch { toast('⚠ Erro ao excluir.'); }
+        return;
+    }
+
     if (!confirm('Excluir este lançamento?')) return;
-    const colecao = col === 'pagar' ? COL_PAGAR : col === 'fixa' ? COL_FIXAS : COL_RECEBER;
+    const colecao = col === 'pagar' ? COL_PAGAR : COL_RECEBER;
     try {
         await deleteDoc(doc(db, colecao, id));
         if (col === 'pagar')   dadosPagar   = dadosPagar.filter(c => c.id !== id);
-        if (col === 'fixa')    dadosFixas   = dadosFixas.filter(c => c.id !== id);
         if (col === 'receber') dadosReceber = dadosReceber.filter(c => c.id !== id);
-        renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
+        renderPagar(dadosPagar); renderReceber(dadosReceber);
         atualizarContadores();
         toast('🗑️ Removido.');
     } catch { toast('⚠ Erro ao excluir.'); }
@@ -387,10 +630,14 @@ function abrirEdicao(id, col) {
         if (!item) return;
         editandoId = id; editandoColecao = 'fixa';
         $('form-fixa-titulo').textContent = 'Editar Despesa Fixa';
-        $('ff-desc').value  = item.descricao || '';
-        $('ff-cat').value   = item.categoria || 'Outro';
-        $('ff-dia').value   = item.dia || 10;
-        $('ff-valor').value = item.valor || '';
+        $('ff-desc').value        = item.descricao || '';
+        $('ff-cat').value         = item.categoria || 'Outro';
+        $('ff-recorrencia').value = item.recorrencia || 'mensal';
+        $('ff-data-inicio').value = item.data_inicio || '';
+        $('ff-valor').value       = item.valor || '';
+        $('ff-pagamento').value   = item.forma_pagamento || 'PIX';
+        $('ff-status').value      = item.status || 'ativa';
+        $('ff-obs').value         = item.obs || '';
         $('form-fixa').style.display = 'flex';
         navegar('fixas');
     } else if (col === 'receber') {
@@ -428,8 +675,14 @@ function abrirFormPagar() {
 function abrirFormFixa() {
     editandoId = null; editandoColecao = null;
     $('form-fixa-titulo').textContent = 'Nova Despesa Fixa';
-    $('ff-desc').value = ''; $('ff-cat').value = 'Outro';
-    $('ff-dia').value = '10'; $('ff-valor').value = '';
+    $('ff-desc').value        = '';
+    $('ff-cat').value         = 'Outro';
+    $('ff-recorrencia').value = 'mensal';
+    $('ff-data-inicio').value = '';
+    $('ff-valor').value       = '';
+    $('ff-pagamento').value   = 'PIX';
+    $('ff-status').value      = 'ativa';
+    $('ff-obs').value         = '';
     $('form-fixa').style.display = 'flex';
     setTimeout(() => $('ff-desc').focus(), 50);
 }
@@ -469,19 +722,28 @@ async function salvarFixa() {
     const desc = $('ff-desc').value.trim();
     if (!desc) { $('ff-desc').focus(); return; }
     const dados = {
-        descricao:    desc,
-        categoria:    $('ff-cat').value,
-        dia:          Number($('ff-dia').value) || 1,
-        valor:        Number($('ff-valor').value) || 0,
-        atualizadoEm: serverTimestamp()
+        descricao:       desc,
+        categoria:       $('ff-cat').value,
+        recorrencia:     $('ff-recorrencia').value,
+        data_inicio:     $('ff-data-inicio').value,
+        valor:           Number($('ff-valor').value) || 0,
+        forma_pagamento: $('ff-pagamento').value,
+        status:          $('ff-status').value,
+        obs:             $('ff-obs').value.trim(),
+        atualizadoEm:    serverTimestamp()
     };
     const id = editandoId || `fix_${Date.now()}`;
     try {
         await setDoc(doc(db, COL_FIXAS, id), dados);
-        toast(editandoId ? '✏️ Atualizado!' : '✅ Despesa fixa adicionada!');
+        await gerarLancamentos(id, dados);
+        toast(editandoId ? '✏️ Atualizado! Lançamentos regenerados.' : '✅ Despesa fixa adicionada! Lançamentos criados.');
         fecharForm('form-fixa');
         await recarregar('fixa');
-    } catch { toast('⚠ Erro ao salvar.'); }
+        await recarregar('pagar');
+    } catch (e) {
+        console.error(e);
+        toast('⚠ Erro ao salvar.');
+    }
 }
 
 // ── Salvar Contas a Receber ────────────────────────────────────────────
@@ -555,6 +817,14 @@ document.querySelectorAll('[data-s2]').forEach(btn => {
         btn.classList.add('active');
         filtroStatusReceber = btn.dataset.s2;
         renderReceber(dadosReceber);
+    });
+});
+document.querySelectorAll('[data-fixas-s]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-fixas-s]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filtroStatusFixas = btn.dataset.fixasS;
+        renderFixas(dadosFixas);
     });
 });
 
