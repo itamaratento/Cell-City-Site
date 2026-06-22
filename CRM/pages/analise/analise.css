@@ -141,3 +141,8 @@ body { font-family:var(--font); background:var(--bg); background-image:var(--bg-
 .an-rank-ano   { font-size:11px; color:var(--text3); }
 .an-rank-valor { font-size:15px; font-weight:800; color:var(--green-light); text-align:right; }
 .an-empty { text-align:center; padding:32px; color:var(--text3); font-size:13px; }
+
+/* === SAFE AREA — dock fica à direita apenas em desktop === */
+@media (min-width: 901px) {
+  .an-content { padding-right: 96px; }
+}

@@ -1628,3 +1628,8 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     .cmds-modal-wide { max-width:100%; }
     .cmds-linha-cat { display:none; }
 }
+
+/* === SAFE AREA — dock fica à direita apenas em desktop === */
+@media (min-width: 901px) {
+  .content { padding-right: 96px; }
+}

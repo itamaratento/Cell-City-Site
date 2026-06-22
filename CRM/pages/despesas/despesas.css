@@ -133,6 +133,7 @@ button { cursor: pointer; }
 .dsp-main {
     flex: 1;
     padding: 20px 20px 80px;
+    padding-right: var(--safe-area-right, 96px);
     min-width: 0;
     max-width: 100%;
     overflow-x: hidden;

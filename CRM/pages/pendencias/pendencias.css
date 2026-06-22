@@ -236,3 +236,8 @@ h1 { font-size:18px; font-weight:800; }
     .pend-span2 { grid-column:span 1; }
     .pend-card-acoes { flex-direction:row; flex-wrap:wrap; justify-content:flex-end; }
 }
+
+/* === SAFE AREA — dock fica à direita apenas em desktop === */
+@media (min-width: 901px) {
+  .pend-content { padding-right: 96px; }
+}

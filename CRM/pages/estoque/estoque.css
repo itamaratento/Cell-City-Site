@@ -94,7 +94,7 @@ body {
 .est-sb-sep { height:1px; background:var(--border); margin:5px 0; }
 
 /* ── Main ── */
-.est-main { flex:1; min-width:0; padding:0 16px 100px; max-width:900px; }
+.est-main { flex:1; min-width:0; padding:0 16px 100px; padding-right:var(--safe-area-right, 96px); max-width:900px; }
 
 /* ── Topbar ── */
 .est-topbar {

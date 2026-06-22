@@ -1402,3 +1402,8 @@ body {
     flex-direction: column;
     gap: 10px;
 }
+
+/* === SAFE AREA — dock fica à direita apenas em desktop === */
+@media (min-width: 901px) {
+  .screen { padding-right: 96px !important; }
+}

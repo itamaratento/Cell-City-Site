@@ -9,7 +9,27 @@
   --dock-radius-sm: 8px;
   --dock-radius-md: 12px;
   --dock-transition: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* === SAFE AREA GLOBAL — protege conteúdo da barra flutuante direita === */
+  --dock-item-size: 44px;
+  --dock-padding: 12px;
+  --dock-offset-right: 20px;
+  /* largura total do dock: 2*padding + item = 68px; + offset = 88px; +8px folga = 96px */
+  --safe-area-right: 0px; /* padrão mobile (dock fica no rodapé) */
+  --content-padding: 24px;
+  --max-content-width: 1400px;
+  --floatingbar-width: 90px;
 }
+
+/* Em desktop (dock fica no lado direito), ativa a safe area */
+@media (min-width: 901px) {
+  :root { --safe-area-right: 96px; }
+}
+
+/* ============ CLASSES UTILITÁRIAS GLOBAIS ============ */
+.card-grid        { gap: 16px; }
+.section-container { margin-bottom: 24px; }
+.page-container   { padding-top: 16px; padding-bottom: 16px; }
 
 .dock {
   position: fixed;

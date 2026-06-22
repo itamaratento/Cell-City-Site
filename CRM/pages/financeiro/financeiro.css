@@ -153,6 +153,7 @@ main { padding: 0; }
     flex: 1;
     min-width: 0;
     padding: 4px 14px 90px;
+    padding-right: var(--safe-area-right, 96px);
     max-width: 860px;
 }
 

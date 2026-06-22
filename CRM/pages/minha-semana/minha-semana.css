@@ -219,3 +219,8 @@ body {
   font-size: 14px;
 }
 .ms-vazio-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* === SAFE AREA — dock fica à direita apenas em desktop === */
+@media (min-width: 901px) {
+  .ms-main { padding-right: 96px; }
+}
