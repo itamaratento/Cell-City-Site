@@ -6,7 +6,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
-import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged } from "../../shared/central-modulos.js";
+import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos } from "../../shared/central-modulos.js";
 import { init as initHomePrefs, getPrefs as getHomePrefs, setPrefs as setHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
 
 
@@ -1253,6 +1253,14 @@ class Dashboard {
     const aplicar = () => {
       const favs = getFavoritosHome();
       let visivel = 0;
+
+      // Auto-adiciona ao favoritos cards novos que ainda não estão na lista
+      if (favs !== null) {
+        const novos = cards
+          .map(c => c.getAttribute('data-module'))
+          .filter(id => id && !favs.includes(id));
+        if (novos.length > 0) setFavoritos([...favs, ...novos]);
+      }
 
       cards.forEach(card => {
         const show = favs === null || favs.includes(card.getAttribute('data-module'));
