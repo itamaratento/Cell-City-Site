@@ -412,11 +412,55 @@ function _renderBody(filtro) {
   `).join('');
 
   // Clique no item → navega
+  function _urlModulo(id) {
+    const base = '/CRM/pages/';
+    const mapa = {
+      'os':                    'os/index.html',
+      'caixa':                 'caixa/index.html',
+      'central-alertas':       'central-alertas/index.html',
+      'clientes':              'clientes/index.html',
+      'estoque':               'estoque/index.html',
+      'acaodasemana':          'acaodasemana/index.html',
+      'autoatendimento':       'autoatendimento/index.html',
+      'garantias':             'garantias/index.html',
+      'financeiro':            'financeiro/index.html',
+      'compras':               'compras/index.html',
+      'fechamento':            'fechamento/index.html',
+      'pendencias':            'pendencias/index.html',
+      'crm-comercial':         'crm-comercial/index.html',
+      'fornecedor':            'fornecedor/index.html',
+      'pos-venda':             'pos-venda/index.html',
+      'catalogo':              'catalogo/index.html',
+      'relatorios':            'relatorios/index.html',
+      'central-comandos':      'central-comandos/index.html',
+      'central-organizacao':   'central-organizacao/index.html',
+      'central-informacoes':   'central-informacoes/index.html',
+      'portal-cliente':        'portal-cliente/admin.html',
+      'portal-tecnico':        'portal-tecnico/index.html',
+      'diario':                'diario/index.html',
+      'auditoria':             'auditoria/index.html',
+      'lixeira':               'lixeira/index.html',
+      'integridade':           'integridade/index.html',
+      'homologacao':           'homologacao/index.html',
+      'backup':                'backup/index.html',
+      'config':                'config/index.html',
+      'mensagens-wpp':         'mensagens-wpp/index.html',
+      'venda-rapida':          'venda-rapida/index.html',
+    };
+    return mapa[id] ? base + mapa[id] : null;
+  }
+
   body.querySelectorAll('.cm-item').forEach(el => {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.cm-star')) return;
       const id = el.dataset.cid;
-      if (window.__cmNavigate) { window.__cmNavigate(id); fecharCentralModulos(); }
+      if (window.__cmNavigate) {
+        window.__cmNavigate(id);
+        fecharCentralModulos();
+      } else {
+        const url = _urlModulo(id);
+        if (url) window.location.href = url;
+      }
     });
   });
 
