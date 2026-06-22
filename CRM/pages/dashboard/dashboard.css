@@ -4066,44 +4066,75 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   #date-display,
   .meta-clock { display: none !important; }
 
-  /* ── Top bar mobile: [☰] [🔍 Busca em destaque] [🌐🔔🟢] ── */
+  /* ══════════════════════════════════════════════════════
+     BARRA SUPERIOR MOBILE — 2 LINHAS
+     Linha 1: [☰ Hamburguer]  [🔍 Busca — largura total]
+     Linha 2:                       [🌐] [🔔] [🟢 Online]
+     ══════════════════════════════════════════════════════ */
   .top-bar {
     display: flex !important;
+    flex-wrap: wrap !important;
     flex-direction: row !important;
     align-items: center !important;
-    gap: 6px !important;
-    padding: 0 10px !important;
-    height: 56px !important;
-    min-height: 56px !important;
+    gap: 6px 8px !important;
+    padding: 8px 12px 6px !important;
+    height: auto !important;
+    min-height: unset !important;
     position: sticky !important;
     top: 0 !important;
     z-index: 100 !important;
   }
-  .top-meta-left  { flex: 0 0 auto !important; gap: 4px !important; }
-  .top-meta-right { flex: 0 0 auto !important; gap: 6px !important; }
 
-  /* ── Busca em destaque — prioridade visual máxima no mobile ── */
-  .global-search-wrapper { flex: 1 1 auto; min-width: 0; margin: 0; }
+  /* Linha 1 — esquerda: apenas o hamburguer */
+  .top-meta-left {
+    flex: 0 0 auto !important;
+    gap: 0 !important;
+    order: 1 !important;
+  }
+
+  /* Linha 1 — centro: busca ocupa todo o espaço restante */
+  .global-search-wrapper {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    order: 2 !important;
+  }
+
+  /* Linha 2 — botões alinhados à direita, largura total */
+  .top-meta-right {
+    flex: 0 0 100% !important;
+    order: 3 !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    padding: 0 !important;
+  }
+
+  /* ── Busca em destaque ── */
   .global-search {
     max-width: 100% !important;
-    padding: 0 12px;
-    min-height: 44px;
+    padding: 0 12px !important;
+    min-height: 44px !important;
     border: 1.5px solid rgba(0, 200, 83, 0.3) !important;
     border-radius: 10px !important;
-    gap: 8px;
+    gap: 8px !important;
   }
   .global-search:focus-within {
     border-color: var(--cell-green) !important;
     box-shadow: 0 0 0 3px rgba(0, 200, 83, 0.15) !important;
   }
   #global-search-input {
-    font-size: 16px; /* impede zoom automático no iOS */
+    font-size: 16px !important; /* impede zoom automático no iOS */
   }
   .search-icon {
-    font-size: 16px;
-    color: rgba(0, 200, 83, 0.6);
+    font-size: 16px !important;
+    color: rgba(0, 200, 83, 0.6) !important;
   }
+
+  /* Botões da linha 2 — compactos */
   .site-cc-btn .site-cc-label { display: none; }
+  .site-cc-btn { padding: 5px 9px !important; }
+  .aprov-sino  { padding: 5px 9px !important; font-size: 17px !important; }
+  .status-pill { padding: 4px 9px !important; font-size: 11.5px !important; }
 
   /* Oculta a seção original de módulos — a mobile renderiza a sua própria */
   .modules-section { display: none !important; }
@@ -4137,7 +4168,7 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
     background: rgba(10,11,13,0.95);
     border-bottom: 1px solid rgba(255,255,255,0.06);
     position: sticky;
-    top: 56px;
+    top: 96px;
     z-index: 90;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -4179,7 +4210,7 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
     padding: 8px 16px 6px;
     background: rgba(10,11,13,0.92);
     position: sticky;
-    top: 104px;
+    top: 144px;
     z-index: 80;
     border-bottom: 1px solid rgba(255,255,255,0.05);
     backdrop-filter: blur(8px);
@@ -4231,9 +4262,9 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   .mob-item {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 14px 16px;
-    min-height: 80px;
+    gap: 12px;
+    padding: 10px 14px;
+    min-height: 64px;
     border-bottom: 1px solid rgba(255,255,255,0.04);
     cursor: pointer;
     transition: background 150ms;
@@ -4248,24 +4279,24 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   .mob-item::after {
     content: '›';
     position: absolute;
-    right: 16px;
+    right: 14px;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 22px;
+    font-size: 20px;
     color: #374151;
     font-weight: 300;
   }
 
   .mob-item-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
     background: #1a1d23;
     border: 1px solid rgba(255,255,255,0.06);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 22px;
     flex-shrink: 0;
     transition: transform 150ms;
   }
@@ -4274,16 +4305,16 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   .mob-item-os .mob-item-icon {
     background: linear-gradient(135deg, rgba(0,200,83,0.15) 0%, #1a1d23 100%);
     border-color: rgba(0,200,83,0.25);
-    font-size: 32px;
+    font-size: 26px;
   }
 
   .mob-item-info {
     flex: 1;
     min-width: 0;
-    padding-right: 24px;
+    padding-right: 20px;
   }
   .mob-item-nome {
-    font-size: 17px;
+    font-size: 15px;
     font-weight: 600;
     color: #f5f7fa;
     white-space: nowrap;
@@ -4292,14 +4323,14 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
     line-height: 1.3;
   }
   .mob-item-os .mob-item-nome {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
     color: #00c853;
   }
   .mob-item-desc {
-    font-size: 12px;
+    font-size: 11px;
     color: #6b7280;
-    margin-top: 3px;
+    margin-top: 2px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -4318,33 +4349,46 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
     flex-shrink: 0;
   }
 
-  /* ── MODO GRADE — sobrescreve lista ── */
+  /* ── MODO GRADE — 3 colunas em telas maiores, 2 em pequenas ── */
   #mob-modules.view-grade #mob-mods-fav-wrap,
   #mob-modules.view-grade .mob-cat-body {
     display: grid !important;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px;
-    padding: 12px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 10px;
   }
   #mob-modules.view-grade .mob-item {
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 120px;
-    padding: 14px 10px;
-    border-radius: 14px;
+    min-height: 90px;
+    padding: 10px 6px;
+    border-radius: 12px;
     border: 1px solid rgba(255,255,255,0.06) !important;
     background: #121418;
-    gap: 8px;
+    gap: 6px;
     position: relative;
   }
   #mob-modules.view-grade .mob-item::after { display: none; }
-  #mob-modules.view-grade .mob-item-icon { width: 50px; height: 50px; font-size: 24px; }
-  #mob-modules.view-grade .mob-item-os .mob-item-icon { font-size: 28px; }
-  #mob-modules.view-grade .mob-item-nome { font-size: 13px; white-space: normal; text-align: center; }
+  #mob-modules.view-grade .mob-item-icon { width: 42px; height: 42px; font-size: 20px; }
+  #mob-modules.view-grade .mob-item-os .mob-item-icon { font-size: 24px; }
+  #mob-modules.view-grade .mob-item-nome { font-size: 11px; white-space: normal; text-align: center; line-height: 1.2; }
   #mob-modules.view-grade .mob-item-desc { display: none; }
   #mob-modules.view-grade .mob-item-info { padding-right: 0; text-align: center; }
+
+  /* ── Grade: 2 colunas em telas estreitas ── */
+  @media (max-width: 390px) {
+    #mob-modules.view-grade #mob-mods-fav-wrap,
+    #mob-modules.view-grade .mob-cat-body {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 7px;
+      padding: 8px;
+    }
+    #mob-modules.view-grade .mob-item { min-height: 84px; padding: 10px 4px; }
+    #mob-modules.view-grade .mob-item-icon { width: 38px; height: 38px; font-size: 18px; }
+    #mob-modules.view-grade .mob-item-nome { font-size: 11px; }
+  }
 
   /* ── Cabeçalho de categoria (accordion) ── */
   .mob-cat-header {
@@ -4486,54 +4530,38 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   BREAKPOINTS MOBILE FINOS — Barra Superior
+   BREAKPOINTS MOBILE FINOS — Layout 2 linhas já garantido pelo
+   bloco ≤768px; aqui apenas ajustes pontuais de tamanho.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── 480px: ajustes de espaço ── */
+/* ── ≤480px ── */
 @media (max-width: 480px) {
-  .top-bar { gap: 5px !important; padding: 0 8px !important; }
-  .top-meta-right { gap: 4px !important; }
+  .top-bar { padding: 7px 10px 5px !important; }
   #mob-menu-btn { width: 38px; height: 38px; font-size: 18px; }
-  .global-search { padding: 0 10px !important; min-height: 44px; }
-  .aprov-sino { font-size: 18px; }
 }
 
-/* ── 412px: Galaxy A / Pixel ── */
-@media (max-width: 412px) {
-  .top-bar { gap: 4px !important; padding: 0 6px !important; }
-  .status-pill {
-    color: transparent !important;
-    font-size: 0 !important;
-    padding: 4px !important;
-    min-width: 14px;
-    border-radius: 50% !important;
-  }
-  .status-pill.online::before { margin: 0; }
-}
-
-/* ── 390px: iPhone 14/15 / Pixel 7 ── */
+/* ── ≤390px: iPhone 14/15 — botões da linha 2 mais compactos ── */
 @media (max-width: 390px) {
-  .top-bar { gap: 3px !important; padding: 0 5px !important; }
+  .top-bar { padding: 6px 8px 5px !important; gap: 5px 6px !important; }
   #mob-menu-btn { width: 36px; height: 36px; font-size: 17px; }
-  .global-search { padding: 0 8px !important; gap: 6px; }
-  .search-icon { font-size: 15px; }
-  .aprov-sino { padding: 6px; font-size: 17px; }
-  .site-cc-btn { padding: 5px 7px; }
+  .global-search { padding: 0 8px !important; }
+  .aprov-sino  { padding: 4px 7px !important; font-size: 16px !important; }
+  .site-cc-btn { padding: 4px 7px !important; }
+  .status-pill { padding: 3px 7px !important; font-size: 11px !important; }
 }
 
-/* ── 360px: Galaxy S standard ── */
+/* ── ≤360px: Galaxy S ── */
 @media (max-width: 360px) {
-  .top-bar { gap: 2px !important; padding: 0 4px !important; }
+  .top-bar { padding: 6px 8px 4px !important; }
   #mob-menu-btn { width: 34px; height: 34px; }
-  .global-search { padding: 0 6px !important; gap: 5px; }
-  .aprov-sino { font-size: 16px; }
+  .global-search { padding: 0 6px !important; }
 }
 
-/* ── 320px: mínimo absoluto (iPhone SE 1ª geração) ── */
+/* ── ≤320px: iPhone SE 1ª geração ── */
 @media (max-width: 320px) {
-  .top-bar { gap: 2px !important; padding: 0 3px !important; height: 52px !important; min-height: 52px !important; }
+  .top-bar { padding: 5px 6px 4px !important; }
   #mob-menu-btn { width: 32px; height: 32px; font-size: 16px; }
-  .global-search { padding: 0 5px !important; min-height: 40px; }
+  .global-search { min-height: 40px !important; }
   .site-cc-btn { display: none !important; }
 }
 

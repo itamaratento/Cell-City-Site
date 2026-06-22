@@ -23,6 +23,7 @@
     { id: 'financeiro', label: '💰 Financeiro', modulos: [
       { id: 'caixa',      nome: 'Caixa',               icone: '💰', desc: 'Fluxo financeiro diário' },
       { id: 'financeiro', nome: 'Financeiro',          icone: '💹', desc: 'Controle financeiro detalhado' },
+      { id: 'despesas',   nome: 'Despesas',            icone: '💸', desc: 'Controle de despesas e saídas' },
       { id: 'compras',    nome: 'Compras',             icone: '🛒', desc: 'Pedidos e recebimentos de peças' },
       { id: 'fechamento', nome: 'Fechamento',          icone: '🔒', desc: 'Relatório mensal consolidado' },
       { id: 'pendencias', nome: 'Pendências e Contas', icone: '📋', desc: 'Clientes, parceiros e empréstimos' },
@@ -62,6 +63,7 @@
     { href: '/CRM/pages/caixa/index.html',            icon: '💰', label: 'Caixa' },
     { href: '/CRM/pages/central-comandos/index.html', icon: '⚡', label: 'Central de Comandos', badge: 'Novo' },
     { href: '/CRM/pages/financeiro/index.html',       icon: '💹', label: 'Financeiro' },
+    { href: '/CRM/pages/despesas/index.html',         icon: '💸', label: 'Despesas' },
     { href: '/CRM/pages/crm-comercial/index.html',    icon: '🎯', label: 'CRM Comercial', badge: 'Novo' },
     { href: '/CRM/pages/clientes/index.html',         icon: '👥', label: 'Clientes' },
     { href: '/CRM/pages/estoque/index.html',          icon: '📱', label: 'Estoque' },

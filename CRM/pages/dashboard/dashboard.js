@@ -1532,6 +1532,7 @@ class Dashboard {
       garantias:             '../../pages/garantias/index.html',
       fornecedor:            '../../pages/fornecedor/index.html',
       financeiro:            '../../pages/financeiro/index.html',
+      despesas:              '../../pages/despesas/index.html',
       'em-breve':            '../../pages/em-breve/index.html',
       'minha-semana':        '../../pages/minha-semana/index.html',
       'acaodasemana':        '../../pages/acaodasemana/index.html',

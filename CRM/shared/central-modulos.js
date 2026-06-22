@@ -26,6 +26,7 @@ export const TODOS_MODULOS = [
   { id: 'garantias',           nome: 'Garantias',               icone: '🛡️', descricao: 'Termos e configurações de garantia',   categoria: 'Operacional'   },
   // Financeiro
   { id: 'financeiro',          nome: 'Financeiro',              icone: '💹', descricao: 'Controle financeiro detalhado',         categoria: 'Financeiro'    },
+  { id: 'despesas',            nome: 'Despesas',                icone: '💸', descricao: 'Controle de despesas e saídas',          categoria: 'Financeiro'    },
   { id: 'compras',             nome: 'Compras',                 icone: '🛒', descricao: 'Pedidos e recebimentos de peças',       categoria: 'Estoque'       },
   { id: 'fechamento',          nome: 'Fechamento',              icone: '🔒', descricao: 'Relatório mensal consolidado',          categoria: 'Financeiro'    },
   { id: 'pendencias',          nome: 'Pendências e Contas',     icone: '📋', descricao: 'Clientes, parceiros e empréstimos',     categoria: 'Financeiro'    },
