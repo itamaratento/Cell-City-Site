@@ -449,10 +449,10 @@
   }
 
   function criarBotaoSom(bar) {
-    if (document.getElementById('crm-audio-toggle')) return;
-
     // Default: sons desativados até o usuário ativar explicitamente
     if (localStorage.getItem(_CC_LS_SONS) === null) localStorage.setItem(_CC_LS_SONS, 'false');
+    // Botão movido para Central de Alertas → Sons e Notificações
+    return;
 
     var btn = document.createElement('button');
     btn.id = 'crm-audio-toggle';

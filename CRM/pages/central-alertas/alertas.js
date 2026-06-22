@@ -142,6 +142,7 @@ const SECAO_TITULO = {
     calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
     painel: '📊 Dashboard de Alertas',
     diagnostico: '🔎 Diagnóstico do Sistema',
+    sons: '🔊 Sons e Notificações',
 };
 
 function navegar(secao) {
@@ -158,6 +159,7 @@ function navegar(secao) {
     if (secao === 'calendario') renderCalendario();
     else if (secao === 'painel') renderPainel();
     else if (secao === 'diagnostico') renderDiagnostico();
+    else if (secao === 'sons') carregarConfig();
     else render();
 }
 
@@ -854,12 +856,20 @@ function carregarConfig() {
     document.querySelectorAll('.cfg-tipo-som').forEach(chk => {
         chk.checked = cfg.tipos?.[chk.dataset.tipo] !== false;
     });
+    // Volume
+    const volPct = Math.round(parseFloat(localStorage.getItem('cc_sons_volume') || '0.7') * 100);
+    if (el('cfg-volume'))       el('cfg-volume').value = volPct;
+    if (el('cfg-volume-label')) el('cfg-volume-label').textContent = volPct + '%';
 }
 
 function salvarConfig() {
     // Sons do sistema — grava flag global lida por todos os módulos
     const sonsSistema = document.getElementById('cfg-sons-sistema')?.checked ?? false;
     localStorage.setItem('cc_sons_sistema', sonsSistema ? 'true' : 'false');
+
+    // Volume (0–100 → 0.00–1.00)
+    const volumeEl = document.getElementById('cfg-volume');
+    if (volumeEl) localStorage.setItem('cc_sons_volume', (parseInt(volumeEl.value) / 100).toFixed(2));
 
     const cfg = {
         somGlobal:    document.getElementById('cfg-som-global')?.checked ?? true,
@@ -872,6 +882,36 @@ function salvarConfig() {
     });
     localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
     toast('✅ Configurações salvas.');
+}
+
+function atualizarVolumeLabel(val) {
+    const lbl = document.getElementById('cfg-volume-label');
+    if (lbl) lbl.textContent = val + '%';
+}
+
+function testarSom() {
+    const btn = document.getElementById('al-btn-testar-som');
+    if (btn) { btn.textContent = '🔊 Tocando...'; btn.disabled = true; }
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) throw new Error('AudioContext indisponível');
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        const vol = Math.max(0, Math.min(1, parseFloat(localStorage.getItem('cc_sons_volume') || '0.7')));
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.42);
+        osc.onended = () => { try { ctx.close(); } catch {} };
+    } catch {}
+    setTimeout(() => {
+        if (btn) { btn.textContent = '🔔 Testar Som'; btn.disabled = false; }
+    }, 1200);
 }
 
 // ── Verificação de alertas vencidos ──────────────────────────────────────────
@@ -1550,6 +1590,7 @@ window.Alertas = {
     copiarComando, executarComando,
     abrirAdiar, fecharAdiar, adiar, adiarCustom,
     selDia, toggleCustomDias, toggleQuantidade, salvarConfig,
+    atualizarVolumeLabel, testarSom,
     setCalView, exportarCSV,
     abrirModoFoco, fecharModoFoco, focoConcluir, focoAdiar, focoProximo,
     _painelSetFiltro, _painelCustomDate,

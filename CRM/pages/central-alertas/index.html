@@ -80,6 +80,10 @@
                     <span class="al-sb-label">Diagnóstico</span>
                     <span class="al-sb-badge" id="sb-badge-diagnostico"></span>
                 </div>
+                <div class="al-sb-item" data-nav="sons">
+                    <span class="al-sb-icon">🔊</span>
+                    <span class="al-sb-label">Sons e Notificações</span>
+                </div>
                 <div class="al-sb-item" data-nav="configuracoes">
                     <span class="al-sb-icon">⚙️</span>
                     <span class="al-sb-label">Configurações</span>
@@ -238,46 +242,71 @@
                     </div>
                 </div>
 
-                <!-- ═══ CONFIGURAÇÕES ═══ -->
-                <div class="al-panel" id="panel-configuracoes">
+                <!-- ═══ SONS E NOTIFICAÇÕES ═══ -->
+                <div class="al-panel" id="panel-sons">
                     <div class="al-panel-header">
-                        <div class="al-panel-titulo">⚙️ Configurações de Notificação</div>
+                        <div class="al-panel-titulo">🔊 Sons e Notificações</div>
                     </div>
                     <div class="al-config-box">
                         <div class="al-config-sep" style="border-top:none;padding-top:0;">Sons do Sistema</div>
                         <label class="al-config-row">
                             <input type="checkbox" id="cfg-sons-sistema">
-                            <span>🔊 Sons do Sistema (menus, painel, notificações)</span>
+                            <span>🔊 Ativar sons do sistema (menus, painel, notificações)</span>
                         </label>
-                        <div style="font-size:11px;color:var(--text3);padding:0 10px 6px;">
-                            Padrão: Desligado. Quando desligado, apenas sons de alertas no horário programado são emitidos (controlados abaixo).
+                        <div style="font-size:11px;color:var(--text3);padding:0 10px 10px;">
+                            Padrão: desligado. Quando desligado, apenas sons de alertas no horário programado são emitidos.
                         </div>
+
+                        <div class="al-config-sep">Volume</div>
+                        <label class="al-config-row" style="gap:12px;">
+                            <span style="font-size:16px;line-height:1;">🔉</span>
+                            <input type="range" id="cfg-volume" min="0" max="100" step="5" value="70"
+                                style="flex:1;accent-color:var(--green);cursor:pointer;"
+                                oninput="Alertas.atualizarVolumeLabel(this.value)">
+                            <span id="cfg-volume-label" style="min-width:36px;text-align:right;font-size:12px;color:var(--text2);">70%</span>
+                        </label>
+
+                        <div class="al-config-sep">Alertas com Som</div>
                         <label class="al-config-row">
                             <input type="checkbox" id="cfg-som-global" checked>
-                            <span>🔔 Som ao disparar alerta no horário</span>
+                            <span>🔔 Som ao disparar alerta no horário programado</span>
                         </label>
                         <label class="al-config-row">
                             <input type="checkbox" id="cfg-notif-browser" checked>
-                            <span>🌐 Notificação do navegador (fora da aba)</span>
+                            <span>🌐 Notificação do navegador (quando fora da aba)</span>
                         </label>
-                        <div class="al-config-sep">Modo de notificação</div>
-                    <label class="al-config-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
-                        <span>🔔 Como notificar ao disparar um alerta?</span>
-                        <select id="cfg-modo-notif">
-                            <option value="som_popup">🔊 Som + Popup</option>
-                            <option value="som">🔊 Apenas Som</option>
-                            <option value="popup">💬 Apenas Popup</option>
-                            <option value="contador">🔢 Apenas Contador</option>
-                        </select>
-                    </label>
-                    <div class="al-config-sep">Tipos de alerta com som</div>
+
+                        <div class="al-config-sep">Modo de Notificação</div>
+                        <label class="al-config-row" style="flex-direction:column;align-items:flex-start;gap:6px;">
+                            <span>Como notificar ao disparar um alerta?</span>
+                            <select id="cfg-modo-notif">
+                                <option value="som_popup">🔊 Som + Popup</option>
+                                <option value="som">🔊 Apenas Som</option>
+                                <option value="popup">💬 Apenas Popup</option>
+                                <option value="contador">🔢 Apenas Contador</option>
+                            </select>
+                        </label>
+
+                        <div class="al-config-sep">Tipos de Alerta com Som</div>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="critico" checked><span>🔴 Crítico</span></label>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="alto" checked><span>🟠 Alta prioridade</span></label>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="medio" checked><span>🟡 Média prioridade</span></label>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="baixo"><span>⚪ Baixa prioridade</span></label>
-                        <button class="al-btn-salvar-cfg" onclick="Alertas.salvarConfig()">💾 Salvar Configurações</button>
+
+                        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+                            <button class="al-btn-salvar-cfg" id="al-btn-testar-som" onclick="Alertas.testarSom()">🔔 Testar Som</button>
+                            <button class="al-btn-salvar-cfg" onclick="Alertas.salvarConfig()" style="background:var(--green);color:#000;">💾 Salvar Configurações</button>
+                        </div>
                     </div>
-                    <div class="al-config-box" style="margin-top:16px;">
+                </div>
+
+                <!-- ═══ CONFIGURAÇÕES ═══ -->
+                <div class="al-panel" id="panel-configuracoes">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">⚙️ Configurações</div>
+                    </div>
+                    <div class="al-config-box">
+                        <div class="al-config-sep" style="border-top:none;padding-top:0;">Exportar Dados</div>
                         <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Exportar todos os alertas (ativos e concluídos) para planilha.</div>
                         <button class="al-btn-salvar-cfg" onclick="Alertas.exportarCSV()">📥 Exportar CSV</button>
                     </div>

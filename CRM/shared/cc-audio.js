@@ -86,7 +86,8 @@ function _oscilar(params) {
         osc.type = params.type || 'sine';
         osc.frequency.setValueAtTime(params.freq || 880, ctx.currentTime);
         if (params.freqEnd) osc.frequency.exponentialRampToValueAtTime(params.freqEnd, ctx.currentTime + (params.dur || 0.3));
-        gain.gain.setValueAtTime(params.vol || 0.18, ctx.currentTime);
+        const _uVol = Math.max(0, Math.min(1, parseFloat(localStorage.getItem('cc_sons_volume') || '0.7')));
+        gain.gain.setValueAtTime((params.vol || 0.18) * _uVol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + (params.dur || 0.3));
         osc.start(ctx.currentTime);
         osc.stop(ctx.currentTime + (params.dur || 0.3) + 0.01);
@@ -141,7 +142,8 @@ export function ccTocarSom(categoria, origem, evento, opcoes = {}) {
                 const gain = ctx.createGain();
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.type = 'square'; osc.frequency.value = freq;
-                gain.gain.setValueAtTime(opcoes.vol || 0.2, ctx.currentTime + start);
+                const _bVol = Math.max(0, Math.min(1, parseFloat(localStorage.getItem('cc_sons_volume') || '0.7')));
+                gain.gain.setValueAtTime((opcoes.vol || 0.2) * _bVol, ctx.currentTime + start);
                 gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + dur);
                 osc.start(ctx.currentTime + start);
                 osc.stop(ctx.currentTime + start + dur + 0.01);
