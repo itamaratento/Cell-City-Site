@@ -258,39 +258,51 @@ select.bk-select{background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;c
         <div class="bk-card">
           <div class="bk-card-title"><span>📦</span> Criar Backup do Código</div>
 
-          <p style="font-size:.83rem;color:#888;line-height:1.5;margin-bottom:12px">
-            O backup do código (HTML, JS, CSS, JSON) é gerado por um script de terminal que cria um arquivo <code style="color:#00c853">.zip</code> salvo em <code style="color:#ccc">~/Músicas/backups/</code> — fora do repositório Git.
-          </p>
-
-          <div style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:14px">
-            <div style="font-size:.76rem;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Comando para rodar no terminal</div>
-            <code style="color:#00c853;font-size:.87rem;display:block">bash ~/Músicas/backup.sh</code>
-            <div style="font-size:.76rem;color:#555;margin-top:8px">Com versão e descrição:</div>
-            <code style="color:#00c853;font-size:.82rem;display:block;margin-top:4px">bash ~/Músicas/backup.sh "v1.2" "Nova funcionalidade de backup"</code>
+          <!-- Status do servidor local -->
+          <div id="srv-status" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;margin-bottom:14px;background:#0d0d0d;border:1px solid #1e1e1e;font-size:.83rem">
+            <span id="srv-dot" style="font-size:1rem">⏳</span>
+            <span id="srv-msg" style="color:#666">Verificando servidor local…</span>
           </div>
 
-          <div style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-bottom:14px">
-            <div style="font-size:.76rem;color:#555;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Itens incluídos</div>
-            <div style="display:flex;flex-wrap:wrap;gap:6px">
-              <span class="bk-badge dados">*.html</span>
-              <span class="bk-badge dados">*.css</span>
-              <span class="bk-badge dados">*.js</span>
-              <span class="bk-badge dados">*.json</span>
-              <span class="bk-badge sistema">/pages</span>
-              <span class="bk-badge sistema">/shared</span>
-              <span class="bk-badge sistema">/assets</span>
-              <span class="bk-badge sistema">/scripts</span>
-              <span class="bk-badge sistema">/components</span>
+          <!-- Execução com 1 clique -->
+          <div id="srv-online-area">
+            <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+              <div style="flex:1;min-width:120px">
+                <label style="font-size:.78rem;color:#666;display:block;margin-bottom:4px">Versão</label>
+                <input id="sis-versao" type="text" value="v1.0" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#e8e8e8;font-size:.85rem"/>
+              </div>
+              <div style="flex:3;min-width:180px">
+                <label style="font-size:.78rem;color:#666;display:block;margin-bottom:4px">Observação (opcional)</label>
+                <input id="sis-obs" type="text" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#e8e8e8;font-size:.85rem" placeholder="Ex: Atualização do financeiro"/>
+              </div>
             </div>
+
+            <div class="btn-row" style="margin-bottom:12px">
+              <button class="btn btn-primary" id="btn-criar-backup">🚀 Criar Backup Agora</button>
+              <button class="btn btn-outline btn-sm" id="btn-baixar-ultimo" disabled>⬇️ Baixar Último Backup</button>
+              <button class="btn btn-outline btn-sm" id="btn-abrir-pasta">📂 Abrir Pasta</button>
+            </div>
+
+            <div id="sis-progress" style="display:none">
+              <div class="bk-progress-bar-wrap"><div class="bk-progress-bar" id="sis-bar" style="width:50%;animation:bk-pulse 1s infinite alternate"></div></div>
+              <div id="sis-msg" style="font-size:.8rem;color:#888;margin-top:6px">Executando backup.sh…</div>
+            </div>
+
+            <div id="sis-result" style="display:none;padding:12px;border-radius:8px;margin-top:8px;font-size:.83rem;line-height:1.5"></div>
           </div>
 
-          <div style="font-size:.82rem;color:#888;margin-bottom:6px">Observações da versão</div>
-          <textarea id="sis-obs" class="bk-textarea" placeholder="• Nova funcionalidade X&#10;• Correção no módulo Y&#10;• Atualização do layout Z"></textarea>
-
-          <div class="btn-row">
-            <button class="btn btn-outline" id="btn-baixar-script">⬇️ Baixar backup.sh</button>
-            <button class="btn btn-outline btn-sm" onclick="navigator.clipboard?.writeText('bash ~/Músicas/backup.sh')">📋 Copiar comando</button>
-          </div>
+          <!-- Fallback terminal -->
+          <details style="margin-top:14px">
+            <summary style="font-size:.78rem;color:#444;cursor:pointer;user-select:none">▸ Executar manualmente pelo terminal</summary>
+            <div style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-top:8px">
+              <code style="color:#00c853;font-size:.85rem;display:block">bash ~/Músicas/backup.sh</code>
+              <code style="color:#00c853;font-size:.82rem;display:block;margin-top:6px">bash ~/Músicas/backup.sh "v1.2" "Descrição"</code>
+            </div>
+            <div class="btn-row" style="margin-top:8px">
+              <button class="btn btn-outline btn-sm" id="btn-baixar-script">⬇️ Baixar backup.sh</button>
+              <button class="btn btn-outline btn-sm" onclick="navigator.clipboard?.writeText('bash ~/Músicas/backup.sh')">📋 Copiar</button>
+            </div>
+          </details>
         </div>
 
         <!-- Backup automático (cron) -->
@@ -878,6 +890,129 @@ document.getElementById('btn-refresh-log').addEventListener('click', () => carre
 // ── Init ───────────────────────────────────────────────────────
 renderColecoes();
 carregarHist();
+
+// ══════════════════════════════════════════════════════════════
+//  SERVIDOR LOCAL — Execução do backup.sh com 1 clique
+// ══════════════════════════════════════════════════════════════
+const SRV = 'http://localhost:9731';
+let _srvOnline = false;
+
+function setSrvStatus(online, msg) {
+  _srvOnline = online;
+  document.getElementById('srv-dot').textContent = online ? '🟢' : '🔴';
+  document.getElementById('srv-msg').textContent = msg;
+  document.getElementById('srv-msg').style.color = online ? '#00c853' : '#666';
+  document.getElementById('srv-online-area').style.opacity = online ? '1' : '.45';
+  document.getElementById('btn-criar-backup').disabled = !online;
+  document.getElementById('btn-abrir-pasta').disabled  = !online;
+}
+
+async function verificarServidor() {
+  try {
+    const r = await fetch(`${SRV}/status`, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      setSrvStatus(true, 'Servidor local conectado — execução automática disponível');
+      await atualizarUltimoBackup();
+      return;
+    }
+  } catch {}
+  setSrvStatus(false, 'Servidor local não detectado — use o terminal ou inicie: systemctl --user start cc-backup-server');
+}
+
+async function atualizarUltimoBackup() {
+  try {
+    const r = await fetch(`${SRV}/backups`);
+    const d = await r.json();
+    const btn = document.getElementById('btn-baixar-ultimo');
+    if (d.backups?.length) {
+      btn.disabled = false;
+      btn.title = d.backups[0].nome;
+    }
+  } catch {}
+}
+
+// Botão: Criar Backup Agora
+document.getElementById('btn-criar-backup').addEventListener('click', async () => {
+  if (!_srvOnline) return;
+  const versao     = document.getElementById('sis-versao').value.trim() || 'v1.0';
+  const observacao = document.getElementById('sis-obs').value.trim();
+
+  const btnCriar = document.getElementById('btn-criar-backup');
+  const progress = document.getElementById('sis-progress');
+  const result   = document.getElementById('sis-result');
+
+  btnCriar.disabled = true;
+  progress.style.display = 'block';
+  result.style.display   = 'none';
+  document.getElementById('sis-msg').textContent = 'Executando backup.sh… aguarde.';
+
+  try {
+    const r = await fetch(`${SRV}/backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ versao, observacao }),
+    });
+    const d = await r.json();
+
+    progress.style.display = 'none';
+    result.style.display   = 'block';
+
+    if (d.ok) {
+      result.style.background = '#0a1f0e';
+      result.style.border     = '1px solid #1a4a24';
+      result.style.color      = '#00c853';
+      result.innerHTML = `✅ Backup criado com sucesso<br><strong>${d.nomeZip || ''}</strong>`;
+      toast(`✅ Backup criado: ${d.nomeZip || 'concluído'}`);
+
+      await registrarBackup({
+        tipo: 'sistema',
+        nome: d.nomeZip || `CellCity-${versao}`,
+        tamanho: d.ultimoBackup ? (d.ultimoBackup.tamanho / 1024 / 1024).toFixed(2) + ' MB' : '',
+        observacoes: observacao || 'Backup do código via interface',
+      });
+
+      await atualizarUltimoBackup();
+      carregarGitInfo();
+      carregarHist();
+    } else {
+      result.style.background = '#1f0a0a';
+      result.style.border     = '1px solid #4a1a1a';
+      result.style.color      = '#ff5252';
+      result.innerHTML = `❌ Falha ao criar backup<br><small style="color:#888">${d.erro || 'Erro desconhecido'}</small>`;
+      toast('Erro ao criar backup', true);
+    }
+  } catch (e) {
+    progress.style.display = 'none';
+    toast('Servidor local não respondeu: ' + e.message, true);
+  } finally {
+    btnCriar.disabled = false;
+  }
+});
+
+// Botão: Baixar Último Backup
+document.getElementById('btn-baixar-ultimo').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = `${SRV}/backups/ultimo`;
+  a.click();
+});
+
+// Botão: Abrir Pasta
+document.getElementById('btn-abrir-pasta').addEventListener('click', async () => {
+  if (!_srvOnline) return;
+  try {
+    await fetch(`${SRV}/abrir-pasta`, { method: 'POST' });
+    toast('Pasta de backups aberta');
+  } catch { toast('Servidor não respondeu', true); }
+});
+
+// Verifica servidor ao abrir a aba Sistema
+setSrvStatus(false, 'Verificando servidor local…');
+verificarServidor();
+document.querySelectorAll('.bk-tab').forEach(tab => {
+  if (tab.dataset.tab === 'sistema') {
+    tab.addEventListener('click', verificarServidor);
+  }
+});
 </script>
 </body>
 </html>
