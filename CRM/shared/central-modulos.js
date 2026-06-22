@@ -51,6 +51,7 @@ export const TODOS_MODULOS = [
   { id: 'homologacao',         nome: 'Homologação',             icone: '🧪', descricao: 'Auditoria completa de integrações',     categoria: 'Administração' },
   { id: 'backup',              nome: 'Backup do Sistema',       icone: '🛡️', descricao: 'Exportar dados e backup do código',    categoria: 'Administração' },
   { id: 'config',              nome: 'Configurações',           icone: '⚙️', descricao: 'Ferramentas e configurações do sistema',categoria: 'Administração' },
+  { id: 'favoritos',           nome: 'Favoritos',               icone: '⭐', descricao: 'Acesso rápido aos módulos favoritos',      categoria: 'Ferramentas'   },
 ];
 
 // ── Estado interno ────────────────────────────────────────────

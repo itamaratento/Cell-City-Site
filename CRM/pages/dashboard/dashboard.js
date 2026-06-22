@@ -1492,6 +1492,10 @@ class Dashboard {
       window.location.href = '../../pages/central-alertas/index.html';
       return;
     }
+    if (module === 'favoritos') {
+      abrirCentralModulos();
+      return;
+    }
     const routes = {
       os:                    '../../pages/os/index.html',
       'central-comandos':    '../../pages/central-comandos/index.html',

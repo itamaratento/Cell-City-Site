@@ -3068,6 +3068,15 @@ body {
   border-color: rgba(0, 200, 83, 0.12);
 }
 
+.module-card--favoritos {
+  border-color: rgba(255, 193, 7, 0.20);
+}
+.module-card--favoritos:hover {
+  border-color: rgba(255, 193, 7, 0.45);
+  box-shadow: 0 4px 20px rgba(255, 193, 7, 0.12);
+}
+.module-card--favoritos .module-icon { color: #ffc107; }
+
 /* Live indicator no card OS */
 .module-indicator.live::after {
   content: '';
