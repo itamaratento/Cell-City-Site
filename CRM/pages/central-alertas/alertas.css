@@ -33,6 +33,18 @@
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
+/* Dropdowns nativos — tema escuro global para o módulo */
+select { color-scheme: dark; }
+option {
+    background: #1E2430;
+    color: #FFFFFF;
+}
+option:hover,
+option:checked {
+    background: #00C853;
+    color: #000000;
+}
+
 body {
     font-family:var(--font);
     background:var(--bg);
@@ -522,6 +534,13 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     font-size:13px; outline:none; font-family:var(--font);
     transition:all var(--transition);
 }
+.al-form-group select {
+    color-scheme: dark;
+}
+.al-form-group select option {
+    background: #1E2430;
+    color: #FFFFFF;
+}
 .al-form-group input:focus,
 .al-form-group select:focus,
 .al-form-group textarea:focus {
@@ -568,8 +587,13 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     border-radius:var(--radius-xs); padding:7px 10px; color:var(--text);
     font-size:13px; width:100%; outline:none; font-family:var(--font);
     transition:border-color var(--transition);
+    color-scheme: dark;
 }
 .al-config-row select:focus { border-color:rgba(0,200,83,0.4); }
+.al-config-row select option {
+    background: #1E2430;
+    color: #FFFFFF;
+}
 .al-config-sep {
     font-size:10px; color:var(--text3); font-weight:700; text-transform:uppercase;
     letter-spacing:.06em; padding-top:8px; border-top:1px solid var(--border); margin-top:2px;
@@ -660,8 +684,13 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     border-radius: var(--radius-xs); color: var(--text2);
     padding: 10px 10px; font-size: 12px; font-family: var(--font);
     cursor: pointer; outline: none; transition: border-color var(--transition);
+    color-scheme: dark;
 }
 .al-search-select:focus { border-color: var(--green-border); }
+.al-search-select option {
+    background: #1E2430;
+    color: #FFFFFF;
+}
 
 /* ── Link vinculado ──────────────────────────────────────────────────────── */
 .al-link-input-wrap {

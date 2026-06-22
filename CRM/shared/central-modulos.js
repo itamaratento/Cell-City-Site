@@ -127,6 +127,7 @@ export function abrirCentralModulos() {
   const o = document.getElementById('cm-overlay');
   if (o) {
     o.classList.add('open');
+    _updateLayoutSection();
     setTimeout(() => document.getElementById('cm-search-input')?.focus(), 80);
   }
 }
@@ -311,6 +312,50 @@ function _injectStyles() {
 }
 .cm-empty-cta:hover { background: rgba(0,200,83,.24); }
 
+/* ── Layout do Sistema — seção no modal ── */
+#cm-layout-section {
+  padding: 12px 20px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
+}
+.cm-layout-title {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .6px;
+  margin-bottom: 10px;
+}
+.cm-layout-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.cm-layout-row:last-child { margin-bottom: 0; }
+.cm-layout-row-label {
+  font-size: 12px; color: #8a9ab5; flex-shrink: 0; min-width: 120px;
+}
+.cm-layout-modes { display: flex; gap: 4px; flex-wrap: wrap; }
+.cm-lm-btn {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; color: rgba(255,255,255,.55); font-size: 11.5px;
+  font-weight: 500; padding: 5px 10px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  font-family: inherit; white-space: nowrap; line-height: 1;
+}
+.cm-lm-btn:hover { background: rgba(255,255,255,.09); color: rgba(255,255,255,.85); }
+.cm-lm-btn.active {
+  background: rgba(0,200,83,.14); border-color: rgba(0,200,83,.4);
+  color: #00c853; font-weight: 600;
+}
+.cm-lc-btn {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; color: rgba(255,255,255,.55); font-size: 11.5px;
+  font-weight: 500; padding: 5px 12px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  font-family: inherit; white-space: nowrap; line-height: 1;
+}
+.cm-lc-btn:hover { background: rgba(255,255,255,.09); color: rgba(255,255,255,.85); }
+.cm-lc-btn.active {
+  background: rgba(99,179,237,.12); border-color: rgba(99,179,237,.35);
+  color: #63b3ed; font-weight: 600;
+}
+
 /* ── Toast ── */
 #cm-toast {
   position: fixed; bottom: 24px; left: 50%;
@@ -328,6 +373,56 @@ function _injectStyles() {
   s.id = 'cm-styles';
   s.textContent = css;
   document.head.appendChild(s);
+}
+
+// ── Layout do Sistema ─────────────────────────────────────────
+const _HOME_MODE_KEY = 'cc_home_mode';
+const _COMPACT_KEY   = 'dashboard_modo_compacto';
+
+function _applyHomeMode(modo) {
+  const MODOS = ['modulos', 'dashboard', 'completo'];
+  if (!MODOS.includes(modo)) modo = 'modulos';
+  // Proxy: aciona o botão oculto do dashboard (carrega Firestore sync)
+  const hiddenBtn = document.querySelector(`.home-mode-btn[data-mode="${modo}"]`);
+  if (hiddenBtn) {
+    hiddenBtn.click();
+  } else {
+    document.documentElement.setAttribute('data-home-mode', modo);
+    localStorage.setItem(_HOME_MODE_KEY, modo);
+  }
+  _updateLayoutSection();
+}
+
+function _toggleCompact() {
+  // Proxy: aciona o botão oculto do dashboard (carrega Firestore sync)
+  const hiddenBtn = document.getElementById('compact-mode-toggle');
+  if (hiddenBtn) {
+    hiddenBtn.click();
+  } else {
+    const isCompact = localStorage.getItem(_COMPACT_KEY) === 'true';
+    const novo = !isCompact;
+    document.body.classList.toggle('modo-compacto', novo);
+    localStorage.setItem(_COMPACT_KEY, novo ? 'true' : '');
+  }
+  _updateLayoutSection();
+}
+
+function _updateLayoutSection() {
+  const modo = document.documentElement.getAttribute('data-home-mode')
+    || localStorage.getItem(_HOME_MODE_KEY)
+    || 'modulos';
+  const isCompact = document.body.classList.contains('modo-compacto')
+    || localStorage.getItem(_COMPACT_KEY) === 'true';
+
+  document.querySelectorAll('#cm-layout-modes .cm-lm-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === modo);
+  });
+
+  const cBtn = document.getElementById('cm-layout-compact');
+  if (cBtn) {
+    cBtn.textContent = isCompact ? '▣ Compacto' : '▢ Normal';
+    cBtn.classList.toggle('active', isCompact);
+  }
 }
 
 // ── Modal ─────────────────────────────────────────────────────
@@ -349,6 +444,21 @@ function _buildModal() {
         <input id="cm-search-input" type="text"
           placeholder="🔍 Buscar por nome, descrição ou categoria…" autocomplete="off">
       </div>
+      <div id="cm-layout-section">
+        <div class="cm-layout-title">⚙️ Layout do Sistema</div>
+        <div class="cm-layout-row">
+          <span class="cm-layout-row-label">Modo de exibição</span>
+          <div class="cm-layout-modes" id="cm-layout-modes">
+            <button class="cm-lm-btn" data-mode="modulos">📦 Módulos</button>
+            <button class="cm-lm-btn" data-mode="dashboard">📊 Dashboard</button>
+            <button class="cm-lm-btn" data-mode="completo">⊞ Completo</button>
+          </div>
+        </div>
+        <div class="cm-layout-row">
+          <span class="cm-layout-row-label">Tamanho dos cards</span>
+          <button class="cm-lc-btn" id="cm-layout-compact">▢ Normal</button>
+        </div>
+      </div>
       <div id="cm-legend">⭐ = aparece na home &nbsp;|&nbsp; ☆ = oculto na home</div>
       <div id="cm-body"></div>
     </div>`;
@@ -360,6 +470,12 @@ function _buildModal() {
   document.getElementById('cm-search-input').addEventListener('input', (e) => {
     _renderBody(e.target.value.trim().toLowerCase());
   });
+
+  document.getElementById('cm-layout-modes').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cm-lm-btn');
+    if (btn && btn.dataset.mode) _applyHomeMode(btn.dataset.mode);
+  });
+  document.getElementById('cm-layout-compact').addEventListener('click', _toggleCompact);
 
   _renderBody('');
 }
