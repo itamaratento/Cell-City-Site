@@ -65,6 +65,17 @@ function calcProxima(alerta) {
     return d.toISOString().slice(0,10);
 }
 
+// Avança a.data por um intervalo garantindo data futura (> hoje)
+function _proxData(a) {
+    const hoje = hojeISO();
+    const dias = { diario:1, semanal:7, mensal:30, quinzenal:15, trinta:30, custom: parseInt(a.customDias)||7 }[a.repeticao] || 1;
+    let d = new Date((a.data || hoje) + 'T12:00:00');
+    do {
+        a.repeticao === 'mensal' ? d.setMonth(d.getMonth()+1) : d.setDate(d.getDate()+dias);
+    } while (d.toISOString().slice(0,10) <= hoje);
+    return d.toISOString().slice(0,10);
+}
+
 // ── Esc ───────────────────────────────────────────────────────────────────────
 function esc(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -335,6 +346,18 @@ function htmlItem(a) {
     const cls       = a.status === 'concluido' ? 'concluido' : (vencido ? 'vencido' : (hojeAtivo ? 'hoje-ativo' : ''));
     const repLabel  = { nenhuma:'', diario:'Diário', semanal:'Semanal', mensal:'Mensal', quinzenal:'15 dias', trinta:'30 dias', custom:`${a.customDias||7} dias` }[a.repeticao||'nenhuma'] || '';
     const cmd       = a.comandoId ? st.comandos.find(c=>c.id===a.comandoId) : null;
+    const isRec     = a.repeticao && a.repeticao !== 'nenhuma';
+    const concl     = a.execucoesConcluidas || 0;
+    const total     = a.execucoesTotal || null;
+    const pct       = total ? Math.min(100, (concl / total) * 100).toFixed(1) : 0;
+    const progHTML  = isRec && total ? `
+        <div class="al-item-progresso">
+            <div class="al-prog-topo">
+                <span class="al-prog-label">📊 ${concl} / ${total} concluídas</span>
+                <span class="al-prog-restam">Restam ${total - concl}</span>
+            </div>
+            <div class="al-prog-bar-wrap"><div class="al-prog-bar" style="width:${pct}%"></div></div>
+        </div>` : (isRec && concl > 0 ? `<div class="al-item-progresso"><span class="al-prog-label">🔁 ${concl} execuç${concl===1?'ão':'ões'} concluída${concl!==1?'s':''}</span></div>` : '');
 
     const prioCls = `prio-${a.prioridade||'media'}`;
     return `
@@ -353,6 +376,7 @@ function htmlItem(a) {
             </div>
             ${a.descricao ? `<div class="al-item-descricao">${esc(a.descricao)}</div>` : ''}
             ${cmd ? `<div class="al-item-cmd">⚡ ${esc(cmd.titulo)}</div>` : ''}
+            ${progHTML}
             ${_acoesRapidasHTML(a)}
             ${a.concluidoEmISO ? `<div class="al-item-concluido-em">✅ Concluído em ${new Date(a.concluidoEmISO).toLocaleString('pt-BR')}</div>` : ''}
         </div>
@@ -430,19 +454,12 @@ async function concluirSelecionados() {
     const ids = _getSelecionados();
     if (!ids.length) return;
     if (!confirm(`Concluir ${ids.length} alerta(s)?`)) return;
-    const agoraISO = new Date().toISOString();
     for (const id of ids) {
         const a = st.lista.find(x=>x.id===id);
         if (!a || a.status === 'concluido') continue;
-        a.status = 'concluido';
-        a.concluidoEmISO = agoraISO;
-        try {
-            await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, atualizadoEmISO: agoraISO }, { merge:true });
-        } catch {}
+        await concluir(id);
     }
-    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
-    toast(`✅ ${ids.length} alerta(s) concluído(s).`);
-    render();
+    toast(`✅ ${ids.length} alerta(s) processado(s).`);
 }
 
 // ── Calendário ────────────────────────────────────────────────────────────────
@@ -554,6 +571,12 @@ function abrirForm() {
     document.getElementById('al-f-comando').value     = '';
     const linkEl = document.getElementById('al-f-link'); if (linkEl) linkEl.value = '';
     document.getElementById('al-custom-dias-wrap').classList.add('hidden');
+    document.getElementById('al-qtd-wrap')?.classList.add('hidden');
+    const qtdInfEl = document.getElementById('al-qtd-infinito');
+    if (qtdInfEl) qtdInfEl.checked = true;
+    document.getElementById('al-qtd-num-wrap')?.classList.add('hidden');
+    const qtdNumEl = document.getElementById('al-f-execucoes-total');
+    if (qtdNumEl) qtdNumEl.value = 30;
     document.getElementById('al-modal').classList.add('active');
     setTimeout(() => document.getElementById('al-f-titulo')?.focus(), 80);
 }
@@ -575,6 +598,16 @@ function editar(id) {
     document.getElementById('al-f-custom-dias').value= a.customDias||7;
     const linkElE = document.getElementById('al-f-link'); if (linkElE) linkElE.value = a.link||'';
     document.getElementById('al-custom-dias-wrap').classList.toggle('hidden', (a.repeticao||'nenhuma')!=='custom');
+    const isRec = (a.repeticao||'nenhuma') !== 'nenhuma';
+    document.getElementById('al-qtd-wrap')?.classList.toggle('hidden', !isRec);
+    const temTotal = !!a.execucoesTotal;
+    const qtdInfE = document.getElementById('al-qtd-infinito');
+    const qtdQntE = document.getElementById('al-qtd-quant');
+    if (qtdInfE) qtdInfE.checked = !temTotal;
+    if (qtdQntE) qtdQntE.checked = temTotal;
+    document.getElementById('al-qtd-num-wrap')?.classList.toggle('hidden', !temTotal);
+    const qtdNumElE = document.getElementById('al-f-execucoes-total');
+    if (qtdNumElE) qtdNumElE.value = a.execucoesTotal || 30;
     document.getElementById('al-modal').classList.add('active');
 }
 
@@ -585,6 +618,18 @@ function fecharForm() {
 function toggleCustomDias() {
     const v = document.getElementById('al-f-repeticao').value;
     document.getElementById('al-custom-dias-wrap').classList.toggle('hidden', v !== 'custom');
+    const isRec = v !== 'nenhuma';
+    document.getElementById('al-qtd-wrap')?.classList.toggle('hidden', !isRec);
+    if (!isRec) {
+        const qtdInfEl = document.getElementById('al-qtd-infinito');
+        if (qtdInfEl) qtdInfEl.checked = true;
+        document.getElementById('al-qtd-num-wrap')?.classList.add('hidden');
+    }
+}
+
+function toggleQuantidade() {
+    const tipo = document.querySelector('input[name="al-qtd-tipo"]:checked')?.value;
+    document.getElementById('al-qtd-num-wrap')?.classList.toggle('hidden', tipo !== 'quantidade');
 }
 
 async function salvar() {
@@ -599,6 +644,10 @@ async function salvar() {
     const repet     = document.getElementById('al-f-repeticao').value;
     const cmdId     = document.getElementById('al-f-comando').value;
     const cmd       = cmdId ? st.comandos.find(c=>c.id===cmdId) : null;
+    const qtdTipo   = document.querySelector('input[name="al-qtd-tipo"]:checked')?.value;
+    const execucoesTotal = (repet !== 'nenhuma' && qtdTipo === 'quantidade')
+        ? parseInt(document.getElementById('al-f-execucoes-total')?.value) || null
+        : null;
 
     const dados = {
         titulo,
@@ -609,6 +658,7 @@ async function salvar() {
         data, hora,
         repeticao:  repet,
         customDias: repet === 'custom' ? parseInt(document.getElementById('al-f-custom-dias').value)||7 : null,
+        execucoesTotal: execucoesTotal || null,
         comandoId:  cmdId || null,
         link:       (document.getElementById('al-f-link')?.value || '').trim() || null,
         status:     'pendente',
@@ -620,6 +670,8 @@ async function salvar() {
         dados.criadoEmISO = orig.criadoEmISO;
         dados.criadoEm    = orig.criadoEm;
         dados.status      = orig.status || 'pendente';
+        dados.execucoesConcluidas = orig.execucoesConcluidas || 0;
+        dados.ultimaConcluidaEmISO = orig.ultimaConcluidaEmISO || null;
     }
 
     try {
@@ -661,13 +713,42 @@ async function concluir(id) {
     const a = st.lista.find(x=>x.id===id);
     if (!a) return;
     const agoraISO = new Date().toISOString();
-    a.status = 'concluido';
-    a.concluidoEmISO = agoraISO;
-    try {
-        await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO }, { merge:true });
-    } catch {}
+    const isRec = a.repeticao && a.repeticao !== 'nenhuma';
+
+    if (!isRec) {
+        a.status = 'concluido';
+        a.concluidoEmISO = agoraISO;
+        try {
+            await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO }, { merge:true });
+        } catch {}
+        toast('✅ Alerta concluído!');
+    } else {
+        const execucoesConcluidas = (a.execucoesConcluidas || 0) + 1;
+        const execucoesTotal = a.execucoesTotal || null;
+        const finalizou = execucoesTotal && execucoesConcluidas >= execucoesTotal;
+
+        if (finalizou) {
+            a.status = 'concluido';
+            a.concluidoEmISO = agoraISO;
+            a.execucoesConcluidas = execucoesConcluidas;
+            try {
+                await setDoc(doc(db, COL, id), { status:'concluido', concluidoEmISO: agoraISO, execucoesConcluidas, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO }, { merge:true });
+            } catch {}
+            toast(`🎉 ${execucoesConcluidas}/${execucoesTotal} execuções concluídas! Alerta finalizado.`);
+        } else {
+            const proxData = _proxData(a);
+            a.data = proxData;
+            a.execucoesConcluidas = execucoesConcluidas;
+            a.ultimaConcluidaEmISO = agoraISO;
+            try {
+                await setDoc(doc(db, COL, id), { data: proxData, execucoesConcluidas, ultimaConcluidaEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO }, { merge:true });
+            } catch {}
+            const restam = execucoesTotal ? ` — Restam ${execucoesTotal - execucoesConcluidas}` : '';
+            toast(`✅ Execução ${execucoesConcluidas} concluída! Próxima: ${fmtData(proxData)}${restam}`);
+        }
+    }
+
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
-    toast('✅ Alerta concluído!');
     render();
 }
 
@@ -1468,7 +1549,7 @@ window.Alertas = {
     navegar, abrirForm, editar, fecharForm, salvar, excluir, concluir,
     copiarComando, executarComando,
     abrirAdiar, fecharAdiar, adiar, adiarCustom,
-    selDia, toggleCustomDias, salvarConfig,
+    selDia, toggleCustomDias, toggleQuantidade, salvarConfig,
     setCalView, exportarCSV,
     abrirModoFoco, fecharModoFoco, focoConcluir, focoAdiar, focoProximo,
     _painelSetFiltro, _painelCustomDate,
