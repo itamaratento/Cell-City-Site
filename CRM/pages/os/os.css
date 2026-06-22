@@ -752,7 +752,7 @@ body {
 }
 
 /* ===== ORÇAMENTOS INTELIGENTES ===== */
-#orc-inteligente-panel {
+.orc-int-panel {
     margin: 0 0 12px 0;
     border-radius: var(--radius);
     background: rgba(0,200,83,0.04);
