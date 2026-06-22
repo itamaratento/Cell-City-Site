@@ -614,6 +614,8 @@ export function init() {
     setTimeout(() => abrirCentralModulos(), 600);
   }
 
-  // Expõe globalmente para sidebar.js e outros scripts
-  window.abrirCentralModulos = abrirCentralModulos;
+  // Expõe globalmente para sidebar.js, mobile.js e outros scripts
+  window.abrirCentralModulos  = abrirCentralModulos;
+  window.__ccSetFavoritos     = setFavoritos;
+  window.__ccGetFavoritos     = getFavoritosHome;
 }
