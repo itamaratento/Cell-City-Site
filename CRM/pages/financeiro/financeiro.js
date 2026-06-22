@@ -1111,9 +1111,5 @@ function renderFluxo() {
     }
 }
 
-function escHtml(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 // ── Inicialização ──────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => carregar());
