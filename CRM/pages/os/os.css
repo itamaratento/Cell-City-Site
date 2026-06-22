@@ -750,3 +750,99 @@ body {
     border-color: #ef4444;
     color: #f87171;
 }
+
+/* ===== ORÇAMENTOS INTELIGENTES ===== */
+#orc-inteligente-panel {
+    margin: 0 0 12px 0;
+    border-radius: var(--radius);
+    background: rgba(0,200,83,0.04);
+    border: 1px solid rgba(0,200,83,0.2);
+    padding: 14px;
+    animation: orc-fade-in 0.2s ease;
+}
+@keyframes orc-fade-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+.orc-int-empty {
+    font-size: 13px;
+    color: var(--text3);
+    text-align: center;
+    padding: 6px 0;
+}
+.orc-int-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+.orc-int-icon { font-size: 20px; flex-shrink: 0; }
+.orc-int-title-wrap { display: flex; flex-direction: column; }
+.orc-int-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--green-light);
+    line-height: 1.2;
+}
+.orc-int-count {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+}
+.orc-int-sugerido {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0,200,83,0.08);
+    border: 1px solid rgba(0,200,83,0.25);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+}
+.orc-int-sugerido-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+.orc-int-sugerido-valor { font-size: 18px; font-weight: 800; color: var(--green-light); }
+.orc-int-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 12px;
+}
+.orc-int-stat {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 8px 6px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.orc-int-stat-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; }
+.orc-int-stat-num { font-size: 12px; font-weight: 700; color: var(--text); }
+.orc-int-btn-historico {
+    width: 100%;
+    padding: 10px;
+    background: transparent;
+    border: 1px solid rgba(0,200,83,0.35);
+    border-radius: var(--radius-sm);
+    color: var(--green-light);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.orc-int-btn-historico:hover { background: rgba(0,200,83,0.08); }
+
+/* Modal: lista de histórico */
+.orc-hist-list { display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.orc-hist-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+.orc-hist-item:hover { border-color: var(--green-primary); background: rgba(0,200,83,0.05); }
+.orc-hist-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.orc-hist-id { font-size: 13px; font-weight: 700; color: var(--green-light); }
+.orc-hist-valor { font-size: 14px; font-weight: 800; color: var(--text); }
+.orc-hist-cliente { font-size: 12px; color: var(--text2); margin-bottom: 2px; }
+.orc-hist-detalhe { font-size: 11px; color: var(--text3); margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.orc-hist-status { font-size: 10px; font-weight: 700; color: var(--green-light); text-transform: uppercase; letter-spacing: 0.5px; }

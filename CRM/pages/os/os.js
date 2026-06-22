@@ -80,6 +80,7 @@ window.copiarMsgWpp = copiarMsgWpp;
 window.enviarWppOS = enviarWppOS;
 window.abrirEditorTemplatesWpp = abrirEditorTemplatesWpp;
 window.salvarTemplatesWpp = salvarTemplatesWpp;
+window.verHistoricoOrcamentos = verHistoricoOrcamentos;
 
 function toggleRelatorioTecnico() {
     const body = document.getElementById('rel-tec-body');
@@ -493,6 +494,7 @@ function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto
     const _eqSel = document.getElementById('os-equip-selector'); if (_eqSel) _eqSel.style.display = 'none';
     const _eqId  = document.getElementById('os-equip-id');       if (_eqId)  _eqId.value = '';
     try { const _ep = JSON.parse(sessionStorage.getItem('cc_equip_prefill') || 'null'); if (_ep) { const _s2 = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; }; _s2('f-nome', _ep.nome); _s2('f-telefone', _ep.telefone); _s2('f-marca', _ep.marca || ''); _s2('f-modelo', _ep.modelo || ''); _s2('f-imei', _ep.imei || ''); const _cEl = document.getElementById('os-cliente-id'); if (_cEl && _ep.clienteId) _cEl.value = _ep.clienteId; if (_eqId && _ep.equipamentoId) _eqId.value = _ep.equipamentoId; if (_ep.clienteId) setTimeout(() => carregarEquipamentosOS(_ep.clienteId, _ep.equipamentoId), 400); sessionStorage.removeItem('cc_equip_prefill'); } } catch(e2) {}
+    const _orcPanel = document.getElementById('orc-inteligente-panel'); if (_orcPanel) { _orcPanel.style.display = 'none'; _orcPanel.innerHTML = ''; } _orcResultados = [];
     window.markSaved(); showScreen('form'); }
 
 async function saveOS() {
@@ -2306,6 +2308,146 @@ function globalSearch() { const t = (document.getElementById('global-search')?.v
     c.innerHTML = h || `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado</p></div>`; 
 }
 
+// ===== ORÇAMENTOS INTELIGENTES =====
+let _orcDebounce = null;
+let _orcResultados = [];
+
+function buscarOrcamentosInteligentes() {
+    clearTimeout(_orcDebounce);
+    _orcDebounce = setTimeout(_executarBuscaOrcamentos, 400);
+}
+
+function _executarBuscaOrcamentos() {
+    const panel = document.getElementById('orc-inteligente-panel');
+    if (!panel) return;
+
+    const modelo = (document.getElementById('f-modelo')?.value || '').trim();
+    const defeito = (document.getElementById('f-defeito')?.value || '').trim();
+
+    if (!modelo || !defeito || modelo.length < 2 || defeito.length < 2) {
+        panel.style.display = 'none';
+        return;
+    }
+
+    const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const modeloNorm = norm(modelo);
+    const defeitoNorm = norm(defeito);
+    const modeloWords = modeloNorm.split(/\s+/).filter(w => w.length > 2);
+    const defeitoWords = defeitoNorm.split(/\s+/).filter(w => w.length > 2);
+
+    function getFamilia(m) {
+        const mn = norm(m);
+        const match = mn.match(/^(iphone|samsung|motorola|xiaomi|poco|redmi|lg|huawei|nokia|sony|realme|oppo)/);
+        return match ? match[1] : '';
+    }
+    const modeloFamilia = getFamilia(modeloNorm);
+
+    const statusRelevantes = new Set(['concluido', 'entregue', 'orcamento_aprovado', 'em_reparo', 'testes_finais']);
+    const getValor = os => (os.valor && os.valor > 0) ? os.valor : (os.orc1Valor && os.orc1Valor > 0 ? os.orc1Valor : 0);
+
+    const prioridade1 = [], prioridade2 = [], prioridade3 = [];
+
+    for (const os of DB.getOS()) {
+        if (!statusRelevantes.has(os.status)) continue;
+        const v = getValor(os);
+        if (!v) continue;
+
+        const osModelo = norm(os.model || '');
+        const osDefeito = norm(os.defect || '');
+
+        const modeloExato = osModelo === modeloNorm || osModelo.includes(modeloNorm) || modeloNorm.includes(osModelo);
+        const modeloParcial = modeloWords.length > 0 && modeloWords.every(w => osModelo.includes(w));
+        const modeloMatch = modeloExato || modeloParcial;
+
+        const defeitoMatchCount = defeitoWords.filter(w => osDefeito.includes(w)).length;
+        const defeitoForte = defeitoWords.length === 0 || defeitoMatchCount >= Math.max(1, Math.ceil(defeitoWords.length * 0.6));
+        const defeitoFraco = defeitoMatchCount > 0 || osDefeito.includes(defeitoNorm);
+
+        if (modeloMatch && defeitoForte) {
+            prioridade1.push({ os, valor: v, prioridade: 1 });
+        } else if (modeloMatch && defeitoFraco) {
+            prioridade2.push({ os, valor: v, prioridade: 2 });
+        } else if (modeloFamilia && norm(os.model || '').startsWith(modeloFamilia) && defeitoFraco) {
+            prioridade3.push({ os, valor: v, prioridade: 3 });
+        }
+    }
+
+    const seen = new Set();
+    _orcResultados = [...prioridade1, ...prioridade2, ...prioridade3].filter(r => {
+        if (seen.has(r.os.id)) return false;
+        seen.add(r.os.id);
+        return true;
+    });
+
+    panel.style.display = 'block';
+
+    if (_orcResultados.length === 0) {
+        panel.innerHTML = `<div class="orc-int-empty">🔍 Nenhum orçamento semelhante encontrado.</div>`;
+        return;
+    }
+
+    const fmt = v => `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+    const valores = _orcResultados.map(r => r.valor).sort((a, b) => a - b);
+    const menor = valores[0];
+    const maior = valores[valores.length - 1];
+    const media = valores.reduce((s, v) => s + v, 0) / valores.length;
+    const freqMap = {};
+    valores.forEach(v => freqMap[v] = (freqMap[v] || 0) + 1);
+    const maisUsado = parseFloat(Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0][0]);
+    const sugerido = freqMap[maisUsado] > 1 ? maisUsado : valores[Math.floor(valores.length / 2)];
+
+    panel.innerHTML = `
+        <div class="orc-int-header">
+            <span class="orc-int-icon">📊</span>
+            <div class="orc-int-title-wrap">
+                <span class="orc-int-title">Histórico de Orçamentos</span>
+                <span class="orc-int-count">Baseado em ${_orcResultados.length} OS anterior${_orcResultados.length > 1 ? 'es' : ''}</span>
+            </div>
+        </div>
+        <div class="orc-int-sugerido">
+            <span class="orc-int-sugerido-label">💰 Valor sugerido</span>
+            <span class="orc-int-sugerido-valor">${fmt(sugerido)}</span>
+        </div>
+        <div class="orc-int-stats">
+            <div class="orc-int-stat"><span class="orc-int-stat-label">Menor</span><span class="orc-int-stat-num">${fmt(menor)}</span></div>
+            <div class="orc-int-stat"><span class="orc-int-stat-label">Maior</span><span class="orc-int-stat-num">${fmt(maior)}</span></div>
+            <div class="orc-int-stat"><span class="orc-int-stat-label">Média</span><span class="orc-int-stat-num">${fmt(media)}</span></div>
+            <div class="orc-int-stat"><span class="orc-int-stat-label">+ Usado</span><span class="orc-int-stat-num">${fmt(maisUsado)}</span></div>
+        </div>
+        <button class="orc-int-btn-historico" onclick="verHistoricoOrcamentos()">📋 Ver Histórico</button>
+    `;
+}
+
+function verHistoricoOrcamentos() {
+    if (!_orcResultados.length) return;
+    const fmt = v => `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+    const fmtDate = d => { try { return new Date(d).toLocaleDateString('pt-BR'); } catch { return '-'; } };
+    const statusLabel = {
+        recebido: 'Recebido', em_analise: 'Em análise', orcamento_enviado: 'Enviado',
+        orcamento_aprovado: 'Aprovado', orcamento_recusado: 'Recusado', em_reparo: 'Em reparo',
+        testes_finais: 'Testes finais', concluido: 'Concluído', entregue: 'Entregue'
+    };
+    const prioIcon = p => p === 1 ? '🎯' : p === 2 ? '🔷' : '🔹';
+    const rows = _orcResultados.map(r => {
+        const os = r.os;
+        return `<div class="orc-hist-item" onclick="closeModal();openDetail('${os.id}')">
+            <div class="orc-hist-top">
+                <span class="orc-hist-id">${prioIcon(r.prioridade)} ${os.id}</span>
+                <span class="orc-hist-valor">${fmt(r.valor)}</span>
+            </div>
+            <div class="orc-hist-cliente">${os.clientName || '-'} · ${fmtDate(os.createdAt)}</div>
+            <div class="orc-hist-detalhe">${os.model || ''} — ${os.defect || ''}</div>
+            <div class="orc-hist-status">${statusLabel[os.status] || os.status || '-'}</div>
+        </div>`;
+    }).join('');
+
+    openModal(`<div class="modal-handle"></div>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">📊 Histórico de Orçamentos</h3>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:14px;">${_orcResultados.length} OS encontrada${_orcResultados.length > 1 ? 's' : ''} · Toque para abrir</p>
+        <div class="orc-hist-list">${rows}</div>
+        <button onclick="closeModal()" style="width:100%;margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>`);
+}
+
 // ===== MODAL & TOAST =====
 function openModal(content) { document.getElementById('modal-content').innerHTML = content; document.getElementById('modal-overlay').classList.add('active'); }
 function closeModal(event) { if (event && event.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('active'); else document.getElementById('modal-overlay').classList.remove('active'); }
@@ -2576,6 +2718,11 @@ async function init() {
     if (hashOS && DB.getOS().some(o => o.id === hashOS)) openDetail(hashOS);
     else if (hashView) openFav(hashView);
     else { const fav = getFav(); if (fav) openFav(fav); else showScreen('home'); }
+    // Orçamentos Inteligentes — escuta modelo e defeito
+    ['f-modelo', 'f-defeito'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', buscarOrcamentosInteligentes);
+    });
     console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
     verificarConversaoPreOS();
     verificarConversaoPortalOS();
