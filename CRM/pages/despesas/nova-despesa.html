@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>Nova Despesa</title>
+<link rel="stylesheet" href="../crm-comercial/entrada.css">
+<link rel="stylesheet" href="nova-despesa.css">
+</head>
+<body>
+
+<header class="ent-header">
+  <button class="ent-back" id="nd-btn-voltar" type="button">← Despesas</button>
+  <span class="ent-header-title" id="nd-titulo">💰 Nova Despesa</span>
+  <div class="ent-header-spacer"></div>
+</header>
+
+<main class="ent-main">
+<form id="nd-form" autocomplete="off" novalidate>
+
+  <!-- DESCRIÇÃO -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-descricao">📝 Descrição *</label>
+    <input type="text" id="nd-descricao" class="ent-input"
+           placeholder="Ex: Almoço com fornecedor, Gasolina..." maxlength="120">
+  </div>
+
+  <!-- CATEGORIA -->
+  <div class="ent-field">
+    <label class="ent-label nd-label-flex">
+      <span>🏷️ Categoria *</span>
+      <button type="button" class="nd-btn-inline" id="nd-btn-nova-cat">＋ Nova</button>
+    </label>
+    <select id="nd-categoria" class="ent-input ent-select"></select>
+  </div>
+
+  <!-- VALOR -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-valor">💰 Valor (R$) *</label>
+    <input type="number" id="nd-valor" class="ent-input"
+           placeholder="0,00" min="0" step="0.01" inputmode="decimal">
+  </div>
+
+  <!-- DATA -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-data">📅 Data *</label>
+    <input type="date" id="nd-data" class="ent-input">
+  </div>
+
+  <!-- TIPO -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-tipo">🏢 Tipo</label>
+    <select id="nd-tipo" class="ent-input ent-select">
+      <option value="empresarial">🏢 Empresarial</option>
+      <option value="pessoal">👤 Pessoal</option>
+    </select>
+  </div>
+
+  <!-- FORMA DE PAGAMENTO -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-pagamento">💳 Forma de Pagamento</label>
+    <select id="nd-pagamento" class="ent-input ent-select">
+      <option value="dinheiro">💵 Dinheiro</option>
+      <option value="pix">💸 PIX</option>
+      <option value="debito">💳 Débito</option>
+      <option value="credito">💳 Crédito</option>
+      <option value="conta">🏦 Conta (boleto/transferência)</option>
+    </select>
+  </div>
+
+  <!-- OBSERVAÇÕES -->
+  <div class="ent-field">
+    <label class="ent-label" for="nd-obs">💬 Observações</label>
+    <input type="text" id="nd-obs" class="ent-input"
+           placeholder="Opcional..." maxlength="200">
+  </div>
+
+  <!-- CENTRO DE CUSTO -->
+  <div class="ent-field">
+    <label class="ent-label nd-label-flex">
+      <span>🏗️ Centro de Custo</span>
+      <button type="button" class="nd-btn-inline" id="nd-btn-novo-centro">＋ Novo</button>
+    </label>
+    <select id="nd-centro" class="ent-input ent-select"></select>
+  </div>
+
+  <!-- RECORRENTE -->
+  <div class="ent-field">
+    <label class="nd-check-label">
+      <input type="checkbox" id="nd-recorrente">
+      <span>🔄 Despesa Recorrente</span>
+    </label>
+  </div>
+
+  <!-- FREQUÊNCIA -->
+  <div class="ent-field" id="nd-frequencia-wrap" style="display:none">
+    <label class="ent-label" for="nd-frequencia">📆 Frequência</label>
+    <select id="nd-frequencia" class="ent-input ent-select">
+      <option value="mensal">Mensal</option>
+      <option value="semanal">Semanal</option>
+      <option value="quinzenal">Quinzenal</option>
+      <option value="trimestral">Trimestral</option>
+      <option value="semestral">Semestral</option>
+      <option value="anual">Anual</option>
+    </select>
+  </div>
+
+  <!-- BOTÕES -->
+  <div class="ent-actions nd-actions-two">
+    <button type="button" class="nd-btn-cancelar" id="nd-btn-cancelar">Cancelar</button>
+    <button type="submit" class="ent-btn-submit" id="nd-btn-salvar">Salvar</button>
+  </div>
+
+</form>
+</main>
+
+<!-- Toast -->
+<div class="ent-toast" id="nd-toast"></div>
+
+<!-- Modal: nova categoria / novo centro de custo -->
+<div class="nd-modal-overlay" id="nd-modal-quick" style="display:none">
+  <div class="nd-modal">
+    <div class="nd-modal-titulo" id="nd-modal-titulo">Nova Categoria</div>
+    <div class="ent-field">
+      <label class="ent-label" for="nd-quick-nome">Nome *</label>
+      <input type="text" id="nd-quick-nome" class="ent-input" placeholder="Nome..." maxlength="40">
+    </div>
+    <div class="ent-field">
+      <label class="ent-label" for="nd-quick-icone">Ícone (emoji)</label>
+      <input type="text" id="nd-quick-icone" class="ent-input" placeholder="💡" maxlength="4">
+    </div>
+    <div class="nd-modal-btns">
+      <button type="button" class="nd-btn-cancelar nd-btn-modal-sec" id="nd-modal-cancel">Cancelar</button>
+      <button type="button" class="ent-btn-submit nd-btn-modal-pri" id="nd-modal-ok">Criar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="nova-despesa.js"></script>
+</body>
+</html>

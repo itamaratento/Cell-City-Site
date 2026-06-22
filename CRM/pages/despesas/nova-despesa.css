@@ -1,0 +1,125 @@
+/* ============================================================
+   NOVA DESPESA — complemento ao layout entrada.css
+   Prefixo: nd-
+   ============================================================ */
+
+/* Label com botão "+ Nova" na direita */
+.nd-label-flex {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Botão inline "+ Nova" / "+ Novo" */
+.nd-btn-inline {
+  background: rgba(0,200,83,0.12);
+  border: 1px solid rgba(0,200,83,0.25);
+  border-radius: 12px;
+  padding: 2px 9px;
+  font-size: 11px;
+  color: var(--ent-green);
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.nd-btn-inline:hover { background: rgba(0,200,83,0.22); }
+
+/* Checkbox estilizado — mesmo estilo dos ent-input */
+.nd-check-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  min-height: var(--ent-h);
+  padding: 12px 16px;
+  background: var(--ent-surface);
+  border: 1.5px solid var(--ent-border);
+  border-radius: var(--ent-radius-s);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ent-text2);
+  transition: border-color 0.15s;
+  user-select: none;
+}
+.nd-check-label:hover { border-color: var(--ent-border-m); }
+.nd-check-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--ent-green);
+  flex-shrink: 0;
+}
+
+/* Dois botões na área de ações (override ent-actions) */
+.nd-actions-two {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 10px;
+}
+
+/* Botão Cancelar */
+.nd-btn-cancelar {
+  min-height: 60px;
+  background: var(--ent-elevated);
+  border: 1.5px solid var(--ent-border);
+  border-radius: var(--ent-radius);
+  color: var(--ent-text2);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+}
+.nd-btn-cancelar:hover { background: var(--ent-hover); color: var(--ent-text); }
+
+/* Modal overlay */
+.nd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(5px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+/* Modal box */
+.nd-modal {
+  background: var(--ent-elevated);
+  border: 1px solid var(--ent-border-m);
+  border-radius: 20px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.nd-modal-titulo {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ent-green-lt);
+  margin-bottom: 16px;
+}
+
+.nd-modal-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.nd-btn-modal-pri {
+  min-height: 48px;
+  font-size: 15px;
+}
+.nd-btn-modal-sec {
+  min-height: 48px;
+  font-size: 15px;
+}
+
+@media (max-width: 380px) {
+  .nd-actions-two { grid-template-columns: 1fr 1fr; }
+}

@@ -221,8 +221,7 @@ function sincronizarFiltros() {
 
 /* ── Botão ＋ Nova Despesa ────────────────────────────────────── */
 $('dsp-btn-novo')?.addEventListener('click', () => {
-    if (!LISTA_SECS.includes(secaoAtiva)) navegar('todas');
-    abrirFormNovo();
+    window.location.href = '/CRM/pages/despesas/nova-despesa.html';
 });
 
 /* ── Busca ───────────────────────────────────────────────────── */
@@ -576,31 +575,7 @@ function abrirFormNovo() {
 }
 
 function abrirFormEditar(id) {
-    const d = despesasData.find(x => x.id === id);
-    if (!d) return;
-    editandoId = id;
-    $('dsp-form-titulo').textContent = 'Editar Despesa';
-    $('dsp-descricao').value = d.descricao || '';
-    $('dsp-categoria').value = d.categoria || '';
-    $('dsp-valor').value     = d.valor || '';
-    $('dsp-data').value      = d.data || hoje();
-    $('dsp-tipo').value      = d.tipo || 'empresarial';
-    $('dsp-pagamento').value = d.pagamento || 'dinheiro';
-    $('dsp-centro').value    = d.centro || '';
-    $('dsp-obs').value       = d.obs || '';
-    $('dsp-recorrente').checked = !!d.recorrente;
-    const fw2 = $('dsp-frequencia-wrap');
-    if (fw2) fw2.style.display = d.recorrente ? 'block' : 'none';
-    const freqEl = $('dsp-frequencia');
-    if (freqEl) freqEl.value = d.frequencia || 'mensal';
-    _anexosForm = Array.isArray(d.anexos) ? [...d.anexos] : [];
-    renderAnexos($('dsp-anexos-lista'), _anexosForm, (idx) => {
-        _anexosForm.splice(idx, 1);
-        renderAnexos($('dsp-anexos-lista'), _anexosForm, arguments.callee);
-    });
-    if (!LISTA_SECS.includes(secaoAtiva)) navegar('todas');
-    $('dsp-form').style.display = 'flex';
-    setTimeout(() => $('dsp-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    window.location.href = `/CRM/pages/despesas/nova-despesa.html?id=${id}`;
 }
 
 function fecharForm() {
