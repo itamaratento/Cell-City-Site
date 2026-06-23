@@ -2325,4 +2325,3 @@ async function _criarAlertasEncomenda(enc) {
         });
     }
 }
-}
