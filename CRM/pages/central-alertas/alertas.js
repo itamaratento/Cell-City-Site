@@ -926,17 +926,32 @@ function _ccRegistrarEvento(origem, evento, tipo = 'som', extra = {}) {
 }
 
 function _tocarSom(tituloAlerta = '') {
-    // Verifica AMBAS as portas: categoria 'alertas' (cc_sons_sistema) E cfg.somGlobal da Central
+    // Só verifica cfg.somGlobal da Central (cc_sons_sistema é para sons de UI, não para alertas agendados)
     const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
     if (cfg.somGlobal === false) {
         _ccRegistrarEvento('Central de Alertas', `Som bloqueado (cfg.somGlobal=false): ${tituloAlerta}`, 'bloqueado');
         return;
     }
-    ccTocarSom('alertas', 'Central de Alertas',
-        `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`,
-        { chave: `alerta_${tituloAlerta}`, cooldownMs: 0,
-          arquivo: 'AudioContext — sine 880 curto',
-          freq: 880, dur: 0.35, vol: 0.2 });
+    _ccRegistrarEvento('Central de Alertas',
+        `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`, 'som',
+        { arquivo: 'AudioContext — sine 880→660' });
+    try {
+        const vol = Math.max(0, Math.min(1, parseFloat(localStorage.getItem('cc_sons_volume') || '0.7')));
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        const ctx  = new Ctx();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.52);
+        osc.onended = () => { try { ctx.close(); } catch {} };
+    } catch {}
 }
 
 function verificarDisparos() {
@@ -950,9 +965,8 @@ function verificarDisparos() {
     if (!devem.length) return;
     const cfg    = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
     const modo   = cfg.modoNotif || 'som_popup';
-    // Dupla verificação: porta global (cc_sons_sistema) E porta da Central (cfg.somGlobal)
-    const sonsSistema = localStorage.getItem('cc_sons_sistema') === 'true';
-    const usaSom   = sonsSistema && cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
+    // cfg.somGlobal controla os alertas agendados (cc_sons_sistema é para sons de UI, não bloqueia alertas)
+    const usaSom   = cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
     const usaPopup = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
 
     if (usaSom) _tocarSom(devem[0]?.titulo || '');
@@ -2085,7 +2099,7 @@ async function salvarAlertaEncomenda() {
     const agoraISO = new Date().toISOString();
     try {
         const ref = doc(collection(db, 'alertas_usuario'));
-        await setDoc(ref, {
+        const novoAlerta = {
             id: ref.id,
             titulo,
             descricao:   desc || `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''}. Cliente: ${enc.cliente}.`,
@@ -2099,11 +2113,14 @@ async function salvarAlertaEncomenda() {
             link:        '/CRM/pages/central-alertas/index.html?nav=encomendas',
             encomendaId:  id,
             encomendaTipo: tipo,
-            criadoEm:    serverTimestamp(),
             criadoEmISO: agoraISO,
-            atualizadoEm: serverTimestamp(),
             atualizadoEmISO: agoraISO,
-        });
+        };
+        await setDoc(ref, { ...novoAlerta, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+        st.lista.push(novoAlerta);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+        render();
+        atualizarBadges();
         toast('🔔 Alerta programado!');
         fecharModalAlerta();
     } catch {
@@ -2174,7 +2191,7 @@ async function _alertaClienteAguardando(enc) {
         const agoraISO = new Date().toISOString();
         const hoje = _encHoje();
         const ref = doc(collection(db, 'alertas_usuario'));
-        await setDoc(ref, {
+        const novoAlerta = {
             id: ref.id,
             titulo:      `📬 Cliente aguardando retirada — ${enc.cliente}`,
             descricao:   `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''} disponível para retirada.${enc.telefone ? ' Tel: ' + enc.telefone : ''}${enc.whatsapp ? ' / ' + enc.whatsapp : ''}`,
@@ -2188,11 +2205,14 @@ async function _alertaClienteAguardando(enc) {
             link:        '/CRM/pages/central-alertas/index.html?nav=encomendas',
             encomendaId:  enc.id,
             encomendaTipo:'disponivel',
-            criadoEm:    serverTimestamp(),
             criadoEmISO: agoraISO,
-            atualizadoEm: serverTimestamp(),
             atualizadoEmISO: agoraISO,
-        });
+        };
+        await setDoc(ref, { ...novoAlerta, criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp() });
+        st.lista.push(novoAlerta);
+        localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+        render();
+        atualizarBadges();
     } catch (err) {
         console.warn('⚠️ Alerta de retirada não criado:', err);
     }
