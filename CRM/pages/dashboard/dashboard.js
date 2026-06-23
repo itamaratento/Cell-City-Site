@@ -3408,14 +3408,24 @@ class Dashboard {
     const changelogPop  = document.getElementById('sys-changelog-popup');
     const changelogBody = document.getElementById('sys-changelog-body');
     const changelogClose= document.getElementById('sys-changelog-close');
-    const overlay       = document.getElementById('sys-update-overlay');
-    const overlayTitle  = document.getElementById('sys-update-card-title');
-    const overlaySpinner= document.getElementById('sys-update-spinner');
-    const stepsList     = document.getElementById('sys-update-steps');
-    const successMsg    = document.getElementById('sys-update-success');
-    const prefAutoCheck = document.getElementById('pref-auto-check');
-    const prefAutoUpd   = document.getElementById('pref-auto-update');
-    const prefInterval  = document.getElementById('pref-interval-select');
+    const overlay        = document.getElementById('sys-update-overlay');
+    const overlayTitle   = document.getElementById('sys-update-card-title');
+    const overlaySpinner = document.getElementById('sys-update-spinner');
+    const stepsList      = document.getElementById('sys-update-steps');
+    const successMsg     = document.getElementById('sys-update-success');
+    const errorMsg       = document.getElementById('sys-update-error');
+    const overlayDismiss = document.getElementById('sys-overlay-dismiss');
+    const prefAutoCheck  = document.getElementById('pref-auto-check');
+    const prefAutoUpd    = document.getElementById('pref-auto-update');
+    const prefInterval   = document.getElementById('pref-interval-select');
+
+    // ── RECUPERAÇÃO DE LOCK TRAVADO ──────────────────────────────────────────
+    // Se na sessão anterior o overlay ficou visível sem terminar, limpa tudo.
+    const hadStaleLock = SystemUpdater.clearStaleLock();
+    if (hadStaleLock && overlay) {
+      overlay.hidden = true;
+      console.warn('[Dashboard] Lock de atualização travado da sessão anterior foi limpo.');
+    }
 
     // Instancia o motor de atualizações
     const updater = new SystemUpdater({
@@ -3545,6 +3555,17 @@ class Dashboard {
 
     // ── MODO 2: Atualização completa com reload (BLOQUEANTE intencional) ─────
     // Ativado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique
+    const _dismissOverlay = () => {
+      if (overlay)   overlay.hidden = true;
+      if (reloadBtn) reloadBtn.classList.remove('spinning');
+      if (errorMsg)  errorMsg.hidden = true;
+      if (successMsg) successMsg.hidden = true;
+      SystemUpdater._clearLock?.();
+    };
+
+    // Botão "Continuar usando o sistema →" — escape hatch sempre disponível
+    overlayDismiss?.addEventListener('click', _dismissOverlay);
+
     const _showOverlay = () => {
       if (!overlay || !stepsList) return;
       stepsList.innerHTML = '';
@@ -3556,6 +3577,7 @@ class Dashboard {
         stepsList.appendChild(li);
       });
       if (successMsg)     successMsg.hidden = true;
+      if (errorMsg)       errorMsg.hidden   = true;
       if (overlayTitle)   overlayTitle.textContent = 'Atualizando sistema...';
       if (overlaySpinner) overlaySpinner.classList.remove('done');
       overlay.hidden = false;
@@ -3584,9 +3606,17 @@ class Dashboard {
           if (overlaySpinner) overlaySpinner.classList.add('done');
           if (successMsg)     successMsg.hidden = false;
         },
-        onError: () => {
-          if (overlay)   overlay.hidden = true;
+        onError: (err) => {
           if (reloadBtn) reloadBtn.classList.remove('spinning');
+          if (err?.message === 'timeout' || err?.message?.includes('timeout')) {
+            // Timeout de 30s: mostra erro e libera interface
+            if (overlayTitle) overlayTitle.textContent = '⚠️ Tempo esgotado';
+            if (overlaySpinner) overlaySpinner.classList.add('done');
+            if (errorMsg) errorMsg.hidden = false;
+          } else {
+            // Erro geral: fecha overlay imediatamente
+            _dismissOverlay();
+          }
         }
       });
     };

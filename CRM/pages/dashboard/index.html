@@ -130,6 +130,7 @@
 </div>
 
 <!-- ========== OVERLAY: PROGRESSO DE ATUALIZAÇÃO ========== -->
+<!-- Aparece APENAS quando usuário confirma "Atualizar Agora" ou faz Ctrl+clique -->
 <div class="sys-update-overlay" id="sys-update-overlay" hidden role="dialog" aria-modal="true" aria-label="Atualizando sistema">
   <div class="sys-update-card">
     <div class="sys-update-card-header">
@@ -144,6 +145,14 @@
     </div>
     <ul class="sys-update-steps" id="sys-update-steps" role="list"></ul>
     <div class="sys-update-success" id="sys-update-success" hidden>✅ Sistema atualizado com sucesso</div>
+    <div class="sys-update-error" id="sys-update-error" hidden>
+      ⚠️ Não foi possível concluir a atualização.
+      <small>O sistema foi liberado para uso.</small>
+    </div>
+    <!-- Escape hatch: sempre visível no overlay -->
+    <button class="sys-overlay-dismiss" id="sys-overlay-dismiss" title="Fechar e continuar usando o sistema" aria-label="Fechar overlay de atualização">
+      Continuar usando o sistema →
+    </button>
   </div>
 </div>
 

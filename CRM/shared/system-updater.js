@@ -4,7 +4,9 @@
  * indicadores de conexão, sincronização e histórico de alterações.
  */
 
-const LS_PREFS_KEY = 'cc_updater_prefs';
+const LS_PREFS_KEY  = 'cc_updater_prefs';
+const LS_LOCK_KEY   = 'cc_updater_lock';   // flag de atualização em andamento
+const LOCK_TIMEOUT  = 30_000;              // 30s: tempo máximo para atualizar
 
 const DEFAULT_PREFS = {
   autoCheck:    true,
@@ -42,10 +44,40 @@ export class SystemUpdater {
 
   // ── Inicialização ──────────────────────────────────────────────────────────
   async init() {
+    // Proteção contra tela travada de sessão anterior
+    SystemUpdater.clearStaleLock();
+
     this._currentVersion = await this._fetchVersion();
     if (this.onVersionLoaded) this.onVersionLoaded(this._currentVersion);
     this._startAutoCheck();
     this._setupOnlineOffline();
+  }
+
+  // ── Proteção contra travamento ────────────────────────────────────────────
+  // Grava timestamp ao iniciar fullReload e limpa ao terminar.
+  // Se na próxima inicialização o lock existir com mais de 30s → estava travado.
+  static _setLock() {
+    try { localStorage.setItem(LS_LOCK_KEY, String(Date.now())); } catch {}
+  }
+  static _clearLock() {
+    try { localStorage.removeItem(LS_LOCK_KEY); } catch {}
+  }
+  static clearStaleLock() {
+    try {
+      const ts = parseInt(localStorage.getItem(LS_LOCK_KEY) || '0', 10);
+      if (ts && (Date.now() - ts) > LOCK_TIMEOUT) {
+        localStorage.removeItem(LS_LOCK_KEY);
+        console.warn('[SystemUpdater] Lock de atualização travado detectado e limpo.');
+        return true; // indica que havia um lock travado
+      }
+    } catch {}
+    return false;
+  }
+  static hasStaleLock() {
+    try {
+      const ts = parseInt(localStorage.getItem(LS_LOCK_KEY) || '0', 10);
+      return ts > 0 && (Date.now() - ts) > LOCK_TIMEOUT;
+    } catch { return false; }
   }
 
   // ── Preferências ──────────────────────────────────────────────────────────
@@ -169,11 +201,23 @@ export class SystemUpdater {
 
   // ── Atualização completa com reload (SOMENTE quando versão mudou) ─────────
   // Chamado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique.
+  // Timeout de 30s: se travar, libera a interface automaticamente.
   async fullReload(callbacks = {}) {
     if (this._isUpdating) return;
     this._isUpdating = true;
+    SystemUpdater._setLock();
 
     const { onStep, onDone, onError } = callbacks;
+
+    // Timer de segurança: libera tudo se ultrapassar LOCK_TIMEOUT
+    let timedOut = false;
+    const safetyTimer = setTimeout(() => {
+      timedOut = true;
+      this._isUpdating = false;
+      SystemUpdater._clearLock();
+      console.error('[SystemUpdater] Timeout de atualização (30s). Interface liberada.');
+      onError && onError(new Error('timeout'));
+    }, LOCK_TIMEOUT);
 
     const steps = [
       { id: 'cache',   label: 'Limpando cache',        fn: () => this._clearCaches() },
@@ -184,17 +228,24 @@ export class SystemUpdater {
 
     try {
       for (const step of steps) {
+        if (timedOut) return;
         onStep && onStep(step.id, 'loading', step.label);
         await step.fn();
         await _delay(340);
+        if (timedOut) return;
         onStep && onStep(step.id, 'done', step.label);
         await _delay(130);
       }
+      if (timedOut) return;
       const newVer = await this._fetchVersion();
+      clearTimeout(safetyTimer);
+      SystemUpdater._clearLock();
       onDone && onDone(newVer);
       await _delay(900);
       location.reload();
     } catch (err) {
+      clearTimeout(safetyTimer);
+      SystemUpdater._clearLock();
       this._isUpdating = false;
       onError && onError(err);
     }
