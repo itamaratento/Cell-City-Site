@@ -14,7 +14,8 @@ import {
     orderBy,
     where,
     runTransaction,
-    serverTimestamp
+    serverTimestamp,
+    auth
 } from "../../scripts/firebase.js";
 
 // ═══════════════════════════════════════════
@@ -2190,6 +2191,7 @@ function renderLembretes() {
 window.abrirNovaEncomenda     = abrirNovaEncomenda;
 window.fecharNovaEncomenda    = fecharNovaEncomenda;
 window.salvarEncomendaDoCaixa = salvarEncomendaDoCaixa;
+window.calcEncLucro           = calcEncLucro;
 
 const COLL_ENCOMENDAS = 'encomendas';
 const COL_ALERTAS_ENC = 'alertas_usuario';
@@ -2210,18 +2212,33 @@ function fecharNovaEncomenda() {
     _limparFormEncomenda();
 }
 
+function calcEncLucro() {
+    const custo = parseFloat(document.getElementById('enc-custo')?.value) || 0;
+    const venda = parseFloat(document.getElementById('enc-venda')?.value) || 0;
+    const el = document.getElementById('enc-lucro-preview');
+    if (!el) return;
+    if (custo > 0 || venda > 0) {
+        const lucro = venda - custo;
+        el.style.display = 'block';
+        el.textContent = `📈 Lucro previsto: R$ ${lucro.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+        el.style.color = lucro >= 0 ? '#34d399' : '#f87171';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
 function _limparFormEncomenda() {
     ['enc-cliente','enc-telefone','enc-whatsapp','enc-produto','enc-modelo',
-     'enc-fornecedor','enc-data-prevista','enc-observacoes'].forEach(id => {
+     'enc-fornecedor','enc-data-prevista','enc-observacoes','enc-obs-internas'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.value = '';
     });
-    const qtd = document.getElementById('enc-quantidade');
-    if (qtd) qtd.value = '1';
-    const val = document.getElementById('enc-valor');
-    if (val) val.value = '';
+    ['enc-quantidade'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '1'; });
+    ['enc-valor','enc-custo','enc-venda'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const dataEnc = document.getElementById('enc-data-encomenda');
     if (dataEnc) dataEnc.value = '';
+    const lucroEl = document.getElementById('enc-lucro-preview');
+    if (lucroEl) lucroEl.style.display = 'none';
 }
 
 async function salvarEncomendaDoCaixa() {
@@ -2235,32 +2252,44 @@ async function salvarEncomendaDoCaixa() {
     const dataEncomenda = document.getElementById('enc-data-encomenda')?.value || getDataEmSP(agora);
     const dataPrevista  = document.getElementById('enc-data-prevista')?.value  || '';
 
+    const custo = parseFloat(document.getElementById('enc-custo')?.value) || 0;
+    const venda = parseFloat(document.getElementById('enc-venda')?.value) || 0;
+    const uid = auth?.currentUser?.uid || '';
+
     const dados = {
         cliente,
-        telefone:           document.getElementById('enc-telefone')?.value.trim()   || '',
-        whatsapp:           document.getElementById('enc-whatsapp')?.value.trim()   || '',
+        telefone:            document.getElementById('enc-telefone')?.value.trim()     || '',
+        whatsapp:            document.getElementById('enc-whatsapp')?.value.trim()     || '',
         produto,
-        modelo:             document.getElementById('enc-modelo')?.value.trim()     || '',
-        quantidade:         parseInt(document.getElementById('enc-quantidade')?.value || 1),
-        valorCombinado:     parseFloat(document.getElementById('enc-valor')?.value  || 0),
-        fornecedorSugerido: document.getElementById('enc-fornecedor')?.value.trim() || '',
+        modelo:              document.getElementById('enc-modelo')?.value.trim()       || '',
+        quantidade:          parseInt(document.getElementById('enc-quantidade')?.value || 1),
+        valorCombinado:      parseFloat(document.getElementById('enc-valor')?.value    || 0),
+        valorCusto:          custo,
+        valorVenda:          venda,
+        lucroPrevisto:       venda > 0 || custo > 0 ? venda - custo : null,
+        fornecedorSugerido:  document.getElementById('enc-fornecedor')?.value.trim()   || '',
         dataEncomenda,
         dataPrevista,
-        observacoes:        document.getElementById('enc-observacoes')?.value.trim() || '',
-        status:             'aguardando_compra',
-        historicoStatus:    [{ status: 'aguardando_compra', data: agoraISO, obs: 'Encomenda registrada no caixa' }],
-        criadoEm:           serverTimestamp(),
-        criadoEmISO:        agoraISO,
-        atualizadoEm:       serverTimestamp(),
-        atualizadoEmISO:    agoraISO,
+        observacoes:         document.getElementById('enc-observacoes')?.value.trim()  || '',
+        observacoesInternas: document.getElementById('enc-obs-internas')?.value.trim() || '',
+        status:              'aguardando_compra',
+        historicoStatus:     [{ status: 'aguardando_compra', data: agoraISO, obs: 'Encomenda registrada no caixa', usuario: uid }],
+        criadoPor:           uid,
+        criadoEm:            serverTimestamp(),
+        criadoEmISO:         agoraISO,
+        atualizadoEm:        serverTimestamp(),
+        atualizadoEmISO:     agoraISO,
     };
 
     try {
         const ref = doc(collection(db, COLL_ENCOMENDAS));
         await setDoc(ref, { ...dados, id: ref.id });
         await _criarAlertasEncomenda({ ...dados, id: ref.id });
-        showToast('✅ Encomenda registrada! Alertas criados.');
+        showToast('✅ Encomenda registrada! Redirecionando...');
         fecharNovaEncomenda();
+        setTimeout(() => {
+            window.location.href = '/CRM/pages/central-alertas/index.html?nav=encomendas';
+        }, 1200);
     } catch (err) {
         console.error('❌ Erro ao salvar encomenda:', err);
         showToast('❌ Erro ao salvar. Verifique a conexão.');

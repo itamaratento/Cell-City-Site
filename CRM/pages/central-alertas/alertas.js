@@ -1,6 +1,6 @@
 import {
     db, collection, doc, getDocs, setDoc, updateDoc, deleteDoc,
-    serverTimestamp, query, orderBy, where, authReady
+    serverTimestamp, query, orderBy, where, authReady, auth
 } from '../../scripts/firebase.js';
 import { ccTocarSom, ccLog, ccSonsHabilitados } from '../../shared/cc-audio.js';
 
@@ -24,6 +24,7 @@ const st = {
     // Encomendas
     encomendas:      [],
     encFiltro:       'pendentes',
+    encFiltroMeu:    false,
 };
 
 // ── Helpers de data ───────────────────────────────────────────────────────────
@@ -1616,6 +1617,18 @@ const ENC_STATUS_COR = {
     cancelada:         '#f87171',
 };
 
+const ENC_TIPO_ALERTA_LABEL = {
+    comprar_produto:      '🛒 Comprar produto',
+    consultar_fornecedor: '🏪 Consultar fornecedor',
+    cobrar_fornecedor:    '💰 Cobrar fornecedor',
+    avisar_cliente:       '📞 Avisar cliente',
+    confirmar_retirada:   '✅ Confirmar retirada',
+    personalizado:        '✏️ Alerta personalizado',
+};
+
+let _encEditId   = null;
+let _encAlertaId = null;
+
 function _encHoje() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -1654,9 +1667,16 @@ function _atualizarBadgeEncomendas() {
 
 function filtrarEncomendas(filtro) {
     st.encFiltro = filtro;
-    document.querySelectorAll('.enc-filtro-btn').forEach(b =>
+    document.querySelectorAll('.enc-filtro-btn:not(.enc-filtro-meu)').forEach(b =>
         b.classList.toggle('active', b.dataset.filtro === filtro)
     );
+    renderEncomendas();
+}
+
+function toggleMinhasEncomendas() {
+    st.encFiltroMeu = !st.encFiltroMeu;
+    const btn = document.getElementById('enc-btn-meu');
+    if (btn) btn.classList.toggle('active', st.encFiltroMeu);
     renderEncomendas();
 }
 
@@ -1684,15 +1704,59 @@ function _encFiltrar(lista, filtro) {
 function renderEncomendas() {
     const el = document.getElementById('lista-encomendas');
     if (!el) return;
-    const lista = _encFiltrar(st.encomendas, st.encFiltro);
+
+    _renderEncStats();
+
+    let source = st.encomendas;
+    if (st.encFiltroMeu) {
+        const uid = auth?.currentUser?.uid;
+        if (uid) source = source.filter(e => e.criadoPor === uid);
+    }
+
+    const lista = _encFiltrar(source, st.encFiltro);
     if (!lista.length) {
         el.innerHTML = `<div class="enc-empty">
             <div style="font-size:32px;margin-bottom:8px">📦</div>
-            <div>Nenhuma encomenda nesta categoria</div>
+            <div>Nenhuma encomenda nesta categoria${st.encFiltroMeu ? ' (filtrando por suas encomendas)' : ''}</div>
         </div>`;
         return;
     }
     el.innerHTML = lista.map(e => _encCard(e)).join('');
+}
+
+function _renderEncStats() {
+    const el = document.getElementById('enc-stats');
+    if (!el) return;
+    const hoje = _encHoje();
+    const abertas    = st.encomendas.filter(e => !['entregue','cancelada'].includes(e.status)).length;
+    const atrasadas  = st.encomendas.filter(e => e.dataPrevista && e.dataPrevista < hoje && !['entregue','cancelada'].includes(e.status)).length;
+    const entregues  = st.encomendas.filter(e => e.status === 'entregue').length;
+    const canceladas = st.encomendas.filter(e => e.status === 'cancelada').length;
+    const valorAberto = st.encomendas
+        .filter(e => !['entregue','cancelada'].includes(e.status))
+        .reduce((s, e) => s + (Number(e.valorCombinado) || Number(e.valorVenda) || 0), 0);
+    el.innerHTML = `
+        <div class="enc-stat ${abertas > 0 ? 'ativa' : ''}">
+            <span class="enc-stat-num">${abertas}</span>
+            <span class="enc-stat-label">Em Aberto</span>
+        </div>
+        <div class="enc-stat ${atrasadas > 0 ? 'atrasada' : ''}">
+            <span class="enc-stat-num">${atrasadas}</span>
+            <span class="enc-stat-label">Atrasadas</span>
+        </div>
+        <div class="enc-stat entregue">
+            <span class="enc-stat-num">${entregues}</span>
+            <span class="enc-stat-label">Entregues</span>
+        </div>
+        <div class="enc-stat cancelada">
+            <span class="enc-stat-num">${canceladas}</span>
+            <span class="enc-stat-label">Canceladas</span>
+        </div>
+        ${valorAberto > 0 ? `<div class="enc-stat valor">
+            <span class="enc-stat-num">R$ ${valorAberto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+            <span class="enc-stat-label">Valor em Aberto</span>
+        </div>` : ''}
+    `;
 }
 
 function _encCard(e) {
@@ -1701,41 +1765,67 @@ function _encCard(e) {
     const dias  = _encDiasRestantes(e.dataPrevista);
     let diasLabel = '';
     if (dias !== null) {
-        if (dias < 0)       diasLabel = `<span class="enc-dias atrasado">${Math.abs(dias)}d atrasado</span>`;
+        if (dias < 0)        diasLabel = `<span class="enc-dias atrasado">${Math.abs(dias)}d atrasado</span>`;
         else if (dias === 0) diasLabel = `<span class="enc-dias hoje">Chega hoje!</span>`;
         else                 diasLabel = `<span class="enc-dias">${dias}d restantes</span>`;
     }
     const dtEnc  = e.dataEncomenda ? fmtData(e.dataEncomenda) : '—';
     const dtPrev = e.dataPrevista  ? fmtData(e.dataPrevista)  : '—';
-    const valor  = e.valorCombinado ? `R$ ${Number(e.valorCombinado).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '';
-    const modeloLabel = e.modelo ? ` <span style="color:#6c757d">${esc(e.modelo)}</span>` : '';
+    const vComb  = e.valorCombinado ? `R$ ${Number(e.valorCombinado).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '';
+    const lucro  = (e.valorVenda != null && e.valorCusto != null) ? Number(e.valorVenda) - Number(e.valorCusto) : null;
+    const modeloLabel = e.modelo ? ` <span class="enc-modelo">${esc(e.modelo)}</span>` : '';
+    const btnsStatus = _encBotoesStatus(e);
+    const historico  = (e.historicoStatus || []).slice().reverse();
 
-    // Botões de status
-    const btns = _encBotoes(e);
+    const waNum = (e.whatsapp || e.telefone || '').replace(/\D/g, '');
+    const mensagemWA = encodeURIComponent(`Olá ${e.cliente}, sua encomenda de ${e.produto} está disponível para retirada na Cell City! 📦`);
+    const waHref = waNum ? `https://wa.me/55${waNum}?text=${mensagemWA}` : '';
 
-    return `<div class="enc-card" id="enc-card-${esc(e.id)}">
+    return `<div class="enc-card" id="enc-card-${esc(e.id)}" style="border-left:4px solid ${cor}">
         <div class="enc-card-header">
             <span class="enc-status-badge" style="background:${cor}20;color:${cor};border-color:${cor}40">${label}</span>
             ${diasLabel}
         </div>
         <div class="enc-card-body">
-            <div class="enc-cliente">👤 ${esc(e.cliente)}</div>
-            <div class="enc-produto">📦 ${esc(e.produto)}${modeloLabel} ${e.quantidade > 1 ? `<span class="enc-qtd">×${e.quantidade}</span>` : ''}</div>
-            ${valor ? `<div class="enc-valor">💰 ${valor}</div>` : ''}
-            ${e.fornecedorSugerido ? `<div class="enc-fornecedor">🏢 ${esc(e.fornecedorSugerido)}</div>` : ''}
-            ${e.telefone || e.whatsapp ? `<div class="enc-contato">📞 ${esc(e.telefone||e.whatsapp)}</div>` : ''}
-            <div class="enc-datas">📅 Encomenda: ${dtEnc}${e.dataPrevista ? ` &nbsp;·&nbsp; Previsão: ${dtPrev}` : ''}</div>
+            <div class="enc-cliente">👤 <strong>${esc(e.cliente)}</strong></div>
+            <div class="enc-produto">📦 ${esc(e.produto)}${modeloLabel}${e.quantidade > 1 ? ` <span class="enc-qtd">×${e.quantidade}</span>` : ''}</div>
+            ${e.fornecedorSugerido ? `<div class="enc-fornecedor">🏪 ${esc(e.fornecedorSugerido)}</div>` : ''}
+            ${e.telefone || e.whatsapp ? `<div class="enc-contato">📞 ${esc(e.telefone || e.whatsapp)}</div>` : ''}
+            <div class="enc-datas">📅 ${dtEnc}${e.dataPrevista ? ` → ${dtPrev}` : ''}</div>
+            ${vComb || lucro !== null ? `<div class="enc-valores">
+                ${vComb ? `<span class="enc-val-tag comb">💰 ${vComb}</span>` : ''}
+                ${lucro !== null ? `<span class="enc-val-tag ${lucro >= 0 ? 'lucro' : 'prejuizo'}">📈 Lucro: R$ ${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>` : ''}
+            </div>` : ''}
             ${e.observacoes ? `<div class="enc-obs">📝 ${esc(e.observacoes)}</div>` : ''}
+            ${e.observacoesInternas ? `<div class="enc-obs-int">🔒 ${esc(e.observacoesInternas)}</div>` : ''}
         </div>
-        <div class="enc-card-actions">${btns}</div>
+        ${btnsStatus ? `<div class="enc-card-actions">${btnsStatus}</div>` : ''}
+        <div class="enc-card-actions-sec">
+            <button class="enc-btn-sec enc-btn-edit"   onclick="Alertas.abrirFormEncomenda('${esc(e.id)}')">✏️ Editar</button>
+            <button class="enc-btn-sec enc-btn-alerta"  onclick="Alertas.abrirModalAlerta('${esc(e.id)}')">🔔 Alerta</button>
+            ${waNum ? `<button class="enc-btn-sec enc-btn-wa" onclick="window.open('${waHref}','_blank')">📲 WhatsApp</button>` : ''}
+            ${e.telefone ? `<button class="enc-btn-sec enc-btn-tel" onclick="window.location.href='tel:${e.telefone}'">📞 Ligar</button>` : ''}
+            ${e.fornecedorSugerido ? `<button class="enc-btn-sec enc-btn-forn" onclick="Alertas.contatarFornecedor('${esc(e.id)}')">🏪 Fornecedor</button>` : ''}
+            <button class="enc-btn-sec enc-btn-del" onclick="Alertas.excluirEncomenda('${esc(e.id)}')">🗑️ Excluir</button>
+        </div>
+        ${historico.length > 0 ? `<details class="enc-historico">
+            <summary>📋 Histórico (${historico.length})</summary>
+            <div class="enc-historico-lista">
+                ${historico.map(h => `<div class="enc-hist-item">
+                    <span class="enc-hist-status" style="color:${ENC_STATUS_COR[h.status]||'#888'}">${ENC_STATUS_LABEL[h.status] || h.status}</span>
+                    <span class="enc-hist-data">${new Date(h.data).toLocaleString('pt-BR')}</span>
+                    ${h.obs ? `<span class="enc-hist-obs">${esc(h.obs)}</span>` : ''}
+                </div>`).join('')}
+            </div>
+        </details>` : ''}
     </div>`;
 }
 
-function _encBotoes(e) {
+function _encBotoesStatus(e) {
     const id = esc(e.id);
     const fluxo = {
         aguardando_compra: [
-            { status: 'comprada',      label: '🛍️ Marcar Comprada' },
+            { status: 'comprada',      label: '✅ Marcar Comprada' },
             { status: 'cancelada',     label: '❌ Cancelar', cls: 'enc-btn-cancel' },
         ],
         comprada: [
@@ -1747,13 +1837,14 @@ function _encBotoes(e) {
             { status: 'cancelada',          label: '❌ Cancelar', cls: 'enc-btn-cancel' },
         ],
         disponivel: [
-            { status: 'entregue',      label: '✅ Marcar Entregue', cls: 'enc-btn-entregue' },
+            { status: 'entregue',      label: '✔️ Marcar Entregue', cls: 'enc-btn-entregue' },
         ],
         entregue:  [],
-        cancelada: [],
+        cancelada: [
+            { status: 'aguardando_compra', label: '↩️ Reabrir', cls: '' },
+        ],
     };
-    const acoes = fluxo[e.status] || [];
-    return acoes.map(a => {
+    return (fluxo[e.status] || []).map(a => {
         if (a.action) return `<button class="enc-btn ${a.cls||''}" onclick="${a.action}">${a.label}</button>`;
         return `<button class="enc-btn ${a.cls||''}" onclick="Alertas.atualizarStatusEncomenda('${id}','${a.status}')">${a.label}</button>`;
     }).join('');
@@ -1763,7 +1854,10 @@ async function atualizarStatusEncomenda(id, novoStatus) {
     const enc = st.encomendas.find(e => e.id === id);
     if (!enc) return;
     const agoraISO = new Date().toISOString();
-    const historico = [...(enc.historicoStatus || []), { status: novoStatus, data: agoraISO, obs: '' }];
+    const uid = auth?.currentUser?.uid || '';
+    const historico = [...(enc.historicoStatus || []), {
+        status: novoStatus, data: agoraISO, obs: '', usuario: uid
+    }];
     try {
         await updateDoc(doc(db, COL_ENC, id), {
             status: novoStatus,
@@ -1775,15 +1869,246 @@ async function atualizarStatusEncomenda(id, novoStatus) {
         enc.historicoStatus = historico;
         enc.atualizadoEmISO = agoraISO;
         localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
-
         if (novoStatus === 'disponivel') await _alertaClienteAguardando(enc);
-
         toast(`✅ Status atualizado: ${ENC_STATUS_LABEL[novoStatus] || novoStatus}`);
     } catch {
         toast('❌ Erro ao atualizar status.');
     }
     renderEncomendas();
     _atualizarBadgeEncomendas();
+}
+
+// ── Formulário unificado criar/editar ─────────────────────────────────────────
+function abrirFormEncomenda(id) {
+    _encEditId = id || null;
+    const overlay = document.getElementById('enc-modal-form-overlay');
+    if (!overlay) return;
+    const titulo = document.getElementById('enc-modal-form-titulo');
+
+    if (id) {
+        const enc = st.encomendas.find(e => e.id === id);
+        if (!enc) return;
+        if (titulo) titulo.textContent = '✏️ Editar Encomenda';
+        document.getElementById('enc-edit-id').value            = enc.id;
+        document.getElementById('enc-edit-cliente').value       = enc.cliente || '';
+        document.getElementById('enc-edit-telefone').value      = enc.telefone || '';
+        document.getElementById('enc-edit-whatsapp').value      = enc.whatsapp || '';
+        document.getElementById('enc-edit-produto').value       = enc.produto || '';
+        document.getElementById('enc-edit-modelo').value        = enc.modelo || '';
+        document.getElementById('enc-edit-quantidade').value    = enc.quantidade || 1;
+        document.getElementById('enc-edit-valor').value         = enc.valorCombinado || '';
+        document.getElementById('enc-edit-fornecedor').value    = enc.fornecedorSugerido || '';
+        document.getElementById('enc-edit-custo').value         = enc.valorCusto || '';
+        document.getElementById('enc-edit-venda').value         = enc.valorVenda || '';
+        document.getElementById('enc-edit-data-encomenda').value = enc.dataEncomenda || '';
+        document.getElementById('enc-edit-data-prevista').value  = enc.dataPrevista  || '';
+        document.getElementById('enc-edit-obs').value           = enc.observacoes || '';
+        document.getElementById('enc-edit-obs-int').value       = enc.observacoesInternas || '';
+        calcLucroEdit();
+    } else {
+        if (titulo) titulo.textContent = '📦 Nova Encomenda';
+        document.getElementById('enc-edit-id').value = '';
+        ['enc-edit-cliente','enc-edit-telefone','enc-edit-whatsapp','enc-edit-produto',
+         'enc-edit-modelo','enc-edit-fornecedor','enc-edit-obs','enc-edit-obs-int'].forEach(i => {
+            const el = document.getElementById(i); if (el) el.value = '';
+        });
+        ['enc-edit-valor','enc-edit-custo','enc-edit-venda'].forEach(i => {
+            const el = document.getElementById(i); if (el) el.value = '';
+        });
+        document.getElementById('enc-edit-quantidade').value = 1;
+        const hoje = new Date(); const hISO = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+        document.getElementById('enc-edit-data-encomenda').value = hISO;
+        document.getElementById('enc-edit-data-prevista').value  = '';
+        const lucroEl = document.getElementById('enc-edit-lucro'); if (lucroEl) lucroEl.style.display = 'none';
+    }
+    overlay.style.display = 'flex';
+    setTimeout(() => document.getElementById('enc-edit-cliente')?.focus(), 120);
+}
+
+function fecharFormEncomenda() {
+    const overlay = document.getElementById('enc-modal-form-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _encEditId = null;
+}
+
+function calcLucroEdit() {
+    const custo = parseFloat(document.getElementById('enc-edit-custo')?.value) || 0;
+    const venda = parseFloat(document.getElementById('enc-edit-venda')?.value) || 0;
+    const el = document.getElementById('enc-edit-lucro');
+    if (!el) return;
+    if (custo > 0 || venda > 0) {
+        const lucro = venda - custo;
+        el.style.display = 'block';
+        el.textContent = `📈 Lucro previsto: R$ ${lucro.toLocaleString('pt-BR',{minimumFractionDigits:2})}`;
+        el.style.color = lucro >= 0 ? '#34d399' : '#f87171';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+async function salvarFormEncomenda() {
+    const cliente = document.getElementById('enc-edit-cliente')?.value.trim();
+    const produto  = document.getElementById('enc-edit-produto')?.value.trim();
+    if (!cliente) { toast('⚠️ Informe o nome do cliente'); return; }
+    if (!produto)  { toast('⚠️ Informe o produto desejado'); return; }
+
+    const agoraISO = new Date().toISOString();
+    const uid = auth?.currentUser?.uid || '';
+    const id  = document.getElementById('enc-edit-id')?.value;
+    const custo = parseFloat(document.getElementById('enc-edit-custo')?.value) || 0;
+    const venda = parseFloat(document.getElementById('enc-edit-venda')?.value) || 0;
+
+    const dados = {
+        cliente,
+        telefone:            document.getElementById('enc-edit-telefone')?.value.trim()   || '',
+        whatsapp:            document.getElementById('enc-edit-whatsapp')?.value.trim()   || '',
+        produto,
+        modelo:              document.getElementById('enc-edit-modelo')?.value.trim()     || '',
+        quantidade:          parseInt(document.getElementById('enc-edit-quantidade')?.value || 1),
+        valorCombinado:      parseFloat(document.getElementById('enc-edit-valor')?.value  || 0),
+        valorCusto:          custo,
+        valorVenda:          venda,
+        lucroPrevisto:       (venda > 0 || custo > 0) ? venda - custo : null,
+        fornecedorSugerido:  document.getElementById('enc-edit-fornecedor')?.value.trim()  || '',
+        dataEncomenda:       document.getElementById('enc-edit-data-encomenda')?.value || '',
+        dataPrevista:        document.getElementById('enc-edit-data-prevista')?.value  || '',
+        observacoes:         document.getElementById('enc-edit-obs')?.value.trim()     || '',
+        observacoesInternas: document.getElementById('enc-edit-obs-int')?.value.trim() || '',
+        atualizadoEm:        serverTimestamp(),
+        atualizadoEmISO:     agoraISO,
+    };
+
+    try {
+        if (id) {
+            const enc = st.encomendas.find(e => e.id === id);
+            const historico = [...(enc?.historicoStatus || []), {
+                status: enc?.status || 'aguardando_compra',
+                data: agoraISO,
+                obs: 'Dados editados',
+                usuario: uid,
+            }];
+            await updateDoc(doc(db, COL_ENC, id), { ...dados, historicoStatus: historico });
+            Object.assign(enc, dados, { historicoStatus: historico });
+            toast('✅ Encomenda atualizada!');
+        } else {
+            const ref = doc(collection(db, COL_ENC));
+            const novaEnc = {
+                ...dados,
+                id: ref.id,
+                status: 'aguardando_compra',
+                historicoStatus: [{ status: 'aguardando_compra', data: agoraISO, obs: 'Criada na Central de Alertas', usuario: uid }],
+                criadoPor: uid,
+                criadoEm: serverTimestamp(),
+                criadoEmISO: agoraISO,
+            };
+            await setDoc(ref, novaEnc);
+            st.encomendas.unshift(novaEnc);
+            toast('✅ Encomenda criada!');
+        }
+        localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
+        fecharFormEncomenda();
+    } catch (err) {
+        console.error('❌ Erro ao salvar encomenda:', err);
+        toast('❌ Erro ao salvar. Verifique a conexão.');
+    }
+    renderEncomendas();
+    _atualizarBadgeEncomendas();
+}
+
+// ── Excluir ───────────────────────────────────────────────────────────────────
+async function excluirEncomenda(id) {
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc) return;
+    if (!confirm(`Excluir a encomenda de "${enc.cliente}" (${enc.produto})?\n\nEsta ação não pode ser desfeita.`)) return;
+    try {
+        await deleteDoc(doc(db, COL_ENC, id));
+        st.encomendas = st.encomendas.filter(e => e.id !== id);
+        localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
+        toast('🗑️ Encomenda excluída.');
+    } catch {
+        toast('❌ Erro ao excluir.');
+    }
+    renderEncomendas();
+    _atualizarBadgeEncomendas();
+}
+
+// ── Contatar fornecedor ───────────────────────────────────────────────────────
+function contatarFornecedor(id) {
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc?.fornecedorSugerido) return;
+    window.open(`https://wa.me/?text=${encodeURIComponent(`Olá! Tenho interesse no produto: ${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''}. Pode me passar o preço?`)}`, '_blank');
+}
+
+// ── Modal de alerta personalizado ─────────────────────────────────────────────
+function abrirModalAlerta(id) {
+    _encAlertaId = id;
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc) return;
+    const overlay = document.getElementById('enc-modal-alerta-overlay');
+    if (!overlay) return;
+    document.getElementById('enc-alerta-enc-id').value = id;
+    document.getElementById('enc-alerta-desc').value   = `Encomenda: ${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''} — Cliente: ${enc.cliente}`;
+    const hoje = new Date(); const hISO = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}`;
+    document.getElementById('enc-alerta-data').value = hISO;
+    document.getElementById('enc-alerta-hora').value = '08:00';
+    document.getElementById('enc-alerta-tipo').value = 'avisar_cliente';
+    document.getElementById('enc-alerta-prioridade').value = 'alta';
+    document.getElementById('enc-alerta-titulo').value = '';
+    const tipoEl = document.getElementById('enc-alerta-tipo');
+    if (tipoEl) tipoEl.dispatchEvent(new Event('change'));
+    overlay.style.display = 'flex';
+}
+
+function fecharModalAlerta() {
+    const overlay = document.getElementById('enc-modal-alerta-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _encAlertaId = null;
+}
+
+async function salvarAlertaEncomenda() {
+    const id   = document.getElementById('enc-alerta-enc-id')?.value;
+    const data = document.getElementById('enc-alerta-data')?.value;
+    const hora = document.getElementById('enc-alerta-hora')?.value || '08:00';
+    const tipo = document.getElementById('enc-alerta-tipo')?.value;
+    const prio = document.getElementById('enc-alerta-prioridade')?.value || 'alta';
+    const desc = document.getElementById('enc-alerta-desc')?.value.trim() || '';
+    const titCustom = document.getElementById('enc-alerta-titulo')?.value.trim();
+    if (!data) { toast('⚠️ Informe a data do alerta'); return; }
+
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc) return;
+
+    const titulo = tipo === 'personalizado' && titCustom
+        ? titCustom
+        : `${ENC_TIPO_ALERTA_LABEL[tipo] || tipo} — ${enc.cliente}`;
+
+    const agoraISO = new Date().toISOString();
+    try {
+        const ref = doc(collection(db, 'alertas_usuario'));
+        await setDoc(ref, {
+            id: ref.id,
+            titulo,
+            descricao:   desc || `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''}. Cliente: ${enc.cliente}.`,
+            tipo:        'encomenda',
+            prioridade:  prio,
+            categoria:   'Encomenda',
+            data,
+            hora,
+            repeticao:   'nenhuma',
+            status:      'pendente',
+            link:        '/CRM/pages/central-alertas/index.html?nav=encomendas',
+            encomendaId:  id,
+            encomendaTipo: tipo,
+            criadoEm:    serverTimestamp(),
+            criadoEmISO: agoraISO,
+            atualizadoEm: serverTimestamp(),
+            atualizadoEmISO: agoraISO,
+        });
+        toast('🔔 Alerta programado!');
+        fecharModalAlerta();
+    } catch {
+        toast('❌ Erro ao criar alerta.');
+    }
 }
 
 async function receberEncomenda(id) {
@@ -1887,5 +2212,9 @@ window.Alertas = {
     // Seleção em lote
     _atualizarSelecao, selecionarTodos, excluirSelecionados, concluirSelecionados,
     // Encomendas
-    filtrarEncomendas, atualizarStatusEncomenda, receberEncomenda,
+    filtrarEncomendas, toggleMinhasEncomendas,
+    atualizarStatusEncomenda, receberEncomenda,
+    abrirFormEncomenda, fecharFormEncomenda, salvarFormEncomenda, calcLucroEdit,
+    excluirEncomenda, contatarFornecedor,
+    abrirModalAlerta, fecharModalAlerta, salvarAlertaEncomenda,
 };

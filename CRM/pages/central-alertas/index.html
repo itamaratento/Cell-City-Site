@@ -330,16 +330,163 @@
                 <div class="al-panel" id="panel-encomendas">
                     <div class="al-panel-header">
                         <div class="al-panel-titulo">📦 Encomendas</div>
-                        <a class="al-btn-novo" href="/CRM/pages/caixa/index.html">🛒 Novo no Caixa</a>
+                        <button class="al-btn-novo" onclick="Alertas.abrirFormEncomenda()">➕ Nova Encomenda</button>
                     </div>
+                    <div id="enc-stats" class="enc-stats-grid"></div>
                     <div class="enc-filtros" id="enc-filtros">
                         <button class="enc-filtro-btn active" data-filtro="pendentes"      onclick="Alertas.filtrarEncomendas('pendentes')">Pendentes</button>
                         <button class="enc-filtro-btn"        data-filtro="em_transporte"  onclick="Alertas.filtrarEncomendas('em_transporte')">Em Transporte</button>
                         <button class="enc-filtro-btn"        data-filtro="disponivel"     onclick="Alertas.filtrarEncomendas('disponivel')">Disponíveis</button>
                         <button class="enc-filtro-btn"        data-filtro="entregue"       onclick="Alertas.filtrarEncomendas('entregue')">Entregues</button>
                         <button class="enc-filtro-btn"        data-filtro="atrasadas"      onclick="Alertas.filtrarEncomendas('atrasadas')">Atrasadas</button>
+                        <button class="enc-filtro-btn enc-filtro-meu" id="enc-btn-meu"     onclick="Alertas.toggleMinhasEncomendas()">👤 Minhas</button>
                     </div>
                     <div id="lista-encomendas" class="enc-lista"></div>
+                </div>
+
+                <!-- ═══ MODAL EDITAR/CRIAR ENCOMENDA ═══ -->
+                <div id="enc-modal-form-overlay" class="enc-overlay" style="display:none" onclick="if(event.target===this)Alertas.fecharFormEncomenda()">
+                    <div class="enc-modal-form">
+                        <div class="enc-modal-form-header">
+                            <span id="enc-modal-form-titulo">📦 Nova Encomenda</span>
+                            <button class="enc-modal-fechar" onclick="Alertas.fecharFormEncomenda()">✕</button>
+                        </div>
+                        <div class="enc-modal-form-body">
+                            <input type="hidden" id="enc-edit-id">
+
+                            <div class="enc-section-label">👤 Dados do Cliente</div>
+                            <div class="enc-form-group">
+                                <label>Nome do Cliente *</label>
+                                <input type="text" id="enc-edit-cliente" placeholder="Ex: João Silva" autocomplete="off">
+                            </div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Telefone</label>
+                                    <input type="tel" id="enc-edit-telefone" placeholder="(99) 9999-9999">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>WhatsApp</label>
+                                    <input type="tel" id="enc-edit-whatsapp" placeholder="(99) 99999-9999">
+                                </div>
+                            </div>
+
+                            <div class="enc-section-label">📦 Dados do Produto</div>
+                            <div class="enc-form-group">
+                                <label>Produto *</label>
+                                <input type="text" id="enc-edit-produto" placeholder="Ex: Tela, Capinha, Carregador...">
+                            </div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Modelo</label>
+                                    <input type="text" id="enc-edit-modelo" placeholder="Ex: iPhone 13">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>Quantidade</label>
+                                    <input type="number" id="enc-edit-quantidade" value="1" min="1">
+                                </div>
+                            </div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Valor Combinado (R$)</label>
+                                    <input type="number" id="enc-edit-valor" placeholder="0,00" step="0.01">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>Fornecedor</label>
+                                    <input type="text" id="enc-edit-fornecedor" placeholder="Opcional">
+                                </div>
+                            </div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Custo (R$)</label>
+                                    <input type="number" id="enc-edit-custo" placeholder="0,00" step="0.01" oninput="Alertas.calcLucroEdit()">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>Venda (R$)</label>
+                                    <input type="number" id="enc-edit-venda" placeholder="0,00" step="0.01" oninput="Alertas.calcLucroEdit()">
+                                </div>
+                            </div>
+                            <div id="enc-edit-lucro" class="enc-lucro-preview" style="display:none"></div>
+
+                            <div class="enc-section-label">📅 Controle</div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Data da Encomenda</label>
+                                    <input type="date" id="enc-edit-data-encomenda">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>Previsão de Chegada</label>
+                                    <input type="date" id="enc-edit-data-prevista">
+                                </div>
+                            </div>
+                            <div class="enc-form-group">
+                                <label>Observações</label>
+                                <textarea id="enc-edit-obs" rows="2" placeholder="Informações para o cliente..."></textarea>
+                            </div>
+                            <div class="enc-form-group">
+                                <label>Observações Internas 🔒</label>
+                                <textarea id="enc-edit-obs-int" rows="2" placeholder="Uso interno, não exibido ao cliente..."></textarea>
+                            </div>
+
+                            <div class="enc-form-actions">
+                                <button class="enc-btn-salvar" onclick="Alertas.salvarFormEncomenda()">✅ Salvar</button>
+                                <button class="enc-btn-cancel-form" onclick="Alertas.fecharFormEncomenda()">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ═══ MODAL PROGRAMAR ALERTA ═══ -->
+                <div id="enc-modal-alerta-overlay" class="enc-overlay" style="display:none" onclick="if(event.target===this)Alertas.fecharModalAlerta()">
+                    <div class="enc-modal-form enc-modal-alerta">
+                        <div class="enc-modal-form-header">
+                            <span>🔔 Programar Alerta</span>
+                            <button class="enc-modal-fechar" onclick="Alertas.fecharModalAlerta()">✕</button>
+                        </div>
+                        <div class="enc-modal-form-body">
+                            <input type="hidden" id="enc-alerta-enc-id">
+                            <div class="enc-form-group">
+                                <label>Tipo de Alerta *</label>
+                                <select id="enc-alerta-tipo" onchange="document.getElementById('enc-alerta-titulo-grupo').style.display=this.value==='personalizado'?'block':'none'">
+                                    <option value="comprar_produto">🛒 Comprar produto</option>
+                                    <option value="consultar_fornecedor">🏪 Consultar fornecedor</option>
+                                    <option value="cobrar_fornecedor">💰 Cobrar fornecedor</option>
+                                    <option value="avisar_cliente">📞 Avisar cliente</option>
+                                    <option value="confirmar_retirada">✅ Confirmar retirada</option>
+                                    <option value="personalizado">✏️ Alerta personalizado</option>
+                                </select>
+                            </div>
+                            <div id="enc-alerta-titulo-grupo" class="enc-form-group" style="display:none">
+                                <label>Título personalizado</label>
+                                <input type="text" id="enc-alerta-titulo" placeholder="Descreva o alerta...">
+                            </div>
+                            <div class="enc-form-row">
+                                <div class="enc-form-group">
+                                    <label>Data *</label>
+                                    <input type="date" id="enc-alerta-data">
+                                </div>
+                                <div class="enc-form-group">
+                                    <label>Hora</label>
+                                    <input type="time" id="enc-alerta-hora" value="08:00">
+                                </div>
+                            </div>
+                            <div class="enc-form-group">
+                                <label>Prioridade</label>
+                                <select id="enc-alerta-prioridade">
+                                    <option value="normal">⚪ Normal</option>
+                                    <option value="alta" selected>🟡 Alta</option>
+                                    <option value="critica">🔴 Crítica</option>
+                                </select>
+                            </div>
+                            <div class="enc-form-group">
+                                <label>Descrição</label>
+                                <textarea id="enc-alerta-desc" rows="2" placeholder="Detalhes adicionais..."></textarea>
+                            </div>
+                            <div class="enc-form-actions">
+                                <button class="enc-btn-salvar" onclick="Alertas.salvarAlertaEncomenda()">🔔 Criar Alerta</button>
+                                <button class="enc-btn-cancel-form" onclick="Alertas.fecharModalAlerta()">Cancelar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- ═══ DIAGNÓSTICO ═══ -->
