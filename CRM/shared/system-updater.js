@@ -97,7 +97,7 @@ export class SystemUpdater {
       if (this.onUpdateAvailable) this.onUpdateAvailable(this._currentVersion, newVer);
       const prefs = _getPrefs();
       if (prefs.autoUpdate && this.isSafeToUpdate()) {
-        await this.manualUpdate();
+        await this.fullReload();
       }
     }
   }
@@ -134,8 +134,42 @@ export class SystemUpdater {
     return true;
   }
 
-  // ── Rotina de atualização manual ──────────────────────────────────────────
-  async manualUpdate(callbacks = {}) {
+  // ── Sincronização em segundo plano (NÃO BLOQUEANTE) ──────────────────────
+  // Clique simples no botão 🔄 — sem overlay, sem reload de página.
+  // Dispara eventos para módulos se atualizarem silenciosamente.
+  async backgroundSync(callbacks = {}) {
+    if (this._isSyncing) return;
+    this._isSyncing = true;
+
+    const { onStep, onDone, onError } = callbacks;
+
+    const steps = [
+      { id: 'cache',   label: 'Atualizando cache',     fn: () => this._clearCaches() },
+      { id: 'modules', label: 'Recarregando módulos',  fn: () => this._reloadModules() },
+      { id: 'sync',    label: 'Sincronizando dados',   fn: () => this._syncData() },
+      { id: 'ui',      label: 'Atualizando interface', fn: () => this._updateUI() },
+    ];
+
+    try {
+      for (const step of steps) {
+        onStep && onStep(step.id, 'loading', step.label);
+        await step.fn();
+        await _delay(260);
+        onStep && onStep(step.id, 'done', step.label);
+        await _delay(80);
+      }
+      this.recordSync();
+      onDone && onDone();
+    } catch (err) {
+      onError && onError(err);
+    } finally {
+      this._isSyncing = false;
+    }
+  }
+
+  // ── Atualização completa com reload (SOMENTE quando versão mudou) ─────────
+  // Chamado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique.
+  async fullReload(callbacks = {}) {
     if (this._isUpdating) return;
     this._isUpdating = true;
 

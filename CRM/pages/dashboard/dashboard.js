@@ -3469,14 +3469,82 @@ class Dashboard {
       this._syncLabelTimer = setInterval(update, 10_000);
     };
 
-    // Definição dos steps de atualização
+    // Elementos do toast (sincronização não-bloqueante)
+    const toast        = document.getElementById('sys-toast');
+    const toastTitle   = document.getElementById('sys-toast-title');
+    const toastSpinner = document.getElementById('sys-toast-spinner');
+    const toastSteps   = document.getElementById('sys-toast-steps');
+
     const STEP_DEFS = [
-      { id: 'cache',   label: 'Limpando cache'        },
+      { id: 'cache',   label: 'Atualizando cache'     },
       { id: 'modules', label: 'Recarregando módulos'  },
       { id: 'sync',    label: 'Sincronizando dados'   },
       { id: 'ui',      label: 'Atualizando interface' },
     ];
 
+    // ── MODO 1: Sincronização em segundo plano (NÃO BLOQUEANTE) ─────────────
+    // Padrão ao clicar no botão 🔄 — apenas toast discreto, sem overlay
+    let _toastHideTimer = null;
+
+    const _showToast = () => {
+      if (!toast || !toastSteps) return;
+      if (_toastHideTimer) { clearTimeout(_toastHideTimer); _toastHideTimer = null; }
+      toast.classList.remove('sys-toast-done', 'sys-toast-hiding');
+      toastSteps.innerHTML = '';
+      STEP_DEFS.forEach(({ id, label }) => {
+        const li = document.createElement('li');
+        li.id        = `sys-ts-${id}`;
+        li.className = 'sys-toast-step';
+        li.innerHTML = `<span class="sys-toast-step-icon">○</span><span>${label}</span>`;
+        toastSteps.appendChild(li);
+      });
+      if (toastTitle)   toastTitle.textContent = 'Sincronizando...';
+      if (toastSpinner) { toastSpinner.classList.remove('done'); }
+      toast.hidden = false;
+    };
+
+    const _hideToast = (delay = 0) => {
+      if (!toast) return;
+      _toastHideTimer = setTimeout(() => {
+        toast.classList.add('sys-toast-hiding');
+        setTimeout(() => { toast.hidden = true; toast.classList.remove('sys-toast-hiding'); }, 250);
+      }, delay);
+    };
+
+    const _triggerBackgroundSync = () => {
+      _showToast();
+      if (reloadBtn) reloadBtn.classList.add('spinning');
+
+      updater.backgroundSync({
+        onStep: (id, status, label) => {
+          const li  = document.getElementById(`sys-ts-${id}`);
+          if (!li) return;
+          const ico = li.querySelector('.sys-toast-step-icon');
+          if (status === 'loading') {
+            li.classList.add('step-loading');
+            if (ico) ico.textContent = '🔄';
+          } else if (status === 'done') {
+            li.classList.remove('step-loading');
+            li.classList.add('step-done');
+            if (ico) ico.textContent = '✓';
+          }
+        },
+        onDone: () => {
+          if (toastTitle)   toastTitle.textContent   = '✅ Sincronizado';
+          if (toastSpinner) toastSpinner.classList.add('done');
+          if (toast)        toast.classList.add('sys-toast-done');
+          if (reloadBtn)    reloadBtn.classList.remove('spinning');
+          _hideToast(2500);
+        },
+        onError: () => {
+          if (reloadBtn) reloadBtn.classList.remove('spinning');
+          _hideToast(0);
+        }
+      });
+    };
+
+    // ── MODO 2: Atualização completa com reload (BLOQUEANTE intencional) ─────
+    // Ativado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique
     const _showOverlay = () => {
       if (!overlay || !stepsList) return;
       stepsList.innerHTML = '';
@@ -3487,17 +3555,17 @@ class Dashboard {
         li.innerHTML = `<span class="sys-step-icon">○</span><span>${label}</span>`;
         stepsList.appendChild(li);
       });
-      if (successMsg)    successMsg.hidden = true;
-      if (overlayTitle)  overlayTitle.textContent = 'Atualizando sistema...';
+      if (successMsg)     successMsg.hidden = true;
+      if (overlayTitle)   overlayTitle.textContent = 'Atualizando sistema...';
       if (overlaySpinner) overlaySpinner.classList.remove('done');
       overlay.hidden = false;
     };
 
-    const _triggerUpdate = () => {
+    const _triggerFullReload = () => {
       _showOverlay();
       if (reloadBtn) reloadBtn.classList.add('spinning');
 
-      updater.manualUpdate({
+      updater.fullReload({
         onStep: (id, status) => {
           const li  = document.getElementById(`sys-step-${id}`);
           if (!li) return;
@@ -3512,9 +3580,9 @@ class Dashboard {
           }
         },
         onDone: () => {
-          if (overlayTitle)  overlayTitle.textContent = '✅ Concluído';
+          if (overlayTitle)   overlayTitle.textContent = '✅ Concluído';
           if (overlaySpinner) overlaySpinner.classList.add('done');
-          if (successMsg)    successMsg.hidden = false;
+          if (successMsg)     successMsg.hidden = false;
         },
         onError: () => {
           if (overlay)   overlay.hidden = true;
@@ -3523,13 +3591,20 @@ class Dashboard {
       });
     };
 
-    // Botão manual de atualização
-    reloadBtn?.addEventListener('click', _triggerUpdate);
+    // Clique simples → sync em segundo plano (não bloqueante)
+    reloadBtn?.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+clique → atualização completa com reload
+        _triggerFullReload();
+      } else {
+        _triggerBackgroundSync();
+      }
+    });
 
-    // Banner: nova versão disponível
+    // Banner: nova versão disponível → só o "Atualizar Agora" faz reload
     updateNowBtn?.addEventListener('click', () => {
       if (banner) banner.hidden = true;
-      _triggerUpdate();
+      _triggerFullReload();
     });
     const _closeBanner = () => { if (banner) banner.hidden = true; };
     remindBtn?.addEventListener('click', _closeBanner);
@@ -3599,11 +3674,11 @@ class Dashboard {
       }
     }, true);
 
-    // Atalho de teclado Ctrl+Shift+U
+    // Ctrl+Shift+U → atualização completa com reload
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'U') {
         e.preventDefault();
-        _triggerUpdate();
+        _triggerFullReload();
       }
     });
 

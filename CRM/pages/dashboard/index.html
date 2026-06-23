@@ -69,6 +69,21 @@
   </div>
 </header>
 
+<!-- ========== TOAST: SINCRONIZAÇÃO EM SEGUNDO PLANO (não-bloqueante) ========== -->
+<div class="sys-toast" id="sys-toast" hidden aria-live="polite">
+  <div class="sys-toast-header">
+    <span class="sys-toast-spinner" id="sys-toast-spinner">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+    </span>
+    <span class="sys-toast-title" id="sys-toast-title">Sincronizando...</span>
+  </div>
+  <ul class="sys-toast-steps" id="sys-toast-steps" role="list"></ul>
+</div>
+
 <!-- ========== NOTIFICAÇÃO: NOVA VERSÃO DISPONÍVEL ========== -->
 <div class="sys-update-banner" id="sys-update-banner" hidden role="alert" aria-live="assertive">
   <div class="sys-banner-inner">
