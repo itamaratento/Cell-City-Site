@@ -1,5 +1,5 @@
-// Cell City Gestão Empresarial — Service Worker v1.7 (force-reload após update)
-const CACHE = 'cellcity-crm-v13';
+// Cell City Gestão Empresarial — Service Worker v1.8 (force-reload após update)
+const CACHE = 'cellcity-crm-v14';
 
 // Arquivos do shell — carregados no install
 const SHELL = [

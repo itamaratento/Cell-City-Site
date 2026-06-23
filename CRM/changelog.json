@@ -2,6 +2,15 @@
   "changelog": [
     {
       "date": "2026-06-23",
+      "version": "cellcity-crm-v14",
+      "items": [
+        "Barra superior simplificada: versão e última sincronização movidas para Central de Módulos",
+        "Informações técnicas do sistema disponíveis em Central de Módulos → Painel Central",
+        "Correção de bug crítico: overlay de atualização travado por conflito CSS/HTML"
+      ]
+    },
+    {
+      "date": "2026-06-23",
       "version": "cellcity-crm-v13",
       "items": [
         "Adicionado botão de atualização inteligente 🔄 ao lado da busca",
