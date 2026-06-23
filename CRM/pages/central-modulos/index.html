@@ -800,6 +800,21 @@ body {
   padding: 18px 20px;
   margin-bottom: 14px;
 }
+.hp-sysinfo { display: flex; flex-direction: column; gap: 8px; }
+.hp-sysinfo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12.5px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,.04);
+}
+.hp-sysinfo-row:last-child { border-bottom: none; }
+.hp-sysinfo-label { color: var(--text-muted); }
+.hp-sysinfo-value { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+.hp-sysinfo-value.ok  { color: #00C853; }
+.hp-sysinfo-value.warn { color: #FFB300; }
+.hp-sysinfo-value.off  { color: #ef5350; }
 .hp-section-title {
   font-size: 12px;
   font-weight: 700;
@@ -1486,6 +1501,33 @@ body {
           <div class="hp-layout-source" id="hp-layout-source">
             <span class="hp-layout-source-ico">👤</span>
             <span id="hp-layout-fonte-txt">Layout Pessoal (ativo)</span>
+          </div>
+        </div>
+
+        <!-- Informações do Sistema -->
+        <div class="hp-section">
+          <div class="hp-section-title">Informações do Sistema</div>
+          <div class="hp-sysinfo">
+            <div class="hp-sysinfo-row">
+              <span class="hp-sysinfo-label">Versão</span>
+              <span class="hp-sysinfo-value" id="hp-si-version">–</span>
+            </div>
+            <div class="hp-sysinfo-row">
+              <span class="hp-sysinfo-label">Última sincronização</span>
+              <span class="hp-sysinfo-value" id="hp-si-sync">–</span>
+            </div>
+            <div class="hp-sysinfo-row">
+              <span class="hp-sysinfo-label">Conexão</span>
+              <span class="hp-sysinfo-value" id="hp-si-online">–</span>
+            </div>
+            <div class="hp-sysinfo-row">
+              <span class="hp-sysinfo-label">Cache</span>
+              <span class="hp-sysinfo-value" id="hp-si-cache">–</span>
+            </div>
+            <div class="hp-sysinfo-row">
+              <span class="hp-sysinfo-label">Última atualização</span>
+              <span class="hp-sysinfo-value" id="hp-si-last-update">–</span>
+            </div>
           </div>
         </div>
 
@@ -2828,6 +2870,77 @@ document.getElementById('ly-btn-restaurar')?.addEventListener('click', async () 
 
 // ── Init ──────────────────────────────────────────────────────
 renderLayouts();
+
+// ── Informações do Sistema ──────────────────────────────────────
+(function initSysInfo() {
+  const elVer    = document.getElementById('hp-si-version');
+  const elSync   = document.getElementById('hp-si-sync');
+  const elOnline = document.getElementById('hp-si-online');
+  const elCache  = document.getElementById('hp-si-cache');
+  const elUpdate = document.getElementById('hp-si-last-update');
+
+  function fmtRelTime(ts) {
+    if (!ts) return '–';
+    const sec = Math.floor((Date.now() - ts) / 1000);
+    if (sec < 60)   return `há ${sec}s`;
+    if (sec < 3600) return `há ${Math.floor(sec / 60)}min`;
+    if (sec < 86400) return `há ${Math.floor(sec / 3600)}h`;
+    return new Date(ts).toLocaleString('pt-BR');
+  }
+
+  function fmtVersion(raw) {
+    if (!raw) return '–';
+    return raw.replace(/^cellcity-crm-/, 'v');
+  }
+
+  function setVal(el, text, cls) {
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'hp-sysinfo-value' + (cls ? ' ' + cls : '');
+  }
+
+  function refresh() {
+    // Versão
+    const ver = localStorage.getItem('cc_sys_version') || '';
+    setVal(elVer, fmtVersion(ver));
+
+    // Última sincronização
+    const syncTs = parseInt(localStorage.getItem('cc_sys_last_sync_ts') || '0', 10);
+    const syncAge = syncTs ? Math.floor((Date.now() - syncTs) / 1000) : Infinity;
+    setVal(elSync, fmtRelTime(syncTs || null),
+      syncAge < 300 ? 'ok' : syncAge < 3600 ? 'warn' : syncAge === Infinity ? '' : 'off');
+
+    // Conexão
+    const online = navigator.onLine;
+    setVal(elOnline, online ? 'Online' : 'Offline', online ? 'ok' : 'off');
+
+    // Cache
+    if ('caches' in window) {
+      caches.keys().then(keys => {
+        const crm = keys.find(k => k.startsWith('cellcity-crm-'));
+        setVal(elCache, crm ? `OK (${crm.replace('cellcity-crm-', 'v')})` : 'Sem cache', crm ? 'ok' : 'warn');
+      }).catch(() => setVal(elCache, 'Indisponível'));
+    } else {
+      setVal(elCache, 'Indisponível');
+    }
+
+    // Última atualização (data/hora da última sync gravada)
+    if (syncTs) {
+      setVal(elUpdate, new Date(syncTs).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      }));
+    } else {
+      setVal(elUpdate, '–');
+    }
+  }
+
+  refresh();
+  // Atualiza a cada 15s enquanto a aba estiver visível
+  setInterval(refresh, 15_000);
+  window.addEventListener('online',  refresh);
+  window.addEventListener('offline', refresh);
+})();
 </script>
 </body>
 </html>

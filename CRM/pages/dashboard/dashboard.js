@@ -3397,8 +3397,6 @@ class Dashboard {
   // ==========================================================================
   setupSystemUpdater() {
     const reloadBtn     = document.getElementById('sys-reload-btn');
-    const versionBadge  = document.getElementById('sys-version-badge');
-    const syncLabel     = document.getElementById('sys-sync-label');
     const statusPill    = document.getElementById('status-pill-main');
     const banner        = document.getElementById('sys-update-banner');
     const bannerVers    = document.getElementById('sys-banner-versions');
@@ -3445,16 +3443,13 @@ class Dashboard {
     const updater = new SystemUpdater({
 
       onVersionLoaded: (ver) => {
-        if (!versionBadge) return;
-        versionBadge.textContent = updater.formatVersion(ver);
-        versionBadge.title = `Versão: ${ver || '–'} — clique para ver o histórico`;
+        try { localStorage.setItem('cc_sys_version', ver || ''); } catch {}
       },
 
       onUpdateAvailable: (current, next) => {
         if (!banner || !bannerVers) return;
         const fmt = v => updater.formatVersion(v);
         bannerVers.textContent = `${fmt(current)} → ${fmt(next)}`;
-        versionBadge?.classList.add('has-update');
         _show(banner);
       },
 
@@ -3470,28 +3465,9 @@ class Dashboard {
       },
 
       onSyncUpdate: (ts) => {
-        this._atualizarSyncLabel(syncLabel, ts);
+        try { localStorage.setItem('cc_sys_last_sync_ts', String(ts)); } catch {}
       }
     });
-
-    // Atualiza rótulo de sincronização com cor por antiguidade
-    this._atualizarSyncLabel = (el, ts) => {
-      if (!el) return;
-      const update = () => {
-        if (!ts) { el.textContent = '–'; el.className = 'sys-sync-label'; return; }
-        const sec = Math.floor((Date.now() - ts) / 1000);
-        let cls, txt;
-        if      (sec < 60)   { cls = 'sync-ok';    txt = `há ${sec}s`; }
-        else if (sec < 300)  { cls = 'sync-ok';    txt = `há ${Math.floor(sec / 60)}min`; }
-        else if (sec < 3600) { cls = 'sync-warn';  txt = `há ${Math.floor(sec / 60)}min`; }
-        else                 { cls = 'sync-danger'; txt = `há ${Math.floor(sec / 3600)}h`; }
-        el.textContent = txt;
-        el.className   = `sys-sync-label ${cls}`;
-      };
-      update();
-      if (this._syncLabelTimer) clearInterval(this._syncLabelTimer);
-      this._syncLabelTimer = setInterval(update, 10_000);
-    };
 
     // Elementos do toast (sincronização não-bloqueante)
     const toast        = document.getElementById('sys-toast');
@@ -3694,7 +3670,6 @@ class Dashboard {
     };
 
     const _closeChangelog = () => _hide(changelogPop);
-    versionBadge?.addEventListener('click', _openChangelog);
     changelogClose?.addEventListener('click', _closeChangelog);
 
     // Salva preferências ao alterar
@@ -3710,8 +3685,7 @@ class Dashboard {
     // Fecha o changelog ao clicar fora
     document.addEventListener('click', (e) => {
       if (changelogPop && changelogPop.style.display !== 'none' &&
-          !changelogPop.contains(e.target) &&
-          e.target !== versionBadge) {
+          !changelogPop.contains(e.target)) {
         _closeChangelog();
       }
     }, true);
@@ -3731,7 +3705,6 @@ class Dashboard {
     updater.init().then(() => {
       setTimeout(() => {
         updater.recordSync();
-        this._atualizarSyncLabel(syncLabel, updater.getLastSync());
       }, 2500);
     });
   }
