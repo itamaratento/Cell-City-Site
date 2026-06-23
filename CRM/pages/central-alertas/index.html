@@ -75,6 +75,14 @@
                     <span class="al-sb-icon">📊</span>
                     <span class="al-sb-label">Dashboard</span>
                 </div>
+                <div class="al-sb-item" data-nav="encomendas">
+                    <span class="al-sb-icon">📦</span>
+                    <span class="al-sb-label">Encomendas</span>
+                    <span class="al-sb-badge" id="sb-badge-encomendas"></span>
+                </div>
+
+                <div class="al-sb-sep"></div>
+
                 <div class="al-sb-item" data-nav="diagnostico">
                     <span class="al-sb-icon">🔎</span>
                     <span class="al-sb-label">Diagnóstico</span>
@@ -119,6 +127,7 @@
                         <option value="financeiro">💰 Financeiro</option>
                         <option value="os">🔧 OS</option>
                         <option value="cliente">👤 Cliente</option>
+                        <option value="encomenda">📦 Encomenda</option>
                     </select>
                     <select id="al-search-prioridade" class="al-search-select">
                         <option value="">Todas prioridades</option>
@@ -315,6 +324,22 @@
                 <!-- ═══ DASHBOARD / PAINEL ═══ -->
                 <div class="al-panel" id="panel-painel">
                     <!-- Conteúdo gerado dinamicamente por renderPainel() -->
+                </div>
+
+                <!-- ═══ ENCOMENDAS ═══ -->
+                <div class="al-panel" id="panel-encomendas">
+                    <div class="al-panel-header">
+                        <div class="al-panel-titulo">📦 Encomendas</div>
+                        <a class="al-btn-novo" href="/CRM/pages/caixa/index.html">🛒 Novo no Caixa</a>
+                    </div>
+                    <div class="enc-filtros" id="enc-filtros">
+                        <button class="enc-filtro-btn active" data-filtro="pendentes"      onclick="Alertas.filtrarEncomendas('pendentes')">Pendentes</button>
+                        <button class="enc-filtro-btn"        data-filtro="em_transporte"  onclick="Alertas.filtrarEncomendas('em_transporte')">Em Transporte</button>
+                        <button class="enc-filtro-btn"        data-filtro="disponivel"     onclick="Alertas.filtrarEncomendas('disponivel')">Disponíveis</button>
+                        <button class="enc-filtro-btn"        data-filtro="entregue"       onclick="Alertas.filtrarEncomendas('entregue')">Entregues</button>
+                        <button class="enc-filtro-btn"        data-filtro="atrasadas"      onclick="Alertas.filtrarEncomendas('atrasadas')">Atrasadas</button>
+                    </div>
+                    <div id="lista-encomendas" class="enc-lista"></div>
                 </div>
 
                 <!-- ═══ DIAGNÓSTICO ═══ -->

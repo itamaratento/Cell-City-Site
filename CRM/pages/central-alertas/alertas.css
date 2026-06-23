@@ -1236,3 +1236,108 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 .al-qtd-hint {
     font-size: 13px; color: var(--text3);
 }
+
+/* ═══════════════════════════════════════════
+   📦 ENCOMENDAS
+   ═══════════════════════════════════════════ */
+.enc-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+}
+.enc-filtro-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.enc-filtro-btn.active,
+.enc-filtro-btn:hover {
+    background: rgba(96,165,250,.15);
+    border-color: rgba(96,165,250,.4);
+    color: #60a5fa;
+}
+.enc-lista { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.enc-empty {
+    text-align: center;
+    color: var(--text3);
+    padding: 40px 16px;
+    font-size: 14px;
+}
+.enc-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .15s;
+}
+.enc-card:hover { border-color: var(--border-hover); }
+.enc-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+}
+.enc-status-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: .3px;
+}
+.enc-dias {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+}
+.enc-dias.atrasado { color: #f87171; font-weight: 700; }
+.enc-dias.hoje     { color: #34d399; font-weight: 700; }
+.enc-card-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--text2);
+}
+.enc-cliente  { font-weight: 700; color: var(--text); font-size: 14px; }
+.enc-produto  { color: var(--text); }
+.enc-qtd      { background: rgba(255,255,255,.08); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+.enc-valor    { color: #34d399; font-weight: 700; }
+.enc-fornecedor, .enc-contato, .enc-datas, .enc-obs { color: var(--text3); font-size: 12px; }
+.enc-obs { font-style: italic; }
+.enc-card-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.enc-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.enc-btn:hover { background: rgba(255,255,255,.12); }
+.enc-btn-receber  { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.4); color: #60a5fa; }
+.enc-btn-receber:hover  { background: rgba(96,165,250,.25); }
+.enc-btn-entregue { background: rgba(52,211,153,.15); border-color: rgba(52,211,153,.4); color: #34d399; }
+.enc-btn-entregue:hover { background: rgba(52,211,153,.25); }
+.enc-btn-cancel   { background: rgba(248,113,113,.1); border-color: rgba(248,113,113,.3); color: #f87171; }
+.enc-btn-cancel:hover   { background: rgba(248,113,113,.2); }

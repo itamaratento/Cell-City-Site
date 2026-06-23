@@ -1,5 +1,5 @@
 import {
-    db, collection, doc, getDocs, setDoc, deleteDoc,
+    db, collection, doc, getDocs, setDoc, updateDoc, deleteDoc,
     serverTimestamp, query, orderBy, where, authReady
 } from '../../scripts/firebase.js';
 import { ccTocarSom, ccLog, ccSonsHabilitados } from '../../shared/cc-audio.js';
@@ -21,6 +21,9 @@ const st = {
     filtroBusca:     '',
     filtroTipo:      '',
     filtroPrioridade:'',
+    // Encomendas
+    encomendas:      [],
+    encFiltro:       'pendentes',
 };
 
 // ── Helpers de data ───────────────────────────────────────────────────────────
@@ -143,6 +146,7 @@ const SECAO_TITULO = {
     painel: '📊 Dashboard de Alertas',
     diagnostico: '🔎 Diagnóstico do Sistema',
     sons: '🔊 Sons e Notificações',
+    encomendas: '📦 Encomendas',
 };
 
 function navegar(secao) {
@@ -160,6 +164,7 @@ function navegar(secao) {
     else if (secao === 'painel') renderPainel();
     else if (secao === 'diagnostico') renderDiagnostico();
     else if (secao === 'sons') carregarConfig();
+    else if (secao === 'encomendas') carregarEncomendas();
     else render();
 }
 
@@ -1019,12 +1024,15 @@ pedirPermissaoNotif();
 
 authReady.then(async () => {
     await carregar();
+    carregarEncomendas();
     verificarDisparos();
     // Processa parâmetro ?foco= vindo do badge do Dashboard
     const params = new URLSearchParams(window.location.search);
     const foco = params.get('foco');
-    if (foco === 'criticos' || foco === 'critico') navegar('hoje');
-    else if (foco === 'pendentes') navegar('agendados');
+    const nav  = params.get('nav');
+    if (nav)                                             navegar(nav);
+    else if (foco === 'criticos' || foco === 'critico') navegar('hoje');
+    else if (foco === 'pendentes')                       navegar('agendados');
     // Agenda re-render alinhado à virada do minuto (ex: XX:55:00, não XX:55:37)
     // para que os alertas apareçam exatamente no horário configurado
     (function agendarMinuto() {
@@ -1584,6 +1592,287 @@ function focoProximo() {
     _focoRender();
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 📦 ENCOMENDAS — Painel na Central de Alertas
+// ═══════════════════════════════════════════════════════════════════════════
+const COL_ENC = 'encomendas';
+const ENC_CACHE = 'cc_encomendas_cache';
+
+const ENC_STATUS_LABEL = {
+    aguardando_compra: '⏳ Aguardando Compra',
+    comprada:          '🛍️ Comprada',
+    em_transporte:     '🚚 Em Transporte',
+    disponivel:        '📬 Disponível p/ Retirada',
+    entregue:          '✅ Entregue',
+    cancelada:         '❌ Cancelada',
+};
+
+const ENC_STATUS_COR = {
+    aguardando_compra: '#fbbf24',
+    comprada:          '#60a5fa',
+    em_transporte:     '#a78bfa',
+    disponivel:        '#34d399',
+    entregue:          '#6b7280',
+    cancelada:         '#f87171',
+};
+
+function _encHoje() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function _encDiasRestantes(dataPrevista) {
+    if (!dataPrevista) return null;
+    const hoje = new Date(_encHoje() + 'T00:00:00');
+    const prev = new Date(dataPrevista + 'T00:00:00');
+    return Math.round((prev - hoje) / 86400000);
+}
+
+async function carregarEncomendas() {
+    try {
+        const snap = await getDocs(query(collection(db, COL_ENC), orderBy('criadoEmISO', 'desc')));
+        st.encomendas = [];
+        snap.forEach(d => st.encomendas.push({ id: d.id, ...d.data() }));
+        localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
+    } catch {
+        st.encomendas = JSON.parse(localStorage.getItem(ENC_CACHE) || '[]');
+    }
+    renderEncomendas();
+    _atualizarBadgeEncomendas();
+}
+
+function _atualizarBadgeEncomendas() {
+    const pendentes = st.encomendas.filter(e =>
+        ['aguardando_compra','comprada','em_transporte','disponivel'].includes(e.status)
+    ).length;
+    const badge = document.getElementById('sb-badge-encomendas');
+    if (badge) {
+        badge.textContent = pendentes || '';
+        badge.style.display = pendentes > 0 ? '' : 'none';
+    }
+}
+
+function filtrarEncomendas(filtro) {
+    st.encFiltro = filtro;
+    document.querySelectorAll('.enc-filtro-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.filtro === filtro)
+    );
+    renderEncomendas();
+}
+
+function _encFiltrar(lista, filtro) {
+    const hoje = _encHoje();
+    switch (filtro) {
+        case 'pendentes':
+            return lista.filter(e => ['aguardando_compra','comprada'].includes(e.status));
+        case 'em_transporte':
+            return lista.filter(e => e.status === 'em_transporte');
+        case 'disponivel':
+            return lista.filter(e => e.status === 'disponivel');
+        case 'entregue':
+            return lista.filter(e => e.status === 'entregue');
+        case 'atrasadas':
+            return lista.filter(e =>
+                e.dataPrevista && e.dataPrevista < hoje &&
+                !['entregue','cancelada'].includes(e.status)
+            );
+        default:
+            return lista;
+    }
+}
+
+function renderEncomendas() {
+    const el = document.getElementById('lista-encomendas');
+    if (!el) return;
+    const lista = _encFiltrar(st.encomendas, st.encFiltro);
+    if (!lista.length) {
+        el.innerHTML = `<div class="enc-empty">
+            <div style="font-size:32px;margin-bottom:8px">📦</div>
+            <div>Nenhuma encomenda nesta categoria</div>
+        </div>`;
+        return;
+    }
+    el.innerHTML = lista.map(e => _encCard(e)).join('');
+}
+
+function _encCard(e) {
+    const cor   = ENC_STATUS_COR[e.status] || '#adb5bd';
+    const label = ENC_STATUS_LABEL[e.status] || e.status;
+    const dias  = _encDiasRestantes(e.dataPrevista);
+    let diasLabel = '';
+    if (dias !== null) {
+        if (dias < 0)       diasLabel = `<span class="enc-dias atrasado">${Math.abs(dias)}d atrasado</span>`;
+        else if (dias === 0) diasLabel = `<span class="enc-dias hoje">Chega hoje!</span>`;
+        else                 diasLabel = `<span class="enc-dias">${dias}d restantes</span>`;
+    }
+    const dtEnc  = e.dataEncomenda ? fmtData(e.dataEncomenda) : '—';
+    const dtPrev = e.dataPrevista  ? fmtData(e.dataPrevista)  : '—';
+    const valor  = e.valorCombinado ? `R$ ${Number(e.valorCombinado).toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '';
+    const modeloLabel = e.modelo ? ` <span style="color:#6c757d">${esc(e.modelo)}</span>` : '';
+
+    // Botões de status
+    const btns = _encBotoes(e);
+
+    return `<div class="enc-card" id="enc-card-${esc(e.id)}">
+        <div class="enc-card-header">
+            <span class="enc-status-badge" style="background:${cor}20;color:${cor};border-color:${cor}40">${label}</span>
+            ${diasLabel}
+        </div>
+        <div class="enc-card-body">
+            <div class="enc-cliente">👤 ${esc(e.cliente)}</div>
+            <div class="enc-produto">📦 ${esc(e.produto)}${modeloLabel} ${e.quantidade > 1 ? `<span class="enc-qtd">×${e.quantidade}</span>` : ''}</div>
+            ${valor ? `<div class="enc-valor">💰 ${valor}</div>` : ''}
+            ${e.fornecedorSugerido ? `<div class="enc-fornecedor">🏢 ${esc(e.fornecedorSugerido)}</div>` : ''}
+            ${e.telefone || e.whatsapp ? `<div class="enc-contato">📞 ${esc(e.telefone||e.whatsapp)}</div>` : ''}
+            <div class="enc-datas">📅 Encomenda: ${dtEnc}${e.dataPrevista ? ` &nbsp;·&nbsp; Previsão: ${dtPrev}` : ''}</div>
+            ${e.observacoes ? `<div class="enc-obs">📝 ${esc(e.observacoes)}</div>` : ''}
+        </div>
+        <div class="enc-card-actions">${btns}</div>
+    </div>`;
+}
+
+function _encBotoes(e) {
+    const id = esc(e.id);
+    const fluxo = {
+        aguardando_compra: [
+            { status: 'comprada',      label: '🛍️ Marcar Comprada' },
+            { status: 'cancelada',     label: '❌ Cancelar', cls: 'enc-btn-cancel' },
+        ],
+        comprada: [
+            { status: 'em_transporte', label: '🚚 Em Transporte' },
+            { status: 'cancelada',     label: '❌ Cancelar', cls: 'enc-btn-cancel' },
+        ],
+        em_transporte: [
+            { label: '📥 Receber Produto', action: `Alertas.receberEncomenda('${id}')`, cls: 'enc-btn-receber' },
+            { status: 'cancelada',          label: '❌ Cancelar', cls: 'enc-btn-cancel' },
+        ],
+        disponivel: [
+            { status: 'entregue',      label: '✅ Marcar Entregue', cls: 'enc-btn-entregue' },
+        ],
+        entregue:  [],
+        cancelada: [],
+    };
+    const acoes = fluxo[e.status] || [];
+    return acoes.map(a => {
+        if (a.action) return `<button class="enc-btn ${a.cls||''}" onclick="${a.action}">${a.label}</button>`;
+        return `<button class="enc-btn ${a.cls||''}" onclick="Alertas.atualizarStatusEncomenda('${id}','${a.status}')">${a.label}</button>`;
+    }).join('');
+}
+
+async function atualizarStatusEncomenda(id, novoStatus) {
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc) return;
+    const agoraISO = new Date().toISOString();
+    const historico = [...(enc.historicoStatus || []), { status: novoStatus, data: agoraISO, obs: '' }];
+    try {
+        await updateDoc(doc(db, COL_ENC, id), {
+            status: novoStatus,
+            historicoStatus: historico,
+            atualizadoEm: serverTimestamp(),
+            atualizadoEmISO: agoraISO,
+        });
+        enc.status = novoStatus;
+        enc.historicoStatus = historico;
+        enc.atualizadoEmISO = agoraISO;
+        localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
+
+        if (novoStatus === 'disponivel') await _alertaClienteAguardando(enc);
+
+        toast(`✅ Status atualizado: ${ENC_STATUS_LABEL[novoStatus] || novoStatus}`);
+    } catch {
+        toast('❌ Erro ao atualizar status.');
+    }
+    renderEncomendas();
+    _atualizarBadgeEncomendas();
+}
+
+async function receberEncomenda(id) {
+    const enc = st.encomendas.find(e => e.id === id);
+    if (!enc) return;
+    if (!confirm(`Receber a encomenda de "${enc.cliente}"?\n\nO status será alterado para "Disponível para Retirada" e será gerado um alerta de aviso.`)) return;
+
+    const agoraISO = new Date().toISOString();
+    const historico = [...(enc.historicoStatus || []), { status: 'disponivel', data: agoraISO, obs: 'Produto recebido e disponível para retirada' }];
+
+    try {
+        await updateDoc(doc(db, COL_ENC, id), {
+            status: 'disponivel',
+            historicoStatus: historico,
+            atualizadoEm: serverTimestamp(),
+            atualizadoEmISO: agoraISO,
+        });
+        enc.status = 'disponivel';
+        enc.historicoStatus = historico;
+        enc.atualizadoEmISO = agoraISO;
+        localStorage.setItem(ENC_CACHE, JSON.stringify(st.encomendas));
+
+        // Adicionar ao estoque
+        await _adicionarEncEstoque(enc);
+        // Criar alerta de retirada
+        await _alertaClienteAguardando(enc);
+
+        toast('📦 Produto recebido! Cliente notificado e estoque atualizado.');
+    } catch {
+        toast('❌ Erro ao registrar recebimento.');
+    }
+    renderEncomendas();
+    _atualizarBadgeEncomendas();
+}
+
+async function _adicionarEncEstoque(enc) {
+    try {
+        const id = `enc_${enc.id}`;
+        await setDoc(doc(db, 'estoque_produtos', id), {
+            id,
+            nome:             `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''}`,
+            categoria:        'Encomenda',
+            codigoBarras:     `ENC-${enc.id.slice(-6).toUpperCase()}`,
+            quantidade:       enc.quantidade || 1,
+            quantidadeMinima: 1,
+            venda:            enc.valorCombinado || 0,
+            custo:            0,
+            localizacao:      '',
+            tags:             ['encomenda', enc.cliente],
+            favorito:         false,
+            historico:        [{ tipo: 'entrada', qtd: enc.quantidade || 1, data: new Date().toISOString(), obs: `Encomenda recebida — cliente: ${enc.cliente}` }],
+            criadoEm:         serverTimestamp(),
+            atualizadoEm:     serverTimestamp(),
+            encomendaId:      enc.id,
+        });
+    } catch (err) {
+        console.warn('⚠️ Estoque não atualizado automaticamente:', err);
+    }
+}
+
+async function _alertaClienteAguardando(enc) {
+    try {
+        const agoraISO = new Date().toISOString();
+        const hoje = _encHoje();
+        const ref = doc(collection(db, 'alertas_usuario'));
+        await setDoc(ref, {
+            id: ref.id,
+            titulo:      `📬 Cliente aguardando retirada — ${enc.cliente}`,
+            descricao:   `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''} disponível para retirada.${enc.telefone ? ' Tel: ' + enc.telefone : ''}${enc.whatsapp ? ' / ' + enc.whatsapp : ''}`,
+            tipo:        'encomenda',
+            prioridade:  'alta',
+            categoria:   'Encomenda',
+            data:         hoje,
+            hora:        '08:00',
+            repeticao:   'nenhuma',
+            status:      'pendente',
+            link:        '/CRM/pages/central-alertas/index.html?nav=encomendas',
+            encomendaId:  enc.id,
+            encomendaTipo:'disponivel',
+            criadoEm:    serverTimestamp(),
+            criadoEmISO: agoraISO,
+            atualizadoEm: serverTimestamp(),
+            atualizadoEmISO: agoraISO,
+        });
+    } catch (err) {
+        console.warn('⚠️ Alerta de retirada não criado:', err);
+    }
+}
+
 // ── Exposição global ──────────────────────────────────────────────────────────
 window.Alertas = {
     navegar, abrirForm, editar, fecharForm, salvar, excluir, concluir,
@@ -1597,4 +1886,6 @@ window.Alertas = {
     renderDiagnostico, _limparLogDiag, _diagFiltro,
     // Seleção em lote
     _atualizarSelecao, selecionarTodos, excluirSelecionados, concluirSelecionados,
+    // Encomendas
+    filtrarEncomendas, atualizarStatusEncomenda, receberEncomenda,
 };

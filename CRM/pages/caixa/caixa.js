@@ -1049,33 +1049,26 @@ async function salvarLancamento() {
     // ═══════════════════════════════════════════
     if (dados.tipo !== 'servico' && dados.tipo !== 'saida') {
         const validacao = await validarEstoque(dados.descricao, dados.categoria);
-        
+
         if (validacao.status === 'sem_estoque') {
-            showToast(`🚫 "${validacao.produto.nome}" está sem estoque! Venda bloqueada.`);
-            console.warn(`[ESTOQUE↔CAIXA] BLOQUEADO - Produto "${validacao.produto.nome}" sem estoque (qtd=0)`);
-            return;
-        }
-        
-        if (validacao.status === 'nao_encontrado') {
-            const confirmar = confirm(
-                `❌ Produto "${dados.descricao}" não encontrado no Estoque!\n\n` +
-                `Deseja cadastrá-lo automaticamente no estoque e continuar a venda?`
-            );
-            if (!confirmar) {
-                console.log(`[ESTOQUE↔CAIXA] CANCELADO - Usuário recusou cadastro automático`);
-                showToast('❌ Venda cancelada — produto não cadastrado no estoque');
+            try {
+                await _aguardarModalEstoque(() => abrirModalReposicaoEstoque(validacao.produto));
+                await descontarEstoque(validacao.produto.id, validacao.produto);
+                console.log(`[ESTOQUE↔CAIXA] REPOSTO+VENDIDO - Produto "${validacao.produto.nome}"`);
+            } catch {
                 return;
             }
-            await cadastrarProdutoAutomatico({
-                nome: dados.descricao.toUpperCase(),
-                descricao: dados.descricao,
-                categoria: dados.categoria,
-                preco: dados.valor
-            });
-            console.log(`[ESTOQUE↔CAIXA] CADASTRO AUTO - Produto "${dados.descricao}" criado no estoque via Caixa`);
-        }
-        
-        if (validacao.status === 'encontrado') {
+        } else if (validacao.status === 'nao_encontrado') {
+            try {
+                const novoId = await _aguardarModalEstoque(() => abrirModalCadastroProduto(dados.descricao, dados.categoria, dados.valor));
+                if (novoId) {
+                    await descontarEstoque(novoId, { nome: dados.descricao });
+                    console.log(`[ESTOQUE↔CAIXA] CADASTRADO+VENDIDO - "${dados.descricao}" (ID: ${novoId})`);
+                }
+            } catch {
+                return;
+            }
+        } else if (validacao.status === 'encontrado') {
             await descontarEstoque(validacao.produto.id, validacao.produto);
             console.log(`[ESTOQUE↔CAIXA] DESCONTADO - Produto "${validacao.produto.nome}" (${validacao.produto.quantidade}→${validacao.produto.quantidade - 1})`);
         }
@@ -1486,6 +1479,159 @@ async function reporEstoque(descricao) {
         showToast('⚠️ Lançamento excluído, mas estoque não foi reposto');
     }
 }
+
+// ═══════════════════════════════════════════
+// 📦 MODAIS DE REPOSIÇÃO RÁPIDA DE ESTOQUE
+// ═══════════════════════════════════════════
+const COLLECTION_MOVIMENTACOES = 'estoque_movimentacoes';
+
+let _resolveModalEstoque = null;
+let _rejectModalEstoque = null;
+let _produtoModalAtual = null;
+
+function _aguardarModalEstoque(openFn) {
+    return new Promise((resolve, reject) => {
+        _resolveModalEstoque = resolve;
+        _rejectModalEstoque = reject;
+        openFn();
+    });
+}
+
+// — MODAL 1: produto cadastrado, mas sem estoque —
+function abrirModalReposicaoEstoque(produto) {
+    _produtoModalAtual = produto;
+    const el = id => document.getElementById(id);
+    if (el('rep-nome-produto')) el('rep-nome-produto').textContent = produto.nome || produto.description || '—';
+    if (el('rep-estoque-atual')) el('rep-estoque-atual').textContent = produto.quantidade ?? 0;
+    if (el('rep-quantidade')) { el('rep-quantidade').value = 1; }
+    const modal = el('modalReposicaoEstoque');
+    if (modal) { modal.style.display = 'flex'; setTimeout(() => el('rep-quantidade')?.focus(), 120); }
+}
+
+window.cancelarReposicaoEstoque = function() {
+    document.getElementById('modalReposicaoEstoque').style.display = 'none';
+    _produtoModalAtual = null;
+    if (_rejectModalEstoque) { _rejectModalEstoque('cancelado'); _rejectModalEstoque = null; _resolveModalEstoque = null; }
+};
+
+window.confirmarReposicaoEstoque = async function() {
+    const qtd = parseInt(document.getElementById('rep-quantidade')?.value || 1);
+    if (!qtd || qtd < 1) { showToast('⚠️ Informe uma quantidade válida'); return; }
+    const produto = _produtoModalAtual;
+    if (!produto) return;
+
+    const btn = document.querySelector('.btn-rep-confirmar');
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+    try {
+        await runTransaction(db, async (t) => {
+            const ref = doc(db, COLLECTION_PRODUTOS, produto.id);
+            const snap = await t.get(ref);
+            const qtdAtual = snap.exists() ? (snap.data().quantidade || 0) : 0;
+            t.update(ref, { quantidade: qtdAtual + qtd, atualizadoEm: serverTimestamp() });
+        });
+
+        await addDoc(collection(db, COLLECTION_MOVIMENTACOES), {
+            produtoId: produto.id,
+            produtoNome: produto.nome || produto.description || '',
+            tipo: 'entrada',
+            quantidade: qtd,
+            origem: 'Reposição pelo Caixa',
+            usuario: SYSTEM_META.CREATED_BY,
+            criadoEm: serverTimestamp(),
+            criadoEmISO: new Date().toISOString()
+        });
+
+        _cacheProdutos = null;
+        document.getElementById('modalReposicaoEstoque').style.display = 'none';
+        showToast(`✅ +${qtd} unidade(s) adicionada(s) ao estoque`);
+
+        const resolve = _resolveModalEstoque;
+        _resolveModalEstoque = null;
+        _rejectModalEstoque = null;
+        _produtoModalAtual = null;
+        if (resolve) resolve();
+
+    } catch (error) {
+        console.error('❌ [REPOSIÇÃO] Erro:', error);
+        showToast('❌ Erro ao atualizar estoque');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Adicionar ao Estoque'; }
+    }
+};
+
+// — MODAL 2: produto não cadastrado —
+function abrirModalCadastroProduto(descricao, categoria, preco) {
+    const el = id => document.getElementById(id);
+    if (el('cad-descricao-detectada')) el('cad-descricao-detectada').textContent = descricao || '—';
+    if (el('cad-nome')) el('cad-nome').value = descricao || '';
+    if (el('cad-categoria')) el('cad-categoria').value = 'Películas';
+    if (el('cad-quantidade')) el('cad-quantidade').value = 1;
+    if (el('cad-custo')) el('cad-custo').value = '';
+    if (el('cad-preco')) el('cad-preco').value = preco || '';
+    const modal = el('modalCadastroEstoque');
+    if (modal) { modal.style.display = 'flex'; setTimeout(() => el('cad-nome')?.focus(), 120); }
+}
+
+window.cancelarCadastroProduto = function() {
+    document.getElementById('modalCadastroEstoque').style.display = 'none';
+    if (_rejectModalEstoque) { _rejectModalEstoque('cancelado'); _rejectModalEstoque = null; _resolveModalEstoque = null; }
+};
+
+window.confirmarCadastroProduto = async function() {
+    const nome = document.getElementById('cad-nome')?.value.trim().toUpperCase();
+    const qtd  = parseInt(document.getElementById('cad-quantidade')?.value || 1);
+    if (!nome) { showToast('⚠️ Informe o nome do produto'); document.getElementById('cad-nome')?.focus(); return; }
+    if (!qtd || qtd < 1) { showToast('⚠️ Informe uma quantidade válida'); return; }
+
+    const btn = document.querySelectorAll('#modalCadastroEstoque .btn-rep-confirmar')[0];
+    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+
+    try {
+        const categoria = document.getElementById('cad-categoria')?.value || 'Outro';
+        const custo  = parseFloat(document.getElementById('cad-custo')?.value  || 0) || 0;
+        const preco  = parseFloat(document.getElementById('cad-preco')?.value  || 0) || 0;
+
+        const novoRef = doc(collection(db, COLLECTION_PRODUTOS));
+        await setDoc(novoRef, {
+            id: novoRef.id,
+            nome,
+            descricao: nome,
+            categoria,
+            quantidade: qtd,
+            quantidadeMinima: 1,
+            venda: preco,
+            custo,
+            atualizadoEm: serverTimestamp()
+        });
+
+        await addDoc(collection(db, COLLECTION_MOVIMENTACOES), {
+            produtoId: novoRef.id,
+            produtoNome: nome,
+            tipo: 'entrada',
+            quantidade: qtd,
+            origem: 'Cadastro pelo Caixa',
+            usuario: SYSTEM_META.CREATED_BY,
+            criadoEm: serverTimestamp(),
+            criadoEmISO: new Date().toISOString()
+        });
+
+        _cacheProdutos = null;
+        document.getElementById('modalCadastroEstoque').style.display = 'none';
+        showToast(`✅ "${nome}" cadastrado com ${qtd} unidade(s)`);
+
+        const resolve = _resolveModalEstoque;
+        _resolveModalEstoque = null;
+        _rejectModalEstoque = null;
+        if (resolve) resolve(novoRef.id);
+
+    } catch (error) {
+        console.error('❌ [CADASTRO CAIXA] Erro:', error);
+        showToast('❌ Erro ao cadastrar produto');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Cadastrar e Adicionar'; }
+    }
+};
 
 // ═══════════════════════════════════════════
 // EDIÇÃO
@@ -2022,4 +2168,161 @@ function renderLembretes() {
             </div>
         </div>`;
     }).join('');
+}
+
+// ═══════════════════════════════════════════
+// 🛒 ENCOMENDAS — Registro rápido pelo Caixa
+// ═══════════════════════════════════════════
+window.abrirNovaEncomenda     = abrirNovaEncomenda;
+window.fecharNovaEncomenda    = fecharNovaEncomenda;
+window.salvarEncomendaDoCaixa = salvarEncomendaDoCaixa;
+
+const COLL_ENCOMENDAS = 'encomendas';
+const COL_ALERTAS_ENC = 'alertas_usuario';
+
+function abrirNovaEncomenda() {
+    const overlay = document.getElementById('encomenda-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    const hoje = getDataEmSP(new Date());
+    const dataEl = document.getElementById('enc-data-encomenda');
+    if (dataEl && !dataEl.value) dataEl.value = hoje;
+    setTimeout(() => document.getElementById('enc-cliente')?.focus(), 120);
+}
+
+function fecharNovaEncomenda() {
+    const overlay = document.getElementById('encomenda-overlay');
+    if (overlay) overlay.style.display = 'none';
+    _limparFormEncomenda();
+}
+
+function _limparFormEncomenda() {
+    ['enc-cliente','enc-telefone','enc-whatsapp','enc-produto','enc-modelo',
+     'enc-fornecedor','enc-data-prevista','enc-observacoes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    const qtd = document.getElementById('enc-quantidade');
+    if (qtd) qtd.value = '1';
+    const val = document.getElementById('enc-valor');
+    if (val) val.value = '';
+    const dataEnc = document.getElementById('enc-data-encomenda');
+    if (dataEnc) dataEnc.value = '';
+}
+
+async function salvarEncomendaDoCaixa() {
+    const cliente = document.getElementById('enc-cliente')?.value.trim();
+    const produto  = document.getElementById('enc-produto')?.value.trim();
+    if (!cliente) return showToast('⚠️ Informe o nome do cliente');
+    if (!produto)  return showToast('⚠️ Informe o produto desejado');
+
+    const agora = new Date();
+    const agoraISO = agora.toISOString();
+    const dataEncomenda = document.getElementById('enc-data-encomenda')?.value || getDataEmSP(agora);
+    const dataPrevista  = document.getElementById('enc-data-prevista')?.value  || '';
+
+    const dados = {
+        cliente,
+        telefone:           document.getElementById('enc-telefone')?.value.trim()   || '',
+        whatsapp:           document.getElementById('enc-whatsapp')?.value.trim()   || '',
+        produto,
+        modelo:             document.getElementById('enc-modelo')?.value.trim()     || '',
+        quantidade:         parseInt(document.getElementById('enc-quantidade')?.value || 1),
+        valorCombinado:     parseFloat(document.getElementById('enc-valor')?.value  || 0),
+        fornecedorSugerido: document.getElementById('enc-fornecedor')?.value.trim() || '',
+        dataEncomenda,
+        dataPrevista,
+        observacoes:        document.getElementById('enc-observacoes')?.value.trim() || '',
+        status:             'aguardando_compra',
+        historicoStatus:    [{ status: 'aguardando_compra', data: agoraISO, obs: 'Encomenda registrada no caixa' }],
+        criadoEm:           serverTimestamp(),
+        criadoEmISO:        agoraISO,
+        atualizadoEm:       serverTimestamp(),
+        atualizadoEmISO:    agoraISO,
+    };
+
+    try {
+        const ref = doc(collection(db, COLL_ENCOMENDAS));
+        await setDoc(ref, { ...dados, id: ref.id });
+        await _criarAlertasEncomenda({ ...dados, id: ref.id });
+        showToast('✅ Encomenda registrada! Alertas criados.');
+        fecharNovaEncomenda();
+    } catch (err) {
+        console.error('❌ Erro ao salvar encomenda:', err);
+        showToast('❌ Erro ao salvar. Verifique a conexão.');
+    }
+}
+
+async function _criarAlertasEncomenda(enc) {
+    const agoraISO = new Date().toISOString();
+    const link = '/CRM/pages/central-alertas/index.html?nav=encomendas';
+    const alertas = [];
+
+    // 1) Alerta imediato — encomenda aguardando compra
+    alertas.push({
+        titulo:    `🛒 Encomenda aguardando compra — ${enc.cliente}`,
+        descricao: `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''}. Qtd: ${enc.quantidade}.`,
+        tipo:      'encomenda',
+        prioridade:'alta',
+        categoria: 'Encomenda',
+        data:       enc.dataEncomenda,
+        hora:      '08:00',
+        repeticao: 'nenhuma',
+        status:    'pendente',
+        link,
+        encomendaId:   enc.id,
+        encomendaTipo: 'aguardando_compra',
+    });
+
+    if (enc.dataPrevista) {
+        // 2) 3 dias antes da previsão
+        const d3 = new Date(enc.dataPrevista + 'T12:00:00');
+        d3.setDate(d3.getDate() - 3);
+        const d3ISO = d3.toISOString().slice(0, 10);
+        if (d3ISO > enc.dataEncomenda) {
+            const dtFmt = new Date(enc.dataPrevista + 'T12:00:00').toLocaleDateString('pt-BR');
+            alertas.push({
+                titulo:    `🔔 Verificar chegada da encomenda — ${enc.cliente}`,
+                descricao: `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''} previsto para ${dtFmt}.`,
+                tipo:      'encomenda',
+                prioridade:'media',
+                categoria: 'Encomenda',
+                data:       d3ISO,
+                hora:      '08:00',
+                repeticao: 'nenhuma',
+                status:    'pendente',
+                link,
+                encomendaId:   enc.id,
+                encomendaTipo: 'verificar_chegada',
+            });
+        }
+
+        // 3) No dia previsto
+        alertas.push({
+            titulo:    `📦 Encomenda prevista para hoje — ${enc.cliente}`,
+            descricao: `${enc.produto}${enc.modelo ? ' ' + enc.modelo : ''} deve chegar hoje!`,
+            tipo:      'encomenda',
+            prioridade:'alta',
+            categoria: 'Encomenda',
+            data:       enc.dataPrevista,
+            hora:      '08:00',
+            repeticao: 'nenhuma',
+            status:    'pendente',
+            link,
+            encomendaId:   enc.id,
+            encomendaTipo: 'dia_previsto',
+        });
+    }
+
+    for (const al of alertas) {
+        const ref = doc(collection(db, COL_ALERTAS_ENC));
+        await setDoc(ref, {
+            ...al, id: ref.id,
+            criadoEm:      serverTimestamp(),
+            criadoEmISO:   agoraISO,
+            atualizadoEm:  serverTimestamp(),
+            atualizadoEmISO: agoraISO,
+        });
+    }
+}
 }

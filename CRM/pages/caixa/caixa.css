@@ -1407,3 +1407,166 @@ body {
 @media (min-width: 901px) {
   .screen { padding-right: 96px !important; }
 }
+
+/* ═══════════════════════════════════════════
+   🛒 ENCOMENDAS — Botão e Modal
+   ═══════════════════════════════════════════ */
+.btn-nova-encomenda {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    background: rgba(96,165,250,0.1);
+    border: 1px solid rgba(96,165,250,0.3);
+    border-radius: 20px;
+    color: #60a5fa;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+}
+.btn-nova-encomenda:hover { background: rgba(96,165,250,0.18); border-color: rgba(96,165,250,0.5); }
+.btn-nova-encomenda:active { background: rgba(96,165,250,0.25); }
+
+/* Modal de encomenda reutiliza .lembretes-modal-overlay mas precisa de overlay real */
+#encomenda-overlay.lembretes-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 900;
+    padding: 16px;
+    max-width: none;
+    margin: 0;
+}
+.enc-modal {
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.enc-modal-body {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.enc-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .8px;
+    text-transform: uppercase;
+    color: #6c757d;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+/* ═══════════════════════════════════════════
+   📦 MODAIS DE ESTOQUE — Reposição e Cadastro Rápido
+   ═══════════════════════════════════════════ */
+.modal-rep-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.75);
+    backdrop-filter: blur(6px);
+    z-index: 9900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn .18s ease;
+}
+.modal-rep-content {
+    background: #141618;
+    border: 1px solid rgba(0,200,83,.25);
+    border-radius: 16px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 24px 64px rgba(0,0,0,.7), 0 0 0 1px rgba(0,200,83,.1);
+    animation: slideUp .22s var(--ease);
+}
+.modal-cad-content {
+    max-width: 460px;
+}
+.modal-rep-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+}
+.modal-rep-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0;
+}
+.modal-rep-body {
+    padding: 20px;
+}
+.rep-info-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255,255,255,.04);
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+.rep-info-label {
+    font-size: 12px;
+    color: var(--text3);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+}
+.rep-info-valor {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+}
+.rep-zero {
+    color: var(--red);
+}
+.rep-input-qty {
+    width: 100%;
+    padding: 14px 16px;
+    background: #1c1f1d;
+    border: 1.5px solid rgba(0,200,83,.3);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+    outline: none;
+    transition: border-color .2s;
+}
+.rep-input-qty:focus {
+    border-color: var(--green-primary);
+    box-shadow: 0 0 0 3px rgba(0,200,83,.12);
+}
+.modal-rep-footer {
+    display: flex;
+    gap: 10px;
+    padding: 14px 20px 18px;
+    border-top: 1px solid rgba(255,255,255,.06);
+}
+.btn-rep-confirmar {
+    flex: 1;
+    padding: 14px;
+    background: var(--green-primary);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+}
+.btn-rep-confirmar:active {
+    transform: scale(.97);
+    opacity: .9;
+}
