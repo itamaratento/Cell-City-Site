@@ -3423,9 +3423,23 @@ class Dashboard {
     // Se na sessão anterior o overlay ficou visível sem terminar, limpa tudo.
     const hadStaleLock = SystemUpdater.clearStaleLock();
     if (hadStaleLock && overlay) {
-      overlay.hidden = true;
+      overlay.style.display = 'none';
+      overlay.setAttribute('hidden', '');
       console.warn('[Dashboard] Lock de atualização travado da sessão anterior foi limpo.');
     }
+
+    // Helpers show/hide — usam style.display para não depender do CSS cascade
+    // (evita o bug onde display:flex sobrescreve o atributo [hidden])
+    const _show = (el, displayType = 'flex') => {
+      if (!el) return;
+      el.style.display = displayType;
+      el.removeAttribute('hidden');
+    };
+    const _hide = (el) => {
+      if (!el) return;
+      el.style.display = 'none';
+      el.setAttribute('hidden', '');
+    };
 
     // Instancia o motor de atualizações
     const updater = new SystemUpdater({
@@ -3441,7 +3455,7 @@ class Dashboard {
         const fmt = v => updater.formatVersion(v);
         bannerVers.textContent = `${fmt(current)} → ${fmt(next)}`;
         versionBadge?.classList.add('has-update');
-        banner.hidden = false;
+        _show(banner);
       },
 
       onOnlineStatus: (online) => {
@@ -3510,14 +3524,14 @@ class Dashboard {
       });
       if (toastTitle)   toastTitle.textContent = 'Sincronizando...';
       if (toastSpinner) { toastSpinner.classList.remove('done'); }
-      toast.hidden = false;
+      _show(toast, 'flex');
     };
 
     const _hideToast = (delay = 0) => {
       if (!toast) return;
       _toastHideTimer = setTimeout(() => {
         toast.classList.add('sys-toast-hiding');
-        setTimeout(() => { toast.hidden = true; toast.classList.remove('sys-toast-hiding'); }, 250);
+        setTimeout(() => { _hide(toast); toast.classList.remove('sys-toast-hiding'); }, 250);
       }, delay);
     };
 
@@ -3556,11 +3570,11 @@ class Dashboard {
     // ── MODO 2: Atualização completa com reload (BLOQUEANTE intencional) ─────
     // Ativado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique
     const _dismissOverlay = () => {
-      if (overlay)   overlay.hidden = true;
+      _hide(overlay);
       if (reloadBtn) reloadBtn.classList.remove('spinning');
-      if (errorMsg)  errorMsg.hidden = true;
-      if (successMsg) successMsg.hidden = true;
-      SystemUpdater._clearLock?.();
+      _hide(errorMsg);
+      _hide(successMsg);
+      try { SystemUpdater._clearLock(); } catch {}
     };
 
     // Botão "Continuar usando o sistema →" — escape hatch sempre disponível
@@ -3576,11 +3590,11 @@ class Dashboard {
         li.innerHTML = `<span class="sys-step-icon">○</span><span>${label}</span>`;
         stepsList.appendChild(li);
       });
-      if (successMsg)     successMsg.hidden = true;
-      if (errorMsg)       errorMsg.hidden   = true;
+      _hide(successMsg);
+      _hide(errorMsg);
       if (overlayTitle)   overlayTitle.textContent = 'Atualizando sistema...';
       if (overlaySpinner) overlaySpinner.classList.remove('done');
-      overlay.hidden = false;
+      _show(overlay);
     };
 
     const _triggerFullReload = () => {
@@ -3604,17 +3618,15 @@ class Dashboard {
         onDone: () => {
           if (overlayTitle)   overlayTitle.textContent = '✅ Concluído';
           if (overlaySpinner) overlaySpinner.classList.add('done');
-          if (successMsg)     successMsg.hidden = false;
+          _show(successMsg, 'block');
         },
         onError: (err) => {
           if (reloadBtn) reloadBtn.classList.remove('spinning');
           if (err?.message === 'timeout' || err?.message?.includes('timeout')) {
-            // Timeout de 30s: mostra erro e libera interface
-            if (overlayTitle) overlayTitle.textContent = '⚠️ Tempo esgotado';
+            if (overlayTitle)   overlayTitle.textContent = '⚠️ Tempo esgotado';
             if (overlaySpinner) overlaySpinner.classList.add('done');
-            if (errorMsg) errorMsg.hidden = false;
+            _show(errorMsg, 'flex');
           } else {
-            // Erro geral: fecha overlay imediatamente
             _dismissOverlay();
           }
         }
@@ -3633,10 +3645,10 @@ class Dashboard {
 
     // Banner: nova versão disponível → só o "Atualizar Agora" faz reload
     updateNowBtn?.addEventListener('click', () => {
-      if (banner) banner.hidden = true;
+      _hide(banner);
       _triggerFullReload();
     });
-    const _closeBanner = () => { if (banner) banner.hidden = true; };
+    const _closeBanner = () => _hide(banner);
     remindBtn?.addEventListener('click', _closeBanner);
     bannerClose?.addEventListener('click', _closeBanner);
 
@@ -3645,7 +3657,7 @@ class Dashboard {
 
     const _openChangelog = async () => {
       if (!changelogPop) return;
-      changelogPop.hidden = false;
+      _show(changelogPop, 'flex');
 
       // Carrega preferências na UI
       const prefs = updater.getPrefs();
@@ -3681,7 +3693,7 @@ class Dashboard {
       }
     };
 
-    const _closeChangelog = () => { if (changelogPop) changelogPop.hidden = true; };
+    const _closeChangelog = () => _hide(changelogPop);
     versionBadge?.addEventListener('click', _openChangelog);
     changelogClose?.addEventListener('click', _closeChangelog);
 
@@ -3697,7 +3709,7 @@ class Dashboard {
 
     // Fecha o changelog ao clicar fora
     document.addEventListener('click', (e) => {
-      if (!changelogPop?.hidden &&
+      if (changelogPop && changelogPop.style.display !== 'none' &&
           !changelogPop.contains(e.target) &&
           e.target !== versionBadge) {
         _closeChangelog();

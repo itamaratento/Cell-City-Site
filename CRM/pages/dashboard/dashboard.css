@@ -4730,12 +4730,12 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   left: 0;
   right: 0;
   z-index: 9998;
-  display: flex;
   justify-content: center;
   padding: 0 16px;
   pointer-events: none;
 }
 .sys-update-banner:not([hidden]) {
+  display: flex;
   pointer-events: auto;
   animation: sys-banner-slide 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -4827,11 +4827,11 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   border: 1px solid var(--border-medium);
   border-radius: var(--radius-lg);
   box-shadow: 0 16px 56px rgba(0, 0, 0, 0.6);
-  display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .sys-changelog-popup:not([hidden]) {
+  display: flex;
   animation: sys-popup-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 @keyframes sys-popup-in {
@@ -4948,13 +4948,13 @@ html[data-card-size="grande"] .modules-grid .module-card .module-sub { font-size
   position: fixed;
   inset: 0;
   z-index: 10002;
-  display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
+.sys-update-overlay:not([hidden]) { display: flex; }
 .sys-update-overlay:not([hidden]) {
   animation: sys-overlay-in 0.22s ease;
 }
