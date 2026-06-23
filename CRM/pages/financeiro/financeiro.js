@@ -135,7 +135,9 @@ async function carregar() {
         dadosCompras  = []; sc.forEach(d  => dadosCompras.push({ id: d.id, ...d.data() }));
         dadosCaixa    = []; scx.forEach(d => dadosCaixa.push({ id: d.id, ...d.data() }));
         dadosOS       = []; sos.forEach(d => dadosOS.push({ id: d.id, ...d.data() }));
-    } catch {
+    } catch (e) {
+        console.error('[Financeiro] Erro ao carregar dados:', e);
+        toast('⚠ Falha ao carregar dados do servidor.');
         dadosPagar = []; dadosFixas = []; dadosReceber = [];
         dadosDespesas = []; dadosCompras = []; dadosCaixa = []; dadosOS = [];
     }
@@ -143,7 +145,7 @@ async function carregar() {
     try {
         const metaSnap = await getDoc(doc(db, COL_METAS, 'config'));
         dadosMetas = metaSnap.exists() ? metaSnap.data() : {};
-    } catch { dadosMetas = {}; }
+    } catch (e) { console.error('[Financeiro] Erro ao carregar metas:', e); dadosMetas = {}; }
     dadosPagar   = dadosPagar.map(c => calcStatus(c, 'pago'));
     dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
 
@@ -590,7 +592,7 @@ async function marcarStatus(id, col, novoStatus) {
         }
         atualizarContadores();
         toast(novoStatus === 'pago' ? '✅ Marcado como pago!' : '✅ Recebimento confirmado!');
-    } catch { toast('⚠ Erro ao atualizar.'); }
+    } catch (e) { console.error('[Financeiro] Erro ao atualizar status:', e); toast('⚠ Erro ao atualizar.'); }
 }
 
 // ── Excluir ────────────────────────────────────────────────────────────
@@ -613,7 +615,7 @@ async function excluir(id, col) {
             atualizarContadores();
             toast('🗑️ Despesa fixa removida.');
             await recarregar('pagar');
-        } catch { toast('⚠ Erro ao excluir.'); }
+        } catch (e) { console.error('[Financeiro] Erro ao excluir despesa fixa:', e); toast('⚠ Erro ao excluir.'); }
         return;
     }
 
@@ -626,7 +628,7 @@ async function excluir(id, col) {
         renderPagar(dadosPagar); renderReceber(dadosReceber);
         atualizarContadores();
         toast('🗑️ Removido.');
-    } catch { toast('⚠ Erro ao excluir.'); }
+    } catch (e) { console.error('[Financeiro] Erro ao excluir:', e); toast('⚠ Erro ao excluir.'); }
 }
 
 // ── Abrir edição ───────────────────────────────────────────────────────
@@ -733,7 +735,7 @@ async function salvarPagar() {
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
         fecharForm('form-pagar');
         await recarregar('pagar');
-    } catch { toast('⚠ Erro ao salvar.'); }
+    } catch (e) { console.error('[Financeiro] Erro ao salvar conta a pagar:', e); toast('⚠ Erro ao salvar.'); }
 }
 
 // ── Salvar Despesas Fixas ──────────────────────────────────────────────
@@ -784,7 +786,7 @@ async function salvarReceber() {
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
         fecharForm('form-receber');
         await recarregar('receber');
-    } catch { toast('⚠ Erro ao salvar.'); }
+    } catch (e) { console.error('[Financeiro] Erro ao salvar conta a receber:', e); toast('⚠ Erro ao salvar.'); }
 }
 
 // ── Recarregar parcial ─────────────────────────────────────────────────
@@ -806,7 +808,7 @@ async function recarregar(col) {
             renderReceber(dadosReceber);
         }
         atualizarContadores();
-    } catch {}
+    } catch (e) { console.error('[Financeiro] Erro ao recarregar:', e); }
 }
 
 // ── Eventos dos formulários ────────────────────────────────────────────
@@ -1038,8 +1040,9 @@ function renderFluxo() {
         .filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
     const valCaixaEnt = caixaEntradas.reduce((s, l) => s + Number(l.valor || 0), 0);
 
-    // Contas recebidas
-    const recebidas = filtrarFluxo(dadosReceber, 'vencimento').filter(c => c.status === 'recebido');
+    // Contas recebidas — usa recebidoEm (data real do pagamento) e exclui as oriundas do Caixa
+    const recebidas = filtrarFluxo(dadosReceber, 'recebidoEm')
+        .filter(c => c.status === 'recebido' && !c.origemCaixa);
     const valRecebidas = recebidas.reduce((s, c) => s + Number(c.valor || 0), 0);
 
     const totalEntradas = valCaixaEnt + valRecebidas;
@@ -1057,8 +1060,8 @@ function renderFluxo() {
     const comprasP = filtrarFluxo(dadosCompras, 'data').filter(c => c.status === 'pago');
     const valCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
 
-    // Contas pagas (exclui as geradas por compras — já contadas em comprasP)
-    const contasPagas = filtrarFluxo(dadosPagar, 'vencimento')
+    // Contas pagas — usa pagoEm (data real do pagamento) e exclui as geradas por compras
+    const contasPagas = filtrarFluxo(dadosPagar, 'pagoEm')
         .filter(c => c.status === 'pago' && c.origem !== 'compra' && !c.id?.startsWith('pagar_cmp_'));
     const valContasPagas = contasPagas.reduce((s, c) => s + Number(c.valor || 0), 0);
 
@@ -1104,11 +1107,11 @@ function renderFluxo() {
         // Construir lista unificada
         const movs = [];
         caixaEntradas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'entrada', fonte: 'Caixa' }));
-        recebidas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || c.cliente || '—', valor: c.valor, tipo: 'entrada', fonte: 'Contas a Receber' }));
+        recebidas.forEach(c => movs.push({ data: c.recebidoEm || c.vencimento || '', desc: c.descricao || c.cliente || '—', valor: c.valor, tipo: 'entrada', fonte: 'Contas a Receber' }));
         caixaSaidas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'saida', fonte: 'Caixa' }));
         despPeriodo.forEach(d => movs.push({ data: d.data || '', desc: d.descricao || '—', valor: d.valor, tipo: 'saida', fonte: 'Despesas' }));
         comprasP.forEach(c => movs.push({ data: c.data || '', desc: c.fornecedorNome || '—', valor: c.valorTotal, tipo: 'saida', fonte: 'Compras' }));
-        contasPagas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || '—', valor: c.valor, tipo: 'saida', fonte: 'Contas a Pagar' }));
+        contasPagas.forEach(c => movs.push({ data: c.pagoEm || c.vencimento || '', desc: c.descricao || '—', valor: c.valor, tipo: 'saida', fonte: 'Contas a Pagar' }));
         movs.sort((a, b) => b.data.localeCompare(a.data));
 
         set('fluxo-mov-count', `(${movs.length})`);
@@ -1420,15 +1423,15 @@ function filtrarDash(lista, campo, ini, fim) {
 function calcMetricasDash(ini, fim) {
     const cxEnt = filtrarDash(dadosCaixa, 'dia', ini, fim)
         .filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
-    const receb = filtrarDash(dadosReceber, 'vencimento', ini, fim)
-        .filter(c => c.status === 'recebido');
+    const receb = filtrarDash(dadosReceber, 'recebidoEm', ini, fim)
+        .filter(c => c.status === 'recebido' && !c.origemCaixa);
     const cxSai = filtrarDash(dadosCaixa, 'dia', ini, fim)
         .filter(l => l.tipo === 'saida');
     const desps = filtrarDash(dadosDespesas, 'data', ini, fim)
         .filter(d => !d.origemCaixa);
     const comps = filtrarDash(dadosCompras, 'data', ini, fim)
         .filter(c => c.status === 'pago');
-    const pags  = filtrarDash(dadosPagar, 'vencimento', ini, fim)
+    const pags  = filtrarDash(dadosPagar, 'pagoEm', ini, fim)
         .filter(c => c.status === 'pago' && c.origem !== 'compra' && !c.id?.startsWith('pagar_cmp_'));
 
     const faturamento = cxEnt.reduce((s, l) => s + Number(l.valor    || 0), 0)
