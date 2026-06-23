@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
 
 const COL_PAGAR     = 'financeiro_pagar';
 const COL_FIXAS     = 'financeiro_fixas';
@@ -6,6 +6,8 @@ const COL_RECEBER   = 'financeiro_receber';
 const COL_DESPESAS  = 'financeiro_despesas';
 const COL_COMPRAS   = 'compras_financeiras';
 const COL_CAIXA     = 'caixa_lancamentos';
+const COL_METAS     = 'financeiro_metas';
+const COL_OS        = 'os';
 
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -17,6 +19,8 @@ let dadosReceber   = [];
 let dadosDespesas  = [];
 let dadosCompras   = [];
 let dadosCaixa     = [];
+let dadosOS        = [];
+let dadosMetas     = {};
 let filtroStatusPagar   = 'todos';
 let filtroStatusReceber = 'todos';
 let filtroStatusFixas   = 'todas';
@@ -25,6 +29,7 @@ let editandoColecao = null;
 let secaoAtiva = 'home';
 let periodoResumo = 'mes';
 let periodoFluxo  = 'mes';
+let perioDash     = 'mes';
 let customDataIni = '';
 let customDataFim = '';
 
@@ -56,12 +61,14 @@ overlayEl?.addEventListener('click', fecharSidebar);
 
 // ── Navegação por seções ───────────────────────────────────────────────
 const SEC_META = {
-    home:    { titulo: '💹 Financeiro',              novo: false },
-    pagar:   { titulo: '💰 Contas a Pagar',           novo: true  },
-    receber: { titulo: '💵 Contas a Receber',         novo: true  },
-    fixas:   { titulo: '📅 Despesas Fixas',           novo: true  },
-    resumo:  { titulo: '📊 Resultado Financeiro',     novo: false },
-    fluxo:   { titulo: '📈 Fluxo de Caixa Unificado', novo: false },
+    home:      { titulo: '💹 Financeiro',               novo: false },
+    pagar:     { titulo: '💰 Contas a Pagar',            novo: true  },
+    receber:   { titulo: '💵 Contas a Receber',          novo: true  },
+    fixas:     { titulo: '📅 Despesas Fixas',            novo: true  },
+    resumo:    { titulo: '📊 Resultado Financeiro',      novo: false },
+    fluxo:     { titulo: '📈 Fluxo de Caixa Unificado',  novo: false },
+    dashboard: { titulo: '🎯 Dashboard Executivo',       novo: false },
+    metas:     { titulo: '🏆 Metas Financeiras',         novo: false },
 };
 
 function navegar(sec) {
@@ -79,11 +86,13 @@ function navegar(sec) {
 
     // mostrar/ocultar home grid e seções
     $('fin-home-grid').style.display = sec === 'home' ? '' : 'none';
-    ['pagar','receber','fixas','resumo','fluxo'].forEach(s => {
+    ['pagar','receber','fixas','resumo','fluxo','dashboard','metas'].forEach(s => {
         $('fin-sec-' + s).style.display = s === sec ? '' : 'none';
     });
-    if (sec === 'resumo') renderResultado();
-    if (sec === 'fluxo')  renderFluxo();
+    if (sec === 'resumo')    renderResultado();
+    if (sec === 'fluxo')     renderFluxo();
+    if (sec === 'dashboard') setTimeout(renderDashboard, 0);
+    if (sec === 'metas')     renderMetas();
 
     // botão ＋ Novo
     const btnNovo = $('fin-btn-novo');
@@ -110,13 +119,14 @@ $('fin-btn-novo')?.addEventListener('click', () => {
 // ── Carregar dados ─────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const [sp, sf, sr, sd, sc, scx] = await Promise.all([
+        const [sp, sf, sr, sd, sc, scx, sos] = await Promise.all([
             getDocs(collection(db, COL_PAGAR)),
             getDocs(collection(db, COL_FIXAS)),
             getDocs(collection(db, COL_RECEBER)),
             getDocs(collection(db, COL_DESPESAS)),
             getDocs(collection(db, COL_COMPRAS)),
             getDocs(collection(db, COL_CAIXA)),
+            getDocs(collection(db, COL_OS)),
         ]);
         dadosPagar    = []; sp.forEach(d  => dadosPagar.push({ id: d.id, ...d.data() }));
         dadosFixas    = []; sf.forEach(d  => dadosFixas.push({ id: d.id, ...d.data() }));
@@ -124,10 +134,16 @@ async function carregar() {
         dadosDespesas = []; sd.forEach(d  => dadosDespesas.push({ id: d.id, ...d.data() }));
         dadosCompras  = []; sc.forEach(d  => dadosCompras.push({ id: d.id, ...d.data() }));
         dadosCaixa    = []; scx.forEach(d => dadosCaixa.push({ id: d.id, ...d.data() }));
+        dadosOS       = []; sos.forEach(d => dadosOS.push({ id: d.id, ...d.data() }));
     } catch {
         dadosPagar = []; dadosFixas = []; dadosReceber = [];
-        dadosDespesas = []; dadosCompras = []; dadosCaixa = [];
+        dadosDespesas = []; dadosCompras = []; dadosCaixa = []; dadosOS = [];
     }
+    // Carregar metas (documento único)
+    try {
+        const metaSnap = await getDoc(doc(db, COL_METAS, 'config'));
+        dadosMetas = metaSnap.exists() ? metaSnap.data() : {};
+    } catch { dadosMetas = {}; }
     dadosPagar   = dadosPagar.map(c => calcStatus(c, 'pago'));
     dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
 
@@ -141,6 +157,9 @@ async function carregar() {
     atualizarContadores();
     bindPeriodoResumo();
     bindPeriodoFluxo();
+    bindDashPeriodo();
+    bindMetasForm();
+    atualizarHomeCardMetas();
 }
 
 function calcStatus(item, pago) {
@@ -1030,16 +1049,17 @@ function renderFluxo() {
     const caixaSaidas = filtrarFluxo(dadosCaixa, 'dia').filter(l => l.tipo === 'saida');
     const valCaixaSai = caixaSaidas.reduce((s, l) => s + Number(l.valor || 0), 0);
 
-    // Despesas do módulo Despesas
-    const despPeriodo = filtrarFluxo(dadosDespesas, 'data');
+    // Despesas do módulo Despesas (exclui as importadas do Caixa — já contadas em caixaSaidas)
+    const despPeriodo = filtrarFluxo(dadosDespesas, 'data').filter(d => !d.origemCaixa);
     const valDespesas = despPeriodo.reduce((s, d) => s + Number(d.valor || 0), 0);
 
     // Compras pagas
     const comprasP = filtrarFluxo(dadosCompras, 'data').filter(c => c.status === 'pago');
     const valCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
 
-    // Contas pagas (pagar)
-    const contasPagas = filtrarFluxo(dadosPagar, 'vencimento').filter(c => c.status === 'pago');
+    // Contas pagas (exclui as geradas por compras — já contadas em comprasP)
+    const contasPagas = filtrarFluxo(dadosPagar, 'vencimento')
+        .filter(c => c.status === 'pago' && c.origem !== 'compra' && !c.id?.startsWith('pagar_cmp_'));
     const valContasPagas = contasPagas.reduce((s, c) => s + Number(c.valor || 0), 0);
 
     const totalSaidas = valCaixaSai + valDespesas + valCompras + valContasPagas;
@@ -1109,6 +1129,663 @@ function renderFluxo() {
             }).join('');
         }
     }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 🏆 METAS FINANCEIRAS
+// ══════════════════════════════════════════════════════════════════════
+
+const OS_TERMINAIS = ['entregue', 'orcamento_recusado', 'devolvido_orcamento'];
+
+function calcStatusMeta(realizado, meta) {
+    if (!meta || meta <= 0) return null;
+    if (realizado < 0) return { pct: 0, pctReal: 0, cor: 'red', txt: '📉 Prejuízo' };
+    const pct = (realizado / meta) * 100;
+    if (pct >= 100) return { pct: 100, pctReal: pct, cor: 'green', txt: '✅ Meta Atingida' };
+    if (pct >= 75)  return { pct,       pctReal: pct, cor: 'yellow', txt: '⚡ Próximo da Meta' };
+    return                 { pct,       pctReal: pct, cor: 'red',   txt: '📉 Abaixo da Meta' };
+}
+
+function projetarMes(realizado) {
+    const agora = new Date();
+    const dia   = Math.max(agora.getDate(), 1);
+    const total = new Date(agora.getFullYear(), agora.getMonth() + 1, 0).getDate();
+    return (realizado / dia) * total;
+}
+
+function renderMetas() {
+    const agora  = new Date();
+    const ano    = agora.getFullYear();
+    const mes    = String(agora.getMonth() + 1).padStart(2, '0');
+    const ini    = `${ano}-${mes}-01`;
+    const hoje   = agora.toISOString().slice(0, 10);
+    const mesStr = `${ano}-${mes}`;
+
+    const labelEl = $('metas-periodo-label');
+    if (labelEl) {
+        const lbl = agora.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        labelEl.textContent = lbl.charAt(0).toUpperCase() + lbl.slice(1);
+    }
+
+    // Realizados — reusa cálculos existentes (sem duplicação)
+    const metricas     = calcMetricasDash(ini, hoje);
+    const recebTotal   = dadosReceber
+        .filter(c => c.status === 'recebido' && (c.vencimento || '').startsWith(mesStr))
+        .reduce((s, c) => s + Number(c.valor || 0), 0);
+    const recebPend    = dadosReceber
+        .filter(c => c.status !== 'recebido' && (c.vencimento || '').startsWith(mesStr))
+        .reduce((s, c) => s + Number(c.valor || 0), 0);
+    const osConcluidas = dadosOS.filter(o =>
+        o.status === 'entregue' && (o.updatedAt || o.createdAt || '').startsWith(mesStr)
+    ).length;
+    const osAndamento  = dadosOS.filter(o =>
+        !OS_TERMINAIS.includes(o.status) && (o.createdAt || '').startsWith(mesStr)
+    ).length;
+
+    const m = dadosMetas;
+    const metasDef = [
+        {
+            icon: '💰', titulo: 'Faturamento Mensal',
+            meta: Number(m.faturamento_mensal || 0),
+            realizado: metricas.faturamento,
+            tipo: 'moeda',
+            extra: null,
+        },
+        {
+            icon: '📈', titulo: 'Lucro Líquido Mensal',
+            meta: Number(m.lucro_mensal || 0),
+            realizado: metricas.lucro,
+            tipo: 'moeda',
+            extra: null,
+        },
+        {
+            icon: '📥', titulo: 'Recebimentos do Mês',
+            meta: Number(m.recebimentos_mensal || 0),
+            realizado: recebTotal,
+            tipo: 'moeda',
+            extra: { label: 'A receber no mês', valor: fmt(recebPend) },
+        },
+        {
+            icon: '🔧', titulo: 'Ordens de Serviço',
+            meta: Number(m.os_mensal || 0),
+            realizado: osConcluidas,
+            tipo: 'qtd',
+            extra: { label: 'Em andamento', valor: String(osAndamento) },
+        },
+    ];
+
+    const gridEl = $('fin-metas-grid');
+    if (!gridEl) return;
+
+    const nenhumaMeta = !m.faturamento_mensal && !m.lucro_mensal && !m.recebimentos_mensal && !m.os_mensal;
+    if (nenhumaMeta) {
+        gridEl.innerHTML = `
+        <div class="fin-metas-vazio">
+            <div class="fin-metas-vazio-icon">🏆</div>
+            <div class="fin-metas-vazio-titulo">Nenhuma meta configurada</div>
+            <div class="fin-metas-vazio-sub">Clique em <strong>⚙️ Configurar Metas</strong> para definir seus objetivos mensais e acompanhar o desempenho em tempo real.</div>
+        </div>`;
+        atualizarHomeCardMetas();
+        return;
+    }
+
+    const fmtV = (v, tipo) => tipo === 'qtd' ? String(Math.round(v)) : fmt(v);
+
+    gridEl.innerHTML = metasDef.map(md => {
+        const si      = calcStatusMeta(md.realizado, md.meta);
+        const projecao = projetarMes(md.realizado);
+        const projStr  = fmtV(projecao, md.tipo);
+        const projAcima = md.meta > 0 ? projecao >= md.meta : null;
+        const projCor   = projAcima === null ? '#6b7280' : projAcima ? '#00c853' : '#fbbf24';
+
+        const COR_BG   = { green: 'rgba(0,200,83,.13)',   yellow: 'rgba(251,191,36,.13)', red: 'rgba(239,68,68,.13)' };
+        const COR_TXT  = { green: '#00e676',              yellow: '#fbbf24',              red: '#ef4444' };
+        const COR_BRD  = { green: 'rgba(0,200,83,.28)',   yellow: 'rgba(251,191,36,.28)', red: 'rgba(239,68,68,.28)' };
+        const COR_FILL = { green: '#00c853',              yellow: '#fbbf24',              red: '#ef4444' };
+
+        const badgeHtml = si ? `<span class="fin-meta-badge" style="background:${COR_BG[si.cor]};color:${COR_TXT[si.cor]};border:1px solid ${COR_BRD[si.cor]}">${si.txt}</span>` : '';
+        const barPct    = si ? Math.min(si.pct, 100) : 0;
+        const barCor    = si ? COR_FILL[si.cor] : '#6b7280';
+        const pctLabel  = si ? `${si.pct.toFixed(1)}%` : '—';
+        const pctCor    = si ? COR_TXT[si.cor] : '#6b7280';
+
+        const extraHtml = md.extra ? `
+        <div class="fin-meta-row">
+            <span class="fin-meta-row-lbl">${md.extra.label}</span>
+            <span class="fin-meta-row-val">${md.extra.valor}</span>
+        </div>` : '';
+
+        const projHtml = md.meta > 0 ? `
+        <div class="fin-meta-projecao">
+            <span class="fin-meta-proj-lbl">📈 Projeção final</span>
+            <span class="fin-meta-proj-val" style="color:${projCor}">${projStr}</span>
+            <span class="fin-meta-proj-status" style="color:${projCor}">${projAcima ? 'Acima da Meta' : 'Abaixo da Meta'}</span>
+        </div>` : '';
+
+        return `
+        <div class="fin-meta-card">
+            <div class="fin-meta-card-head">
+                <span class="fin-meta-icon">${md.icon}</span>
+                <div class="fin-meta-titulo">${md.titulo}</div>
+                ${badgeHtml}
+            </div>
+            <div class="fin-meta-valores">
+                <div class="fin-meta-row">
+                    <span class="fin-meta-row-lbl">Meta</span>
+                    <span class="fin-meta-row-val">${md.meta > 0 ? fmtV(md.meta, md.tipo) : `<em style="color:var(--text-tertiary)">Não definida</em>`}</span>
+                </div>
+                <div class="fin-meta-row">
+                    <span class="fin-meta-row-lbl">Realizado</span>
+                    <span class="fin-meta-row-val" style="color:${si ? COR_TXT[si.cor] : 'var(--text-primary)'}; font-weight:700">${fmtV(md.realizado, md.tipo)}</span>
+                </div>
+                ${extraHtml}
+            </div>
+            <div class="fin-meta-prog-wrap">
+                <div class="fin-meta-prog-track">
+                    <div class="fin-meta-prog-fill" style="width:${barPct.toFixed(1)}%;background:${barCor}"></div>
+                </div>
+                <span class="fin-meta-prog-pct" style="color:${pctCor}">${pctLabel}</span>
+            </div>
+            ${projHtml}
+        </div>`;
+    }).join('');
+
+    atualizarHomeCardMetas();
+}
+
+function atualizarHomeCardMetas() {
+    const pctEl = $('hc-metas-pct');
+    const barEl = $('hc-metas-bar');
+    if (!pctEl) return;
+
+    const meta = Number(dadosMetas.faturamento_mensal || 0);
+    if (!meta) {
+        pctEl.textContent = 'Definir';
+        if (barEl) barEl.style.width = '0%';
+        return;
+    }
+
+    const agora = new Date();
+    const ano   = agora.getFullYear();
+    const mes   = String(agora.getMonth() + 1).padStart(2, '0');
+    const fat   = calcMetricasDash(`${ano}-${mes}-01`, agora.toISOString().slice(0, 10)).faturamento;
+    const pct   = Math.min((fat / meta) * 100, 100);
+
+    pctEl.textContent = pct.toFixed(0) + '%';
+    if (barEl) {
+        barEl.style.width      = pct + '%';
+        barEl.style.background = pct >= 100 ? '#00c853' : pct >= 75 ? '#fbbf24' : '#ef4444';
+    }
+}
+
+function abrirFormMetas() {
+    const m = dadosMetas;
+    $('meta-faturamento').value  = m.faturamento_mensal  || '';
+    $('meta-lucro').value        = m.lucro_mensal        || '';
+    $('meta-recebimentos').value = m.recebimentos_mensal || '';
+    $('meta-os').value           = m.os_mensal           || '';
+    $('form-metas').style.display = 'flex';
+    setTimeout(() => $('meta-faturamento').focus(), 50);
+}
+
+async function salvarMetas() {
+    const dados = {
+        faturamento_mensal:  Number($('meta-faturamento').value)  || 0,
+        lucro_mensal:        Number($('meta-lucro').value)        || 0,
+        recebimentos_mensal: Number($('meta-recebimentos').value) || 0,
+        os_mensal:           Number($('meta-os').value)           || 0,
+        atualizadoEm: serverTimestamp(),
+    };
+    try {
+        await setDoc(doc(db, COL_METAS, 'config'), dados);
+        dadosMetas = { ...dados };
+        fecharForm('form-metas');
+        renderMetas();
+        toast('🎯 Metas salvas com sucesso!');
+    } catch (e) {
+        console.error(e);
+        toast('⚠ Erro ao salvar metas.');
+    }
+}
+
+function bindMetasForm() {
+    $('fin-btn-metas-config')?.addEventListener('click', abrirFormMetas);
+    $('meta-salvar')?.addEventListener('click', salvarMetas);
+    $('meta-cancelar')?.addEventListener('click', () => fecharForm('form-metas'));
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// 🎯 DASHBOARD EXECUTIVO FINANCEIRO
+// ══════════════════════════════════════════════════════════════════════
+
+function dashRange() {
+    const agora = new Date();
+    const pad   = n => String(n).padStart(2, '0');
+    const ano   = agora.getFullYear();
+    const mes   = pad(agora.getMonth() + 1);
+    const dia   = pad(agora.getDate());
+    const hoje  = `${ano}-${mes}-${dia}`;
+    const dow   = agora.getDay() || 7;
+    const seg   = new Date(agora); seg.setDate(agora.getDate() - dow + 1);
+    const segStr = seg.toISOString().slice(0, 10);
+    switch (perioDash) {
+        case 'hoje':   return { ini: hoje,              fim: hoje, labelComp: 'vs ontem' };
+        case 'semana': return { ini: segStr,             fim: hoje, labelComp: 'vs sem. ant.' };
+        case 'mes':    return { ini: `${ano}-${mes}-01`, fim: hoje, labelComp: 'vs mês ant.' };
+        case 'ano':    return { ini: `${ano}-01-01`,     fim: hoje, labelComp: 'vs ano ant.' };
+        default:       return { ini: `${ano}-${mes}-01`, fim: hoje, labelComp: 'vs mês ant.' };
+    }
+}
+
+function dashRangeAnterior() {
+    const agora = new Date();
+    const pad   = n => String(n).padStart(2, '0');
+    const ano   = agora.getFullYear();
+    const mes   = agora.getMonth();
+    switch (perioDash) {
+        case 'hoje': {
+            const d = new Date(agora); d.setDate(d.getDate() - 1);
+            const s = d.toISOString().slice(0, 10);
+            return { ini: s, fim: s };
+        }
+        case 'semana': {
+            const dow = agora.getDay() || 7;
+            const s = new Date(agora); s.setDate(agora.getDate() - dow + 1 - 7);
+            const f = new Date(s); f.setDate(s.getDate() + 6);
+            return { ini: s.toISOString().slice(0, 10), fim: f.toISOString().slice(0, 10) };
+        }
+        case 'mes': {
+            const prim = new Date(ano, mes - 1, 1);
+            const ult  = new Date(ano, mes, 0);
+            return {
+                ini: `${prim.getFullYear()}-${pad(prim.getMonth() + 1)}-01`,
+                fim: ult.toISOString().slice(0, 10),
+            };
+        }
+        case 'ano':
+            return { ini: `${ano - 1}-01-01`, fim: `${ano - 1}-12-31` };
+        default:
+            return null;
+    }
+}
+
+function filtrarDash(lista, campo, ini, fim) {
+    return lista.filter(item => {
+        const raw = item[campo] || item.data || item.vencimento || item.dia || item.dataISO || '';
+        const d   = typeof raw === 'string' ? raw.slice(0, 10) : '';
+        return d >= ini && d <= fim;
+    });
+}
+
+function calcMetricasDash(ini, fim) {
+    const cxEnt = filtrarDash(dadosCaixa, 'dia', ini, fim)
+        .filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+    const receb = filtrarDash(dadosReceber, 'vencimento', ini, fim)
+        .filter(c => c.status === 'recebido');
+    const cxSai = filtrarDash(dadosCaixa, 'dia', ini, fim)
+        .filter(l => l.tipo === 'saida');
+    const desps = filtrarDash(dadosDespesas, 'data', ini, fim)
+        .filter(d => !d.origemCaixa);
+    const comps = filtrarDash(dadosCompras, 'data', ini, fim)
+        .filter(c => c.status === 'pago');
+    const pags  = filtrarDash(dadosPagar, 'vencimento', ini, fim)
+        .filter(c => c.status === 'pago' && c.origem !== 'compra' && !c.id?.startsWith('pagar_cmp_'));
+
+    const faturamento = cxEnt.reduce((s, l) => s + Number(l.valor    || 0), 0)
+                      + receb.reduce((s, c) => s + Number(c.valor    || 0), 0);
+    const despesas    = cxSai.reduce((s, l) => s + Number(l.valor    || 0), 0)
+                      + desps.reduce((s, d) => s + Number(d.valor    || 0), 0)
+                      + comps.reduce((s, c) => s + Number(c.valorTotal || 0), 0)
+                      + pags.reduce( (s, c) => s + Number(c.valor    || 0), 0);
+    const lucro    = faturamento - despesas;
+    const aPagar   = dadosPagar.filter(c => c.status !== 'pago')
+                               .reduce((s, c) => s + Number(c.valor || 0), 0);
+    const aReceber = dadosReceber.filter(c => c.status !== 'recebido')
+                                 .reduce((s, c) => s + Number(c.valor || 0), 0);
+    return { faturamento, despesas, lucro, aPagar, aReceber, saldo: aReceber - aPagar };
+}
+
+function ultimos6Meses() {
+    const agora = new Date();
+    const res   = [];
+    for (let i = 5; i >= 0; i--) {
+        const d   = new Date(agora.getFullYear(), agora.getMonth() - i, 1);
+        const ano = d.getFullYear();
+        const m   = String(d.getMonth() + 1).padStart(2, '0');
+        const ini = `${ano}-${m}-01`;
+        const fim = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
+        const lbl = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+        res.push({ ini, fim, label: lbl });
+    }
+    return res;
+}
+
+// ── Helpers de Canvas ─────────────────────────────────────────────────
+function fmtK(v) {
+    const abs = Math.abs(v);
+    const sig = v < 0 ? '-' : '';
+    if (abs >= 1000) return sig + 'R$' + (abs / 1000).toFixed(1) + 'k';
+    return sig + 'R$' + abs.toFixed(0);
+}
+
+function setupCanvasDash(id, height) {
+    const canvas = $(id);
+    if (!canvas) return null;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const w   = Math.max(canvas.parentElement.getBoundingClientRect().width, 180);
+    canvas.width  = w * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width  = '100%';
+    canvas.style.height = height + 'px';
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    return { ctx, w, h: height };
+}
+
+function drawBarChartDash(id, labels, datasets) {
+    const c = setupCanvasDash(id, 188);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const pad = { top: 26, right: 10, bottom: 38, left: 54 };
+    const cW  = w - pad.left - pad.right;
+    const cH  = h - pad.top  - pad.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const allVals = datasets.flatMap(d => d.data).filter(isFinite);
+    const maxVal  = Math.max(...allVals, 1);
+
+    for (let i = 0; i <= 4; i++) {
+        const y = pad.top + cH * (1 - i / 4);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+        ctx.fillStyle = '#6b7280';
+        ctx.font      = '10px -apple-system,sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(fmtK(maxVal * i / 4), pad.left - 4, y + 3);
+    }
+
+    const nG  = labels.length;
+    const nB  = datasets.length;
+    const gW  = cW / nG;
+    const bW  = Math.max(Math.min((gW - 8) / nB - 2, 28), 4);
+    const tot = nB * bW + (nB - 1) * 2;
+
+    datasets.forEach((ds, di) => {
+        ctx.fillStyle = ds.color;
+        ds.data.forEach((val, gi) => {
+            const bH = Math.max((Number(val) / maxVal) * cH, 0);
+            const x  = pad.left + gi * gW + (gW - tot) / 2 + di * (bW + 2);
+            ctx.fillRect(x, pad.top + cH - bH, bW, bH);
+        });
+    });
+
+    ctx.fillStyle = '#6b7280';
+    ctx.font      = '10px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    labels.forEach((lbl, i) => ctx.fillText(lbl, pad.left + i * gW + gW / 2, h - 8));
+
+    // Legenda
+    let lx = pad.left;
+    datasets.forEach(ds => {
+        ctx.fillStyle = ds.color;
+        ctx.fillRect(lx, 7, 10, 8);
+        ctx.fillStyle = '#a1a8b3';
+        ctx.font      = '10px -apple-system,sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(ds.label || '', lx + 13, 15);
+        lx += Math.max((ds.label || '').length * 6 + 22, 68);
+    });
+}
+
+function drawLineChartDash(id, labels, datasets) {
+    const c = setupCanvasDash(id, 188);
+    if (!c) return;
+    const { ctx, w, h } = c;
+    const pad = { top: 20, right: 14, bottom: 38, left: 54 };
+    const cW  = w - pad.left - pad.right;
+    const cH  = h - pad.top  - pad.bottom;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const allVals = datasets.flatMap(d => d.data).filter(isFinite);
+    const minVal  = Math.min(...allVals, 0);
+    const maxVal  = Math.max(...allVals, 1);
+    const range   = Math.abs(maxVal - minVal) || 1;
+    const n       = labels.length;
+
+    for (let i = 0; i <= 4; i++) {
+        const val = minVal + range * (i / 4);
+        const y   = pad.top + cH * (1 - i / 4);
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+        ctx.fillStyle = '#6b7280';
+        ctx.font      = '10px -apple-system,sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText(fmtK(val), pad.left - 4, y + 3);
+    }
+
+    if (minVal < 0) {
+        const y0 = pad.top + cH * (1 - (0 - minVal) / range);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath(); ctx.moveTo(pad.left, y0); ctx.lineTo(w - pad.right, y0); ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    datasets.forEach(ds => {
+        const pts = ds.data.map((val, i) => ({
+            x: pad.left + (n > 1 ? i / (n - 1) : 0.5) * cW,
+            y: pad.top  + cH * (1 - (Number(val) - minVal) / range),
+        }));
+
+        const isGreen = ds.color === '#00c853';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pad.top + cH);
+        pts.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.lineTo(pts[pts.length - 1].x, pad.top + cH);
+        ctx.closePath();
+        ctx.fillStyle = isGreen ? 'rgba(0,200,83,0.10)' : 'rgba(239,68,68,0.10)';
+        ctx.fill();
+
+        ctx.beginPath();
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+        ctx.strokeStyle = ds.color;
+        ctx.lineWidth   = 2;
+        ctx.stroke();
+
+        ctx.fillStyle = ds.color;
+        pts.forEach(p => {
+            ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI * 2); ctx.fill();
+        });
+    });
+
+    ctx.fillStyle = '#6b7280';
+    ctx.font      = '10px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    labels.forEach((lbl, i) => {
+        const x = pad.left + (n > 1 ? i / (n - 1) : 0.5) * cW;
+        ctx.fillText(lbl, x, h - 8);
+    });
+}
+
+function drawFluxoDiarioDash(id, ini, fim) {
+    const c = setupCanvasDash(id, 188);
+    if (!c) return;
+    const { ctx, w, h } = c;
+
+    const days = [];
+    const cur  = new Date(ini + 'T12:00:00');
+    const end  = new Date(fim + 'T12:00:00');
+    while (cur <= end && days.length < 62) {
+        days.push(cur.toISOString().slice(0, 10));
+        cur.setDate(cur.getDate() + 1);
+    }
+    if (!days.length) return;
+
+    const dayNet = days.map(d => {
+        let net = 0;
+        dadosCaixa.forEach(l => {
+            if ((l.dia || l.dataISO || '').slice(0, 10) !== d) return;
+            if (l.tipo === 'entrada' || l.tipo === 'servico') net += Number(l.valor || 0);
+            else if (l.tipo === 'saida')                      net -= Number(l.valor || 0);
+        });
+        return net;
+    });
+
+    const pad    = { top: 20, right: 10, bottom: 30, left: 54 };
+    const cW     = w - pad.left - pad.right;
+    const cH     = h - pad.top  - pad.bottom;
+    const maxAbs = Math.max(...dayNet.map(v => Math.abs(v)), 1);
+
+    ctx.clearRect(0, 0, w, h);
+
+    for (let i = -2; i <= 2; i++) {
+        const y   = pad.top + cH * 0.5 - (i / 2) * cH * 0.45;
+        const isZ = i === 0;
+        ctx.strokeStyle = isZ ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)';
+        ctx.lineWidth   = isZ ? 1.5 : 1;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+        if (i !== 0 && i % 2 === 0) {
+            ctx.fillStyle = '#6b7280';
+            ctx.font      = '10px -apple-system,sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(fmtK(maxAbs * i / 2), pad.left - 4, y + 3);
+        }
+    }
+
+    const bW = Math.max(cW / days.length - 1, 2);
+    const y0 = pad.top + cH * 0.5;
+    days.forEach((d, i) => {
+        const val = dayNet[i];
+        const bH  = (Math.abs(val) / maxAbs) * (cH * 0.45);
+        const x   = pad.left + i * (cW / days.length);
+        ctx.fillStyle = val >= 0 ? 'rgba(0,200,83,0.72)' : 'rgba(239,68,68,0.72)';
+        ctx.fillRect(x, val >= 0 ? y0 - bH : y0, bW, bH);
+    });
+
+    ctx.fillStyle = '#6b7280';
+    ctx.font      = '10px -apple-system,sans-serif';
+    ctx.textAlign = 'center';
+    const step = Math.max(1, Math.ceil(days.length / 7));
+    days.forEach((d, i) => {
+        if (i % step === 0) {
+            ctx.fillText(d.slice(8) + '/' + d.slice(5, 7), pad.left + i * (cW / days.length) + bW / 2, h - 4);
+        }
+    });
+}
+
+function renderCatDespesasDash(ini, fim) {
+    const el = $('fin-dash-cat');
+    if (!el) return;
+
+    const cats = {};
+    const add  = (cat, val) => { cats[cat] = (cats[cat] || 0) + Number(val || 0); };
+
+    filtrarDash(dadosDespesas, 'data', ini, fim).filter(d => !d.origemCaixa)
+        .forEach(d => add(d.categoria || 'Outros', d.valor));
+    filtrarDash(dadosCompras, 'data', ini, fim).filter(c => c.status === 'pago')
+        .forEach(c => add('Compras de Mercadorias', c.valorTotal));
+    filtrarDash(dadosPagar, 'vencimento', ini, fim)
+        .filter(c => c.status === 'pago' && c.origem !== 'compra' && !c.id?.startsWith('pagar_cmp_'))
+        .forEach(c => add(c.categoria || 'Outros', c.valor));
+    filtrarDash(dadosCaixa, 'dia', ini, fim).filter(l => l.tipo === 'saida')
+        .forEach(l => add(l.categoria || 'Caixa', l.valor));
+
+    const items = Object.entries(cats)
+        .map(([nome, valor]) => ({ nome, valor }))
+        .sort((a, b) => b.valor - a.valor);
+
+    if (!items.length) {
+        el.innerHTML = '<div style="color:var(--text-tertiary);font-size:13px;padding:8px 0">Sem despesas neste período.</div>';
+        return;
+    }
+
+    const maxV = items[0].valor;
+    const COLS = ['#ef4444','#f97316','#fbbf24','#3b82f6','#8b5cf6','#ec4899','#06b6d4','#6b7280'];
+    el.innerHTML = items.slice(0, 8).map((item, i) => {
+        const pct = Math.round((item.valor / maxV) * 100);
+        const cor = COLS[i % COLS.length];
+        return `<div class="fin-barra-item">
+            <div class="fin-barra-nome" style="color:${cor};width:130px">${escHtml(item.nome)}</div>
+            <div class="fin-barra-track"><div class="fin-barra-fill" style="width:${pct}%;background:${cor}"></div></div>
+            <div class="fin-barra-val">${fmt(item.valor)}</div>
+        </div>`;
+    }).join('');
+}
+
+function renderDashboard() {
+    const { ini, fim, labelComp } = dashRange();
+    const atual      = calcMetricasDash(ini, fim);
+    const prevRange  = dashRangeAnterior();
+    const prev       = prevRange ? calcMetricasDash(prevRange.ini, prevRange.fim) : null;
+
+    const deltaPct = (curr, p) => {
+        if (p === null || p === undefined || p === 0) return null;
+        return ((curr - p) / Math.abs(p)) * 100;
+    };
+
+    const COR = { green: '#00e676', red: '#ef4444', blue: '#60a5fa', yellow: '#fbbf24' };
+
+    const kpis = [
+        { icon:'💰', label:'Faturamento',     valor: atual.faturamento, prevVal: prev?.faturamento, cor:'green',  inv: false },
+        { icon:'📈', label:'Lucro Líquido',   valor: atual.lucro,        prevVal: prev?.lucro,        cor: atual.lucro  >= 0 ? 'green' : 'red', inv: false },
+        { icon:'💸', label:'Despesas Totais', valor: atual.despesas,     prevVal: prev?.despesas,     cor:'red',   inv: true  },
+        { icon:'⚖️', label:'Saldo Atual',     valor: atual.saldo,        prevVal: null,              cor: atual.saldo  >= 0 ? 'green' : 'red', inv: false },
+        { icon:'📥', label:'A Receber',        valor: atual.aReceber,     prevVal: null,              cor:'blue',  inv: false },
+        { icon:'⏳', label:'A Pagar',          valor: atual.aPagar,       prevVal: null,              cor:'yellow',inv: false },
+        { icon:'📊', label:'Resultado',        valor: atual.faturamento - atual.despesas, prevVal: null, cor: (atual.faturamento - atual.despesas) >= 0 ? 'green' : 'red', inv: false },
+    ];
+
+    const gridEl = $('fin-dash-kpi');
+    if (!gridEl) return;
+
+    gridEl.innerHTML = kpis.map(k => {
+        const pct = deltaPct(k.valor, k.prevVal);
+        let deltaHtml = '';
+        if (pct !== null && isFinite(pct)) {
+            const positivo = k.inv ? pct <= 0 : pct >= 0;
+            const arrow    = pct >= 0 ? '↑' : '↓';
+            const dcor     = positivo ? '#00c853' : '#ef4444';
+            deltaHtml = `<div class="fin-dash-kpi-delta" style="color:${dcor}">${arrow} ${Math.abs(pct).toFixed(1)}% <span style="opacity:.55;font-weight:400">${labelComp}</span></div>`;
+        }
+        return `<div class="fin-dash-kpi-card">
+            <div class="fin-dash-kpi-icon">${k.icon}</div>
+            <div class="fin-dash-kpi-valor" style="color:${COR[k.cor]}">${fmt(k.valor)}</div>
+            <div class="fin-dash-kpi-label">${k.label}</div>
+            ${deltaHtml}
+        </div>`;
+    }).join('');
+
+    // Charts — 6 meses
+    const m6     = ultimos6Meses();
+    const lbs    = m6.map(m => m.label);
+    const fat6   = m6.map(m => calcMetricasDash(m.ini, m.fim).faturamento);
+    const desp6  = m6.map(m => calcMetricasDash(m.ini, m.fim).despesas);
+    const lucro6 = m6.map(m => calcMetricasDash(m.ini, m.fim).lucro);
+
+    drawBarChartDash('dash-chart-receita', lbs, [
+        { data: fat6,  color: 'rgba(0,200,83,0.72)',  label: 'Receita'  },
+        { data: desp6, color: 'rgba(239,68,68,0.72)', label: 'Despesas' },
+    ]);
+    drawLineChartDash('dash-chart-evolucao', lbs, [
+        { data: lucro6, color: '#00c853', label: 'Lucro' },
+    ]);
+    renderCatDespesasDash(ini, fim);
+    drawFluxoDiarioDash('dash-chart-fluxo', ini, fim);
+}
+
+function bindDashPeriodo() {
+    document.querySelectorAll('.fin-pdash').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.fin-pdash').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            perioDash = btn.dataset.pd;
+            renderDashboard();
+        });
+    });
 }
 
 // ── Inicialização ──────────────────────────────────────────────────────

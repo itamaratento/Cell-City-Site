@@ -566,6 +566,8 @@ async function salvarCompra() {
             valor:        valorTotal,
             status:       finStatus,
             obs:          `Compra #${compraId}`,
+            origem:       'compra',
+            compraId,
             atualizadoEm: serverTimestamp(),
         }, { merge: true });
 

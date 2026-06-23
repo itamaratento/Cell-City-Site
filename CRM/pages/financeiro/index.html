@@ -5,7 +5,7 @@
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Financeiro</title>
-    <link rel="stylesheet" href="financeiro.css?v=20260622c">
+    <link rel="stylesheet" href="financeiro.css?v=20260623c">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
@@ -54,6 +54,10 @@
                     <span class="fin-sb-icon">📈</span>
                     <span class="fin-sb-label">Fluxo de Caixa</span>
                 </div>
+                <div class="fin-sb-item" data-sec="dashboard">
+                    <span class="fin-sb-icon">🎯</span>
+                    <span class="fin-sb-label">Dashboard Executivo</span>
+                </div>
 
                 <div class="fin-sb-sep"></div>
 
@@ -74,8 +78,8 @@
                     <span class="fin-sb-icon">📈</span>
                     <span class="fin-sb-label">Resultado</span>
                 </div>
-                <div class="fin-sb-item fin-sb-disabled">
-                    <span class="fin-sb-icon">🎯</span>
+                <div class="fin-sb-item" data-sec="metas">
+                    <span class="fin-sb-icon">🏆</span>
                     <span class="fin-sb-label">Metas Financeiras</span>
                 </div>
                 <a class="fin-sb-item" href="/CRM/pages/fechamento/" style="text-decoration:none;color:inherit">
@@ -104,6 +108,19 @@
 
                 <!-- ===== HOME GRID ===== -->
                 <div class="fin-home-grid" id="fin-home-grid">
+                    <div class="fin-home-block fin-home-block-dash" data-sec="dashboard">
+                        <div class="fin-home-icon">🎯</div>
+                        <div class="fin-home-nome">Dashboard</div>
+                        <div class="fin-home-count fin-count-dash">Executivo</div>
+                    </div>
+                    <div class="fin-home-block fin-home-block-metas" data-sec="metas">
+                        <div class="fin-home-icon">🏆</div>
+                        <div class="fin-home-nome">Metas Financeiras</div>
+                        <div class="fin-home-count fin-count-metas" id="hc-metas-pct">—</div>
+                        <div class="fin-meta-home-track">
+                            <div class="fin-meta-home-fill" id="hc-metas-bar" style="width:0%"></div>
+                        </div>
+                    </div>
                     <div class="fin-home-block" data-sec="pagar">
                         <div class="fin-home-icon">💰</div>
                         <div class="fin-home-nome">Contas a Pagar</div>
@@ -541,6 +558,90 @@
                     </div>
                 </div>
 
+                <!-- ===== SEÇÃO: DASHBOARD EXECUTIVO ===== -->
+                <div class="fin-section" id="fin-sec-dashboard" style="display:none">
+
+                    <!-- Filtro de período -->
+                    <div class="fin-periodo-filtros">
+                        <button class="fin-pdash active" data-pd="mes">Este Mês</button>
+                        <button class="fin-pdash" data-pd="hoje">Hoje</button>
+                        <button class="fin-pdash" data-pd="semana">Esta Semana</button>
+                        <button class="fin-pdash" data-pd="ano">Este Ano</button>
+                    </div>
+
+                    <!-- KPI Cards -->
+                    <div class="fin-dash-kpi-grid" id="fin-dash-kpi"></div>
+
+                    <!-- Gráficos — Linha 1 -->
+                    <div class="fin-dash-charts-row">
+                        <div class="fin-dash-chart-box">
+                            <div class="fin-dash-chart-titulo">📊 Receita vs Despesa — 6 Meses</div>
+                            <canvas id="dash-chart-receita"></canvas>
+                        </div>
+                        <div class="fin-dash-chart-box">
+                            <div class="fin-dash-chart-titulo">📈 Evolução do Lucro — 6 Meses</div>
+                            <canvas id="dash-chart-evolucao"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos — Linha 2 -->
+                    <div class="fin-dash-charts-row">
+                        <div class="fin-dash-chart-box">
+                            <div class="fin-dash-chart-titulo">💸 Despesas por Categoria</div>
+                            <div id="fin-dash-cat" style="padding-top:4px"></div>
+                        </div>
+                        <div class="fin-dash-chart-box">
+                            <div class="fin-dash-chart-titulo">🔄 Fluxo Diário do Caixa</div>
+                            <canvas id="dash-chart-fluxo"></canvas>
+                        </div>
+                    </div>
+
+                </div><!-- /fin-sec-dashboard -->
+
+                <!-- ===== SEÇÃO: METAS FINANCEIRAS ===== -->
+                <div class="fin-section" id="fin-sec-metas" style="display:none">
+
+                    <!-- Header -->
+                    <div class="fin-metas-header">
+                        <div>
+                            <div class="fin-metas-titulo-header">🏆 Metas Mensais</div>
+                            <div class="fin-metas-periodo-label" id="metas-periodo-label"></div>
+                        </div>
+                        <button class="fin-btn-config-metas" id="fin-btn-metas-config">⚙️ Configurar Metas</button>
+                    </div>
+
+                    <!-- Formulário de configuração -->
+                    <div class="fin-form" id="form-metas" style="display:none">
+                        <div class="fin-form-titulo">⚙️ Definir Metas Mensais</div>
+                        <div class="fin-form-grid">
+                            <div class="fin-form-group">
+                                <label>💰 Meta de Faturamento (R$/mês)</label>
+                                <input type="number" id="meta-faturamento" min="0" step="100" placeholder="Ex: 20000">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>📈 Meta de Lucro Líquido (R$/mês)</label>
+                                <input type="number" id="meta-lucro" min="0" step="100" placeholder="Ex: 5000">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>📥 Meta de Recebimentos (R$/mês)</label>
+                                <input type="number" id="meta-recebimentos" min="0" step="100" placeholder="Ex: 18000">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>🔧 Meta de O.S. Concluídas (unid./mês)</label>
+                                <input type="number" id="meta-os" min="0" step="1" placeholder="Ex: 50">
+                            </div>
+                        </div>
+                        <div class="fin-form-btns">
+                            <button class="fin-btn-salvar" id="meta-salvar">💾 Salvar Metas</button>
+                            <button class="fin-btn-cancelar" id="meta-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Grid de cards das metas -->
+                    <div class="fin-metas-grid" id="fin-metas-grid"></div>
+
+                </div><!-- /fin-sec-metas -->
+
             </div><!-- /fin-main -->
         </div><!-- /fin-explorer -->
     </main>
@@ -549,7 +650,7 @@
 
     <script src="../../shared/brand-header.js"></script>
     <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="financeiro.js?v=20260622a"></script>
+    <script type="module" src="financeiro.js?v=20260623b"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
