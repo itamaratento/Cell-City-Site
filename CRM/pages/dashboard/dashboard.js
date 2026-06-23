@@ -3391,6 +3391,233 @@ class Dashboard {
       `<div class="fin-alerta-item ${a.cor}">${a.ico} ${a.txt}</div>`
     ).join('');
   }
+
+  // ==========================================================================
+  // SISTEMA DE ATUALIZAÇÃO INTELIGENTE
+  // ==========================================================================
+  setupSystemUpdater() {
+    const reloadBtn     = document.getElementById('sys-reload-btn');
+    const versionBadge  = document.getElementById('sys-version-badge');
+    const syncLabel     = document.getElementById('sys-sync-label');
+    const statusPill    = document.getElementById('status-pill-main');
+    const banner        = document.getElementById('sys-update-banner');
+    const bannerVers    = document.getElementById('sys-banner-versions');
+    const updateNowBtn  = document.getElementById('sys-update-now-btn');
+    const remindBtn     = document.getElementById('sys-remind-later-btn');
+    const bannerClose   = document.getElementById('sys-banner-close');
+    const changelogPop  = document.getElementById('sys-changelog-popup');
+    const changelogBody = document.getElementById('sys-changelog-body');
+    const changelogClose= document.getElementById('sys-changelog-close');
+    const overlay       = document.getElementById('sys-update-overlay');
+    const overlayTitle  = document.getElementById('sys-update-card-title');
+    const overlaySpinner= document.getElementById('sys-update-spinner');
+    const stepsList     = document.getElementById('sys-update-steps');
+    const successMsg    = document.getElementById('sys-update-success');
+    const prefAutoCheck = document.getElementById('pref-auto-check');
+    const prefAutoUpd   = document.getElementById('pref-auto-update');
+    const prefInterval  = document.getElementById('pref-interval-select');
+
+    // Instancia o motor de atualizações
+    const updater = new SystemUpdater({
+
+      onVersionLoaded: (ver) => {
+        if (!versionBadge) return;
+        versionBadge.textContent = updater.formatVersion(ver);
+        versionBadge.title = `Versão: ${ver || '–'} — clique para ver o histórico`;
+      },
+
+      onUpdateAvailable: (current, next) => {
+        if (!banner || !bannerVers) return;
+        const fmt = v => updater.formatVersion(v);
+        bannerVers.textContent = `${fmt(current)} → ${fmt(next)}`;
+        versionBadge?.classList.add('has-update');
+        banner.hidden = false;
+      },
+
+      onOnlineStatus: (online) => {
+        if (!statusPill) return;
+        if (online) {
+          statusPill.className = 'status-pill online';
+          statusPill.textContent = 'Online';
+        } else {
+          statusPill.className = 'status-pill offline';
+          statusPill.textContent = 'Offline';
+        }
+      },
+
+      onSyncUpdate: (ts) => {
+        this._atualizarSyncLabel(syncLabel, ts);
+      }
+    });
+
+    // Atualiza rótulo de sincronização com cor por antiguidade
+    this._atualizarSyncLabel = (el, ts) => {
+      if (!el) return;
+      const update = () => {
+        if (!ts) { el.textContent = '–'; el.className = 'sys-sync-label'; return; }
+        const sec = Math.floor((Date.now() - ts) / 1000);
+        let cls, txt;
+        if      (sec < 60)   { cls = 'sync-ok';    txt = `há ${sec}s`; }
+        else if (sec < 300)  { cls = 'sync-ok';    txt = `há ${Math.floor(sec / 60)}min`; }
+        else if (sec < 3600) { cls = 'sync-warn';  txt = `há ${Math.floor(sec / 60)}min`; }
+        else                 { cls = 'sync-danger'; txt = `há ${Math.floor(sec / 3600)}h`; }
+        el.textContent = txt;
+        el.className   = `sys-sync-label ${cls}`;
+      };
+      update();
+      if (this._syncLabelTimer) clearInterval(this._syncLabelTimer);
+      this._syncLabelTimer = setInterval(update, 10_000);
+    };
+
+    // Definição dos steps de atualização
+    const STEP_DEFS = [
+      { id: 'cache',   label: 'Limpando cache'        },
+      { id: 'modules', label: 'Recarregando módulos'  },
+      { id: 'sync',    label: 'Sincronizando dados'   },
+      { id: 'ui',      label: 'Atualizando interface' },
+    ];
+
+    const _showOverlay = () => {
+      if (!overlay || !stepsList) return;
+      stepsList.innerHTML = '';
+      STEP_DEFS.forEach(({ id, label }) => {
+        const li = document.createElement('li');
+        li.id        = `sys-step-${id}`;
+        li.className = 'sys-update-step';
+        li.innerHTML = `<span class="sys-step-icon">○</span><span>${label}</span>`;
+        stepsList.appendChild(li);
+      });
+      if (successMsg)    successMsg.hidden = true;
+      if (overlayTitle)  overlayTitle.textContent = 'Atualizando sistema...';
+      if (overlaySpinner) overlaySpinner.classList.remove('done');
+      overlay.hidden = false;
+    };
+
+    const _triggerUpdate = () => {
+      _showOverlay();
+      if (reloadBtn) reloadBtn.classList.add('spinning');
+
+      updater.manualUpdate({
+        onStep: (id, status) => {
+          const li  = document.getElementById(`sys-step-${id}`);
+          if (!li) return;
+          const ico = li.querySelector('.sys-step-icon');
+          if (status === 'loading') {
+            li.classList.add('step-loading');
+            if (ico) ico.textContent = '🔄';
+          } else if (status === 'done') {
+            li.classList.remove('step-loading');
+            li.classList.add('step-done');
+            if (ico) ico.textContent = '✓';
+          }
+        },
+        onDone: () => {
+          if (overlayTitle)  overlayTitle.textContent = '✅ Concluído';
+          if (overlaySpinner) overlaySpinner.classList.add('done');
+          if (successMsg)    successMsg.hidden = false;
+        },
+        onError: () => {
+          if (overlay)   overlay.hidden = true;
+          if (reloadBtn) reloadBtn.classList.remove('spinning');
+        }
+      });
+    };
+
+    // Botão manual de atualização
+    reloadBtn?.addEventListener('click', _triggerUpdate);
+
+    // Banner: nova versão disponível
+    updateNowBtn?.addEventListener('click', () => {
+      if (banner) banner.hidden = true;
+      _triggerUpdate();
+    });
+    const _closeBanner = () => { if (banner) banner.hidden = true; };
+    remindBtn?.addEventListener('click', _closeBanner);
+    bannerClose?.addEventListener('click', _closeBanner);
+
+    // Popup de changelog
+    let changelogLoaded = false;
+
+    const _openChangelog = async () => {
+      if (!changelogPop) return;
+      changelogPop.hidden = false;
+
+      // Carrega preferências na UI
+      const prefs = updater.getPrefs();
+      if (prefAutoCheck) prefAutoCheck.checked = prefs.autoCheck;
+      if (prefAutoUpd)   prefAutoUpd.checked   = prefs.autoUpdate;
+      if (prefInterval)  prefInterval.value    = String(prefs.intervalMin);
+
+      // Fetch do changelog (uma vez por sessão)
+      if (!changelogLoaded && changelogBody) {
+        changelogBody.innerHTML = '<div class="sys-changelog-loading">Carregando...</div>';
+        const entries = await updater.fetchChangelog();
+        changelogLoaded = true;
+        if (!entries.length) {
+          changelogBody.innerHTML = '<div class="sys-changelog-loading">Histórico indisponível.</div>';
+        } else {
+          changelogBody.innerHTML = entries.map(e => {
+            const d   = e.date
+              ? new Date(e.date + 'T00:00:00').toLocaleDateString('pt-BR')
+              : '–';
+            const ver = e.version ? updater.formatVersion(e.version) : '';
+            const items = (e.items || []).map(i =>
+              `<li class="sys-cl-item">${i}</li>`
+            ).join('');
+            return `
+              <div class="sys-cl-entry">
+                <div class="sys-cl-date">
+                  ${d}${ver ? `<span class="sys-cl-ver-tag">${ver}</span>` : ''}
+                </div>
+                <ul class="sys-cl-items">${items}</ul>
+              </div>`;
+          }).join('');
+        }
+      }
+    };
+
+    const _closeChangelog = () => { if (changelogPop) changelogPop.hidden = true; };
+    versionBadge?.addEventListener('click', _openChangelog);
+    changelogClose?.addEventListener('click', _closeChangelog);
+
+    // Salva preferências ao alterar
+    const _savePrefs = () => updater.savePrefs({
+      autoCheck:  prefAutoCheck?.checked  ?? true,
+      autoUpdate: prefAutoUpd?.checked    ?? false,
+      intervalMin: parseInt(prefInterval?.value || '15', 10)
+    });
+    prefAutoCheck?.addEventListener('change', _savePrefs);
+    prefAutoUpd?.addEventListener('change', _savePrefs);
+    prefInterval?.addEventListener('change', _savePrefs);
+
+    // Fecha o changelog ao clicar fora
+    document.addEventListener('click', (e) => {
+      if (!changelogPop?.hidden &&
+          !changelogPop.contains(e.target) &&
+          e.target !== versionBadge) {
+        _closeChangelog();
+      }
+    }, true);
+
+    // Atalho de teclado Ctrl+Shift+U
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'U') {
+        e.preventDefault();
+        _triggerUpdate();
+      }
+    });
+
+    // Escuta eventos de sync de qualquer módulo
+    window.addEventListener('cc-data-synced', () => updater.recordSync());
+
+    // Inicializa o motor
+    updater.init().then(() => {
+      setTimeout(() => {
+        updater.recordSync();
+        this._atualizarSyncLabel(syncLabel, updater.getLastSync());
+      }, 2500);
+    });
+  }
 }
 
 // ===== INICIALIZAÇÃO =====
