@@ -1,0 +1,43 @@
+{
+  "changelog": [
+    {
+      "date": "2026-06-23",
+      "version": "cellcity-crm-v13",
+      "items": [
+        "Adicionado botão de atualização inteligente 🔄 ao lado da busca",
+        "Verificação automática de versão em segundo plano (a cada 15 min)",
+        "Indicador de conexão online/offline em tempo real",
+        "Exibição de última sincronização com cores de status",
+        "Notificação de nova versão com opções de atualizar ou adiar",
+        "Atualização automática segura: valida se não há edições abertas",
+        "Histórico de atualizações acessível pelo indicador de versão"
+      ]
+    },
+    {
+      "date": "2026-06-15",
+      "version": "cellcity-crm-v12",
+      "items": [
+        "Tooltips na sidebar compacta",
+        "Correção de layout no painel de alertas",
+        "Melhorias no filtro de semana do Caixa"
+      ]
+    },
+    {
+      "date": "2026-06-14",
+      "version": "cellcity-crm-v11",
+      "items": [
+        "Redesign do painel principal",
+        "Unificação dos alertas",
+        "Ícone no botão do site Cell City"
+      ]
+    },
+    {
+      "date": "2026-06-13",
+      "version": "cellcity-crm-v10",
+      "items": [
+        "Favoritos da home e sidebar",
+        "Correção de posicionamento do logo"
+      ]
+    }
+  ]
+}

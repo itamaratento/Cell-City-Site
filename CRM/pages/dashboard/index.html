@@ -38,6 +38,14 @@
       <kbd class="search-kbd">⌘K</kbd>
       <div class="search-results" id="search-results"></div>
     </div>
+    <!-- Botão de atualização inteligente -->
+    <button class="sys-reload-btn" id="sys-reload-btn" title="Atualizar Sistema" aria-label="Atualizar Sistema">
+      <svg class="sys-reload-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+    </button>
   </div>
 
   <div class="top-meta-right">
@@ -51,10 +59,78 @@
       <button class="home-mode-btn" data-mode="dashboard" title="Dashboard Financeiro">📊 Dashboard</button>
       <button class="home-mode-btn" data-mode="completo" title="Visão Completa">⊞ Completo</button>
     </div>
+    <!-- Grupo de status do sistema -->
+    <div class="sys-status-group" id="sys-status-group">
+      <button class="sys-version-badge" id="sys-version-badge" title="Clique para ver o histórico de atualizações">v–</button>
+      <span class="sys-sync-label" id="sys-sync-label" title="Última sincronização">–</span>
+    </div>
     <button class="aprov-sino" id="aprov-sino" title="Painel de Alertas" aria-label="Painel de Alertas">🔔<span class="aprov-badge" id="aprov-badge" style="display:none;">0</span></button>
-    <span class="status-pill online">Online</span>
+    <span class="status-pill" id="status-pill-main">Online</span>
   </div>
 </header>
+
+<!-- ========== NOTIFICAÇÃO: NOVA VERSÃO DISPONÍVEL ========== -->
+<div class="sys-update-banner" id="sys-update-banner" hidden role="alert" aria-live="assertive">
+  <div class="sys-banner-inner">
+    <span class="sys-banner-icon">🔔</span>
+    <div class="sys-banner-body">
+      <strong class="sys-banner-title">Nova atualização disponível</strong>
+      <span class="sys-banner-versions" id="sys-banner-versions"></span>
+    </div>
+    <div class="sys-banner-actions">
+      <button class="sys-banner-btn sys-banner-btn--primary" id="sys-update-now-btn">Atualizar Agora</button>
+      <button class="sys-banner-btn" id="sys-remind-later-btn">Lembrar Depois</button>
+    </div>
+    <button class="sys-banner-close" id="sys-banner-close" aria-label="Fechar notificação">×</button>
+  </div>
+</div>
+
+<!-- ========== POPUP: HISTÓRICO DE VERSÕES ========== -->
+<div class="sys-changelog-popup" id="sys-changelog-popup" hidden role="dialog" aria-label="Histórico de versões" aria-modal="true">
+  <div class="sys-changelog-header">
+    <span class="sys-changelog-title">📋 Histórico de Atualizações</span>
+    <button class="sys-changelog-close" id="sys-changelog-close" aria-label="Fechar">×</button>
+  </div>
+  <div class="sys-changelog-body" id="sys-changelog-body">
+    <div class="sys-changelog-loading">Carregando...</div>
+  </div>
+  <div class="sys-changelog-footer" id="sys-changelog-prefs">
+    <label class="sys-pref-row">
+      <input type="checkbox" id="pref-auto-check">
+      Verificar atualizações automaticamente
+    </label>
+    <label class="sys-pref-row">
+      <input type="checkbox" id="pref-auto-update">
+      Atualizar automaticamente quando ocioso
+    </label>
+    <div class="sys-pref-row sys-pref-interval">
+      <span>Intervalo:</span>
+      <select id="pref-interval-select">
+        <option value="15">15 minutos</option>
+        <option value="30">30 minutos</option>
+        <option value="60">1 hora</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- ========== OVERLAY: PROGRESSO DE ATUALIZAÇÃO ========== -->
+<div class="sys-update-overlay" id="sys-update-overlay" hidden role="dialog" aria-modal="true" aria-label="Atualizando sistema">
+  <div class="sys-update-card">
+    <div class="sys-update-card-header">
+      <span class="sys-update-spinner" id="sys-update-spinner" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"/>
+          <polyline points="1 20 1 14 7 14"/>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+      </span>
+      <span class="sys-update-card-title" id="sys-update-card-title">Atualizando sistema...</span>
+    </div>
+    <ul class="sys-update-steps" id="sys-update-steps" role="list"></ul>
+    <div class="sys-update-success" id="sys-update-success" hidden>✅ Sistema atualizado com sucesso</div>
+  </div>
+</div>
 
 <!-- ========== MINI CALENDÁRIO POPUP ========== -->
 <div class="calendar-popup" id="calendar-popup">

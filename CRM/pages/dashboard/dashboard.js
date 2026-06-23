@@ -8,6 +8,7 @@ import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos, TODOS_MODULOS } from "../../shared/central-modulos.js";
 import { init as initHomePrefs, getPrefs as getHomePrefs, setPrefs as setHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
+import { SystemUpdater } from "../../shared/system-updater.js";
 
 
 class Dashboard {
@@ -86,6 +87,7 @@ class Dashboard {
     this.setupConfigAlertas();
     this.setupPainelFinanceiro();
     this.setupBtnCentralModulos();
+    this.setupSystemUpdater();
     console.log('✅ Dashboard Cell City v4.3 — Central de Módulos ativa.');
   }
 
