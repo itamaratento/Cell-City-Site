@@ -1554,7 +1554,13 @@ window.confirmarReposicaoEstoque = async function() {
 
     } catch (error) {
         console.error('❌ [REPOSIÇÃO] Erro:', error);
-        showToast('❌ Erro ao atualizar estoque');
+        showToast('❌ Erro ao atualizar estoque. Tente novamente.');
+        // Rejeita a Promise para não travar o salvarLancamento indefinidamente
+        if (_rejectModalEstoque) {
+            const rej = _rejectModalEstoque;
+            _resolveModalEstoque = null; _rejectModalEstoque = null; _produtoModalAtual = null;
+            rej('erro_firestore');
+        }
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '✅ Adicionar ao Estoque'; }
     }
@@ -1627,7 +1633,13 @@ window.confirmarCadastroProduto = async function() {
 
     } catch (error) {
         console.error('❌ [CADASTRO CAIXA] Erro:', error);
-        showToast('❌ Erro ao cadastrar produto');
+        showToast('❌ Erro ao cadastrar produto. Tente novamente.');
+        // Rejeita a Promise para não travar o salvarLancamento indefinidamente
+        if (_rejectModalEstoque) {
+            const rej = _rejectModalEstoque;
+            _resolveModalEstoque = null; _rejectModalEstoque = null;
+            rej('erro_firestore');
+        }
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '✅ Cadastrar e Adicionar'; }
     }
@@ -1830,9 +1842,11 @@ document.addEventListener('DOMContentLoaded', () => {
 // Hook no salvarLancamento — baixa estoque automaticamente + gerencia produtos
 const _salvarLancamentoOriginal = window.salvarLancamento;
 window.salvarLancamento = async function() {
-    const descricao = document.getElementById('descricao')?.value.trim() || '';
-    const categoria = document.getElementById('categoria')?.value || '';
-    const produtoId = _ultimoItemSelecionado;
+    const descricao  = document.getElementById('descricao')?.value.trim() || '';
+    const categoria  = document.getElementById('categoria')?.value || '';
+    const produtoId  = _ultimoItemSelecionado;
+    // Captura o tipo ANTES do original ser chamado (ele limpa tipoSelecionado ao salvar)
+    const tipoAtual  = tipoSelecionado;
 
     // Se produto do estoque foi selecionado, garante custo real no cálculo do lucro
     if (produtoId) {
@@ -1840,7 +1854,7 @@ window.salvarLancamento = async function() {
         const prod = produtos.find(p => p.id === produtoId);
         if (prod && prod.custo) {
             document.getElementById('custo').value = prod.custo;
-            calcularLucro(); // recalcula: lucro = valor - custoReal
+            calcularLucro();
         }
     }
 
@@ -1851,34 +1865,35 @@ window.salvarLancamento = async function() {
     if (descDepois !== '' || !descricao) return;
 
     // ═══════════════════════════════════════
-    // 🎯 BAIXA DE ESTOQUE (produto selecionado do autocomplete)
+    // 🎯 BAIXA DE ESTOQUE (produto via autocomplete, somente para serviços)
+    // Para tipo 'entrada', o salvarLancamento original já descontou via descontarEstoque().
+    // O hook só desconta por conta própria quando tipo = 'servico' (original pula serviços).
     // ═══════════════════════════════════════
     if (produtoId) {
-        try {
-            const prodRef = doc(db, 'estoque_produtos', produtoId);
-            const prodSnap = await getDoc(prodRef);
-            if (prodSnap.exists()) {
-                const prod = prodSnap.data();
-                const novaQty = Math.max((prod.quantidade || 0) - 1, 0);
-                await setDoc(prodRef, {
-                    ...prod,
-                    quantidade: novaQty,
-                    atualizadoEm: serverTimestamp()
-                });
-                _cacheProdutos = null; // invalida cache p/ recarregar na próxima
-                mostrarToast(`📦 Estoque baixado: ${novaQty} restante(s)`);
+        if (tipoAtual === 'servico') {
+            try {
+                const prodRef = doc(db, 'estoque_produtos', produtoId);
+                const prodSnap = await getDoc(prodRef);
+                if (prodSnap.exists()) {
+                    const prod = prodSnap.data();
+                    const novaQty = Math.max((prod.quantidade || 0) - 1, 0);
+                    await setDoc(prodRef, { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
+                    _cacheProdutos = null;
+                    mostrarToast(`📦 Estoque baixado: ${novaQty} restante(s)`);
+                }
+            } catch (e) {
+                console.error('❌ Erro ao baixar estoque (serviço):', e);
+                mostrarToast('⚠ Erro ao baixar estoque');
             }
-        } catch (e) {
-            console.error('❌ Erro ao baixar estoque:', e);
-            mostrarToast('⚠ Erro ao baixar estoque');
         }
         _ultimoItemSelecionado = null;
         return;
     }
 
     // ═══════════════════════════════════════
-    // ➕ CRIAÇÃO DE NOVO PRODUTO NO ESTOQUE (digitou manualmente)
+    // ➕ CRIAÇÃO DE NOVO PRODUTO NO ESTOQUE (digitado manualmente, categoria Vendas)
     // ═══════════════════════════════════════
+    _ultimoItemSelecionado = null;
     if (categoria !== 'Vendas') return;
     const produtos = await _carregarProdutosEstoque();
     const jaExiste = produtos.some(p => (p.nome || p.description || '').toLowerCase() === descricao.toLowerCase());
@@ -1898,7 +1913,6 @@ window.salvarLancamento = async function() {
             } catch { mostrarToast('⚠ Erro ao criar no estoque.'); }
         }
     }
-    _ultimoItemSelecionado = null;
 };
 
 function mostrarToast(msg) {
