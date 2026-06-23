@@ -1564,3 +1564,118 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 
 /* ── Caixa enc-lucro-preview ── */
 #enc-lucro-preview { font-size: 12px; font-weight: 600; padding: 2px 0 8px; text-align: right; }
+
+/* ════════════════════════════════════════════════════
+   SOM INTERMITENTE — Animações e Visuais de Atenção
+   ════════════════════════════════════════════════════ */
+
+/* Badge pulsante na sidebar */
+@keyframes al-pulsar-badge {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(248,113,113,0.8); }
+    50%       { transform: scale(1.25); box-shadow: 0 0 0 6px rgba(248,113,113,0); }
+}
+.al-sb-badge.pulsing {
+    animation: al-pulsar-badge 1.2s ease-in-out infinite;
+}
+
+/* Borda pulsante em cards críticos ativos */
+@keyframes al-pulsar-borda {
+    0%, 100% { box-shadow: 0 0 0 0   rgba(239,68,68,0.5), var(--shadow-card); border-color: rgba(239,68,68,0.4); }
+    50%       { box-shadow: 0 0 0 6px rgba(239,68,68,0),   var(--shadow-card); border-color: rgba(239,68,68,0.9); }
+}
+.al-item.critico-ativo {
+    animation: al-pulsar-borda 1.8s ease-in-out infinite;
+    border-color: rgba(239,68,68,0.5) !important;
+}
+
+/* Sino oscilante */
+@keyframes al-sino-oscilar {
+    0%, 80%, 100% { transform: rotate(0deg); }
+    10%  { transform: rotate(-22deg); }
+    30%  { transform: rotate(22deg);  }
+    50%  { transform: rotate(-14deg); }
+    65%  { transform: rotate(10deg);  }
+}
+.al-sino-anim {
+    display: inline-block;
+    transform-origin: top center;
+    font-size: 20px;
+    animation: al-sino-oscilar 2.4s ease-in-out infinite;
+    flex-shrink: 0;
+}
+
+/* Barra de alerta ativo (aparece no topo do conteúdo) */
+.al-alerta-ativo-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(239,68,68,0.10), rgba(239,68,68,0.04));
+    border: 1px solid rgba(239,68,68,0.30);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    animation: al-fadeIn 220ms ease;
+    flex-wrap: wrap;
+}
+.al-alerta-ativo-msg {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #f87171;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.al-btn-ver-alertas {
+    background: rgba(0,200,83,0.10);
+    border: 1px solid rgba(0,200,83,0.30);
+    color: var(--green);
+    border-radius: var(--radius-xs);
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.al-btn-ver-alertas:hover { background: rgba(0,200,83,0.20); }
+.al-btn-dispensar {
+    background: rgba(248,113,113,0.10);
+    border: 1px solid rgba(248,113,113,0.30);
+    color: #f87171;
+    border-radius: var(--radius-xs);
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.al-btn-dispensar:hover { background: rgba(248,113,113,0.22); }
+
+/* Bloco de configuração de modo repetição */
+.cfg-rep-wrap {
+    padding: 6px 0 0 0;
+}
+.cfg-intervalo-wrap {
+    padding: 6px 0 0 28px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.cfg-intervalo-wrap label {
+    font-size: 12px;
+    color: var(--text3);
+}
+.cfg-intervalo-wrap select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xs);
+    color: var(--text);
+    padding: 6px 10px;
+    font-size: 13px;
+    cursor: pointer;
+    width: 180px;
+}

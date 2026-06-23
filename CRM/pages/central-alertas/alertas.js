@@ -9,6 +9,10 @@ const CMDS_CACHE   = 'cc_comandos_cache';
 const CACHE_KEY    = 'cc_alertas_cache';
 const CFG_KEY      = 'cc_alertas_config';
 
+// Estado do som intermitente
+let _somIntermitenteId  = null;
+let _somIntermitenteIds = [];
+
 // ── Estado ────────────────────────────────────────────────────────────────────
 const st = {
     lista:    [],          // todos os alertas
@@ -161,6 +165,7 @@ function navegar(secao) {
     if (tit) tit.textContent = SECAO_TITULO[secao] || secao;
     document.getElementById('al-sidebar')?.classList.remove('open');
     document.getElementById('al-overlay')?.classList.remove('open');
+    if (secao === 'hoje') _pararSomIntermitente();
     if (secao === 'calendario') renderCalendario();
     else if (secao === 'painel') renderPainel();
     else if (secao === 'diagnostico') renderDiagnostico();
@@ -352,6 +357,7 @@ function htmlItem(a) {
     const vencido   = deISO < hoje && a.status !== 'concluido';
     const hojeAtivo = deISO === hoje;
     const cls       = a.status === 'concluido' ? 'concluido' : (vencido ? 'vencido' : (hojeAtivo ? 'hoje-ativo' : ''));
+    const critAtivo = a.prioridade === 'critica' && a.status !== 'concluido' && jaDisp(a);
     const repLabel  = { nenhuma:'', diario:'Diário', semanal:'Semanal', mensal:'Mensal', quinzenal:'15 dias', trinta:'30 dias', custom:`${a.customDias||7} dias` }[a.repeticao||'nenhuma'] || '';
     const cmd       = a.comandoId ? st.comandos.find(c=>c.id===a.comandoId) : null;
     const isRec     = a.repeticao && a.repeticao !== 'nenhuma';
@@ -369,7 +375,7 @@ function htmlItem(a) {
 
     const prioCls = `prio-${a.prioridade||'media'}`;
     return `
-    <div class="al-item ${cls} ${prioCls}" data-id="${a.id}">
+    <div class="al-item ${cls} ${prioCls}${critAtivo ? ' critico-ativo' : ''}" data-id="${a.id}">
         <label class="al-item-check" title="Selecionar">
             <input type="checkbox" class="al-checkbox" data-id="${a.id}" onchange="Alertas._atualizarSelecao()">
         </label>
@@ -757,6 +763,12 @@ async function concluir(id) {
     }
 
     localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    // Remove do som intermitente se estava sendo monitorado
+    if (_somIntermitenteIds.includes(id)) {
+        _somIntermitenteIds = _somIntermitenteIds.filter(x => x !== id);
+        if (!_somIntermitenteIds.length) _pararSomIntermitente();
+        else _atualizarBarraAtiva();
+    }
     render();
 }
 
@@ -866,6 +878,12 @@ function carregarConfig() {
     const volPct = Math.round(parseFloat(localStorage.getItem('cc_sons_volume') || '0.7') * 100);
     if (el('cfg-volume'))       el('cfg-volume').value = volPct;
     if (el('cfg-volume-label')) el('cfg-volume-label').textContent = volPct + '%';
+    // Modo de repetição do som
+    const modoRep = cfg.somModoRep || 'unico';
+    if (el('cfg-som-unico'))        el('cfg-som-unico').checked = modoRep !== 'intermitente';
+    if (el('cfg-som-intermitente')) el('cfg-som-intermitente').checked = modoRep === 'intermitente';
+    if (el('cfg-intervalo-wrap'))   el('cfg-intervalo-wrap').style.display = modoRep === 'intermitente' ? '' : 'none';
+    if (el('cfg-intervalo-som'))    el('cfg-intervalo-som').value = String(cfg.intervaloRepSom || 15);
 }
 
 function salvarConfig() {
@@ -881,6 +899,8 @@ function salvarConfig() {
         somGlobal:    document.getElementById('cfg-som-global')?.checked ?? true,
         notifBrowser: document.getElementById('cfg-notif-browser')?.checked ?? true,
         modoNotif:    document.getElementById('cfg-modo-notif')?.value || 'som_popup',
+        somModoRep:   document.querySelector('input[name="cfg-som-rep"]:checked')?.value || 'unico',
+        intervaloRepSom: parseInt(document.getElementById('cfg-intervalo-som')?.value) || 15,
         tipos: {},
     };
     document.querySelectorAll('.cfg-tipo-som').forEach(chk => {
@@ -969,7 +989,12 @@ function verificarDisparos() {
     const usaSom   = cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
     const usaPopup = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
 
-    if (usaSom) _tocarSom(devem[0]?.titulo || '');
+    if (usaSom) {
+        _tocarSom(devem[0]?.titulo || '');
+        if (cfg.somModoRep === 'intermitente') {
+            _iniciarSomIntermitente(devem.map(a => a.id), cfg.intervaloRepSom || 15);
+        }
+    }
 
     devem.forEach(a => {
         _ccRegistrarEvento('Central de Alertas', `Notificação: ${a.titulo}`, 'notificacao');
@@ -2218,6 +2243,56 @@ async function _alertaClienteAguardando(enc) {
     }
 }
 
+// ── Som Intermitente ──────────────────────────────────────────────────────────
+function _iniciarSomIntermitente(ids, intervaloSeg) {
+    _pararSomIntermitente();
+    _somIntermitenteIds = [...ids];
+    _somIntermitenteId = setInterval(() => {
+        _somIntermitenteIds = _somIntermitenteIds.filter(id => {
+            const a = st.lista.find(x => x.id === id);
+            return a && a.status !== 'concluido' && jaDisp(a);
+        });
+        if (!_somIntermitenteIds.length) { _pararSomIntermitente(); return; }
+        _tocarSom(st.lista.find(a => a.id === _somIntermitenteIds[0])?.titulo || '');
+        _atualizarBarraAtiva();
+    }, Math.max(5, intervaloSeg) * 1000);
+    _atualizarBarraAtiva();
+}
+
+function _pararSomIntermitente() {
+    if (_somIntermitenteId) { clearInterval(_somIntermitenteId); _somIntermitenteId = null; }
+    _somIntermitenteIds = [];
+    _atualizarBarraAtiva();
+}
+
+function _dispensarSom() {
+    _pararSomIntermitente();
+}
+
+function _atualizarBarraAtiva() {
+    const bar = document.getElementById('al-alerta-ativo-bar');
+    const msg = document.getElementById('al-alerta-ativo-msg');
+    const ativo = _somIntermitenteId && _somIntermitenteIds.length > 0;
+    if (bar) bar.style.display = ativo ? 'flex' : 'none';
+    if (ativo && msg) {
+        const titulos = _somIntermitenteIds
+            .map(id => st.lista.find(a => a.id === id)?.titulo || '')
+            .filter(Boolean);
+        const extra = titulos.length > 2 ? ` +${titulos.length - 2}` : '';
+        msg.textContent = `${_somIntermitenteIds.length} alerta(s) ativo(s): ${titulos.slice(0, 2).join(', ')}${extra}`;
+    }
+    // Pulsing dos badges da sidebar
+    document.querySelectorAll('.al-sb-badge.show').forEach(b =>
+        b.classList.toggle('pulsing', ativo)
+    );
+}
+
+function _onChangeModoRep() {
+    const v = document.querySelector('input[name="cfg-som-rep"]:checked')?.value;
+    const el = document.getElementById('cfg-intervalo-wrap');
+    if (el) el.style.display = v === 'intermitente' ? '' : 'none';
+}
+
 // ── Exposição global ──────────────────────────────────────────────────────────
 window.Alertas = {
     navegar, abrirForm, editar, fecharForm, salvar, excluir, concluir,
@@ -2237,4 +2312,6 @@ window.Alertas = {
     abrirFormEncomenda, fecharFormEncomenda, salvarFormEncomenda, calcLucroEdit,
     excluirEncomenda, contatarFornecedor,
     abrirModalAlerta, fecharModalAlerta, salvarAlertaEncomenda,
+    // Som intermitente
+    _dispensarSom, _onChangeModoRep,
 };

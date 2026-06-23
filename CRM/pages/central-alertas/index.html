@@ -110,6 +110,14 @@
 
                 <div class="al-content">
 
+                <!-- ═══ BARRA ALERTA ATIVO (som intermitente) ═══ -->
+                <div id="al-alerta-ativo-bar" class="al-alerta-ativo-bar" style="display:none">
+                    <span class="al-sino-anim">🔔</span>
+                    <span id="al-alerta-ativo-msg" class="al-alerta-ativo-msg">Alertas pendentes</span>
+                    <button class="al-btn-ver-alertas" onclick="Alertas.navegar('hoje');Alertas._dispensarSom()">👁 Ver alertas</button>
+                    <button class="al-btn-dispensar" title="Dispensar som" onclick="Alertas._dispensarSom()">✕</button>
+                </div>
+
                 <!-- ═══ BARRA DE BUSCA E FILTROS ═══ -->
                 <div class="al-search-bar">
                     <div class="al-search-field">
@@ -295,6 +303,28 @@
                                 <option value="contador">🔢 Apenas Contador</option>
                             </select>
                         </label>
+
+                        <div class="al-config-sep">Modo de Repetição do Som</div>
+                        <label class="al-config-row">
+                            <input type="radio" name="cfg-som-rep" value="unico" id="cfg-som-unico" checked onchange="Alertas._onChangeModoRep()">
+                            <span>🔔 Som Único — toca uma vez ao disparar</span>
+                        </label>
+                        <label class="al-config-row">
+                            <input type="radio" name="cfg-som-rep" value="intermitente" id="cfg-som-intermitente" onchange="Alertas._onChangeModoRep()">
+                            <span>🔁 Som Intermitente — repete até você agir</span>
+                        </label>
+                        <div id="cfg-intervalo-wrap" class="cfg-intervalo-wrap" style="display:none">
+                            <label>Intervalo de repetição:</label>
+                            <select id="cfg-intervalo-som">
+                                <option value="10">10 segundos</option>
+                                <option value="15" selected>15 segundos</option>
+                                <option value="30">30 segundos</option>
+                                <option value="60">60 segundos</option>
+                            </select>
+                        </div>
+                        <div style="font-size:11px;color:var(--text3);padding:4px 10px 10px;">
+                            No modo intermitente, o sino fica pulsando e o som repete até você visualizar, concluir ou dispensar o alerta.
+                        </div>
 
                         <div class="al-config-sep">Tipos de Alerta com Som</div>
                         <label class="al-config-row"><input type="checkbox" class="cfg-tipo-som" data-tipo="critico" checked><span>🔴 Crítico</span></label>
