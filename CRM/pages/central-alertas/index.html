@@ -539,6 +539,32 @@
     <!-- TOAST -->
     <div class="al-toast hidden" id="al-toast"></div>
 
+    <!-- ═══ POPUP NOTIFICAÇÃO ALERTA DISPARADO ═══ -->
+    <div id="al-notify-popup" style="display:none;position:fixed;bottom:24px;right:20px;z-index:9998;width:340px;max-width:calc(100vw - 40px);background:var(--surface2,#1e1e2e);border:1.5px solid var(--green-primary,#4ade80);border-radius:14px;box-shadow:0 8px 36px rgba(0,0,0,.6);flex-direction:column;overflow:hidden;">
+        <div style="background:var(--green-primary,#4ade80);padding:10px 14px;display:flex;align-items:center;gap:8px;">
+            <span style="font-size:18px;" id="al-notify-sino">🔔</span>
+            <span style="font-weight:700;color:#000;flex:1;font-size:13px;" id="al-notify-popup-count">Alerta disparado</span>
+            <button onclick="document.getElementById('al-notify-popup').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:#000;line-height:1;padding:0;" title="Fechar">✕</button>
+        </div>
+        <div id="al-notify-popup-lista" style="max-height:280px;overflow-y:auto;"></div>
+        <div style="padding:8px 12px;border-top:1px solid var(--border,#333);display:flex;gap:8px;">
+            <button onclick="Alertas.navegar('hoje');document.getElementById('al-notify-popup').style.display='none'" style="flex:1;padding:8px;background:var(--surface3,#2a2a3e);border:1px solid var(--border,#333);border-radius:8px;color:var(--text,#fff);cursor:pointer;font-size:12px;">📋 Ver todos os alertas</button>
+            <button onclick="document.getElementById('al-notify-popup').style.display='none'" style="padding:8px 12px;background:none;border:1px solid var(--border,#333);border-radius:8px;color:var(--text-muted,#888);cursor:pointer;font-size:12px;">Dispensar</button>
+        </div>
+    </div>
+    <style>
+    .al-notify-in { animation: al-slide-in .3s ease; }
+    @keyframes al-slide-in { from { transform:translateX(110%);opacity:0; } to { transform:translateX(0);opacity:1; } }
+    .al-notify-item { padding:12px 14px;border-bottom:1px solid var(--border,#333); }
+    .al-notify-titulo { font-weight:600;font-size:14px;color:var(--text,#fff);margin-bottom:4px; }
+    .al-notify-desc { font-size:12px;color:var(--text-muted,#aaa);margin-bottom:4px;line-height:1.4; }
+    .al-notify-hora { font-size:11px;color:var(--text-muted,#888);margin-bottom:8px; }
+    .al-notify-btns { display:flex;gap:6px; }
+    .al-notify-btn-abrir { flex:1;padding:6px 10px;background:var(--green-primary,#4ade80);color:#000;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;display:inline-block; }
+    .al-notify-btn-concluir { padding:6px 10px;background:var(--surface3,#2a2a3e);border:1px solid var(--border,#333);border-radius:7px;color:var(--text-muted,#aaa);font-size:12px;cursor:pointer; }
+    .al-notify-mais { padding:8px 14px;font-size:12px;color:var(--text-muted,#aaa);text-align:center; }
+    </style>
+
     <!-- ═══════ MODAL: Novo/Editar Alerta ═══════ -->
     <div id="al-modal" class="al-modal">
         <div class="al-modal-content">
@@ -717,7 +743,7 @@
 
     <script src="../../shared/brand-header.js"></script>
 <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="alertas.js"></script>
+    <script type="module" src="alertas.js?v=20260623-popup-os"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

@@ -346,7 +346,7 @@ const _ACAO_RAPIDA_MAP = {
 function _acoesRapidasHTML(a) {
     if (a.status === 'concluido') return '';
     const destino = a.link || (_ACAO_RAPIDA_MAP[a.tipo]?.url ?? '');
-    const label   = a.link ? '🔗 Abrir link' : (_ACAO_RAPIDA_MAP[a.tipo]?.label ?? '');
+    const label   = (_ACAO_RAPIDA_MAP[a.tipo]?.label) || (a.link ? '🔗 Abrir link' : '');
     if (!destino || !label) return '';
     return `<a href="${esc(destino)}" class="al-acao-rapida" target="_blank" onclick="event.stopPropagation()">${label}</a>`;
 }
@@ -977,6 +977,39 @@ function _tocarSom(tituloAlerta = '') {
     } catch {}
 }
 
+// ── Popup visual de alerta disparado ─────────────────────────────────────────
+let _notifyPopupTimer = null;
+
+function _mostrarNotificacaoAlerta(devem) {
+    const popup = document.getElementById('al-notify-popup');
+    if (!popup) return;
+    const count = document.getElementById('al-notify-popup-count');
+    const lista = document.getElementById('al-notify-popup-lista');
+    if (count) count.textContent = `${devem.length} alerta${devem.length !== 1 ? 's' : ''} disparado${devem.length !== 1 ? 's' : ''}`;
+    if (lista) {
+        lista.innerHTML = devem.slice(0, 3).map(a => {
+            const destino = a.link || (_ACAO_RAPIDA_MAP[a.tipo]?.url ?? '');
+            const label   = (_ACAO_RAPIDA_MAP[a.tipo]?.label) || (destino ? '🔗 Abrir' : '');
+            return `<div class="al-notify-item">
+                <div class="al-notify-titulo">${esc(a.titulo)}</div>
+                ${a.descricao ? `<div class="al-notify-desc">${esc(a.descricao)}</div>` : ''}
+                ${a.hora ? `<div class="al-notify-hora">🕐 ${esc(a.hora)}</div>` : ''}
+                <div class="al-notify-btns">
+                    ${destino && label ? `<a href="${esc(destino)}" class="al-notify-btn-abrir">${label}</a>` : ''}
+                    <button class="al-notify-btn-concluir" onclick="Alertas.concluir('${a.id}')">✔ Feito</button>
+                </div>
+            </div>`;
+        }).join('');
+        if (devem.length > 3) lista.innerHTML += `<div class="al-notify-mais">+${devem.length - 3} mais na aba "Hoje"</div>`;
+    }
+    popup.style.display = 'flex';
+    popup.classList.remove('al-notify-in');
+    void popup.offsetWidth; // reflow para re-animar
+    popup.classList.add('al-notify-in');
+    clearTimeout(_notifyPopupTimer);
+    _notifyPopupTimer = setTimeout(() => { popup.style.display = 'none'; }, 30000);
+}
+
 function verificarDisparos() {
     const hj    = hojeISO();
     const hm    = agoraHHMM();
@@ -1008,6 +1041,8 @@ function verificarDisparos() {
             });
         }
     });
+
+    _mostrarNotificacaoAlerta(devem);
 }
 
 // ── Sidebar mobile ────────────────────────────────────────────────────────────
