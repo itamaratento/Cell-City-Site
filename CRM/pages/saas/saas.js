@@ -523,7 +523,9 @@ async function salvarEmpresa() {
   }
 
   const plano     = document.getElementById('f-plano')?.value;
-  const trialDias = parseInt(document.getElementById('f-trial-dias')?.value || '30');
+  const trialDias = parseInt(
+    document.querySelector('input[name="trial-dias"]:checked')?.value || '30'
+  );
   const dataVencInput = document.getElementById('f-data-vencimento')?.value;
 
   // Calcular data_vencimento para trial automaticamente
@@ -1125,8 +1127,10 @@ function _mostrarToast(msg, tipo = 'ok') {
   t._t = setTimeout(() => { t.style.opacity = '0'; }, 3000);
 }
 
-// Fechar modais (também acessível pelo HTML via window.fecharModal etc.)
-window.fecharModal = () => { document.getElementById('modal-empresa').style.display = 'none'; };
+// Globais acessíveis pelo HTML
+window.excluirEmpresa     = excluirEmpresa;
+window._renderDash        = renderizarDashboard;
+window.fecharModal        = () => { document.getElementById('modal-empresa').style.display = 'none'; };
 window.fecharModalUsuario = () => { document.getElementById('modal-usuario').style.display = 'none'; };
 
 window.selecionarTodosModulos = (v) => {

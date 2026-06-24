@@ -1,7 +1,7 @@
 import { db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, authReady } from "../../scripts/firebase.js";
 import { getAuth, signInAnonymously, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { loginGoogle } from '../../shared/session.js';
-import { loadContext, clearContext } from '../../shared/tenant.js';
+import { loadContext, clearContext, logAuditoria } from '../../shared/tenant.js';
 
 const auth = getAuth();
 
@@ -315,6 +315,13 @@ async function loginComGoogle() {
         // Carrega contexto do tenant (empresa, módulos, perfil)
         try { await loadContext(user.uid); } catch {}
 
+        // Auditoria de login
+        logAuditoria('login_google', {
+            email: user.email || '',
+            nome: user.displayName || '',
+            dispositivo: navigator.userAgent?.slice(0, 80) || ''
+        }).catch(() => {});
+
         if (btn) btn.textContent = '✓ Entrando...';
         irParaDashboard();
     } catch (err) {
@@ -351,6 +358,9 @@ async function recuperarSenha() {
 }
 
 async function sair() {
+    // Auditoria de logout antes de limpar o contexto
+    logAuditoria('logout', { dispositivo: navigator.userAgent?.slice(0, 80) || '' }).catch(() => {});
+
     sessionStorage.removeItem(SESSION_KEY);
     clearContext();
     // Encerra o "lembrar" deste aparelho: remove o token local e o doc remoto,
@@ -584,6 +594,13 @@ async function fazerLogin() {
                 await loadContext(authUser.uid);
             }
         } catch {}
+
+        // Auditoria de login com senha
+        logAuditoria('login_senha', {
+            usuario: u,
+            dispositivo: navigator.userAgent?.slice(0, 80) || ''
+        }).catch(() => {});
+
         _debugLog(`sessionStorage["${SESSION_KEY}"] = "ok"`, 'ok');
 
         // Mostra feedback visual de sucesso antes de redirecionar

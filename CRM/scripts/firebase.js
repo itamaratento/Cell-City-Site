@@ -108,9 +108,10 @@ export {
   sendPasswordResetEmail
 };
 
-// ===== GLOBALS PARA DEBUG (opcional) =====
+// ===== GLOBALS PARA DEBUG / BOOTSTRAP =====
 if (typeof window !== 'undefined') {
   window.dbFirestore = db;
+  window.ccAuth = auth;   // usado pelo bootstrap-master.js
   window.FirebaseFirestore = {
     collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc,
     query, orderBy, onSnapshot, runTransaction, serverTimestamp

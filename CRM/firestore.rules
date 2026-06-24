@@ -1,69 +1,312 @@
 rules_version = '2';
 
+// ================================================================
+// FIRESTORE SECURITY RULES — Cell City Gestão Empresarial SaaS
+//
+// ARQUITETURA DE ISOLAMENTO:
+//
+//  ┌─────────────────────────────────────────────────────────────┐
+//  │ IMPORTANTE — Como Firestore Rules funcionam:                 │
+//  │ Se QUALQUER regra que coincide retorna true → acesso OK.     │
+//  │ Não existe "deny" explícito. Portanto:                       │
+//  │  • Não podemos ter um catch-all permissivo e restringir      │
+//  │    coleções específicas ao mesmo tempo.                      │
+//  │  • A solução: catch-all só permite usuários ANÔNIMOS         │
+//  │    (auth PIN/dispositivo — legado).                          │
+//  │  • Usuários identificados (Google/e-mail) → apenas regras    │
+//  │    específicas se aplicam → isolamento real por empresa_id.  │
+//  └─────────────────────────────────────────────────────────────┘
+//
+//  Tipos de usuário:
+//
+//  A) Anônimo (PIN/dispositivo → signInAnonymously)
+//     → Sem doc em usuarios/{uid}
+//     → Acesso amplo via catch-all legado
+//     → Comportamento idêntico ao período pré-SaaS
+//
+//  B) Identificado (Google OAuth / e-mail+senha)
+//     → Tem doc em usuarios/{uid} com empresa_id e perfil
+//     → Sujeito às regras específicas por coleção
+//     → Apenas vê/escreve dados da própria empresa
+//
+//  C) Master Admin (perfil == 'master_admin')
+//     → Subconjunto do tipo B
+//     → Acesso total a todos os documentos
+//     → Único que escreve em empresas, usuarios, assinaturas
+//
+//  ROADMAP DE MIGRAÇÃO:
+//    Fase 1 (atual) : anônimo convive com identificado
+//    Fase 2         : Cell City migra para Google Auth; anônimo aposentado
+//    Fase 3         : remover catch-all legado → isolamento completo
+// ================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─────────────────────────────────────────────
-    // PÚBLICO (clientes sem login) — acesso mínimo necessário
-    // ─────────────────────────────────────────────
+    // ── Funções auxiliares ──────────────────────────────────────
 
-    // Consulta de garantia: leitura de uma OS específica (garantia.html)
-    match /os/{osId} {
-      allow get: if true;
+    function autenticado() {
+      return request.auth != null;
     }
 
-    // Layout de impressão usado na garantia (garantia.html lê config/impressao).
-    // Escopo restrito ao doc "impressao" — NÃO expõe config/pin nem outros docs.
+    function uid() {
+      return request.auth.uid;
+    }
+
+    // Existe doc em usuarios/{uid}? (false para auth anônima)
+    function temDoc() {
+      return exists(/databases/$(database)/documents/usuarios/$(uid()));
+    }
+
+    function docUser() {
+      return get(/databases/$(database)/documents/usuarios/$(uid())).data;
+    }
+
+    // Usuário anônimo: autenticado MAS sem documento em usuarios
+    function ehAnonimo() {
+      return autenticado() && !temDoc();
+    }
+
+    function isMaster() {
+      return autenticado() && temDoc() && docUser().perfil == 'master_admin';
+    }
+
+    function minhaEmpresa() {
+      return temDoc() ? docUser().empresa_id : null;
+    }
+
+    // Doc.empresa_id coincide com a empresa do usuário logado
+    function mesmaEmpresaQ(data) {
+      return minhaEmpresa() != null && data.empresa_id == minhaEmpresa();
+    }
+
+    // Permissão para dados operacionais (master | anônimo | mesma empresa)
+    function podeOperar(data) {
+      return isMaster() || ehAnonimo() || mesmaEmpresaQ(data);
+    }
+
+    // ── ① PÚBLICAS (sem autenticação) ───────────────────────────
+
     match /config/impressao {
       allow get: if true;
     }
 
-    // Abertura de atendimento pelo cliente, sem login (abrir-atendimento.html)
     match /pre_os/{docId} {
       allow create: if true;
+      allow read, update, delete: if autenticado();
     }
 
-    // Catálogo público — leitura de produtos ativos e configurações (sem login)
-    match /catalogo_produtos/{docId} {
-      allow read: if true;
-    }
-    match /catalogo_config/{docId} {
-      allow read: if true;
-    }
+    match /catalogo_produtos/{docId} { allow read: if true; }
+    match /catalogo_config/{docId}   { allow read: if true; }
 
-    // ─────────────────────────────────────────────
-    // SINCRONIZAÇÃO CRM ↔ GOOGLE DRIVE
-    // Coleções de suporte usadas pelos módulos Tutoriais, Soluções Técnicas,
-    // Diário Técnico e futuros. Operações via cc-sync.js / gdrive-backup.js.
-    // ─────────────────────────────────────────────
+    // ── ② EMPRESA MASTER — proteção máxima ──────────────────────
 
-    // Lixeira global: armazena snapshots de registros excluídos (retenção 30 dias).
-    // Operações: enviarParaLixeira (setDoc), listarLixeira (getDocs),
-    // removerDaLixeira (deleteDoc), purgarLixeira (getDocs + deleteDoc).
-    match /cc_lixeira/{docId} {
-      allow read, write: if request.auth != null;
-    }
+    match /empresas/{empresaId} {
+      // Leitura: master vê tudo; identificado vê apenas a própria empresa
+      allow read: if isMaster() ||
+                     (autenticado() && temDoc() && docUser().empresa_id == empresaId);
 
-    // Log de auditoria: registro de ações de sincronização.
-    // Operação atual: registrarLog (addDoc). Futuro: leitura para admin.
-    match /cc_gdrive_logs/{docId} {
-      allow read, write: if request.auth != null;
+      // Criação: apenas master
+      allow create: if isMaster();
+
+      // Atualização: master pode, mas empresa master deve ficar sempre 'ativo'
+      allow update: if isMaster() && (
+        !resource.data.is_master ||
+        (request.resource.data.status == 'ativo' &&
+         request.resource.data.is_master == true)
+      );
+
+      // Exclusão: master pode, exceto a empresa master
+      allow delete: if isMaster() && !resource.data.is_master;
     }
 
-    // Configuração do Google Drive: Client ID global + configuração por módulo.
-    // Operações: carregarCreds/carregarCfg (getDoc), salvarCreds/salvarCfg (setDoc).
-    match /gdrive_backup/{docId} {
-      allow read, write: if request.auth != null;
+    match /empresas_arquivadas/{docId} {
+      allow read, write: if isMaster();
     }
 
-    // ─────────────────────────────────────────────
-    // PRIVADO — todo o restante exige usuário autenticado.
-    // O app autentica anonimamente em CRM/scripts/firebase.js, então
-    // todas as páginas internas (Caixa, Estoque, Dashboard, Agenda, OS,
-    // config/pin, etc.) continuam funcionando.
-    // ─────────────────────────────────────────────
+    // ── ③ USUÁRIOS — previne escalonamento de privilégio ─────────
+
+    match /usuarios/{docUid} {
+      // Usuário lê só o próprio; master lê todos
+      allow read: if autenticado() && (uid() == docUid || isMaster());
+
+      // Criação: apenas master
+      allow create: if isMaster();
+
+      // Atualização:
+      // - Master: tudo
+      // - Próprio usuário: apenas campos não-privilegiados
+      //   (não pode alterar empresa_id, perfil, permissoes_modulos, ativo)
+      allow update: if autenticado() && (
+        isMaster() ||
+        (uid() == docUid &&
+         !request.resource.data.diff(resource.data)
+           .affectedKeys()
+           .hasAny(['empresa_id', 'perfil', 'permissoes_modulos', 'ativo']))
+      );
+
+      // Exclusão: apenas master
+      allow delete: if isMaster();
+
+      // Sub-coleção de preferências (layout, módulos favoritos)
+      match /preferencias/{prefId} {
+        allow read, write: if autenticado() && (uid() == docUid || isMaster());
+      }
+    }
+
+    // ── ④ COLEÇÕES SaaS — apenas master ─────────────────────────
+
+    match /auditoria_saas/{docId} {
+      allow create: if autenticado();          // qualquer auth registra
+      allow read, update, delete: if isMaster();
+    }
+
+    match /notificacoes_saas/{docId} {
+      allow create: if autenticado();
+      allow read, update: if isMaster();
+      allow delete: if isMaster();
+    }
+
+    match /assinaturas/{docId} {
+      allow read, write: if isMaster();
+    }
+
+    // ── ⑤ DADOS OPERACIONAIS com empresa_id ────────────────────
+
+    match /os/{docId} {
+      allow get: if true;                                            // garantia pública
+      allow list: if autenticado() && (isMaster() || ehAnonimo() || mesmaEmpresaQ(resource.data));
+      allow create: if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /clientes/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /caixa_lancamentos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_receber/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_pagar/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /estoque_produtos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /agenda/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /garantias/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /despesas/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /fornecedores/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /compras/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /chips_cadastros/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /whatsapp_mensagens/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /crm_oportunidades/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /crm_clientes/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    // ── ⑥ CONFIGURAÇÕES E UTILITÁRIOS ───────────────────────────
+
+    match /config/{docId} {
+      allow read, write: if autenticado();
+    }
+
+    match /dispositivos/{docId} {
+      allow read, write: if autenticado();
+    }
+
+    match /push_tokens/{docId} {
+      allow read, write: if autenticado() && (uid() == docId || isMaster());
+    }
+
+    // ── ⑦ SINCRONIZAÇÃO / BACKUP ────────────────────────────────
+
+    match /cc_lixeira/{docId}     { allow read, write: if autenticado(); }
+    match /cc_gdrive_logs/{docId} { allow read, write: if autenticado(); }
+    match /gdrive_backup/{docId}  { allow read, write: if autenticado(); }
+
+    // ── ⑧ LEGADO — coleções sem empresa_id ainda ────────────────
+
+    match /fechamentos/{docId}    { allow read, write: if autenticado(); }
+    match /pendencias/{docId}     { allow read, write: if autenticado(); }
+    match /contas_pagar/{docId}   { allow read, write: if autenticado(); }
+    match /relatorios/{docId}     { allow read, write: if autenticado(); }
+    match /alertas/{docId}        { allow read, write: if autenticado(); }
+
+    // ── ⑨ CATCH-ALL LEGADO — SOMENTE ANÔNIMOS ───────────────────
+    // Permite que o login PIN (signInAnonymously) continue funcionando
+    // nas coleções não listadas acima.
+    //
+    // Usuários identificados (Google/e-mail) NÃO são cobertos por esta regra
+    // → estão sujeitos APENAS às regras específicas acima.
+    //
+    // ╔═══════════════════════════════════════════════════════════╗
+    // ║ TODO: Remover esta seção quando Cell City migrar          ║
+    // ║ completamente do login PIN para Google Auth.              ║
+    // ║ Após a migração, qualquer coleção não listada será negada ║
+    // ║ por padrão → isolamento total de dados.                   ║
+    // ╚═══════════════════════════════════════════════════════════╝
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if ehAnonimo();
     }
 
   }
