@@ -13,6 +13,18 @@ const CFG_KEY      = 'cc_alertas_config';
 let _somIntermitenteId  = null;
 let _somIntermitenteIds = [];
 
+// AudioContext singleton — criado e desbloqueado no primeiro gesto do usuário
+let _audioCtx = null;
+function _getAudioCtx() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return null;
+        if (!_audioCtx || _audioCtx.state === 'closed') _audioCtx = new Ctx();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+        return _audioCtx;
+    } catch { return null; }
+}
+
 // ── Estado ────────────────────────────────────────────────────────────────────
 const st = {
     lista:    [],          // todos os alertas
@@ -759,7 +771,7 @@ try {
                 .map(c => ({ id: c.doc.id, ...c.doc.data() }))
                 .filter(a => (a.data || '') === hj && (a.hora || '00:00') <= hm && a.status === 'pendente');
             if (novosHoje.length > 0 && st.secao !== 'hoje') {
-                _tocarSom(novosHoje[0]?.titulo || '');
+                _tocarSom(novosHoje[0]?.titulo || '', novosHoje[0]?.som || 'padrao');
             }
         }
         st.lista.sort((a, b) => {
@@ -938,6 +950,7 @@ function abrirForm() {
     document.getElementById('al-f-repeticao').value   = 'nenhuma';
     document.getElementById('al-f-comando').value     = '';
     const linkEl = document.getElementById('al-f-link'); if (linkEl) linkEl.value = '';
+    const somEl  = document.getElementById('al-f-som');  if (somEl)  somEl.value  = 'padrao';
     document.getElementById('al-custom-dias-wrap').classList.add('hidden');
     document.getElementById('al-qtd-wrap')?.classList.add('hidden');
     const qtdInfEl = document.getElementById('al-qtd-infinito');
@@ -965,6 +978,7 @@ function editar(id) {
     document.getElementById('al-f-comando').value    = a.comandoId||'';
     document.getElementById('al-f-custom-dias').value= a.customDias||7;
     const linkElE = document.getElementById('al-f-link'); if (linkElE) linkElE.value = a.link||'';
+    const somElE  = document.getElementById('al-f-som');  if (somElE)  somElE.value  = a.som||'padrao';
     document.getElementById('al-custom-dias-wrap').classList.toggle('hidden', (a.repeticao||'nenhuma')!=='custom');
     const isRec = (a.repeticao||'nenhuma') !== 'nenhuma';
     document.getElementById('al-qtd-wrap')?.classList.toggle('hidden', !isRec);
@@ -1029,6 +1043,7 @@ async function salvar() {
         execucoesTotal: execucoesTotal || null,
         comandoId:  cmdId || null,
         link:       (document.getElementById('al-f-link')?.value || '').trim() || null,
+        som:        document.getElementById('al-f-som')?.value || 'padrao',
         status:     'pendente',
     };
 
@@ -1244,6 +1259,7 @@ function salvarConfig() {
     // Sons do sistema — grava flag global lida por todos os módulos
     const sonsSistema = document.getElementById('cfg-sons-sistema')?.checked ?? false;
     localStorage.setItem('cc_sons_sistema', sonsSistema ? 'true' : 'false');
+    localStorage.setItem('cc_sons_user_choice', '1'); // marca que o usuário salvou explicitamente
 
     // Volume (0–100 → 0.00–1.00)
     const volumeEl = document.getElementById('cfg-volume');
@@ -1301,34 +1317,42 @@ function _ccRegistrarEvento(origem, evento, tipo = 'som', extra = {}) {
     ccLog(origem, evento, tipo, '', extra);
 }
 
-function _tocarSom(tituloAlerta = '') {
+function _tocarSom(tituloAlerta = '', tipoSom = 'padrao') {
     // Só verifica cfg.somGlobal da Central (cc_sons_sistema é para sons de UI, não para alertas agendados)
     const cfg = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    if (cfg.somGlobal === false) {
-        _ccRegistrarEvento('Central de Alertas', `Som bloqueado (cfg.somGlobal=false): ${tituloAlerta}`, 'bloqueado');
+    if (cfg.somGlobal === false || tipoSom === 'silencioso') {
+        _ccRegistrarEvento('Central de Alertas', `Som bloqueado: ${tituloAlerta}`, 'bloqueado');
         return;
     }
     _ccRegistrarEvento('Central de Alertas',
         `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`, 'som',
-        { arquivo: 'AudioContext — sine 880→660' });
+        { arquivo: `AudioContext — ${tipoSom}` });
     try {
+        const ctx = _getAudioCtx();
+        if (!ctx) return;
         const vol = Math.max(0, Math.min(1, parseFloat(localStorage.getItem('cc_sons_volume') || '0.7')));
-        const Ctx = window.AudioContext || window.webkitAudioContext;
-        if (!Ctx) return;
-        const ctx  = new Ctx();
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, ctx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        // resume() garante que o AudioContext não fique suspenso (bloqueio de autoplay do navegador)
+
+        function _beep(freq, start, dur) {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.75, ctx.currentTime + start + dur);
+            gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime + start);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + dur);
+            osc.start(ctx.currentTime + start);
+            osc.stop(ctx.currentTime + start + dur + 0.01);
+        }
+
         ctx.resume().then(() => {
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.52);
-            osc.onended = () => { try { ctx.close(); } catch {} };
+            if (tipoSom === 'urgente') {
+                _beep(1046, 0,    0.18);
+                _beep(880,  0.22, 0.18);
+                _beep(1046, 0.44, 0.25);
+            } else {
+                _beep(880, 0, 0.5);
+            }
         }).catch(() => {});
     } catch {}
 }
@@ -1388,7 +1412,8 @@ function verificarDisparos() {
 
     if (novos.length > 0) {
         if (usaSom) {
-            _tocarSom(novos[0]?.titulo || '');
+            const tipoSomAlerta = novos[0]?.som || 'padrao';
+            _tocarSom(novos[0]?.titulo || '', tipoSomAlerta);
             if (cfg.somModoRep === 'intermitente') {
                 _iniciarSomIntermitente(novos.map(a => a.id), cfg.intervaloRepSom || 15);
             }
@@ -1460,6 +1485,10 @@ setupBusca();
 carregarComandos();
 carregarConfig();
 pedirPermissaoNotif();
+
+// Desbloqueia AudioContext no primeiro gesto do usuário (exigência do browser)
+document.addEventListener('click', () => _getAudioCtx(), { once: true });
+document.addEventListener('keydown', () => _getAudioCtx(), { once: true });
 
 authReady.then(async () => {
     await carregar();

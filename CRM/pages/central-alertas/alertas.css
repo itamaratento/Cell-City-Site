@@ -552,6 +552,7 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
 .al-form-row { display:flex; gap:12px; }
 .al-form-grow { flex:1; }
 .al-form-priority { width:145px; flex-shrink:0; }
+.al-form-som { width:160px; flex-shrink:0; }
 
 .hidden { display:none !important; }
 

@@ -294,7 +294,7 @@
                             <span>🔊 Ativar sons do sistema (menus, painel, notificações)</span>
                         </label>
                         <div style="font-size:11px;color:var(--text3);padding:0 10px 10px;">
-                            Padrão: desligado. Quando desligado, apenas sons de alertas no horário programado são emitidos.
+                            Padrão: ligado. Controla sons de menus, painel e notificações gerais do sistema.
                         </div>
 
                         <div class="al-config-sep">Volume</div>
@@ -969,11 +969,21 @@
                     </select>
                 </div>
 
-                <div class="al-form-group">
-                    <label>🔗 Link (opcional)</label>
-                    <div class="al-link-input-wrap">
-                        <input type="text" id="al-f-link" placeholder="Ex: /CRM/pages/os/index.html" autocomplete="off">
-                        <button class="al-link-test" id="al-link-test" title="Testar link" type="button" onclick="if(document.getElementById('al-f-link').value)window.open(document.getElementById('al-f-link').value,'_blank')">▶</button>
+                <div class="al-form-row">
+                    <div class="al-form-group al-form-grow">
+                        <label>🔗 Link (opcional)</label>
+                        <div class="al-link-input-wrap">
+                            <input type="text" id="al-f-link" placeholder="Ex: /CRM/pages/os/index.html" autocomplete="off">
+                            <button class="al-link-test" id="al-link-test" title="Testar link" type="button" onclick="if(document.getElementById('al-f-link').value)window.open(document.getElementById('al-f-link').value,'_blank')">▶</button>
+                        </div>
+                    </div>
+                    <div class="al-form-group al-form-som">
+                        <label>🔊 Som</label>
+                        <select id="al-f-som">
+                            <option value="padrao">🔔 Padrão</option>
+                            <option value="urgente">🚨 Urgente (duplo)</option>
+                            <option value="silencioso">🔕 Sem som</option>
+                        </select>
                     </div>
                 </div>
 

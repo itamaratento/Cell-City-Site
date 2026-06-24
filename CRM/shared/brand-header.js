@@ -559,8 +559,13 @@
   }
 
   function criarBotaoSom(bar) {
-    // Default: sons desativados até o usuário ativar explicitamente
-    if (localStorage.getItem(_CC_LS_SONS) === null) localStorage.setItem(_CC_LS_SONS, 'false');
+    // Default: sons ATIVADOS
+    if (localStorage.getItem(_CC_LS_SONS) === null) localStorage.setItem(_CC_LS_SONS, 'true');
+    // Migração: versão anterior gravava 'false' como padrão sem o usuário ter escolhido.
+    // Reativa apenas se o usuário nunca salvou explicitamente a config de sons.
+    if (localStorage.getItem(_CC_LS_SONS) === 'false' && !localStorage.getItem('cc_sons_user_choice')) {
+      localStorage.setItem(_CC_LS_SONS, 'true');
+    }
     // Botão movido para Central de Alertas → Sons e Notificações
     return;
 
