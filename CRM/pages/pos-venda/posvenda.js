@@ -176,7 +176,12 @@ function getDeliveryDate(os) {
 
 function calcDias(dateStr, now) {
     try {
-        return Math.floor((now - new Date(dateStr)) / 86400000);
+        const d = new Date(dateStr);
+        // Compara por dia de calendário local (não por períodos de 24h exatos)
+        // Isso evita que OS entregues à noite apareçam 1 dia antes do prazo por causa do fuso UTC-3
+        const day1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const day2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return Math.round((day2 - day1) / 86400000);
     } catch { return 0; }
 }
 

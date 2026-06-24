@@ -1103,6 +1103,10 @@ async function changeStatus(newStatus) {
     currentOS.status = newStatus;
     currentOS.updatedAt = new Date().toISOString();
     currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
+    // Garante que a data de entrega fique registrada no timeline (usada pelo módulo pós-venda)
+    if (newStatus === 'entregue') {
+        currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
+    }
     await saveCurrentOS();
     // Integrações ao marcar como entregue
     if (newStatus === 'entregue') {
@@ -2632,28 +2636,10 @@ async function gerarLancamentoFinanceiro(os) {
 }
 
 // ── Fase 5: Agendar Pós-Venda ─────────────────────────────────────────────────
+// O módulo posvenda.js exibe grupos 5/15/30 automaticamente com base na data de entrega.
+// Não é necessário pré-agendar entradas — o histórico só deve registrar contatos JÁ realizados.
 async function agendarPosVenda(os) {
-    const servico = (os.defect || os.category || '').toLowerCase();
-    const precisaPosVenda = ['reparo', 'conserto', 'manutenção', 'formatação', 'troca', 'tela', 'bateria', 'conector'].some(s => servico.includes(s));
-    if (!precisaPosVenda && os.category !== 'celular' && os.category !== 'notebook' && os.category !== 'impressora') return;
-    const prazo = 7;
-    const dataContato = new Date();
-    dataContato.setDate(dataContato.getDate() + prazo);
-    try {
-        await addDoc(collection(db, 'posvenda_contatos'), {
-            osId: os.id,
-            clienteNome: os.clientName || '',
-            clienteTel: os.phone || '',
-            prazo: prazo,
-            dataContato: dataContato.toISOString().slice(0, 10),
-            status: 'pendente',
-            ativo: true,
-            criadoEm: serverTimestamp()
-        });
-        console.log('[Integração] Pós-venda agendado para', os.id);
-    } catch (e) {
-        console.warn('[Integração] Erro ao agendar pós-venda:', e);
-    }
+    // Mantido por compatibilidade com chamadas existentes; não cria mais entradas pré-agendadas.
 }
 
 // ── Fase 6: Notificar cliente via WhatsApp ────────────────────────────────────
