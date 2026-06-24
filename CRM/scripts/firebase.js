@@ -25,7 +25,8 @@ import {
 import {
   getAuth,
   signInAnonymously,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
   getStorage,
@@ -102,7 +103,9 @@ export {
   storageRef,
   uploadBytes,
   getDownloadURL,
-  deleteObject
+  deleteObject,
+  // Firebase Auth extras
+  sendPasswordResetEmail
 };
 
 // ===== GLOBALS PARA DEBUG (opcional) =====

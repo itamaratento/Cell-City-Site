@@ -12,6 +12,7 @@
   if (document.getElementById('sidebar-left')) return; // dashboard usa HTML nativo
 
   // ── Lista mestra de módulos ──────────────────────────────────
+  // masterOnly: true = visível apenas para perfil master_admin
   const ITEMS = [
     { id: 'os',                 href: '/CRM/pages/os/index.html',                  icon: '📦', label: 'OS',                   highlight: true },
     { id: 'caixa',              href: '/CRM/pages/caixa/index.html',               icon: '💰', label: 'Caixa' },
@@ -33,7 +34,14 @@
     { id: 'portal-cliente',     href: '/CRM/pages/portal-cliente/admin.html',     icon: '🔷', label: 'Portal do Cliente' },
     { id: 'backup',             href: '/CRM/pages/backup/index.html',              icon: '🛡️', label: 'Backup do Sistema' },
     { id: 'config',             href: '/CRM/pages/config/index.html',              icon: '⚙️', label: 'Configurações' },
+    // Central SaaS — visível apenas para Master Admin
+    { id: 'saas',               href: '/CRM/pages/saas/index.html',               icon: '🏢', label: 'Central SaaS',          badge: 'SaaS', masterOnly: true },
   ];
+
+  // ── Lê contexto do tenant (sessionStorage, sem import) ───────
+  function _getTenantCtx() {
+    try { return JSON.parse(sessionStorage.getItem('cc_tenant_ctx') || 'null'); } catch { return null; }
+  }
 
   const COLLAPSE_KEY = 'cc_sidebar_state';
   const ORDER_KEY    = 'cc_sidebar_order';
@@ -267,7 +275,19 @@
   function buildHTML() {
     const path = window.location.pathname;
 
-    const itemsHTML = ITEMS.map(item => {
+    // Filtra módulos com base no contexto do tenant
+    const ctx          = _getTenantCtx();
+    const isMaster     = ctx?.perfil === 'master_admin';
+    const modulosAtivos = ctx?.modulos_ativos || null; // null = sem restrição
+
+    const visibleItems = ITEMS.filter(item => {
+      if (item.masterOnly) return isMaster;               // SaaS só para master
+      if (!modulosAtivos || isMaster) return true;        // sem restrição
+      if (item.type === 'button') return true;            // botões sempre visíveis
+      return modulosAtivos.includes(item.id);
+    });
+
+    const itemsHTML = visibleItems.map(item => {
       if (item.type === 'button') {
         return `<button class="cc-si" data-sid="${item.id}" data-tip="${item.label}" draggable="true">
           <span class="cc-drag-handle">⠿</span>
@@ -290,7 +310,7 @@
         <span class="cc-si-label">${item.label}</span>
         ${item.badge ? `<span class="cc-si-badge">${item.badge}</span>` : ''}
       </a>`;
-    }).join('');
+    }).join('');  // fim visibleItems.map
 
     return `
       <button id="cc-sidebar-toggle" title="Recolher / expandir menu">

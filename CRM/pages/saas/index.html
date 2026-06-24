@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Central SaaS — Cell City</title>
+  <link rel="stylesheet" href="saas.css">
+  <link rel="manifest" href="/CRM/manifest.json">
+  <meta name="theme-color" content="#00C853">
+</head>
+<body>
+
+<!-- Tela de acesso negado (oculta por padrão) -->
+<div id="acesso-negado" style="display:none">
+  <span>🔒</span>
+  <h2>Acesso Negado</h2>
+  <p>Este módulo é exclusivo para o Master Admin do sistema.</p>
+  <a href="/CRM/pages/dashboard/index.html" class="btn btn-outline" style="margin-top:8px">← Voltar ao Dashboard</a>
+</div>
+
+<!-- Conteúdo principal (oculto até verificar acesso) -->
+<div id="saas-main" style="display:none">
+
+  <!-- Header -->
+  <header class="saas-header">
+    <div class="saas-logo">
+      <span>🏢</span> Central SaaS
+    </div>
+    <nav class="saas-tabs">
+      <button class="saas-tab active" data-tab="inquilinos">🏪 Inquilinos</button>
+      <button class="saas-tab" data-tab="planos">📋 Planos</button>
+      <button class="saas-tab" data-tab="usuarios">👥 Usuários</button>
+      <button class="saas-tab" data-tab="auditoria">🔍 Auditoria</button>
+    </nav>
+    <a href="/CRM/pages/dashboard/index.html" class="saas-back">← Dashboard</a>
+  </header>
+
+  <div class="saas-body">
+
+    <!-- ═══════════════════════════════════════════
+         ABA: INQUILINOS
+         ═══════════════════════════════════════════ -->
+    <div id="tab-inquilinos" class="tab-content active">
+      <div class="saas-split">
+
+        <!-- Lista de empresas -->
+        <aside class="saas-list">
+          <div class="saas-list-header">
+            <h2>Empresas</h2>
+            <button class="btn btn-primary btn-sm" id="btn-nova-empresa">+ Nova</button>
+          </div>
+          <div class="saas-list-search">
+            <input type="search" id="busca-empresa" placeholder="Buscar empresa...">
+          </div>
+          <div class="saas-list-items" id="lista-empresas">
+            <div class="saas-loading">Carregando...</div>
+          </div>
+        </aside>
+
+        <!-- Detalhe / formulário -->
+        <main class="saas-detail" id="empresa-detalhe">
+          <div class="detail-placeholder">
+            <span>🏪</span>
+            <p>Selecione uma empresa ou clique em "+ Nova"</p>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ABA: PLANOS
+         ═══════════════════════════════════════════ -->
+    <div id="tab-planos" class="tab-content">
+      <div class="tab-full">
+        <h2 style="font-size:18px;font-weight:800;margin-bottom:8px">Planos de Assinatura</h2>
+        <p style="font-size:13px;color:var(--text3);margin-bottom:4px">Os planos definem quais módulos ficam disponíveis para cada empresa.</p>
+        <div class="planos-grid" id="planos-grid">
+          <!-- Gerado pelo JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ABA: USUÁRIOS
+         ═══════════════════════════════════════════ -->
+    <div id="tab-usuarios" class="tab-content">
+      <div class="tab-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:18px;font-weight:800">Usuários do Sistema</h2>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px">Todos os usuários cadastrados em todas as empresas.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-novo-usuario">+ Novo Usuário</button>
+        </div>
+
+        <!-- Filtro por empresa -->
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <select id="filtro-empresa-user" style="padding:8px 12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;cursor:pointer">
+            <option value="">Todas as empresas</option>
+          </select>
+          <input type="search" id="busca-usuario" placeholder="Buscar usuário..."
+            style="padding:8px 12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:13px;flex:1">
+        </div>
+
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <table class="saas-table" id="tabela-usuarios">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Empresa</th>
+                <th>Perfil</th>
+                <th>Status</th>
+                <th>Último Acesso</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody-usuarios">
+              <tr><td colspan="7" class="saas-loading">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ABA: AUDITORIA
+         ═══════════════════════════════════════════ -->
+    <div id="tab-auditoria" class="tab-content">
+      <div class="tab-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:18px;font-weight:800">Auditoria de Acesso</h2>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px">Registros de login, alterações e eventos do sistema.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" id="btn-atualizar-audit">↻ Atualizar</button>
+        </div>
+
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <table class="saas-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Empresa</th>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-auditoria">
+              <tr><td colspan="5" class="saas-loading">Carregando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /saas-body -->
+</div><!-- /saas-main -->
+
+<!-- Modal de formulário de empresa -->
+<div id="modal-empresa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;overflow-y:auto">
+  <div style="max-width:800px;margin:40px auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <h3 id="modal-titulo" style="font-size:16px;font-weight:800">Nova Empresa</h3>
+      <button onclick="fecharModal()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <div style="padding:24px">
+      <!-- Subtabs do modal -->
+      <div class="detail-tabs" id="modal-tabs">
+        <button class="detail-tab active" data-dtab="geral">Geral</button>
+        <button class="detail-tab" data-dtab="modulos">Módulos</button>
+        <button class="detail-tab" data-dtab="licenca">Licença</button>
+        <button class="detail-tab" data-dtab="usuarios-emp">Usuários</button>
+      </div>
+
+      <!-- Seção: Geral -->
+      <div id="dtab-geral" class="detail-section active">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Razão Social *</label>
+            <input type="text" id="f-razao-social" placeholder="Razão Social LTDA">
+          </div>
+          <div class="form-field">
+            <label>Nome Fantasia *</label>
+            <input type="text" id="f-nome-fantasia" placeholder="Nome que aparece no sistema">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>CNPJ</label>
+            <input type="text" id="f-cnpj" placeholder="00.000.000/0000-00" maxlength="18">
+          </div>
+          <div class="form-field">
+            <label>Responsável</label>
+            <input type="text" id="f-responsavel" placeholder="Nome do responsável">
+          </div>
+        </div>
+        <div class="form-row three">
+          <div class="form-field">
+            <label>Telefone</label>
+            <input type="tel" id="f-telefone" placeholder="(00) 0000-0000">
+          </div>
+          <div class="form-field">
+            <label>WhatsApp</label>
+            <input type="tel" id="f-whatsapp" placeholder="(00) 00000-0000">
+          </div>
+          <div class="form-field">
+            <label>E-mail</label>
+            <input type="email" id="f-email" placeholder="contato@empresa.com">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Status</label>
+            <select id="f-status">
+              <option value="ativo">✅ Ativo</option>
+              <option value="suspenso">⚠️ Suspenso</option>
+              <option value="bloqueado">🔴 Bloqueado</option>
+              <option value="cancelado">⛔ Cancelado</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Plano</label>
+            <select id="f-plano">
+              <option value="basico">Plano Básico</option>
+              <option value="profissional">Plano Profissional</option>
+              <option value="enterprise">Plano Enterprise</option>
+              <option value="personalizado">Personalizado</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row full">
+          <div class="form-field">
+            <label>Observações</label>
+            <textarea id="f-observacoes" placeholder="Notas internas sobre este cliente..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seção: Módulos -->
+      <div id="dtab-modulos" class="detail-section">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+          Selecione individualmente os módulos liberados para esta empresa.
+          Quando o plano é <strong>Enterprise</strong>, todos são liberados automaticamente.
+        </p>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="selecionarTodosModulos(true)">Selecionar tudo</button>
+          <button class="btn btn-outline btn-sm" onclick="selecionarTodosModulos(false)">Desmarcar tudo</button>
+          <button class="btn btn-outline btn-sm" onclick="aplicarPlano()">Aplicar plano atual</button>
+        </div>
+
+        <div class="modulos-grid" id="modulos-checkboxes">
+          <!-- Gerado pelo JS -->
+        </div>
+      </div>
+
+      <!-- Seção: Licença -->
+      <div id="dtab-licenca" class="detail-section">
+        <div class="form-row">
+          <div class="form-field">
+            <label>Valor Mensal (R$)</label>
+            <input type="number" id="f-valor-mensal" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="form-field">
+            <label>Data de Vencimento</label>
+            <input type="date" id="f-data-vencimento">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label>Data de Cadastro</label>
+            <input type="date" id="f-data-cadastro" readonly style="opacity:0.6;cursor:not-allowed">
+          </div>
+          <div class="form-field">
+            <label>Dias em Atraso</label>
+            <input type="text" id="f-dias-atraso" readonly style="opacity:0.6;cursor:not-allowed" placeholder="Calculado automaticamente">
+          </div>
+        </div>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px">
+          ℹ️ O bloqueio automático por inadimplência será ativado em versão futura.
+          Por ora, altere o status para "Bloqueado" manualmente quando necessário.
+        </p>
+      </div>
+
+      <!-- Seção: Usuários da empresa -->
+      <div id="dtab-usuarios-emp" class="detail-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <p style="font-size:13px;color:var(--text2)">Usuários vinculados a esta empresa.</p>
+          <button class="btn btn-primary btn-sm" id="btn-add-usuario-emp">+ Adicionar</button>
+        </div>
+        <div id="lista-usuarios-emp">
+          <div class="saas-empty">Salve a empresa primeiro para adicionar usuários.</div>
+        </div>
+      </div>
+
+      <!-- Botões do modal -->
+      <div class="btn-group">
+        <button class="btn btn-primary" id="btn-salvar-empresa">💾 Salvar Empresa</button>
+        <button class="btn btn-outline" onclick="fecharModal()">Cancelar</button>
+        <button class="btn btn-danger btn-sm" id="btn-excluir-empresa" style="margin-left:auto;display:none">🗑️ Excluir</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal de novo usuário -->
+<div id="modal-usuario" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;overflow-y:auto">
+  <div style="max-width:480px;margin:80px auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <h3 id="modal-usuario-titulo" style="font-size:16px;font-weight:800">Novo Usuário</h3>
+      <button onclick="fecharModalUsuario()" style="background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+      <div class="form-field">
+        <label>Nome Completo *</label>
+        <input type="text" id="uf-nome" placeholder="Nome do usuário">
+      </div>
+      <div class="form-field">
+        <label>E-mail (Firebase Auth) *</label>
+        <input type="email" id="uf-email" placeholder="usuario@empresa.com">
+      </div>
+      <div class="form-field">
+        <label>Empresa *</label>
+        <select id="uf-empresa">
+          <option value="">Selecione a empresa...</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Perfil / Cargo</label>
+        <select id="uf-perfil">
+          <option value="admin">Administrador</option>
+          <option value="gerente">Gerente</option>
+          <option value="tecnico">Técnico</option>
+          <option value="caixa">Operador de Caixa</option>
+          <option value="atendente">Atendente</option>
+        </select>
+      </div>
+      <p style="font-size:12px;color:var(--text3)">
+        ℹ️ O usuário deve fazer login com o e-mail informado via Google ou e-mail/senha.
+        O vínculo com a empresa é feito pelo UID do Firebase Auth.
+      </p>
+      <div id="uf-error" style="color:var(--red);font-size:13px;min-height:16px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" id="btn-salvar-usuario" style="flex:1">💾 Salvar</button>
+        <button class="btn btn-outline" onclick="fecharModalUsuario()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="saas.js"></script>
+<script>
+  // Funções globais acessíveis pelo HTML (chamadas por onclick)
+  window.fecharModal = () => document.getElementById('modal-empresa').style.display = 'none';
+  window.fecharModalUsuario = () => document.getElementById('modal-usuario').style.display = 'none';
+  window.selecionarTodosModulos = (v) => {
+    document.querySelectorAll('#modulos-checkboxes input[type=checkbox]').forEach(cb => {
+      cb.checked = v;
+      cb.closest('.modulo-check').classList.toggle('checked', v);
+    });
+  };
+  window.aplicarPlano = () => {
+    const plano = document.getElementById('f-plano').value;
+    if (window._saasAplicarPlano) window._saasAplicarPlano(plano);
+  };
+  // Fecha modais ao clicar fora
+  document.getElementById('modal-empresa').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) fecharModal();
+  });
+  document.getElementById('modal-usuario').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) fecharModalUsuario();
+  });
+</script>
+
+</body>
+</html>
