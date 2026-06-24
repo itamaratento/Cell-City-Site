@@ -403,6 +403,11 @@
       animation: crm-badge-pulse 2s ease infinite;
     }
 
+    @keyframes crm-dd-fade {
+      from { opacity:0; transform:translateY(-4px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
     /* ── Menu rápido do sino ── */
     #crm-bell-wrap {
       position: relative;
@@ -422,7 +427,7 @@
       z-index: 9999;
       box-shadow: 0 8px 28px rgba(0,0,0,0.40);
       overflow: hidden;
-      animation: al-fadeIn 150ms ease;
+      animation: crm-dd-fade 150ms ease;
     }
     #crm-bell-dropdown.open { display: flex; }
     .crm-bell-dd-header {
