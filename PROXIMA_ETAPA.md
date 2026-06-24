@@ -61,6 +61,16 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 - Todas as coleções de negócio: leitura transitional + escrita com empresa_id obrigatório
 - Backup: `firestore.rules.backup_saas_2026-06-24`
 
+**Homologação — `CRM/pages/saas/homolog.html`:**
+- 7 fases automatizadas (35 testes automáticos + 6 manuais)
+- Fases: Setup Master, Migração, Rules, Multiempresa, Módulos, Segurança, Produção
+- Gera relatório exportável .txt
+- URL: `/CRM/pages/saas/homolog.html`
+
+**Deploy — `DEPLOY_SAAS.sh`:**
+- Script interativo com pausas para setup + migração entre steps
+- Verifica login Firebase, deploya hosting → rules → indexes
+
 **Setup Master — `CRM/pages/saas/setup.html`:**
 - Página one-time para criar empresa master + usuário master_admin
 - Login Google integrado
