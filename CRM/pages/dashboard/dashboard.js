@@ -3113,6 +3113,10 @@ class Dashboard {
 
   carregarConfigAlertasUI() {
     const config = this.carregarConfigAlertas();
+    // Sincronizar cc_sons_sistema com o estado salvo (garante consistência ao abrir a página)
+    if (!localStorage.getItem('cc_sons_user_choice')) {
+      localStorage.setItem('cc_sons_sistema', config.som.ativo ? 'true' : 'false');
+    }
     this._setChecked('config-som-ativo', config.som.ativo);
     this._setValue('config-som-inicio', config.som.horarioInicio);
     this._setValue('config-som-fim', config.som.horarioFim);
@@ -3157,6 +3161,9 @@ class Dashboard {
       config.alertasComSom[chk.getAttribute('data-tipo')] = chk.checked;
     });
     localStorage.setItem('cc_config_alertas', JSON.stringify(config));
+    // Sincronizar com sistema global de som (lido por ccSonsHabilitados e verificações diretas)
+    localStorage.setItem('cc_sons_sistema', config.som.ativo ? 'true' : 'false');
+    localStorage.setItem('cc_sons_user_choice', '1');
   }
 
   _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
