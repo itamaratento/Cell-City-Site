@@ -17,6 +17,7 @@ import {
     serverTimestamp,
     auth
 } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
@@ -1077,7 +1078,7 @@ async function salvarLancamento() {
     
     try {
         const docRef = doc(collection(db, COLLECTION_LANCAMENTOS));
-        await setDoc(docRef, { ...dados, id: docRef.id });
+        await setDoc(docRef, { ...dados, id: docRef.id, empresa_id: getEmpresaId() });
 
         // 🔗 Integração com Financeiro (opcional, apenas para saídas)
         const finAtivo = document.getElementById('caixa-fin-ativar')?.checked;
@@ -1100,6 +1101,7 @@ async function salvarLancamento() {
                 criadoEm:     serverTimestamp(),
                 atualizadoEm: serverTimestamp(),
                 origemCaixa:  docRef.id,
+                empresa_id:   getEmpresaId(),
             });
             console.log(`[FIN] Despesa criada: ${finId}`);
         }
@@ -1609,6 +1611,7 @@ window.confirmarCadastroProduto = async function() {
             quantidadeMinima: 1,
             venda: preco,
             custo,
+            empresa_id: getEmpresaId(),
             atualizadoEm: serverTimestamp()
         });
 

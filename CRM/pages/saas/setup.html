@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Master — Cell City SaaS</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      background: #050a10;
+      color: #e8edf5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #0d1117;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 520px;
+      width: 100%;
+    }
+    .logo { font-size: 48px; text-align: center; margin-bottom: 12px; }
+    h1 { font-size: 22px; font-weight: 800; text-align: center; color: #00e676; margin-bottom: 6px; }
+    .sub { font-size: 13px; color: #6b7280; text-align: center; margin-bottom: 32px; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #9aa5b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    input {
+      width: 100%;
+      background: #141618;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #e8edf5;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus { border-color: #00e676; }
+    .info-box {
+      background: rgba(0,230,118,0.06);
+      border: 1px solid rgba(0,230,118,0.2);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #9aa5b8;
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .info-box strong { color: #e8edf5; }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: #00e676;
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.9; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #log {
+      margin-top: 24px;
+      display: none;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+    .step { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
+    .step-icon { width: 20px; flex-shrink: 0; text-align: center; }
+    .step-ok   { color: #00e676; }
+    .step-err  { color: #ef4444; }
+    .step-wait { color: #6b7280; }
+    .step-spin { color: #f59e0b; }
+    .result-box {
+      margin-top: 16px;
+      background: rgba(0,230,118,0.06);
+      border: 1px solid rgba(0,230,118,0.2);
+      border-radius: 10px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+      display: none;
+    }
+    .result-box a {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 10px 20px;
+      background: #00e676;
+      color: #000;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    #screen-login {
+      text-align: center;
+    }
+    .btn-google {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 12px 24px;
+      background: #fff;
+      color: #111;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    .btn-google img { width: 20px; }
+    #uid-display {
+      margin-top: 16px;
+      font-size: 12px;
+      color: #6b7280;
+      word-break: break-all;
+    }
+    #uid-display strong { color: #9aa5b8; }
+    #screen-setup { display: none; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">⚙️</div>
+  <h1>Setup Master — Cell City SaaS</h1>
+  <p class="sub">Execute uma única vez para criar a empresa e o usuário master</p>
+
+  <!-- TELA 1: Login -->
+  <div id="screen-login">
+    <div class="info-box">
+      Faça login com a conta Google do administrador master.<br>
+      O UID gerado será vinculado ao perfil <strong>master_admin</strong> da empresa <strong>cellcity-master</strong>.
+    </div>
+    <button class="btn-google" id="btn-google-login">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="">
+      Entrar com Google
+    </button>
+    <div id="uid-display"></div>
+  </div>
+
+  <!-- TELA 2: Setup -->
+  <div id="screen-setup">
+    <div class="info-box">
+      Usuário autenticado. Preencha os dados do administrador master e clique em executar.
+      Este processo <strong>não apaga dados existentes</strong> — apenas cria os documentos SaaS se ainda não existirem.
+    </div>
+
+    <div class="field">
+      <label>Seu nome completo</label>
+      <input type="text" id="input-nome" placeholder="ex: Itamar Antônio" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>E-mail (preenchido automaticamente)</label>
+      <input type="text" id="input-email" placeholder="email@exemplo.com" readonly>
+    </div>
+
+    <button class="btn" id="btn-executar" disabled>🚀 Executar Setup Master</button>
+
+    <div id="log">
+      <div id="steps"></div>
+    </div>
+    <div class="result-box" id="result-box">
+      <strong style="color:#00e676">✅ Setup concluído com sucesso!</strong><br><br>
+      Empresa master e usuário master_admin criados.<br>
+      <span id="result-details"></span>
+      <a href="/CRM/pages/saas/index.html">Ir para a Central SaaS →</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged }
+  from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+// ── Firebase config (reutiliza a config do projeto) ──────────────
+const configScript = await import('../../scripts/firebase.js');
+const db   = configScript.db;
+const auth = configScript.auth;
+
+const provider = new GoogleAuthProvider();
+let currentUser = null;
+
+// ── Auth state ───────────────────────────────────────────────────
+onAuthStateChanged(auth, user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('screen-login').style.display = 'none';
+    document.getElementById('screen-setup').style.display = 'block';
+    document.getElementById('input-email').value = user.email || '';
+    document.getElementById('uid-display').innerHTML = '';
+    const nomeInput = document.getElementById('input-nome');
+    if (!nomeInput.value && user.displayName) nomeInput.value = user.displayName;
+    document.getElementById('btn-executar').disabled = false;
+  }
+});
+
+// ── Login Google ─────────────────────────────────────────────────
+document.getElementById('btn-google-login').addEventListener('click', async () => {
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    document.getElementById('uid-display').innerHTML =
+      `<br><span style="color:#ef4444">Erro: ${err.message}</span>`;
+  }
+});
+
+// ── Setup ────────────────────────────────────────────────────────
+document.getElementById('btn-executar').addEventListener('click', async () => {
+  if (!currentUser) return;
+  const nome = document.getElementById('input-nome').value.trim();
+  if (!nome) { alert('Preencha seu nome completo.'); return; }
+
+  const btn = document.getElementById('btn-executar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Executando...';
+
+  const log = document.getElementById('log');
+  const steps = document.getElementById('steps');
+  log.style.display = 'block';
+  steps.innerHTML = '';
+
+  const addStep = (icon, cls, msg) => {
+    const d = document.createElement('div');
+    d.className = 'step';
+    d.innerHTML = `<span class="step-icon ${cls}">${icon}</span><span>${msg}</span>`;
+    steps.appendChild(d);
+    return d;
+  };
+
+  const uid = currentUser.uid;
+  const email = currentUser.email || '';
+  const fotoUrl = currentUser.photoURL || '';
+
+  try {
+    // ── 1. Empresa master ────────────────────────────────────────
+    const empStep = addStep('⏳', 'step-spin', 'Verificando empresa <strong>cellcity-master</strong>...');
+    const empRef = doc(db, 'empresas', 'cellcity-master');
+    const empSnap = await getDoc(empRef);
+
+    if (empSnap.exists()) {
+      empStep.querySelector('.step-icon').textContent = '✅';
+      empStep.querySelector('.step-icon').className = 'step-icon step-ok';
+      empStep.querySelector('span:last-child').innerHTML =
+        'Empresa <strong>cellcity-master</strong> já existe — mantida sem alteração.';
+    } else {
+      await setDoc(empRef, {
+        razao_social:    'Cell City Informática',
+        nome_fantasia:   'Cell City',
+        cnpj:            '',
+        responsavel:     nome,
+        telefone:        '',
+        whatsapp:        '',
+        email:           email,
+        observacoes:     'Empresa master do sistema SaaS',
+        plano:           'enterprise',
+        status:          'ativo',
+        is_master:       true,
+        modulos_ativos:  null,
+        feature_flags:   {
+          whatsapp: true, ia: true, dashboard_avancado: true,
+          relatorios_premium: true, portal_cliente: true,
+          white_label: true, importacao_dados: true,
+          modo_suporte: true, backup_automatico: true
+        },
+        white_label:     null,
+        trial_dias:      null,
+        valor_mensal:    0,
+        data_vencimento: null,
+        data_cadastro:   serverTimestamp(),
+        atualizado_em:   serverTimestamp()
+      });
+      empStep.querySelector('.step-icon').textContent = '✅';
+      empStep.querySelector('.step-icon').className = 'step-icon step-ok';
+      empStep.querySelector('span:last-child').innerHTML =
+        'Empresa <strong>cellcity-master</strong> criada com plano <strong>enterprise</strong>.';
+    }
+
+    // ── 2. Usuário master_admin ──────────────────────────────────
+    const usrStep = addStep('⏳', 'step-spin', `Verificando usuário <strong>${uid.slice(0,16)}…</strong>`);
+    const usrRef = doc(db, 'usuarios', uid);
+    const usrSnap = await getDoc(usrRef);
+
+    if (usrSnap.exists()) {
+      const existing = usrSnap.data();
+      if (existing.perfil === 'master_admin' && existing.empresa_id === 'cellcity-master') {
+        usrStep.querySelector('.step-icon').textContent = '✅';
+        usrStep.querySelector('.step-icon').className = 'step-icon step-ok';
+        usrStep.querySelector('span:last-child').innerHTML =
+          'Usuário <strong>master_admin</strong> já configurado — mantido sem alteração.';
+      } else {
+        await setDoc(usrRef, {
+          empresa_id:         'cellcity-master',
+          nome,
+          email,
+          foto_url:           fotoUrl,
+          perfil:             'master_admin',
+          permissoes_modulos: {},
+          ativo:              true,
+          atualizado_em:      serverTimestamp()
+        }, { merge: true });
+        usrStep.querySelector('.step-icon').textContent = '✅';
+        usrStep.querySelector('.step-icon').className = 'step-icon step-ok';
+        usrStep.querySelector('span:last-child').innerHTML =
+          'Usuário existente <strong>atualizado</strong> para perfil master_admin.';
+      }
+    } else {
+      await setDoc(usrRef, {
+        empresa_id:         'cellcity-master',
+        nome,
+        email,
+        foto_url:           fotoUrl,
+        perfil:             'master_admin',
+        permissoes_modulos: {},
+        ativo:              true,
+        data_cadastro:      serverTimestamp(),
+        ultimo_acesso:      serverTimestamp(),
+        ultimo_dispositivo: navigator.userAgent?.slice(0, 100) || '',
+        atualizado_em:      serverTimestamp()
+      });
+      usrStep.querySelector('.step-icon').textContent = '✅';
+      usrStep.querySelector('.step-icon').className = 'step-icon step-ok';
+      usrStep.querySelector('span:last-child').innerHTML =
+        `Usuário <strong>${nome}</strong> criado como <strong>master_admin</strong>.`;
+    }
+
+    // ── 3. Verificação final ─────────────────────────────────────
+    const verStep = addStep('⏳', 'step-spin', 'Verificando integridade...');
+    const [empOk, usrOk] = await Promise.all([
+      getDoc(doc(db, 'empresas', 'cellcity-master')),
+      getDoc(doc(db, 'usuarios', uid))
+    ]);
+    if (empOk.exists() && usrOk.exists() && usrOk.data().perfil === 'master_admin') {
+      verStep.querySelector('.step-icon').textContent = '✅';
+      verStep.querySelector('.step-icon').className = 'step-icon step-ok';
+      verStep.querySelector('span:last-child').textContent = 'Integridade OK.';
+
+      document.getElementById('result-details').innerHTML =
+        `UID: <strong style="color:#9aa5b8">${uid}</strong><br>` +
+        `Empresa: <strong>cellcity-master</strong> (enterprise)<br>` +
+        `Perfil: <strong>master_admin</strong>`;
+      document.getElementById('result-box').style.display = 'block';
+    } else {
+      throw new Error('Documentos não encontrados após gravação.');
+    }
+
+  } catch (err) {
+    addStep('❌', 'step-err', `Erro: ${err.message}`);
+    btn.disabled = false;
+    btn.textContent = '🔄 Tentar Novamente';
+  }
+});
+</script>
+</body>
+</html>

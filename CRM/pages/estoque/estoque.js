@@ -2,6 +2,7 @@ import {
     db, collection, getDocs, doc, getDoc, setDoc, deleteDoc,
     serverTimestamp, authReady
 } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 
 // ── Coleções ───────────────────────────────────────────────────────────────────
 const COL        = 'estoque_produtos';
@@ -701,7 +702,7 @@ async function salvarProduto() {
 
     const id = editandoId || `prod_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL, id), dados);
+        await setDoc(doc(db, COL, id), { ...dados, empresa_id: getEmpresaId() });
         toast(editandoId ? '✏️ Produto atualizado!' : '✅ Produto adicionado!');
         fecharForm();
         await carregar();
@@ -761,7 +762,7 @@ async function confirmarModal() {
 
     try {
         await setDoc(doc(db, COL, modalProdId), {
-            ...prod, quantidade: novaQty, historico: hist, atualizadoEm: serverTimestamp(),
+            ...prod, quantidade: novaQty, historico: hist, empresa_id: getEmpresaId(), atualizadoEm: serverTimestamp(),
         });
         fecharModal();
         toast(modalTipo === 'entrada' ? `+${qty} unidades adicionadas.` : `-${qty} unidades retiradas.`);

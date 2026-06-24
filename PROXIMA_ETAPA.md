@@ -46,7 +46,89 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ÚLTIMA ETAPA CONCLUÍDA — Tooltip no Menu Lateral (15/06/2026)
+## ✅ ÚLTIMA ETAPA CONCLUÍDA — Isolamento Multiempresa SaaS (24/06/2026)
+
+**Fundação completa do sistema SaaS com isolamento por `empresa_id` implementada.**
+
+### O que foi feito
+
+**Firestore Rules — Isolamento completo:**
+- Arquivo `firestore.rules` reescrito do zero com suporte multiempresa
+- Funções helper: `temUsuario()`, `getUsuario()`, `getEmpresaId()`, `isMasterAdmin()`
+- `leituraPermitida(docData)`: permite legados (sem empresa_id) + matching + master_admin
+- `escritaValida()`: todo novo documento deve conter `empresa_id` do usuário
+- Coleções SaaS (empresas, usuarios, assinaturas, auditoria_saas, notificacoes_saas): isolamento estrito
+- Todas as coleções de negócio: leitura transitional + escrita com empresa_id obrigatório
+- Backup: `firestore.rules.backup_saas_2026-06-24`
+
+**Setup Master — `CRM/pages/saas/setup.html`:**
+- Página one-time para criar empresa master + usuário master_admin
+- Login Google integrado
+- Cria `empresas/cellcity-master` (plano enterprise, is_master: true, todas as features)
+- Cria `usuarios/{uid}` com perfil master_admin
+- Verifica e protege documentos existentes (não sobrescreve)
+- URL: `/CRM/pages/saas/setup.html`
+
+**Migração — `CRM/pages/saas/migration.html`:**
+- Adiciona `empresa_id: 'cellcity-master'` em todos os documentos existentes sem esse campo
+- Cobre 43 coleções
+- Usa writeBatch (lotes de 400) para performance
+- Idempotente: ignora docs que já têm empresa_id
+- URL: `/CRM/pages/saas/migration.html`
+
+**Módulos atualizados com empresa_id nas escritas:**
+- `CRM/pages/os/os.js`: OS, cliente, financeiro_receber
+- `CRM/pages/caixa/caixa.js`: lançamentos, despesa financeira, novo produto
+- `CRM/pages/estoque/estoque.js`: produto (save + movimentação)
+- Todos importam `getEmpresaId` de `shared/tenant.js`
+
+### Arquivos alterados
+- `firestore.rules` — reescrito
+- `CRM/pages/saas/setup.html` — NOVO
+- `CRM/pages/saas/migration.html` — NOVO
+- `CRM/pages/os/os.js` — import tenant + empresa_id em writes
+- `CRM/pages/caixa/caixa.js` — import tenant + empresa_id em writes
+- `CRM/pages/estoque/estoque.js` — import tenant + empresa_id em writes
+
+> ⚠️ **Pendente: Executar Setup + Migração** antes do deploy das Rules
+> ⚠️ **Pendente: `firebase deploy`** para publicar Rules + Hosting
+
+---
+
+## ✅ ETAPA ANTERIOR — Sistema SaaS Multiempresa (24/06/2026)
+
+**Central SaaS completa com multitenancy, login Google e controle de módulos.**
+
+### O que foi feito
+- `shared/tenant.js`: contexto multiempresa, planos, perfis, feature flags, modo suporte, auditoria
+- `shared/modulo-guard.js`: guard padrão para todos os módulos
+- `pages/saas/index.html + saas.js + saas.css`: Central SaaS (~1150 linhas), 6 abas (Dashboard, Inquilinos, Planos, Usuários, Auditoria, Notificações)
+- Dashboard Master: KPIs, vencimentos, CRUD empresas, modo suporte, backup, feature flags, white label
+- `pages/config/index.html + config.js`: Login Google + recuperar senha
+- `shared/sidebar.js`: filtro por modulos_ativos + item Central SaaS (masterOnly)
+
+### Estrutura Firestore SaaS
+`empresas/{id}`, `empresas_arquivadas/{id}`, `usuarios/{uid}`, `assinaturas/{id}`, `notificacoes_saas/{id}`, `auditoria_saas/{id}`
+
+---
+
+## ✅ ETAPA ANTERIOR — Módulo Financeiro Fases 1-8 (20/06/2026)
+
+**Módulo Financeiro completamente implementado em `CRM/pages/financeiro/`.**
+
+### Fases concluídas
+- Fase 1+2: Layout sidebar+grid, Contas a Pagar/Receber/Fixas
+- Fase 3: Compras (`compras_financeiras`), Fornecedores (CNPJ/Email/Estado)
+- Despesas: `pages/despesas/`, coleções `financeiro_despesas`, `financeiro_cat_despesas`, `financeiro_centros_custo`
+- Caixa → Financeiro: checkbox "Registrar no Financeiro"
+- Resultado Financeiro: 8 indicadores + CPV/LucroBruto/Margem
+- Fluxo de Caixa: visão unificada (5 coleções), timeline
+- Fase 7: Estoque Financeiro Inteligente (custo médio automático)
+- Fase 8: Dashboard Executivo com 8 cards financeiros + 5 operacionais
+
+---
+
+## ✅ ETAPA ANTERIOR — Tooltip no Menu Lateral (15/06/2026)
 
 **Tooltip dos módulos da sidebar implementado com efeito hover no ícone.**
 
@@ -615,39 +697,71 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## 🎯 PRÓXIMA TAREFA
+## 🎯 PRÓXIMA TAREFA — Ativação do SaaS (executar nesta ordem)
 
-### 🚀 Deploy do Catálogo
+### Passo 1 — Setup Master (ação manual, browser)
+1. Abrir `https://cellcity-crm.web.app/CRM/pages/saas/setup.html`
+2. Fazer login com a conta Google do administrador (Itamar)
+3. Preencher nome → Executar Setup Master
+4. Verificar: empresa `cellcity-master` e usuário `master_admin` criados
 
-1. Executar `firebase deploy` no diretório do projeto
-2. Configurar número do WhatsApp no painel: CRM → Catálogo → ⚙️ Configurações
-3. Cadastrar os primeiros produtos pelo painel administrativo
-4. Testar o link público: `https://cellcity-crm.web.app/catalogo`
+### Passo 2 — Migração de dados (ação manual, browser)
+1. Abrir `https://cellcity-crm.web.app/CRM/pages/saas/migration.html`
+2. Clicar em "Iniciar Migração"
+3. Aguardar conclusão (pode levar 1-3 min dependendo do volume)
+4. Verificar: todos os documentos com `empresa_id: 'cellcity-master'`
 
-**Depois do deploy:**
-- FASE 2 Portal Admin
-- Auditoria de Runtime completa
+### Passo 3 — Deploy completo
+```bash
+cd /home/cellcity/Músicas/projetos/Cell-City-Site
+firebase deploy --only firestore:rules,hosting
+```
+
+### Passo 4 — Teste de isolamento (PRIORIDADE 4)
+1. Criar empresa de demonstração na Central SaaS
+2. Criar usuário admin para essa empresa
+3. Validar: não vê Central SaaS, não vê dados de outras empresas
+
+### Passo 5 — Implementar guard nos demais módulos (gradual)
+Módulos a receber `initModulo()`:
+- `caixa.js`, `financeiro.js`, `clientes`, `pos-venda`, `catalogo`, `compras`, `fornecedor`, `relatorios`, `dashboard`
+Padrão obrigatório:
+```javascript
+import { initModulo } from '../../shared/modulo-guard.js';
+const ctx = await initModulo('nome-modulo');
+if (!ctx) return;
+const empresaId = ctx.empresa_id;
+```
 
 ---
 
-### 🔎 Auditoria de Runtime completa (aguardando)
+## ✅ CHECKLIST DE HOMOLOGAÇÃO SaaS
 
-Verificação de erros/avisos de runtime em todos os módulos (console, listeners, falhas de carregamento) antes de avançar no plano oficial. *(Diretório `_runtime_audit/` em andamento por frente paralela.)*
+- [ ] Setup Master executado (empresa master + usuário master_admin criados)
+- [ ] Migração executada (todos os docs com empresa_id)
+- [ ] Deploy das Rules realizado (`firebase deploy --only firestore:rules`)
+- [ ] Deploy do Hosting realizado (`firebase deploy --only hosting`)
+- [ ] Empresa de demonstração criada e testada
+- [ ] Guard `initModulo()` adicionado nos módulos restantes
 
-**Plano oficial (sequência):**
-1. Portal do Cliente
-2. Painel Administrativo (FASE 2 — [`plans/fase2-portal-admin.md`](plans/fase2-portal-admin.md))
-3. Integrações
-4. Criar OS
-5. Performance
-6. ETAPA 7 (Claude)
+---
 
-> ⚠️ Aguardar comando do usuário para iniciar cada item (informar antes os arquivos a alterar).
+## ⚠️ RISCOS ATUAIS
 
-### 📌 Pendências gerais
+- **Setup master pendente**: sem executar `setup.html`, nenhum usuário tem acesso ao contexto SaaS
+- **Migração pendente**: sem executar `migration.html`, documentos sem `empresa_id` causarão problemas após regras restritivas
+- **Rules não deployadas**: as novas regras só protegem os dados após `firebase deploy`
+- `modulo-guard.js` ainda não aplicado na maioria dos módulos existentes
+- `firebase deploy` pendente para múltiplos módulos
+
+---
+
+## 📌 Pendências gerais
 - ❌ FASE 2 — Painel Administrativo do Portal não implementado
 - ❌ Autoatendimento sem deploy no GitHub
 - ❌ Página `/consultar-os` ainda é placeholder "Em desenvolvimento"
+- ❌ Guard `initModulo()` na maioria dos módulos (os.js, caixa.js, financeiro.js, etc.)
+- ❌ Queries Firestore dos módulos ainda sem filtro `where('empresa_id', ...)`
 
 ---
 

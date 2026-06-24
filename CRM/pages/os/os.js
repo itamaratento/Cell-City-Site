@@ -1,4 +1,5 @@
 import { db, collection, addDoc, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -518,7 +519,7 @@ async function saveOS() {
     const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
     const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
     const os = {
-        id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
+        id: osId, empresa_id: getEmpresaId(), category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
         internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
         orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
@@ -559,7 +560,7 @@ async function saveOS() {
     showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
 }
 
-async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
+async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; if (!c.empresa_id) c.empresa_id = getEmpresaId(); } else { c = { name, phone, history: [osId], empresa_id: getEmpresaId(), createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
 // ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
 async function runAutomacoesOS(os) {
@@ -601,6 +602,7 @@ async function runAutomacoesOS(os) {
                 obs:        'OS criada automaticamente',
                 origem:     'os',
                 osId:       os.id,
+                empresa_id: getEmpresaId(),
                 atualizadoEm: serverTimestamp()
             });
         } catch (e) { console.warn('⚠️ [Automação] Financeiro não registrado:', e); }
