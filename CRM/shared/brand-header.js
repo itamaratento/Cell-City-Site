@@ -347,6 +347,65 @@
     .crm-site-cc-btn:hover .crm-site-cc-label {
       color: #00e676;
     }
+
+    /* ── Sininho Global de Alertas ── */
+    #crm-bell-btn {
+      position: relative;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 8px;
+      border-radius: 8px;
+      font-size: 20px;
+      line-height: 1;
+      color: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.2s;
+      text-decoration: none;
+    }
+    #crm-bell-btn:hover { background: rgba(255,255,255,0.08); }
+    .crm-bell-icon { display: inline-block; line-height: 1; }
+    #crm-bell-badge {
+      position: absolute;
+      top: 1px; right: 1px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      min-width: 16px;
+      height: 16px;
+      border-radius: 8px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0 3px;
+      line-height: 1;
+      pointer-events: none;
+      border: 1.5px solid #08090a;
+    }
+    #crm-bell-btn.tem-alerta .crm-bell-icon { color: #ef4444; }
+    @keyframes crm-bell-shake {
+      0%,100%{transform:rotate(0)}
+      15%{transform:rotate(-16deg)}
+      30%{transform:rotate(16deg)}
+      45%{transform:rotate(-10deg)}
+      60%{transform:rotate(10deg)}
+      75%{transform:rotate(-5deg)}
+      90%{transform:rotate(5deg)}
+    }
+    @keyframes crm-badge-pulso {
+      0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(239,68,68,.7)}
+      50%{transform:scale(1.2);box-shadow:0 0 0 5px rgba(239,68,68,0)}
+    }
+    #crm-bell-btn.tem-alerta .crm-bell-icon {
+      animation: crm-bell-shake 1.8s ease infinite;
+    }
+    #crm-bell-btn.tem-alerta #crm-bell-badge {
+      animation: crm-badge-pulso 1.1s ease infinite;
+    }
   `;
 
   const BRAND_HTML = `
@@ -657,8 +716,9 @@
           siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
           right.prepend(siteBtn);
         }
-        // Injeta botão de som no dashboard
+        // Injeta botão de som e sininho no dashboard
         criarBotaoSom(right || topBar);
+        criarBotaoSino(right || topBar);
       }
       _insertQuicknav(topBar || existing.parentElement);
       return;
@@ -721,8 +781,9 @@
       if (titleEl) installTitle(bar, titleEl);
     }
 
-    // Injeta botão de som (antes do siteBtn, que criarBotaoSom detecta automaticamente)
+    // Injeta botão de som e sininho de alertas
     criarBotaoSom(bar);
+    criarBotaoSino(bar);
 
     // Injeta menu rápido da barra superior
     _insertQuicknav(bar);
@@ -736,6 +797,68 @@
       const s = document.createElement('style');
       s.id = 'crm-bar-body-offset';
       s.textContent = 'body { padding-top: 70px !important; }';
+      document.head.appendChild(s);
+    }
+  }
+
+  // ── Sininho global de alertas ─────────────────────────────────
+  function _atualizarBadgeSino(count, isNew) {
+    var btn   = document.getElementById('crm-bell-btn');
+    var badge = document.getElementById('crm-bell-badge');
+    if (!btn || !badge) return;
+    var temAlerta = count > 0;
+    badge.style.display = temAlerta ? 'flex' : 'none';
+    badge.textContent   = count > 99 ? '99+' : String(count);
+    if (temAlerta !== btn.classList.contains('tem-alerta')) {
+      btn.classList.toggle('tem-alerta', temAlerta);
+    }
+    if (isNew && temAlerta) {
+      // Re-dispara animação do shake
+      btn.classList.remove('tem-alerta');
+      void btn.offsetWidth;
+      btn.classList.add('tem-alerta');
+    }
+  }
+
+  function criarBotaoSino(bar) {
+    if (document.getElementById('crm-bell-btn')) return;
+    var btn = document.createElement('a');
+    btn.id    = 'crm-bell-btn';
+    btn.href  = '/CRM/pages/central-alertas/index.html';
+    btn.title = 'Central de Alertas';
+    btn.setAttribute('aria-label', 'Central de Alertas');
+    btn.innerHTML = '<span class="crm-bell-icon">🔔</span>'
+                  + '<span id="crm-bell-badge">0</span>';
+
+    // Badge inicial do localStorage (antes do Firebase carregar)
+    var cached = parseInt(localStorage.getItem('cc_alertas_badge_count') || '0', 10);
+    _atualizarBadgeSino(cached, false);
+
+    // Atualização em tempo real via alertas-badge.js
+    window.addEventListener('cc-alertas-badge', function(e) {
+      _atualizarBadgeSino(e.detail.count, e.detail.hasNew);
+    });
+
+    // Sincronização entre abas (storage event)
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'cc_alertas_badge_count') {
+        var count = parseInt(e.newValue || '0', 10);
+        var prev  = parseInt(e.oldValue  || '0', 10);
+        _atualizarBadgeSino(count, count > prev);
+      }
+    });
+
+    // Insere antes do botão Site
+    var siteBtn = bar.querySelector('.crm-site-cc-btn, .site-cc-btn');
+    if (siteBtn) bar.insertBefore(btn, siteBtn);
+    else bar.appendChild(btn);
+
+    // Injeta módulo alertas-badge.js (Firestore em tempo real)
+    if (!document.getElementById('crm-alertas-badge-module')) {
+      var s = document.createElement('script');
+      s.id   = 'crm-alertas-badge-module';
+      s.type = 'module';
+      s.textContent = "import('/CRM/shared/alertas-badge.js').then(function(m){m.iniciarBadgeAlertas();}).catch(function(){});";
       document.head.appendChild(s);
     }
   }

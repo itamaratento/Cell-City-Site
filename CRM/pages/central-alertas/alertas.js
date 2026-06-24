@@ -446,6 +446,10 @@ function atualizarBadges() {
     const tf  = listaTarefas().length;
     const el4 = document.getElementById('sb-badge-tarefas');
     if (el4) { el4.textContent = tf || ''; el4.classList.toggle('show', tf > 0); }
+
+    // Sincroniza contagem com sininho global (brand-header.js + outras abas)
+    localStorage.setItem('cc_alertas_badge_count', String(hj));
+    window.dispatchEvent(new CustomEvent('cc-alertas-badge', { detail: { count: hj, hasNew: false } }));
 }
 
 // ── Seleção em lote ───────────────────────────────────────────────────────────
