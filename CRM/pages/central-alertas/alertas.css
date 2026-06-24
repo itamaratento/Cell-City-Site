@@ -707,14 +707,31 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     background: var(--green-dim2); box-shadow: 0 0 12px rgba(0,200,83,0.15);
 }
 .al-item-link {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; color: var(--green-light); text-decoration: none;
-    background: var(--green-dim); border: 1px solid var(--green-border);
-    border-radius: 100px; padding: 2px 10px; margin-top: 4px;
-    transition: all var(--transition);
+    color: var(--text);
+    text-decoration: none;
+    transition: color var(--transition);
 }
 .al-item-link:hover {
-    background: var(--green-dim2); box-shadow: 0 0 8px rgba(0,200,83,0.1);
+    color: var(--green-light);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* ── Tempo relativo ──────────────────────────────────────────────────────── */
+.al-item-tempo-rel {
+    font-size: 11px; color: var(--text3);
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 100px; padding: 1px 7px;
+}
+
+/* ── Não lido (destaque) ─────────────────────────────────────────────────── */
+.al-item.nao-lido {
+    background: rgba(59, 130, 246, 0.06);
+    border-left: 3px solid rgba(59, 130, 246, 0.55);
+}
+.al-item.nao-lido .al-item-titulo {
+    font-weight: 800;
 }
 
 /* ── Timestamp de conclusão ──────────────────────────────────────────────── */
@@ -1679,3 +1696,41 @@ main { display:flex; flex-direction:column; height:calc(100dvh - 62px); overflow
     cursor: pointer;
     width: 180px;
 }
+
+/* ── Barra "Marcar todos como lidos" ─────────────────────────────────────── */
+.al-marcar-todos-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(0,200,83,0.08), rgba(0,200,83,0.03));
+    border: 1px solid rgba(0,200,83,0.25);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    animation: al-fadeIn 220ms ease;
+    flex-wrap: wrap;
+}
+.al-marcar-todos-bar span {
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--green-light);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.al-btn-marcar-lidos {
+    background: rgba(0,200,83,0.12);
+    border: 1px solid rgba(0,200,83,0.35);
+    color: var(--green-light);
+    border-radius: var(--radius-xs);
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.al-btn-marcar-lidos:hover { background: rgba(0,200,83,0.22); }

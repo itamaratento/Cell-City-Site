@@ -13,6 +13,12 @@
 
     <header>
         <span class="header-title">🔔 Central de Alertas</span>
+        <div class="al-header-right">
+            <button class="al-sino-global" id="al-sino-global" onclick="Alertas.navegar('hoje')" title="Alertas pendentes">
+                🔔
+                <span class="al-sino-badge" id="al-sino-badge"></span>
+            </button>
+        </div>
     </header>
 
     <main>
@@ -87,6 +93,17 @@
                     <span class="al-sb-icon">🔊</span>
                     <span class="al-sb-label">Sons e Alarmes</span>
                 </div>
+
+                <div class="al-sb-sep"></div>
+
+                <div class="al-sb-item" data-nav="relatorio-conectado">
+                    <span class="al-sb-icon">📋</span>
+                    <span class="al-sb-label">Relatório Robô</span>
+                    <span class="al-sb-badge" id="sb-badge-conectado"></span>
+                </div>
+
+                <div class="al-sb-sep"></div>
+
                 <div class="al-sb-item" data-nav="diagnostico">
                     <span class="al-sb-icon">🔎</span>
                     <span class="al-sb-label">Diagnóstico</span>
@@ -108,6 +125,13 @@
                 </div>
 
                 <div class="al-content">
+
+                <!-- ═══ BARRA DE MARCAÇÃO RÁPIDA (Marcar todos como lido) ═══ -->
+                <div id="al-marcar-todos-bar" class="al-marcar-todos-bar" style="display:none">
+                    <span>🔔 Alertas pendentes no sistema</span>
+                    <button class="al-btn-marcar-lidos" onclick="Alertas.marcarTodosLidos()">✔ Marcar todos como lidos</button>
+                    <button class="al-btn-dispensar" onclick="document.getElementById('al-marcar-todos-bar').style.display='none'">✕</button>
+                </div>
 
                 <!-- ═══ BARRA ALERTA ATIVO (som intermitente) ═══ -->
                 <div id="al-alerta-ativo-bar" class="al-alerta-ativo-bar" style="display:none">
@@ -512,6 +536,11 @@
                     </div>
                 </div>
 
+                <!-- ═══ RELATÓRIO CONECTADO ═══ -->
+                <div class="al-panel" id="panel-relatorio-conectado">
+                    <!-- Conteúdo gerado dinamicamente por renderRelatorioConectado() -->
+                </div>
+
                 <!-- ═══ DIAGNÓSTICO ═══ -->
                 <div class="al-panel" id="panel-diagnostico">
                     <!-- Conteúdo gerado dinamicamente por renderDiagnostico() -->
@@ -615,6 +644,221 @@
     /* Popup tremendo ao aparecer */
     .al-notify-in {
         animation:al-slide-in .3s ease, al-shake .45s ease .3s !important;
+    }
+
+    /* ── Sininho Global no Header ────────────────────────── */
+    .al-header-right {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-left:auto;
+    }
+    .al-sino-global {
+        position:relative;
+        background:var(--surface2,#1e1e2e);
+        border:1px solid var(--border,#333);
+        border-radius:50%;
+        width:36px;
+        height:36px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        font-size:18px;
+        transition:.2s;
+    }
+    .al-sino-global:hover {
+        background:var(--surface3,#2a2a3e);
+        border-color:var(--green-primary,#4ade80);
+    }
+    .al-sino-global.tem-alerta {
+        border-color:#ef4444;
+        animation:al-sino-treme 1.4s ease infinite;
+    }
+    .al-sino-badge {
+        position:absolute;
+        top:-4px;
+        right:-4px;
+        min-width:18px;
+        height:18px;
+        background:#ef4444;
+        color:#fff;
+        font-size:10px;
+        font-weight:800;
+        border-radius:50%;
+        display:none;
+        align-items:center;
+        justify-content:center;
+        padding:0 4px;
+        box-shadow:0 0 0 0 rgba(239,68,68,.8);
+        animation:al-badge-pulso 1.1s ease infinite;
+        line-height:1;
+    }
+    .al-sino-badge.show {
+        display:flex;
+    }
+
+    /* ── Barra Marcar Todos Como Lido ──────────────────────── */
+    .al-marcar-todos-bar {
+        background:rgba(74,222,128,0.08);
+        border:1px solid rgba(74,222,128,0.3);
+        border-radius:10px;
+        padding:10px 16px;
+        margin:0 0 12px 0;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        font-size:13px;
+        color:var(--text2);
+        flex-wrap:wrap;
+    }
+    .al-marcar-todos-bar span {
+        flex:1;
+    }
+    .al-btn-marcar-lidos {
+        background:#4ade80;
+        color:#000;
+        border:none;
+        padding:7px 14px;
+        border-radius:8px;
+        font-weight:700;
+        font-size:12px;
+        cursor:pointer;
+        transition:.2s;
+        white-space:nowrap;
+    }
+    .al-btn-marcar-lidos:hover {
+        background:#86efac;
+    }
+
+    /* ── Link no título do alerta ───────────────────────────── */
+    .al-item-link {
+        color:var(--green-primary,#4ade80);
+        text-decoration:none;
+        transition:.2s;
+    }
+    .al-item-link:hover {
+        text-decoration:underline;
+        color:#86efac;
+    }
+
+    /* ── Relatório Robô (Conectado) ─────────────────────────── */
+    .rc-container {
+        padding:4px 0;
+    }
+    .rc-header {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        flex-wrap:wrap;
+        gap:8px;
+        margin-bottom:20px;
+    }
+    .rc-title {
+        font-size:20px;
+        font-weight:700;
+    }
+    .rc-status-card {
+        display:flex;
+        align-items:center;
+        gap:14px;
+        padding:16px;
+        border-radius:12px;
+        margin-bottom:20px;
+        border:1px solid var(--border,#333);
+    }
+    .rc-status-card.rc-on {
+        background:rgba(74,222,128,0.08);
+        border-color:rgba(74,222,128,0.3);
+    }
+    .rc-status-card.rc-off {
+        background:rgba(239,68,68,0.08);
+        border-color:rgba(239,68,68,0.3);
+    }
+    .rc-status-icon {
+        font-size:36px;
+        line-height:1;
+    }
+    .rc-status-info {
+        flex:1;
+    }
+    .rc-status-label {
+        font-size:12px;
+        color:var(--text3);
+    }
+    .rc-status-value {
+        font-size:18px;
+        font-weight:700;
+    }
+    .rc-grid {
+        display:grid;
+        grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+        gap:10px;
+        margin-bottom:20px;
+    }
+    .rc-card {
+        background:var(--surface2,#1e1e2e);
+        border:1px solid var(--border,#333);
+        border-radius:10px;
+        padding:14px;
+        text-align:center;
+    }
+    .rc-card-icon {
+        font-size:24px;
+        margin-bottom:4px;
+    }
+    .rc-card-label {
+        font-size:11px;
+        color:var(--text3);
+        margin-bottom:4px;
+    }
+    .rc-card-value {
+        font-size:15px;
+        font-weight:700;
+    }
+    .rc-section {
+        margin-bottom:16px;
+    }
+    .rc-section-title {
+        font-size:13px;
+        color:var(--text2);
+        margin-bottom:6px;
+        font-weight:600;
+    }
+    .rc-section-value {
+        font-size:14px;
+        color:var(--text);
+    }
+    .rc-comandos-lista {
+        margin-top:8px;
+    }
+    .rc-cmd-item {
+        display:flex;
+        align-items:center;
+        gap:10px;
+        padding:8px 10px;
+        border-radius:8px;
+        background:var(--surface2,#1e1e2e);
+        margin-bottom:6px;
+    }
+    .rc-cmd-icon {
+        font-size:16px;
+    }
+    .rc-cmd-titulo {
+        flex:1;
+        font-size:13px;
+    }
+    .rc-cmd-status {
+        font-size:11px;
+        color:var(--text3);
+    }
+    .rc-empty {
+        color:var(--text3);
+        font-size:13px;
+        padding:16px 0;
+    }
+    .rc-actions {
+        margin-top:20px;
     }
     </style>
 

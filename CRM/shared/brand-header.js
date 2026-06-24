@@ -402,6 +402,56 @@
     #crm-bell-btn.tem-alerta #crm-bell-badge {
       animation: crm-badge-pulse 2s ease infinite;
     }
+
+    /* ── Menu rápido do sino ── */
+    #crm-bell-wrap {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+    }
+    #crm-bell-dropdown {
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: #13141a;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      min-width: 210px;
+      display: none;
+      flex-direction: column;
+      z-index: 9999;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.40);
+      overflow: hidden;
+      animation: al-fadeIn 150ms ease;
+    }
+    #crm-bell-dropdown.open { display: flex; }
+    .crm-bell-dd-header {
+      padding: 9px 14px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #8b949e;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+    .crm-bell-dd-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #e1e1e8;
+      text-decoration: none;
+      background: none;
+      border: none;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+      transition: background 140ms;
+    }
+    .crm-bell-dd-item:last-child { border-bottom: none; }
+    .crm-bell-dd-item:hover { background: rgba(255,255,255,0.06); }
   `;
 
   const BRAND_HTML = `
@@ -818,13 +868,48 @@
 
   function criarBotaoSino(bar) {
     if (document.getElementById('crm-bell-btn')) return;
-    var btn = document.createElement('a');
-    btn.id    = 'crm-bell-btn';
-    btn.href  = '/CRM/pages/central-alertas/index.html';
+
+    // Wrapper para posicionamento do dropdown
+    var wrap = document.createElement('div');
+    wrap.id = 'crm-bell-wrap';
+
+    // Botão sino
+    var btn = document.createElement('button');
+    btn.id   = 'crm-bell-btn';
+    btn.type = 'button';
     btn.title = 'Central de Alertas';
     btn.setAttribute('aria-label', 'Central de Alertas');
     btn.innerHTML = '<span class="crm-bell-icon">🔔</span>'
                   + '<span id="crm-bell-badge">0</span>';
+
+    // Dropdown
+    var dd = document.createElement('div');
+    dd.id = 'crm-bell-dropdown';
+    dd.innerHTML =
+      '<div class="crm-bell-dd-header">Alertas</div>' +
+      '<a class="crm-bell-dd-item" href="/CRM/pages/central-alertas/index.html">🔔 Ver todos os alertas</a>' +
+      '<button class="crm-bell-dd-item" id="crm-dd-marcar-lidos">✔ Marcar todos como lidos</button>' +
+      '<a class="crm-bell-dd-item" href="/CRM/pages/central-alertas/index.html">⚙️ Abrir Central de Alertas</a>';
+
+    wrap.appendChild(btn);
+    wrap.appendChild(dd);
+
+    // Toggle dropdown
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      dd.classList.toggle('open');
+    });
+
+    // Marcar todos como lidos (dispara evento, alertas-badge.js escuta)
+    dd.querySelector('#crm-dd-marcar-lidos').addEventListener('click', function() {
+      dd.classList.remove('open');
+      window.dispatchEvent(new CustomEvent('cc-cmd-marcar-todos'));
+    });
+
+    // Fechar ao clicar fora
+    document.addEventListener('click', function(e) {
+      if (!wrap.contains(e.target)) dd.classList.remove('open');
+    });
 
     // Badge inicial do localStorage (antes do Firebase carregar)
     var cached = parseInt(localStorage.getItem('cc_alertas_badge_count') || '0', 10);
@@ -846,8 +931,8 @@
 
     // Insere antes do botão Site
     var siteBtn = bar.querySelector('.crm-site-cc-btn, .site-cc-btn');
-    if (siteBtn) bar.insertBefore(btn, siteBtn);
-    else bar.appendChild(btn);
+    if (siteBtn) bar.insertBefore(wrap, siteBtn);
+    else bar.appendChild(wrap);
 
     // Injeta módulo alertas-badge.js (Firestore em tempo real)
     if (!document.getElementById('crm-alertas-badge-module')) {

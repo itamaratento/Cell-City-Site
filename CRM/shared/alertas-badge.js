@@ -5,7 +5,7 @@
  */
 import { db, auth } from '../scripts/firebase.js';
 import {
-    collection, query, where, onSnapshot,
+    collection, query, where, onSnapshot, doc, setDoc,
 } from '../scripts/firebase.js';
 import { onAuthStateChanged } from '../scripts/firebase.js';
 
@@ -82,11 +82,13 @@ function _iniciar(user) {
         const hm = _agoraHHMM();
         const dueIds = new Set();
 
+        _snapCache.clear();
         snap.forEach(d => {
             const a = d.data();
+            _snapCache.set(d.id, a);
             const dataEf = a.data || '';
-            // Vencido (data < hoje) OU vence hoje com hora <= agora
-            if (dataEf < hj || (dataEf === hj && (a.hora || '00:00') <= hm)) {
+            // Disparou (data passada ou hoje com hora <= agora) E ainda não foi lido
+            if (!a.lido && (dataEf < hj || (dataEf === hj && (a.hora || '00:00') <= hm))) {
                 dueIds.add(d.id);
             }
         });
@@ -105,10 +107,33 @@ function _iniciar(user) {
     });
 }
 
+let _snapCache = new Map(); // id → docData, mantido pelo onSnapshot
+
 export function iniciarBadgeAlertas() {
     // Lê o cache imediatamente para mostrar o badge sem esperar Firebase
     const cached = parseInt(localStorage.getItem(LS_COUNT) || '0', 10);
     if (cached > 0) _emit(cached, false);
 
     onAuthStateChanged(auth, _iniciar);
+
+    // Escuta o evento de "marcar todos como lidos" (disparado pelo menu do sino)
+    window.addEventListener('cc-cmd-marcar-todos', async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        const agora = new Date().toISOString();
+        const hj    = agora.slice(0, 10);
+        const hm    = agora.slice(11, 16);
+        let ok = 0;
+        for (const [id, a] of _snapCache.entries()) {
+            if (a.lido) continue;
+            const dataEf = a.data || '';
+            if (dataEf < hj || (dataEf === hj && (a.hora || '00:00') <= hm)) {
+                try {
+                    await setDoc(doc(db, COL, id), { lido: true, lidoEmISO: agora }, { merge: true });
+                    ok++;
+                } catch {}
+            }
+        }
+        if (ok) _emit(0, false);
+    });
 }

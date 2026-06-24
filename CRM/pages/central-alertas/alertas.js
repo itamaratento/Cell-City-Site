@@ -152,14 +152,15 @@ async function persistir(dados) {
 
 // ── Navegação ─────────────────────────────────────────────────────────────────
 const SECAO_TITULO = {
-    home: '🏠 Home', hoje: '📅 Alertas de Hoje', agendados: '⏰ Agendados',
-    recorrentes: '🔁 Recorrentes', concluidos: '✅ Concluídos',
-    comandos: '⚡ Comandos', tarefas: '✅ Tarefas',
-    calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
-    painel: '📊 Dashboard de Alertas',
-    diagnostico: '🔎 Diagnóstico do Sistema',
-    sons: '🔊 Sons e Notificações',
-    encomendas: '📦 Encomendas',
+home: '🏠 Home', hoje: '📅 Alertas de Hoje', agendados: '⏰ Agendados',
+recorrentes: '🔁 Recorrentes', concluidos: '✅ Concluídos',
+comandos: '⚡ Comandos', tarefas: '✅ Tarefas',
+calendario: '🗓️ Calendário', configuracoes: '⚙️ Configurações',
+painel: '📊 Dashboard de Alertas',
+diagnostico: '🔎 Diagnóstico do Sistema',
+'relatorio-conectado': '📋 Relatório Robô',
+sons: '🔊 Sons e Notificações',
+encomendas: '📦 Encomendas',
 };
 
 function navegar(secao) {
@@ -173,13 +174,15 @@ function navegar(secao) {
     if (tit) tit.textContent = SECAO_TITULO[secao] || secao;
     document.getElementById('al-sidebar')?.classList.remove('open');
     document.getElementById('al-overlay')?.classList.remove('open');
-    if (secao === 'hoje') _pararSomIntermitente();
+    if (secao === 'hoje') { _pararSomIntermitente(); _marcarSecaoLida(); }
     if (secao === 'calendario') renderCalendario();
     else if (secao === 'painel') renderPainel();
     else if (secao === 'diagnostico') renderDiagnostico();
+    else if (secao === 'relatorio-conectado') renderRelatorioConectado();
     else if (secao === 'sons') carregarConfig();
     else if (secao === 'encomendas') carregarEncomendas();
     else render();
+    _atualizarTitleAba();
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
@@ -220,6 +223,20 @@ function setupBusca() {
     tipo?.addEventListener('change',  atualizar);
     prio?.addEventListener('change',  atualizar);
     clear?.addEventListener('click', () => { input.value = ''; atualizar(); input.focus(); });
+}
+
+// Tempo relativo desde o disparo do alerta
+function tempoRelativo(dataISO, horaHHMM) {
+    try {
+        const ts = new Date(`${dataISO}T${horaHHMM || '00:00'}:00`);
+        if (isNaN(ts)) return '';
+        const diff = Math.floor((Date.now() - ts.getTime()) / 1000);
+        if (diff < 60)     return 'Agora';
+        if (diff < 3600)   return `Há ${Math.floor(diff / 60)} min`;
+        if (diff < 86400)  return `Há ${Math.floor(diff / 3600)}h`;
+        if (diff < 172800) return 'Ontem';
+    } catch {}
+    return '';
 }
 
 // Determina se um alerta já disparou (data+hora <= agora)
@@ -383,17 +400,28 @@ function htmlItem(a) {
         </div>` : (isRec && concl > 0 ? `<div class="al-item-progresso"><span class="al-prog-label">🔁 ${concl} execuç${concl===1?'ão':'ões'} concluída${concl!==1?'s':''}</span></div>` : '');
 
     const prioCls = `prio-${a.prioridade||'media'}`;
+
+    const naoLido   = !a.lido && a.status !== 'concluido' && (hojeAtivo || vencido);
+    const tempoMeta = (hojeAtivo || vencido) ? tempoRelativo(deISO, a.hora) : '';
+
+    // Destino para clique no card
+    const destino = a.link || (_ACAO_RAPIDA_MAP[a.tipo]?.url ?? '');
+    const onclickCard = destino
+        ? `onclick="Alertas._cardClick('${a.id}','${esc(destino)}')"` : '';
+    const cursorStyle = destino ? 'cursor:pointer;' : '';
+
     return `
-    <div class="al-item ${cls} ${prioCls}${critAtivo ? ' critico-ativo' : ''}" data-id="${a.id}">
-        <label class="al-item-check" title="Selecionar">
+    <div class="al-item ${cls} ${prioCls}${critAtivo ? ' critico-ativo' : ''}${naoLido ? ' nao-lido' : ''}" data-id="${a.id}" ${onclickCard} style="${cursorStyle}">
+        <label class="al-item-check" title="Selecionar" onclick="event.stopPropagation()">
             <input type="checkbox" class="al-checkbox" data-id="${a.id}" onchange="Alertas._atualizarSelecao()">
         </label>
         <div class="al-item-prioridade prioridade-${esc(a.prioridade||'media')}"></div>
-        <div class="al-item-body">
-            <div class="al-item-titulo">${esc(a.titulo)}</div>
+        <div class="al-item-body" onclick="event.stopPropagation()">
+            <div class="al-item-titulo">${destino ? `<a href="${esc(destino)}" target="_blank" onclick="Alertas.marcarLido('${a.id}');event.stopPropagation()" class="al-item-link">${esc(a.titulo)}</a>` : esc(a.titulo)}</div>
             <div class="al-item-meta">
                 <span class="al-item-hora">${esc(a.hora||'--:--')}</span>
                 <span class="al-item-data">${fmtData(deISO)}</span>
+                ${tempoMeta ? `<span class="al-item-tempo-rel">${tempoMeta}</span>` : ''}
                 <span class="al-item-tipo">${tipoLabel(a.tipo)}</span>
                 ${repLabel ? `<span class="al-item-rep">🔁 ${repLabel}</span>` : ''}
             </div>
@@ -450,9 +478,308 @@ function atualizarBadges() {
     // Sincroniza contagem com sininho global (brand-header.js + outras abas)
     localStorage.setItem('cc_alertas_badge_count', String(hj));
     window.dispatchEvent(new CustomEvent('cc-alertas-badge', { detail: { count: hj, hasNew: false } }));
+    // Atualiza sininho global e título da aba
+    atualizarSinoGlobal();
+    _atualizarTitleAba();
 }
 
-// ── Seleção em lote ───────────────────────────────────────────────────────────
+// ── Sininho Global + Título da Aba ────────────────────────────────────────────
+function atualizarSinoGlobal() {
+const total = listaAtivos().length;
+const badge = document.getElementById('al-sino-badge');
+const btn   = document.getElementById('al-sino-global');
+if (badge) {
+    badge.textContent = total > 99 ? '99+' : (total || '');
+    badge.classList.toggle('show', total > 0);
+}
+if (btn) {
+    btn.classList.toggle('tem-alerta', total > 0);
+}
+// Barra de marcar como lido
+const bar = document.getElementById('al-marcar-todos-bar');
+if (bar) {
+    if (total > 0) {
+        bar.querySelector('span').textContent = `🔔 ${total} alerta${total !== 1 ? 's' : ''} pendente${total !== 1 ? 's' : ''} no sistema`;
+        bar.style.display = 'flex';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+}
+
+function _atualizarTitleAba() {
+const total = listaAtivos().length;
+const base = '🔔 Central de Alertas';
+document.title = total > 0 ? `(${total}) ${base}` : base;
+}
+
+function marcarTodosLidos() {
+const ativos = listaAtivos();
+if (!ativos.length) { toast('✅ Nenhum alerta pendente.'); return; }
+if (!confirm(`Marcar ${ativos.length} alerta(s) como concluído(s)?`)) return;
+(async () => {
+    let ok = 0, err = 0;
+    for (const a of ativos) {
+        try {
+            await setDoc(doc(db, COL, a.id), { status: 'concluido', concluidoEmISO: new Date().toISOString(), atualizadoEm: serverTimestamp(), atualizadoEmISO: new Date().toISOString() }, { merge: true });
+            a.status = 'concluido';
+            a.concluidoEmISO = new Date().toISOString();
+            ok++;
+        } catch { err++; }
+    }
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    toast(err ? `✅ ${ok} concluído(s). ${err} erro(s).` : `✅ ${ok} alerta(s) concluído(s)!`);
+    render();
+})();
+}
+
+// ── Lido / Não lido ───────────────────────────────────────────────────────────
+const COL_LOG = 'historico_alertas';
+
+async function _logAlerta(alertaId, acao, a) {
+    try {
+        const uid = auth.currentUser?.uid || 'anon';
+        await setDoc(doc(collection(db, COL_LOG)), {
+            alertaId, acao,
+            alertaTipo:   a?.tipo    || '',
+            alertaTitulo: a?.titulo  || '',
+            dataISO:      new Date().toISOString(),
+            usuario:      uid,
+        });
+    } catch {}
+}
+
+async function marcarLido(id) {
+    const a = st.lista.find(x => x.id === id);
+    if (!a || a.lido || a.status === 'concluido') return;
+    a.lido = true;
+    localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+    try {
+        await setDoc(doc(db, COL, id), { lido: true, lidoEmISO: new Date().toISOString() }, { merge: true });
+        _logAlerta(id, 'lido', a);
+    } catch {}
+    atualizarBadges();
+    render();
+}
+
+async function _marcarSecaoLida() {
+    const pendentes = [...listaHoje(), ...listaVencidos()].filter(a => !a.lido);
+    for (const a of pendentes) await marcarLido(a.id);
+}
+
+function _cardClick(id, url) {
+    marcarLido(id);
+    window.open(url, '_blank');
+}
+
+// ── Relatório Robô (Relatório Conectado) ──────────────────────────────────────
+const RELATORIO_CACHE = 'cc_robo_relatorio_cache';
+
+function renderRelatorioConectado() {
+const el = document.getElementById('panel-relatorio-conectado');
+if (!el || st.secao !== 'relatorio-conectado') return;
+
+// Tenta carregar dados do Robô-Instagram via localStorage
+const roboDados = JSON.parse(localStorage.getItem('cc_robo_status') || '{}');
+const cache = JSON.parse(localStorage.getItem(RELATORIO_CACHE) || '{}');
+
+const conectado = roboDados.conectado === true || roboDados.status === 'conectado';
+const ultimaAtividade = cache.ultimaAtividade || roboDados.ultimaAtividade || null;
+const postagensHoje = cache.postagensHoje || roboDados.postagensHoje || 0;
+const seguidores = cache.seguidores || roboDados.seguidores || null;
+const seguindo = cache.seguindo || roboDados.seguindo || null;
+const nomeConta = cache.nomeConta || roboDados.nomeConta || '—';
+const ultimoPost = cache.ultimoPost || roboDados.ultimoPost || null;
+const totalComandosExecutados = cache.totalComandos || roboDados.totalComandos || 0;
+
+// Badge na sidebar
+const badge = document.getElementById('sb-badge-conectado');
+if (badge) {
+    badge.textContent = conectado ? '🟢' : '🔴';
+    badge.title = conectado ? 'Robô conectado' : 'Robô desconectado';
+}
+
+const statusClass = conectado ? 'rc-on' : 'rc-off';
+const statusIcon = conectado ? '🟢' : '🔴';
+const statusText = conectado ? 'Conectado' : 'Desconectado';
+const ultAtivFmt = ultimaAtividade ? new Date(ultimaAtividade).toLocaleString('pt-BR') : '—';
+const ultPostFmt = ultimoPost ? new Date(ultimoPost).toLocaleString('pt-BR') : '—';
+
+el.innerHTML = `
+<div class="rc-container">
+    <div class="rc-header">
+        <h2 class="rc-title">📋 Relatório do Robô Instagram</h2>
+        <button class="al-btn-exportar" onclick="Alertas.exportarRelatorio()">📥 Exportar Relatório</button>
+    </div>
+
+    <div class="rc-status-card ${statusClass}">
+        <div class="rc-status-icon">${statusIcon}</div>
+        <div class="rc-status-info">
+            <div class="rc-status-label">Estado da Conexão</div>
+            <div class="rc-status-value">${statusText}</div>
+        </div>
+    </div>
+
+    <div class="rc-grid">
+        <div class="rc-card">
+            <div class="rc-card-icon">👤</div>
+            <div class="rc-card-label">Conta</div>
+            <div class="rc-card-value">${esc(nomeConta)}</div>
+        </div>
+        <div class="rc-card">
+            <div class="rc-card-icon">📊</div>
+            <div class="rc-card-label">Seguidores</div>
+            <div class="rc-card-value">${seguidores !== null ? seguidores.toLocaleString('pt-BR') : '—'}</div>
+        </div>
+        <div class="rc-card">
+            <div class="rc-card-icon">👥</div>
+            <div class="rc-card-label">Seguindo</div>
+            <div class="rc-card-value">${seguindo !== null ? seguindo.toLocaleString('pt-BR') : '—'}</div>
+        </div>
+        <div class="rc-card">
+            <div class="rc-card-icon">📝</div>
+            <div class="rc-card-label">Postagens Hoje</div>
+            <div class="rc-card-value">${postagensHoje}</div>
+        </div>
+        <div class="rc-card">
+            <div class="rc-card-icon">⚡</div>
+            <div class="rc-card-label">Comandos Executados</div>
+            <div class="rc-card-value">${totalComandosExecutados}</div>
+        </div>
+        <div class="rc-card">
+            <div class="rc-card-icon">🕐</div>
+            <div class="rc-card-label">Última Atividade</div>
+            <div class="rc-card-value">${ultAtivFmt}</div>
+        </div>
+    </div>
+
+    <div class="rc-section">
+        <h3 class="rc-section-title">📅 Último Post</h3>
+        <p class="rc-section-value">${ultPostFmt}</p>
+    </div>
+
+    <div class="rc-section">
+        <h3 class="rc-section-title">📋 Status dos Comandos</h3>
+        <div id="rc-comandos-lista" class="rc-comandos-lista">Carregando...</div>
+    </div>
+
+    <div class="rc-actions">
+        <button class="al-btn-novo-lg" onclick="Alertas._sincronizarRelatorio()">🔄 Sincronizar Agora</button>
+    </div>
+</div>`;
+
+// Tenta carregar comandos relacionados
+_carregarComandosRelatorio();
+}
+
+function _carregarComandosRelatorio() {
+const el = document.getElementById('rc-comandos-lista');
+if (!el) return;
+const comandos = st.comandos.filter(c => c.tipo === 'instagram' || c.categoria === 'instagram');
+if (!comandos.length) {
+    el.innerHTML = '<div class="rc-empty">Nenhum comando Instagram encontrado.</div>';
+    return;
+}
+el.innerHTML = comandos.slice(0, 10).map(c => {
+    const status = c.ultimaExecucao ? new Date(c.ultimaExecucao).toLocaleString('pt-BR') : 'Nunca executado';
+    const icon = c.categoria === 'instagram' ? '📸' : '⚡';
+    return `<div class="rc-cmd-item">
+        <span class="rc-cmd-icon">${icon}</span>
+        <span class="rc-cmd-titulo">${esc(c.titulo)}</span>
+        <span class="rc-cmd-status">${status}</span>
+    </div>`;
+}).join('');
+}
+
+function _sincronizarRelatorio() {
+toast('🔄 Sincronizando...');
+setTimeout(() => {
+    // Re-lê dados do Robô
+    const roboDados = JSON.parse(localStorage.getItem('cc_robo_status') || '{}');
+    localStorage.setItem(RELATORIO_CACHE, JSON.stringify(roboDados));
+    renderRelatorioConectado();
+    toast('✅ Relatório atualizado!');
+}, 800);
+}
+
+function exportarRelatorio() {
+const roboDados = JSON.parse(localStorage.getItem('cc_robo_status') || '{}');
+const linhas = [
+    ['Campo', 'Valor'],
+    ['Conta', roboDados.nomeConta || '—'],
+    ['Conectado', roboDados.conectado ? 'Sim' : 'Não'],
+    ['Seguidores', roboDados.seguidores || '—'],
+    ['Seguindo', roboDados.seguindo || '—'],
+    ['Postagens Hoje', roboDados.postagensHoje || 0],
+    ['Comandos Executados', roboDados.totalComandos || 0],
+    ['Última Atividade', roboDados.ultimaAtividade || '—'],
+    ['Último Post', roboDados.ultimoPost || '—'],
+];
+const csv = linhas.map(l => l.map(c => `"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `relatorio_robo_${hojeISO()}.csv`;
+document.body.appendChild(a); a.click(); document.body.removeChild(a);
+URL.revokeObjectURL(url);
+toast('📥 Relatório exportado!');
+}
+
+// ── onSnapshot em Tempo Real ──────────────────────────────────────────────────
+let _unsubSnapshot = null;
+
+function _iniciarSnapshot() {
+if (_unsubSnapshot) return; // já iniciado
+try {
+    const q = query(collection(db, COL), where('status', '==', 'pendente'));
+    _unsubSnapshot = onSnapshot(q, (snapshot) => {
+        let temNovo = false;
+        snapshot.docChanges().forEach(change => {
+            const data = { id: change.doc.id, ...change.doc.data() };
+            if (change.type === 'added') {
+                // Só considera se não existir na lista
+                if (!st.lista.find(x => x.id === data.id)) {
+                    st.lista.push(data);
+                    temNovo = true;
+                }
+            } else if (change.type === 'modified') {
+                const idx = st.lista.findIndex(x => x.id === data.id);
+                if (idx >= 0) st.lista[idx] = data;
+            } else if (change.type === 'removed') {
+                st.lista = st.lista.filter(x => x.id !== data.id);
+            }
+        });
+        if (temNovo) {
+            // Se tem alerta novo que já deveria ter disparado, toca som
+            const hj = hojeISO();
+            const hm = agoraHHMM();
+            const novosHoje = snapshot.docChanges()
+                .filter(c => c.type === 'added')
+                .map(c => ({ id: c.doc.id, ...c.doc.data() }))
+                .filter(a => (a.data || '') === hj && (a.hora || '00:00') <= hm && a.status === 'pendente');
+            if (novosHoje.length > 0 && st.secao !== 'hoje') {
+                _tocarSom(novosHoje[0]?.titulo || '');
+            }
+        }
+        st.lista.sort((a, b) => {
+            const da = a.data || '', db2 = b.data || '';
+            if (da !== db2) return da.localeCompare(db2);
+            return (a.hora || '').localeCompare(b.hora || '');
+        });
+        localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
+        render();
+        atualizarSinoGlobal();
+        _atualizarTitleAba();
+        if (st.secao === 'painel') renderPainel();
+    }, (err) => {
+        console.warn('⚠️ onSnapshot error (provável offine):', err?.message || err);
+    });
+} catch (err) {
+    console.warn('⚠️ onSnapshot não disponível:', err);
+}
+}
+
 function _atualizarSelecao() {
     const selecionados = document.querySelectorAll('.al-checkbox:checked');
     const toolbar = document.getElementById('al-toolbar-lote');
@@ -1138,6 +1465,7 @@ authReady.then(async () => {
     await carregar();
     carregarEncomendas();
     verificarDisparos();
+    _iniciarSnapshot(); // Real-time listener
     // Processa parâmetro ?foco= vindo do badge do Dashboard
     const params = new URLSearchParams(window.location.search);
     const foco = params.get('foco');
@@ -2424,4 +2752,9 @@ window.Alertas = {
     abrirModalAlerta, fecharModalAlerta, salvarAlertaEncomenda,
     // Som intermitente
     _dispensarSom, _onChangeModoRep,
+    // Lido / Não lido
+    marcarLido, _cardClick,
+    // Novas funcionalidades
+    atualizarSinoGlobal, marcarTodosLidos,
+    renderRelatorioConectado, _sincronizarRelatorio, exportarRelatorio,
 };
