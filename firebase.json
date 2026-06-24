@@ -27,6 +27,13 @@
         ]
       }
     ],
+    "redirects": [
+      {
+        "source": "/CRM/:path*",
+        "destination": "/:path*",
+        "type": 301
+      }
+    ],
     "rewrites": [
       {
         "source": "/portal",
