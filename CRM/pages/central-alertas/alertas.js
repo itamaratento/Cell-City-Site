@@ -968,9 +968,12 @@ function _tocarSom(tituloAlerta = '') {
         osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.2);
         gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.52);
-        osc.onended = () => { try { ctx.close(); } catch {} };
+        // resume() garante que o AudioContext não fique suspenso (bloqueio de autoplay do navegador)
+        ctx.resume().then(() => {
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.52);
+            osc.onended = () => { try { ctx.close(); } catch {} };
+        }).catch(() => {});
     } catch {}
 }
 
