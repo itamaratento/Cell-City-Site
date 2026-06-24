@@ -6,11 +6,25 @@
     "indexes": "CRM/firestore.indexes.json"
   },
   "hosting": {
-    "public": "CRM",
+    "public": ".",
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "**/BACKUP*/**",
+      "**/*.backup*",
+      "**/backup-*.js",
+      "backup-dados.js",
+      "backup-server.js",
+      "backup.sh",
+      "apply-cors.js",
+      "cors.json",
+      "package.json",
+      "package-lock.json",
+      "*.md",
+      "*.txt",
+      "*.sh",
+      "*.bak*"
     ],
     "headers": [
       {
@@ -27,21 +41,18 @@
         ]
       }
     ],
-    "redirects": [
-      {
-        "source": "/CRM/:path*",
-        "destination": "/:path*",
-        "type": 301
-      }
-    ],
     "rewrites": [
       {
         "source": "/portal",
-        "destination": "/pages/portal-cliente/index.html"
+        "destination": "/CRM/pages/portal-cliente/index.html"
       },
       {
         "source": "/portal/**",
-        "destination": "/pages/portal-cliente/index.html"
+        "destination": "/CRM/pages/portal-cliente/index.html"
+      },
+      {
+        "source": "/CRM/**",
+        "destination": "/CRM/index.html"
       },
       {
         "source": "**",
