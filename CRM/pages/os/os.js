@@ -326,7 +326,7 @@ const CATEGORIAS_WPP = [
     { tipo: 'servico_concluido',  emoji: '🎉', label: 'Serviço Concluído' },
     { tipo: 'pronto_retirada',    emoji: '📦', label: 'Pronto p/ Retirada' },
     { tipo: 'lembrete_retirada',  emoji: '🔔', label: 'Lembrete de Retirada' },
-    { tipo: 'finalizado',         emoji: '🏁', label: 'Finalizado' },
+    { tipo: 'finalizado',         emoji: '✅', label: 'Finalizado' },
 ];
 
 const TEMPLATES_WPP_PADRAO = {
@@ -339,7 +339,7 @@ const TEMPLATES_WPP_PADRAO = {
     servico_concluido:  `Olá, {{nome}}! 🎉\n\nÓtimas notícias! O serviço do seu {{modelo}} foi concluído com sucesso.\n\n📋 OS Nº {{os}}\n\nEstamos à sua disposição!\nCell City Informática`,
     pronto_retirada:    `Olá, {{nome}}! 📦\n\nSeu {{modelo}} está pronto para retirada!\n\n📋 OS Nº {{os}}\n\nEstamos aguardando sua visita.\n\nCell City Informática`,
     lembrete_retirada:  `Olá, {{nome}}! 🔔\n\nSeu {{modelo}} está aguardando retirada há alguns dias.\n\n📋 OS Nº {{os}}\n\nQualquer dúvida, estamos à disposição!\nCell City Informática`,
-    finalizado:         `Olá, {{nome}}! 👋\n\nSua Ordem de Serviço foi finalizada com sucesso.\n\n📋 OS Nº {{os}}\n\nSeu equipamento já está pronto.\n\nVocê pode acompanhar os detalhes da sua ordem de serviço através do Portal do Cliente:\n\n🔗 {{link_portal}}\n\n🛡 Garantia: {{garantia}}\n\nA garantia cobre exclusivamente serviços e peças relacionados ao reparo realizado, conforme as condições informadas na entrega.\n\nAgradecemos pela confiança em nossos serviços e por escolher a Cell City Informática.\n\nFoi um prazer atendê-lo.\n\nSempre que precisar de manutenção, suporte técnico, acessórios ou novos serviços, estaremos à disposição.\n\nAtenciosamente,\n\nEquipe Cell City Informática`,
+    finalizado:         `Olá, {{nome}}! 👋\n\nSua Ordem de Serviço foi finalizada com sucesso.\n\n📋 OS Nº {{os}}\n📱 Equipamento: {{aparelho}}\n\nSeu equipamento já está pronto.\n\nVocê pode acompanhar os detalhes da sua ordem de serviço através do Portal do Cliente:\n\n🔗 {{link_portal}}\n\n🛡 Garantia: {{garantia}}\n📅 Válida até: {{data_garantia}}\n\nA garantia cobre exclusivamente serviços e peças relacionados ao reparo realizado, conforme as condições informadas na entrega.\n\nAgradecemos pela confiança em nossos serviços e por escolher a Cell City Informática.\n\nFoi um prazer atendê-lo.\n\nSempre que precisar de manutenção, suporte técnico, acessórios ou novos serviços, estaremos à disposição.{{link_avaliacao}}\n\nAtenciosamente,\n\nEquipe Cell City Informática`,
 };
 
 let templatesWpp = { ...TEMPLATES_WPP_PADRAO };
@@ -694,7 +694,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span><div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="abrirLembreteOS()" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;">🔔</button><button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button></div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button>${['concluido','entregue'].includes(os.status) ? `<button onclick="previewWpp('finalizado')" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏁 Finalizado</button>` : ''}</div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span><div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="abrirLembreteOS()" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;">🔔</button><button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button></div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="previewWpp('finalizado')" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -1661,6 +1661,7 @@ function _substituirVarsWpp(template, os) {
     const valorNum = (parseFloat(os.valor) || 0) + (parseFloat(os.valorCartao) || 0);
     const valor = valorNum > 0 ? `R$ ${valorNum.toFixed(2).replace('.', ',')}` : 'a combinar';
     const hoje = new Date().toLocaleDateString('pt-BR');
+    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho';
     const garantiaModelo = _getSelectedWarranty(os);
     const garantiaDias = os.prazoGarantia ?? 90;
     const garantiaStr = garantiaModelo ? `${garantiaDias} dias — ${garantiaModelo.nome}` : `${garantiaDias} dias`;
@@ -1670,10 +1671,13 @@ function _substituirVarsWpp(template, os) {
         dataBase.setDate(dataBase.getDate() + garantiaDias);
         dataGarantiaStr = dataBase.toLocaleDateString('pt-BR');
     }
+    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
+    const linkAvaliacaoStr = linkAvaliacao ? `\n\n⭐ Avalie nosso atendimento:\n${linkAvaliacao}` : '';
     return template
         .replace(/\{\{nome\}\}/g, nome)
         .replace(/\{\{nome_completo\}\}/g, os.clientName || '')
-        .replace(/\{\{modelo\}\}/g, [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho')
+        .replace(/\{\{aparelho\}\}/g, aparelho)
+        .replace(/\{\{modelo\}\}/g, aparelho)
         .replace(/\{\{os\}\}/g, os.id || '')
         .replace(/\{\{valor\}\}/g, valor)
         .replace(/\{\{defeito\}\}/g, os.defect || '')
@@ -1682,6 +1686,7 @@ function _substituirVarsWpp(template, os) {
         .replace(/\{\{data\}\}/g, hoje)
         .replace(/\{\{garantia\}\}/g, garantiaStr)
         .replace(/\{\{data_garantia\}\}/g, dataGarantiaStr)
+        .replace(/\{\{link_avaliacao\}\}/g, linkAvaliacaoStr)
         .replace(/\{\{link_portal\}\}/g, LINK_PORTAL_WPP);
 }
 
@@ -1705,6 +1710,7 @@ function previewWpp(tipo) {
     const template = templatesWpp[tipo] || TEMPLATES_WPP_PADRAO[tipo] || '';
     _wppMensagemAtual = _substituirVarsWpp(template, currentOS);
     _renderPreviewWpp();
+    if (tipo === 'finalizado') _registrarEventoFinalizado('✅ Mensagem de finalização gerada');
 }
 
 function _renderPreviewWpp() {
@@ -1759,6 +1765,25 @@ function copiarMsgWpp() {
     if (navigator.clipboard?.writeText) {
         navigator.clipboard.writeText(_wppMensagemAtual).then(() => showToast('✅ Mensagem copiada!')).catch(() => fallbackCopyMessage(_wppMensagemAtual));
     } else { fallbackCopyMessage(_wppMensagemAtual); }
+    if (_wppTipoAtual === 'finalizado') _registrarEventoFinalizado('📋 Mensagem de finalização copiada');
+}
+
+async function _registrarEventoFinalizado(label) {
+    if (!currentOS) return;
+    const now = new Date();
+    const entrada = {
+        ts: now.toISOString(),
+        data: now.toLocaleDateString('pt-BR'),
+        hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        tipo: 'finalizado',
+        label
+    };
+    try {
+        currentOS.wppHistorico = [...(currentOS.wppHistorico || []), entrada];
+        await updateDoc(doc(db, 'os', currentOS.id), { wppHistorico: currentOS.wppHistorico });
+        const ind = document.getElementById('wpp-os-indicator');
+        if (ind) ind.innerHTML = `🟢 ${label} • ${entrada.data} ${entrada.hora}`;
+    } catch(e) { console.warn('WPP finalizado: erro ao salvar histórico', e); }
 }
 
 async function enviarWppOS() {
@@ -1794,9 +1819,14 @@ async function abrirEditorTemplatesWpp() {
             <textarea id="wpp-tpl-${c.tipo}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${val}</textarea>
         </div>`;
     }).join('');
+    const linkGoogle = esc(localStorage.getItem('cc_link_avaliacao_google') || '');
     openModal(`<div class="modal-handle"></div>
         <h3 style="font-size:15px;font-weight:700;margin-bottom:6px;">⚙️ Editar Mensagens WhatsApp</h3>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{{nome}}</strong> <strong>{{modelo}}</strong> <strong>{{os}}</strong> <strong>{{valor}}</strong> <strong>{{defeito}}</strong> <strong>{{link_portal}}</strong> <strong>{{garantia}}</strong> <strong>{{data_garantia}}</strong></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{{nome}}</strong> <strong>{{aparelho}}</strong> <strong>{{os}}</strong> <strong>{{valor}}</strong> <strong>{{defeito}}</strong> <strong>{{link_portal}}</strong> <strong>{{garantia}}</strong> <strong>{{data_garantia}}</strong> <strong>{{link_avaliacao}}</strong></div>
+        <div style="margin-bottom:16px;padding:10px 12px;background:var(--surface2);border:1px solid #f59e0b44;border-radius:var(--radius-sm);">
+            <label style="font-size:11px;font-weight:700;color:#f59e0b;display:block;margin-bottom:6px;">⭐ Link de Avaliação Google (usado em {{link_avaliacao}})</label>
+            <input id="wpp-link-avaliacao-google" type="url" placeholder="https://g.page/r/..." value="${linkGoogle}" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:12px;">
+        </div>
         ${campos}
         <div style="display:flex;gap:8px;margin-top:4px;">
             <button onclick="abrirMenuWpp()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text2);">← Voltar</button>
@@ -1811,10 +1841,11 @@ async function salvarTemplatesWpp() {
         if (!el) return;
         const texto = el.value;
         const padrao = TEMPLATES_WPP_PADRAO[c.tipo] || texto;
-        // Salva no formato objeto para compatibilidade com o spec
         payload[c.tipo] = { nome: c.label, texto, padrao, categoria: 'os', ativo: true };
         templatesWpp[c.tipo] = texto;
     });
+    const linkGoogleEl = document.getElementById('wpp-link-avaliacao-google');
+    if (linkGoogleEl) localStorage.setItem('cc_link_avaliacao_google', linkGoogleEl.value.trim());
     try {
         await setDoc(doc(db, 'config', 'mensagens_whatsapp'), { ...payload, updatedAt: new Date().toISOString() });
         closeModal();
