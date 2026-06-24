@@ -264,7 +264,163 @@ service cloud.firestore {
       allow update, delete: if autenticado() && podeOperar(resource.data);
     }
 
-    // ── ⑥ CONFIGURAÇÕES E UTILITÁRIOS ───────────────────────────
+    // ── ⑥ DADOS OPERACIONAIS (coleções adicionais com empresa_id) ─
+
+    match /financeiro_fixas/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_categorias/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_despesas/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_cat_despesas/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /financeiro_centros_custo/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /compras_financeiras/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /fornecedor_compras/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /fornecedor_tendencias/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /produtos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /categorias_produtos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /posvenda_contatos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /posvenda_mensagens/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /posvenda_rastreamento/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /caixa_lancamentos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /informacoes/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /categorias_informacoes/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /comandos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /categorias_comandos/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /acoes_semana/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /tarefas_semana/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /notas_usuarios/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /categorias_caixa/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /crm_leads/{docId} {
+      allow read, update, delete: if autenticado();
+      allow create:               if true;
+    }
+
+    match /solicitacoes_diagnostico/{docId} {
+      allow read, update, delete: if autenticado();
+      allow create:               if true;
+    }
+
+    match /alertas_usuario/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    match /vendas_importadas/{docId} {
+      allow read:           if autenticado() && podeOperar(resource.data);
+      allow create:         if autenticado() && podeOperar(request.resource.data);
+      allow update, delete: if autenticado() && podeOperar(resource.data);
+    }
+
+    // ── ⑦ CONFIGURAÇÕES E UTILITÁRIOS ───────────────────────────
 
     match /config/{docId} {
       allow read, write: if autenticado();
