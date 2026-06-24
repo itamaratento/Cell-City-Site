@@ -557,6 +557,65 @@
     .al-notify-btn-abrir { flex:1;padding:6px 10px;background:var(--green-primary,#4ade80);color:#000;border-radius:7px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;display:inline-block; }
     .al-notify-btn-concluir { padding:6px 10px;background:var(--surface3,#2a2a3e);border:1px solid var(--border,#333);border-radius:7px;color:var(--text-muted,#aaa);font-size:12px;cursor:pointer; }
     .al-notify-mais { padding:8px 14px;font-size:12px;color:var(--text-muted,#aaa);text-align:center; }
+
+    /* ── Animações de Atenção (alertas ativos) ────────────────── */
+    @keyframes al-shake {
+        0%,100%{transform:translateX(0)}
+        15%,45%,75%{transform:translateX(-5px)}
+        30%,60%,90%{transform:translateX(5px)}
+    }
+    @keyframes al-glow-verde {
+        0%,100%{box-shadow:0 0 6px 2px rgba(74,222,128,.7);border-color:#4ade80}
+        50%{box-shadow:0 0 22px 7px rgba(74,222,128,1);border-color:#a3e635}
+    }
+    @keyframes al-pisca-bg {
+        0%,100%{background:#4ade80;color:#000}
+        50%{background:#86efac;color:#000}
+    }
+    @keyframes al-badge-pulso {
+        0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(239,68,68,.8)}
+        50%{transform:scale(1.25);box-shadow:0 0 0 7px rgba(239,68,68,0)}
+    }
+    @keyframes al-sb-urgente {
+        0%,100%{background:transparent;border-left:3px solid transparent}
+        50%{background:rgba(74,222,128,.13);border-left:3px solid #4ade80}
+    }
+    @keyframes al-sino-treme {
+        0%,100%{transform:rotate(0)}
+        15%{transform:rotate(-18deg)}
+        30%{transform:rotate(18deg)}
+        45%{transform:rotate(-12deg)}
+        60%{transform:rotate(12deg)}
+        75%{transform:rotate(-6deg)}
+        90%{transform:rotate(6deg)}
+    }
+    /* Barra superior tremendo + brilhando verde */
+    .al-barra-urgente {
+        border:2px solid #4ade80 !important;
+        animation:al-shake .45s cubic-bezier(.36,.07,.19,.97) both,
+                  al-glow-verde 1.4s ease .45s infinite !important;
+    }
+    .al-barra-urgente .al-btn-ver-alertas {
+        animation:al-pisca-bg 1.4s ease infinite !important;
+        font-weight:700 !important;
+    }
+    .al-barra-urgente .al-sino-anim {
+        display:inline-block;
+        animation:al-sino-treme 1.4s ease infinite !important;
+    }
+    /* Badge vermelho pulsando na sidebar */
+    .al-sb-badge.urgente {
+        background:#ef4444 !important;
+        animation:al-badge-pulso 1.1s ease infinite !important;
+    }
+    /* Item "Hoje" da sidebar piscando verde */
+    .al-sb-item.urgente-hoje {
+        animation:al-sb-urgente 1.8s ease infinite !important;
+    }
+    /* Popup tremendo ao aparecer */
+    .al-notify-in {
+        animation:al-slide-in .3s ease, al-shake .45s ease .3s !important;
+    }
     </style>
 
     <!-- ═══════ MODAL: Novo/Editar Alerta ═══════ -->
@@ -737,7 +796,7 @@
 
     <script src="../../shared/brand-header.js"></script>
 <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="alertas.js?v=20260623-final"></script>
+    <script type="module" src="alertas.js?v=20260623-anim"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

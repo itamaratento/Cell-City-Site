@@ -425,16 +425,25 @@ function tipoLabel(tipo) {
 }
 
 function atualizarBadges() {
-    const hj = listaHoje().length;
-    const el = document.getElementById('sb-badge-hoje');
-    if (el) { el.textContent = hj || ''; el.classList.toggle('show', hj > 0); }
-    const ag = listaAgendados().length;
+    const hj  = listaHoje().length;
+    const el  = document.getElementById('sb-badge-hoje');
+    if (el) {
+        el.textContent = hj || '';
+        el.classList.toggle('show', hj > 0);
+        el.classList.toggle('urgente', hj > 0); // badge vermelho pulsando
+    }
+    const sbHoje = document.querySelector('.al-sb-item[data-nav="hoje"]');
+    if (sbHoje) sbHoje.classList.toggle('urgente-hoje', hj > 0); // item sidebar piscando verde
+
+    const ag  = listaAgendados().length;
     const el2 = document.getElementById('sb-badge-agendados');
     if (el2) { el2.textContent = ag || ''; el2.classList.toggle('show', ag > 0); }
-    const cm = listaComandos().length;
+
+    const cm  = listaComandos().length;
     const el3 = document.getElementById('sb-badge-comandos');
     if (el3) { el3.textContent = cm || ''; el3.classList.toggle('show', cm > 0); }
-    const tf = listaTarefas().length;
+
+    const tf  = listaTarefas().length;
     const el4 = document.getElementById('sb-badge-tarefas');
     if (el4) { el4.textContent = tf || ''; el4.classList.toggle('show', tf > 0); }
 }
@@ -2329,17 +2338,27 @@ function _dispensarSom() {
 }
 
 function _atualizarBarraAtiva() {
-    const bar = document.getElementById('al-alerta-ativo-bar');
-    const msg = document.getElementById('al-alerta-ativo-msg');
+    const bar    = document.getElementById('al-alerta-ativo-bar');
+    const msg    = document.getElementById('al-alerta-ativo-msg');
     const btnVer = document.getElementById('al-btn-ver-alertas');
 
     const isIntermitente = _somIntermitenteId && _somIntermitenteIds.length > 0;
-    const devemAgora = st.lista.filter(a =>
+    const devemAgora     = st.lista.filter(a =>
         a.status === 'pendente' && dataEfetiva(a) === hojeISO() && (a.hora || '00:00') <= agoraHHMM()
     );
     const ativo = isIntermitente || devemAgora.length > 0;
 
-    if (bar) bar.style.display = ativo ? 'flex' : 'none';
+    if (bar) {
+        bar.style.display = ativo ? 'flex' : 'none';
+        // Re-trigger shake ao ficar ativo
+        if (ativo) {
+            bar.classList.remove('al-barra-urgente');
+            void bar.offsetWidth;
+            bar.classList.add('al-barra-urgente');
+        } else {
+            bar.classList.remove('al-barra-urgente');
+        }
+    }
 
     if (ativo && msg) {
         if (isIntermitente) {
