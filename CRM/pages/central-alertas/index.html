@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<losfa!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
@@ -83,14 +83,13 @@
 
                 <div class="al-sb-sep"></div>
 
+                <div class="al-sb-item" data-nav="sons">
+                    <span class="al-sb-icon">🔊</span>
+                    <span class="al-sb-label">Sons e Alarmes</span>
+                </div>
                 <div class="al-sb-item" data-nav="diagnostico">
                     <span class="al-sb-icon">🔎</span>
                     <span class="al-sb-label">Diagnóstico</span>
-                    <span class="al-sb-badge" id="sb-badge-diagnostico"></span>
-                </div>
-                <div class="al-sb-item" data-nav="sons">
-                    <span class="al-sb-icon">🔊</span>
-                    <span class="al-sb-label">Sons e Notificações</span>
                 </div>
                 <div class="al-sb-item" data-nav="configuracoes">
                     <span class="al-sb-icon">⚙️</span>
@@ -364,11 +363,6 @@
                     <div id="enc-stats" class="enc-stats-grid"></div>
                     <div class="enc-filtros" id="enc-filtros">
                         <button class="enc-filtro-btn active" data-filtro="pendentes"      onclick="Alertas.filtrarEncomendas('pendentes')">Pendentes</button>
-                        <button class="enc-filtro-btn"        data-filtro="em_transporte"  onclick="Alertas.filtrarEncomendas('em_transporte')">Em Transporte</button>
-                        <button class="enc-filtro-btn"        data-filtro="disponivel"     onclick="Alertas.filtrarEncomendas('disponivel')">Disponíveis</button>
-                        <button class="enc-filtro-btn"        data-filtro="entregue"       onclick="Alertas.filtrarEncomendas('entregue')">Entregues</button>
-                        <button class="enc-filtro-btn"        data-filtro="atrasadas"      onclick="Alertas.filtrarEncomendas('atrasadas')">Atrasadas</button>
-                        <button class="enc-filtro-btn enc-filtro-meu" id="enc-btn-meu"     onclick="Alertas.toggleMinhasEncomendas()">👤 Minhas</button>
                     </div>
                     <div id="lista-encomendas" class="enc-lista"></div>
                 </div>
@@ -743,7 +737,7 @@
 
     <script src="../../shared/brand-header.js"></script>
 <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="alertas.js?v=20260623-fix-query"></script>
+    <script type="module" src="alertas.js?v=20260623-final"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>

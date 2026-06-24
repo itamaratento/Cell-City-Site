@@ -415,8 +415,13 @@ function htmlItem(a) {
 }
 
 function tipoLabel(tipo) {
-    const m = {lembrete:'🔔',comando:'⚡',tarefa:'✅',whatsapp:'📱',instagram:'📸',financeiro:'💰',os:'🔧',cliente:'👤',fornecedor:'🏢',outro:'📌'};
-    return (m[tipo]||'🔔') + ' ' + (tipo||'lembrete').charAt(0).toUpperCase() + (tipo||'lembrete').slice(1);
+    const m = {
+        lembrete:'🔔 Lembrete', comando:'⚡ Comando', tarefa:'✅ Tarefa',
+        whatsapp:'📱 WhatsApp', instagram:'📸 Instagram', financeiro:'💰 Financeiro',
+        os:'🔧 OS', cliente:'👤 Cliente', fornecedor:'🏢 Fornecedor',
+        agenda:'📅 Agenda', meta:'🎯 Meta', outro:'📌 Outro',
+    };
+    return m[tipo] || '🔔 Lembrete';
 }
 
 function atualizarBadges() {
@@ -940,9 +945,11 @@ function testarSom() {
         osc.frequency.exponentialRampToValueAtTime(660, ctx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.25 * vol, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-        osc.start(ctx.currentTime);
-        osc.stop(ctx.currentTime + 0.42);
-        osc.onended = () => { try { ctx.close(); } catch {} };
+        ctx.resume().then(() => {
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.42);
+            osc.onended = () => { try { ctx.close(); } catch {} };
+        }).catch(() => {});
     } catch {}
     setTimeout(() => {
         if (btn) { btn.textContent = '🔔 Testar Som'; btn.disabled = false; }
@@ -988,6 +995,7 @@ function _tocarSom(tituloAlerta = '') {
 
 // ── Popup visual de alerta disparado ─────────────────────────────────────────
 let _notifyPopupTimer = null;
+const _disparadosNaSessao = new Set(); // cooldown: cada alerta só dispara som/popup uma vez por sessão
 
 function _mostrarNotificacaoAlerta(devem) {
     const popup = document.getElementById('al-notify-popup');
@@ -1025,33 +1033,37 @@ function verificarDisparos() {
     const devem = st.lista.filter(a =>
         a.status === 'pendente' &&
         dataEfetiva(a) === hj &&
-        a.hora <= hm
+        (a.hora || '00:00') <= hm
     );
     if (!devem.length) return;
-    const cfg    = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
-    const modo   = cfg.modoNotif || 'som_popup';
-    // cfg.somGlobal controla os alertas agendados (cc_sons_sistema é para sons de UI, não bloqueia alertas)
+
+    // Filtra somente alertas que ainda não dispararam nesta sessão
+    const novos = devem.filter(a => !_disparadosNaSessao.has(a.id));
+    novos.forEach(a => _disparadosNaSessao.add(a.id));
+
+    const cfg      = JSON.parse(localStorage.getItem(CFG_KEY) || '{}');
+    const modo     = cfg.modoNotif || 'som_popup';
     const usaSom   = cfg.somGlobal !== false && (modo === 'som' || modo === 'som_popup');
     const usaPopup = cfg.notifBrowser !== false && (modo === 'popup' || modo === 'som_popup');
 
-    if (usaSom) {
-        _tocarSom(devem[0]?.titulo || '');
-        if (cfg.somModoRep === 'intermitente') {
-            _iniciarSomIntermitente(devem.map(a => a.id), cfg.intervaloRepSom || 15);
+    if (novos.length > 0) {
+        if (usaSom) {
+            _tocarSom(novos[0]?.titulo || '');
+            if (cfg.somModoRep === 'intermitente') {
+                _iniciarSomIntermitente(novos.map(a => a.id), cfg.intervaloRepSom || 15);
+            }
         }
+        novos.forEach(a => {
+            _ccRegistrarEvento('Central de Alertas', `Notificação: ${a.titulo}`, 'notificacao');
+            if (usaPopup && 'Notification' in window && Notification.permission === 'granted') {
+                new Notification(`🔔 ${a.titulo}`, {
+                    body: `${a.hora} — ${tipoLabel(a.tipo)}${a.descricao ? '\n'+a.descricao : ''}`,
+                    icon: '/CRM/assets/logo.png',
+                });
+            }
+        });
+        _mostrarNotificacaoAlerta(devem); // popup mostra todos os pendentes
     }
-
-    devem.forEach(a => {
-        _ccRegistrarEvento('Central de Alertas', `Notificação: ${a.titulo}`, 'notificacao');
-        if (usaPopup && 'Notification' in window && Notification.permission === 'granted') {
-            new Notification(`🔔 ${a.titulo}`, {
-                body: `${a.hora} — ${tipoLabel(a.tipo)}${a.descricao ? '\n'+a.descricao : ''}`,
-                icon: '/CRM/assets/logo.png',
-            });
-        }
-    });
-
-    _mostrarNotificacaoAlerta(devem);
 }
 
 // ── Sidebar mobile ────────────────────────────────────────────────────────────
