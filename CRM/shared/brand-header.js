@@ -386,25 +386,29 @@
       pointer-events: none;
       border: 1.5px solid #08090a;
     }
-    #crm-bell-btn.tem-alerta .crm-bell-icon { color: #ef4444; }
     @keyframes crm-bell-shake {
-      0%,100%{transform:rotate(0)}
-      15%{transform:rotate(-16deg)}
-      30%{transform:rotate(16deg)}
-      45%{transform:rotate(-10deg)}
-      60%{transform:rotate(10deg)}
-      75%{transform:rotate(-5deg)}
-      90%{transform:rotate(5deg)}
+      0%,100%{transform:rotate(0) scale(1)}
+      15%{transform:rotate(-20deg) scale(1.1)}
+      30%{transform:rotate(20deg) scale(1.1)}
+      45%{transform:rotate(-12deg) scale(1.05)}
+      60%{transform:rotate(12deg) scale(1.05)}
+      75%{transform:rotate(-6deg)}
+      90%{transform:rotate(6deg)}
     }
-    @keyframes crm-badge-pulso {
-      0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(239,68,68,.7)}
-      50%{transform:scale(1.2);box-shadow:0 0 0 5px rgba(239,68,68,0)}
+    @keyframes crm-bell-pisca {
+      0%,49%{color:#ef4444;text-shadow:0 0 12px rgba(239,68,68,.9),0 0 4px #ef4444}
+      50%,100%{color:#fff;text-shadow:none}
     }
+    @keyframes crm-badge-pisca {
+      0%,49%{background:#ef4444;box-shadow:0 0 8px rgba(239,68,68,.9)}
+      50%,100%{background:#ff8888;box-shadow:none}
+    }
+    #crm-bell-btn.tem-alerta { background:rgba(239,68,68,.12); border-radius:8px; }
     #crm-bell-btn.tem-alerta .crm-bell-icon {
-      animation: crm-bell-shake 1.8s ease infinite;
+      animation: crm-bell-shake 0.6s ease infinite, crm-bell-pisca 0.5s step-end infinite;
     }
     #crm-bell-btn.tem-alerta #crm-bell-badge {
-      animation: crm-badge-pulso 1.1s ease infinite;
+      animation: crm-badge-pisca 0.5s step-end infinite;
     }
   `;
 
