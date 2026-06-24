@@ -192,6 +192,7 @@ function render() {
     renderLista('comandos',   listaComandos().filter(filtroItem));
     renderLista('tarefas',    listaTarefas().filter(filtroItem));
     atualizarBadges();
+    _atualizarBarraAtiva();
 }
 
 function setupBusca() {
@@ -2310,16 +2311,44 @@ function _dispensarSom() {
 function _atualizarBarraAtiva() {
     const bar = document.getElementById('al-alerta-ativo-bar');
     const msg = document.getElementById('al-alerta-ativo-msg');
-    const ativo = _somIntermitenteId && _somIntermitenteIds.length > 0;
+    const btnVer = document.getElementById('al-btn-ver-alertas');
+
+    const isIntermitente = _somIntermitenteId && _somIntermitenteIds.length > 0;
+    const devemAgora = st.lista.filter(a =>
+        a.status === 'pendente' && dataEfetiva(a) === hojeISO() && (a.hora || '00:00') <= agoraHHMM()
+    );
+    const ativo = isIntermitente || devemAgora.length > 0;
+
     if (bar) bar.style.display = ativo ? 'flex' : 'none';
+
     if (ativo && msg) {
-        const titulos = _somIntermitenteIds
-            .map(id => st.lista.find(a => a.id === id)?.titulo || '')
-            .filter(Boolean);
-        const extra = titulos.length > 2 ? ` +${titulos.length - 2}` : '';
-        msg.textContent = `${_somIntermitenteIds.length} alerta(s) ativo(s): ${titulos.slice(0, 2).join(', ')}${extra}`;
+        if (isIntermitente) {
+            const titulos = _somIntermitenteIds
+                .map(id => st.lista.find(a => a.id === id)?.titulo || '')
+                .filter(Boolean);
+            const extra = titulos.length > 2 ? ` +${titulos.length - 2}` : '';
+            msg.textContent = `${_somIntermitenteIds.length} alerta(s) ativo(s): ${titulos.slice(0, 2).join(', ')}${extra}`;
+        } else {
+            const prim = devemAgora[0];
+            msg.textContent = devemAgora.length === 1
+                ? `🔔 ${prim.titulo}`
+                : `🔔 ${devemAgora.length} alertas pendentes`;
+            if (btnVer) {
+                const dest = prim.link || (_ACAO_RAPIDA_MAP[prim.tipo]?.url ?? '');
+                const lbl  = (_ACAO_RAPIDA_MAP[prim.tipo]?.label) || '👁 Ver alertas';
+                btnVer.textContent = dest ? lbl : '👁 Ver alertas';
+                btnVer.onclick = dest
+                    ? () => { window.location.href = dest; }
+                    : () => { navegar('hoje'); _dispensarSom(); };
+            }
+        }
     }
-    // Pulsing dos badges da sidebar
+
+    if (!ativo && btnVer) {
+        btnVer.textContent = '👁 Ver alertas';
+        btnVer.onclick = () => { navegar('hoje'); _dispensarSom(); };
+    }
+
     document.querySelectorAll('.al-sb-badge.show').forEach(b =>
         b.classList.toggle('pulsing', ativo)
     );

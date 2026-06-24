@@ -114,7 +114,7 @@
                 <div id="al-alerta-ativo-bar" class="al-alerta-ativo-bar" style="display:none">
                     <span class="al-sino-anim">🔔</span>
                     <span id="al-alerta-ativo-msg" class="al-alerta-ativo-msg">Alertas pendentes</span>
-                    <button class="al-btn-ver-alertas" onclick="Alertas.navegar('hoje');Alertas._dispensarSom()">👁 Ver alertas</button>
+                    <button id="al-btn-ver-alertas" class="al-btn-ver-alertas" onclick="Alertas.navegar('hoje');Alertas._dispensarSom()">👁 Ver alertas</button>
                     <button class="al-btn-dispensar" title="Dispensar som" onclick="Alertas._dispensarSom()">✕</button>
                 </div>
 
@@ -743,7 +743,7 @@
 
     <script src="../../shared/brand-header.js"></script>
 <script src="../../shared/sidebar.js"></script>
-    <script type="module" src="alertas.js?v=20260623-popup-os"></script>
+    <script type="module" src="alertas.js?v=20260623-barra-os"></script>
     <script type="module" src="../../shared/dock.js"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
