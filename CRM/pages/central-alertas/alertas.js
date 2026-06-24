@@ -103,11 +103,19 @@ function toast(msg) {
 // ── Firestore ─────────────────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const snap = await getDocs(query(collection(db, COL), orderBy('data'), orderBy('hora')));
+        const snap = await getDocs(collection(db, COL));
         st.lista = [];
         snap.forEach(d => st.lista.push({ id: d.id, ...d.data() }));
+        st.lista.sort((a, b) => {
+            const da = a.data || '', db2 = b.data || '';
+            if (da !== db2) return da.localeCompare(db2);
+            return (a.hora || '').localeCompare(b.hora || '');
+        });
         localStorage.setItem(CACHE_KEY, JSON.stringify(st.lista));
-    } catch {
+        ccLog('Sistema', `${st.lista.length} alerta(s) carregado(s) do Firestore`, 'sistema');
+    } catch (err) {
+        console.error('Erro ao carregar alertas:', err);
+        ccLog('Sistema', `Erro Firestore: ${err?.message || err}`, 'sistema');
         st.lista = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
     }
     render();
