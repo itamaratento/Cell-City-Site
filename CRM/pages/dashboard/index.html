@@ -1425,8 +1425,10 @@
 
   // Reler alertas do usuário quando localStorage mudar (outra aba salvou)
   window.addEventListener('storage', function(e) {
-    if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge') recompute();
+    if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge_count' || e.key === 'cc_alertas_badge') recompute();
   });
+  // Atualiza card também quando alertas-badge.js emite evento em tempo real
+  window.addEventListener('cc-alertas-badge', function() { recompute(); });
   // Reavalia alinhado à virada do minuto (nunca antes, nunca depois do horário)
   (function agendarMinutoDash() {
     var n = new Date();
@@ -1521,6 +1523,8 @@
 
   function boot() {
     if (!bind()) return;
+    // Mostra imediatamente com dados do localStorage (sem esperar Firestore)
+    recompute();
     if (window.dbFirestore && window.FirebaseFirestore) start();
     else window.addEventListener('firebase-ready', start, { once: true });
   }
