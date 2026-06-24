@@ -326,7 +326,6 @@ const CATEGORIAS_WPP = [
     { tipo: 'servico_concluido',  emoji: '🎉', label: 'Serviço Concluído' },
     { tipo: 'pronto_retirada',    emoji: '📦', label: 'Pronto p/ Retirada' },
     { tipo: 'lembrete_retirada',  emoji: '🔔', label: 'Lembrete de Retirada' },
-    { tipo: 'finalizado',         emoji: '✅', label: 'Finalizado' },
 ];
 
 const TEMPLATES_WPP_PADRAO = {
@@ -1415,13 +1414,42 @@ window.copySupplierMessage = copySupplierMessage;
 
 function copiarMensagemFinalizado() {
     if (!currentOS) return;
-    _wppTipoAtual = 'finalizado';
-    const template = templatesWpp['finalizado'] || TEMPLATES_WPP_PADRAO['finalizado'] || '';
-    const message = _substituirVarsWpp(template, currentOS);
-    if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(message).then(() => showToast('✅ Mensagem Finalizado copiada!')).catch(() => fallbackCopyMessage(message));
-    } else { fallbackCopyMessage(message); }
-    _registrarEventoFinalizado('📋 Mensagem de finalização copiada');
+    const os = currentOS;
+
+    const firstName = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const garantiaModelo = _getSelectedWarranty(os);
+    const garantiaDias = os.prazoGarantia ?? 90;
+    const garantiaStr = garantiaModelo ? garantiaDias + ' dias — ' + garantiaModelo.nome : garantiaDias + ' dias';
+    let dataGarantiaStr = '';
+    if (os.createdAt) {
+        const d = new Date(os.createdAt);
+        d.setDate(d.getDate() + garantiaDias);
+        dataGarantiaStr = d.toLocaleDateString('pt-BR');
+    }
+    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
+
+    const message =
+        'Olá, ' + firstName + '! 👋\n\n' +
+        'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
+        '📋 OS Nº ' + os.id + '\n\n' +
+        'Você pode consultar as informações da sua ordem de serviço através do Portal do Cliente Cell City.\n\n' +
+        '🔗 ' + LINK_PORTAL_WPP + '\n\n' +
+        '📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n' +
+        '🛡 Garantia: ' + garantiaStr + '\n' +
+        (dataGarantiaStr ? '📅 Válida até: ' + dataGarantiaStr + '\n\n' : '\n') +
+        'Agradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.' +
+        (linkAvaliacao ? '\n\n⭐ Avalie nosso atendimento:\n' + linkAvaliacao : '') +
+        '\n\nCell City Informática';
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(message).then(function () {
+            showToast('✅ Mensagem Finalizado copiada!');
+        }).catch(function () {
+            fallbackCopyMessage(message);
+        });
+    } else {
+        fallbackCopyMessage(message);
+    }
 }
 window.copiarMensagemFinalizado = copiarMensagemFinalizado;
 
