@@ -1,560 +1,632 @@
 /* ============================================================
-   SIDEBAR GLOBAL — Cell City Gestão Empresarial
-   Injeta o menu lateral em todos os módulos.
-   Uso: <script src="../../shared/sidebar.js"></script>
+   CENTRAL DE MÓDULOS — Cell City Gestão Empresarial
+
+   • Catálogo completo de módulos do sistema
+   • Favoritos da Home → usuarios/{uid}/preferencias/modulos
+   • Modal com busca instantânea e filtro por categoria
+   • Botão ⭐ em cada card da home filtra quais aparecem
    ============================================================ */
-(function () {
-  'use strict';
+import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
+import { getUid, onUid } from './session.js';
 
-  // Não injetar se o Dashboard já tem sua própria sidebar no HTML,
-  // ou se este script já rodou.
-  if (document.getElementById('cc-global-sidebar')) return;
-  if (document.getElementById('sidebar-left')) return; // dashboard usa HTML nativo
+const MAX_FAVS   = 24;
+const LS_KEY     = 'cc_modulos_favs';
+const PREFS_PATH = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'modulos');
 
-  // ── Lista mestra de módulos ──────────────────────────────────
-  // masterOnly: true = visível apenas para perfil master_admin
-  const ITEMS = [
-    { id: 'os',                 href: '/CRM/pages/os/index.html',                  icon: '📦', label: 'OS',                   highlight: true },
-    { id: 'caixa',              href: '/CRM/pages/caixa/index.html',               icon: '💰', label: 'Caixa' },
-    { id: 'central-comandos',   href: '/CRM/pages/central-comandos/index.html',    icon: '⚡', label: 'Central de Comandos',   badge: 'Novo' },
-    { id: 'notas',              type: 'button',                                    icon: '📋', label: 'Notas' },
-    { id: 'financeiro',         href: '/CRM/pages/financeiro/index.html',          icon: '💹', label: 'Financeiro' },
-    { id: 'crm-comercial',      href: '/CRM/pages/crm-comercial/index.html',       icon: '🎯', label: 'CRM Comercial',         badge: 'Novo' },
-    { id: 'clientes',           href: '/CRM/pages/clientes/index.html',            icon: '👥', label: 'Clientes' },
-    { id: 'estoque',            href: '/CRM/pages/estoque/index.html',             icon: '📱', label: 'Estoque' },
-    { id: 'compras',            href: '/CRM/pages/compras/index.html',             icon: '🛒', label: 'Compras',                badge: 'Novo' },
-    { id: 'fornecedor',         href: '/CRM/pages/fornecedor/index.html',          icon: '🏭', label: 'Fornecedor' },
-    { id: 'contato',            href: '/CRM/pages/contato/index.html',             icon: '👤', label: 'Contatos',                badge: 'Novo' },
-    { id: 'pendencias',         href: '/CRM/pages/pendencias/index.html',          icon: '🗂️', label: 'Pendências e Contas',   badge: 'Novo' },
-    { id: 'pos-venda',          href: '/CRM/pages/pos-venda/index.html',           icon: '💝', label: 'Pós-venda' },
-    { id: 'garantias',          href: '/CRM/pages/garantias/index.html',           icon: '🛡️', label: 'Garantias' },
-    { id: 'relatorios',         href: '/CRM/pages/relatorios/index.html',          icon: '📊', label: 'Relatórios' },
-    { id: 'agenda',             href: '/CRM/pages/acaodasemana/index.html',        icon: '📅', label: 'Agenda' },
-    { id: 'portal-tecnico',     href: '/CRM/pages/portal-tecnico/index.html',     icon: '🔓', label: 'Portal Técnico' },
-    { id: 'central-automacao',  href: '/CRM/pages/central-organizacao/index.html', icon: '🤖', label: 'Central de Automação' },
-    { id: 'portal-cliente',     href: '/CRM/pages/portal-cliente/admin.html',     icon: '🔷', label: 'Portal do Cliente' },
-    { id: 'backup',             href: '/CRM/pages/backup/index.html',              icon: '🛡️', label: 'Backup do Sistema' },
-    { id: 'config',             href: '/CRM/pages/config/index.html',              icon: '⚙️', label: 'Configurações' },
-    // Central SaaS — visível apenas para Master Admin
-    { id: 'saas',               href: '/CRM/pages/saas/index.html',               icon: '🏢', label: 'Central SaaS',          badge: 'SaaS', masterOnly: true },
-  ];
+// ── Catálogo completo ──────────────────────────────────────────
+export const TODOS_MODULOS = [
+  // Operacional
+  { id: 'os',                  nome: 'Ordem de Serviço',       icone: '📦', descricao: 'Gestão técnica de reparos',              categoria: 'Operacional'   },
+  { id: 'caixa',               nome: 'Caixa',                   icone: '💰', descricao: 'Fluxo financeiro diário',                categoria: 'Financeiro'    },
+  { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '🔔', descricao: 'Alertas e pendências do sistema',       categoria: 'Operacional'   },
+  { id: 'clientes',            nome: 'Clientes',                icone: '👥', descricao: 'Base de clientes',                      categoria: 'Operacional'   },
+  { id: 'estoque',             nome: 'Estoque',                 icone: '📱', descricao: 'Peças e produtos',                      categoria: 'Estoque'       },
+  { id: 'acaodasemana',        nome: 'Agenda',                  icone: '📅', descricao: 'Agenda inteligente e tarefas',          categoria: 'Operacional'   },
+  { id: 'autoatendimento',     nome: 'Autoatendimento',         icone: '🤖', descricao: 'Pré-OS online do site',                 categoria: 'Operacional'   },
+  { id: 'garantias',           nome: 'Garantias',               icone: '🛡️', descricao: 'Termos e configurações de garantia',   categoria: 'Operacional'   },
+  // Financeiro
+  { id: 'financeiro',          nome: 'Financeiro',              icone: '💹', descricao: 'Controle financeiro detalhado',         categoria: 'Financeiro'    },
+  { id: 'despesas',            nome: 'Despesas',                icone: '💸', descricao: 'Controle de despesas e saídas',          categoria: 'Financeiro'    },
+  { id: 'compras',             nome: 'Compras',                 icone: '🛒', descricao: 'Pedidos e recebimentos de peças',       categoria: 'Estoque'       },
+  { id: 'fechamento',          nome: 'Fechamento',              icone: '🔒', descricao: 'Relatório mensal consolidado',          categoria: 'Financeiro'    },
+  { id: 'pendencias',          nome: 'Pendências e Contas',     icone: '📋', descricao: 'Clientes, parceiros e empréstimos',     categoria: 'Financeiro'    },
+  // Comercial
+  { id: 'crm-comercial',       nome: 'CRM Comercial',           icone: '🎯', descricao: 'Leads, orçamentos e oportunidades',     categoria: 'Comercial'     },
+  { id: 'fornecedor',          nome: 'Fornecedor',              icone: '🏭', descricao: 'Gestão de fornecedores',                categoria: 'Comercial'     },
+  { id: 'pos-venda',           nome: 'Pós-venda',               icone: '💝', descricao: 'Fidelização e garantia de clientes',    categoria: 'Comercial'     },
+  { id: 'catalogo',            nome: 'Catálogo',                icone: '🛍️', descricao: 'Produtos e vendas via WhatsApp',       categoria: 'Comercial'     },
+  // Estoque
+  // Relatórios
+  { id: 'relatorios',          nome: 'Relatórios',              icone: '📊', descricao: 'Gráficos e análise do negócio',        categoria: 'Relatórios'    },
+  // Ferramentas
+  { id: 'central-comandos',    nome: 'Central de Comandos',     icone: '⚡', descricao: 'Ferramentas e atalhos rápidos',         categoria: 'Ferramentas'   },
+  { id: 'central-organizacao', nome: 'Central de Automação',    icone: '🔧', descricao: 'WhatsApp, automações e histórico',     categoria: 'Ferramentas'   },
+  { id: 'central-informacoes', nome: 'Central de Informações',  icone: '📚', descricao: 'Comandos, sites, senhas e mais',        categoria: 'Ferramentas'   },
+  { id: 'portal-cliente',      nome: 'Portal do Cliente',       icone: '🔷', descricao: 'Acesso e diagnóstico do cliente',       categoria: 'Ferramentas'   },
+  { id: 'portal-tecnico',      nome: 'Portal Técnico',          icone: '🔓', descricao: 'FRP, firmwares e soluções técnicas',    categoria: 'Ferramentas'   },
+  { id: 'diario',              nome: 'Diário',                  icone: '📔', descricao: 'Organização pessoal e planejamento',    categoria: 'Ferramentas'   },
+  // Administração
+  { id: 'auditoria',           nome: 'Auditoria',               icone: '🔍', descricao: 'Logs e rastreamento de ações',          categoria: 'Administração' },
+  { id: 'lixeira',             nome: 'Lixeira',                 icone: '🗑️', descricao: 'Restaurar itens excluídos',            categoria: 'Administração' },
+  { id: 'integridade',         nome: 'Integridade',             icone: '🛡️', descricao: 'Verificar consistência dos dados',     categoria: 'Administração' },
+  { id: 'homologacao',         nome: 'Homologação',             icone: '🧪', descricao: 'Auditoria completa de integrações',     categoria: 'Administração' },
+  { id: 'backup',              nome: 'Backup do Sistema',       icone: '🛡️', descricao: 'Exportar dados e backup do código',    categoria: 'Administração' },
+  { id: 'config',              nome: 'Configurações',           icone: '⚙️', descricao: 'Ferramentas e configurações do sistema',categoria: 'Administração' },
+  { id: 'favoritos',           nome: 'Favoritos',               icone: '⭐', descricao: 'Acesso rápido aos módulos favoritos',      categoria: 'Ferramentas'   },
+  // SaaS — visível apenas para Master Admin
+  { id: 'saas', nome: 'Central SaaS', icone: '🏢', descricao: 'Painel Master: empresas, planos e usuários', categoria: 'SaaS', masterOnly: true },
+];
 
-  // ── Lê contexto do tenant (sessionStorage, sem import) ───────
-  function _getTenantCtx() {
-    try { return JSON.parse(sessionStorage.getItem('cc_tenant_ctx') || 'null'); } catch { return null; }
-  }
+// ── Estado interno ────────────────────────────────────────────
+let _favs      = null;   // null = não carregado → mostra tudo (backward compat)
+let _unsub     = null;
+let _listeners = [];
 
-  const COLLAPSE_KEY = 'cc_sidebar_state';
-  const ORDER_KEY    = 'cc_sidebar_order';
-  const PREFS_KEY    = 'cc_sidebar_prefs';
-  const W_EXPANDED   = 240;
-  const W_COLLAPSED  = 72;
-  const BAR_HEIGHT   = 56; // altura do brand-header
+// ── Cache local ───────────────────────────────────────────────
+function _readCache() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; }
+}
+function _writeCache(arr) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {}
+}
 
-  // ── CSS ─────────────────────────────────────────────────────
-  const CSS = `
-    #cc-global-sidebar {
-      position: fixed;
-      left: 0;
-      top: ${BAR_HEIGHT}px;
-      bottom: 0;
-      z-index: 500;
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-surface, #0d0e10);
-      border-right: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-      width: ${W_EXPANDED}px;
-      transition: width 200ms cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden;
-    }
-    #cc-global-sidebar.cc-collapsed {
-      width: ${W_COLLAPSED}px;
-    }
+// ── Notificação de mudança ────────────────────────────────────
+function _notify() {
+  _listeners.forEach(fn => { try { fn(_favs); } catch {} });
+  window.dispatchEvent(new CustomEvent('cc-modulos-changed'));
+}
 
-    /* Empurra o conteúdo da página para a direita */
-    body.cc-has-sidebar {
-      padding-left: ${W_EXPANDED}px !important;
-      transition: padding-left 200ms cubic-bezier(0.4, 0, 0.2, 1);
-      box-sizing: border-box;
-    }
-    body.cc-has-sidebar.cc-sidebar-collapsed {
-      padding-left: ${W_COLLAPSED}px !important;
-    }
+// ── API pública ───────────────────────────────────────────────
 
-    /* Botão toggle */
-    #cc-sidebar-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: 40px;
-      flex-shrink: 0;
-      background: transparent;
-      border: none;
-      border-bottom: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-      color: var(--text-secondary, #8a9ab5);
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      transition: background 150ms, color 150ms;
-    }
-    #cc-sidebar-toggle:hover {
-      background: var(--bg-hover, rgba(255,255,255,0.04));
-      color: var(--cell-green, #00c853);
-    }
-    .cc-toggle-icon {
-      transition: transform 200ms;
-      display: inline-block;
-    }
-    #cc-global-sidebar.cc-collapsed .cc-toggle-icon {
-      transform: rotate(180deg);
-    }
+/** Retorna array de IDs favoritos, ou null se ainda não definido (mostra tudo). */
+export function getFavoritosHome() { return _favs; }
 
-    /* Lista de módulos */
-    #cc-sidebar-nav {
-      flex: 1;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding: 6px 0;
-    }
-    #cc-sidebar-nav::-webkit-scrollbar { width: 4px; }
-    #cc-sidebar-nav::-webkit-scrollbar-thumb {
-      background: var(--border-medium, rgba(255,255,255,0.1));
-      border-radius: 2px;
-    }
+/** Retorna true se o módulo está favoritado. */
+export function isFavorito(id) {
+  if (_favs === null) return false;
+  return _favs.includes(id);
+}
 
-    /* Item genérico */
-    .cc-si {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 9px 14px;
-      color: var(--text-secondary, #8a9ab5);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      white-space: nowrap;
-      transition: background 150ms, color 150ms;
-      position: relative;
-      background: none;
-      border: none;
-      width: 100%;
-      text-align: left;
-      cursor: pointer;
-      font-family: inherit;
-      box-sizing: border-box;
-    }
-    .cc-si:hover {
-      background: var(--bg-hover, rgba(255,255,255,0.04));
-      color: var(--text-primary, #e8edf5);
-    }
-    .cc-si::before {
-      content: '';
-      position: absolute;
-      left: 0; top: 0; bottom: 0;
-      width: 3px;
-      background: transparent;
-      border-radius: 0 2px 2px 0;
-      transition: background 150ms;
-    }
-    .cc-si:hover::before,
-    .cc-si.cc-active::before {
-      background: var(--cell-green, #00c853);
-    }
+/** Registra callback chamado quando favoritos mudam. */
+export function onModulosChanged(fn) { _listeners.push(fn); }
 
-    /* Item ativo (módulo atual) */
-    .cc-si.cc-active {
-      color: var(--cell-green, #00c853);
-      font-weight: 700;
-    }
+/**
+ * Define diretamente os favoritos da home — usado ao aplicar layouts prontos.
+ * Passa null para limpar e mostrar todos os módulos.
+ */
+export async function setFavoritos(ids) {
+  _favs = Array.isArray(ids) ? ids.slice(0, MAX_FAVS) : null;
+  if (_favs !== null) _writeCache(_favs);
+  else { try { localStorage.removeItem(LS_KEY); } catch {} }
+  _notify();
+  await _salvar();
+}
 
-    /* Item de destaque (OS) */
-    .cc-si.cc-highlight {
-      color: var(--cell-green, #00c853);
-      font-weight: 700;
-    }
-    .cc-si.cc-highlight .cc-si-icon { font-size: 18px; }
-
-    /* Badge "Novo" */
-    .cc-si-badge {
-      font-size: 9px;
-      font-weight: 700;
-      background: var(--cell-green, #00c853);
-      color: #000;
-      border-radius: 4px;
-      padding: 1px 5px;
-      margin-left: auto;
-      flex-shrink: 0;
-      transition: opacity 150ms;
-    }
-    #cc-global-sidebar.cc-collapsed .cc-si-badge { opacity: 0; pointer-events: none; }
-
-    /* Ícone e label */
-    .cc-si-icon {
-      font-size: 16px;
-      width: 24px;
-      text-align: center;
-      flex-shrink: 0;
-      transition: filter 150ms, transform 150ms;
-    }
-    .cc-si:hover .cc-si-icon {
-      filter: brightness(1.5);
-      transform: scale(1.12);
-    }
-    .cc-si-label {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      transition: opacity 150ms, max-width 200ms;
-      max-width: 160px;
-    }
-    #cc-global-sidebar.cc-collapsed .cc-si-label {
-      opacity: 0;
-      max-width: 0;
-    }
-
-    /* Drag handle */
-    .cc-drag-handle {
-      font-size: 12px;
-      color: var(--text-muted, rgba(255,255,255,0.2));
-      cursor: grab;
-      flex-shrink: 0;
-      opacity: 0;
-      transition: opacity 150ms;
-    }
-    .cc-si:hover .cc-drag-handle { opacity: 1; }
-    #cc-global-sidebar.cc-collapsed .cc-drag-handle { display: none; }
-
-    /* Drag visual */
-    .cc-si.cc-dragging { opacity: 0.4; }
-    .cc-si.cc-drag-over { background: var(--bg-hover, rgba(255,255,255,0.06)); }
-
-    /* Item fixado — pin visual no modo expandido */
-    #cc-global-sidebar:not(.cc-collapsed) .cc-si.cc-pinned .cc-si-label::after {
-      content: ' 📌';
-      font-size: 9px;
-      opacity: 0.45;
-    }
-
-    /* Rodapé */
-    #cc-sidebar-footer {
-      flex-shrink: 0;
-      border-top: 1px solid var(--border-subtle, rgba(255,255,255,0.06));
-      padding: 4px 0;
-    }
-    .cc-si--central-modulos:hover {
-      color: var(--cell-green, #00c853) !important;
-    }
-
-    /* Tooltip (modo recolhido) */
-    #cc-sidebar-tip {
-      position: fixed;
-      left: ${W_COLLAPSED + 8}px;
-      background: #111827;
-      color: #fff;
-      font-size: 12px;
-      font-weight: 500;
-      padding: 6px 12px;
-      border-radius: 6px;
-      white-space: nowrap;
-      z-index: 9999;
-      pointer-events: none;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.45);
-      opacity: 0;
-      transition: opacity 80ms;
-    }
-    #cc-sidebar-tip.cc-tip-visible { opacity: 1; }
-
-    /* Mobile: manter recolhido */
-    @media (max-width: 680px) {
-      #cc-global-sidebar { width: ${W_COLLAPSED}px !important; }
-      body.cc-has-sidebar { padding-left: ${W_COLLAPSED}px !important; }
-      body.cc-has-sidebar.cc-sidebar-collapsed { padding-left: ${W_COLLAPSED}px !important; }
-    }
-  `;
-
-  // ── HTML builder ─────────────────────────────────────────────
-  function buildHTML() {
-    const path = window.location.pathname;
-
-    // Filtra módulos com base no contexto do tenant
-    const ctx          = _getTenantCtx();
-    const isMaster     = ctx?.perfil === 'master_admin';
-    const modulosAtivos = ctx?.modulos_ativos || null; // null = sem restrição
-
-    const visibleItems = ITEMS.filter(item => {
-      if (item.masterOnly) return isMaster;               // SaaS só para master
-      if (!modulosAtivos || isMaster) return true;        // sem restrição
-      if (item.type === 'button') return true;            // botões sempre visíveis
-      return modulosAtivos.includes(item.id);
-    });
-
-    const itemsHTML = visibleItems.map(item => {
-      if (item.type === 'button') {
-        return `<button class="cc-si" data-sid="${item.id}" data-tip="${item.label}" draggable="true">
-          <span class="cc-drag-handle">⠿</span>
-          <span class="cc-si-icon">${item.icon}</span>
-          <span class="cc-si-label">${item.label}</span>
-        </button>`;
-      }
-      // Detecta módulo ativo comparando o pathname
-      const isActive = path.includes('/' + item.id + '/') ||
-                       (item.id === 'agenda' && path.includes('/acaodasemana/')) ||
-                       (item.id === 'central-automacao' && path.includes('/central-organizacao/'));
-      const classes = ['cc-si',
-        item.highlight ? 'cc-highlight' : '',
-        isActive       ? 'cc-active'    : ''
-      ].filter(Boolean).join(' ');
-
-      return `<a class="${classes}" href="${item.href}" data-sid="${item.id}" data-tip="${item.label}" draggable="true">
-        <span class="cc-drag-handle">⠿</span>
-        <span class="cc-si-icon">${item.icon}</span>
-        <span class="cc-si-label">${item.label}</span>
-        ${item.badge ? `<span class="cc-si-badge">${item.badge}</span>` : ''}
-      </a>`;
-    }).join('');  // fim visibleItems.map
-
-    return `
-      <button id="cc-sidebar-toggle" title="Recolher / expandir menu">
-        <span class="cc-toggle-icon">◀</span>
-      </button>
-      <div id="cc-sidebar-nav">${itemsHTML}</div>
-      <div id="cc-sidebar-footer">
-        <button class="cc-si cc-si--central-modulos" id="cc-btn-central-modulos"
-          data-tip="Central de Módulos" title="Central de Módulos — todos os módulos do sistema">
-          <span class="cc-si-icon">🧩</span>
-          <span class="cc-si-label">Central de Módulos</span>
-        </button>
-      </div>
-    `;
-  }
-
-  // ── Injeção de CSS ────────────────────────────────────────────
-  function injectStyles() {
-    if (document.getElementById('cc-sidebar-css')) return;
-    const s = document.createElement('style');
-    s.id = 'cc-sidebar-css';
-    s.textContent = CSS;
-    document.head.appendChild(s);
-  }
-
-  // ── Injeção do sidebar ────────────────────────────────────────
-  function injectSidebar() {
-    const nav = document.createElement('aside');
-    nav.id = 'cc-global-sidebar';
-    nav.setAttribute('aria-label', 'Menu principal');
-    nav.innerHTML = buildHTML();
-    document.body.prepend(nav);
-
-    // Tooltip element
-    const tip = document.createElement('div');
-    tip.id = 'cc-sidebar-tip';
-    document.body.appendChild(tip);
-  }
-
-  // ── Collapse / Expand ─────────────────────────────────────────
-  function setupToggle(sidebar) {
-    const btn = document.getElementById('cc-sidebar-toggle');
-    if (!btn) return;
-
-    const collapsed = localStorage.getItem(COLLAPSE_KEY) === '1';
-    applyCollapse(sidebar, collapsed);
-
-    btn.addEventListener('click', () => {
-      const now = sidebar.classList.contains('cc-collapsed');
-      applyCollapse(sidebar, !now);
-      localStorage.setItem(COLLAPSE_KEY, !now ? '1' : '0');
-    });
-  }
-
-  function applyCollapse(sidebar, collapsed) {
-    sidebar.classList.toggle('cc-collapsed', collapsed);
-    document.body.classList.toggle('cc-sidebar-collapsed', collapsed);
-  }
-
-  // ── Drag & Drop reorder ──────────────────────────────────────
-  function setupDrag(navEl) {
-    const ORDER_KEY_LOCAL = ORDER_KEY;
-
-    const saveOrder = () => {
-      const ids = [...navEl.querySelectorAll('.cc-si[data-sid]')].map(el => el.dataset.sid);
-      localStorage.setItem(ORDER_KEY_LOCAL, JSON.stringify(ids));
-    };
-
-    const restoreOrder = () => {
-      try {
-        const saved = JSON.parse(localStorage.getItem(ORDER_KEY_LOCAL) || '[]');
-        if (!saved.length) return;
-        saved.forEach(sid => {
-          const el = navEl.querySelector(`[data-sid="${sid}"]`);
-          if (el) navEl.appendChild(el);
-        });
-      } catch (_) {}
-    };
-
-    restoreOrder();
-
-    let dragSrc = null;
-
-    navEl.addEventListener('dragstart', e => {
-      const item = e.target.closest('.cc-si[data-sid]');
-      if (!item) return;
-      dragSrc = item;
-      item.classList.add('cc-dragging');
-      e.dataTransfer.effectAllowed = 'move';
-    });
-
-    navEl.addEventListener('dragend', () => {
-      if (dragSrc) dragSrc.classList.remove('cc-dragging');
-      navEl.querySelectorAll('.cc-drag-over').forEach(el => el.classList.remove('cc-drag-over'));
-      dragSrc = null;
-    });
-
-    navEl.addEventListener('dragover', e => {
-      e.preventDefault();
-      const item = e.target.closest('.cc-si[data-sid]');
-      if (!item || item === dragSrc) return;
-      navEl.querySelectorAll('.cc-drag-over').forEach(el => el.classList.remove('cc-drag-over'));
-      item.classList.add('cc-drag-over');
-      e.dataTransfer.dropEffect = 'move';
-    });
-
-    navEl.addEventListener('dragleave', e => {
-      const item = e.target.closest('.cc-si[data-sid]');
-      if (item) item.classList.remove('cc-drag-over');
-    });
-
-    navEl.addEventListener('drop', e => {
-      e.preventDefault();
-      const target = e.target.closest('.cc-si[data-sid]');
-      if (!target || !dragSrc || target === dragSrc) return;
-      target.classList.remove('cc-drag-over');
-      const after = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
-      navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
-      saveOrder();
-    });
-  }
-
-  // ── Tooltip (sidebar recolhida) ───────────────────────────────
-  function setupTooltip(sidebar) {
-    const tip = document.getElementById('cc-sidebar-tip');
-    if (!tip) return;
-
-    sidebar.addEventListener('mouseover', e => {
-      if (!sidebar.classList.contains('cc-collapsed')) return;
-      const item = e.target.closest('.cc-si');
-      if (!item) return;
-      const label = item.dataset.tip || '';
-      if (!label) return;
-      tip.textContent = label;
-      const rect = item.getBoundingClientRect();
-      tip.style.top = (rect.top + rect.height / 2 - 14) + 'px';
-      tip.classList.add('cc-tip-visible');
-    });
-
-    sidebar.addEventListener('mouseleave', () => {
-      tip.classList.remove('cc-tip-visible');
-    });
-
-    sidebar.addEventListener('mouseout', e => {
-      if (!e.target.closest('.cc-si')) {
-        tip.classList.remove('cc-tip-visible');
-      }
-    });
-  }
-
-  // ── Notas button → delega ao dock ────────────────────────────
-  function setupNotasButton(navEl) {
-    const btn = navEl.querySelector('[data-sid="notas"]');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      const dockNotas = document.getElementById('dock-notas');
-      if (dockNotas) { dockNotas.click(); return; }
-      document.dispatchEvent(new CustomEvent('cc:open-notas'));
-    });
-  }
-
-  // ── Aplica preferências de sidebar (visibilidade + ordem) ────
-  function _applyPrefs() {
-    const navEl = document.getElementById('cc-sidebar-nav');
-    if (!navEl) return;
-
-    let prefs = null;
-    try { prefs = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch {}
-
-    if (!prefs || !Array.isArray(prefs.itens) || !prefs.itens.length) {
-      // Nenhuma pref salva — aplica só a ordenação antiga (drag nativo)
-      try {
-        const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
-        if (saved.length) {
-          saved.forEach(sid => {
-            const el = navEl.querySelector(`[data-sid="${sid}"]`);
-            if (el) navEl.appendChild(el);
-          });
-        }
-      } catch {}
-      return;
-    }
-
-    const itens = prefs.itens;
-
-    // Aplica visibilidade
-    navEl.querySelectorAll('.cc-si[data-sid]').forEach(el => {
-      const conf = itens.find(i => i.id === el.dataset.sid);
-      el.style.display = (conf && conf.visivel === false) ? 'none' : '';
-      el.classList.toggle('cc-pinned', !!(conf && conf.fixado));
-    });
-
-    // Reordena: fixados primeiro, depois por ordem
-    const sorted = [...itens]
-      .filter(i => i.visivel !== false)
-      .sort((a, b) => {
-        if (a.fixado && !b.fixado) return -1;
-        if (!a.fixado && b.fixado) return 1;
-        return (a.ordem ?? 999) - (b.ordem ?? 999);
-      });
-
-    sorted.forEach(conf => {
-      const el = navEl.querySelector(`[data-sid="${conf.id}"]`);
-      if (el) navEl.appendChild(el);
-    });
-  }
-
-  // ── Central de Módulos button ─────────────────────────────────
-  function setupCentralModulosBtn() {
-    const btn = document.getElementById('cc-btn-central-modulos');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      // Navega direto para a Central de Controle
-      window.location.href = '/CRM/pages/central-modulos/index.html';
-    });
-  }
-
-  // ── Init ─────────────────────────────────────────────────────
-  function init() {
-    injectStyles();
-    injectSidebar();
-
-    const sidebar = document.getElementById('cc-global-sidebar');
-    const navEl   = document.getElementById('cc-sidebar-nav');
-    if (!sidebar || !navEl) return;
-
-    document.body.classList.add('cc-has-sidebar');
-
-    setupToggle(sidebar);
-    setupDrag(navEl);
-    setupTooltip(sidebar);
-    setupNotasButton(navEl);
-    setupCentralModulosBtn();
-
-    // Aplica prefs salvas imediatamente (localStorage) e ao receber evento
-    _applyPrefs();
-    window.addEventListener('cc-sidebar-changed', _applyPrefs);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+/**
+ * Alterna o favorito de um módulo.
+ * Retorna false se o limite MAX_FAVS foi atingido ao adicionar.
+ */
+export async function toggleFavorito(id) {
+  const cur = _favs ? [..._favs] : [];
+  const idx = cur.indexOf(id);
+  if (idx >= 0) {
+    cur.splice(idx, 1);
   } else {
-    init();
+    if (cur.length >= MAX_FAVS) {
+      _toast(`Limite de ${MAX_FAVS} módulos favoritos atingido.`);
+      return false;
+    }
+    cur.push(id);
+  }
+  _favs = cur;
+  _writeCache(cur);
+  _notify();
+  await _salvar();
+  return true;
+}
+
+/** Abre o modal da Central de Módulos. */
+export function abrirCentralModulos() {
+  _buildModal();
+  const o = document.getElementById('cm-overlay');
+  if (o) {
+    o.classList.add('open');
+    _updateLayoutSection();
+    setTimeout(() => document.getElementById('cm-search-input')?.focus(), 80);
+  }
+}
+
+/** Fecha o modal. */
+export function fecharCentralModulos() {
+  document.getElementById('cm-overlay')?.classList.remove('open');
+}
+
+// ── Firestore ─────────────────────────────────────────────────
+async function _salvar() {
+  try {
+    await setDoc(PREFS_PATH(getUid()), {
+      favoritos:    _favs,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+  } catch (e) {
+    console.warn('[CentralModulos] salvar:', e);
+  }
+}
+
+function _assinar(uid) {
+  if (_unsub) { _unsub(); _unsub = null; }
+  _unsub = onSnapshot(PREFS_PATH(uid), (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      const remote = Array.isArray(data.favoritos) ? data.favoritos : null;
+      if (JSON.stringify(remote) !== JSON.stringify(_favs)) {
+        _favs = remote;
+        if (remote) _writeCache(remote);
+        _notify();
+      }
+    } else {
+      // Sem documento ainda: tenta cache local
+      const cached = _readCache();
+      if (cached !== null && _favs === null) {
+        _favs = cached;
+        _notify();
+      }
+      // Se não há cache: _favs=null → mostra todos os módulos (backward compat)
+    }
+  }, (e) => console.warn('[CentralModulos] onSnapshot:', e));
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function _toast(msg) {
+  let el = document.getElementById('cm-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'cm-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = 'cm-toast-show';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+// ── Estilos (injetados uma vez) ───────────────────────────────
+function _injectStyles() {
+  if (document.getElementById('cm-styles')) return;
+  const css = `
+/* ── Central de Módulos — modal ── */
+#cm-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 3000;
+  align-items: flex-start; justify-content: center;
+  padding: 20px 16px; box-sizing: border-box;
+}
+#cm-overlay.open { display: flex; }
+#cm-modal {
+  background: #0d0f14;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 16px; width: 100%; max-width: 620px;
+  max-height: 90vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,.7); overflow: hidden;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+#cm-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.07); flex-shrink: 0;
+}
+#cm-title {
+  font-size: 16px; font-weight: 800; color: #f5f7fa;
+  display: flex; align-items: center; gap: 8px;
+}
+#cm-count {
+  font-size: 11px; font-weight: 600; color: #6b7280;
+  background: rgba(255,255,255,.07); padding: 2px 8px;
+  border-radius: 99px; margin-left: 4px;
+}
+#cm-close-btn {
+  background: none; border: none; color: #6b7280;
+  font-size: 20px; cursor: pointer; line-height: 1;
+  padding: 4px 8px; border-radius: 6px; transition: background .15s, color .15s;
+}
+#cm-close-btn:hover { background: rgba(255,80,80,.15); color: #ff6b6b; }
+#cm-search-wrap {
+  padding: 14px 20px 10px; flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+#cm-search-input {
+  width: 100%; background: #1a1d23;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 8px; padding: 10px 14px;
+  color: #f5f7fa; font-size: 13px; font-family: inherit;
+  outline: none; box-sizing: border-box; transition: border-color .15s;
+}
+#cm-search-input:focus { border-color: #00c853; }
+#cm-search-input::placeholder { color: #6b7280; }
+#cm-legend {
+  font-size: 11px; color: #4b5563; padding: 6px 20px 0; flex-shrink: 0;
+}
+#cm-body {
+  overflow-y: auto; flex: 1; padding: 4px 0 16px;
+}
+#cm-body::-webkit-scrollbar { width: 4px; }
+#cm-body::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.12); border-radius: 2px;
+}
+.cm-cat-header {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .6px;
+  padding: 14px 20px 6px;
+}
+.cm-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 20px; cursor: pointer; transition: background .12s;
+}
+.cm-item:hover { background: rgba(255,255,255,.04); }
+.cm-item-icon { font-size: 22px; width: 32px; text-align: center; flex-shrink: 0; }
+.cm-item-info { flex: 1; min-width: 0; }
+.cm-item-nome {
+  font-size: 13.5px; font-weight: 600; color: #e8edf5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cm-item-desc { font-size: 11.5px; color: #8a9ab5; margin-top: 1px; }
+.cm-star {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  padding: 4px 6px; border-radius: 6px; transition: background .15s, transform .12s;
+  flex-shrink: 0; line-height: 1; color: #4b5563;
+}
+.cm-star:hover { background: rgba(255,200,0,.10); transform: scale(1.2); }
+.cm-star.on { color: #f5a623; }
+.cm-star.on:hover { color: #e5952d; }
+.cm-empty-search {
+  text-align: center; color: #6b7280;
+  font-size: 13px; padding: 32px 20px;
+}
+
+/* ── Estrela nos cards da home ── */
+.module-card { position: relative; overflow: visible; }
+.mc-star {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(10,12,16,.7); backdrop-filter: blur(4px);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px; font-size: 13px; line-height: 1;
+  padding: 3px 5px; cursor: pointer; z-index: 5;
+  transition: background .15s, color .15s, transform .12s, opacity .15s;
+  color: #6b7280; opacity: 0;
+}
+.module-card:hover .mc-star { opacity: 1; }
+.mc-star.on { color: #f5a623; opacity: 1; }
+.mc-star:hover { background: rgba(255,200,0,.18); color: #f5a623; transform: scale(1.15); }
+
+/* ── Estado vazio na home ── */
+#cm-home-empty {
+  display: none; flex-direction: column; align-items: center;
+  justify-content: center; padding: 56px 24px; text-align: center;
+  gap: 12px; font-family: 'Inter', system-ui, sans-serif;
+}
+.cm-empty-ico { font-size: 52px; }
+.cm-empty-tit { font-size: 18px; font-weight: 700; color: #c8d0dc; }
+.cm-empty-sub { font-size: 13px; color: #8a9ab5; }
+.cm-empty-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 10px; padding: 11px 22px;
+  background: rgba(0,200,83,.14); border: 1px solid rgba(0,200,83,.4);
+  border-radius: 9px; color: #00c853; font-size: 13.5px; font-weight: 600;
+  cursor: pointer; font-family: inherit; transition: background .15s;
+}
+.cm-empty-cta:hover { background: rgba(0,200,83,.24); }
+
+/* ── Layout do Sistema — seção no modal ── */
+#cm-layout-section {
+  padding: 12px 20px 10px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  flex-shrink: 0;
+}
+.cm-layout-title {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  text-transform: uppercase; letter-spacing: .6px;
+  margin-bottom: 10px;
+}
+.cm-layout-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 8px;
+}
+.cm-layout-row:last-child { margin-bottom: 0; }
+.cm-layout-row-label {
+  font-size: 12px; color: #8a9ab5; flex-shrink: 0; min-width: 120px;
+}
+.cm-layout-modes { display: flex; gap: 4px; flex-wrap: wrap; }
+.cm-lm-btn {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; color: rgba(255,255,255,.55); font-size: 11.5px;
+  font-weight: 500; padding: 5px 10px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  font-family: inherit; white-space: nowrap; line-height: 1;
+}
+.cm-lm-btn:hover { background: rgba(255,255,255,.09); color: rgba(255,255,255,.85); }
+.cm-lm-btn.active {
+  background: rgba(0,200,83,.14); border-color: rgba(0,200,83,.4);
+  color: #00c853; font-weight: 600;
+}
+.cm-lc-btn {
+  background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px; color: rgba(255,255,255,.55); font-size: 11.5px;
+  font-weight: 500; padding: 5px 12px; cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  font-family: inherit; white-space: nowrap; line-height: 1;
+}
+.cm-lc-btn:hover { background: rgba(255,255,255,.09); color: rgba(255,255,255,.85); }
+.cm-lc-btn.active {
+  background: rgba(99,179,237,.12); border-color: rgba(99,179,237,.35);
+  color: #63b3ed; font-weight: 600;
+}
+
+/* ── Toast ── */
+#cm-toast {
+  position: fixed; bottom: 24px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #151920; border: 1px solid rgba(0,200,83,.3);
+  color: #e8edf5; font-size: 13px; font-weight: 500;
+  padding: 10px 20px; border-radius: 8px; z-index: 9999;
+  pointer-events: none; opacity: 0;
+  transition: opacity .25s, transform .25s;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+#cm-toast.cm-toast-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  `;
+  const s = document.createElement('style');
+  s.id = 'cm-styles';
+  s.textContent = css;
+  document.head.appendChild(s);
+}
+
+// ── Layout do Sistema ─────────────────────────────────────────
+const _HOME_MODE_KEY = 'cc_home_mode';
+const _COMPACT_KEY   = 'dashboard_modo_compacto';
+
+function _applyHomeMode(modo) {
+  const MODOS = ['modulos', 'dashboard', 'completo'];
+  if (!MODOS.includes(modo)) modo = 'modulos';
+  // Proxy: aciona o botão oculto do dashboard (carrega Firestore sync)
+  const hiddenBtn = document.querySelector(`.home-mode-btn[data-mode="${modo}"]`);
+  if (hiddenBtn) {
+    hiddenBtn.click();
+  } else {
+    document.documentElement.setAttribute('data-home-mode', modo);
+    localStorage.setItem(_HOME_MODE_KEY, modo);
+  }
+  _updateLayoutSection();
+}
+
+function _toggleCompact() {
+  // Proxy: aciona o botão oculto do dashboard (carrega Firestore sync)
+  const hiddenBtn = document.getElementById('compact-mode-toggle');
+  if (hiddenBtn) {
+    hiddenBtn.click();
+  } else {
+    const isCompact = localStorage.getItem(_COMPACT_KEY) === 'true';
+    const novo = !isCompact;
+    document.body.classList.toggle('modo-compacto', novo);
+    localStorage.setItem(_COMPACT_KEY, novo ? 'true' : '');
+  }
+  _updateLayoutSection();
+}
+
+function _updateLayoutSection() {
+  const modo = document.documentElement.getAttribute('data-home-mode')
+    || localStorage.getItem(_HOME_MODE_KEY)
+    || 'modulos';
+  const isCompact = document.body.classList.contains('modo-compacto')
+    || localStorage.getItem(_COMPACT_KEY) === 'true';
+
+  document.querySelectorAll('#cm-layout-modes .cm-lm-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === modo);
+  });
+
+  const cBtn = document.getElementById('cm-layout-compact');
+  if (cBtn) {
+    cBtn.textContent = isCompact ? '▣ Compacto' : '▢ Normal';
+    cBtn.classList.toggle('active', isCompact);
+  }
+}
+
+// ── Modal ─────────────────────────────────────────────────────
+let _modalBuilt = false;
+
+function _buildModal() {
+  if (_modalBuilt) { _renderBody(''); return; }
+  _modalBuilt = true;
+
+  const o = document.createElement('div');
+  o.id = 'cm-overlay';
+  o.innerHTML = `
+    <div id="cm-modal" role="dialog" aria-modal="true" aria-label="Central de Módulos">
+      <div id="cm-header">
+        <span id="cm-title">🧩 Central de Módulos <span id="cm-count"></span></span>
+        <button id="cm-close-btn" aria-label="Fechar">✕</button>
+      </div>
+      <div id="cm-search-wrap">
+        <input id="cm-search-input" type="text"
+          placeholder="🔍 Buscar por nome, descrição ou categoria…" autocomplete="off">
+      </div>
+      <div id="cm-layout-section">
+        <div class="cm-layout-title">⚙️ Layout do Sistema</div>
+        <div class="cm-layout-row">
+          <span class="cm-layout-row-label">Modo de exibição</span>
+          <div class="cm-layout-modes" id="cm-layout-modes">
+            <button class="cm-lm-btn" data-mode="modulos">📦 Módulos</button>
+            <button class="cm-lm-btn" data-mode="dashboard">📊 Dashboard</button>
+            <button class="cm-lm-btn" data-mode="completo">⊞ Completo</button>
+          </div>
+        </div>
+        <div class="cm-layout-row">
+          <span class="cm-layout-row-label">Tamanho dos cards</span>
+          <button class="cm-lc-btn" id="cm-layout-compact">▢ Normal</button>
+        </div>
+      </div>
+      <div id="cm-legend">⭐ = aparece na home &nbsp;|&nbsp; ☆ = oculto na home</div>
+      <div id="cm-body"></div>
+    </div>`;
+  document.body.appendChild(o);
+
+  document.getElementById('cm-close-btn').addEventListener('click', fecharCentralModulos);
+  o.addEventListener('click', (e) => { if (e.target === o) fecharCentralModulos(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharCentralModulos(); });
+  document.getElementById('cm-search-input').addEventListener('input', (e) => {
+    _renderBody(e.target.value.trim().toLowerCase());
+  });
+
+  document.getElementById('cm-layout-modes').addEventListener('click', (e) => {
+    const btn = e.target.closest('.cm-lm-btn');
+    if (btn && btn.dataset.mode) _applyHomeMode(btn.dataset.mode);
+  });
+  document.getElementById('cm-layout-compact').addEventListener('click', _toggleCompact);
+
+  _renderBody('');
+}
+
+function _renderBody(filtro) {
+  const body = document.getElementById('cm-body');
+  if (!body) return;
+
+  // Módulos masterOnly só aparecem para Master Admin
+  let isMaster = false;
+  try {
+    const ctx = JSON.parse(sessionStorage.getItem('cc_tenant_ctx') || 'null');
+    isMaster = ctx?.perfil === 'master_admin';
+  } catch {}
+
+  let lista = TODOS_MODULOS.filter(m => !m.masterOnly || isMaster);
+  if (filtro) {
+    lista = lista.filter(m =>
+      m.nome.toLowerCase().includes(filtro) ||
+      m.descricao.toLowerCase().includes(filtro) ||
+      m.categoria.toLowerCase().includes(filtro)
+    );
   }
 
-})();
+  // Atualiza contador de favoritos
+  const favCount = _favs ? _favs.length : 0;
+  const countEl = document.getElementById('cm-count');
+  if (countEl) countEl.textContent = _favs !== null ? `${favCount} / ${MAX_FAVS} favoritos` : '';
+
+  if (lista.length === 0) {
+    body.innerHTML = `<div class="cm-empty-search">Nenhum módulo encontrado para "<strong>${_esc(filtro)}</strong>"</div>`;
+    return;
+  }
+
+  // Agrupar por categoria (mantém ordem de aparição no catálogo)
+  const grupos = {};
+  const ordem  = [];
+  lista.forEach(m => {
+    if (!grupos[m.categoria]) { grupos[m.categoria] = []; ordem.push(m.categoria); }
+    grupos[m.categoria].push(m);
+  });
+
+  body.innerHTML = ordem.map(cat => `
+    <div class="cm-cat-header">${_esc(cat)}</div>
+    ${grupos[cat].map(m => {
+      const on = _favs !== null && _favs.includes(m.id);
+      return `<div class="cm-item" data-cid="${m.id}">
+        <span class="cm-item-icon">${m.icone}</span>
+        <div class="cm-item-info">
+          <div class="cm-item-nome">${_esc(m.nome)}</div>
+          <div class="cm-item-desc">${_esc(m.descricao)}</div>
+        </div>
+        <button class="cm-star ${on ? 'on' : ''}" data-cid="${m.id}"
+          title="${on ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}">${on ? '⭐' : '☆'}</button>
+      </div>`;
+    }).join('')}
+  `).join('');
+
+  // Clique no item → navega
+  function _urlModulo(id) {
+    const base = '/CRM/pages/';
+    const mapa = {
+      'os':                    'os/index.html',
+      'caixa':                 'caixa/index.html',
+      'central-alertas':       'central-alertas/index.html',
+      'clientes':              'clientes/index.html',
+      'estoque':               'estoque/index.html',
+      'acaodasemana':          'acaodasemana/index.html',
+      'autoatendimento':       'autoatendimento/index.html',
+      'garantias':             'garantias/index.html',
+      'financeiro':            'financeiro/index.html',
+      'compras':               'compras/index.html',
+      'fechamento':            'fechamento/index.html',
+      'pendencias':            'pendencias/index.html',
+      'crm-comercial':         'crm-comercial/index.html',
+      'fornecedor':            'fornecedor/index.html',
+      'pos-venda':             'pos-venda/index.html',
+      'catalogo':              'catalogo/index.html',
+      'relatorios':            'relatorios/index.html',
+      'central-comandos':      'central-comandos/index.html',
+      'central-organizacao':   'central-organizacao/index.html',
+      'central-informacoes':   'central-informacoes/index.html',
+      'portal-cliente':        'portal-cliente/admin.html',
+      'portal-tecnico':        'portal-tecnico/index.html',
+      'diario':                'diario/index.html',
+      'auditoria':             'auditoria/index.html',
+      'lixeira':               'lixeira/index.html',
+      'integridade':           'integridade/index.html',
+      'homologacao':           'homologacao/index.html',
+      'backup':                'backup/index.html',
+      'config':                'config/index.html',
+      'mensagens-wpp':         'mensagens-wpp/index.html',
+      'venda-rapida':          'venda-rapida/index.html',
+      'saas':                  'saas/index.html',
+    };
+    return mapa[id] ? base + mapa[id] : null;
+  }
+
+  body.querySelectorAll('.cm-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.cm-star')) return;
+      const id = el.dataset.cid;
+      const url = _urlModulo(id);
+      if (url) {
+        fecharCentralModulos();
+        window.location.href = url;
+      } else if (window.__cmNavigate) {
+        window.__cmNavigate(id);
+        fecharCentralModulos();
+      }
+    });
+  });
+
+  // Clique na estrela → toggle
+  body.querySelectorAll('.cm-star').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await toggleFavorito(btn.dataset.cid);
+      _renderBody(filtro); // re-renderiza mantendo o filtro
+    });
+  });
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function _esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// ── Init ───────────────────────────────────────────────────────
+export function init() {
+  _injectStyles();
+
+  // Carrega cache local imediatamente (sem esperar Firestore)
+  const cached = _readCache();
+  if (cached !== null) { _favs = cached; _notify(); }
+
+  // Assina Firestore ao obter / trocar UID
+  onUid(() => _assinar(getUid()));
+
+  // Verifica URL param para auto-abrir
+  if (new URLSearchParams(window.location.search).get('abrir') === 'central-modulos') {
+    setTimeout(() => abrirCentralModulos(), 600);
+  }
+
+  // Expõe globalmente para sidebar.js, mobile.js e outros scripts
+  window.abrirCentralModulos  = abrirCentralModulos;
+  window.__ccSetFavoritos     = setFavoritos;
+  window.__ccGetFavoritos     = getFavoritosHome;
+}
