@@ -86,6 +86,10 @@
                         <span class="info-tipo-icon">📄</span>
                         <span>Documento</span>
                     </button>
+                    <button class="info-tipo-btn" onclick="abrirFormContato()" data-icon="👤">
+                        <span class="info-tipo-icon">👤</span>
+                        <span>Contato</span>
+                    </button>
                 </div>
             </div>
         </div>
@@ -209,6 +213,40 @@
                     <div id="info-arquivo-carregado" style="display:none;" class="info-arquivo-status">
                         <span id="info-arquivo-nome"></span>
                         <button type="button" onclick="limparArquivo()">🗑️</button>
+                    </div>
+                </div>
+
+                <!-- CONTATO -->
+                <div id="info-form-contato" class="info-form-type" style="display:none;">
+                    <div class="info-form-group">
+                        <label>WhatsApp</label>
+                        <input type="tel" id="info-f-contato-whatsapp" placeholder="Ex: (62) 99999-9999">
+                    </div>
+                    <div class="info-form-group info-collapsible" id="info-contato-telefones-wrap">
+                        <div class="info-collapse-header" onclick="toggleContatoTelefonesCollapse()">
+                            <span class="info-collapse-arrow">▼</span>
+                            <span>Telefones (<span id="info-contato-tel-count">0</span>)</span>
+                        </div>
+                        <div class="info-collapse-body">
+                            <div id="info-contato-tel-list"></div>
+                            <button type="button" class="info-add-url-btn" onclick="adicionarContatoTelefone()">➕ Adicionar Telefone</button>
+                        </div>
+                    </div>
+                    <div class="info-form-group">
+                        <label>E-mail</label>
+                        <input type="email" id="info-f-contato-email" placeholder="Ex: contato@email.com">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Empresa</label>
+                        <input type="text" id="info-f-contato-empresa" placeholder="Ex: Cell City">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Cargo</label>
+                        <input type="text" id="info-f-contato-cargo" placeholder="Ex: Gerente de TI">
+                    </div>
+                    <div class="info-form-group">
+                        <label>Observações</label>
+                        <textarea id="info-f-contato-obs" rows="3" placeholder="Notas adicionais sobre este contato..."></textarea>
                     </div>
                 </div>
 
