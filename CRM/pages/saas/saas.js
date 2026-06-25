@@ -111,10 +111,9 @@ async function init() {
   onAuthStateChanged(auth, async (user) => {
     if (!user) { mostrarAcessoNegado('Faça login para continuar.'); return; }
 
-    let tentativas = 0;
-    while (!getTenant() && tentativas < 10) {
-      await _delay(300);
-      tentativas++;
+    // Carrega contexto do tenant se ainda não foi carregado (nova navegação)
+    if (!getTenant()) {
+      try { await loadContext(user.uid); } catch (e) { console.warn('loadContext falhou:', e); }
     }
 
     if (!isMasterAdmin()) { mostrarAcessoNegado(); return; }

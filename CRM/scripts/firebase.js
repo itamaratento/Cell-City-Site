@@ -23,7 +23,10 @@ import {
   writeBatch
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
-  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  inMemoryPersistence,
   signInAnonymously,
   onAuthStateChanged,
   sendPasswordResetEmail
@@ -55,7 +58,11 @@ const storage = getStorage(app);
 // autenticado, satisfazendo as regras do Firestore (request.auth != null).
 // O Firestore aguarda automaticamente o token de auth antes de enviar as
 // requisições, então não é preciso alterar as páginas que já usam `db`.
-const auth = getAuth(app);
+// initializeAuth com persistência explícita evita o iframe cross-origin
+// que o Firefox bloqueia, causando "Pending promise was never set"
+const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
+});
 const authReady = new Promise((resolve) => {
   onAuthStateChanged(auth, (user) => {
     if (user) {

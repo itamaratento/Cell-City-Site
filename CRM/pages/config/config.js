@@ -1,9 +1,7 @@
-import { db, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, authReady } from "../../scripts/firebase.js";
-import { getAuth, signInAnonymously, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { db, auth, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, authReady } from "../../scripts/firebase.js";
+import { signInAnonymously, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { loginGoogle } from '../../shared/session.js';
 import { loadContext, clearContext, logAuditoria } from '../../shared/tenant.js';
-
-const auth = getAuth();
 
 window.pinPress          = pinPress;
 window.pinDelete         = pinDelete;
@@ -342,9 +340,8 @@ async function loginComGoogle() {
 async function recuperarSenha() {
     const email = prompt('Digite seu e-mail para receber o link de recuperação:');
     if (!email || !email.includes('@')) return;
-    const authInst = getAuth();
     try {
-        await sendPasswordResetEmail(authInst, email.trim());
+        await sendPasswordResetEmail(auth, email.trim());
         alert(`Link de recuperação enviado para ${email}.\nVerifique sua caixa de entrada (e spam).`);
     } catch (err) {
         if (err?.code === 'auth/user-not-found') {
