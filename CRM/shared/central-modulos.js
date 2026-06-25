@@ -53,6 +53,8 @@ export const TODOS_MODULOS = [
   { id: 'backup',              nome: 'Backup do Sistema',       icone: '🛡️', descricao: 'Exportar dados e backup do código',    categoria: 'Administração' },
   { id: 'config',              nome: 'Configurações',           icone: '⚙️', descricao: 'Ferramentas e configurações do sistema',categoria: 'Administração' },
   { id: 'favoritos',           nome: 'Favoritos',               icone: '⭐', descricao: 'Acesso rápido aos módulos favoritos',      categoria: 'Ferramentas'   },
+  // SaaS — visível apenas para Master Admin
+  { id: 'saas', nome: 'Central SaaS', icone: '🏢', descricao: 'Painel Master: empresas, planos e usuários', categoria: 'SaaS', masterOnly: true },
 ];
 
 // ── Estado interno ────────────────────────────────────────────
@@ -486,9 +488,16 @@ function _renderBody(filtro) {
   const body = document.getElementById('cm-body');
   if (!body) return;
 
-  let lista = TODOS_MODULOS;
+  // Módulos masterOnly só aparecem para Master Admin
+  let isMaster = false;
+  try {
+    const ctx = JSON.parse(sessionStorage.getItem('cc_tenant_ctx') || 'null');
+    isMaster = ctx?.perfil === 'master_admin';
+  } catch {}
+
+  let lista = TODOS_MODULOS.filter(m => !m.masterOnly || isMaster);
   if (filtro) {
-    lista = TODOS_MODULOS.filter(m =>
+    lista = lista.filter(m =>
       m.nome.toLowerCase().includes(filtro) ||
       m.descricao.toLowerCase().includes(filtro) ||
       m.categoria.toLowerCase().includes(filtro)
@@ -564,6 +573,7 @@ function _renderBody(filtro) {
       'config':                'config/index.html',
       'mensagens-wpp':         'mensagens-wpp/index.html',
       'venda-rapida':          'venda-rapida/index.html',
+      'saas':                  'saas/index.html',
     };
     return mapa[id] ? base + mapa[id] : null;
   }
