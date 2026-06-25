@@ -582,12 +582,13 @@ function _renderBody(filtro) {
     el.addEventListener('click', (e) => {
       if (e.target.closest('.cm-star')) return;
       const id = el.dataset.cid;
-      if (window.__cmNavigate) {
+      const url = _urlModulo(id);
+      if (url) {
+        fecharCentralModulos();
+        window.location.href = url;
+      } else if (window.__cmNavigate) {
         window.__cmNavigate(id);
         fecharCentralModulos();
-      } else {
-        const url = _urlModulo(id);
-        if (url) window.location.href = url;
       }
     });
   });
