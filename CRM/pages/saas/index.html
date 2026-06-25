@@ -34,6 +34,8 @@
         🔔 Notificações
         <span id="notif-badge" style="display:none;position:absolute;top:6px;right:6px;background:var(--red);color:#fff;font-size:9px;font-weight:900;border-radius:99px;padding:1px 5px;min-width:14px;text-align:center"></span>
       </button>
+      <button class="saas-tab" data-tab="setup">⚙️ Setup</button>
+      <button class="saas-tab" data-tab="migracao">🔄 Migração</button>
     </nav>
     <a href="/CRM/pages/dashboard/index.html" class="saas-back">← Dashboard</a>
   </header>
@@ -171,6 +173,89 @@
         <div id="lista-notificacoes" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;min-height:80px">
           <div class="saas-loading">Carregando...</div>
         </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ABA: SETUP
+         ═══════════════════════════════════════════ -->
+    <div id="tab-setup" class="tab-content">
+      <div class="tab-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:18px;font-weight:800">⚙️ Setup Master</h2>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px">Configura empresa mestre e usuário administrador principal.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="carregarSetup()">↻ Verificar</button>
+        </div>
+        <!-- Status atual -->
+        <div id="setup-status" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:20px">
+          <div class="saas-loading">Verificando estado do sistema...</div>
+        </div>
+        <!-- Formulário de setup -->
+        <div id="setup-form" style="display:none">
+          <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">Dados da Empresa Master</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Razão Social</label>
+                <input id="setup-razao" type="text" value="Cell City Assistência Técnica" class="saas-input" style="width:100%">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Nome Fantasia</label>
+                <input id="setup-fantasia" type="text" value="Cell City" class="saas-input" style="width:100%">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">CNPJ</label>
+                <input id="setup-cnpj" type="text" placeholder="00.000.000/0001-00" class="saas-input" style="width:100%">
+              </div>
+              <div>
+                <label style="font-size:12px;color:var(--text3);display:block;margin-bottom:4px">Responsável</label>
+                <input id="setup-responsavel" type="text" placeholder="Nome do responsável" class="saas-input" style="width:100%">
+              </div>
+            </div>
+          </div>
+          <div id="setup-user-info" style="background:rgba(0,200,83,0.06);border:1px solid rgba(0,200,83,0.2);border-radius:var(--radius-lg);padding:16px;margin-bottom:16px;font-size:13px"></div>
+          <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:800" onclick="executarSetup()">⚡ Executar Setup</button>
+        </div>
+        <!-- Resultado -->
+        <div id="setup-result" style="display:none;background:rgba(0,200,83,0.06);border:1px solid rgba(0,200,83,0.2);border-radius:var(--radius-lg);padding:20px;font-size:13px;line-height:2"></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+         ABA: MIGRAÇÃO
+         ═══════════════════════════════════════════ -->
+    <div id="tab-migracao" class="tab-content">
+      <div class="tab-full">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div>
+            <h2 style="font-size:18px;font-weight:800">🔄 Migração de Dados</h2>
+            <p style="font-size:13px;color:var(--text3);margin-top:4px">Adiciona <code style="color:var(--yellow)">empresa_id: "cellcity-master"</code> a todos os documentos sem esse campo.</p>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="carregarMigracao()">↻ Atualizar</button>
+        </div>
+        <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:var(--radius-lg);padding:14px 16px;font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:20px">
+          <strong style="color:var(--yellow)">⚠️ Pré-requisito:</strong> Execute o Setup Master primeiro para criar a empresa base.<br>
+          Documentos que <strong>já possuem empresa_id</strong> não são alterados (operação idempotente).
+        </div>
+        <!-- Grid de coleções -->
+        <div id="migracao-col-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:20px"></div>
+        <!-- Botão -->
+        <button class="btn btn-primary" id="btn-migracao" style="width:100%;padding:14px;font-size:15px;font-weight:800;background:#f59e0b;color:#000" onclick="executarMigracao()">⚡ Iniciar Migração</button>
+        <!-- Progresso -->
+        <div id="migracao-progress" style="display:none;margin-top:20px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:13px;color:var(--text2)">
+            <span id="mig-label">Aguardando...</span>
+            <span id="mig-pct">0%</span>
+          </div>
+          <div style="background:var(--surface3);border-radius:6px;height:8px;margin-bottom:16px;overflow:hidden">
+            <div id="mig-bar" style="height:100%;background:var(--green);border-radius:6px;transition:width 0.3s;width:0%"></div>
+          </div>
+          <div id="mig-log" style="font-size:12px;line-height:2;max-height:300px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px"></div>
+        </div>
+        <!-- Resultado final -->
+        <div id="migracao-result" style="display:none;margin-top:16px;background:rgba(0,200,83,0.06);border:1px solid rgba(0,200,83,0.2);border-radius:var(--radius-lg);padding:20px;font-size:13px;line-height:2"></div>
       </div>
     </div>
 

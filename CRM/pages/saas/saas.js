@@ -14,7 +14,7 @@
 import {
   db, auth, authReady,
   collection, addDoc, getDocs, getDoc, doc,
-  setDoc, updateDoc, deleteDoc,
+  setDoc, updateDoc, deleteDoc, writeBatch,
   query, orderBy, where, serverTimestamp, limit, Timestamp
 } from '../../scripts/firebase.js';
 import {
@@ -153,7 +153,10 @@ function setupTabs() {
       document.querySelectorAll('.saas-tab').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('tab-' + btn.dataset.tab)?.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.getElementById('tab-' + tab)?.classList.add('active');
+      if (tab === 'setup')    carregarSetup();
+      if (tab === 'migracao') carregarMigracao();
     });
   });
 
@@ -1146,6 +1149,290 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('modal-empresa')?.addEventListener('click', e => { if (e.target === e.currentTarget) fecharModal(); });
   document.getElementById('modal-usuario')?.addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalUsuario(); });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// ABA: SETUP MASTER
+// ═══════════════════════════════════════════════════════════════
+
+window.carregarSetup = carregarSetup;
+async function carregarSetup() {
+  const statusEl = document.getElementById('setup-status');
+  const formEl   = document.getElementById('setup-form');
+  const resultEl = document.getElementById('setup-result');
+  if (!statusEl) return;
+  statusEl.innerHTML = '<div class="saas-loading">Verificando...</div>';
+  formEl.style.display = 'none';
+  resultEl.style.display = 'none';
+
+  try {
+    const [snapEmpresa, snapUser] = await Promise.all([
+      getDoc(doc(db, 'empresas', EMPRESA_MASTER_ID)),
+      auth.currentUser ? getDoc(doc(db, 'usuarios', auth.currentUser.uid)) : Promise.resolve(null),
+    ]);
+    const empresaOk = snapEmpresa.exists();
+    const userOk    = snapUser?.exists() && snapUser.data().perfil === 'master_admin';
+    const user      = auth.currentUser;
+
+    statusEl.innerHTML = `
+      <div style="display:grid;gap:12px">
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface3);border-radius:8px">
+          <span style="font-size:18px">${empresaOk ? '✅' : '❌'}</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">Empresa Master</div>
+            <div style="font-size:12px;color:var(--text3)">${empresaOk ? 'empresas/cellcity-master — OK' : 'Não encontrada — precisa ser criada'}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--surface3);border-radius:8px">
+          <span style="font-size:18px">${userOk ? '✅' : '❌'}</span>
+          <div>
+            <div style="font-size:13px;font-weight:700">Usuário Master Admin</div>
+            <div style="font-size:12px;color:var(--text3)">${userOk ? `usuarios/${user?.uid} — perfil: master_admin` : `Não configurado para ${user?.email || '(sem login)'}`}</div>
+          </div>
+        </div>
+        ${empresaOk && userOk
+          ? '<div style="background:rgba(0,200,83,0.08);border:1px solid rgba(0,200,83,0.25);border-radius:8px;padding:12px;font-size:13px;color:#4ade80;font-weight:700">✅ Sistema já configurado corretamente. Pode re-executar para atualizar os dados.</div>'
+          : '<div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px;font-size:13px;color:#fbbf24">⚠️ Setup necessário — preencha o formulário abaixo e clique em Executar Setup.</div>'
+        }
+      </div>`;
+
+    if (user) {
+      document.getElementById('setup-user-info').innerHTML =
+        `👤 Usuário logado: <strong>${user.displayName || user.email}</strong> (${user.email})<br>🔑 UID: <code>${user.uid}</code><br>Este usuário será configurado como <strong>master_admin</strong>.`;
+    }
+
+    if (empresaOk) {
+      const d = snapEmpresa.data();
+      document.getElementById('setup-razao').value     = d.razao_social || '';
+      document.getElementById('setup-fantasia').value  = d.nome_fantasia || '';
+      document.getElementById('setup-cnpj').value      = d.cnpj || '';
+      document.getElementById('setup-responsavel').value = d.responsavel || '';
+    }
+    formEl.style.display = 'block';
+  } catch (e) {
+    statusEl.innerHTML = `<div style="color:var(--red);font-size:13px">❌ Erro: ${e.message}</div>`;
+  }
+}
+
+window.executarSetup = executarSetup;
+async function executarSetup() {
+  const btn    = document.querySelector('#tab-setup .btn-primary');
+  const result = document.getElementById('setup-result');
+  const user   = auth.currentUser;
+  if (!user) { alert('Faça login antes de executar o setup.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Executando...';
+
+  try {
+    const now = new Date().toISOString();
+    const empresaData = {
+      razao_social:   document.getElementById('setup-razao').value.trim()     || 'Cell City',
+      nome_fantasia:  document.getElementById('setup-fantasia').value.trim()  || 'Cell City',
+      cnpj:           document.getElementById('setup-cnpj').value.trim(),
+      responsavel:    document.getElementById('setup-responsavel').value.trim() || user.displayName || '',
+      plano:          'enterprise',
+      status:         'ativo',
+      is_master:      true,
+      modulos_ativos: null,
+      feature_flags:  { whatsapp: true, ia: true, nfe: true, white_label: true, api: true },
+      data_cadastro:  now,
+      atualizado_em:  now,
+    };
+    await setDoc(doc(db, 'empresas', EMPRESA_MASTER_ID), empresaData, { merge: true });
+
+    const userData = {
+      empresa_id:         EMPRESA_MASTER_ID,
+      nome:               user.displayName || user.email,
+      email:              user.email,
+      foto_url:           user.photoURL || '',
+      perfil:             'master_admin',
+      permissoes_modulos: {},
+      ativo:              true,
+      data_cadastro:      now,
+      ultimo_acesso:      now,
+      atualizado_em:      now,
+    };
+    await setDoc(doc(db, 'usuarios', user.uid), userData, { merge: true });
+
+    await logAuditoria('setup_master_executado', { empresa: EMPRESA_MASTER_ID, usuario: user.email });
+
+    result.style.display = 'block';
+    result.innerHTML = `
+      <strong style="color:#4ade80;font-size:15px">✅ Setup executado com sucesso!</strong><br><br>
+      🏢 Empresa criada: <code>empresas/cellcity-master</code> — plano enterprise, is_master: true<br>
+      👤 Usuário configurado: <code>usuarios/${user.uid}</code> — perfil: master_admin<br><br>
+      <strong>Próximo passo:</strong> Vá para a aba <strong>🔄 Migração</strong> para stampar empresa_id nos dados existentes.
+    `;
+    await carregarSetup();
+  } catch (e) {
+    result.style.display = 'block';
+    result.innerHTML = `<span style="color:var(--red)">❌ Erro ao executar setup: ${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '⚡ Executar Setup';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ABA: MIGRAÇÃO
+// ═══════════════════════════════════════════════════════════════
+
+const COLECOES_MIGRACAO = [
+  { id: 'os',                      label: 'OS' },
+  { id: 'clientes',                label: 'Clientes' },
+  { id: 'caixa_lancamentos',       label: 'Caixa' },
+  { id: 'categorias_caixa',        label: 'Cat. Caixa' },
+  { id: 'historico_diario',        label: 'Hist. Diário' },
+  { id: 'historico_semanal',       label: 'Hist. Semanal' },
+  { id: 'historico_mensal',        label: 'Hist. Mensal' },
+  { id: 'resumo_live',             label: 'Resumo Live' },
+  { id: 'financeiro_pagar',        label: 'A Pagar' },
+  { id: 'financeiro_fixas',        label: 'Fixas' },
+  { id: 'financeiro_receber',      label: 'A Receber' },
+  { id: 'financeiro_categorias',   label: 'Cat. Financeiro' },
+  { id: 'financeiro_despesas',     label: 'Despesas' },
+  { id: 'financeiro_cat_despesas', label: 'Cat. Despesas' },
+  { id: 'financeiro_centros_custo',label: 'Centros de Custo' },
+  { id: 'financeiro_metas',        label: 'Metas Fin.' },
+  { id: 'estoque_produtos',        label: 'Estoque' },
+  { id: 'produtos',                label: 'Produtos' },
+  { id: 'categorias_produtos',     label: 'Cat. Produtos' },
+  { id: 'fornecedores',            label: 'Fornecedores' },
+  { id: 'fornecedor_compras',      label: 'Forn. Compras' },
+  { id: 'fornecedor_tendencias',   label: 'Forn. Tendências' },
+  { id: 'compras_financeiras',     label: 'Compras' },
+  { id: 'posvenda_contatos',       label: 'Pós-Venda' },
+  { id: 'posvenda_mensagens',      label: 'PV Mensagens' },
+  { id: 'posvenda_rastreamento',   label: 'PV Rastreamento' },
+  { id: 'acoes_semana',            label: 'Ações da Semana' },
+  { id: 'agenda',                  label: 'Agenda' },
+  { id: 'tarefas_semana',          label: 'Tarefas' },
+  { id: 'notas_usuarios',          label: 'Notas' },
+  { id: 'comandos',                label: 'Comandos' },
+  { id: 'categorias_comandos',     label: 'Cat. Comandos' },
+  { id: 'informacoes',             label: 'Informações' },
+  { id: 'categorias_informacoes',  label: 'Cat. Informações' },
+  { id: 'categorias_wpp',          label: 'Cat. WhatsApp' },
+  { id: 'notas_projeto',           label: 'Notas Projeto' },
+  { id: 'blacklist_wpp',           label: 'Blacklist WPP' },
+  { id: 'vendas_importadas',       label: 'Vendas Import.' },
+  { id: 'chips_cadastros',         label: 'Chips' },
+  { id: 'crm_leads',               label: 'CRM Leads' },
+  { id: 'catalogo_produtos',       label: 'Catálogo' },
+  { id: 'alertas_usuario',         label: 'Alertas' },
+  { id: 'pre_os',                  label: 'Pré-OS' },
+  { id: 'config',                  label: 'Config' },
+  { id: 'lembretes_pagamento',     label: 'Lembretes' },
+  { id: 'encomendas',              label: 'Encomendas' },
+  { id: 'diario_registros',        label: 'Diário' },
+];
+
+window.carregarMigracao = carregarMigracao;
+function carregarMigracao() {
+  const grid = document.getElementById('migracao-col-grid');
+  if (!grid || grid.children.length) return;
+  COLECOES_MIGRACAO.forEach(c => {
+    const div = document.createElement('div');
+    div.id = `migcol-${c.id}`;
+    div.style.cssText = 'background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px';
+    div.innerHTML = `<span style="font-size:14px">📂</span><span>${c.label} <em style="color:var(--text3)">(${c.id})</em></span>`;
+    grid.appendChild(div);
+  });
+}
+
+window.executarMigracao = executarMigracao;
+async function executarMigracao() {
+  const btn       = document.getElementById('btn-migracao');
+  const progressEl = document.getElementById('migracao-progress');
+  const logEl     = document.getElementById('mig-log');
+  const barEl     = document.getElementById('mig-bar');
+  const pctEl     = document.getElementById('mig-pct');
+  const lblEl     = document.getElementById('mig-label');
+  const resultEl  = document.getElementById('migracao-result');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Migrando...';
+  progressEl.style.display = 'block';
+  resultEl.style.display = 'none';
+  logEl.innerHTML = '';
+
+  let totalDocs = 0, migratedDocs = 0, skippedDocs = 0, errorCols = 0;
+  const BATCH_SIZE = 400;
+
+  for (let i = 0; i < COLECOES_MIGRACAO.length; i++) {
+    const col = COLECOES_MIGRACAO[i];
+    const pct = Math.round((i / COLECOES_MIGRACAO.length) * 100);
+    barEl.style.width = pct + '%';
+    pctEl.textContent = pct + '%';
+    lblEl.textContent = `Processando ${col.label}...`;
+
+    const colItem = document.getElementById(`migcol-${col.id}`);
+    const logLine = document.createElement('div');
+    logLine.style.color = '#f59e0b';
+    logLine.textContent = `⏳ ${col.label} (${col.id})...`;
+    logEl.appendChild(logLine);
+    logEl.scrollTop = logEl.scrollHeight;
+
+    try {
+      const snap = await getDocs(collection(db, col.id));
+      const semId = snap.docs.filter(d => !d.data().empresa_id);
+
+      if (semId.length === 0) {
+        logLine.style.color = 'var(--text3)';
+        logLine.textContent = `⏭ ${col.label} — ${snap.docs.length} docs (todos já têm empresa_id)`;
+        if (colItem) colItem.style.borderColor = 'var(--border)';
+        skippedDocs += snap.docs.length;
+        totalDocs   += snap.docs.length;
+        continue;
+      }
+
+      let count = 0;
+      for (let b = 0; b < semId.length; b += BATCH_SIZE) {
+        const chunk = semId.slice(b, b + BATCH_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(d => batch.update(doc(db, col.id, d.id), { empresa_id: EMPRESA_MASTER_ID }));
+        await batch.commit();
+        count += chunk.length;
+      }
+
+      logLine.style.color = '#4ade80';
+      logLine.textContent = `✅ ${col.label} — ${count} migrados (${snap.docs.length - count} já tinham empresa_id)`;
+      if (colItem) { colItem.style.borderColor = '#4ade80'; colItem.style.color = '#4ade80'; }
+      migratedDocs += count;
+      skippedDocs  += snap.docs.length - count;
+      totalDocs    += snap.docs.length;
+
+    } catch (err) {
+      logLine.style.color = '#ef4444';
+      logLine.textContent = `❌ ${col.label} — Erro: ${err.message}`;
+      if (colItem) colItem.style.borderColor = '#ef4444';
+      errorCols++;
+    }
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  barEl.style.width = '100%';
+  pctEl.textContent = '100%';
+  lblEl.textContent = 'Concluído!';
+
+  await logAuditoria('migracao_empresa_id_executada', {
+    total: totalDocs, migrados: migratedDocs, pulados: skippedDocs, erros: errorCols,
+  });
+
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <strong style="color:#4ade80;font-size:15px">✅ Migração concluída!</strong><br><br>
+    📊 Total de documentos: <strong>${totalDocs}</strong><br>
+    ✅ Migrados (empresa_id adicionado): <strong style="color:#4ade80">${migratedDocs}</strong><br>
+    ⏭ Sem alteração (já tinham empresa_id): <strong style="color:var(--text3)">${skippedDocs}</strong><br>
+    ${errorCols > 0 ? `<span style="color:#ef4444">❌ Coleções com erro: <strong>${errorCols}</strong> — verifique o log acima.</span><br>` : ''}
+    <br>
+    <strong>Próximo passo:</strong> Execute <code>firebase deploy --only firestore:rules,hosting</code> para ativar o isolamento completo.
+  `;
+
+  btn.disabled = false;
+  btn.textContent = '🔄 Executar Novamente';
+}
 
 // ── Inicia ────────────────────────────────────────────────────
 init();

@@ -438,13 +438,14 @@ function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(scre
 function formatPhone(v) { v = v.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); return v.length > 6 ? `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}` : v.length > 2 ? `(${v.slice(0,2)}) ${v.slice(2)}` : v.length > 0 ? `(${v}` : v; }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
-// ===== FLUXO DE STATUS (9 etapas — padrão Cell City) =====
+// ===== FLUXO DE STATUS (10 etapas — padrão Cell City) =====
 const STATUS_FLOW = [
     { key: 'recebido',             label: 'Recebido',             color: 'var(--blue)' },
     { key: 'em_analise',           label: 'Em análise',           color: 'var(--blue)' },
     { key: 'orcamento_enviado',    label: 'Orçamento enviado',    color: 'var(--yellow)' },
     { key: 'orcamento_aprovado',   label: 'Orçamento aprovado',   color: 'var(--green)' },
     { key: 'orcamento_recusado',   label: 'Orçamento recusado',   color: 'var(--red)' },
+    { key: 'aguardando_peca',      label: 'Aguardando peça',      color: '#f59e0b' },
     { key: 'em_reparo',            label: 'Em reparo',            color: 'var(--orange)' },
     { key: 'testes_finais',        label: 'Testes finais',        color: '#a78bfa' },
     { key: 'concluido',            label: 'Concluído',            color: 'var(--green)' },
@@ -452,7 +453,6 @@ const STATUS_FLOW = [
 ];
 // Mapeia status antigos (OS já gravadas) para os rótulos novos, sem migração forçada.
 const STATUS_LEGACY = {
-    aguardando_peca:       'Aguardando peça',
     orcamento:             'Orçamento enviado',
     pronto:                'Concluído',
     devolvido_orcamento:   'Orçamento recusado',
@@ -1107,12 +1107,13 @@ async function changeStatus(newStatus) {
     currentOS.status = newStatus;
     currentOS.updatedAt = new Date().toISOString();
     currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
-    // Garante que a data de entrega fique registrada no timeline (usada pelo módulo pós-venda)
+    if (newStatus === 'aguardando_peca' && !currentOS.observations) {
+        currentOS.observations = 'Aguardando chegada da peça do fornecedor. Prazo estimado de 15 a 20 dias. Cliente informado.';
+    }
     if (newStatus === 'entregue') {
         currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
     }
     await saveCurrentOS();
-    // Integrações ao marcar como entregue
     if (newStatus === 'entregue') {
         await gerarLancamentoFinanceiro(currentOS);
         await agendarPosVenda(currentOS);
