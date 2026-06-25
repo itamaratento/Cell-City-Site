@@ -10,12 +10,22 @@
 </head>
 <body>
 
-<!-- Tela de acesso negado -->
-<div id="acesso-negado" style="display:none;min-height:100vh;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:24px">
-  <span style="font-size:48px">🔒</span>
-  <h2 style="font-size:22px;font-weight:800;color:var(--red)">Acesso Negado</h2>
-  <p style="font-size:14px;color:var(--text3);max-width:360px">Este módulo é exclusivo para o Master Admin do sistema.</p>
-  <a href="/CRM/pages/dashboard/index.html" class="btn btn-outline">← Voltar ao Dashboard</a>
+<!-- Tela de login / acesso negado -->
+<div id="acesso-negado" style="display:none;min-height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:16px;text-align:center;padding:24px">
+  <span style="font-size:48px">🏢</span>
+  <h2 style="font-size:22px;font-weight:800;color:var(--green)">Central SaaS</h2>
+  <p id="acesso-msg" style="font-size:14px;color:var(--text3);max-width:360px">Carregando...</p>
+  <div id="login-form" style="display:none;width:100%;max-width:320px;display:none;flex-direction:column;gap:10px">
+    <input id="saas-email" type="email" placeholder="E-mail" value="admin@cellcity.com"
+      style="padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none">
+    <input id="saas-senha" type="password" placeholder="Senha" value="cellcity"
+      style="padding:12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:14px;outline:none">
+    <button id="btn-saas-login" onclick="saasLogin()"
+      style="padding:13px;background:var(--green);border:none;border-radius:8px;font-size:15px;font-weight:800;color:#000;cursor:pointer">
+      Entrar
+    </button>
+    <p id="login-erro" style="font-size:12px;color:var(--red);display:none"></p>
+  </div>
 </div>
 
 <!-- Conteúdo principal -->
@@ -577,7 +587,7 @@
   </div>
 </div>
 
-<script type="module" src="saas.js"></script>
+<script type="module" src="saas.js?v=4"></script>
 <script>
   // Wrappers seguros para onclick no HTML (saas.js define as funções reais como window.*)
   window.excluirEmpresaConfirm = () => window.excluirEmpresa?.();

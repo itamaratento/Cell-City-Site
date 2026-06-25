@@ -19,10 +19,12 @@ import {
 } from '../../scripts/firebase.js';
 import {
   isMasterAdmin, getTenant, PLANOS, PERFIS,
-  FEATURES_DISPONIVEIS, logAuditoria, ativarModoSuporte
+  FEATURES_DISPONIVEIS, logAuditoria, ativarModoSuporte, loadContext
 } from '../../shared/tenant.js';
-import { loadContext } from '../../shared/tenant.js';
-import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword
+} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 
 // ── Catálogo de módulos ───────────────────────────────────────
 const MODULOS_CATALOGO = [
@@ -105,40 +107,122 @@ let _novaEmpresa  = false;
 // INIT
 // ═══════════════════════════════════════════════════════════════
 
+let _painelAberto = false;
+let _abrindoPainel = false;  // lock para evitar chamadas paralelas
+
 async function init() {
-  await authReady;
-
   onAuthStateChanged(auth, async (user) => {
-    if (!user) { mostrarAcessoNegado('Faça login para continuar.'); return; }
-
-    // Carrega contexto do tenant se ainda não foi carregado (nova navegação)
-    if (!getTenant()) {
-      try { await loadContext(user.uid); } catch (e) { console.warn('loadContext falhou:', e); }
+    if (_painelAberto || _abrindoPainel) return;
+    if (!user || user.isAnonymous) {
+      _mostrarLogin('Faça login para acessar a Central SaaS.');
+      return;
     }
-
-    if (!isMasterAdmin()) { mostrarAcessoNegado(); return; }
-
-    document.getElementById('saas-main').style.display = '';
-    setupTabs();
-    await Promise.all([
-      carregarEmpresas(),
-      carregarUsuarios(),
-    ]);
-    renderizarDashboard();
-    renderizarPlanos();
-    await Promise.all([
-      carregarAuditoria(),
-      carregarNotificacoes(),
-    ]);
-    setupEventos();
+    await _abrirPainel(user);
   });
 }
 
-function mostrarAcessoNegado(msg) {
-  const el = document.getElementById('acesso-negado');
-  if (msg) el.querySelector('p').textContent = msg;
-  el.style.display = '';
+async function _abrirPainel(user) {
+  if (_painelAberto) return;
+  if (_abrindoPainel) return;
+  _abrindoPainel = true;
+  _setMsg('Verificando perfil...');
+
+  console.log('[SaaS] ── DIAGNÓSTICO ──────────────────');
+  console.log('[SaaS] 1. uid    :', user.uid);
+  console.log('[SaaS] 2. email  :', user.email);
+  console.log('[SaaS] 3. anon   :', user.isAnonymous);
+
+  // Tenta loadContext primeiro
+  let ctx = null;
+  try {
+    ctx = await loadContext(user.uid);
+  } catch (e) {
+    console.warn('[SaaS] loadContext threw:', e);
+  }
+
+  console.log('[SaaS] 4. loadContext →', ctx);
+
+  // Se loadContext falhou, lê Firestore diretamente como fallback
+  if (!ctx) {
+    console.warn('[SaaS] Fallback: lendo usuarios/' + user.uid + ' direto...');
+    try {
+      const snap = await getDoc(doc(db, 'usuarios', user.uid));
+      console.log('[SaaS] snap.exists:', snap.exists());
+      if (snap.exists()) {
+        const d = snap.data();
+        console.log('[SaaS] dados:', d);
+        ctx = { perfil: d.perfil, empresa_id: d.empresa_id };
+        console.log('[SaaS] ctx manual:', ctx);
+      } else {
+        console.error('[SaaS] documento usuarios/' + user.uid + ' NÃO existe!');
+      }
+    } catch (ferr) {
+      console.error('[SaaS] Fallback Firestore erro:', ferr.code, ferr.message);
+      _mostrarLogin('Erro Firestore: ' + ferr.code + ' — ' + ferr.message);
+      return;
+    }
+  }
+
+  const perfil = ctx?.perfil;
+  const isMaster = perfil === 'master_admin';
+  console.log('[SaaS] 5. perfil     :', perfil);
+  console.log('[SaaS] 6. empresa_id :', ctx?.empresa_id);
+  console.log('[SaaS] 7. isMaster   :', isMaster);
+
+  if (!isMaster) {
+    _abrindoPainel = false;
+    console.warn('[SaaS] NEGADO — perfil:', perfil);
+    _mostrarLogin('Acesso exclusivo para Master Admin. Perfil lido: "' + (perfil || 'null') + '"');
+    return;
+  }
+  _painelAberto = true;
+  // Garante acesso completo ao sistema (sidebar, modulo-guard)
+  sessionStorage.setItem('cc_acesso', 'ok');
+  document.getElementById('acesso-negado').style.display = 'none';
+  document.getElementById('saas-main').style.display = 'block';
+  setupTabs();
+  await Promise.all([carregarEmpresas(), carregarUsuarios()]);
+  renderizarDashboard();
+  renderizarPlanos();
+  await Promise.all([carregarAuditoria(), carregarNotificacoes()]);
+  setupEventos();
 }
+
+function _mostrarLogin(msg) {
+  const el = document.getElementById('acesso-negado');
+  el.style.display = 'flex';
+  _setMsg(msg);
+  document.getElementById('login-form').style.display = 'flex';
+}
+
+function _setMsg(msg) {
+  const p = document.getElementById('acesso-msg');
+  if (p) p.textContent = msg;
+}
+
+window.saasLogin = async function() {
+  const email = document.getElementById('saas-email').value.trim();
+  const senha = document.getElementById('saas-senha').value.trim();
+  const erroEl = document.getElementById('login-erro');
+  const btn = document.getElementById('btn-saas-login');
+  erroEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  try {
+    _setMsg('Autenticando...');
+    const cred = await signInWithEmailAndPassword(auth, email, senha);
+    // onAuthStateChanged vai chamar _abrirPainel automaticamente
+    _setMsg('Carregando painel...');
+    await _abrirPainel(cred.user);
+  } catch (e) {
+    const msg = e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password'
+      ? 'Senha incorreta ou usuário não encontrado.'
+      : e.message;
+    erroEl.textContent = msg;
+    erroEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Entrar';
+  }
+};
 
 function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
