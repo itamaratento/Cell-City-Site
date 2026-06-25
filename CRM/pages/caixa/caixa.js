@@ -635,7 +635,7 @@ async function corrigirMigracaoLucroSaidas() {
     let totalAtualizado = 0;
     let totalErro = 0;
     try {
-        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId())));
         const saidas = snap.docs.filter(d => d.data().tipo === 'saida');
         console.log(`📊 [MIGRAÇÃO] Encontradas ${saidas.length} saídas para corrigir`);
         for (const docSnap of saidas) {
@@ -717,8 +717,8 @@ function toggleFinDetalhes(checked) {
 async function carregarFinCatsECentros() {
     try {
         const [snapC, snapCt] = await Promise.all([
-            getDocs(collection(db, COL_FIN_CATS)),
-            getDocs(collection(db, COL_FIN_CENTROS)),
+            getDocs(query(collection(db, COL_FIN_CATS), where('empresa_id', '==', getEmpresaId()))),
+            getDocs(query(collection(db, COL_FIN_CENTROS), where('empresa_id', '==', getEmpresaId()))),
         ]);
         finCatsCustom = [];
         snapC.forEach(d => finCatsCustom.push({ id: d.id, ...d.data() }));
@@ -801,7 +801,7 @@ function renderAuditoria() {
 
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(collection(db, COLLECTION_CATEGORIAS));
+        const snap = await getDocs(query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', getEmpresaId())));
         categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
         if (categorias.length === 0) {
@@ -837,7 +837,7 @@ async function carregarCategorias() {
 function iniciarListenerCategorias() {
     if (listenerCategorias) listenerCategorias();
     listenerCategorias = onSnapshot(
-        collection(db, COLLECTION_CATEGORIAS),
+        query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', getEmpresaId())),
         (snap) => {
             categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             atualizarSelectCategorias();
@@ -919,6 +919,7 @@ async function executarSalvarCategoria() {
             nome, status: "ativo", tipoPadrao: "entrada",
             source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
             createdAtISO: agora.toISOString(), updatedAtISO: agora.toISOString(),
+            empresa_id: getEmpresaId(),
             createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         };
         
@@ -1135,7 +1136,7 @@ async function validarEstoque(descricao, categoria) {
         const termo = descricao.trim().toUpperCase();
         if (!termo) return { status: 'nao_encontrado' };
         
-        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where('empresa_id', '==', getEmpresaId())));
         
         let produto = null;
         snap.forEach(d => {
@@ -1241,7 +1242,7 @@ async function descontarEstoque(produtoId, produto) {
 function iniciarListenerLancamentos() {
     if (listenerLancamentos) { listenerLancamentos(); listenerLancamentos = null; }
     
-    const q = query(collection(db, COLLECTION_LANCAMENTOS), orderBy("dataISO", "desc"));
+    const q = query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId()), orderBy("dataISO", "desc"));
     
     listenerLancamentos = onSnapshot(q, (snap) => {
         lancamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1431,7 +1432,7 @@ async function reporEstoque(descricao) {
         if (!termo) return;
         
         // Busca o produto pelo nome (mesma lógica da validação)
-        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where('empresa_id', '==', getEmpresaId())));
         let produto = null;
         snap.forEach(d => {
             const p = { id: d.id, ...d.data() };
@@ -1747,7 +1748,7 @@ let _ultimoItemSelecionado = null; // armazena o item selecionado do estoque
 async function _carregarProdutosEstoque() {
     if (_cacheProdutos) return _cacheProdutos;
     try {
-        const snap = await getDocs(collection(db, 'estoque_produtos'));
+        const snap = await getDocs(query(collection(db, 'estoque_produtos'), where('empresa_id', '==', getEmpresaId())));
         _cacheProdutos = [];
         snap.forEach(d => _cacheProdutos.push({ id: d.id, ...d.data() }));
     } catch { _cacheProdutos = []; }
@@ -1949,7 +1950,7 @@ async function carregarMetaSemanal() {
         const numSem   = _weekNum(now);
 
         // Lê todos os lançamentos
-        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId())));
 
         let lucroAtual = 0;
         const lucroPorAno = {};
@@ -2063,7 +2064,7 @@ function limparFormLembrete() {
 
 async function carregarLembretes() {
     try {
-        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), orderBy('createdAt', 'asc')));
+        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), where('empresa_id', '==', getEmpresaId()), orderBy('createdAt', 'asc')));
         lembretes = [];
         snap.forEach(d => lembretes.push({ id: d.id, ...d.data() }));
     } catch {
@@ -2082,6 +2083,7 @@ async function salvarLembrete() {
         fornecedor, descricao, valor, quantidade,
         vencimento:  document.getElementById('lem-vencimento')?.value  || '',
         observacao:  document.getElementById('lem-observacao')?.value.trim()  || '',
+        empresa_id:  getEmpresaId(),
         createdAt: serverTimestamp(),
         createdAtISO: new Date().toISOString()
     };
@@ -2278,6 +2280,7 @@ async function salvarEncomendaDoCaixa() {
         status:              'aguardando_compra',
         historicoStatus:     [{ status: 'aguardando_compra', data: agoraISO, obs: 'Encomenda registrada no caixa', usuario: uid }],
         criadoPor:           uid,
+        empresa_id:          getEmpresaId(),
         criadoEm:            serverTimestamp(),
         criadoEmISO:         agoraISO,
         atualizadoEm:        serverTimestamp(),

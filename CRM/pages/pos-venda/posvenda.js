@@ -1,6 +1,7 @@
 import {
-    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
+    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, query, orderBy, where, serverTimestamp
 } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem
@@ -85,14 +86,14 @@ function focarDeepLink() {
 // ===== CARREGAR DADOS =====
 async function loadData() {
     // CORREÇÃO: OS são salvas na coleção "os", não "orders"
+    const eid = getEmpresaId();
     let ordersSnap;
     try {
-        ordersSnap = await getDocs(query(collection(db, "os"), orderBy("createdAt", "desc")));
+        ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid), orderBy("createdAt", "desc")));
     } catch {
-        // orderBy pode falhar se não houver índice; tenta sem ordenação
-        ordersSnap = await getDocs(collection(db, "os"));
+        ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
     }
-    const contatosSnap = await getDocs(collection(db, "posvenda_contatos"));
+    const contatosSnap = await getDocs(query(collection(db, "posvenda_contatos"), where('empresa_id', '==', eid)));
 
     const contatos = [];
     contatosSnap.forEach(d => {
@@ -569,6 +570,7 @@ async function registrarResultado(osId, os, prazo, emoji, resultado) {
         prazo,
         emoji,
         resultado,
+        empresa_id: getEmpresaId(),
         dataContato: new Date().toISOString(),
         createdAt: serverTimestamp()
     };

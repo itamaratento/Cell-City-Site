@@ -1,6 +1,6 @@
 import {
     db, collection, getDocs, doc, getDoc, setDoc, deleteDoc,
-    serverTimestamp, authReady
+    serverTimestamp, authReady, query, where
 } from "../../scripts/firebase.js";
 import { getEmpresaId } from "../../shared/tenant.js";
 
@@ -369,7 +369,7 @@ async function moverCategoria(id, dir) {
 // ─────────────────────────────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const snap = await getDocs(collection(db, COL));
+        const snap = await getDocs(query(collection(db, COL), where('empresa_id', '==', getEmpresaId())));
         produtos = [];
         snap.forEach(d => produtos.push({ id: d.id, ...d.data() }));
         // Migração da coleção antiga
@@ -606,7 +606,7 @@ async function toggleFavProd(id) {
     if (!p) return;
     p.favorito = !p.favorito;
     try {
-        await setDoc(doc(db, COL, id), { ...p, atualizadoEm: serverTimestamp() });
+        await setDoc(doc(db, COL, id), { ...p, empresa_id: getEmpresaId(), atualizadoEm: serverTimestamp() });
         toast(p.favorito ? '⭐ Produto favoritado.' : 'Favorito removido.');
         render(produtos.filter(matchBusca));
         atualizarContadores();
@@ -900,7 +900,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 export async function descontarEstoque(produtoId, quantidade = 1) {
     try {
-        const snap = await getDocs(collection(db, COL));
+        const snap = await getDocs(query(collection(db, COL), where('empresa_id', '==', getEmpresaId())));
         let prod = null;
         snap.forEach(d => { if (d.id === produtoId) prod = { id: d.id, ...d.data() }; });
         if (!prod) return;
@@ -911,7 +911,7 @@ export async function descontarEstoque(produtoId, quantidade = 1) {
 
 export async function listarProdutosEstoque() {
     try {
-        const snap = await getDocs(collection(db, COL));
+        const snap = await getDocs(query(collection(db, COL), where('empresa_id', '==', getEmpresaId())));
         const lista = [];
         snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
         return lista;
@@ -922,7 +922,7 @@ export async function buscarPorCodigoBarras(codigo) {
     const local = produtos.find(p => p.codigoBarras === codigo);
     if (local) return local;
     try {
-        const snap = await getDocs(collection(db, COL));
+        const snap = await getDocs(query(collection(db, COL), where('empresa_id', '==', getEmpresaId())));
         let found = null;
         snap.forEach(d => { if (d.data().codigoBarras === codigo) found = { id: d.id, ...d.data() }; });
         return found;
@@ -952,7 +952,7 @@ async function renderRentabilidade() {
     // Carrega caixa_lancamentos (cache simples p/ sessão)
     if (!_rentCache) {
         try {
-            const snap = await getDocs(collection(db, COL_CAIXA));
+            const snap = await getDocs(query(collection(db, COL_CAIXA), where('empresa_id', '==', getEmpresaId())));
             _rentCache = [];
             snap.forEach(d => _rentCache.push({ id: d.id, ...d.data() }));
         } catch { _rentCache = []; }

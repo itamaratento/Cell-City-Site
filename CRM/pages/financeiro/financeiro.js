@@ -1,4 +1,5 @@
-import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, serverTimestamp, query, where } from '../../scripts/firebase.js';
+import { getEmpresaId } from '../../shared/tenant.js';
 
 const COL_PAGAR     = 'financeiro_pagar';
 const COL_FIXAS     = 'financeiro_fixas';
@@ -119,14 +120,16 @@ $('fin-btn-novo')?.addEventListener('click', () => {
 // ── Carregar dados ─────────────────────────────────────────────────────
 async function carregar() {
     try {
+        const eid = getEmpresaId();
+        const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));
         const [sp, sf, sr, sd, sc, scx, sos] = await Promise.all([
-            getDocs(collection(db, COL_PAGAR)),
-            getDocs(collection(db, COL_FIXAS)),
-            getDocs(collection(db, COL_RECEBER)),
-            getDocs(collection(db, COL_DESPESAS)),
-            getDocs(collection(db, COL_COMPRAS)),
-            getDocs(collection(db, COL_CAIXA)),
-            getDocs(collection(db, COL_OS)),
+            getDocs(qEid(COL_PAGAR)),
+            getDocs(qEid(COL_FIXAS)),
+            getDocs(qEid(COL_RECEBER)),
+            getDocs(qEid(COL_DESPESAS)),
+            getDocs(qEid(COL_COMPRAS)),
+            getDocs(qEid(COL_CAIXA)),
+            getDocs(qEid(COL_OS)),
         ]);
         dadosPagar    = []; sp.forEach(d  => dadosPagar.push({ id: d.id, ...d.data() }));
         dadosFixas    = []; sf.forEach(d  => dadosFixas.push({ id: d.id, ...d.data() }));
@@ -143,7 +146,7 @@ async function carregar() {
     }
     // Carregar metas (documento único)
     try {
-        const metaSnap = await getDoc(doc(db, COL_METAS, 'config'));
+        const metaSnap = await getDoc(doc(db, COL_METAS, getEmpresaId()));
         dadosMetas = metaSnap.exists() ? metaSnap.data() : {};
     } catch (e) { console.error('[Financeiro] Erro ao carregar metas:', e); dadosMetas = {}; }
     dadosPagar   = dadosPagar.map(c => calcStatus(c, 'pago'));
@@ -362,6 +365,7 @@ async function gerarLancamentos(fixaId, dados) {
             obs:          dados.obs || '',
             fixaId,
             origem:       'despesa_fixa',
+            empresa_id:   getEmpresaId(),
             atualizadoEm: serverTimestamp()
         });
     }
@@ -727,6 +731,7 @@ async function salvarPagar() {
         valor:        Number($('fp-valor').value) || 0,
         status:       $('fp-status').value,
         obs:          $('fp-obs').value.trim(),
+        empresa_id:   getEmpresaId(),
         atualizadoEm: serverTimestamp()
     };
     const id = editandoId || `pag_${Date.now()}`;
@@ -751,6 +756,7 @@ async function salvarFixa() {
         forma_pagamento: $('ff-pagamento').value,
         status:          $('ff-status').value,
         obs:             $('ff-obs').value.trim(),
+        empresa_id:      getEmpresaId(),
         atualizadoEm:    serverTimestamp()
     };
     const id = editandoId || `fix_${Date.now()}`;
@@ -778,6 +784,7 @@ async function salvarReceber() {
         valor:        Number($('fr-valor').value) || 0,
         status:       $('fr-status').value,
         obs:          $('fr-obs').value.trim(),
+        empresa_id:   getEmpresaId(),
         atualizadoEm: serverTimestamp()
     };
     const id = editandoId || `rec_${Date.now()}`;
@@ -792,17 +799,19 @@ async function salvarReceber() {
 // ── Recarregar parcial ─────────────────────────────────────────────────
 async function recarregar(col) {
     try {
+        const eid = getEmpresaId();
+        const qEid = c => query(collection(db, c), where('empresa_id', '==', eid));
         if (col === 'pagar') {
-            const sp = await getDocs(collection(db, COL_PAGAR));
+            const sp = await getDocs(qEid(COL_PAGAR));
             dadosPagar = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
             dadosPagar = dadosPagar.map(c => calcStatus(c, 'pago'));
             renderPagar(dadosPagar);
         } else if (col === 'fixa') {
-            const sf = await getDocs(collection(db, COL_FIXAS));
+            const sf = await getDocs(qEid(COL_FIXAS));
             dadosFixas = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
             renderFixas(dadosFixas);
         } else if (col === 'receber') {
-            const sr = await getDocs(collection(db, COL_RECEBER));
+            const sr = await getDocs(qEid(COL_RECEBER));
             dadosReceber = []; sr.forEach(d => dadosReceber.push({ id: d.id, ...d.data() }));
             dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
             renderReceber(dadosReceber);
@@ -1340,7 +1349,7 @@ async function salvarMetas() {
         atualizadoEm: serverTimestamp(),
     };
     try {
-        await setDoc(doc(db, COL_METAS, 'config'), dados);
+        await setDoc(doc(db, COL_METAS, getEmpresaId()), dados);
         dadosMetas = { ...dados };
         fecharForm('form-metas');
         renderMetas();

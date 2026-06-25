@@ -6,8 +6,9 @@
      financeiro_centros_custo     — centros de custo
    ============================================================ */
 import {
-    db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp
+    db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, where
 } from '../../scripts/firebase.js';
+import { getEmpresaId } from '../../shared/tenant.js';
 import { logAudit }                   from '../../shared/auditoria.js';
 import { moverParaLixeira }           from '../../shared/lixeira.js';
 import { mostrarMenuExportar }        from '../../shared/exportar.js';
@@ -126,14 +127,14 @@ $('dsp-modal-quick-ok')?.addEventListener('click', async () => {
 
     if (quickModalCtx === 'categoria') {
         const id = `cat_${Date.now()}`;
-        await setDoc(doc(db, COL_CATS, id), { nome, icone, criadoEm: serverTimestamp() });
+        await setDoc(doc(db, COL_CATS, id), { nome, icone, empresa_id: getEmpresaId(), criadoEm: serverTimestamp() });
         catsCustom.push({ id, nome, icone });
         popularSelectCategorias();
         $('dsp-categoria').value = id;
         toast('✅ Categoria criada!');
     } else {
         const id = `ctr_${Date.now()}`;
-        await setDoc(doc(db, COL_CENTROS, id), { nome, icone, criadoEm: serverTimestamp() });
+        await setDoc(doc(db, COL_CENTROS, id), { nome, icone, empresa_id: getEmpresaId(), criadoEm: serverTimestamp() });
         centrosCustom.push({ id, nome, icone });
         popularSelectCentros();
         $('dsp-centro').value = id;
@@ -260,10 +261,12 @@ function popularSelectCentros() {
 /* ── Carregar dados ──────────────────────────────────────────── */
 async function carregar() {
     try {
+        const eid = getEmpresaId();
+        const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));
         const [snapD, snapC, snapCt] = await Promise.all([
-            getDocs(collection(db, COL_DESPESAS)),
-            getDocs(collection(db, COL_CATS)),
-            getDocs(collection(db, COL_CENTROS)),
+            getDocs(qEid(COL_DESPESAS)),
+            getDocs(qEid(COL_CATS)),
+            getDocs(qEid(COL_CENTROS)),
         ]);
         despesasData = [];
         snapD.forEach(d => despesasData.push({ id: d.id, ...d.data() }));
@@ -496,7 +499,7 @@ $('dsp-cat-salvar')?.addEventListener('click', async () => {
     const icone = $('dsp-cat-icone')?.value.trim() || '💡';
     if (!nome) { $('dsp-cat-nome')?.focus(); return; }
     const id = `cat_${Date.now()}`;
-    await setDoc(doc(db, COL_CATS, id), { nome, icone, criadoEm: serverTimestamp() });
+    await setDoc(doc(db, COL_CATS, id), { nome, icone, empresa_id: getEmpresaId(), criadoEm: serverTimestamp() });
     catsCustom.push({ id, nome, icone });
     popularSelectCategorias();
     $('dsp-cat-form').style.display = 'none';
@@ -532,7 +535,7 @@ $('dsp-centro-salvar')?.addEventListener('click', async () => {
     const icone = $('dsp-centro-icone')?.value.trim() || '🏗️';
     if (!nome) { $('dsp-centro-nome')?.focus(); return; }
     const id = `ctr_${Date.now()}`;
-    await setDoc(doc(db, COL_CENTROS, id), { nome, icone, criadoEm: serverTimestamp() });
+    await setDoc(doc(db, COL_CENTROS, id), { nome, icone, empresa_id: getEmpresaId(), criadoEm: serverTimestamp() });
     centrosCustom.push({ id, nome, icone });
     popularSelectCentros();
     $('dsp-centro-form').style.display = 'none';
@@ -614,6 +617,7 @@ async function salvarDespesa() {
         frequencia:   isRecorrente ? ($('dsp-frequencia')?.value || 'mensal') : '',
         ultimaGeracao: isRecorrente ? (data || hoje()) : '',
         anexos:       _anexosForm,
+        empresa_id:   getEmpresaId(),
         atualizadoEm: serverTimestamp(),
     };
     if (!editandoId) despesa.criadoEm = serverTimestamp();
@@ -657,7 +661,7 @@ async function excluirDespesa(id) {
 /* ── Recarregar ──────────────────────────────────────────────── */
 async function recarregar() {
     try {
-        const snap = await getDocs(collection(db, COL_DESPESAS));
+        const snap = await getDocs(query(collection(db, COL_DESPESAS), where('empresa_id', '==', getEmpresaId())));
         despesasData = [];
         snap.forEach(d => despesasData.push({ id: d.id, ...d.data() }));
         despesasData.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
@@ -734,6 +738,7 @@ async function gerarRecorrentesAutomaticas() {
             obs:          d.obs   || '',
             recorrente:   false,
             origemRecorrente: d.id,
+            empresa_id:   getEmpresaId(),
             criadoEm:    serverTimestamp(),
             atualizadoEm: serverTimestamp(),
         };

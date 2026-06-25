@@ -6,8 +6,9 @@
      financeiro_pagar           — lançamento automático criado
    ============================================================ */
 import {
-    db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, getDoc, runTransaction
+    db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, getDoc, runTransaction, query, where
 } from '../../scripts/firebase.js';
+import { getEmpresaId } from '../../shared/tenant.js';
 import { logAudit }           from '../../shared/auditoria.js';
 import { moverParaLixeira }   from '../../shared/lixeira.js';
 import { mostrarMenuExportar } from '../../shared/exportar.js';
@@ -146,9 +147,11 @@ $('cmp-search')?.addEventListener('input', () => {
 /* ── Carregar dados ──────────────────────────────────────────── */
 async function carregar() {
     try {
+        const eid = getEmpresaId();
+        const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));
         const [snapC, snapF] = await Promise.all([
-            getDocs(collection(db, COL_COMPRAS)),
-            getDocs(collection(db, COL_FORNECEDORES))
+            getDocs(qEid(COL_COMPRAS)),
+            getDocs(qEid(COL_FORNECEDORES))
         ]);
         comprasData = [];
         snapC.forEach(d => comprasData.push({ id: d.id, ...d.data() }));
@@ -531,6 +534,7 @@ async function salvarCompra() {
         nf:    $('cmp-nf')?.value.trim() || '',
         status,
         obs:   $('cmp-obs')?.value.trim() || '',
+        empresa_id:   getEmpresaId(),
         atualizadoEm: serverTimestamp(),
         finPagarId: compraAntiga?.finPagarId || null,
     };
@@ -568,6 +572,7 @@ async function salvarCompra() {
             obs:          `Compra #${compraId}`,
             origem:       'compra',
             compraId,
+            empresa_id:   getEmpresaId(),
             atualizadoEm: serverTimestamp(),
         }, { merge: true });
 
@@ -599,7 +604,7 @@ async function salvarCompra() {
 /* ── Atualiza Estoque com Custo Médio ────────────────────────── */
 async function atualizarEstoqueComCompra(itens) {
     let snapEstoque;
-    try { snapEstoque = await getDocs(collection(db, COL_ESTOQUE)); }
+    try { snapEstoque = await getDocs(query(collection(db, COL_ESTOQUE), where('empresa_id', '==', getEmpresaId()))); }
     catch { return; }
 
     const todosProdutos = [];
@@ -658,6 +663,7 @@ async function atualizarEstoqueComCompra(itens) {
                     historico:        [],
                     localizacao:      '',
                     tags:             [],
+                    empresa_id:       getEmpresaId(),
                     criadoEm:         serverTimestamp(),
                     atualizadoEm:     serverTimestamp(),
                 });
@@ -671,7 +677,7 @@ async function atualizarEstoqueComCompra(itens) {
 /* ── Recarregar ──────────────────────────────────────────────── */
 async function recarregar() {
     try {
-        const snap = await getDocs(collection(db, COL_COMPRAS));
+        const snap = await getDocs(query(collection(db, COL_COMPRAS), where('empresa_id', '==', getEmpresaId())));
         comprasData = [];
         snap.forEach(d => comprasData.push({ id: d.id, ...d.data() }));
         comprasData.sort((a, b) => (b.data || '').localeCompare(a.data || ''));

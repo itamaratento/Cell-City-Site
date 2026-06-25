@@ -6,6 +6,7 @@ import {
   db, collection, doc, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc,
   query, where, serverTimestamp
 } from '../../scripts/firebase.js';
+import { getEmpresaId } from '../../shared/tenant.js';
 
 /* ── Coleções Firestore ──────────────────────────────────────── */
 const COL_FORNECEDORES = 'fornecedores';
@@ -101,7 +102,7 @@ function atualizarDashboard() {
 async function carregarFornecedores() {
   document.getElementById('forn-loading').style.display = 'flex';
   try {
-    const snap = await getDocs(collection(db, COL_FORNECEDORES));
+    const snap = await getDocs(query(collection(db, COL_FORNECEDORES), where('empresa_id', '==', getEmpresaId())));
     state.fornecedores = [];
     snap.forEach(d => state.fornecedores.push({ id: d.id, ...d.data() }));
     state.fornecedores.sort((a, b) => {
@@ -238,6 +239,7 @@ async function salvarForn() {
     email:      document.getElementById('ff-email')?.value.trim() || '',
     obs:        document.getElementById('ff-obs').value.trim(),
     favorito:   false,
+    empresa_id: getEmpresaId(),
     atualizadoEm: serverTimestamp(),
   };
 
@@ -363,7 +365,7 @@ function toggleDash() {
 async function carregarCompras() {
   document.getElementById('compras-loading').style.display = 'flex';
   try {
-    const snap = await getDocs(collection(db, COL_COMPRAS));
+    const snap = await getDocs(query(collection(db, COL_COMPRAS), where('empresa_id', '==', getEmpresaId())));
     state.compras = [];
     snap.forEach(d => state.compras.push({ id: d.id, ...d.data() }));
     state.compras.sort((a, b) => {
@@ -478,7 +480,7 @@ async function salvarCompra() {
       const urgencia = 'media';
       for (let i = 0; i < linhas.length; i++) {
         await setDoc(doc(db, COL_COMPRAS, `compra_${Date.now()}_${i}`), {
-          nome: linhas[i], quantidade: 1, urgencia, obs: '', atualizadoEm: serverTimestamp()
+          nome: linhas[i], quantidade: 1, urgencia, obs: '', empresa_id: getEmpresaId(), atualizadoEm: serverTimestamp()
         });
       }
       toast(`✅ ${linhas.length} item(s) adicionado(s)!`);
@@ -496,6 +498,7 @@ async function salvarCompra() {
     quantidade: Number(document.getElementById('fc-qty').value) || 1,
     urgencia:   document.getElementById('fc-urgencia').value,
     obs:        document.getElementById('fc-obs').value.trim(),
+    empresa_id: getEmpresaId(),
     atualizadoEm: serverTimestamp()
   };
   const editId = state.editandoComp;
@@ -550,7 +553,7 @@ async function toggleFeita(id, jaFeita) {
 async function carregarEstoqueBaixo() {
   document.getElementById('baixo-loading').style.display = 'flex';
   try {
-    const snap = await getDocs(collection(db, COL_ESTOQUE));
+    const snap = await getDocs(query(collection(db, COL_ESTOQUE), where('empresa_id', '==', getEmpresaId())));
     const baixo = [];
     snap.forEach(d => {
       const p = { id: d.id, ...d.data() };
@@ -599,7 +602,7 @@ function renderEstoqueBaixo(itens) {
 async function carregarTendencias() {
   document.getElementById('tendencias-loading').style.display = 'flex';
   try {
-    const snap = await getDocs(collection(db, COL_TENDENCIAS));
+    const snap = await getDocs(query(collection(db, COL_TENDENCIAS), where('empresa_id', '==', getEmpresaId())));
     const itens = [];
     snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
     state.tendencias = itens;
@@ -651,6 +654,7 @@ function salvarTendencia() {
     tendencia: document.getElementById('ft-tendencia').value,
     prio:      document.getElementById('ft-prio').value,
     obs:       document.getElementById('ft-obs').value.trim(),
+    empresa_id: getEmpresaId(),
     criadoEm:  serverTimestamp()
   };
   setDoc(doc(db, COL_TENDENCIAS, `tend_${Date.now()}`), dados)
@@ -767,6 +771,7 @@ async function receberItemNoEstoque(item) {
         fornecedor: item.obs || '',
         precoCusto: 0,
         precoVenda: 0,
+        empresa_id: getEmpresaId(),
         criadoEm: serverTimestamp()
       });
     }

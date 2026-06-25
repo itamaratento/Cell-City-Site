@@ -380,9 +380,10 @@ const DB = {
     async loadFromFirestore() {
         try {
             localOS = []; localClients = []; localCounter = 0;
-            const osSnap = await getDocs(collection(db, "os"));
+            const eid = getEmpresaId();
+            const osSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
             localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            const clientSnap = await getDocs(collection(db, "clientes"));
+            const clientSnap = await getDocs(query(collection(db, "clientes"), where('empresa_id', '==', eid)));
             localClients = clientSnap.docs.map(d => d.data());
             const counterSnap = await getDocs(collection(db, "metadata"));
             counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });

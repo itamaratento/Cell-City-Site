@@ -4,6 +4,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos, TODOS_MODULOS } from "../../shared/central-modulos.js";
@@ -241,7 +242,7 @@ class Dashboard {
       const numSem   = _weekNum(now);
 
       // Lê todos os lançamentos via SDK (autenticado)
-      const snap = await getDocs(collection(db, 'caixa_lancamentos'));
+      const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', getEmpresaId())));
 
       let lucroAtual = 0;
       // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }
@@ -321,7 +322,7 @@ class Dashboard {
 
   async _carregarContadorAutoatendimento() {
     try {
-      const q = query(collection(db, 'pre_os'), where('status', '==', 'AGUARDANDO_CONVERSAO'));
+      const q = query(collection(db, 'pre_os'), where('empresa_id', '==', getEmpresaId()), where('status', '==', 'AGUARDANDO_CONVERSAO'));
 
       // Listener realtime
       onSnapshot(q, snap => {
@@ -349,7 +350,7 @@ class Dashboard {
     if (!badge) return;
     const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
     try {
-      onSnapshot(collection(db, 'diario_registros'), snap => {
+      onSnapshot(query(collection(db, 'diario_registros'), where('empresa_id', '==', getEmpresaId())), snap => {
         let vencidas = 0;
         snap.forEach(d => {
           const r = d.data();
@@ -376,7 +377,7 @@ class Dashboard {
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
   async _lerAgenda() {
     try {
-      const snap = await getDocs(collection(db, 'agenda'));
+      const snap = await getDocs(query(collection(db, 'agenda'), where('empresa_id', '==', getEmpresaId())));
       const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -779,7 +780,7 @@ class Dashboard {
     let _badgeDeepLinkSetup = false;
 
     // Ouve alertas manuais em tempo real via Firestore
-    onSnapshot(collection(db, 'alertas_usuario'), (snap) => {
+    onSnapshot(query(collection(db, 'alertas_usuario'), where('empresa_id', '==', getEmpresaId())), (snap) => {
       const todos = [];
       snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
       const ativos = todos.filter(a => a.status !== 'concluido');
@@ -1026,7 +1027,7 @@ class Dashboard {
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
       try {
-        const snap = await getDocs(collection(db, 'os'));
+        const snap = await getDocs(query(collection(db, 'os'), where('empresa_id', '==', getEmpresaId())));
         snap.forEach(d => {
           const o = { ...d.data() };
           const id = o.id || d.id;
@@ -1043,7 +1044,7 @@ class Dashboard {
 
       // ----- Clientes (abre a tela de Clientes do módulo OS) -----
       try {
-        const snap = await getDocs(collection(db, 'clientes'));
+        const snap = await getDocs(query(collection(db, 'clientes'), where('empresa_id', '==', getEmpresaId())));
         snap.forEach(d => {
           const c = { ...d.data() };
           const phone = c.phone || d.id;
@@ -1060,8 +1061,8 @@ class Dashboard {
 
       // ----- Produtos (coleção dedicada + fallback) -----
       try {
-        let snap = await getDocs(collection(db, 'estoque_produtos'));
-        if (snap.empty) snap = await getDocs(collection(db, 'produtos'));
+        let snap = await getDocs(query(collection(db, 'estoque_produtos'), where('empresa_id', '==', getEmpresaId())));
+        if (snap.empty) snap = await getDocs(query(collection(db, 'produtos'), where('empresa_id', '==', getEmpresaId())));
         snap.forEach(d => {
           const p = { ...d.data() };
           const nome = p.nome || p.description || '—';
@@ -3020,11 +3021,12 @@ class Dashboard {
 
     const iniciar = () => {
       try {
-        onSnapshot(collection(db, 'os'), atualizarOS,
+        const eid = getEmpresaId();
+        onSnapshot(query(collection(db, 'os'), where('empresa_id', '==', eid)), atualizarOS,
           err => console.warn('[KPI] os:', err && err.message));
-        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
+        onSnapshot(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', eid)), atualizarCaixa,
           err => console.warn('[KPI] caixa:', err && err.message));
-        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
+        onSnapshot(query(collection(db, 'estoque'), where('empresa_id', '==', eid)), atualizarEstoque,
           err => console.warn('[KPI] estoque:', err && err.message));
       } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
     };
@@ -3234,7 +3236,9 @@ class Dashboard {
 
       try {
         // 1. Resumo Live (caixa pre-calculado)
-        const liveSnap = await getDocs(collection(db, 'resumo_live'));
+        const eid = getEmpresaId();
+        const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));
+        const liveSnap = await getDocs(qEid('resumo_live'));
         liveSnap.forEach(d => { _liveDocs[d.id] = d.data(); });
 
         // Saldo = soma de todos os entradas − saídas de todos os documentos mensais/semanais?
@@ -3263,7 +3267,7 @@ class Dashboard {
         this._renderFinChart(meses6);
 
         // 2. Compras do mês (compras_financeiras)
-        const compSnap = await getDocs(collection(db, 'compras_financeiras'));
+        const compSnap = await getDocs(qEid('compras_financeiras'));
         let comprasMes = 0;
         compSnap.forEach(d => {
           const c = d.data();
@@ -3274,7 +3278,7 @@ class Dashboard {
         set('fin-compras-mes', R(comprasMes));
 
         // 3. Contas a pagar
-        const pagarSnap = await getDocs(collection(db, 'financeiro_pagar'));
+        const pagarSnap = await getDocs(qEid('financeiro_pagar'));
         let aPagar = 0, vencidas = 0;
         const hojeStr = hojeKey;
         pagarSnap.forEach(d => {
@@ -3286,7 +3290,7 @@ class Dashboard {
         });
 
         // 4. Contas a receber
-        const receberSnap = await getDocs(collection(db, 'financeiro_receber'));
+        const receberSnap = await getDocs(qEid('financeiro_receber'));
         let aReceber = 0;
         receberSnap.forEach(d => {
           const c = d.data();
@@ -3303,7 +3307,7 @@ class Dashboard {
         if (vcCard) vcCard.className = 'fin-card ' + (vencidas > 0 ? 'fin-card--vencida fin-card--alerta' : 'fin-card--vencida');
 
         // 5. Estoque baixo (estoque_produtos)
-        const estSnap = await getDocs(collection(db, 'estoque_produtos'));
+        const estSnap = await getDocs(qEid('estoque_produtos'));
         let baixo = 0, maisVendidoNome = '—', maisLucrativoNome = '—';
         const prodMap = {};
         estSnap.forEach(d => {
@@ -3316,7 +3320,7 @@ class Dashboard {
         set('fin-estoque-baixo', baixo || '—');
 
         // 6. Produto mais vendido / mais lucrativo (dos lançamentos do mês)
-        const caixaSnap = await getDocs(collection(db, 'caixa_lancamentos'));
+        const caixaSnap = await getDocs(qEid('caixa_lancamentos'));
         const vendMap = {};
         caixaSnap.forEach(d => {
           const l = d.data();
