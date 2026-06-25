@@ -33,6 +33,7 @@ export const TODOS_MODULOS = [
   // Comercial
   { id: 'crm-comercial',       nome: 'CRM Comercial',           icone: '🎯', descricao: 'Leads, orçamentos e oportunidades',     categoria: 'Comercial'     },
   { id: 'fornecedor',          nome: 'Fornecedor',              icone: '🏭', descricao: 'Gestão de fornecedores',                categoria: 'Comercial'     },
+  { id: 'contato',             nome: 'Contatos',                icone: '👤', descricao: 'Agenda de contatos com telefones, WhatsApp e e-mail', categoria: 'Comercial'     },
   { id: 'pos-venda',           nome: 'Pós-venda',               icone: '💝', descricao: 'Fidelização e garantia de clientes',    categoria: 'Comercial'     },
   { id: 'catalogo',            nome: 'Catálogo',                icone: '🛍️', descricao: 'Produtos e vendas via WhatsApp',       categoria: 'Comercial'     },
   // Estoque
@@ -557,6 +558,7 @@ function _renderBody(filtro) {
       'crm-comercial':         'crm-comercial/index.html',
       'fornecedor':            'fornecedor/index.html',
       'pos-venda':             'pos-venda/index.html',
+      'contato':               'contato/index.html',
       'catalogo':              'catalogo/index.html',
       'relatorios':            'relatorios/index.html',
       'central-comandos':      'central-comandos/index.html',

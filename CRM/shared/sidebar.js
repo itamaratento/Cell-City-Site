@@ -24,6 +24,7 @@
     { id: 'estoque',            href: '/CRM/pages/estoque/index.html',             icon: '📱', label: 'Estoque' },
     { id: 'compras',            href: '/CRM/pages/compras/index.html',             icon: '🛒', label: 'Compras',                badge: 'Novo' },
     { id: 'fornecedor',         href: '/CRM/pages/fornecedor/index.html',          icon: '🏭', label: 'Fornecedor' },
+    { id: 'contato',            href: '/CRM/pages/contato/index.html',             icon: '👤', label: 'Contatos',                badge: 'Novo' },
     { id: 'pendencias',         href: '/CRM/pages/pendencias/index.html',          icon: '🗂️', label: 'Pendências e Contas',   badge: 'Novo' },
     { id: 'pos-venda',          href: '/CRM/pages/pos-venda/index.html',           icon: '💝', label: 'Pós-venda' },
     { id: 'garantias',          href: '/CRM/pages/garantias/index.html',           icon: '🛡️', label: 'Garantias' },

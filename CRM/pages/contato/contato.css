@@ -1,0 +1,930 @@
+/* ============================================
+CONTATO — Design System Cell City
+Dark Mode + Verde #00c853 (padrão CRM)
+============================================ */
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --cell-green: #00c853;
+  --cell-green-light: #00e676;
+  --cell-green-dark: #00b248;
+  --bg-base: #0a0b0d;
+  --bg-surface: #121418;
+  --bg-elevated: #1a1d23;
+  --bg-hover: #22262e;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-medium: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --text-primary: #f5f7fa;
+  --text-secondary: #a1a8b3;
+  --text-tertiary: #6b7280;
+  --text-muted: #4b5563;
+  --accent-red: #ef4444;
+  --glow-green: 0 0 0 1px rgba(0, 200, 83, 0.25), 0 4px 20px rgba(0, 200, 83, 0.15);
+  --glow-hover: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.header {
+  background: linear-gradient(135deg, var(--cell-green) 0%, var(--cell-green-dark) 100%);
+  color: white;
+  padding: 16px 20px;
+  font-size: 24px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(0, 200, 83, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  letter-spacing: -0.5px;
+}
+
+#crm-brand-bar .ccfav-launcher {
+  order: 100;
+}
+
+/* ===== LAYOUT PRINCIPAL ===== */
+.contato-screen {
+  width: 100%;
+  max-width: calc(100% - 120px);
+  min-height: 100vh;
+  background: var(--bg-base);
+  padding: 24px 16px 140px;
+  margin-right: 0;
+}
+
+/* ===== TOPO (PESQUISA + NOVO) ===== */
+.contato-topo {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.contato-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  box-shadow: var(--glow-hover);
+  transition: all var(--transition-fast);
+}
+
+.contato-search:focus-within {
+  border-color: var(--cell-green);
+  box-shadow: var(--glow-green);
+}
+
+.contato-search-icon {
+  font-size: 18px;
+  margin-right: 10px;
+  color: var(--text-tertiary);
+}
+
+.contato-search input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 12px 0;
+  font-size: 15px;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.contato-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.contato-btn-novo {
+  background: var(--cell-green);
+  color: white;
+  border: none;
+  padding: 11px 17px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.contato-btn-novo:hover {
+  background: var(--cell-green-dark);
+  box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ===== CONTADOR DE RESULTADOS ===== */
+.contato-resultado-count {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 6px 2px 0;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  display: none;
+}
+
+/* ===== LISTA SECÇÃO ===== */
+.contato-lista-sec {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: var(--glow-hover);
+  margin-top: 24px;
+  width: 100%;
+}
+
+.contato-sec-titulo {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-medium);
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 200, 83, 0.05);
+}
+
+.contato-lista-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.contato-biblioteca-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.2;
+}
+
+.contato-biblioteca-titulo {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.contato-biblioteca-sub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.contato-biblioteca-sub .contato-contador {
+  color: var(--cell-green);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.contato-contador {
+  color: var(--cell-green);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.contato-lista {
+  padding: 12px;
+  min-height: 200px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ===== CARD DE CONTATO ===== */
+.contato-card {
+  display: flex;
+  align-items: flex-start;
+  padding: 16px 18px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  gap: 14px;
+  transition: all var(--transition-smooth);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.contato-card:hover {
+  background: var(--bg-hover);
+  border-color: rgba(0, 200, 83, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 200, 83, 0.15);
+  transform: translateX(2px);
+}
+
+.contato-card-favorito {
+  border-color: rgba(255, 193, 7, 0.25);
+  background: rgba(255, 193, 7, 0.04);
+}
+
+.contato-card-favorito:hover {
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+/* ===== AVATAR ===== */
+.contato-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== CONTEÚDO DO CARD ===== */
+.contato-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.contato-card-nome {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.contato-card-nome .contato-star-icon {
+  font-size: 14px;
+  color: #fbbf24;
+}
+
+.contato-card-cargo-empresa {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.contato-card-contatos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.contato-card-contato-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.contato-card-contato-item .contato-icone {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.contato-card-contato-item .contato-valor {
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.contato-card-contato-item .contato-principal-badge {
+  font-size: 9px;
+  background: var(--cell-green);
+  color: #000;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.contato-card-observacoes {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--border-medium);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ===== AÇÕES DO CARD ===== */
+.contato-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.contato-btn-acc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  text-decoration: none;
+  border: 1px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+
+.contato-btn-acc:hover {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.contato-btn-acc.contato-btn-wpp {
+  color: #25d366;
+  border-color: rgba(37, 211, 102, 0.25);
+  background: rgba(37, 211, 102, 0.08);
+}
+
+.contato-btn-acc.contato-btn-wpp:hover {
+  border-color: rgba(37, 211, 102, 0.4);
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.contato-btn-acc.contato-btn-copy {
+  color: var(--cell-green);
+  border-color: rgba(0, 200, 83, 0.25);
+  background: rgba(0, 200, 83, 0.08);
+}
+
+.contato-btn-acc.contato-btn-copy:hover {
+  border-color: rgba(0, 200, 83, 0.4);
+  background: rgba(0, 200, 83, 0.14);
+}
+
+.contato-btn-acc.contato-btn-edit {
+  color: #60a5fa;
+  border-color: rgba(96, 165, 250, 0.25);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+.contato-btn-acc.contato-btn-edit:hover {
+  border-color: rgba(96, 165, 250, 0.4);
+  background: rgba(96, 165, 250, 0.14);
+}
+
+.contato-btn-acc.contato-btn-del {
+  color: var(--accent-red);
+  border-color: rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.contato-btn-acc.contato-btn-del:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.contato-btn-acc.contato-btn-fav {
+  color: #fbbf24;
+  border-color: rgba(255, 193, 7, 0.25);
+  background: rgba(255, 193, 7, 0.08);
+}
+
+.contato-btn-acc.contato-btn-fav.active {
+  background: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.4);
+}
+
+.contato-btn-acc.contato-btn-fav:hover {
+  border-color: rgba(255, 193, 7, 0.4);
+  background: rgba(255, 193, 7, 0.14);
+}
+
+.contato-btn-acc.contato-btn-label {
+  width: auto;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  gap: 4px;
+}
+
+/* ===== EMPTY STATE ===== */
+.contato-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.contato-empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.3;
+}
+
+.contato-empty p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 15px;
+}
+
+/* ===== MODAL ===== */
+.contato-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(4px);
+}
+
+.contato-modal.active {
+  display: flex;
+}
+
+.contato-modal-content {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: contatoSlideIn var(--transition-smooth) ease;
+}
+
+@keyframes contatoSlideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.contato-modal-header {
+  padding: 20px;
+  border-bottom: 1px solid var(--border-medium);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 200, 83, 0.05);
+}
+
+.contato-modal-header h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.contato-modal-close {
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  color: var(--text-secondary);
+}
+
+.contato-modal-close:hover {
+  background: var(--bg-hover);
+  border-color: var(--cell-green);
+  color: var(--cell-green);
+}
+
+.contato-modal-body {
+  padding: 20px;
+}
+
+.contato-modal-footer {
+  padding: 20px;
+  border-top: 1px solid var(--border-medium);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* ===== FORMS ===== */
+.contato-form-group {
+  margin-bottom: 16px;
+}
+
+.contato-form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.contato-required {
+  color: var(--accent-red);
+}
+
+.contato-form-group input,
+.contato-form-group textarea,
+.contato-form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-medium);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+}
+
+.contato-form-group input::placeholder,
+.contato-form-group textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.contato-form-group input:focus,
+.contato-form-group textarea:focus,
+.contato-form-group select:focus {
+  outline: none;
+  border-color: var(--cell-green);
+  background: var(--bg-hover);
+  box-shadow: var(--glow-green);
+}
+
+.contato-form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ===== INPUT DE TELEFONE ===== */
+.contato-input-phone-group {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.contato-input-phone {
+  flex: 1;
+}
+
+/* ===== TELEFONES DINÂMICOS ===== */
+#contato-telefones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.contato-phone-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.contato-phone-row .contato-input-phone {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: border-color var(--transition-fast);
+}
+
+.contato-phone-row .contato-input-phone:focus {
+  outline: none;
+  border-color: var(--cell-green);
+}
+
+.contato-phone-row .contato-input-phone::placeholder {
+  color: var(--text-muted);
+}
+
+.contato-btn-phone-principal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.contato-btn-phone-principal:hover {
+  border-color: var(--cell-green);
+  color: var(--cell-green);
+  background: rgba(0, 200, 83, 0.08);
+}
+
+.contato-btn-phone-principal.active {
+  border-color: var(--cell-green);
+  color: var(--cell-green);
+  background: rgba(0, 200, 83, 0.15);
+}
+
+.contato-btn-phone-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-medium);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.contato-btn-phone-remove:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.contato-add-phone-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--border-medium);
+  color: var(--cell-green);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: all var(--transition-fast);
+}
+
+.contato-add-phone-btn:hover {
+  border-color: var(--cell-green);
+  background: var(--bg-hover);
+}
+
+/* ===== FAVORITO ===== */
+.contato-fav-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(0, 200, 83, 0.05);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 200, 83, 0.1);
+  color: var(--text-secondary);
+}
+
+.contato-fav-check input {
+  width: auto;
+  cursor: pointer;
+}
+
+.contato-fav-check:hover {
+  background: rgba(0, 200, 83, 0.1);
+  border-color: var(--cell-green);
+  color: var(--cell-green);
+}
+
+/* ===== BOTÕES ===== */
+.contato-btn-cancelar,
+.contato-btn-salvar {
+  padding: 10px 20px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.contato-btn-cancelar {
+  background: transparent;
+  border: 1px solid var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.contato-btn-cancelar:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-secondary);
+}
+
+.contato-btn-salvar {
+  background: var(--cell-green);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
+}
+
+.contato-btn-salvar:hover {
+  background: var(--cell-green-dark);
+  box-shadow: 0 6px 20px rgba(0, 200, 83, 0.4);
+  transform: translateY(-2px);
+}
+
+/* ===== TOAST ===== */
+.contato-toast {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  padding: 14px 18px;
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  z-index: 2000;
+  animation: contatoSlideInToast var(--transition-smooth) ease forwards;
+  max-width: 320px;
+  font-size: 14px;
+  font-weight: 500;
+  display: none;
+}
+
+.contato-toast.success {
+  background: rgba(0, 200, 83, 0.15);
+  border-color: var(--cell-green);
+  color: var(--cell-green);
+}
+
+.contato-toast.error {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+.contato-toast.warning {
+  background: rgba(255, 200, 0, 0.15);
+  border-color: #ffcc00;
+  color: #ffcc00;
+}
+
+@keyframes contatoSlideInToast {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (min-width: 1920px) {
+  .contato-screen {
+    max-width: calc(100% - 120px);
+  }
+}
+
+@media (min-width: 1366px) and (max-width: 1919px) {
+  .contato-screen {
+    max-width: calc(100% - 120px);
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1365px) {
+  .contato-screen {
+    max-width: calc(100% - 100px);
+  }
+  .contato-topo {
+    flex-direction: row;
+  }
+  .contato-search {
+    flex: 1;
+  }
+  .contato-btn-novo {
+    flex-shrink: 0;
+  }
+  .contato-screen {
+    padding: 12px;
+    padding-bottom: 120px;
+  }
+}
+
+@media (max-width: 767px) {
+  .contato-screen {
+    max-width: calc(100% - 80px);
+    padding: 8px;
+    padding-bottom: 100px;
+  }
+  .header {
+    font-size: 18px;
+    padding: 12px 16px;
+  }
+  .header-title {
+    gap: 6px;
+  }
+  .contato-topo {
+    gap: 8px;
+    flex-direction: column;
+  }
+  .contato-search {
+    order: 1;
+  }
+  .contato-btn-novo {
+    order: 2;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+  .contato-search input {
+    font-size: 14px;
+  }
+  .contato-card {
+    padding: 12px;
+    gap: 10px;
+    flex-direction: column;
+  }
+  .contato-card-actions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .contato-modal-content {
+    border-radius: var(--radius-lg);
+  }
+  .contato-modal-body {
+    padding: 16px;
+  }
+  .contato-modal-footer {
+    padding: 16px;
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .contato-btn-cancelar,
+  .contato-btn-salvar {
+    width: 100%;
+  }
+}

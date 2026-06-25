@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contatos</title>
+    <link rel="stylesheet" href="contato.css?v=20260701">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <span class="header-title">👤 Contatos</span>
+    </header>
+
+    <div class="contato-screen">
+
+        <!-- PESQUISA + NOVO -->
+        <section class="contato-topo">
+            <div class="contato-search">
+                <span class="contato-search-icon">🔍</span>
+                <input type="text" id="contato-busca" placeholder="Pesquisar por nome, telefone, e-mail, empresa..." oninput="Contato.buscar(this.value)" autocomplete="off">
+            </div>
+            <button class="contato-btn-novo" onclick="Contato.abrirFormNovo()">➕ Novo Contato</button>
+        </section>
+        <div id="contato-resultado-count" class="contato-resultado-count"></div>
+
+        <!-- LISTA DE CONTATOS -->
+        <section class="contato-lista-sec">
+            <div class="contato-sec-titulo">
+                <div class="contato-lista-header">
+                    <div class="contato-biblioteca-label">
+                        <span class="contato-biblioteca-titulo">📖 Agenda</span>
+                        <span class="contato-biblioteca-sub"><span id="contato-contador">0</span> contatos</span>
+                    </div>
+                </div>
+            </div>
+            <div class="contato-lista" id="contato-lista">
+                <div class="contato-empty">
+                    <div class="contato-empty-icon">👤</div>
+                    <p>Nenhum contato ainda. Clique em <strong>➕ Novo Contato</strong> para começar.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL: NOVO / EDITAR CONTATO -->
+    <div id="contato-modal" class="contato-modal">
+        <div class="contato-modal-content">
+            <div class="contato-modal-header">
+                <h3 id="contato-modal-titulo">👤 Novo Contato</h3>
+                <button class="contato-modal-close" onclick="Contato.fecharForm()">✕</button>
+            </div>
+            <div class="contato-modal-body">
+                <input type="hidden" id="contato-edit-id">
+
+                <!-- Nome (obrigatório) -->
+                <div class="contato-form-group">
+                    <label>Nome <span class="contato-required">*</span></label>
+                    <input type="text" id="contato-f-nome" placeholder="Ex: João Silva" maxlength="120" autocomplete="off">
+                </div>
+
+                <!-- WhatsApp -->
+                <div class="contato-form-group">
+                    <label>WhatsApp</label>
+                    <div class="contato-input-phone-group">
+                        <input type="tel" id="contato-f-whatsapp" class="contato-input-phone" placeholder="(62) 99999-9999" maxlength="20" autocomplete="off">
+                    </div>
+                </div>
+
+                <!-- Telefones (lista dinâmica) -->
+                <div class="contato-form-group">
+                    <label>Telefones</label>
+                    <div id="contato-telefones-list"></div>
+                    <button type="button" class="contato-add-phone-btn" onclick="Contato.adicionarTelefone()">➕ Adicionar telefone</button>
+                </div>
+
+                <!-- E-mail -->
+                <div class="contato-form-group">
+                    <label>E-mail</label>
+                    <input type="email" id="contato-f-email" placeholder="joao@email.com" maxlength="120" autocomplete="off">
+                </div>
+
+                <!-- Empresa -->
+                <div class="contato-form-group">
+                    <label>Empresa</label>
+                    <input type="text" id="contato-f-empresa" placeholder="Ex: Cell City" maxlength="120" autocomplete="off">
+                </div>
+
+                <!-- Cargo/Função -->
+                <div class="contato-form-group">
+                    <label>Cargo / Função</label>
+                    <input type="text" id="contato-f-cargo" placeholder="Ex: Gerente de TI" maxlength="80" autocomplete="off">
+                </div>
+
+                <!-- Observações -->
+                <div class="contato-form-group">
+                    <label>Observações</label>
+                    <textarea id="contato-f-observacoes" rows="3" placeholder="Informações adicionais sobre o contato..."></textarea>
+                </div>
+
+                <!-- Favorito -->
+                <label class="contato-fav-check">
+                    <input type="checkbox" id="contato-f-favorito">
+                    <span>⭐ Marcar como favorito</span>
+                </label>
+            </div>
+            <div class="contato-modal-footer">
+                <button class="contato-btn-cancelar" onclick="Contato.fecharForm()">Cancelar</button>
+                <button class="contato-btn-salvar" onclick="Contato.salvar()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="contato-toast" class="contato-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script src="../../shared/sidebar.js"></script>
+    <script type="module" src="contato.js?v=20260701"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js"></script>
+</body>
+</html>
