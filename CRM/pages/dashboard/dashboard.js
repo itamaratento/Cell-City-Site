@@ -1556,6 +1556,7 @@ class Dashboard {
       'pendencias':          '../../pages/pendencias/index.html',
       'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
       'venda-rapida':        '../../pages/venda-rapida/index.html',
+      'saas':                '../../pages/saas/index.html',
     };
     const url = routes[module];
     if (url) {
