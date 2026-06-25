@@ -2149,4 +2149,44 @@ function renderLembretes() {
     const total = lembretes.length;
     // Conta lembretes vencidos (vencimento anterior a hoje)
     const hojeSP = getDataEmSP(new Date());
-    const vencidos = lembretes.filter(l => l.vencimento && l.vencimento < hojeSP).le
+    const vencidos = lembretes.filter(l => l.vencimento && l.vencimento < hojeSP).length;
+    // Badge + texto do botão compacto
+    if (badge) {
+        badge.textContent    = total;
+        badge.style.display  = total > 0 ? 'inline-flex' : 'none';
+    }
+    const texto = document.getElementById('lembretes-texto');
+    if (texto) texto.textContent = total > 0 ? `${total} lembrete${total > 1 ? 's' : ''} pendente${total > 1 ? 's' : ''}` : 'Lembretes';
+    // Destaca o botão do topo em vermelho quando há lembrete vencido
+    const btnTopo = document.querySelector('.btn-lembrete-compacto');
+    if (btnTopo) btnTopo.classList.toggle('lem-vencido', vencidos > 0);
+    if (!lista) return;
+    if (!lembretes.length) {
+        lista.innerHTML = `<div class="lem-empty">Nenhum lembrete pendente</div>`;
+        return;
+    }
+    lista.innerHTML = lembretes.map(l => {
+        const qtd   = l.quantidade && l.quantidade > 1 ? l.quantidade : 1;
+        const total = l.valor * qtd;
+        const venc  = l.vencimento ? `<span class="lem-venc">📅 ${new Date(l.vencimento+'T12:00:00').toLocaleDateString('pt-BR')}</span>` : '';
+        const obs   = l.observacao ? `<div class="lem-obs">${l.observacao}</div>` : '';
+        const qtdLabel = qtd > 1 ? `<span class="lem-qtd">${qtd}x ${formatarMoeda(l.valor)}</span>` : '';
+        return `
+        <div class="lem-card">
+            <div class="lem-card-top">
+                <div class="lem-card-info">
+                    <div class="lem-fornecedor">${l.fornecedor}</div>
+                    <div class="lem-descricao">${l.descricao}</div>
+                    ${qtdLabel}${venc}${obs}
+                </div>
+                <div class="lem-valor">${formatarMoeda(total)}</div>
+            </div>
+            <div class="lem-card-actions">
+                <button class="lem-btn-pagar" onclick="pagarLembrete('${l.id}','${l.fornecedor.replace(/'/g,"\\'")}','${l.descricao.replace(/'/g,"\\'")}',${total})">
+                    💸 Pagar
+                </button>
+                <button class="lem-btn-remover" onclick="removerLembrete('${l.id}')">✕</button>
+            </div>
+        </div>`;
+    }).join('');
+}
