@@ -101,13 +101,19 @@ service cloud.firestore {
 
     // ── ② EMPRESA MASTER — proteção máxima ──────────────────────
 
+    // Bootstrap: permite criar cellcity-master quando ainda não existe nenhuma empresa
+    function bootstrapPermitido() {
+      return autenticado() &&
+             !exists(/databases/$(database)/documents/empresas/cellcity-master);
+    }
+
     match /empresas/{empresaId} {
       // Leitura: master vê tudo; identificado vê apenas a própria empresa
       allow read: if isMaster() ||
                      (autenticado() && temDoc() && docUser().empresa_id == empresaId);
 
-      // Criação: apenas master
-      allow create: if isMaster();
+      // Criação: master OU bootstrap inicial (cellcity-master ainda não existe)
+      allow create: if isMaster() || (empresaId == 'cellcity-master' && bootstrapPermitido());
 
       // Atualização: master pode, mas empresa master deve ficar sempre 'ativo'
       allow update: if isMaster() && (
@@ -130,8 +136,8 @@ service cloud.firestore {
       // Usuário lê só o próprio; master lê todos
       allow read: if autenticado() && (uid() == docUid || isMaster());
 
-      // Criação: apenas master
-      allow create: if isMaster();
+      // Criação: master OU bootstrap inicial (o próprio usuário, quando cellcity-master não existe ainda)
+      allow create: if isMaster() || (uid() == docUid && bootstrapPermitido());
 
       // Atualização:
       // - Master: tudo
