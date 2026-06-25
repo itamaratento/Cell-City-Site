@@ -108,11 +108,13 @@ let _novaEmpresa  = false;
 // ═══════════════════════════════════════════════════════════════
 
 let _painelAberto = false;
-let _abrindoPainel = false;  // lock para evitar chamadas paralelas
 
 async function init() {
+  // Anexa o botão de login via módulo (evita dependência de window.*)
+  document.getElementById('btn-saas-login')?.addEventListener('click', _fazerLogin);
+
   onAuthStateChanged(auth, async (user) => {
-    if (_painelAberto || _abrindoPainel) return;
+    if (_painelAberto) return;
     if (!user || user.isAnonymous) {
       _mostrarLogin('Faça login para acessar a Central SaaS.');
       return;
@@ -123,60 +125,36 @@ async function init() {
 
 async function _abrirPainel(user) {
   if (_painelAberto) return;
-  if (_abrindoPainel) return;
-  _abrindoPainel = true;
   _setMsg('Verificando perfil...');
 
-  console.log('[SaaS] ── DIAGNÓSTICO ──────────────────');
-  console.log('[SaaS] 1. uid    :', user.uid);
-  console.log('[SaaS] 2. email  :', user.email);
-  console.log('[SaaS] 3. anon   :', user.isAnonymous);
-
-  // Tenta loadContext primeiro
   let ctx = null;
   try {
+    // Tenta via loadContext
     ctx = await loadContext(user.uid);
-  } catch (e) {
-    console.warn('[SaaS] loadContext threw:', e);
-  }
 
-  console.log('[SaaS] 4. loadContext →', ctx);
-
-  // Se loadContext falhou, lê Firestore diretamente como fallback
-  if (!ctx) {
-    console.warn('[SaaS] Fallback: lendo usuarios/' + user.uid + ' direto...');
-    try {
+    // Fallback: lê Firestore direto se loadContext retornou null
+    if (!ctx) {
       const snap = await getDoc(doc(db, 'usuarios', user.uid));
-      console.log('[SaaS] snap.exists:', snap.exists());
       if (snap.exists()) {
         const d = snap.data();
-        console.log('[SaaS] dados:', d);
         ctx = { perfil: d.perfil, empresa_id: d.empresa_id };
-        console.log('[SaaS] ctx manual:', ctx);
-      } else {
-        console.error('[SaaS] documento usuarios/' + user.uid + ' NÃO existe!');
       }
-    } catch (ferr) {
-      console.error('[SaaS] Fallback Firestore erro:', ferr.code, ferr.message);
-      _mostrarLogin('Erro Firestore: ' + ferr.code + ' — ' + ferr.message);
-      return;
     }
+  } catch (e) {
+    console.error('[SaaS] Erro ao carregar perfil:', e);
+    _mostrarLogin('Erro ao carregar perfil: ' + (e.code || e.message));
+    return;
   }
 
   const perfil = ctx?.perfil;
-  const isMaster = perfil === 'master_admin';
-  console.log('[SaaS] 5. perfil     :', perfil);
-  console.log('[SaaS] 6. empresa_id :', ctx?.empresa_id);
-  console.log('[SaaS] 7. isMaster   :', isMaster);
+  console.log('[SaaS] perfil lido:', perfil, '| uid:', user.uid);
 
-  if (!isMaster) {
-    _abrindoPainel = false;
-    console.warn('[SaaS] NEGADO — perfil:', perfil);
-    _mostrarLogin('Acesso exclusivo para Master Admin. Perfil lido: "' + (perfil || 'null') + '"');
+  if (perfil !== 'master_admin') {
+    _mostrarLogin('Acesso exclusivo para Master Admin. Perfil: "' + (perfil || 'nenhum') + '"');
     return;
   }
+
   _painelAberto = true;
-  // Garante acesso completo ao sistema (sidebar, modulo-guard)
   sessionStorage.setItem('cc_acesso', 'ok');
   document.getElementById('acesso-negado').style.display = 'none';
   document.getElementById('saas-main').style.display = 'block';
@@ -192,7 +170,8 @@ function _mostrarLogin(msg) {
   const el = document.getElementById('acesso-negado');
   el.style.display = 'flex';
   _setMsg(msg);
-  document.getElementById('login-form').style.display = 'flex';
+  const form = document.getElementById('login-form');
+  if (form) form.style.display = 'flex';
 }
 
 function _setMsg(msg) {
@@ -200,29 +179,37 @@ function _setMsg(msg) {
   if (p) p.textContent = msg;
 }
 
-window.saasLogin = async function() {
-  const email = document.getElementById('saas-email').value.trim();
-  const senha = document.getElementById('saas-senha').value.trim();
+async function _fazerLogin() {
+  if (_painelAberto) return;
+  const email  = document.getElementById('saas-email')?.value.trim();
+  const senha  = document.getElementById('saas-senha')?.value.trim();
   const erroEl = document.getElementById('login-erro');
-  const btn = document.getElementById('btn-saas-login');
-  erroEl.style.display = 'none';
-  btn.disabled = true; btn.textContent = 'Entrando...';
+  const btn    = document.getElementById('btn-saas-login');
+
+  if (!email || !senha) {
+    if (erroEl) { erroEl.textContent = 'Preencha e-mail e senha.'; erroEl.style.display = 'block'; }
+    return;
+  }
+
+  if (erroEl) erroEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Entrando...'; }
+  _setMsg('Autenticando...');
+
   try {
-    _setMsg('Autenticando...');
     const cred = await signInWithEmailAndPassword(auth, email, senha);
-    // onAuthStateChanged vai chamar _abrirPainel automaticamente
-    _setMsg('Carregando painel...');
     await _abrirPainel(cred.user);
   } catch (e) {
-    const msg = e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password'
-      ? 'Senha incorreta ou usuário não encontrado.'
-      : e.message;
-    erroEl.textContent = msg;
-    erroEl.style.display = 'block';
+    const codes = ['auth/invalid-credential','auth/wrong-password','auth/user-not-found'];
+    const msg = codes.includes(e.code) ? 'E-mail ou senha incorretos.' : (e.message || String(e));
+    if (erroEl) { erroEl.textContent = msg; erroEl.style.display = 'block'; }
+    _setMsg('Erro no login.');
   } finally {
-    btn.disabled = false; btn.textContent = 'Entrar';
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
   }
-};
+}
+
+// Mantém compatibilidade com onclick="saasLogin()" no HTML legado
+window.saasLogin = _fazerLogin;
 
 function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
