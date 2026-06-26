@@ -42,25 +42,42 @@ const wppEnviados = new Set();
 
 // ===== INIT =====
 async function init() {
+    console.log('[POS-1] init() iniciou');
     // ── Guard SaaS: autenticação, licença e permissão do módulo ──
     const ctx = await initModulo('pos-venda');
-    if (!ctx) return;
+    console.log('[POS-2] initModulo retornou:', ctx ? 'true' : 'false/null');
+    if (!ctx) {
+        console.log('[POS-2b] ctx é false/null — interrompendo');
+        return;
+    }
 
     try {
+        console.log('[POS-3] Dentro do try, buscando eid');
         const eid = getEmpresaId();
+        console.log('[POS-4] eid:', eid);
+        console.log('[POS-5] Antes Promise.all (mensagens)');
         await Promise.all([carregarMensagensPosvenda(eid), carregarMensagensWppShared(eid)]);
+        console.log('[POS-6] Depois Promise.all (mensagens)');
         window.mensagensPosvenda = mensagensPosvenda;
+        console.log('[POS-7] Antes loadData()');
         await loadData();
+        console.log('[POS-8] Depois loadData()');
     } catch (err) {
+        console.log('[POS-9] CAPTURADO ERRO NO TRY/CATCH:', err.message, err.stack);
         console.error('❌ Pós-venda: erro ao carregar dados', err);
         document.getElementById('pendentes-container').innerHTML =
             `<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar. Verifique a conexão.</p></div>`;
         return;
     }
+    console.log('[POS-10] Antes renderPendentes()');
     renderPendentes();
+    console.log('[POS-11] Antes renderHistorico()');
     renderHistorico();
+    console.log('[POS-12] Antes setupEventDelegation()');
     setupEventDelegation();
+    console.log('[POS-13] Antes focarDeepLink()');
     focarDeepLink();
+    console.log('[POS-14] FIM DO INIT — TUDO EXECUTADO');
 }
 
 // ===== DEEP-LINK — foca um registro vindo do Painel de Alertas (sino) =====
@@ -91,28 +108,44 @@ function focarDeepLink() {
 
 // ===== CARREGAR DADOS =====
 async function loadData() {
-    // CORREÇÃO: OS são salvas na coleção "os", não "orders"
+    console.log('[LOAD-1] loadData() iniciou');
     const eid = getEmpresaId();
+    console.log('[LOAD-2] eid:', eid);
     let ordersSnap;
     try {
+        console.log('[LOAD-3] Buscando OS com orderBy');
         ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid), orderBy("createdAt", "desc")));
-    } catch {
-        ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
+        console.log('[LOAD-4] OS com orderBy OK');
+    } catch (e1) {
+        console.log('[LOAD-4b] OS com orderBy FALHOU:', e1.message, '- tentando sem orderBy');
+        try {
+            ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
+            console.log('[LOAD-4c] OS sem orderBy OK');
+        } catch (e2) {
+            console.log('[LOAD-4d] OS sem orderBy TAMBÉM FALHOU:', e2.message);
+            throw e2;
+        }
     }
+    console.log('[LOAD-5] OS obtidas, docs:', ordersSnap.size);
+    console.log('[LOAD-6] Buscando contatos');
     const contatosSnap = await getDocs(query(collection(db, "posvenda_contatos"), where('empresa_id', '==', eid)));
+    console.log('[LOAD-7] Contatos obtidos, docs:', contatosSnap.size);
 
     const contatos = [];
     contatosSnap.forEach(d => {
         const data = d.data();
-        // Filtra registros com soft delete — ativo: false são ocultados
         if (data.ativo === false) return;
         contatos.push({ id: d.id, ...data });
     });
+    console.log('[LOAD-8] Contatos filtrados (sem soft delete):', contatos.length);
     contatosFeitos = new Set(contatos.map(c => `${c.osId}_${c.prazo}`));
+    console.log('[LOAD-9] contatosFeitos size:', contatosFeitos.size);
 
     const now = new Date();
     pendentes = { futuros: [], 5: [], 15: [], 30: [] };
+    console.log('[LOAD-10] Iniciando forEach nas OS, total:', ordersSnap.size);
 
+    let osCount = 0;
     ordersSnap.forEach(d => {
         const os = { firestoreId: d.id, ...d.data() };
         if (os.status !== 'entregue') return;
@@ -123,29 +156,31 @@ async function loadData() {
         const dias = calcDias(deliveryDate, now);
         const osId = os.id || os.firestoreId;
 
-        // Futuros: entregue mas ainda não chegou em 5 dias
         if (dias < 5) {
             pendentes.futuros.push({ ...os, osId, dias, urgencia: 'futuro', prazo: 5 });
             return;
         }
 
-        // Pendentes por prazo — mostra mesmo se passou do prazo (overdue)
         [5, 15, 30].forEach(prazo => {
             if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-            // Janela: de prazo até o próximo prazo - 1
             const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
             if (dias < prazo || dias >= proxPrazo) return;
 
             const urgencia = dias <= prazo + 2 ? 'ok' : dias <= prazo + 5 ? 'atencao' : 'urgente';
             pendentes[prazo].push({ ...os, osId, dias, urgencia, prazo });
         });
+        osCount++;
     });
+    console.log('[LOAD-11] OS processadas (status entregue):', osCount);
+    console.log('[LOAD-12] Pendentes futuros:', pendentes.futuros.length, '| 5:', pendentes[5].length, '| 15:', pendentes[15].length, '| 30:', pendentes[30].length);
 
     historico = contatos.sort((a, b) => {
         const dateA = a.dataContato ? new Date(a.dataContato) : 0;
         const dateB = b.dataContato ? new Date(b.dataContato) : 0;
         return dateB - dateA;
     });
+    console.log('[LOAD-13] Historico sorted:', historico.length);
+    console.log('[LOAD-14] loadData() COMPLETOU');
 }
 
 // ===== CARREGAR MENSAGENS POSVENDA (isolado por empresa_id) =====
