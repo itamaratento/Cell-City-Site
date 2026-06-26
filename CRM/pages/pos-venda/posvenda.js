@@ -1,8 +1,10 @@
 import {
     db, collection, getDocs, getDoc, doc, setDoc, updateDoc, query, orderBy, where, serverTimestamp
 } from "../../scripts/firebase.js";
-import { initModulo } from "../../shared/modulo-guard.js";
+import { initModulo } from "../../shared/modulo-guard.js?v=20260626";
 import { getEmpresaId } from "../../shared/tenant.js";
+
+console.log('POS 1 — ARQUIVO CARREGADO');
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem

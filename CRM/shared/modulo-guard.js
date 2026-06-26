@@ -39,44 +39,106 @@ const DASHBOARD_URL = '/CRM/pages/dashboard/index.html';
  * @returns {Promise<Object|null>} Contexto tenant ou null
  */
 export async function initModulo(moduloId, opcoes = {}) {
-  // ── 1. Sessão ───────────────────────────────────────────────
-  if (sessionStorage.getItem('cc_acesso') !== 'ok') {
-    window.location.replace(LOGIN_URL);
-    return null;
+  try {
+    console.log('[INIT] Iniciando initModulo:', moduloId);
+
+    // ── 1. Sessão ───────────────────────────────────────────────
+    const sessao = sessionStorage.getItem('cc_acesso');
+    console.log('[INIT] cc_acesso:', sessao);
+    if (sessao !== 'ok') {
+      console.error('[INIT] Motivo do bloqueio: sessão inválida (cc_acesso !== "ok")');
+      window.location.replace(LOGIN_URL);
+      return null;
+    }
+    console.log('[INIT] Sessão OK');
+
+    // ── 2. Firebase Auth ────────────────────────────────────────
+    console.log('[INIT] Aguardando authReady...');
+    await authReady;
+    console.log('[INIT] authReady OK');
+    const user = await _aguardarUsuario();
+    console.log('[INIT] Usuário:', user?.uid || user?.email || 'null (não autenticado)');
+    console.log('[INIT] Usuário autenticado:', !!user, '| isAnonymous:', user?.isAnonymous);
+
+    // ── 3. Contexto do tenant ───────────────────────────────────
+    console.log('[INIT] Buscando tenant (getTenant)...');
+    let ctx = getTenant();
+    console.log('[INIT] Tenant (ctx):', ctx ? JSON.stringify({ empresa_id: ctx.empresa_id, perfil: ctx.perfil, modulos_ativos: ctx.modulos_ativos, bloqueado: ctx.bloqueado }) : 'null');
+
+    if (!ctx && user && !user.isAnonymous) {
+      console.log('[INIT] Tenant não encontrado em cache. Chamando loadContext para uid:', user.uid);
+      ctx = await loadContext(user.uid);
+      console.log('[INIT] loadContext retornou:', ctx ? ctx.empresa_id : 'null');
+      if (ctx) {
+        console.log('[INIT] loadContext - empresa_id:', ctx.empresa_id);
+        console.log('[INIT] loadContext - perfil:', ctx.perfil);
+        console.log('[INIT] loadContext - modulos_ativos:', ctx.modulos_ativos);
+        console.log('[INIT] loadContext - bloqueado:', ctx.bloqueado);
+      }
+    } else {
+      console.log('[INIT] loadContext NÃO chamado. ctx existe:', !!ctx, '| user existe:', !!user, '| isAnonymous:', user?.isAnonymous);
+    }
+
+    // ── Se ainda sem contexto ───────────────────────────────────
+    if (!ctx) {
+      if (!user) {
+        console.error('[INIT] Motivo do bloqueio: usuário não autenticado (timeout 3s)');
+      } else if (user.isAnonymous) {
+        console.error('[INIT] Motivo do bloqueio: usuário anônimo');
+      } else {
+        console.error('[INIT] Motivo do bloqueio: tenant não encontrado (loadContext retornou null)');
+      }
+      console.log('[INIT] empresa_id:', getTenant()?.empresa_id || 'getTenant()=null');
+      console.log('[INIT] Plano:', 'N/A (ctx=null)');
+      console.log('[INIT] Módulos:', 'N/A (ctx=null)');
+      return null;
+    }
+
+    console.log('[INIT] empresa_id:', ctx.empresa_id);
+    console.log('[INIT] Perfil:', ctx.perfil);
+    console.log('[INIT] Plano/Modulos ativos:', ctx.modulos_ativos);
+    console.log('[INIT] Bloqueado:', ctx.bloqueado);
+    console.log('[INIT] Tenant completo carregado com sucesso');
+
+    // ── 4. Verificar bloqueio de licença ────────────────────────
+    if (ctx.bloqueado) {
+      console.error('[INIT] Motivo do bloqueio: licença bloqueada/vencida — motivo:', ctx.motivo_bloqueio);
+      console.log('[INIT] ctx.data_vencimento:', ctx.data_vencimento);
+      _exibirTelaBloqueio(ctx);
+      return null;
+    }
+    console.log('[INIT] Licença OK (não bloqueado)');
+
+    // ── 5. Verificar permissão do módulo ────────────────────────
+    const isMaster = isMasterAdmin();
+    const temPermissao = hasModulo(moduloId);
+    console.log('[INIT] isMasterAdmin:', isMaster);
+    console.log('[INIT] hasModulo("' + moduloId + '"):', temPermissao);
+
+    if (!isMaster && !temPermissao) {
+      console.error("[INIT] Motivo do bloqueio: módulo '" + moduloId + "' não está habilitado no plano");
+      console.log('[INIT] ctx.modulos_ativos:', ctx.modulos_ativos);
+      console.log('[INIT] ctx.perfil:', ctx.perfil);
+      _exibirSemPermissao(moduloId);
+      return null;
+    }
+    console.log('[INIT] Possui permissão para o módulo:', true);
+
+    // ── 6. Aplicar white label ─────────────────────────────────
+    _aplicarWhiteLabel(ctx?.empresa?.white_label);
+
+    // ── 7. Indicador de modo suporte ───────────────────────────
+    if (ctx?.em_suporte) {
+      _exibirBannerSuporte(ctx);
+    }
+
+    console.log('[INIT] initModulo concluído com SUCESSO. ctx.empresa_id:', ctx.empresa_id);
+    return ctx;
+  } catch (e) {
+    console.error('[INIT] EXCEÇÃO capturada em initModulo:', e.message);
+    console.error('[INIT] Stack:', e.stack);
+    throw e;
   }
-
-  // ── 2. Firebase Auth ────────────────────────────────────────
-  await authReady;
-  const user = await _aguardarUsuario();
-
-  // ── 3. Contexto do tenant ───────────────────────────────────
-  let ctx = getTenant();
-  if (!ctx && user && !user.isAnonymous) {
-    ctx = await loadContext(user.uid);
-  }
-
-  // ── 4. Verificar bloqueio de licença ────────────────────────
-  if (ctx?.bloqueado) {
-    _exibirTelaBloqueio(ctx);
-    return null;
-  }
-
-  // ── 5. Verificar permissão do módulo ────────────────────────
-  // Master admin passa sempre
-  if (ctx && !isMasterAdmin() && !hasModulo(moduloId)) {
-    _exibirSemPermissao(moduloId);
-    return null;
-  }
-
-  // ── 6. Aplicar white label ─────────────────────────────────
-  _aplicarWhiteLabel(ctx?.empresa?.white_label);
-
-  // ── 7. Indicador de modo suporte ───────────────────────────
-  if (ctx?.em_suporte) {
-    _exibirBannerSuporte(ctx);
-  }
-
-  return ctx || null;
 }
 
 // ─── Utilitários internos ────────────────────────────────────
