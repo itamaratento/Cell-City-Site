@@ -43,15 +43,7 @@ const wppEnviados = new Set();
 // ===== INIT =====
 async function init() {
     // ── Guard SaaS: autenticação, licença e permissão do módulo ──
-    console.log('[POS] Antes initModulo');
-    let ctx;
-    try {
-        ctx = await initModulo('pos-venda');
-        console.log('[POS] Depois initModulo:', ctx ? 'true' : 'false (bloqueou)');
-    } catch (err) {
-        console.log('[POS] Depois initModulo: LANÇOU EXCEÇÃO →', err.message);
-        throw err;
-    }
+    const ctx = await initModulo('pos-venda');
     if (!ctx) return;
 
     try {
