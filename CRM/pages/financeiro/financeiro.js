@@ -1,23 +1,34 @@
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
 
-const COL_PAGAR   = 'financeiro_pagar';
-const COL_FIXAS   = 'financeiro_fixas';
-const COL_RECEBER = 'financeiro_receber';
-const COL_CATS    = 'financeiro_categorias';
+const COL_PAGAR     = 'financeiro_pagar';
+const COL_FIXAS     = 'financeiro_fixas';
+const COL_RECEBER   = 'financeiro_receber';
+const COL_DESPESAS  = 'financeiro_despesas';
+const COL_COMPRAS   = 'compras_financeiras';
+const COL_CAIXA     = 'caixa_lancamentos';
 
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const hoje = () => new Date().toISOString().slice(0, 10);
+const $ = id => document.getElementById(id);
 
-let dadosPagar   = [];
-let dadosFixas   = [];
-let dadosReceber = [];
+let dadosPagar     = [];
+let dadosFixas     = [];
+let dadosReceber   = [];
+let dadosDespesas  = [];
+let dadosCompras   = [];
+let dadosCaixa     = [];
 let filtroStatusPagar   = 'todos';
 let filtroStatusReceber = 'todos';
 let editandoId = null;
 let editandoColecao = null;
+let secaoAtiva = 'home';
+let periodoResumo = 'mes';
+let periodoFluxo  = 'mes';
+let customDataIni = '';
+let customDataFim = '';
 
-// ── toast ──────────────────────────────────────────────────────────
-const toastEl = document.getElementById('fin-toast');
+// ── Toast ──────────────────────────────────────────────────────────────
+const toastEl = $('fin-toast');
 let toastTimer;
 function toast(msg) {
     toastEl.textContent = msg;
@@ -26,61 +37,109 @@ function toast(msg) {
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2500);
 }
 
-// ── toggle busca ───────────────────────────────────────────────────
-const toggleBuscaBtn = document.getElementById('fin-toggle-busca');
-const topBar = document.getElementById('fin-top-bar');
-toggleBuscaBtn?.addEventListener('click', () => {
-    topBar.classList.toggle('fin-busca-collapsed');
-    toggleBuscaBtn.classList.toggle('expanded');
-});
+// ── Sidebar mobile ─────────────────────────────────────────────────────
+const sidebarEl  = $('fin-sidebar');
+const overlayEl  = $('fin-sb-overlay');
+const sbOpenBtn  = $('fin-sb-open');
 
-// ── tabs (delegated via ativarTab definido abaixo) ─────────────────
-// listeners das 3 abas fixas são adicionados após a definição de ativarTab
+function abrirSidebar() {
+    sidebarEl.classList.add('open');
+    overlayEl.classList.add('open');
+}
+function fecharSidebar() {
+    sidebarEl.classList.remove('open');
+    overlayEl.classList.remove('open');
+}
+sbOpenBtn?.addEventListener('click', abrirSidebar);
+overlayEl?.addEventListener('click', fecharSidebar);
 
-// ── filtros de status ──────────────────────────────────────────────
-document.querySelectorAll('[data-s]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-s]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        filtroStatusPagar = btn.dataset.s;
-        renderPagar(dadosPagar);
+// ── Navegação por seções ───────────────────────────────────────────────
+const SEC_META = {
+    home:    { titulo: '💹 Financeiro',              novo: false },
+    pagar:   { titulo: '💰 Contas a Pagar',           novo: true  },
+    receber: { titulo: '💵 Contas a Receber',         novo: true  },
+    fixas:   { titulo: '📅 Despesas Fixas',           novo: true  },
+    resumo:  { titulo: '📊 Resultado Financeiro',     novo: false },
+    fluxo:   { titulo: '📈 Fluxo de Caixa Unificado', novo: false },
+};
+
+function navegar(sec) {
+    if (!SEC_META[sec]) return;
+    secaoAtiva = sec;
+    fecharSidebar();
+
+    // sidebar: marcação ativa
+    document.querySelectorAll('.fin-sb-item[data-sec]').forEach(el => {
+        el.classList.toggle('active', el.dataset.sec === sec);
     });
-});
-document.querySelectorAll('[data-s2]').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('[data-s2]').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        filtroStatusReceber = btn.dataset.s2;
-        renderReceber(dadosReceber);
+
+    // breadcrumb
+    $('fin-main-titulo').textContent = SEC_META[sec].titulo;
+
+    // mostrar/ocultar home grid e seções
+    $('fin-home-grid').style.display = sec === 'home' ? '' : 'none';
+    ['pagar','receber','fixas','resumo','fluxo'].forEach(s => {
+        $('fin-sec-' + s).style.display = s === sec ? '' : 'none';
     });
+    if (sec === 'resumo') renderResultado();
+    if (sec === 'fluxo')  renderFluxo();
+
+    // botão ＋ Novo
+    const btnNovo = $('fin-btn-novo');
+    btnNovo.style.display = SEC_META[sec].novo ? '' : 'none';
+}
+
+// Cliques no sidebar
+document.querySelectorAll('.fin-sb-item[data-sec]').forEach(el => {
+    el.addEventListener('click', () => navegar(el.dataset.sec));
 });
 
-// ── carregar ───────────────────────────────────────────────────────
+// Cliques nos cards do home grid
+document.querySelectorAll('.fin-home-block[data-sec]').forEach(el => {
+    el.addEventListener('click', () => navegar(el.dataset.sec));
+});
+
+// Botão ＋ Novo (abre form da seção ativa)
+$('fin-btn-novo')?.addEventListener('click', () => {
+    if (secaoAtiva === 'pagar')   abrirFormPagar();
+    if (secaoAtiva === 'receber') abrirFormReceber();
+    if (secaoAtiva === 'fixas')   abrirFormFixa();
+});
+
+// ── Carregar dados ─────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const [sp, sf, sr] = await Promise.all([
+        const [sp, sf, sr, sd, sc, scx] = await Promise.all([
             getDocs(collection(db, COL_PAGAR)),
             getDocs(collection(db, COL_FIXAS)),
-            getDocs(collection(db, COL_RECEBER))
+            getDocs(collection(db, COL_RECEBER)),
+            getDocs(collection(db, COL_DESPESAS)),
+            getDocs(collection(db, COL_COMPRAS)),
+            getDocs(collection(db, COL_CAIXA)),
         ]);
-        dadosPagar   = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
-        dadosFixas   = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
-        dadosReceber = []; sr.forEach(d => dadosReceber.push({ id: d.id, ...d.data() }));
+        dadosPagar    = []; sp.forEach(d  => dadosPagar.push({ id: d.id, ...d.data() }));
+        dadosFixas    = []; sf.forEach(d  => dadosFixas.push({ id: d.id, ...d.data() }));
+        dadosReceber  = []; sr.forEach(d  => dadosReceber.push({ id: d.id, ...d.data() }));
+        dadosDespesas = []; sd.forEach(d  => dadosDespesas.push({ id: d.id, ...d.data() }));
+        dadosCompras  = []; sc.forEach(d  => dadosCompras.push({ id: d.id, ...d.data() }));
+        dadosCaixa    = []; scx.forEach(d => dadosCaixa.push({ id: d.id, ...d.data() }));
     } catch {
         dadosPagar = []; dadosFixas = []; dadosReceber = [];
+        dadosDespesas = []; dadosCompras = []; dadosCaixa = [];
     }
-    // atualiza status vencido automaticamente
     dadosPagar   = dadosPagar.map(c => calcStatus(c, 'pago'));
     dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
 
-    document.getElementById('pagar-loading').style.display  = 'none';
-    document.getElementById('fixas-loading').style.display  = 'none';
-    document.getElementById('receber-loading').style.display = 'none';
+    $('pagar-loading').style.display   = 'none';
+    $('fixas-loading').style.display   = 'none';
+    $('receber-loading').style.display = 'none';
 
     renderPagar(dadosPagar);
     renderFixas(dadosFixas);
     renderReceber(dadosReceber);
-    atualizarResumo();
+    atualizarContadores();
+    bindPeriodoResumo();
+    bindPeriodoFluxo();
 }
 
 function calcStatus(item, pago) {
@@ -89,37 +148,94 @@ function calcStatus(item, pago) {
     return item;
 }
 
-// ── resumo ─────────────────────────────────────────────────────────
-function atualizarResumo() {
-    const aPagar   = dadosPagar.filter(c => c.status !== 'pago').reduce((s, c) => s + Number(c.valor || 0), 0);
-    const fixasMes = dadosFixas.reduce((s, c) => s + Number(c.valor || 0), 0);
-    const aReceber = dadosReceber.filter(c => c.status !== 'recebido').reduce((s, c) => s + Number(c.valor || 0), 0);
-    document.getElementById('res-pagar').textContent   = fmt(aPagar);
-    document.getElementById('res-fixas').textContent   = fmt(fixasMes);
-    document.getElementById('res-receber').textContent = fmt(aReceber);
+// ── Contadores (sidebar + home grid + resumo) ──────────────────────────
+function atualizarContadores() {
+    const pendPagar   = dadosPagar.filter(c => c.status !== 'pago');
+    const pendReceber = dadosReceber.filter(c => c.status !== 'recebido');
+    const vencPagar   = dadosPagar.filter(c => c.status === 'vencido').length;
+    const vencReceber = dadosReceber.filter(c => c.status === 'vencido').length;
+    const totalFixas  = dadosFixas.reduce((s, c) => s + Number(c.valor || 0), 0);
+    const totalPagar  = pendPagar.reduce((s, c) => s + Number(c.valor || 0), 0);
+    const totalReceber = pendReceber.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // Sidebar
+    $('sb-count-pagar').textContent   = pendPagar.length;
+    $('sb-count-receber').textContent = pendReceber.length;
+    $('sb-count-fixas').textContent   = dadosFixas.length;
+
+    // Home grid
+    const hcPagar = $('hc-pagar');
+    hcPagar.textContent = pendPagar.length;
+    hcPagar.className = 'fin-home-count' + (pendPagar.length === 0 ? ' fin-home-count-zero' : '');
+
+    const hcReceber = $('hc-receber');
+    hcReceber.textContent = pendReceber.length;
+    hcReceber.className = 'fin-home-count' + (pendReceber.length === 0 ? ' fin-home-count-zero' : '');
+
+    const hcFixas = $('hc-fixas');
+    hcFixas.textContent = dadosFixas.length;
+    hcFixas.className = 'fin-home-count' + (dadosFixas.length === 0 ? ' fin-home-count-zero' : '');
+
+    // Resumo Financeiro
+    $('res-pagar').textContent         = fmt(totalPagar);
+    $('res-pagar-count').textContent   = pendPagar.length + (pendPagar.length === 1 ? ' conta' : ' contas');
+    $('res-receber').textContent       = fmt(totalReceber);
+    $('res-receber-count').textContent = pendReceber.length + (pendReceber.length === 1 ? ' conta' : ' contas');
+    $('res-fixas').textContent         = fmt(totalFixas);
+    $('res-fixas-count').textContent   = dadosFixas.length + (dadosFixas.length === 1 ? ' item' : ' itens');
+    const totalVenc = vencPagar + vencReceber;
+    $('res-vencidas').textContent = totalVenc;
+    $('res-vencidas-label').textContent = `${vencPagar} pagar + ${vencReceber} receber`;
 }
 
-// ── STATUS BADGE ────────────────────────────────────────────────────
+// ── Busca global ───────────────────────────────────────────────────────
+function buscarGlobal() {
+    const q = ($('fin-search')?.value || '').trim().toLowerCase();
+    if (!q) {
+        renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
+        return;
+    }
+    const f = lista => lista.filter(c =>
+        (c.descricao || '').toLowerCase().includes(q) ||
+        (c.cliente   || '').toLowerCase().includes(q) ||
+        (c.categoria || '').toLowerCase().includes(q) ||
+        (c.obs       || '').toLowerCase().includes(q)
+    );
+    renderPagar(f(dadosPagar)); renderFixas(f(dadosFixas)); renderReceber(f(dadosReceber));
+}
+$('fin-search')?.addEventListener('input', buscarGlobal);
+
+// ── Utilitários ────────────────────────────────────────────────────────
+function formatarData(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}/${m}/${y}`;
+}
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 function statusBadge(status) {
     const m = {
-        pendente: { label: 'Pendente', cls: 'badge-pendente' },
-        pago:     { label: 'Pago',     cls: 'badge-pago' },
-        recebido: { label: 'Recebido', cls: 'badge-pago' },
-        vencido:  { label: 'Vencido',  cls: 'badge-vencido' }
+        pendente: { label: 'Pendente',  cls: 'badge-pendente' },
+        pago:     { label: 'Pago',      cls: 'badge-pago'     },
+        recebido: { label: 'Recebido',  cls: 'badge-pago'     },
+        vencido:  { label: 'Vencido',   cls: 'badge-vencido'  }
     };
     const s = m[status] || { label: status, cls: '' };
     return `<span class="fin-badge ${s.cls}">${s.label}</span>`;
 }
+const CAT_ICON = {
+    Aluguel: '🏠', Fornecedor: '📦', Serviços: '⚡', Salário: '👤',
+    Imposto: '🧾', Equipamento: '🔧', Assinatura: '📱',
+    Energia: '💡', Água: '💧', Internet: '🌐', Sistema: '💻',
+    Marketing: '📢', Fornecedores: '📦', Transporte: '🚗', Outro: '📌'
+};
 
-// ── CAT ICON ───────────────────────────────────────────────────────
-const CAT_ICON = { Aluguel: '🏠', Fornecedor: '📦', Serviços: '⚡', Salário: '👤', Imposto: '🧾', Equipamento: '🔧', Assinatura: '📱', Outro: '📌' };
-
-// ── RENDER PAGAR ───────────────────────────────────────────────────
+// ── Render Contas a Pagar ──────────────────────────────────────────────
 function renderPagar(lista) {
-    const listaEl = document.getElementById('pagar-lista');
-    const emptyEl = document.getElementById('pagar-empty');
-    let f = lista;
-    if (filtroStatusPagar !== 'todos') f = lista.filter(c => c.status === filtroStatusPagar);
+    const listaEl = $('pagar-lista');
+    const emptyEl = $('pagar-empty');
+    let f = filtroStatusPagar !== 'todos' ? lista.filter(c => c.status === filtroStatusPagar) : lista;
     f = f.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
     if (!f.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
     emptyEl.style.display = 'none';
@@ -129,17 +245,14 @@ function renderPagar(lista) {
                 <span class="fin-cat-icon">${CAT_ICON[c.categoria] || '📌'}</span>
                 <div class="fin-card-info">
                     <div class="fin-card-desc">${escHtml(c.descricao)}</div>
-                    <div class="fin-card-sub">
-                        ${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}
-                        ${c.obs ? ` · ${escHtml(c.obs)}` : ''}
-                    </div>
+                    <div class="fin-card-sub">${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}${c.obs ? ` · ${escHtml(c.obs)}` : ''}</div>
                 </div>
             </div>
             <div class="fin-card-right">
                 <div class="fin-card-valor">${fmt(c.valor)}</div>
                 ${statusBadge(c.status)}
                 <div class="fin-card-acoes">
-                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-id="${c.id}" data-col="pagar" data-novo="pago" title="Marcar como pago">✓ Pago</button>` : ''}
+                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-id="${c.id}" data-col="pagar" data-novo="pago">✓ Pago</button>` : ''}
                     <button class="fin-card-edit-btn" data-id="${c.id}" data-col="pagar" title="Editar">✏️</button>
                     <button class="fin-card-del-btn" data-id="${c.id}" data-col="pagar" title="Excluir">🗑️</button>
                 </div>
@@ -148,10 +261,10 @@ function renderPagar(lista) {
     bindCardEvents(listaEl);
 }
 
-// ── RENDER FIXAS ───────────────────────────────────────────────────
+// ── Render Despesas Fixas ──────────────────────────────────────────────
 function renderFixas(lista) {
-    const listaEl = document.getElementById('fixas-lista');
-    const emptyEl = document.getElementById('fixas-empty');
+    const listaEl = $('fixas-lista');
+    const emptyEl = $('fixas-empty');
     if (!lista.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
     emptyEl.style.display = 'none';
     listaEl.innerHTML = lista.map(c => `
@@ -174,12 +287,11 @@ function renderFixas(lista) {
     bindCardEvents(listaEl);
 }
 
-// ── RENDER RECEBER ─────────────────────────────────────────────────
+// ── Render Contas a Receber ────────────────────────────────────────────
 function renderReceber(lista) {
-    const listaEl = document.getElementById('receber-lista');
-    const emptyEl = document.getElementById('receber-empty');
-    let f = lista;
-    if (filtroStatusReceber !== 'todos') f = lista.filter(c => c.status === filtroStatusReceber);
+    const listaEl = $('receber-lista');
+    const emptyEl = $('receber-empty');
+    let f = filtroStatusReceber !== 'todos' ? lista.filter(c => c.status === filtroStatusReceber) : lista;
     f = f.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
     if (!f.length) { listaEl.innerHTML = ''; emptyEl.style.display = 'flex'; return; }
     emptyEl.style.display = 'none';
@@ -188,18 +300,16 @@ function renderReceber(lista) {
             <div class="fin-card-left">
                 <span class="fin-cat-icon">💰</span>
                 <div class="fin-card-info">
-                    <div class="fin-card-desc">${escHtml(c.descricao)}</div>
-                    <div class="fin-card-sub">
-                        ${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}
-                        ${c.obs ? ` · ${escHtml(c.obs)}` : ''}
-                    </div>
+                    <div class="fin-card-desc">${escHtml(c.descricao || c.cliente || '—')}</div>
+                    ${c.cliente && c.descricao ? `<div class="fin-card-cliente">👤 ${escHtml(c.cliente)}</div>` : ''}
+                    <div class="fin-card-sub">${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}${c.obs ? ` · ${escHtml(c.obs)}` : ''}</div>
                 </div>
             </div>
             <div class="fin-card-right">
                 <div class="fin-card-valor fin-verde">${fmt(c.valor)}</div>
                 ${statusBadge(c.status)}
                 <div class="fin-card-acoes">
-                    ${c.status !== 'recebido' ? `<button class="fin-btn-marcar fin-btn-receber" data-id="${c.id}" data-col="receber" data-novo="recebido" title="Marcar como recebido">✓ Recebido</button>` : ''}
+                    ${c.status !== 'recebido' ? `<button class="fin-btn-marcar fin-btn-receber" data-id="${c.id}" data-col="receber" data-novo="recebido">✓ Recebido</button>` : ''}
                     <button class="fin-card-edit-btn" data-id="${c.id}" data-col="receber" title="Editar">✏️</button>
                     <button class="fin-card-del-btn" data-id="${c.id}" data-col="receber" title="Excluir">🗑️</button>
                 </div>
@@ -208,7 +318,7 @@ function renderReceber(lista) {
     bindCardEvents(listaEl);
 }
 
-// ── bind eventos ───────────────────────────────────────────────────
+// ── Bind eventos nos cards ─────────────────────────────────────────────
 function bindCardEvents(container) {
     container.querySelectorAll('.fin-btn-marcar').forEach(btn => {
         btn.addEventListener('click', () => marcarStatus(btn.dataset.id, btn.dataset.col, btn.dataset.novo));
@@ -221,9 +331,9 @@ function bindCardEvents(container) {
     });
 }
 
-// ── marcar status ──────────────────────────────────────────────────
+// ── Marcar status ──────────────────────────────────────────────────────
 async function marcarStatus(id, col, novoStatus) {
-    const arr = col === 'pagar' ? dadosPagar : dadosReceber;
+    const arr    = col === 'pagar' ? dadosPagar : dadosReceber;
     const colecao = col === 'pagar' ? COL_PAGAR : COL_RECEBER;
     const item = arr.find(c => c.id === id);
     if (!item) return;
@@ -237,12 +347,12 @@ async function marcarStatus(id, col, novoStatus) {
             dadosReceber = dadosReceber.map(c => c.id === id ? atualizado : c);
             renderReceber(dadosReceber);
         }
-        atualizarResumo();
+        atualizarContadores();
         toast(novoStatus === 'pago' ? '✅ Marcado como pago!' : '✅ Recebimento confirmado!');
     } catch { toast('⚠ Erro ao atualizar.'); }
 }
 
-// ── excluir ────────────────────────────────────────────────────────
+// ── Excluir ────────────────────────────────────────────────────────────
 async function excluir(id, col) {
     if (!confirm('Excluir este lançamento?')) return;
     const colecao = col === 'pagar' ? COL_PAGAR : col === 'fixa' ? COL_FIXAS : COL_RECEBER;
@@ -252,123 +362,151 @@ async function excluir(id, col) {
         if (col === 'fixa')    dadosFixas   = dadosFixas.filter(c => c.id !== id);
         if (col === 'receber') dadosReceber = dadosReceber.filter(c => c.id !== id);
         renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
-        atualizarResumo();
+        atualizarContadores();
         toast('🗑️ Removido.');
     } catch { toast('⚠ Erro ao excluir.'); }
 }
 
-// ── abrir edição ───────────────────────────────────────────────────
+// ── Abrir edição ───────────────────────────────────────────────────────
 function abrirEdicao(id, col) {
     if (col === 'pagar') {
         const item = dadosPagar.find(c => c.id === id);
         if (!item) return;
         editandoId = id; editandoColecao = 'pagar';
-        document.getElementById('form-pagar-titulo').textContent = 'Editar Conta';
-        document.getElementById('fp-desc').value   = item.descricao || '';
-        document.getElementById('fp-cat').value    = item.categoria || 'Outro';
-        document.getElementById('fp-venc').value   = item.vencimento || '';
-        document.getElementById('fp-valor').value  = item.valor || '';
-        document.getElementById('fp-status').value = item.status === 'vencido' ? 'pendente' : (item.status || 'pendente');
-        document.getElementById('fp-obs').value    = item.obs || '';
-        document.getElementById('form-pagar').style.display = 'flex';
-        document.getElementById('btn-nova-pagar').style.display = 'none';
+        $('form-pagar-titulo').textContent = 'Editar Conta a Pagar';
+        $('fp-desc').value   = item.descricao || '';
+        $('fp-cat').value    = item.categoria || 'Outro';
+        $('fp-venc').value   = item.vencimento || '';
+        $('fp-valor').value  = item.valor || '';
+        $('fp-status').value = item.status === 'vencido' ? 'pendente' : (item.status || 'pendente');
+        $('fp-obs').value    = item.obs || '';
+        $('form-pagar').style.display = 'flex';
+        navegar('pagar');
     } else if (col === 'fixa') {
         const item = dadosFixas.find(c => c.id === id);
         if (!item) return;
         editandoId = id; editandoColecao = 'fixa';
-        document.getElementById('form-fixa-titulo').textContent = 'Editar Despesa Fixa';
-        document.getElementById('ff-desc').value  = item.descricao || '';
-        document.getElementById('ff-cat').value   = item.categoria || 'Outro';
-        document.getElementById('ff-dia').value   = item.dia || 10;
-        document.getElementById('ff-valor').value = item.valor || '';
-        document.getElementById('form-fixa').style.display = 'flex';
-        document.getElementById('btn-nova-fixa').style.display = 'none';
+        $('form-fixa-titulo').textContent = 'Editar Despesa Fixa';
+        $('ff-desc').value  = item.descricao || '';
+        $('ff-cat').value   = item.categoria || 'Outro';
+        $('ff-dia').value   = item.dia || 10;
+        $('ff-valor').value = item.valor || '';
+        $('form-fixa').style.display = 'flex';
+        navegar('fixas');
     } else if (col === 'receber') {
         const item = dadosReceber.find(c => c.id === id);
         if (!item) return;
         editandoId = id; editandoColecao = 'receber';
-        document.getElementById('form-receber-titulo').textContent = 'Editar Conta';
-        document.getElementById('fr-desc').value   = item.descricao || '';
-        document.getElementById('fr-venc').value   = item.vencimento || '';
-        document.getElementById('fr-valor').value  = item.valor || '';
-        document.getElementById('fr-status').value = item.status === 'vencido' ? 'pendente' : (item.status || 'pendente');
-        document.getElementById('fr-obs').value    = item.obs || '';
-        document.getElementById('form-receber').style.display = 'flex';
-        document.getElementById('btn-nova-receber').style.display = 'none';
+        $('form-receber-titulo').textContent = 'Editar Conta a Receber';
+        $('fr-cliente').value = item.cliente || '';
+        $('fr-desc').value    = item.descricao || '';
+        $('fr-venc').value    = item.vencimento || '';
+        $('fr-valor').value   = item.valor || '';
+        $('fr-status').value  = item.status === 'vencido' ? 'pendente' : (item.status || 'pendente');
+        $('fr-obs').value     = item.obs || '';
+        $('form-receber').style.display = 'flex';
+        navegar('receber');
     }
 }
 
-// ── fechar forms ───────────────────────────────────────────────────
-function fecharForm(formId, btnId) {
-    document.getElementById(formId).style.display = 'none';
-    document.getElementById(btnId).style.display = '';
+// ── Fechar form ────────────────────────────────────────────────────────
+function fecharForm(formId) {
+    $(formId).style.display = 'none';
     editandoId = null; editandoColecao = null;
 }
 
-// ── salvar PAGAR ───────────────────────────────────────────────────
+// ── Abrir forms (novo) ─────────────────────────────────────────────────
+function abrirFormPagar() {
+    editandoId = null; editandoColecao = null;
+    $('form-pagar-titulo').textContent = 'Nova Conta a Pagar';
+    $('fp-desc').value = ''; $('fp-obs').value = '';
+    $('fp-cat').value = 'Outro'; $('fp-venc').value = '';
+    $('fp-valor').value = ''; $('fp-status').value = 'pendente';
+    $('form-pagar').style.display = 'flex';
+    setTimeout(() => $('fp-desc').focus(), 50);
+}
+function abrirFormFixa() {
+    editandoId = null; editandoColecao = null;
+    $('form-fixa-titulo').textContent = 'Nova Despesa Fixa';
+    $('ff-desc').value = ''; $('ff-cat').value = 'Outro';
+    $('ff-dia').value = '10'; $('ff-valor').value = '';
+    $('form-fixa').style.display = 'flex';
+    setTimeout(() => $('ff-desc').focus(), 50);
+}
+function abrirFormReceber() {
+    editandoId = null; editandoColecao = null;
+    $('form-receber-titulo').textContent = 'Nova Conta a Receber';
+    $('fr-cliente').value = ''; $('fr-desc').value = ''; $('fr-obs').value = '';
+    $('fr-venc').value = ''; $('fr-valor').value = ''; $('fr-status').value = 'pendente';
+    $('form-receber').style.display = 'flex';
+    setTimeout(() => $('fr-cliente').focus(), 50);
+}
+
+// ── Salvar Contas a Pagar ──────────────────────────────────────────────
 async function salvarPagar() {
-    const desc = document.getElementById('fp-desc').value.trim();
-    if (!desc) { document.getElementById('fp-desc').focus(); return; }
+    const desc = $('fp-desc').value.trim();
+    if (!desc) { $('fp-desc').focus(); return; }
     const dados = {
-        descricao:   desc,
-        categoria:   document.getElementById('fp-cat').value,
-        vencimento:  document.getElementById('fp-venc').value,
-        valor:       Number(document.getElementById('fp-valor').value) || 0,
-        status:      document.getElementById('fp-status').value,
-        obs:         document.getElementById('fp-obs').value.trim(),
+        descricao:    desc,
+        categoria:    $('fp-cat').value,
+        vencimento:   $('fp-venc').value,
+        valor:        Number($('fp-valor').value) || 0,
+        status:       $('fp-status').value,
+        obs:          $('fp-obs').value.trim(),
         atualizadoEm: serverTimestamp()
     };
     const id = editandoId || `pag_${Date.now()}`;
     try {
         await setDoc(doc(db, COL_PAGAR, id), dados);
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
-        fecharForm('form-pagar', 'btn-nova-pagar');
+        fecharForm('form-pagar');
         await recarregar('pagar');
     } catch { toast('⚠ Erro ao salvar.'); }
 }
 
-// ── salvar FIXA ────────────────────────────────────────────────────
+// ── Salvar Despesas Fixas ──────────────────────────────────────────────
 async function salvarFixa() {
-    const desc = document.getElementById('ff-desc').value.trim();
-    if (!desc) { document.getElementById('ff-desc').focus(); return; }
+    const desc = $('ff-desc').value.trim();
+    if (!desc) { $('ff-desc').focus(); return; }
     const dados = {
-        descricao:   desc,
-        categoria:   document.getElementById('ff-cat').value,
-        dia:         Number(document.getElementById('ff-dia').value) || 1,
-        valor:       Number(document.getElementById('ff-valor').value) || 0,
+        descricao:    desc,
+        categoria:    $('ff-cat').value,
+        dia:          Number($('ff-dia').value) || 1,
+        valor:        Number($('ff-valor').value) || 0,
         atualizadoEm: serverTimestamp()
     };
     const id = editandoId || `fix_${Date.now()}`;
     try {
         await setDoc(doc(db, COL_FIXAS, id), dados);
         toast(editandoId ? '✏️ Atualizado!' : '✅ Despesa fixa adicionada!');
-        fecharForm('form-fixa', 'btn-nova-fixa');
+        fecharForm('form-fixa');
         await recarregar('fixa');
     } catch { toast('⚠ Erro ao salvar.'); }
 }
 
-// ── salvar RECEBER ─────────────────────────────────────────────────
+// ── Salvar Contas a Receber ────────────────────────────────────────────
 async function salvarReceber() {
-    const desc = document.getElementById('fr-desc').value.trim();
-    if (!desc) { document.getElementById('fr-desc').focus(); return; }
+    const desc = $('fr-desc').value.trim() || $('fr-cliente').value.trim();
+    if (!desc) { $('fr-desc').focus(); return; }
     const dados = {
-        descricao:   desc,
-        vencimento:  document.getElementById('fr-venc').value,
-        valor:       Number(document.getElementById('fr-valor').value) || 0,
-        status:      document.getElementById('fr-status').value,
-        obs:         document.getElementById('fr-obs').value.trim(),
+        cliente:      $('fr-cliente').value.trim(),
+        descricao:    $('fr-desc').value.trim(),
+        vencimento:   $('fr-venc').value,
+        valor:        Number($('fr-valor').value) || 0,
+        status:       $('fr-status').value,
+        obs:          $('fr-obs').value.trim(),
         atualizadoEm: serverTimestamp()
     };
     const id = editandoId || `rec_${Date.now()}`;
     try {
         await setDoc(doc(db, COL_RECEBER, id), dados);
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
-        fecharForm('form-receber', 'btn-nova-receber');
+        fecharForm('form-receber');
         await recarregar('receber');
     } catch { toast('⚠ Erro ao salvar.'); }
 }
 
-// ── recarregar parcial ─────────────────────────────────────────────
+// ── Recarregar parcial ─────────────────────────────────────────────────
 async function recarregar(col) {
     try {
         if (col === 'pagar') {
@@ -386,322 +524,326 @@ async function recarregar(col) {
             dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
             renderReceber(dadosReceber);
         }
-        atualizarResumo();
+        atualizarContadores();
     } catch {}
 }
 
-// ── busca global ───────────────────────────────────────────────────
-function buscarGlobal() {
-    const q = (document.getElementById('fin-busca')?.value || '').trim().toLowerCase();
-    if (!q) {
-        renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
-        return;
-    }
-    const filtrarLista = lista => lista.filter(c =>
-        (c.descricao || '').toLowerCase().includes(q) ||
-        (c.categoria || '').toLowerCase().includes(q) ||
-        (c.obs || '').toLowerCase().includes(q)
-    );
-    renderPagar(filtrarLista(dadosPagar));
-    renderFixas(filtrarLista(dadosFixas));
-    renderReceber(filtrarLista(dadosReceber));
+// ── Eventos dos formulários ────────────────────────────────────────────
+$('fp-salvar')?.addEventListener('click', salvarPagar);
+$('fp-cancelar')?.addEventListener('click', () => fecharForm('form-pagar'));
+$('fp-desc')?.addEventListener('keypress', e => { if (e.key === 'Enter') salvarPagar(); });
+
+$('ff-salvar')?.addEventListener('click', salvarFixa);
+$('ff-cancelar')?.addEventListener('click', () => fecharForm('form-fixa'));
+
+$('fr-salvar')?.addEventListener('click', salvarReceber);
+$('fr-cancelar')?.addEventListener('click', () => fecharForm('form-receber'));
+$('fr-desc')?.addEventListener('keypress', e => { if (e.key === 'Enter') salvarReceber(); });
+
+// ── Filtros de status ──────────────────────────────────────────────────
+document.querySelectorAll('[data-s]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-s]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filtroStatusPagar = btn.dataset.s;
+        renderPagar(dadosPagar);
+    });
+});
+document.querySelectorAll('[data-s2]').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('[data-s2]').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        filtroStatusReceber = btn.dataset.s2;
+        renderReceber(dadosReceber);
+    });
+});
+
+// ──────────────────────────────────────────────────────────────────────
+// 📊 RESULTADO FINANCEIRO INTELIGENTE
+// ──────────────────────────────────────────────────────────────────────
+function bindPeriodoResumo() {
+    document.querySelectorAll('.fin-pfiltro').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.fin-pfiltro').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            periodoResumo = btn.dataset.p;
+            $('fin-custom-range').style.display = periodoResumo === 'custom' ? 'flex' : 'none';
+            if (periodoResumo !== 'custom') renderResultado();
+        });
+    });
+    $('fin-btn-aplicar-periodo')?.addEventListener('click', () => {
+        customDataIni = $('fin-data-ini')?.value || '';
+        customDataFim = $('fin-data-fim')?.value || '';
+        if (customDataIni && customDataFim) renderResultado();
+    });
 }
 
-// ── utilitários ────────────────────────────────────────────────────
-function formatarData(iso) {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-}
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function filtrarPorPeriodo(lista, campoData) {
+    const agora = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const anoAtual  = agora.getFullYear();
+    const mesAtual  = pad(agora.getMonth() + 1);
+    const diaAtual  = pad(agora.getDate());
+    const hojeStr   = `${anoAtual}-${mesAtual}-${diaAtual}`;
+    const mesStr    = `${anoAtual}-${mesAtual}`;
+    const anoStr    = String(anoAtual);
 
-// ── eventos ────────────────────────────────────────────────────────
-// Contas a Pagar
-document.getElementById('btn-nova-pagar').addEventListener('click', () => {
-    editandoId = null; editandoColecao = null;
-    document.getElementById('form-pagar-titulo').textContent = 'Nova Conta a Pagar';
-    ['fp-desc','fp-obs'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('fp-cat').value    = 'Outro';
-    document.getElementById('fp-venc').value   = '';
-    document.getElementById('fp-valor').value  = '';
-    document.getElementById('fp-status').value = 'pendente';
-    document.getElementById('form-pagar').style.display = 'flex';
-    document.getElementById('btn-nova-pagar').style.display = 'none';
-    document.getElementById('fp-desc').focus();
-});
-document.getElementById('fp-salvar').addEventListener('click', salvarPagar);
-document.getElementById('fp-cancelar').addEventListener('click', () => fecharForm('form-pagar', 'btn-nova-pagar'));
+    // Início da semana (segunda)
+    const dow  = agora.getDay() || 7;
+    const seg  = new Date(agora); seg.setDate(agora.getDate() - dow + 1);
+    const segStr = seg.toISOString().slice(0, 10);
 
-// Despesas Fixas
-document.getElementById('btn-nova-fixa').addEventListener('click', () => {
-    editandoId = null; editandoColecao = null;
-    document.getElementById('form-fixa-titulo').textContent = 'Nova Despesa Fixa';
-    document.getElementById('ff-desc').value  = '';
-    document.getElementById('ff-cat').value   = 'Outro';
-    document.getElementById('ff-dia').value   = '10';
-    document.getElementById('ff-valor').value = '';
-    document.getElementById('form-fixa').style.display = 'flex';
-    document.getElementById('btn-nova-fixa').style.display = 'none';
-    document.getElementById('ff-desc').focus();
-});
-document.getElementById('ff-salvar').addEventListener('click', salvarFixa);
-document.getElementById('ff-cancelar').addEventListener('click', () => fecharForm('form-fixa', 'btn-nova-fixa'));
-
-// Contas a Receber
-document.getElementById('btn-nova-receber').addEventListener('click', () => {
-    editandoId = null; editandoColecao = null;
-    document.getElementById('form-receber-titulo').textContent = 'Nova Conta a Receber';
-    ['fr-desc','fr-obs'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('fr-venc').value   = '';
-    document.getElementById('fr-valor').value  = '';
-    document.getElementById('fr-status').value = 'pendente';
-    document.getElementById('form-receber').style.display = 'flex';
-    document.getElementById('btn-nova-receber').style.display = 'none';
-    document.getElementById('fr-desc').focus();
-});
-document.getElementById('fr-salvar').addEventListener('click', salvarReceber);
-document.getElementById('fr-cancelar').addEventListener('click', () => fecharForm('form-receber', 'btn-nova-receber'));
-
-// Busca
-document.getElementById('fin-busca').addEventListener('input', buscarGlobal);
-document.getElementById('fin-btn-listar').addEventListener('click', () => {
-    document.getElementById('fin-busca').value = '';
-    renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
-});
-
-// ── CATEGORIAS PERSONALIZADAS ──────────────────────────────────────
-let categoriasCustom = []; // [{id, nome}]
-let dadosCustom = {};      // {catId: [{id, descricao, valor, vencimento, status, obs}]}
-
-async function carregarCategorias() {
-    try {
-        const snap = await getDocs(collection(db, COL_CATS));
-        categoriasCustom = [];
-        snap.forEach(d => categoriasCustom.push({ id: d.id, ...d.data() }));
-        categoriasCustom.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
-        for (const cat of categoriasCustom) {
-            const s = await getDocs(collection(db, `${COL_CATS}/${cat.id}/itens`));
-            dadosCustom[cat.id] = [];
-            s.forEach(d => dadosCustom[cat.id].push({ id: d.id, ...d.data() }));
-            dadosCustom[cat.id] = dadosCustom[cat.id].map(c => calcStatus(c, 'pago'));
+    return lista.filter(item => {
+        const d = item[campoData] || item.data || item.vencimento || item.dia || '';
+        // caixa_lancamentos usa .dia = "YYYY-MM-DD"
+        const dStr = typeof d === 'string' ? d.slice(0, 10) : '';
+        switch (periodoResumo) {
+            case 'hoje':   return dStr === hojeStr;
+            case 'semana': return dStr >= segStr && dStr <= hojeStr;
+            case 'mes':    return dStr.startsWith(mesStr);
+            case 'ano':    return dStr.startsWith(anoStr);
+            case 'custom': return dStr >= customDataIni && dStr <= customDataFim;
+            default:       return true;
         }
-    } catch { categoriasCustom = []; }
-    renderTabsCustom();
-    renderPainéisCustom();
-}
-
-function renderTabsCustom() {
-    // Remove abas custom anteriores (mantém as 3 fixas + botão +)
-    document.querySelectorAll('.fin-tab-custom').forEach(el => el.remove());
-    const tabAdd = document.getElementById('fin-tab-add');
-    categoriasCustom.forEach(cat => {
-        const btn = document.createElement('button');
-        btn.className = 'fin-tab fin-tab-custom';
-        btn.dataset.tab = 'custom-' + cat.id;
-        btn.textContent = '📁 ' + cat.nome;
-        tabAdd.before(btn);
-        btn.addEventListener('click', () => ativarTab('custom-' + cat.id));
     });
 }
 
-function renderPainéisCustom() {
-    const container = document.getElementById('fin-custom-panels');
-    container.innerHTML = '';
-    categoriasCustom.forEach(cat => {
-        const itens = dadosCustom[cat.id] || [];
-        const panel = document.createElement('div');
-        panel.className = 'fin-panel';
-        panel.id = 'tab-custom-' + cat.id;
-        panel.innerHTML = `
-            <div class="fin-panel-header-custom">
-                <div class="fin-toolbar">
-                    <button class="fin-btn-nova" data-catid="${cat.id}">＋ Novo Item</button>
-                </div>
-                <button class="fin-custom-del-tab" data-catid="${cat.id}">🗑 Excluir categoria</button>
-            </div>
-            <div class="fin-form" id="form-custom-${cat.id}" style="display:none">
-                <div class="fin-form-titulo">Novo Item — ${escHtml(cat.nome)}</div>
-                <div class="fin-form-grid">
-                    <div class="fin-form-group fin-span2"><label>Descrição</label><input type="text" id="cx-desc-${cat.id}" placeholder="Descrição..." maxlength="120"></div>
-                    <div class="fin-form-group"><label>Vencimento</label><input type="date" id="cx-venc-${cat.id}"></div>
-                    <div class="fin-form-group"><label>Valor (R$)</label><input type="number" id="cx-valor-${cat.id}" min="0" step="0.01" placeholder="0,00"></div>
-                    <div class="fin-form-group"><label>Status</label><select id="cx-status-${cat.id}"><option value="pendente">🟡 Pendente</option><option value="pago">✅ Pago</option></select></div>
-                    <div class="fin-form-group"><label>Observação</label><input type="text" id="cx-obs-${cat.id}" placeholder="Opcional..." maxlength="200"></div>
-                </div>
-                <div class="fin-form-btns">
-                    <button class="fin-btn-salvar" data-save-cat="${cat.id}">Salvar</button>
-                    <button class="fin-btn-cancelar" data-cancel-cat="${cat.id}">Cancelar</button>
-                </div>
-            </div>
-            <div id="custom-lista-${cat.id}"></div>
-            <div class="fin-empty" id="custom-empty-${cat.id}" style="${itens.length ? 'display:none' : 'display:flex'}">
-                <div class="fin-empty-icon">📁</div>
-                <div class="fin-empty-title">Nenhum item em ${escHtml(cat.nome)}</div>
+function renderResultado() {
+    const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+    // Receitas recebidas no período
+    const recebidas = filtrarPorPeriodo(dadosReceber, 'vencimento')
+        .filter(c => c.status === 'recebido');
+    const totalReceita = recebidas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // Despesas (módulo Despesas) no período
+    const despPeriodo = filtrarPorPeriodo(dadosDespesas, 'data');
+    const totalDespesas = despPeriodo.reduce((s, d) => s + Number(d.valor || 0), 0);
+
+    // Compras pagas no período
+    const comprasP = filtrarPorPeriodo(dadosCompras, 'data').filter(c => c.status === 'pago');
+    const totalCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
+
+    // A Pagar pendente (geral, sem filtro — posição atual)
+    const pendPagar  = dadosPagar.filter(c => c.status !== 'pago');
+    const totalPagar = pendPagar.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // A Receber pendente (geral)
+    const pendReceber  = dadosReceber.filter(c => c.status !== 'recebido');
+    const totalReceber = pendReceber.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // Despesas Fixas (total mensal)
+    const totalFixas = dadosFixas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    // CPV — custo dos produtos vendidos via Caixa no período
+    const caixaPeriodo = filtrarPorPeriodo(dadosCaixa, 'dataISO');
+    const vendasCaixa  = caixaPeriodo.filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+    const receitaCaixa = vendasCaixa.reduce((s, l) => s + Number(l.valor || 0), 0);
+    const cpvTotal     = vendasCaixa.reduce((s, l) => s + Number(l.custo || 0), 0);
+    const lucroBruto   = receitaCaixa - cpvTotal;
+    const margemBruta  = receitaCaixa > 0 ? (lucroBruto / receitaCaixa) * 100 : 0;
+
+    // Lucro Líquido = Receita Financeiro − Despesas − Compras
+    const lucro = totalReceita - totalDespesas - totalCompras;
+
+    // Saldo Atual = A Receber − A Pagar
+    const saldo = totalReceber - totalPagar;
+
+    set('ri-receita',       fmt(totalReceita));
+    set('ri-receita-sub',   `${recebidas.length} conta${recebidas.length !== 1 ? 's' : ''} recebida${recebidas.length !== 1 ? 's' : ''}`);
+    set('ri-despesas',      fmt(totalDespesas));
+    set('ri-despesas-sub',  `${despPeriodo.length} registro${despPeriodo.length !== 1 ? 's' : ''}`);
+    set('ri-compras',       fmt(totalCompras));
+    set('ri-compras-sub',   `${comprasP.length} compra${comprasP.length !== 1 ? 's' : ''} paga${comprasP.length !== 1 ? 's' : ''}`);
+    set('ri-pagar',         fmt(totalPagar));
+    set('ri-pagar-sub',     `${pendPagar.length} conta${pendPagar.length !== 1 ? 's' : ''}`);
+    set('ri-receber',       fmt(totalReceber));
+    set('ri-receber-sub',   `${pendReceber.length} conta${pendReceber.length !== 1 ? 's' : ''}`);
+    set('ri-fixas',         fmt(totalFixas));
+    set('ri-fixas-sub',     `${dadosFixas.length} item${dadosFixas.length !== 1 ? 's' : ''}`);
+    set('ri-lucro',         fmt(lucro));
+    set('ri-saldo',         fmt(saldo));
+
+    // Cards CPV / Lucro Bruto / Margem
+    set('ri-cpv',           fmt(cpvTotal));
+    set('ri-cpv-sub',       `${vendasCaixa.length} venda${vendasCaixa.length !== 1 ? 's' : ''} no caixa`);
+    set('ri-lucro-bruto',   fmt(lucroBruto));
+    set('ri-lucro-bruto-sub', `Receita Caixa: ${fmt(receitaCaixa)}`);
+    set('ri-margem',        `${margemBruta.toFixed(1)}%`);
+    set('ri-margem-sub',    'Margem bruta (Caixa)');
+
+    // Cor card Lucro Bruto
+    const lbCard = $('fin-res-lucro-bruto-card');
+    if (lbCard) lbCard.className = 'fin-res-card ' + (lucroBruto >= 0 ? 'fin-res-lucro' : 'fin-res-prejuizo');
+
+    // Cor do card Lucro
+    const lucroCard = $('fin-res-lucro-card');
+    if (lucroCard) lucroCard.className = 'fin-res-card ' + (lucro >= 0 ? 'fin-res-lucro' : 'fin-res-prejuizo');
+    const saldoCard = $('fin-res-saldo-card');
+    if (saldoCard) saldoCard.className = 'fin-res-card ' + (saldo >= 0 ? 'fin-res-saldo' : 'fin-res-prejuizo');
+
+    // Alerta vencidas
+    const vencPagar   = dadosPagar.filter(c => c.status === 'vencido').length;
+    const vencReceber = dadosReceber.filter(c => c.status === 'vencido').length;
+    const alertaEl = $('fin-res-alerta');
+    if (alertaEl && (vencPagar + vencReceber) > 0) {
+        $('fin-res-alerta-txt').textContent =
+            `${vencPagar} conta${vencPagar !== 1 ? 's' : ''} a pagar e ${vencReceber} conta${vencReceber !== 1 ? 's' : ''} a receber estão vencidas.`;
+        alertaEl.style.display = 'flex';
+    } else if (alertaEl) {
+        alertaEl.style.display = 'none';
+    }
+}
+
+// ──────────────────────────────────────────────────────────────────────
+// 📈 FLUXO DE CAIXA UNIFICADO
+// ──────────────────────────────────────────────────────────────────────
+function bindPeriodoFluxo() {
+    document.querySelectorAll('.fin-pfiltro-fluxo').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.fin-pfiltro-fluxo').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            periodoFluxo = btn.dataset.p;
+            renderFluxo();
+        });
+    });
+}
+
+function filtrarFluxo(lista, campoData) {
+    const agora = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const anoAtual = agora.getFullYear();
+    const mesAtual = pad(agora.getMonth() + 1);
+    const diaAtual = pad(agora.getDate());
+    const hojeStr  = `${anoAtual}-${mesAtual}-${diaAtual}`;
+    const mesStr   = `${anoAtual}-${mesAtual}`;
+    const anoStr   = String(anoAtual);
+    const dow = agora.getDay() || 7;
+    const seg = new Date(agora); seg.setDate(agora.getDate() - dow + 1);
+    const segStr = seg.toISOString().slice(0, 10);
+
+    return lista.filter(item => {
+        const raw = item[campoData] || item.data || item.vencimento || item.dia || item.dataISO || '';
+        const dStr = typeof raw === 'string' ? raw.slice(0, 10) : '';
+        switch (periodoFluxo) {
+            case 'hoje':   return dStr === hojeStr;
+            case 'semana': return dStr >= segStr && dStr <= hojeStr;
+            case 'mes':    return dStr.startsWith(mesStr);
+            case 'ano':    return dStr.startsWith(anoStr);
+            default:       return true;
+        }
+    });
+}
+
+function renderFluxo() {
+    const loadEl = $('fluxo-loading');
+    const contEl = $('fin-fluxo-content');
+    if (loadEl) loadEl.style.display = 'none';
+    if (contEl) contEl.style.display = '';
+
+    const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+
+    // ── Entradas ──────────────────────────────────────────────────────
+    // Caixa: tipo = entrada | servico
+    const caixaEntradas = filtrarFluxo(dadosCaixa, 'dia')
+        .filter(l => l.tipo === 'entrada' || l.tipo === 'servico');
+    const valCaixaEnt = caixaEntradas.reduce((s, l) => s + Number(l.valor || 0), 0);
+
+    // Contas recebidas
+    const recebidas = filtrarFluxo(dadosReceber, 'vencimento').filter(c => c.status === 'recebido');
+    const valRecebidas = recebidas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    const totalEntradas = valCaixaEnt + valRecebidas;
+
+    // ── Saídas ────────────────────────────────────────────────────────
+    // Caixa: tipo = saida
+    const caixaSaidas = filtrarFluxo(dadosCaixa, 'dia').filter(l => l.tipo === 'saida');
+    const valCaixaSai = caixaSaidas.reduce((s, l) => s + Number(l.valor || 0), 0);
+
+    // Despesas do módulo Despesas
+    const despPeriodo = filtrarFluxo(dadosDespesas, 'data');
+    const valDespesas = despPeriodo.reduce((s, d) => s + Number(d.valor || 0), 0);
+
+    // Compras pagas
+    const comprasP = filtrarFluxo(dadosCompras, 'data').filter(c => c.status === 'pago');
+    const valCompras = comprasP.reduce((s, c) => s + Number(c.valorTotal || 0), 0);
+
+    // Contas pagas (pagar)
+    const contasPagas = filtrarFluxo(dadosPagar, 'vencimento').filter(c => c.status === 'pago');
+    const valContasPagas = contasPagas.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    const totalSaidas = valCaixaSai + valDespesas + valCompras + valContasPagas;
+    const saldo = totalEntradas - totalSaidas;
+
+    set('fluxo-entradas', fmt(totalEntradas));
+    set('fluxo-entradas-sub', `Caixa: ${fmt(valCaixaEnt)} · Recebidas: ${fmt(valRecebidas)}`);
+    set('fluxo-saidas', fmt(totalSaidas));
+    set('fluxo-saidas-sub', `Despesas: ${fmt(valDespesas)} · Compras: ${fmt(valCompras)} · Contas: ${fmt(valContasPagas)} · Caixa: ${fmt(valCaixaSai)}`);
+    set('fluxo-saldo', fmt(saldo));
+
+    const saldoCard = $('fin-fluxo-saldo-card');
+    if (saldoCard) saldoCard.className = 'fin-fluxo-card ' + (saldo >= 0 ? 'fin-fluxo-saldo-pos' : 'fin-fluxo-saldo-neg');
+
+    // Fontes
+    const fontesEl = $('fin-fluxo-fontes');
+    if (fontesEl) {
+        const fontes = [
+            { nome: '💰 Caixa Operacional (entradas)', valor: valCaixaEnt, tipo: 'entrada' },
+            { nome: '📥 Contas a Receber (recebidas)',  valor: valRecebidas, tipo: 'entrada' },
+            { nome: '🔴 Caixa Operacional (saídas)',    valor: valCaixaSai,  tipo: 'saida' },
+            { nome: '💸 Despesas',                      valor: valDespesas,  tipo: 'saida' },
+            { nome: '📦 Compras (pagas)',                valor: valCompras,   tipo: 'saida' },
+            { nome: '💰 Contas a Pagar (pagas)',         valor: valContasPagas, tipo: 'saida' },
+        ].filter(f => f.valor > 0);
+
+        const maxVal = Math.max(...fontes.map(f => f.valor), 1);
+        fontesEl.innerHTML = fontes.map(f => {
+            const pct = Math.round((f.valor / maxVal) * 100);
+            const cor = f.tipo === 'entrada' ? '#00c853' : '#f44336';
+            return `<div class="fin-barra-item">
+                <div class="fin-barra-nome">${f.nome}</div>
+                <div class="fin-barra-track"><div class="fin-barra-fill" style="width:${pct}%;background:${cor}"></div></div>
+                <div class="fin-barra-val">${fmt(f.valor)}</div>
             </div>`;
-        container.appendChild(panel);
-        renderCustomLista(cat.id, itens);
+        }).join('') || '<div style="color:var(--text-muted);font-size:13px;padding:10px">Nenhuma movimentação neste período.</div>';
+    }
 
-        // eventos do painel
-        panel.querySelector('[data-catid="' + cat.id + '"].fin-btn-nova').addEventListener('click', () => {
-            panel.querySelector(`#form-custom-${cat.id}`).style.display = 'flex';
-            panel.querySelector(`.fin-btn-nova`).style.display = 'none';
-            panel.querySelector(`#cx-desc-${cat.id}`).focus();
-        });
-        panel.querySelector(`[data-save-cat="${cat.id}"]`).addEventListener('click', () => salvarCustomItem(cat.id, panel));
-        panel.querySelector(`[data-cancel-cat="${cat.id}"]`).addEventListener('click', () => {
-            panel.querySelector(`#form-custom-${cat.id}`).style.display = 'none';
-            panel.querySelector(`.fin-btn-nova`).style.display = '';
-        });
-        panel.querySelector('.fin-custom-del-tab').addEventListener('click', () => excluirCategoria(cat.id, cat.nome));
-    });
+    // Timeline movimentações
+    const movEl = $('fin-fluxo-lista');
+    if (movEl) {
+        // Construir lista unificada
+        const movs = [];
+        caixaEntradas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'entrada', fonte: 'Caixa' }));
+        recebidas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || c.cliente || '—', valor: c.valor, tipo: 'entrada', fonte: 'Contas a Receber' }));
+        caixaSaidas.forEach(l => movs.push({ data: (l.dia || l.dataISO || '').slice(0,10), desc: l.descricao || '—', valor: l.valor, tipo: 'saida', fonte: 'Caixa' }));
+        despPeriodo.forEach(d => movs.push({ data: d.data || '', desc: d.descricao || '—', valor: d.valor, tipo: 'saida', fonte: 'Despesas' }));
+        comprasP.forEach(c => movs.push({ data: c.data || '', desc: c.fornecedorNome || '—', valor: c.valorTotal, tipo: 'saida', fonte: 'Compras' }));
+        contasPagas.forEach(c => movs.push({ data: c.vencimento || '', desc: c.descricao || '—', valor: c.valor, tipo: 'saida', fonte: 'Contas a Pagar' }));
+        movs.sort((a, b) => b.data.localeCompare(a.data));
+
+        set('fluxo-mov-count', `(${movs.length})`);
+
+        if (!movs.length) {
+            movEl.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:10px">Nenhuma movimentação no período.</div>';
+        } else {
+            movEl.innerHTML = movs.slice(0, 80).map(m => {
+                const cor = m.tipo === 'entrada' ? '#00c853' : '#f44336';
+                const sinal = m.tipo === 'entrada' ? '+' : '−';
+                const dFormatada = m.data ? m.data.split('-').reverse().join('/') : '';
+                return `<div class="fin-fluxo-mov-item">
+                    <span class="fin-fluxo-mov-data">${dFormatada}</span>
+                    <span class="fin-fluxo-mov-desc">${escHtml(m.desc)}</span>
+                    <span class="fin-fluxo-mov-fonte">${m.fonte}</span>
+                    <span class="fin-fluxo-mov-val" style="color:${cor}">${sinal} ${fmt(m.valor)}</span>
+                </div>`;
+            }).join('');
+        }
+    }
 }
 
-function renderCustomLista(catId, itens) {
-    const listaEl = document.getElementById(`custom-lista-${catId}`);
-    const emptyEl = document.getElementById(`custom-empty-${catId}`);
-    const f = itens.sort((a, b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
-    if (!f.length) { if (listaEl) listaEl.innerHTML = ''; if (emptyEl) emptyEl.style.display = 'flex'; return; }
-    if (emptyEl) emptyEl.style.display = 'none';
-    listaEl.innerHTML = f.map(c => `
-        <div class="fin-card${c.status === 'vencido' ? ' fin-card-vencido' : c.status === 'pago' ? ' fin-card-pago' : ''}">
-            <div class="fin-card-left">
-                <span class="fin-cat-icon">📁</span>
-                <div class="fin-card-info">
-                    <div class="fin-card-desc">${escHtml(c.descricao)}</div>
-                    <div class="fin-card-sub">${c.vencimento ? `📅 ${formatarData(c.vencimento)}` : ''}${c.obs ? ` · ${escHtml(c.obs)}` : ''}</div>
-                </div>
-            </div>
-            <div class="fin-card-right">
-                <div class="fin-card-valor">${fmt(c.valor)}</div>
-                ${statusBadge(c.status)}
-                <div class="fin-card-acoes">
-                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-cid="${c.id}" data-catid="${catId}" title="Marcar pago">✓ Pago</button>` : ''}
-                    <button class="fin-card-del-btn" data-cid="${c.id}" data-catid="${catId}" title="Excluir">🗑️</button>
-                </div>
-            </div>
-        </div>`).join('');
-
-    listaEl.querySelectorAll('.fin-btn-marcar').forEach(btn => {
-        btn.addEventListener('click', () => marcarCustom(btn.dataset.catid, btn.dataset.cid, 'pago'));
-    });
-    listaEl.querySelectorAll('.fin-card-del-btn').forEach(btn => {
-        btn.addEventListener('click', () => excluirCustomItem(btn.dataset.catid, btn.dataset.cid));
-    });
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-async function salvarCustomItem(catId, panel) {
-    const desc  = panel.querySelector(`#cx-desc-${catId}`)?.value.trim();
-    if (!desc) { panel.querySelector(`#cx-desc-${catId}`)?.focus(); return; }
-    const dados = {
-        descricao:   desc,
-        vencimento:  panel.querySelector(`#cx-venc-${catId}`)?.value || '',
-        valor:       Number(panel.querySelector(`#cx-valor-${catId}`)?.value) || 0,
-        status:      panel.querySelector(`#cx-status-${catId}`)?.value || 'pendente',
-        obs:         panel.querySelector(`#cx-obs-${catId}`)?.value.trim() || '',
-        atualizadoEm: serverTimestamp()
-    };
-    const id = `item_${Date.now()}`;
-    try {
-        await setDoc(doc(db, `${COL_CATS}/${catId}/itens`, id), dados);
-        dadosCustom[catId] = dadosCustom[catId] || [];
-        dadosCustom[catId].push({ id, ...dados });
-        dadosCustom[catId] = dadosCustom[catId].map(c => calcStatus(c, 'pago'));
-        renderCustomLista(catId, dadosCustom[catId]);
-        panel.querySelector(`#form-custom-${catId}`).style.display = 'none';
-        panel.querySelector('.fin-btn-nova').style.display = '';
-        ['cx-desc-', 'cx-venc-', 'cx-valor-', 'cx-obs-'].forEach(p => { const el = panel.querySelector(`#${p}${catId}`); if (el) el.value = ''; });
-        toast('✅ Item adicionado!');
-    } catch { toast('⚠ Erro ao salvar.'); }
-}
-
-async function marcarCustom(catId, itemId, novoStatus) {
-    const itens = dadosCustom[catId] || [];
-    const item = itens.find(c => c.id === itemId);
-    if (!item) return;
-    const atualizado = { ...item, status: novoStatus };
-    try {
-        await setDoc(doc(db, `${COL_CATS}/${catId}/itens`, itemId), atualizado);
-        dadosCustom[catId] = itens.map(c => c.id === itemId ? atualizado : c);
-        renderCustomLista(catId, dadosCustom[catId]);
-        toast('✅ Marcado como pago!');
-    } catch { toast('⚠ Erro.'); }
-}
-
-async function excluirCustomItem(catId, itemId) {
-    if (!confirm('Excluir este item?')) return;
-    try {
-        await deleteDoc(doc(db, `${COL_CATS}/${catId}/itens`, itemId));
-        dadosCustom[catId] = (dadosCustom[catId] || []).filter(c => c.id !== itemId);
-        renderCustomLista(catId, dadosCustom[catId]);
-        toast('🗑️ Removido.');
-    } catch { toast('⚠ Erro.'); }
-}
-
-async function excluirCategoria(catId, nome) {
-    if (!confirm(`Excluir a categoria "${nome}" e todos os seus itens?`)) return;
-    try {
-        // deleta itens da subcoleção
-        const snap = await getDocs(collection(db, `${COL_CATS}/${catId}/itens`));
-        for (const d of snap.docs) await deleteDoc(d.ref);
-        await deleteDoc(doc(db, COL_CATS, catId));
-        categoriasCustom = categoriasCustom.filter(c => c.id !== catId);
-        delete dadosCustom[catId];
-        renderTabsCustom();
-        renderPainéisCustom();
-        // volta para aba "pagar"
-        ativarTab('pagar');
-        toast('🗑️ Categoria excluída.');
-    } catch { toast('⚠ Erro ao excluir.'); }
-}
-
-function ativarTab(tabId) {
-    document.querySelectorAll('.fin-tab').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.fin-panel').forEach(p => p.classList.remove('active'));
-    const btn = document.querySelector(`[data-tab="${tabId}"]`);
-    const panel = document.getElementById('tab-' + tabId);
-    if (btn)   btn.classList.add('active');
-    if (panel) panel.classList.add('active');
-}
-
-// Botão "+" para nova categoria
-document.getElementById('fin-tab-add').addEventListener('click', () => {
-    document.getElementById('fin-cat-nome').value = '';
-    document.getElementById('fin-modal-cat').style.display = 'flex';
-    setTimeout(() => document.getElementById('fin-cat-nome').focus(), 50);
-});
-document.getElementById('fin-cat-cancelar').addEventListener('click', () => {
-    document.getElementById('fin-modal-cat').style.display = 'none';
-});
-document.getElementById('fin-cat-salvar').addEventListener('click', async () => {
-    const nome = document.getElementById('fin-cat-nome').value.trim();
-    if (!nome) { document.getElementById('fin-cat-nome').focus(); return; }
-    const id = `cat_${Date.now()}`;
-    try {
-        await setDoc(doc(db, COL_CATS, id), { nome, criadoEm: serverTimestamp() });
-        document.getElementById('fin-modal-cat').style.display = 'none';
-        categoriasCustom.push({ id, nome });
-        dadosCustom[id] = [];
-        renderTabsCustom();
-        renderPainéisCustom();
-        ativarTab('custom-' + id);
-        toast(`✅ Categoria "${nome}" criada!`);
-    } catch { toast('⚠ Erro ao criar categoria.'); }
-});
-document.getElementById('fin-cat-nome').addEventListener('keypress', e => {
-    if (e.key === 'Enter') document.getElementById('fin-cat-salvar').click();
-});
-document.getElementById('fin-modal-cat').addEventListener('click', e => {
-    if (e.target === e.currentTarget) document.getElementById('fin-modal-cat').style.display = 'none';
-});
-
-// sobrescreve a função de tabs para incluir custom
-document.querySelectorAll('.fin-tab').forEach(btn => {
-    btn.addEventListener('click', () => ativarTab(btn.dataset.tab));
-});
-
-document.addEventListener('DOMContentLoaded', async () => {
-    await carregar();
-    await carregarCategorias();
-});
+// ── Inicialização ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => carregar());

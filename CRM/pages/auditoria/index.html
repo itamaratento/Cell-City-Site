@@ -3,83 +3,177 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Auditoria — Cell City</title>
+<title>Cell City Gestão Empresarial</title>
 <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../shared/brand-header.css">
 <style>
-*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-:root{--cell-green:#00c853;--bg-base:#0a0b0d;--bg-surface:#121418;--bg-elevated:#1a1d23;--border-subtle:rgba(255,255,255,.06);--border-medium:rgba(255,255,255,.10);--text-primary:#f5f7fa;--text-secondary:#a1a8b3;--text-tertiary:#6b7280}
-html,body{height:100%;background:var(--bg-base);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
-.page-header{display:flex;align-items:center;gap:12px;padding:16px 24px;background:rgba(10,11,13,.9);border-bottom:1px solid var(--border-subtle);position:sticky;top:0;z-index:10}
-.btn-voltar{background:none;border:1px solid var(--border-medium);border-radius:8px;color:var(--text-secondary);font-size:13px;padding:6px 14px;cursor:pointer;font-family:inherit;transition:all .15s}
-.btn-voltar:hover{background:rgba(255,255,255,.06);color:var(--text-primary)}
-.page-title{font-size:18px;font-weight:800}
-.page-sub{font-size:12px;color:var(--text-tertiary)}
-.shell-body{max-width:860px;margin:0 auto;padding:48px 24px;text-align:center}
-.shell-icon{font-size:64px;display:block;margin-bottom:16px}
-.shell-titulo{font-size:28px;font-weight:800;margin-bottom:8px}
-.shell-desc{font-size:15px;color:var(--text-secondary);line-height:1.6;margin-bottom:32px}
-.shell-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,200,83,.12);border:1px solid rgba(0,200,83,.25);color:var(--cell-green);font-size:12px;font-weight:700;padding:6px 14px;border-radius:99px;margin-bottom:40px}
-.campos-table{max-width:600px;margin:0 auto 40px;border:1px solid var(--border-subtle);border-radius:12px;overflow:hidden;text-align:left}
-.campos-row{display:grid;grid-template-columns:140px 1fr;border-bottom:1px solid var(--border-subtle)}
-.campos-row:last-child{border-bottom:none}
-.campos-row .campo-k{background:var(--bg-elevated);padding:10px 14px;font-size:12px;font-weight:700;color:var(--text-tertiary);display:flex;align-items:center;gap:8px}
-.campos-row .campo-v{background:var(--bg-surface);padding:10px 14px;font-size:12px;color:var(--text-secondary)}
-.acoes-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:600px;margin:0 auto;text-align:left}
-.acao-item{background:var(--bg-surface);border:1px solid var(--border-subtle);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--text-secondary)}
-.acao-item .acao-icon{font-size:18px;flex-shrink:0}
+:root { --bg-base:#0a0b0d; --bg-surface:#121418; --bg-elevated:#1a1d23; --cell-green:#00c853; --border:#1e2028; --text-primary:#f1f3f5; --text-secondary:#9ca3af; --text-muted:#6b7280; }
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter',sans-serif; font-size:14px; }
+.aud-layout { max-width:960px; margin:0 auto; padding:80px 20px 40px; }
+.aud-titulo { font-size:22px; font-weight:800; margin-bottom:4px; }
+.aud-sub { font-size:13px; color:var(--text-muted); margin-bottom:20px; }
+.aud-filtros { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; align-items:center; }
+.aud-filtro { padding:5px 14px; border:1px solid var(--border); border-radius:16px; background:var(--bg-elevated); color:var(--text-muted); font-size:12px; cursor:pointer; transition:all 0.15s; }
+.aud-filtro.active,.aud-filtro:hover { border-color:var(--cell-green); color:var(--cell-green); background:rgba(0,200,83,0.08); }
+.aud-busca { flex:1; min-width:180px; padding:7px 12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-size:13px; font-family:inherit; }
+.aud-busca:focus { outline:none; border-color:var(--cell-green); }
+.aud-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); padding:30px 0; }
+.aud-spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--cell-green); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.aud-log { border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.aud-row { display:grid; grid-template-columns:110px 90px 90px 1fr 90px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); gap:10px; transition:background 0.1s; }
+.aud-row:last-child { border-bottom:none; }
+.aud-row:hover { background:var(--bg-elevated); }
+.aud-thead { background:var(--bg-elevated); font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; }
+.aud-data { font-size:11px; color:var(--text-muted); }
+.aud-modulo { font-size:11px; font-weight:600; color:#29b6f6; background:rgba(41,182,246,0.1); padding:2px 8px; border-radius:10px; }
+.aud-acao-criacao  { color:var(--cell-green); }
+.aud-acao-edicao   { color:#ffd54f; }
+.aud-acao-exclusao { color:#ef5350; }
+.aud-desc { font-size:12px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.aud-det  { font-size:11px; color:var(--text-muted); cursor:pointer; text-decoration:underline; }
+.aud-det:hover { color:var(--cell-green); }
+.aud-vazio { text-align:center; padding:40px; color:var(--text-muted); }
+.aud-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+.aud-modal { background:var(--bg-surface); border:1px solid var(--border); border-radius:14px; padding:20px; max-width:560px; width:100%; max-height:80vh; overflow-y:auto; position:relative; }
+.aud-modal-close { position:absolute; top:12px; right:12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:6px; color:var(--text-secondary); width:28px; height:28px; cursor:pointer; font-size:14px; }
+.aud-modal-titulo { font-size:16px; font-weight:700; margin-bottom:14px; }
+.aud-diff { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.aud-diff-col { background:var(--bg-elevated); border-radius:8px; padding:12px; }
+.aud-diff-hdr { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; }
+.aud-diff-linha { font-size:11px; color:var(--text-secondary); padding:3px 0; border-bottom:1px solid var(--border); word-break:break-all; }
+.aud-diff-linha:last-child { border-bottom:none; }
+@media (max-width:700px) { .aud-row { grid-template-columns:1fr 80px; } .aud-modulo,.aud-data,.aud-acao,.aud-det { display:none; } .aud-desc { display:block; } }
 </style>
 </head>
-<body>
+<body data-fav-key="auditoria" data-fav-icon="🔍">
+<div class="aud-layout">
+    <div class="aud-titulo">🔍 Auditoria — Histórico de Alterações</div>
+    <div class="aud-sub">Registros de criação, edição e exclusão em todos os módulos.</div>
 
-<div class="page-header">
-  <button class="btn-voltar" onclick="history.back()">← Voltar</button>
-  <div>
-    <div class="page-title">🔍 Auditoria</div>
-    <div class="page-sub">Logs e rastreamento de ações</div>
-  </div>
+    <div class="aud-filtros">
+        <input type="text" class="aud-busca" id="aud-busca" placeholder="Buscar por descrição ou ID..." oninput="filtrarLogs()">
+        <button class="aud-filtro active" data-m="" onclick="setModulo(this, '')">Todos</button>
+        <button class="aud-filtro" data-m="despesas"   onclick="setModulo(this, 'despesas')">Despesas</button>
+        <button class="aud-filtro" data-m="compras"    onclick="setModulo(this, 'compras')">Compras</button>
+        <button class="aud-filtro" data-m="caixa"      onclick="setModulo(this, 'caixa')">Caixa</button>
+        <button class="aud-filtro" data-m="estoque"    onclick="setModulo(this, 'estoque')">Estoque</button>
+        <button class="aud-filtro" data-m="financeiro" onclick="setModulo(this, 'financeiro')">Financeiro</button>
+    </div>
+
+    <div class="aud-loading" id="aud-loading"><div class="aud-spinner"></div><span>Carregando logs...</span></div>
+    <div id="aud-container"></div>
 </div>
 
-<div class="shell-body">
-  <span class="shell-icon">🔍</span>
-  <h1 class="shell-titulo">Módulo de Auditoria</h1>
-  <p class="shell-desc">Registre e consulte ações críticas realizadas no sistema.<br>Saiba quem fez o quê, quando e em qual registro.</p>
-  <div class="shell-badge">🚧 Em desenvolvimento — Etapa futura</div>
-
-  <div class="campos-table">
-    <div class="campos-row">
-      <div class="campo-k">📅 Data</div>
-      <div class="campo-v">Data em que a ação foi realizada</div>
+<div class="aud-modal-overlay" id="aud-modal" style="display:none" onclick="fecharModal()">
+    <div class="aud-modal" onclick="event.stopPropagation()">
+        <button class="aud-modal-close" onclick="fecharModal()">✕</button>
+        <div id="aud-modal-body"></div>
     </div>
-    <div class="campos-row">
-      <div class="campo-k">⏰ Hora</div>
-      <div class="campo-v">Horário exato do evento</div>
-    </div>
-    <div class="campos-row">
-      <div class="campo-k">👤 Usuário</div>
-      <div class="campo-v">Operador que executou a ação</div>
-    </div>
-    <div class="campos-row">
-      <div class="campo-k">⚡ Ação</div>
-      <div class="campo-v">Descrição detalhada do que foi feito</div>
-    </div>
-    <div class="campos-row">
-      <div class="campo-k">📋 Registro</div>
-      <div class="campo-v">ID e tipo do documento afetado</div>
-    </div>
-  </div>
-
-  <div class="acoes-grid">
-    <div class="acao-item"><span class="acao-icon">📦</span>Alteração de OS</div>
-    <div class="acao-item"><span class="acao-icon">💰</span>Mudança de orçamento</div>
-    <div class="acao-item"><span class="acao-icon">🗑️</span>Exclusão de registros</div>
-    <div class="acao-item"><span class="acao-icon">💹</span>Alterações financeiras</div>
-    <div class="acao-item"><span class="acao-icon">📱</span>Mudanças de estoque</div>
-    <div class="acao-item"><span class="acao-icon">🚚</span>Entrega de aparelho</div>
-  </div>
-
 </div>
 
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module">
+import { db, collection, getDocs, orderBy, query, limit } from '../../scripts/firebase.js';
+
+let _todos  = [];
+let _modulo = '';
+
+async function carregar() {
+    try {
+        const q    = query(collection(db, 'auditoria_logs'), orderBy('criadoEmISO', 'desc'), limit(500));
+        const snap = await getDocs(q);
+        _todos = [];
+        snap.forEach(d => _todos.push({ id: d.id, ...d.data() }));
+    } catch (e) {
+        // sem índice ainda? fallback sem orderBy
+        try {
+            const snap2 = await getDocs(collection(db, 'auditoria_logs'));
+            _todos = [];
+            snap2.forEach(d => _todos.push({ id: d.id, ...d.data() }));
+            _todos.sort((a,b) => (b.criadoEmISO||'').localeCompare(a.criadoEmISO||''));
+        } catch { _todos = []; }
+    }
+    document.getElementById('aud-loading').style.display = 'none';
+    renderLogs();
+}
+
+function renderLogs() {
+    const busca = (document.getElementById('aud-busca')?.value || '').toLowerCase();
+    let lista   = _todos;
+    if (_modulo) lista = lista.filter(l => l.modulo === _modulo);
+    if (busca)   lista = lista.filter(l =>
+        (l.descricao||'').toLowerCase().includes(busca) ||
+        (l.documentoId||'').toLowerCase().includes(busca)
+    );
+
+    const cont = document.getElementById('aud-container');
+    if (!lista.length) { cont.innerHTML = '<div class="aud-vazio">Nenhum log encontrado.</div>'; return; }
+
+    const ACAO_LABEL = { criacao: '＋ Criação', edicao: '✏ Edição', exclusao: '✕ Exclusão' };
+    cont.innerHTML = `
+    <div class="aud-log">
+        <div class="aud-row aud-thead">
+            <div>Data / Hora</div><div>Módulo</div><div>Ação</div>
+            <div>Descrição</div><div>Detalhes</div>
+        </div>
+        ${lista.map(l => {
+            const dt   = l.criadoEmISO ? new Date(l.criadoEmISO).toLocaleString('pt-BR') : '—';
+            const acls = `aud-acao-${l.acao || ''}`;
+            const aLbl = ACAO_LABEL[l.acao] || l.acao || '—';
+            return `<div class="aud-row">
+                <div class="aud-data">${escHtml(dt)}</div>
+                <div><span class="aud-modulo">${escHtml(l.modulo||'—')}</span></div>
+                <div class="${acls}">${escHtml(aLbl)}</div>
+                <div class="aud-desc">${escHtml(l.descricao||l.documentoId||'—')}</div>
+                <div><span class="aud-det" onclick="verDiff('${escHtml(l.id)}')">ver diff</span></div>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
+window.filtrarLogs = () => renderLogs();
+window.setModulo   = (btn, m) => {
+    _modulo = m;
+    document.querySelectorAll('.aud-filtro').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderLogs();
+};
+window.verDiff = (id) => {
+    const l = _todos.find(x => x.id === id);
+    if (!l) return;
+    let antesObj = {}, depoisObj = {};
+    try { antesObj  = JSON.parse(l.antes  || '{}'); } catch {}
+    try { depoisObj = JSON.parse(l.depois || '{}'); } catch {}
+
+    const keys = [...new Set([...Object.keys(antesObj), ...Object.keys(depoisObj)])];
+    const linhasA = keys.map(k => `<div class="aud-diff-linha"><strong>${escHtml(k)}:</strong> ${escHtml(String(antesObj[k]??'—'))}</div>`).join('');
+    const linhasD = keys.map(k => `<div class="aud-diff-linha"><strong>${escHtml(k)}:</strong> ${escHtml(String(depoisObj[k]??'—'))}</div>`).join('');
+
+    document.getElementById('aud-modal-body').innerHTML = `
+        <div class="aud-modal-titulo">🔍 Diff — ${escHtml(l.descricao||l.documentoId)}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px">
+            Módulo: ${escHtml(l.modulo)} | Ação: ${escHtml(l.acao)} | ID: ${escHtml(l.documentoId)}
+        </div>
+        <div class="aud-diff">
+            <div class="aud-diff-col">
+                <div class="aud-diff-hdr" style="color:#ef5350">Antes</div>${linhasA||'<div class="aud-diff-linha">—</div>'}
+            </div>
+            <div class="aud-diff-col">
+                <div class="aud-diff-hdr" style="color:#00c853">Depois</div>${linhasD||'<div class="aud-diff-linha">—</div>'}
+            </div>
+        </div>`;
+    document.getElementById('aud-modal').style.display = 'flex';
+};
+window.fecharModal = () => { document.getElementById('aud-modal').style.display = 'none'; };
+
+function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.addEventListener('DOMContentLoaded', carregar);
+</script>
 </body>
 </html>

@@ -1,251 +1,490 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-fav-key="financeiro" data-fav-label="Financeiro" data-fav-icon="💹" data-fav-url="/CRM/pages/financeiro/index.html">
 <head>
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cell City — Financeiro</title>
-    <link rel="stylesheet" href="financeiro.css">
+    <title>Cell City Gestão Empresarial</title>
+    <link rel="stylesheet" href="financeiro.css?v=20260620a">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
 <body>
+    <header class="header" id="mainHeader">
+        <h1>💹 Financeiro</h1>
+    </header>
 
-<header class="fin-header" id="mainHeader">
-    <h1>💹 Financeiro</h1>
-    <button class="fin-toggle-busca" id="fin-toggle-busca" title="Mostrar/ocultar busca">＋</button>
-</header>
+    <main>
+        <div class="fin-sb-overlay" id="fin-sb-overlay"></div>
 
-<!-- BUSCA + RESUMO (colapsável) -->
-<div class="fin-top-bar fin-busca-collapsed" id="fin-top-bar">
-    <div class="fin-busca-row">
-        <input type="search" id="fin-busca" class="fin-busca" placeholder="🔍 Buscar lançamento...">
-        <button class="fin-btn-listar" id="fin-btn-listar">Listar Tudo</button>
-    </div>
-    <div class="fin-resumo" id="fin-resumo">
-        <div class="fin-resumo-item">
-            <span class="fin-resumo-num fin-vermelho" id="res-pagar">R$ 0</span>
-            <span class="fin-resumo-label">A Pagar</span>
-        </div>
-        <div class="fin-resumo-div"></div>
-        <div class="fin-resumo-item">
-            <span class="fin-resumo-num fin-amarelo" id="res-fixas">R$ 0</span>
-            <span class="fin-resumo-label">Fixas/mês</span>
-        </div>
-        <div class="fin-resumo-div"></div>
-        <div class="fin-resumo-item">
-            <span class="fin-resumo-num fin-verde" id="res-receber">R$ 0</span>
-            <span class="fin-resumo-label">A Receber</span>
-        </div>
-    </div>
-</div>
+        <div class="fin-explorer">
 
-<main>
-<div class="fin-content">
-
-    <!-- ABAS -->
-    <div class="fin-tabs" id="fin-tabs">
-        <button class="fin-tab active" data-tab="pagar">💸 Contas a Pagar</button>
-        <button class="fin-tab" data-tab="fixas">📌 Despesas Fixas</button>
-        <button class="fin-tab" data-tab="receber">💰 Contas a Receber</button>
-        <!-- abas custom injetadas pelo JS -->
-        <button class="fin-tab-add" id="fin-tab-add" title="Nova categoria">＋</button>
-    </div>
-
-    <!-- ====== ABA: CONTAS A PAGAR ====== -->
-    <div class="fin-panel active" id="tab-pagar">
-        <div class="fin-toolbar">
-            <button class="fin-btn-nova" id="btn-nova-pagar">＋ Nova Conta</button>
-            <div class="fin-filtro-status">
-                <button class="fin-fstatus active" data-s="todos">Todos</button>
-                <button class="fin-fstatus" data-s="pendente">Pendentes</button>
-                <button class="fin-fstatus" data-s="vencido">Vencidos</button>
-                <button class="fin-fstatus" data-s="pago">Pagos</button>
-            </div>
-        </div>
-
-        <div class="fin-form" id="form-pagar" style="display:none">
-            <div class="fin-form-titulo" id="form-pagar-titulo">Nova Conta a Pagar</div>
-            <div class="fin-form-grid">
-                <div class="fin-form-group fin-span2">
-                    <label>Descrição</label>
-                    <input type="text" id="fp-desc" placeholder="Ex: Aluguel, Fornecedor XYZ, Internet..." maxlength="120">
+            <!-- ===== SIDEBAR ===== -->
+            <aside class="fin-sidebar" id="fin-sidebar">
+                <div class="fin-sb-header">
+                    <span class="fin-sb-titulo">Financeiro</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Categoria</label>
-                    <select id="fp-cat">
-                        <option value="Aluguel">🏠 Aluguel</option>
-                        <option value="Fornecedor">📦 Fornecedor</option>
-                        <option value="Serviços">⚡ Serviços (luz, água, internet)</option>
-                        <option value="Salário">👤 Salário</option>
-                        <option value="Imposto">🧾 Imposto / Taxa</option>
-                        <option value="Equipamento">🔧 Equipamento</option>
-                        <option value="Outro">📌 Outro</option>
-                    </select>
-                </div>
-                <div class="fin-form-group">
-                    <label>Vencimento</label>
-                    <input type="date" id="fp-venc">
-                </div>
-                <div class="fin-form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" id="fp-valor" min="0" step="0.01" placeholder="0,00">
-                </div>
-                <div class="fin-form-group">
-                    <label>Status</label>
-                    <select id="fp-status">
-                        <option value="pendente">🟡 Pendente</option>
-                        <option value="pago">✅ Pago</option>
-                    </select>
-                </div>
-                <div class="fin-form-group fin-span2">
-                    <label>Observação</label>
-                    <input type="text" id="fp-obs" placeholder="Opcional..." maxlength="200">
-                </div>
-            </div>
-            <div class="fin-form-btns">
-                <button class="fin-btn-salvar" id="fp-salvar">Salvar</button>
-                <button class="fin-btn-cancelar" id="fp-cancelar">Cancelar</button>
-            </div>
-        </div>
 
-        <div class="fin-loading" id="pagar-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
-        <div id="pagar-lista"></div>
-        <div class="fin-empty" id="pagar-empty" style="display:none">
-            <div class="fin-empty-icon">💸</div>
-            <div class="fin-empty-title">Nenhuma conta</div>
-            <div class="fin-empty-sub">Adicione suas contas a pagar.</div>
-        </div>
-    </div>
-
-    <!-- ====== ABA: DESPESAS FIXAS ====== -->
-    <div class="fin-panel" id="tab-fixas">
-        <div class="fin-info-box">
-            <span>📌</span>
-            <span>Despesas que se repetem todo mês. Registre aqui para ter controle do custo fixo mensal.</span>
-        </div>
-        <div class="fin-toolbar">
-            <button class="fin-btn-nova" id="btn-nova-fixa">＋ Nova Despesa Fixa</button>
-        </div>
-
-        <div class="fin-form" id="form-fixa" style="display:none">
-            <div class="fin-form-titulo" id="form-fixa-titulo">Nova Despesa Fixa</div>
-            <div class="fin-form-grid">
-                <div class="fin-form-group fin-span2">
-                    <label>Descrição</label>
-                    <input type="text" id="ff-desc" placeholder="Ex: Aluguel da loja, Salário, Internet..." maxlength="120">
+                <div class="fin-sb-item active" data-sec="home">
+                    <span class="fin-sb-icon">🏠</span>
+                    <span class="fin-sb-label">Home</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Categoria</label>
-                    <select id="ff-cat">
-                        <option value="Aluguel">🏠 Aluguel</option>
-                        <option value="Salário">👤 Salário</option>
-                        <option value="Serviços">⚡ Serviços</option>
-                        <option value="Assinatura">📱 Assinatura</option>
-                        <option value="Imposto">🧾 Imposto</option>
-                        <option value="Outro">📌 Outro</option>
-                    </select>
+
+                <div class="fin-sb-sep"></div>
+
+                <div class="fin-sb-item" data-sec="pagar">
+                    <span class="fin-sb-icon">💰</span>
+                    <span class="fin-sb-label">Contas a Pagar</span>
+                    <span class="fin-sb-count" id="sb-count-pagar">0</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Dia de vencimento</label>
-                    <input type="number" id="ff-dia" min="1" max="31" placeholder="Ex: 10" value="10">
+                <div class="fin-sb-item" data-sec="receber">
+                    <span class="fin-sb-icon">💵</span>
+                    <span class="fin-sb-label">Contas a Receber</span>
+                    <span class="fin-sb-count" id="sb-count-receber">0</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Valor mensal (R$)</label>
-                    <input type="number" id="ff-valor" min="0" step="0.01" placeholder="0,00">
+                <div class="fin-sb-item" data-sec="fixas">
+                    <span class="fin-sb-icon">📅</span>
+                    <span class="fin-sb-label">Despesas Fixas</span>
+                    <span class="fin-sb-count" id="sb-count-fixas">0</span>
                 </div>
-            </div>
-            <div class="fin-form-btns">
-                <button class="fin-btn-salvar" id="ff-salvar">Salvar</button>
-                <button class="fin-btn-cancelar" id="ff-cancelar">Cancelar</button>
-            </div>
-        </div>
-
-        <div class="fin-loading" id="fixas-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
-        <div id="fixas-lista"></div>
-        <div class="fin-empty" id="fixas-empty" style="display:none">
-            <div class="fin-empty-icon">📌</div>
-            <div class="fin-empty-title">Nenhuma despesa fixa</div>
-            <div class="fin-empty-sub">Registre seus custos mensais recorrentes.</div>
-        </div>
-    </div>
-
-    <!-- ====== ABA: CONTAS A RECEBER ====== -->
-    <div class="fin-panel" id="tab-receber">
-        <div class="fin-toolbar">
-            <button class="fin-btn-nova" id="btn-nova-receber">＋ Nova Conta</button>
-            <div class="fin-filtro-status">
-                <button class="fin-fstatus active" data-s2="todos">Todos</button>
-                <button class="fin-fstatus" data-s2="pendente">Pendentes</button>
-                <button class="fin-fstatus" data-s2="vencido">Vencidos</button>
-                <button class="fin-fstatus" data-s2="recebido">Recebidos</button>
-            </div>
-        </div>
-
-        <div class="fin-form" id="form-receber" style="display:none">
-            <div class="fin-form-titulo" id="form-receber-titulo">Nova Conta a Receber</div>
-            <div class="fin-form-grid">
-                <div class="fin-form-group fin-span2">
-                    <label>Descrição / Cliente</label>
-                    <input type="text" id="fr-desc" placeholder="Ex: João — Parcela iPhone, Orçamento aprovado..." maxlength="120">
+                <div class="fin-sb-item" data-sec="resumo">
+                    <span class="fin-sb-icon">📊</span>
+                    <span class="fin-sb-label">Resultado Financeiro</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Vencimento</label>
-                    <input type="date" id="fr-venc">
+                <div class="fin-sb-item" data-sec="fluxo">
+                    <span class="fin-sb-icon">📈</span>
+                    <span class="fin-sb-label">Fluxo de Caixa</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" id="fr-valor" min="0" step="0.01" placeholder="0,00">
+
+                <div class="fin-sb-sep"></div>
+
+                <div class="fin-sb-label-soon">Módulos</div>
+                <a class="fin-sb-item" href="/CRM/pages/despesas/" style="text-decoration:none">
+                    <span class="fin-sb-icon">💸</span>
+                    <span class="fin-sb-label">Despesas</span>
+                </a>
+                <a class="fin-sb-item" href="/CRM/pages/compras/" style="text-decoration:none">
+                    <span class="fin-sb-icon">📦</span>
+                    <span class="fin-sb-label">Compras</span>
+                </a>
+                <a class="fin-sb-item" href="/CRM/pages/fornecedor/" style="text-decoration:none">
+                    <span class="fin-sb-icon">🏢</span>
+                    <span class="fin-sb-label">Fornecedores</span>
+                </a>
+                <div class="fin-sb-item fin-sb-disabled">
+                    <span class="fin-sb-icon">📈</span>
+                    <span class="fin-sb-label">Resultado</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Status</label>
-                    <select id="fr-status">
-                        <option value="pendente">🟡 Pendente</option>
-                        <option value="recebido">✅ Recebido</option>
-                    </select>
+                <div class="fin-sb-item fin-sb-disabled">
+                    <span class="fin-sb-icon">🎯</span>
+                    <span class="fin-sb-label">Metas Financeiras</span>
                 </div>
-                <div class="fin-form-group">
-                    <label>Observação</label>
-                    <input type="text" id="fr-obs" placeholder="Opcional..." maxlength="200">
+                <a class="fin-sb-item" href="/CRM/pages/fechamento/" style="text-decoration:none;color:inherit">
+                    <span class="fin-sb-icon">🔒</span>
+                    <span class="fin-sb-label">Fechamento</span>
+                </a>
+            </aside>
+
+            <!-- ===== ÁREA PRINCIPAL ===== -->
+            <div class="fin-main">
+
+                <!-- Topbar: menu mobile + busca + botão novo -->
+                <div class="fin-topbar">
+                    <button class="fin-btn-sb-open" id="fin-sb-open" title="Abrir menu">📁</button>
+                    <div class="fin-busca-wrap">
+                        <input type="search" id="fin-search" class="fin-search" autocomplete="off"
+                               placeholder="🔍 Buscar lançamentos...">
+                    </div>
+                    <button class="fin-btn-novo-mini" id="fin-btn-novo" style="display:none">＋ Novo</button>
                 </div>
-            </div>
-            <div class="fin-form-btns">
-                <button class="fin-btn-salvar" id="fr-salvar">Salvar</button>
-                <button class="fin-btn-cancelar" id="fr-cancelar">Cancelar</button>
-            </div>
-        </div>
 
-        <div class="fin-loading" id="receber-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
-        <div id="receber-lista"></div>
-        <div class="fin-empty" id="receber-empty" style="display:none">
-            <div class="fin-empty-icon">💰</div>
-            <div class="fin-empty-title">Nenhuma conta a receber</div>
-            <div class="fin-empty-sub">Registre valores que clientes devem pagar.</div>
-        </div>
-    </div>
+                <!-- Breadcrumb -->
+                <div class="fin-main-header" id="fin-main-header">
+                    <span class="fin-main-titulo" id="fin-main-titulo">💹 Financeiro</span>
+                </div>
 
-    <!-- PAINÉIS CUSTOM (injetados pelo JS) -->
-    <div id="fin-custom-panels"></div>
+                <!-- ===== HOME GRID ===== -->
+                <div class="fin-home-grid" id="fin-home-grid">
+                    <div class="fin-home-block" data-sec="pagar">
+                        <div class="fin-home-icon">💰</div>
+                        <div class="fin-home-nome">Contas a Pagar</div>
+                        <div class="fin-home-count fin-home-count-zero" id="hc-pagar">0</div>
+                    </div>
+                    <div class="fin-home-block" data-sec="receber">
+                        <div class="fin-home-icon">💵</div>
+                        <div class="fin-home-nome">Contas a Receber</div>
+                        <div class="fin-home-count fin-home-count-zero" id="hc-receber">0</div>
+                    </div>
+                    <a class="fin-home-block" href="/CRM/pages/compras/" style="text-decoration:none;color:inherit">
+                        <div class="fin-home-icon">📦</div>
+                        <div class="fin-home-nome">Compras</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
+                    <a class="fin-home-block" href="/CRM/pages/fornecedor/" style="text-decoration:none;color:inherit">
+                        <div class="fin-home-icon">🏢</div>
+                        <div class="fin-home-nome">Fornecedores</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
+                    <div class="fin-home-block" data-sec="fluxo">
+                        <div class="fin-home-icon">📊</div>
+                        <div class="fin-home-nome">Fluxo de Caixa</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </div>
+                    <div class="fin-home-block" data-sec="resumo">
+                        <div class="fin-home-icon">📈</div>
+                        <div class="fin-home-nome">Resultado Financeiro</div>
+                        <div class="fin-home-count fin-count-info" id="hc-resumo">Abrir</div>
+                    </div>
+                    <div class="fin-home-block" data-sec="fixas">
+                        <div class="fin-home-icon">📅</div>
+                        <div class="fin-home-nome">Despesas Fixas</div>
+                        <div class="fin-home-count fin-home-count-zero" id="hc-fixas">0</div>
+                    </div>
+                    <a class="fin-home-block" href="/CRM/pages/despesas/" style="text-decoration:none;color:inherit">
+                        <div class="fin-home-icon">💸</div>
+                        <div class="fin-home-nome">Despesas</div>
+                        <div class="fin-home-count fin-count-info">Abrir</div>
+                    </a>
+                    <a class="fin-home-block" href="/CRM/pages/fechamento/" style="text-decoration:none;color:inherit">
+                        <div class="fin-home-icon">🔒</div>
+                        <div class="fin-home-nome">Fechamento</div>
+                        <div class="fin-home-count fin-count-info">Mensal</div>
+                    </a>
+                </div>
 
-</div>
-</main>
+                <!-- ===== SEÇÃO: CONTAS A PAGAR ===== -->
+                <div class="fin-section" id="fin-sec-pagar" style="display:none">
+                    <div class="fin-sec-toolbar">
+                        <div class="fin-filtro-status">
+                            <button class="fin-fstatus active" data-s="todos">Todos</button>
+                            <button class="fin-fstatus" data-s="pendente">Pendentes</button>
+                            <button class="fin-fstatus" data-s="vencido">Vencidos</button>
+                            <button class="fin-fstatus" data-s="pago">Pagos</button>
+                        </div>
+                    </div>
 
-<!-- MODAL NOVA CATEGORIA -->
-<div class="fin-modal-overlay" id="fin-modal-cat" style="display:none">
-    <div class="fin-modal">
-        <div class="fin-modal-titulo">Nova Categoria</div>
-        <input type="text" id="fin-cat-nome" placeholder="Ex: Seguros, Empréstimo, Investimento..." maxlength="40">
-        <div class="fin-modal-btns">
-            <button class="fin-btn-salvar" id="fin-cat-salvar">Criar</button>
-            <button class="fin-btn-cancelar" id="fin-cat-cancelar">Cancelar</button>
-        </div>
-    </div>
-</div>
+                    <div class="fin-form" id="form-pagar" style="display:none">
+                        <div class="fin-form-titulo" id="form-pagar-titulo">Nova Conta a Pagar</div>
+                        <div class="fin-form-grid">
+                            <div class="fin-form-group fin-span2">
+                                <label>Descrição *</label>
+                                <input type="text" id="fp-desc" placeholder="Ex: Aluguel, Fornecedor XYZ, Internet..." maxlength="120">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Categoria</label>
+                                <select id="fp-cat">
+                                    <option value="Aluguel">🏠 Aluguel</option>
+                                    <option value="Compras de Mercadorias">🛒 Compras de Mercadorias</option>
+                                    <option value="Fornecedor">📦 Fornecedor</option>
+                                    <option value="Serviços">⚡ Serviços</option>
+                                    <option value="Salário">👤 Salário</option>
+                                    <option value="Imposto">🧾 Imposto / Taxa</option>
+                                    <option value="Equipamento">🔧 Equipamento</option>
+                                    <option value="Outro" selected>📌 Outro</option>
+                                </select>
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Vencimento</label>
+                                <input type="date" id="fp-venc">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Valor (R$)</label>
+                                <input type="number" id="fp-valor" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Status</label>
+                                <select id="fp-status">
+                                    <option value="pendente">🟡 Pendente</option>
+                                    <option value="pago">✅ Pago</option>
+                                </select>
+                            </div>
+                            <div class="fin-form-group fin-span2">
+                                <label>Observações</label>
+                                <input type="text" id="fp-obs" placeholder="Opcional..." maxlength="200">
+                            </div>
+                        </div>
+                        <div class="fin-form-btns">
+                            <button class="fin-btn-salvar" id="fp-salvar">Salvar</button>
+                            <button class="fin-btn-cancelar" id="fp-cancelar">Cancelar</button>
+                        </div>
+                    </div>
 
-<div class="fin-toast" id="fin-toast"></div>
+                    <div class="fin-loading" id="pagar-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
+                    <div id="pagar-lista"></div>
+                    <div class="fin-empty" id="pagar-empty" style="display:none">
+                        <div class="fin-empty-icon">💸</div>
+                        <div class="fin-empty-title">Nenhuma conta a pagar</div>
+                        <div class="fin-empty-sub">Clique em <strong>＋ Novo</strong> para adicionar.</div>
+                    </div>
+                </div>
 
-<script src="../../shared/brand-header.js"></script>
-<script type="module" src="financeiro.js"></script>
-<script type="module" src="../../shared/dock.js"></script>
-<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+                <!-- ===== SEÇÃO: CONTAS A RECEBER ===== -->
+                <div class="fin-section" id="fin-sec-receber" style="display:none">
+                    <div class="fin-sec-toolbar">
+                        <div class="fin-filtro-status">
+                            <button class="fin-fstatus active" data-s2="todos">Todos</button>
+                            <button class="fin-fstatus" data-s2="pendente">Pendentes</button>
+                            <button class="fin-fstatus" data-s2="vencido">Vencidos</button>
+                            <button class="fin-fstatus" data-s2="recebido">Recebidos</button>
+                        </div>
+                    </div>
+
+                    <div class="fin-form" id="form-receber" style="display:none">
+                        <div class="fin-form-titulo" id="form-receber-titulo">Nova Conta a Receber</div>
+                        <div class="fin-form-grid">
+                            <div class="fin-form-group">
+                                <label>Cliente</label>
+                                <input type="text" id="fr-cliente" placeholder="Nome do cliente..." maxlength="100">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Descrição *</label>
+                                <input type="text" id="fr-desc" placeholder="Ex: Parcela iPhone, Orçamento..." maxlength="120">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Vencimento</label>
+                                <input type="date" id="fr-venc">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Valor (R$)</label>
+                                <input type="number" id="fr-valor" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Status</label>
+                                <select id="fr-status">
+                                    <option value="pendente">🟡 Pendente</option>
+                                    <option value="recebido">✅ Recebido</option>
+                                </select>
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Observações</label>
+                                <input type="text" id="fr-obs" placeholder="Opcional..." maxlength="200">
+                            </div>
+                        </div>
+                        <div class="fin-form-btns">
+                            <button class="fin-btn-salvar" id="fr-salvar">Salvar</button>
+                            <button class="fin-btn-cancelar" id="fr-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="fin-loading" id="receber-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
+                    <div id="receber-lista"></div>
+                    <div class="fin-empty" id="receber-empty" style="display:none">
+                        <div class="fin-empty-icon">💰</div>
+                        <div class="fin-empty-title">Nenhuma conta a receber</div>
+                        <div class="fin-empty-sub">Clique em <strong>＋ Novo</strong> para adicionar.</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: DESPESAS FIXAS ===== -->
+                <div class="fin-section" id="fin-sec-fixas" style="display:none">
+                    <div class="fin-info-box">
+                        <span>📌</span>
+                        <span>Despesas que se repetem todo mês. Registre para ter controle do custo fixo mensal.</span>
+                    </div>
+
+                    <div class="fin-form" id="form-fixa" style="display:none">
+                        <div class="fin-form-titulo" id="form-fixa-titulo">Nova Despesa Fixa</div>
+                        <div class="fin-form-grid">
+                            <div class="fin-form-group fin-span2">
+                                <label>Descrição *</label>
+                                <input type="text" id="ff-desc" placeholder="Ex: Aluguel da loja, Internet Claro..." maxlength="120">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Categoria</label>
+                                <select id="ff-cat">
+                                    <option value="Aluguel">🏠 Aluguel</option>
+                                    <option value="Energia">💡 Energia</option>
+                                    <option value="Água">💧 Água</option>
+                                    <option value="Internet">🌐 Internet</option>
+                                    <option value="Sistema">💻 Sistema</option>
+                                    <option value="Marketing">📢 Marketing</option>
+                                    <option value="Fornecedores">📦 Fornecedores</option>
+                                    <option value="Transporte">🚗 Transporte</option>
+                                    <option value="Salário">👤 Salário</option>
+                                    <option value="Outro" selected>📌 Outro</option>
+                                </select>
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Dia de vencimento</label>
+                                <input type="number" id="ff-dia" min="1" max="31" placeholder="Ex: 10" value="10">
+                            </div>
+                            <div class="fin-form-group">
+                                <label>Valor mensal (R$)</label>
+                                <input type="number" id="ff-valor" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                        </div>
+                        <div class="fin-form-btns">
+                            <button class="fin-btn-salvar" id="ff-salvar">Salvar</button>
+                            <button class="fin-btn-cancelar" id="ff-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="fin-loading" id="fixas-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
+                    <div id="fixas-lista"></div>
+                    <div class="fin-empty" id="fixas-empty" style="display:none">
+                        <div class="fin-empty-icon">📅</div>
+                        <div class="fin-empty-title">Nenhuma despesa fixa</div>
+                        <div class="fin-empty-sub">Clique em <strong>＋ Novo</strong> para adicionar.</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: RESULTADO FINANCEIRO (INTELIGENTE) ===== -->
+                <div class="fin-section" id="fin-sec-resumo" style="display:none">
+
+                    <!-- Filtros de período -->
+                    <div class="fin-periodo-filtros">
+                        <button class="fin-pfiltro active" data-p="mes">Este Mês</button>
+                        <button class="fin-pfiltro" data-p="hoje">Hoje</button>
+                        <button class="fin-pfiltro" data-p="semana">Semana</button>
+                        <button class="fin-pfiltro" data-p="ano">Este Ano</button>
+                        <button class="fin-pfiltro" data-p="custom">📅 Período</button>
+                    </div>
+                    <div id="fin-custom-range" class="fin-custom-range" style="display:none">
+                        <input type="date" id="fin-data-ini" class="fin-date-input">
+                        <span>até</span>
+                        <input type="date" id="fin-data-fim" class="fin-date-input">
+                        <button class="fin-btn-aplicar-periodo" id="fin-btn-aplicar-periodo">Aplicar</button>
+                    </div>
+
+                    <!-- Indicadores gerenciais -->
+                    <div class="fin-resultado-grid" id="fin-resultado-grid">
+                        <div class="fin-res-card fin-res-receita">
+                            <div class="fin-res-icon">💵</div>
+                            <div class="fin-res-valor" id="ri-receita">R$ 0,00</div>
+                            <div class="fin-res-label">Receita Total</div>
+                            <div class="fin-res-sub" id="ri-receita-sub">— contas recebidas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-despesa">
+                            <div class="fin-res-icon">💸</div>
+                            <div class="fin-res-valor" id="ri-despesas">R$ 0,00</div>
+                            <div class="fin-res-label">Despesas Totais</div>
+                            <div class="fin-res-sub" id="ri-despesas-sub">— registros</div>
+                        </div>
+                        <div class="fin-res-card fin-res-compras">
+                            <div class="fin-res-icon">📦</div>
+                            <div class="fin-res-valor" id="ri-compras">R$ 0,00</div>
+                            <div class="fin-res-label">Compras</div>
+                            <div class="fin-res-sub" id="ri-compras-sub">— compras pagas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-pagar">
+                            <div class="fin-res-icon">⏳</div>
+                            <div class="fin-res-valor" id="ri-pagar">R$ 0,00</div>
+                            <div class="fin-res-label">A Pagar (pendente)</div>
+                            <div class="fin-res-sub" id="ri-pagar-sub">— contas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-receber">
+                            <div class="fin-res-icon">📥</div>
+                            <div class="fin-res-valor" id="ri-receber">R$ 0,00</div>
+                            <div class="fin-res-label">A Receber (pendente)</div>
+                            <div class="fin-res-sub" id="ri-receber-sub">— contas</div>
+                        </div>
+                        <div class="fin-res-card fin-res-fixas">
+                            <div class="fin-res-icon">📅</div>
+                            <div class="fin-res-valor" id="ri-fixas">R$ 0,00</div>
+                            <div class="fin-res-label">Despesas Fixas / mês</div>
+                            <div class="fin-res-sub" id="ri-fixas-sub">— itens</div>
+                        </div>
+                        <div class="fin-res-card fin-res-lucro" id="fin-res-lucro-card">
+                            <div class="fin-res-icon">💎</div>
+                            <div class="fin-res-valor" id="ri-lucro">R$ 0,00</div>
+                            <div class="fin-res-label">Lucro Líquido</div>
+                            <div class="fin-res-sub">Receita − Despesas − Compras</div>
+                        </div>
+                        <div class="fin-res-card fin-res-saldo" id="fin-res-saldo-card">
+                            <div class="fin-res-icon">🏦</div>
+                            <div class="fin-res-valor" id="ri-saldo">R$ 0,00</div>
+                            <div class="fin-res-label">Saldo Atual</div>
+                            <div class="fin-res-sub">Receber − Pagar pendente</div>
+                        </div>
+                    </div>
+
+                    <!-- Indicadores do Caixa (CPV / Lucro Bruto / Margem) -->
+                    <div class="fin-res-caixa-titulo">📦 Análise de Produtos (Caixa)</div>
+                    <div class="fin-resultado-grid fin-resultado-caixa-grid">
+                        <div class="fin-res-card fin-res-compras">
+                            <div class="fin-res-icon">🏷️</div>
+                            <div class="fin-res-valor" id="ri-cpv">R$ 0,00</div>
+                            <div class="fin-res-label">CPV</div>
+                            <div class="fin-res-sub" id="ri-cpv-sub">0 vendas no caixa</div>
+                        </div>
+                        <div class="fin-res-card fin-res-lucro" id="fin-res-lucro-bruto-card">
+                            <div class="fin-res-icon">💵</div>
+                            <div class="fin-res-valor" id="ri-lucro-bruto">R$ 0,00</div>
+                            <div class="fin-res-label">Lucro Bruto</div>
+                            <div class="fin-res-sub" id="ri-lucro-bruto-sub">Receita Caixa: R$ 0,00</div>
+                        </div>
+                        <div class="fin-res-card fin-res-receber">
+                            <div class="fin-res-icon">📊</div>
+                            <div class="fin-res-valor" id="ri-margem">0,0%</div>
+                            <div class="fin-res-label">Margem Bruta</div>
+                            <div class="fin-res-sub" id="ri-margem-sub">Margem bruta (Caixa)</div>
+                        </div>
+                    </div>
+
+                    <!-- Resumo de vencidas -->
+                    <div class="fin-res-alerta" id="fin-res-alerta" style="display:none">
+                        ⚠️ <span id="fin-res-alerta-txt"></span>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: FLUXO DE CAIXA UNIFICADO ===== -->
+                <div class="fin-section" id="fin-sec-fluxo" style="display:none">
+                    <div class="fin-loading" id="fluxo-loading"><div class="fin-spinner"></div><span>Carregando fluxo...</span></div>
+
+                    <div id="fin-fluxo-content" style="display:none">
+                        <!-- Filtros de período -->
+                        <div class="fin-periodo-filtros">
+                            <button class="fin-pfiltro-fluxo active" data-p="mes">Este Mês</button>
+                            <button class="fin-pfiltro-fluxo" data-p="hoje">Hoje</button>
+                            <button class="fin-pfiltro-fluxo" data-p="semana">Semana</button>
+                            <button class="fin-pfiltro-fluxo" data-p="ano">Este Ano</button>
+                        </div>
+
+                        <!-- Cards principais -->
+                        <div class="fin-fluxo-cards">
+                            <div class="fin-fluxo-card fin-fluxo-entrada">
+                                <div class="fin-fc-icon">📈</div>
+                                <div class="fin-fc-valor" id="fluxo-entradas">R$ 0,00</div>
+                                <div class="fin-fc-label">Entradas Totais</div>
+                                <div class="fin-fc-sub" id="fluxo-entradas-sub"></div>
+                            </div>
+                            <div class="fin-fluxo-card fin-fluxo-saida">
+                                <div class="fin-fc-icon">📉</div>
+                                <div class="fin-fc-valor" id="fluxo-saidas">R$ 0,00</div>
+                                <div class="fin-fc-label">Saídas Totais</div>
+                                <div class="fin-fc-sub" id="fluxo-saidas-sub"></div>
+                            </div>
+                            <div class="fin-fluxo-card fin-fluxo-saldo" id="fin-fluxo-saldo-card">
+                                <div class="fin-fc-icon">⚖️</div>
+                                <div class="fin-fc-valor" id="fluxo-saldo">R$ 0,00</div>
+                                <div class="fin-fc-label">Saldo do Período</div>
+                                <div class="fin-fc-sub">Entradas − Saídas</div>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown por fonte -->
+                        <div class="fin-fluxo-breakdown">
+                            <div class="fin-fluxo-breakdown-titulo">🔍 Detalhamento por Fonte</div>
+                            <div id="fin-fluxo-fontes"></div>
+                        </div>
+
+                        <!-- Timeline de movimentações -->
+                        <div class="fin-fluxo-breakdown">
+                            <div class="fin-fluxo-breakdown-titulo">📋 Movimentações do Período <span class="fin-fluxo-count" id="fluxo-mov-count"></span></div>
+                            <div id="fin-fluxo-lista"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /fin-main -->
+        </div><!-- /fin-explorer -->
+    </main>
+
+    <div class="fin-toast" id="fin-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script src="../../shared/sidebar.js"></script>
+    <script type="module" src="financeiro.js?v=20260620b"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
 </html>

@@ -1,0 +1,2833 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central de Controle — Cell City Gestão Empresarial</title>
+<script>
+  var _h = location.hostname;
+  if (_h !== '127.0.0.1' && _h !== 'localhost' && sessionStorage.getItem('cc_acesso') !== 'ok')
+    window.location.replace('/CRM/pages/config/index.html');
+</script>
+<link rel="stylesheet" href="../../shared/brand-header.css">
+<style>
+/* ── Variáveis ── */
+:root {
+  --bg-base:      #080a0c;
+  --bg-surface:   #101214;
+  --bg-elevated:  #181b20;
+  --bg-hover:     rgba(255,255,255,.04);
+  --cell-green:   #00c853;
+  --green-dim:    rgba(0,200,83,.12);
+  --green-border: rgba(0,200,83,.35);
+  --border:       rgba(255,255,255,.07);
+  --border-med:   rgba(255,255,255,.11);
+  --text-primary: #f1f3f5;
+  --text-sec:     #9ca3af;
+  --text-muted:   #6b7280;
+  --radius:       12px;
+  --tr:           150ms ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+/* ── Página ── */
+.ctr-pg {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 80px 24px 60px;
+}
+
+/* ── Cabeçalho ── */
+.ctr-header { margin-bottom: 28px; }
+.ctr-titulo {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.ctr-sub { font-size: 13px; color: var(--text-muted); }
+
+/* ── Tabs ── */
+.ctr-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.ctr-tab {
+  padding: 9px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--tr), border-color var(--tr);
+  margin-bottom: -1px;
+  white-space: nowrap;
+}
+.ctr-tab:hover  { color: var(--text-sec); }
+.ctr-tab.active { color: var(--cell-green); border-bottom-color: var(--cell-green); }
+
+/* ── Tab panels ── */
+.ctr-panel { display: none; }
+.ctr-panel.active { display: block; }
+
+/* ════════════════════════════════════════
+   TAB 1 — MÓDULOS
+   ════════════════════════════════════════ */
+
+/* Barra de busca */
+.cm-pg-busca-wrap { position: relative; max-width: 500px; margin-bottom: 20px; }
+.cm-pg-busca-ico  {
+  position: absolute; left: 13px; top: 50%;
+  transform: translateY(-50%); font-size: 15px; pointer-events: none;
+}
+#cm-pg-busca {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 10px;
+  padding: 10px 14px 10px 38px;
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--tr);
+}
+#cm-pg-busca:focus { border-color: var(--cell-green); }
+#cm-pg-busca::placeholder { color: var(--text-muted); }
+
+/* Filtros de categoria */
+.cm-pg-cats { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+.cat-pill {
+  padding: 5px 13px;
+  border: 1px solid var(--border-med);
+  border-radius: 99px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--tr), color var(--tr), border-color var(--tr);
+  white-space: nowrap;
+  font-family: inherit;
+}
+.cat-pill:hover  { border-color: var(--cell-green); color: var(--cell-green); }
+.cat-pill.active {
+  background: var(--green-dim);
+  border-color: var(--green-border);
+  color: var(--cell-green);
+  font-weight: 600;
+}
+
+/* Stats */
+.cm-pg-stats {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cm-stat-sep { opacity: .4; }
+.cm-stat-favs { color: #f5a623; font-weight: 600; }
+
+/* Grid de módulos */
+.cm-pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+/* Card de módulo */
+.cm-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--tr), border-color var(--tr), transform 120ms ease;
+  position: relative;
+  user-select: none;
+}
+.cm-card:hover { background: var(--bg-elevated); border-color: var(--border-med); transform: translateY(-1px); }
+.cm-card-ico {
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,.04);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+.cm-card-info { flex: 1; min-width: 0; }
+.cm-card-nome {
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.cm-card-desc {
+  font-size: 11.5px;
+  color: var(--text-sec);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cm-card-cat {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+
+/* Estrela */
+.cm-card-star {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 20px;
+  line-height: 1;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background var(--tr), border-color var(--tr), color var(--tr), transform 120ms ease;
+  opacity: 0;
+}
+.cm-card:hover .cm-card-star { opacity: 1; }
+.cm-card-star.on { opacity: 1; color: #f5a623; border-color: rgba(245,166,35,.35); background: rgba(245,166,35,.10); }
+.cm-card-star:hover { transform: scale(1.18); background: rgba(245,166,35,.14); border-color: rgba(245,166,35,.5); color: #f5a623; }
+
+/* Estado vazio */
+.cm-pg-vazio { grid-column: 1/-1; text-align: center; padding: 48px 24px; color: var(--text-muted); }
+.cm-pg-vazio-ico { font-size: 44px; margin-bottom: 12px; }
+
+/* Cabeçalho de categoria */
+.cm-cat-sec-titulo {
+  grid-column: 1/-1;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  padding: 20px 2px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-cat-sec-titulo:first-child { padding-top: 0; }
+
+/* ════════════════════════════════════════
+   TAB 2 — BARRA LATERAL
+   ════════════════════════════════════════ */
+
+.sb-layout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Editor panel */
+.sb-editor {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.sb-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.sb-editor-titulo { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.sb-editor-sub    { font-size: 11.5px; color: var(--text-muted); }
+.sb-reset {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--tr), border-color var(--tr);
+  white-space: nowrap;
+}
+.sb-reset:hover { color: var(--text-primary); border-color: var(--text-muted); }
+
+/* Lista de itens */
+.sb-list { padding: 8px 0; }
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 8px;
+  cursor: default;
+  transition: background var(--tr);
+  position: relative;
+}
+.sb-item:hover { background: var(--bg-hover); }
+.sb-item.sb-dragging { opacity: .35; }
+.sb-item.sb-drag-over { background: rgba(0,200,83,.06); outline: 1px dashed rgba(0,200,83,.3); outline-offset: -2px; border-radius: 6px; }
+
+/* Separador de seção na lista */
+.sb-sec-label {
+  padding: 10px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  opacity: .7;
+}
+.sb-sec-label:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; }
+
+.sb-drag-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: grab;
+  opacity: .4;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  transition: opacity var(--tr);
+}
+.sb-item:hover .sb-drag-handle { opacity: .9; }
+.sb-drag-handle:active { cursor: grabbing; }
+
+.sb-pin-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: .3;
+  transition: opacity var(--tr), background var(--tr);
+  user-select: none;
+}
+.sb-pin-btn:hover        { opacity: .8; background: rgba(255,255,255,.06); }
+.sb-pin-btn.pinned       { opacity: 1; filter: none; }
+.sb-item:not(:hover) .sb-pin-btn:not(.pinned) { opacity: .1; }
+
+.sb-ico  { font-size: 18px; width: 26px; text-align: center; flex-shrink: 0; }
+.sb-name { flex: 1; font-size: 13px; font-weight: 500; min-width: 0; }
+.sb-name.oculto { color: var(--text-muted); text-decoration: line-through; opacity: .5; }
+.sb-cat-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.sb-toggle-wrap {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.sb-toggle {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 18px;
+  cursor: pointer;
+}
+.sb-toggle input { opacity: 0; width: 0; height: 0; }
+.sb-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.1);
+  border-radius: 99px;
+  transition: background .2s;
+}
+.sb-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.sb-toggle input:checked + .sb-toggle-track { background: var(--cell-green); }
+.sb-toggle input:checked + .sb-toggle-track::before { transform: translateX(16px); }
+
+/* ── Preview panel ── */
+.sb-preview-wrap {
+  position: sticky;
+  top: 80px;
+}
+.sb-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.sb-preview {
+  background: #0d0e10;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 12px;
+  overflow: hidden;
+  width: 220px;
+}
+.sb-pv-toggle {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+  color: rgba(255,255,255,.3);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: default;
+  user-select: none;
+}
+.sb-pv-nav {
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+.sb-pv-nav::-webkit-scrollbar { width: 3px; }
+.sb-pv-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.08); }
+.sb-pv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,.55);
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sb-pv-item.pv-highlight {
+  color: #00c853;
+  font-weight: 700;
+}
+.sb-pv-item.pv-pinned::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--cell-green);
+  border-radius: 0 2px 2px 0;
+}
+.sb-pv-ico   { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.sb-pv-lbl   { overflow: hidden; text-overflow: ellipsis; }
+.sb-pv-footer {
+  border-top: 1px solid rgba(255,255,255,.05);
+  padding: 6px 0;
+}
+.sb-pv-item.pv-footer { color: rgba(255,255,255,.35); font-size: 11px; }
+
+/* Contador de itens visíveis */
+.sb-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── Toast ── */
+#cm-pg-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #151920;
+  border: 1px solid rgba(0,200,83,.3);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 20px;
+  border-radius: 8px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+}
+#cm-pg-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ════════════════════════════════════════
+   TAB 3 — MENUS SUPERIORES
+   ════════════════════════════════════════ */
+
+.tb-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Painel editor */
+.tb-editor {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.tb-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.tb-editor-titulo { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+.tb-editor-sub    { font-size: 11.5px; color: var(--text-muted); }
+
+/* Lista principal (itens do topbar) */
+.tb-list { padding: 8px 0; }
+
+.tb-item {
+  position: relative;
+}
+.tb-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px 9px 8px;
+  cursor: default;
+  transition: background var(--tr);
+}
+.tb-item-row:hover { background: var(--bg-hover); }
+.tb-item.tb-dragging { opacity: .35; }
+.tb-item.tb-drag-over .tb-item-row {
+  background: rgba(0,200,83,.06);
+  outline: 1px dashed rgba(0,200,83,.3);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.tb-drag-handle {
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: grab;
+  opacity: .35;
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  transition: opacity var(--tr);
+}
+.tb-item-row:hover .tb-drag-handle { opacity: .8; }
+
+.tb-pin-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 13px;
+  opacity: .2;
+  transition: opacity var(--tr), background var(--tr);
+  user-select: none;
+}
+.tb-pin-btn:hover  { opacity: .8; background: rgba(255,255,255,.06); }
+.tb-pin-btn.pinned { opacity: 1; }
+.tb-item-row:not(:hover) .tb-pin-btn:not(.pinned) { opacity: .08; }
+
+.tb-ico  { font-size: 18px; width: 24px; text-align: center; flex-shrink: 0; }
+.tb-name { flex: 1; font-size: 13px; font-weight: 500; min-width: 0; }
+.tb-name.oculto { color: var(--text-muted); text-decoration: line-through; opacity: .5; }
+.tb-cat-chip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,.05);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Botão expandir submenu */
+.tb-expand-btn {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  padding: 3px 7px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color var(--tr), border-color var(--tr);
+  white-space: nowrap;
+}
+.tb-expand-btn:hover { color: var(--text-primary); border-color: var(--border-med); }
+.tb-expand-btn.open  { color: var(--cell-green); border-color: var(--green-border); }
+
+/* Toggle switch (re-usa .sb-toggle) */
+
+/* Submenus expandidos */
+.tb-submenus {
+  display: none;
+  background: rgba(0,0,0,.2);
+  border-top: 1px solid var(--border);
+  padding: 6px 0 6px 52px;
+}
+.tb-submenus.open { display: block; }
+
+.tb-sub-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px 7px 0;
+  font-size: 12px;
+  color: var(--text-sec);
+}
+.tb-sub-item:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,.04); }
+.tb-sub-ico  { font-size: 14px; width: 20px; text-align: center; }
+.tb-sub-lbl  { flex: 1; }
+.tb-sub-vis  { flex-shrink: 0; }
+
+/* Toggle (reutiliza estilo do sb-toggle mas em miniatura) */
+.tb-sub-toggle {
+  position: relative;
+  display: inline-block;
+  width: 28px;
+  height: 15px;
+  cursor: pointer;
+}
+.tb-sub-toggle input { opacity: 0; width: 0; height: 0; }
+.tb-sub-toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,.1);
+  border-radius: 99px;
+  transition: background .2s;
+}
+.tb-sub-toggle-track::before {
+  content: '';
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  left: 2px; top: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.tb-sub-toggle input:checked + .tb-sub-toggle-track { background: var(--cell-green); }
+.tb-sub-toggle input:checked + .tb-sub-toggle-track::before { transform: translateX(13px); }
+
+/* Separador de seção */
+.tb-sec-label {
+  padding: 10px 14px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.tb-sec-label:not(:first-child) { border-top: 1px solid var(--border); margin-top: 4px; }
+
+/* ── Preview da barra superior ── */
+.tb-preview-wrap {
+  position: sticky;
+  top: 80px;
+}
+.tb-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+}
+.tb-preview {
+  background: rgba(8,9,10,.97);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  overflow: visible;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.tb-pv-logo {
+  background: rgba(0,200,83,.1);
+  border: 1px solid rgba(0,200,83,.2);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4ade80;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tb-pv-sep { flex: 1; }
+.tb-pv-items {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.tb-pv-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,.5);
+  cursor: default;
+  white-space: nowrap;
+}
+.tb-pv-item.pv-fixado { color: #00c853; font-weight: 700; }
+.tb-pv-item-ico { font-size: 12px; }
+.tb-pv-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.tb-pv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tb-pv-btn.pv-som   { color: #fbbf24; background: rgba(251,191,36,.08); }
+.tb-pv-btn.pv-site  { color: #22c55e; background: rgba(34,197,94,.06); }
+
+/* Dropdown hover no preview */
+.tb-pv-item { position: relative; }
+.tb-pv-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #111418;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 8px;
+  padding: 4px;
+  min-width: 150px;
+  z-index: 10;
+  display: none;
+}
+.tb-pv-item:hover .tb-pv-dropdown { display: block; }
+.tb-pv-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: rgba(255,255,255,.55);
+  white-space: nowrap;
+}
+.tb-pv-sub:hover { background: rgba(255,255,255,.06); color: #fff; }
+
+/* Stats */
+.tb-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ════════════════════════════════════════
+   PAINEL CENTRAL — Tab 4
+   ════════════════════════════════════════ */
+.hp-layout {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Editor ── */
+.hp-editor {}
+.hp-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+.hp-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 14px;
+}
+
+/* Seletor de modo */
+.hp-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.hp-mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--tr), background var(--tr);
+  text-align: center;
+}
+.hp-mode-btn:hover { border-color: rgba(0,200,83,.3); background: rgba(0,200,83,.04); }
+.hp-mode-btn.active { border-color: var(--cell-green); background: rgba(0,200,83,.08); }
+.hp-mode-ico { font-size: 22px; line-height: 1; }
+.hp-mode-name { font-size: 12px; font-weight: 700; color: var(--text-primary); }
+.hp-mode-desc { font-size: 10px; color: var(--text-muted); line-height: 1.3; }
+
+/* Seletor de tamanho */
+.hp-sizes {
+  display: flex;
+  gap: 8px;
+}
+.hp-size-btn {
+  flex: 1;
+  padding: 8px 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  color: var(--text-sec);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color var(--tr), color var(--tr);
+  text-align: center;
+}
+.hp-size-btn:hover { border-color: rgba(0,200,83,.3); color: var(--text-primary); }
+.hp-size-btn.active { border-color: var(--cell-green); color: var(--cell-green); background: rgba(0,200,83,.06); }
+
+/* Toggle opções */
+.hp-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+}
+.hp-toggle-label { font-size: 13px; color: var(--text-sec); }
+.hp-toggle {
+  width: 36px; height: 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 99px;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--tr), border-color var(--tr);
+  flex-shrink: 0;
+}
+.hp-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: left var(--tr), background var(--tr);
+}
+.hp-toggle.on { background: rgba(0,200,83,.18); border-color: rgba(0,200,83,.45); }
+.hp-toggle.on::after { left: 19px; background: var(--cell-green); }
+
+/* Lista de módulos da home */
+.hp-mod-list { display: flex; flex-direction: column; gap: 4px; max-height: 320px; overflow-y: auto; }
+.hp-mod-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid transparent;
+  cursor: grab;
+  transition: border-color var(--tr), background var(--tr), opacity var(--tr);
+  user-select: none;
+}
+.hp-mod-item.dragging { opacity: .4; }
+.hp-mod-item.drag-over { border-color: var(--cell-green); background: rgba(0,200,83,.06); }
+.hp-mod-item.mod-oculto { opacity: .42; }
+.hp-mod-drag { color: var(--text-muted); font-size: 14px; cursor: grab; flex-shrink: 0; }
+.hp-mod-ico { font-size: 16px; flex-shrink: 0; }
+.hp-mod-name { flex: 1; font-size: 13px; font-weight: 600; }
+.hp-mod-cat { font-size: 10px; color: var(--text-muted); }
+.hp-mod-eye {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  opacity: .5;
+  padding: 2px 4px;
+  transition: opacity var(--tr);
+  line-height: 1;
+}
+.hp-mod-eye:hover { opacity: 1; }
+
+/* Widgets */
+.hp-widget-list { display: flex; flex-direction: column; gap: 6px; }
+.hp-widget-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  opacity: .6;
+}
+.hp-widget-ico { font-size: 16px; }
+.hp-widget-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-sec); }
+.hp-widget-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(255,255,255,.07);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+/* ── Preview ── */
+.hp-preview-wrap {
+  position: sticky;
+  top: 24px;
+}
+.hp-preview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+.hp-preview {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  overflow: hidden;
+}
+.hp-pv-header {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hp-pv-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--cell-green); }
+
+/* Grid de preview — herda o modo selecionado */
+.hp-pv-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  transition: grid-template-columns .2s;
+}
+.hp-pv-grid[data-mode="lista"]     { grid-template-columns: 1fr; }
+.hp-pv-grid[data-mode="executivo"] { grid-template-columns: repeat(3, 1fr); }
+.hp-pv-grid[data-mode="compacto"]  { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+
+/* Card do preview */
+.hp-pvc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-med);
+  border-radius: 8px;
+  text-align: center;
+  transition: all .18s;
+  min-height: 56px;
+  cursor: default;
+}
+/* Card em modo lista */
+.hp-pv-grid[data-mode="lista"] .hp-pvc {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 6px 10px;
+  gap: 8px;
+  min-height: 36px;
+  text-align: left;
+}
+/* Card em modo compacto */
+.hp-pv-grid[data-mode="compacto"] .hp-pvc {
+  padding: 6px 3px;
+  min-height: 40px;
+  gap: 2px;
+}
+.hp-pv-grid[data-mode="compacto"] .hp-pvc-name { font-size: 9px; }
+/* Card em modo executivo */
+.hp-pv-grid[data-mode="executivo"] .hp-pvc {
+  padding: 14px 6px;
+  min-height: 70px;
+}
+.hp-pv-grid[data-mode="executivo"] .hp-pvc-ico { font-size: 20px; }
+.hp-pv-grid[data-mode="executivo"] .hp-pvc-name { font-size: 11px; font-weight: 700; }
+
+/* Tamanhos no preview */
+.hp-pv-grid[data-size="pequeno"] .hp-pvc { padding: 5px 3px; min-height: 44px; }
+.hp-pv-grid[data-size="pequeno"] .hp-pvc-ico { font-size: 12px; }
+.hp-pv-grid[data-size="pequeno"] .hp-pvc-name { font-size: 9px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc { padding: 14px 6px; min-height: 72px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc-ico { font-size: 22px; }
+.hp-pv-grid[data-size="grande"] .hp-pvc-name { font-size: 12px; font-weight: 700; }
+
+.hp-pvc-ico  { font-size: 16px; line-height: 1; }
+.hp-pvc-name { font-size: 10px; font-weight: 600; color: var(--text-sec); line-height: 1.2; }
+
+.hp-preview-stats {
+  margin-top: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Botões de ação */
+.hp-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.hp-btn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  transition: background var(--tr), opacity var(--tr);
+  white-space: nowrap;
+}
+.hp-btn-save   { background: var(--cell-green); color: #000; }
+.hp-btn-save:hover { opacity: .88; }
+.hp-btn-reset  { background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec); }
+.hp-btn-reset:hover { border-color: rgba(0,200,83,.3); color: var(--text-primary); }
+.hp-btn-corp   { background: rgba(0,200,83,.10); border: 1px solid rgba(0,200,83,.2); color: var(--cell-green); }
+.hp-btn-corp:hover { background: rgba(0,200,83,.18); }
+
+/* Layout por usuário */
+.hp-layout-source {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0,200,83,.06);
+  border: 1px solid rgba(0,200,83,.18);
+  font-size: 12px;
+  color: var(--cell-green);
+  font-weight: 600;
+}
+.hp-layout-source-ico { font-size: 14px; }
+
+/* ── Responsivo ── */
+@media (max-width: 860px) {
+  .sb-layout, .tb-layout, .hp-layout { grid-template-columns: 1fr; }
+  .sb-preview-wrap, .tb-preview-wrap, .hp-preview-wrap { position: static; }
+  .sb-preview { width: 100%; }
+}
+@media (max-width: 640px) {
+  .ctr-pg { padding: 72px 16px 40px; }
+  .cm-pg-grid { grid-template-columns: 1fr; }
+  .cm-card-star { opacity: 1; }
+  .ctr-tab { padding: 8px 12px; font-size: 12px; }
+  .hp-modes { grid-template-columns: repeat(4, 1fr); }
+  .hp-mode-desc { display: none; }
+}
+
+/* ════════════════════════════════════════
+   TAB 5 — LAYOUTS PRONTOS
+   ════════════════════════════════════════ */
+
+.ly-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.ly-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color var(--tr), background var(--tr);
+}
+.ly-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--ly-cor, var(--cell-green));
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.ly-card:hover { background: var(--bg-elevated); border-color: var(--border-med); }
+.ly-card.ativo { border-color: var(--cell-green); background: rgba(0,200,83,.04); }
+
+.ly-card-header { display: flex; align-items: flex-start; gap: 12px; }
+.ly-card-ico {
+  font-size: 26px;
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  background: rgba(255,255,255,.05);
+  flex-shrink: 0;
+}
+.ly-card-info { flex: 1; min-width: 0; }
+.ly-card-nome  { font-size: 15px; font-weight: 800; margin-bottom: 2px; }
+.ly-card-foco  { font-size: 11.5px; color: var(--text-muted); }
+.ly-card-desc  { font-size: 12px; color: var(--text-sec); line-height: 1.55; }
+
+.ly-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+.ly-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 700;
+  padding: 3px 9px; border-radius: 99px;
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-badge-modo {
+  background: rgba(0,200,83,.10); border-color: rgba(0,200,83,.25); color: var(--cell-green);
+}
+
+.ly-mods { display: flex; flex-wrap: wrap; gap: 5px; }
+.ly-mod-pill {
+  font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: rgba(255,255,255,.06); color: var(--text-muted); border: 1px solid var(--border);
+}
+
+.ly-card-actions { display: flex; gap: 8px; margin-top: auto; padding-top: 2px; }
+.ly-btn {
+  flex: 1; padding: 8px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
+  font-family: inherit; cursor: pointer; border: none;
+  transition: opacity var(--tr), background var(--tr), color var(--tr), border-color var(--tr);
+  text-align: center;
+}
+.ly-btn-preview {
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-btn-preview:hover { color: var(--text-primary); border-color: var(--border); }
+.ly-btn-aplicar { background: var(--cell-green); color: #000; }
+.ly-btn-aplicar:hover { opacity: .88; }
+
+.ly-ativo-badge {
+  position: absolute; top: 14px; right: 14px;
+  font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+  background: var(--green-dim); border: 1px solid var(--green-border); color: var(--cell-green);
+}
+
+/* Seção Padrões */
+.ly-standards {
+  background: var(--bg-surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 18px 20px;
+}
+.ly-standards-title {
+  font-size: 12px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .06em; margin-bottom: 14px;
+}
+.ly-priority-chain { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.ly-priority-item {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; padding: 6px 12px;
+  border-radius: 8px; background: var(--bg-elevated);
+  border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-priority-item.ativo { color: var(--cell-green); border-color: var(--green-border); }
+.ly-priority-arrow { color: var(--text-muted); font-size: 12px; }
+
+.ly-extras { display: flex; gap: 8px; flex-wrap: wrap; }
+.ly-extra-btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px;
+  border-radius: 8px; font-size: 12px; font-weight: 600; font-family: inherit;
+  cursor: pointer; background: var(--bg-elevated); border: 1px solid var(--border-med);
+  color: var(--text-sec); transition: color var(--tr), border-color var(--tr);
+}
+.ly-extra-btn:hover { color: var(--text-primary); border-color: var(--border); }
+
+/* ── Modal de Preview ── */
+#ly-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.72); z-index: 2000;
+  align-items: flex-start; justify-content: center;
+  padding: 24px 16px; box-sizing: border-box; overflow-y: auto;
+}
+#ly-modal-overlay.open { display: flex; }
+#ly-modal {
+  background: var(--bg-surface); border: 1px solid var(--border-med);
+  border-radius: 16px; width: 100%; max-width: 680px;
+  overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.7); margin: auto;
+}
+.ly-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 22px 16px; border-bottom: 1px solid var(--border);
+}
+.ly-modal-title { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+.ly-modal-close {
+  background: none; border: none; color: var(--text-muted); font-size: 20px;
+  cursor: pointer; padding: 4px 8px; border-radius: 6px; line-height: 1;
+  transition: background var(--tr), color var(--tr);
+}
+.ly-modal-close:hover { background: rgba(255,80,80,.12); color: #ff6b6b; }
+
+.ly-modal-body { padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+.ly-pv-section { display: flex; flex-direction: column; gap: 7px; }
+.ly-pv-label {
+  font-size: 10.5px; font-weight: 700; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: .05em;
+}
+
+/* Mini topbar preview */
+.ly-pv-topbar {
+  background: rgba(8,9,10,.97); border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 8px 14px;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.ly-pv-tb-logo {
+  background: rgba(0,200,83,.1); border: 1px solid rgba(0,200,83,.2);
+  border-radius: 5px; padding: 3px 8px;
+  font-size: 10px; font-weight: 700; color: #4ade80; flex-shrink: 0;
+}
+.ly-pv-tb-item { font-size: 10px; font-weight: 500; color: rgba(255,255,255,.5); padding: 3px 7px; border-radius: 4px; }
+.ly-pv-tb-item.fixado { color: var(--cell-green); font-weight: 700; }
+.ly-pv-tb-sep { flex: 1; }
+
+/* Layout sidebar + panel side by side */
+.ly-pv-layout { display: flex; gap: 10px; align-items: flex-start; }
+
+/* Mini sidebar preview */
+.ly-pv-sidebar {
+  background: #0d0e10; border: 1px solid rgba(255,255,255,.07);
+  border-radius: 8px; padding: 6px 0;
+  display: flex; flex-direction: column; width: 160px; flex-shrink: 0;
+}
+.ly-pv-sb-header {
+  padding: 4px 12px 6px; font-size: 10px; font-weight: 600;
+  color: rgba(255,255,255,.22); border-bottom: 1px solid rgba(255,255,255,.04); margin-bottom: 4px;
+}
+.ly-pv-sb-item {
+  display: flex; align-items: center; gap: 7px; padding: 5px 12px;
+  font-size: 10.5px; color: rgba(255,255,255,.5); position: relative;
+}
+.ly-pv-sb-item.fixado { color: var(--cell-green); font-weight: 700; }
+.ly-pv-sb-item.fixado::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  transform: translateY(-50%); width: 2px; height: 16px;
+  background: var(--cell-green); border-radius: 0 2px 2px 0;
+}
+
+/* Mini panel grid */
+.ly-pv-panel-wrap { flex: 1; }
+.ly-pv-panel-grid { display: grid; gap: 5px; }
+.ly-pv-panel-grid[data-mode="grade"]     { grid-template-columns: repeat(4, 1fr); }
+.ly-pv-panel-grid[data-mode="lista"]     { grid-template-columns: 1fr; }
+.ly-pv-panel-grid[data-mode="executivo"] { grid-template-columns: repeat(3, 1fr); }
+.ly-pv-panel-grid[data-mode="compacto"]  { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
+
+.ly-pv-card {
+  background: var(--bg-elevated); border: 1px solid var(--border-med);
+  border-radius: 7px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 7px 4px; gap: 3px; min-height: 46px; text-align: center;
+}
+.ly-pv-panel-grid[data-mode="lista"] .ly-pv-card {
+  flex-direction: row; justify-content: flex-start; padding: 5px 10px; min-height: 30px; gap: 7px;
+}
+.ly-pv-panel-grid[data-mode="compacto"] .ly-pv-card { min-height: 38px; padding: 4px 3px; gap: 2px; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card { min-height: 56px; padding: 10px 4px; }
+.ly-pv-card-ico  { font-size: 13px; line-height: 1; }
+.ly-pv-card-name { font-size: 9px; font-weight: 600; color: var(--text-muted); line-height: 1.2; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card-ico  { font-size: 18px; }
+.ly-pv-panel-grid[data-mode="executivo"] .ly-pv-card-name { font-size: 10px; font-weight: 700; }
+.ly-pv-panel-grid[data-mode="compacto"]  .ly-pv-card-name { font-size: 8.5px; }
+
+.ly-modal-footer {
+  padding: 14px 22px; border-top: 1px solid var(--border);
+  display: flex; gap: 10px; justify-content: flex-end;
+}
+.ly-modal-btn {
+  padding: 9px 22px; border-radius: 8px; font-size: 13px; font-weight: 700;
+  font-family: inherit; cursor: pointer; border: none; transition: opacity var(--tr);
+}
+.ly-modal-btn-cancel {
+  background: var(--bg-elevated); border: 1px solid var(--border-med); color: var(--text-sec);
+}
+.ly-modal-btn-cancel:hover { color: var(--text-primary); }
+.ly-modal-btn-apply { background: var(--cell-green); color: #000; }
+.ly-modal-btn-apply:hover { opacity: .88; }
+
+@media (max-width: 640px) {
+  .ly-grid { grid-template-columns: 1fr; }
+  .ly-pv-layout { flex-direction: column; }
+  .ly-pv-sidebar { width: 100%; }
+}
+</style>
+</head>
+<body data-fav-key="central-modulos" data-fav-icon="⚙️" data-fav-label="Central de Controle">
+
+<div class="ctr-pg">
+
+  <!-- Cabeçalho -->
+  <div class="ctr-header">
+    <div class="ctr-titulo">⚙️ Central de Controle</div>
+    <div class="ctr-sub">Gerencie módulos, barra lateral e aparência do sistema.</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="ctr-tabs">
+    <button class="ctr-tab active" data-tab="modulos">🧩 Módulos</button>
+    <button class="ctr-tab" data-tab="sidebar">📋 Barra Lateral</button>
+    <button class="ctr-tab" data-tab="topbar">🔝 Menus Superiores</button>
+    <button class="ctr-tab" data-tab="painel">🏠 Painel Central</button>
+    <button class="ctr-tab" data-tab="layouts">🎨 Layouts</button>
+  </div>
+
+  <!-- ── TAB 1: MÓDULOS ── -->
+  <div id="ctr-tab-modulos" class="ctr-panel active">
+    <div class="cm-pg-busca-wrap">
+      <span class="cm-pg-busca-ico">🔍</span>
+      <input id="cm-pg-busca" type="text" placeholder="Buscar módulo por nome, descrição ou categoria…" autocomplete="off">
+    </div>
+    <div class="cm-pg-cats"  id="cm-pg-cats"></div>
+    <div class="cm-pg-stats" id="cm-pg-stats">
+      <span id="cm-stat-total">—</span>
+      <span class="cm-stat-sep">·</span>
+      <span class="cm-stat-favs" id="cm-stat-favs">— favoritos na home</span>
+    </div>
+    <div class="cm-pg-grid" id="cm-pg-grid"></div>
+  </div>
+
+  <!-- ── TAB 3: MENUS SUPERIORES ── -->
+  <div id="ctr-tab-topbar" class="ctr-panel">
+    <div class="tb-layout">
+
+      <!-- Editor -->
+      <div class="tb-editor">
+        <div class="tb-editor-header">
+          <div>
+            <div class="tb-editor-titulo">Menu Rápido da Barra Superior</div>
+            <div class="tb-editor-sub">⠿ arraste para reordenar · 👁 mostra/oculta · 📌 fixa · ▸ submenus</div>
+          </div>
+          <button class="sb-reset" id="tb-reset-btn">↺ Restaurar padrão</button>
+        </div>
+        <div class="tb-list" id="tb-list"></div>
+      </div>
+
+      <!-- Preview em tempo real -->
+      <div class="tb-preview-wrap">
+        <div class="tb-preview-label">Pré-visualização da Barra Superior</div>
+        <div class="tb-preview">
+          <div class="tb-pv-logo">🟢 Cell City</div>
+          <div class="tb-pv-items" id="tb-pv-items"></div>
+          <div class="tb-pv-sep"></div>
+          <div class="tb-pv-right">
+            <div class="tb-pv-btn pv-som">🔊 Sons</div>
+            <div class="tb-pv-btn pv-site">🌐 Site</div>
+          </div>
+        </div>
+        <div class="tb-stats" id="tb-stats"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TAB 2: BARRA LATERAL ── -->
+  <div id="ctr-tab-sidebar" class="ctr-panel">
+    <div class="sb-layout">
+
+      <!-- Lista editável -->
+      <div class="sb-editor">
+        <div class="sb-editor-header">
+          <div>
+            <div class="sb-editor-titulo">Itens da Barra Lateral</div>
+            <div class="sb-editor-sub">⠿ arraste para reordenar · 👁 mostra/oculta · 📌 fixa no topo</div>
+          </div>
+          <button class="sb-reset" id="sb-reset-btn">↺ Restaurar padrão</button>
+        </div>
+        <div class="sb-list" id="sb-list"></div>
+      </div>
+
+      <!-- Preview em tempo real -->
+      <div class="sb-preview-wrap">
+        <div class="sb-preview-label">Pré-visualização</div>
+        <div class="sb-preview">
+          <div class="sb-pv-toggle">◀ Menu</div>
+          <div class="sb-pv-nav" id="sb-pv-nav"></div>
+          <div class="sb-pv-footer">
+            <div class="sb-pv-item pv-footer">
+              <span class="sb-pv-ico">⚙️</span>
+              <span class="sb-pv-lbl">Central de Controle</span>
+            </div>
+          </div>
+        </div>
+        <div class="sb-stats" id="sb-stats"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TAB 4: PAINEL CENTRAL ── -->
+  <div id="ctr-tab-painel" class="ctr-panel">
+    <div class="hp-layout">
+
+      <!-- Coluna esquerda: controles -->
+      <div class="hp-editor">
+
+        <!-- Modo de exibição -->
+        <div class="hp-section">
+          <div class="hp-section-title">Modo de Exibição</div>
+          <div class="hp-modes" id="hp-modes"></div>
+        </div>
+
+        <!-- Tamanho dos cards -->
+        <div class="hp-section">
+          <div class="hp-section-title">Tamanho dos Cards</div>
+          <div class="hp-sizes" id="hp-sizes"></div>
+        </div>
+
+        <!-- Configurações extras -->
+        <div class="hp-section">
+          <div class="hp-section-title">Configurações</div>
+          <div class="hp-toggle-row">
+            <span class="hp-toggle-label">Agrupar por categorias</span>
+            <div class="hp-toggle" id="hp-toggle-cats"></div>
+          </div>
+        </div>
+
+        <!-- Ordem dos módulos -->
+        <div class="hp-section">
+          <div class="hp-section-title">Ordem dos Módulos na Home</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">
+            ⠿ arraste para reordenar · 👁 mostra/oculta favorito
+          </div>
+          <div class="hp-mod-list" id="hp-mod-list"></div>
+        </div>
+
+        <!-- Widgets futuros -->
+        <div class="hp-section">
+          <div class="hp-section-title">Widgets da Home <span style="font-size:10px;opacity:.5;font-weight:400;text-transform:none">(em breve)</span></div>
+          <div class="hp-widget-list" id="hp-widget-list"></div>
+        </div>
+
+        <!-- Layout por usuário -->
+        <div class="hp-section">
+          <div class="hp-section-title">Fonte do Layout</div>
+          <div class="hp-layout-source" id="hp-layout-source">
+            <span class="hp-layout-source-ico">👤</span>
+            <span id="hp-layout-fonte-txt">Layout Pessoal (ativo)</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Coluna direita: preview -->
+      <div class="hp-preview-wrap">
+        <div class="hp-preview-label">Pré-visualização da Home</div>
+        <div class="hp-preview">
+          <div class="hp-pv-header">
+            <div class="hp-pv-dot"></div>
+            <span>Módulos da Home</span>
+          </div>
+          <div class="hp-pv-grid" id="hp-pv-grid" data-mode="grade" data-size="medio"></div>
+        </div>
+        <div class="hp-preview-stats" id="hp-preview-stats"></div>
+
+        <!-- Botões de ação -->
+        <div class="hp-actions">
+          <button class="hp-btn hp-btn-save"  id="hp-btn-save">💾 Salvar</button>
+          <button class="hp-btn hp-btn-reset" id="hp-btn-reset">↺ Restaurar padrão</button>
+          <button class="hp-btn hp-btn-corp"  id="hp-btn-corp" title="Salva como layout padrão para toda a empresa">🏢 Padrão da empresa</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TAB 5: LAYOUTS PRONTOS ── -->
+  <div id="ctr-tab-layouts" class="ctr-panel">
+
+    <div class="ly-grid" id="ly-grid"></div>
+
+    <!-- Padrões e recursos -->
+    <div class="ly-standards">
+      <div class="ly-standards-title">Prioridade de Layouts</div>
+      <div class="ly-priority-chain">
+        <div class="ly-priority-item ativo">👤 Pessoal</div>
+        <span class="ly-priority-arrow">↓</span>
+        <div class="ly-priority-item">🏢 Empresa</div>
+        <span class="ly-priority-arrow">↓</span>
+        <div class="ly-priority-item">⚙️ Sistema</div>
+      </div>
+      <div class="ly-extras">
+        <button class="ly-extra-btn" id="ly-btn-restaurar">↺ Restaurar todos os padrões</button>
+        <button class="ly-extra-btn" id="ly-btn-exportar">⬇ Exportar configuração</button>
+        <button class="ly-extra-btn" id="ly-btn-importar">⬆ Importar configuração</button>
+        <input type="file" id="ly-import-file" accept=".json" style="display:none">
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Modal de Preview de Layout -->
+<div id="ly-modal-overlay">
+  <div id="ly-modal">
+    <div class="ly-modal-header">
+      <div class="ly-modal-title" id="ly-modal-title">Preview do Layout</div>
+      <button class="ly-modal-close" id="ly-modal-close">✕</button>
+    </div>
+    <div class="ly-modal-body" id="ly-modal-body"></div>
+    <div class="ly-modal-footer">
+      <button class="ly-modal-btn ly-modal-btn-cancel" id="ly-modal-cancel">Cancelar</button>
+      <button class="ly-modal-btn ly-modal-btn-apply" id="ly-modal-apply">✓ Aplicar este Layout</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="cm-pg-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script src="../../shared/favoritos.js" type="module"></script>
+
+<script type="module">
+import {
+  TODOS_MODULOS,
+  init     as initCentral,
+  getFavoritosHome,
+  toggleFavorito,
+  setFavoritos,
+  onModulosChanged,
+  abrirCentralModulos
+} from '../../shared/central-modulos.js';
+
+import {
+  ITENS_SIDEBAR,
+  init         as initSbPrefs,
+  getPrefs     as getSbPrefs,
+  setPrefs     as setSbPrefs,
+  getDefaultPrefs,
+  onPrefsChanged
+} from '../../shared/sidebar-prefs.js';
+
+import {
+  ITENS_TOPBAR,
+  init            as initTbPrefs,
+  getPrefs        as getTbPrefs,
+  setPrefs        as setTbPrefs,
+  getDefaultPrefs as getDefaultTbPrefs,
+  onPrefsChanged  as onTbPrefsChanged
+} from '../../shared/topbar-prefs.js';
+
+import {
+  MODOS, TAMANHOS, WIDGETS_FUTUROS,
+  init            as initHpPrefs,
+  getPrefs        as getHpPrefs,
+  setPrefs        as setHpPrefs,
+  getDefaultPrefs as getDefaultHpPrefs,
+  onPrefsChanged  as onHpPrefsChanged,
+  salvarPadraoEmpresa
+} from '../../shared/home-prefs.js';
+
+window.abrirCentralModulos = abrirCentralModulos;
+
+// ════════════════════════════════════
+// UTILITÁRIOS
+// ════════════════════════════════════
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+let _toastTimer;
+function toast(msg) {
+  const el = document.getElementById('cm-pg-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ════════════════════════════════════
+// TABS
+// ════════════════════════════════════
+document.querySelectorAll('.ctr-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.ctr-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.ctr-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('ctr-tab-' + btn.dataset.tab)?.classList.add('active');
+  });
+});
+
+// ════════════════════════════════════
+// TAB 1 — MÓDULOS
+// ════════════════════════════════════
+const ROTAS = {
+  'os':                  '/CRM/pages/os/index.html',
+  'caixa':               '/CRM/pages/caixa/index.html',
+  'central-alertas':     '/CRM/pages/central-alertas/index.html',
+  'clientes':            '/CRM/pages/clientes/index.html',
+  'estoque':             '/CRM/pages/estoque/index.html',
+  'acaodasemana':        '/CRM/pages/acaodasemana/index.html',
+  'autoatendimento':     '/CRM/pages/autoatendimento/index.html',
+  'garantias':           '/CRM/pages/garantias/index.html',
+  'financeiro':          '/CRM/pages/financeiro/index.html',
+  'compras':             '/CRM/pages/compras/index.html',
+  'fechamento':          '/CRM/pages/fechamento/index.html',
+  'pendencias':          '/CRM/pages/pendencias/index.html',
+  'crm-comercial':       '/CRM/pages/crm-comercial/index.html',
+  'fornecedor':          '/CRM/pages/fornecedor/index.html',
+  'pos-venda':           '/CRM/pages/pos-venda/index.html',
+  'catalogo':            '/CRM/pages/catalogo/index.html',
+  'relatorios':          '/CRM/pages/relatorios/index.html',
+  'central-comandos':    '/CRM/pages/central-comandos/index.html',
+  'central-organizacao': '/CRM/pages/central-organizacao/index.html',
+  'central-informacoes': '/CRM/pages/central-informacoes/index.html',
+  'portal-cliente':      '/CRM/pages/portal-cliente/admin.html',
+  'portal-tecnico':      '/CRM/pages/portal-tecnico/index.html',
+  'diario':              '/CRM/pages/diario/index.html',
+  'auditoria':           '/CRM/pages/auditoria/index.html',
+  'lixeira':             '/CRM/pages/lixeira/index.html',
+  'integridade':         '/CRM/pages/integridade/index.html',
+  'homologacao':         '/CRM/pages/homologacao/index.html',
+  'config':              '/CRM/pages/config/index.html',
+};
+
+let _catAtiva = '';
+let _busca    = '';
+
+function buildCats() {
+  const cats = ['Todos', ...new Set(TODOS_MODULOS.map(m => m.categoria))];
+  const wrap = document.getElementById('cm-pg-cats');
+  wrap.innerHTML = cats.map(c => `
+    <button class="cat-pill ${c === 'Todos' ? 'active' : ''}" data-cat="${esc(c === 'Todos' ? '' : c)}">
+      ${esc(c)}
+    </button>`).join('');
+  wrap.querySelectorAll('.cat-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      wrap.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      _catAtiva = btn.dataset.cat;
+      renderModulos();
+    });
+  });
+}
+
+function updateStats(visivel) {
+  const favs  = getFavoritosHome();
+  const nFavs = favs ? favs.length : 0;
+  document.getElementById('cm-stat-total').textContent = `${visivel} módulo${visivel !== 1 ? 's' : ''}`;
+  document.getElementById('cm-stat-favs').textContent  =
+    favs !== null ? `${nFavs} favorito${nFavs !== 1 ? 's' : ''} na home` : 'Home mostrando todos';
+}
+
+function renderModulos() {
+  const favs   = getFavoritosHome();
+  const grid   = document.getElementById('cm-pg-grid');
+  const busca  = _busca.toLowerCase();
+
+  let lista = TODOS_MODULOS;
+  if (_catAtiva) lista = lista.filter(m => m.categoria === _catAtiva);
+  if (busca)     lista = lista.filter(m =>
+    m.nome.toLowerCase().includes(busca) ||
+    m.descricao.toLowerCase().includes(busca) ||
+    m.categoria.toLowerCase().includes(busca)
+  );
+
+  updateStats(lista.length);
+
+  if (lista.length === 0) {
+    grid.innerHTML = `<div class="cm-pg-vazio">
+      <div class="cm-pg-vazio-ico">🔍</div>
+      <div>Nenhum módulo encontrado para <strong>"${esc(_busca)}"</strong></div>
+    </div>`;
+    return;
+  }
+
+  const agrupar = !_catAtiva && !busca;
+  const grupos  = {};
+  const ordem   = [];
+  lista.forEach(m => {
+    if (!grupos[m.categoria]) { grupos[m.categoria] = []; ordem.push(m.categoria); }
+    grupos[m.categoria].push(m);
+  });
+
+  const renderCard = (m) => {
+    const on = favs !== null && favs.includes(m.id);
+    return `<div class="cm-card" data-id="${m.id}">
+      <div class="cm-card-ico">${m.icone}</div>
+      <div class="cm-card-info">
+        <div class="cm-card-nome">${esc(m.nome)}</div>
+        <div class="cm-card-desc">${esc(m.descricao)}</div>
+        <span class="cm-card-cat">${esc(m.categoria)}</span>
+      </div>
+      <button class="cm-card-star ${on ? 'on' : ''}" data-id="${m.id}"
+        title="${on ? 'Remover da home' : 'Adicionar à home'}">${on ? '⭐' : '☆'}</button>
+    </div>`;
+  };
+
+  grid.innerHTML = agrupar
+    ? ordem.map(cat => `
+        <div class="cm-cat-sec-titulo">
+          <span>${esc(cat)}</span>
+          <span style="font-weight:400;opacity:.5">${grupos[cat].length}</span>
+        </div>
+        ${grupos[cat].map(renderCard).join('')}`).join('')
+    : lista.map(renderCard).join('');
+
+  grid.querySelectorAll('.cm-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.cm-card-star')) return;
+      const url = ROTAS[card.dataset.id];
+      if (url) window.location.href = url;
+    });
+  });
+  grid.querySelectorAll('.cm-card-star').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const ok = await toggleFavorito(btn.dataset.id);
+      if (ok === false) toast('Limite de 24 favoritos atingido.');
+    });
+  });
+}
+
+initCentral();
+buildCats();
+renderModulos();
+onModulosChanged(() => renderModulos());
+
+document.getElementById('cm-pg-busca').addEventListener('input', (e) => {
+  _busca = e.target.value.trim();
+  renderModulos();
+});
+
+// ════════════════════════════════════
+// TAB 2 — BARRA LATERAL
+// ════════════════════════════════════
+
+// Estado local da sidebar
+let _sbState = []; // array de { ...item, visivel, fixado, ordem }
+
+function _buildState(prefs) {
+  const itensPrefs = (prefs && Array.isArray(prefs.itens)) ? prefs.itens : [];
+  const defaults   = getDefaultPrefs().itens;
+
+  return ITENS_SIDEBAR.map((item, i) => {
+    const pref = itensPrefs.find(p => p.id === item.id)
+              || defaults.find(p => p.id === item.id)
+              || { id: item.id, visivel: true, fixado: false, ordem: i };
+    return {
+      ...item,
+      visivel: pref.visivel !== false,
+      fixado:  !!pref.fixado,
+      ordem:   pref.ordem ?? i
+    };
+  }).sort((a, b) => {
+    if (a.fixado && !b.fixado) return -1;
+    if (!a.fixado && b.fixado) return 1;
+    return a.ordem - b.ordem;
+  });
+}
+
+function _stateToPrefs() {
+  return {
+    itens: _sbState.map((item, i) => ({
+      id:      item.id,
+      visivel: item.visivel,
+      fixado:  item.fixado,
+      ordem:   i
+    }))
+  };
+}
+
+function renderSbPreview() {
+  const nav = document.getElementById('sb-pv-nav');
+  const stats = document.getElementById('sb-stats');
+  if (!nav) return;
+
+  const visiveis = _sbState.filter(i => i.visivel);
+
+  nav.innerHTML = visiveis.map(item => `
+    <div class="sb-pv-item ${item.highlight ? 'pv-highlight' : ''} ${item.fixado ? 'pv-pinned' : ''}">
+      <span class="sb-pv-ico">${item.icon}</span>
+      <span class="sb-pv-lbl">${esc(item.label)}</span>
+    </div>
+  `).join('');
+
+  if (stats) stats.textContent = `${visiveis.length} de ${_sbState.length} itens visíveis`;
+}
+
+function renderSbList() {
+  const list = document.getElementById('sb-list');
+  if (!list) return;
+
+  // Separa fixados e não-fixados para exibição em seções
+  const fixados   = _sbState.filter(i => i.fixado);
+  const normais   = _sbState.filter(i => !i.fixado);
+
+  let html = '';
+  if (fixados.length) {
+    html += `<div class="sb-sec-label">📌 Fixados no topo</div>`;
+    fixados.forEach(item => { html += _renderSbItem(item); });
+  }
+  if (normais.length) {
+    if (fixados.length) html += `<div class="sb-sec-label">Outros itens</div>`;
+    normais.forEach(item => { html += _renderSbItem(item); });
+  }
+
+  list.innerHTML = html;
+  _setupSbListEvents(list);
+}
+
+function _renderSbItem(item) {
+  return `<div class="sb-item" data-id="${item.id}" draggable="true">
+    <span class="sb-drag-handle" title="Arrastar para reordenar">⠿</span>
+    <span class="sb-pin-btn ${item.fixado ? 'pinned' : ''}" data-id="${item.id}"
+      title="${item.fixado ? 'Desafixar do topo' : 'Fixar no topo'}">📌</span>
+    <span class="sb-ico">${item.icon}</span>
+    <span class="sb-name ${item.visivel ? '' : 'oculto'}">${esc(item.label)}</span>
+    <span class="sb-cat-chip">${esc(item.categoria)}</span>
+    <div class="sb-toggle-wrap">
+      <label class="sb-toggle" title="${item.visivel ? 'Ocultar item' : 'Mostrar item'}">
+        <input type="checkbox" data-id="${item.id}" ${item.visivel ? 'checked' : ''}>
+        <span class="sb-toggle-track"></span>
+      </label>
+    </div>
+  </div>`;
+}
+
+function _setupSbListEvents(list) {
+  // Toggle visibilidade
+  list.querySelectorAll('.sb-toggle input').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const id  = chk.dataset.id;
+      const idx = _sbState.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      _sbState[idx].visivel = chk.checked;
+      renderSbList();
+      renderSbPreview();
+      _saveSb();
+    });
+  });
+
+  // Toggle fixado
+  list.querySelectorAll('.sb-pin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.id;
+      const idx = _sbState.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      _sbState[idx].fixado = !_sbState[idx].fixado;
+      // Reordena: fixados primeiro
+      _sbState.sort((a, b) => {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return 0;
+      });
+      renderSbList();
+      renderSbPreview();
+      _saveSb();
+    });
+  });
+
+  // Drag & drop reordenação
+  let _dragSrc = null;
+  list.addEventListener('dragstart', e => {
+    const row = e.target.closest('.sb-item');
+    if (!row) return;
+    _dragSrc = row;
+    row.classList.add('sb-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    if (_dragSrc) _dragSrc.classList.remove('sb-dragging');
+    list.querySelectorAll('.sb-drag-over').forEach(el => el.classList.remove('sb-drag-over'));
+    _dragSrc = null;
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const row = e.target.closest('.sb-item');
+    if (!row || row === _dragSrc) return;
+    list.querySelectorAll('.sb-drag-over').forEach(el => el.classList.remove('sb-drag-over'));
+    row.classList.add('sb-drag-over');
+    e.dataTransfer.dropEffect = 'move';
+  });
+  list.addEventListener('dragleave', e => {
+    const row = e.target.closest('.sb-item');
+    if (row) row.classList.remove('sb-drag-over');
+  });
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.sb-item');
+    if (!target || !_dragSrc || target === _dragSrc) return;
+    target.classList.remove('sb-drag-over');
+
+    const srcId = _dragSrc.dataset.id;
+    const tgtId = target.dataset.id;
+    const srcIdx = _sbState.findIndex(i => i.id === srcId);
+    const tgtIdx = _sbState.findIndex(i => i.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    // Move item
+    const [moved] = _sbState.splice(srcIdx, 1);
+    const newTgt  = _sbState.findIndex(i => i.id === tgtId);
+    const after   = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+    _sbState.splice(after ? newTgt + 1 : newTgt, 0, moved);
+
+    renderSbList();
+    renderSbPreview();
+    _saveSb();
+  });
+}
+
+let _sbSaveTimer;
+function _saveSb() {
+  clearTimeout(_sbSaveTimer);
+  _sbSaveTimer = setTimeout(async () => {
+    await setSbPrefs(_stateToPrefs());
+  }, 400);
+}
+
+// ════════════════════════════════════
+// TAB 3 — MENUS SUPERIORES (TOPBAR)
+// ════════════════════════════════════
+
+let _tbState = []; // array de { ...item, visivel, fixado, ordem, submenus:[{id,visivel}] }
+
+function _buildTbState(prefs) {
+  const itensPrefs = (prefs && Array.isArray(prefs.itens)) ? prefs.itens : [];
+  const defaults   = getDefaultTbPrefs().itens;
+
+  return ITENS_TOPBAR.map((item, i) => {
+    const pref = itensPrefs.find(p => p.id === item.id)
+              || defaults.find(p => p.id === item.id)
+              || { id: item.id, visivel: false, fixado: false, ordem: i, submenus: [] };
+
+    const subPrefs = Array.isArray(pref.submenus) ? pref.submenus : [];
+
+    return {
+      ...item,
+      visivel: pref.visivel !== false,
+      fixado:  !!pref.fixado,
+      ordem:   pref.ordem ?? i,
+      submenus: item.submenus.map(sub => {
+        const sp = subPrefs.find(s => s.id === sub.id) || { id: sub.id, visivel: true };
+        return { ...sub, visivel: sp.visivel !== false };
+      })
+    };
+  }).sort((a, b) => {
+    if (a.fixado && !b.fixado) return -1;
+    if (!a.fixado && b.fixado) return 1;
+    return a.ordem - b.ordem;
+  });
+}
+
+function _tbStateToPrefs() {
+  return {
+    itens: _tbState.map((item, i) => ({
+      id:       item.id,
+      visivel:  item.visivel,
+      fixado:   item.fixado,
+      ordem:    i,
+      href:     item.href,
+      icon:     item.icon,
+      label:    item.label,
+      submenus: item.submenus.map(s => ({ id: s.id, visivel: s.visivel, icon: s.icon, label: s.label, href: s.href }))
+    }))
+  };
+}
+
+function renderTbPreview() {
+  const items = document.getElementById('tb-pv-items');
+  const stats = document.getElementById('tb-stats');
+  if (!items) return;
+
+  const visiveis = _tbState.filter(i => i.visivel);
+
+  items.innerHTML = visiveis.map(item => {
+    const visibleSubs = item.submenus.filter(s => s.visivel);
+    const hasSubs = visibleSubs.length > 0;
+    return `<div class="tb-pv-item ${item.fixado ? 'pv-fixado' : ''}">
+      <span class="tb-pv-item-ico">${item.icon}</span>
+      <span>${esc(item.label)}</span>
+      ${hasSubs ? '<span style="font-size:8px;opacity:.5">▾</span>' : ''}
+      ${hasSubs ? `<div class="tb-pv-dropdown">
+        ${visibleSubs.map(s =>
+          `<div class="tb-pv-sub"><span>${s.icon}</span><span>${esc(s.label)}</span></div>`
+        ).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+
+  if (stats) stats.textContent = `${visiveis.length} de ${_tbState.length} itens visíveis`;
+}
+
+function renderTbList() {
+  const list = document.getElementById('tb-list');
+  if (!list) return;
+
+  const fixados = _tbState.filter(i => i.fixado);
+  const normais = _tbState.filter(i => !i.fixado);
+
+  let html = '';
+  if (fixados.length) {
+    html += `<div class="tb-sec-label">📌 Fixados no topo</div>`;
+    fixados.forEach(item => { html += _renderTbItem(item); });
+  }
+  if (normais.length) {
+    if (fixados.length) html += `<div class="tb-sec-label">Outros itens</div>`;
+    normais.forEach(item => { html += _renderTbItem(item); });
+  }
+
+  list.innerHTML = html;
+  _setupTbListEvents(list);
+}
+
+function _renderTbItem(item) {
+  const hasSubs = item.submenus && item.submenus.length > 0;
+  return `<div class="tb-item" data-id="${item.id}" draggable="true">
+    <div class="tb-item-row">
+      <span class="tb-drag-handle" title="Arrastar para reordenar">⠿</span>
+      <span class="tb-pin-btn ${item.fixado ? 'pinned' : ''}" data-id="${item.id}"
+        title="${item.fixado ? 'Desafixar' : 'Fixar no topo'}">📌</span>
+      <span class="tb-ico">${item.icon}</span>
+      <span class="tb-name ${item.visivel ? '' : 'oculto'}">${esc(item.label)}</span>
+      <span class="tb-cat-chip">${esc(item.categoria)}</span>
+      ${hasSubs
+        ? `<button class="tb-expand-btn" data-id="${item.id}">▸ ${item.submenus.length} submenus</button>`
+        : ''}
+      <div class="sb-toggle-wrap">
+        <label class="sb-toggle" title="${item.visivel ? 'Ocultar' : 'Mostrar'}">
+          <input type="checkbox" class="tb-vis-chk" data-id="${item.id}" ${item.visivel ? 'checked' : ''}>
+          <span class="sb-toggle-track"></span>
+        </label>
+      </div>
+    </div>
+    ${hasSubs ? `
+    <div class="tb-submenus" id="tb-subs-${item.id}">
+      ${item.submenus.map(sub => `
+        <div class="tb-sub-item">
+          <span class="tb-sub-ico">${sub.icon}</span>
+          <span class="tb-sub-lbl">${esc(sub.label)}</span>
+          <div class="tb-sub-vis">
+            <label class="tb-sub-toggle" title="${sub.visivel ? 'Ocultar' : 'Mostrar'}">
+              <input type="checkbox" class="tb-sub-vis-chk" data-id="${item.id}" data-subid="${sub.id}" ${sub.visivel ? 'checked' : ''}>
+              <span class="tb-sub-toggle-track"></span>
+            </label>
+          </div>
+        </div>`).join('')}
+    </div>` : ''}
+  </div>`;
+}
+
+function _setupTbListEvents(list) {
+  // Toggle visibilidade item
+  list.querySelectorAll('.tb-vis-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const idx = _tbState.findIndex(i => i.id === chk.dataset.id);
+      if (idx < 0) return;
+      _tbState[idx].visivel = chk.checked;
+      renderTbList();
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Toggle visibilidade submenu
+  list.querySelectorAll('.tb-sub-vis-chk').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const itemIdx = _tbState.findIndex(i => i.id === chk.dataset.id);
+      if (itemIdx < 0) return;
+      const subIdx = _tbState[itemIdx].submenus.findIndex(s => s.id === chk.dataset.subid);
+      if (subIdx < 0) return;
+      _tbState[itemIdx].submenus[subIdx].visivel = chk.checked;
+      // Não re-renderiza a lista inteira; só atualiza o preview
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Toggle expandir submenus
+  list.querySelectorAll('.tb-expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.id;
+      const sub = document.getElementById(`tb-subs-${id}`);
+      if (!sub) return;
+      const open = sub.classList.toggle('open');
+      btn.classList.toggle('open', open);
+      btn.textContent = open
+        ? `▾ fechar submenus`
+        : `▸ ${_tbState.find(i => i.id === id)?.submenus.length || 0} submenus`;
+    });
+  });
+
+  // Toggle fixado
+  list.querySelectorAll('.tb-pin-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = _tbState.findIndex(i => i.id === btn.dataset.id);
+      if (idx < 0) return;
+      _tbState[idx].fixado = !_tbState[idx].fixado;
+      _tbState.sort((a, b) => {
+        if (a.fixado && !b.fixado) return -1;
+        if (!a.fixado && b.fixado) return 1;
+        return 0;
+      });
+      renderTbList();
+      renderTbPreview();
+      _saveTb();
+    });
+  });
+
+  // Drag & drop reordenação
+  let _dragSrc = null;
+  list.addEventListener('dragstart', e => {
+    const row = e.target.closest('.tb-item');
+    if (!row) return;
+    _dragSrc = row;
+    row.classList.add('tb-dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  list.addEventListener('dragend', () => {
+    if (_dragSrc) _dragSrc.classList.remove('tb-dragging');
+    list.querySelectorAll('.tb-drag-over').forEach(el => el.classList.remove('tb-drag-over'));
+    _dragSrc = null;
+  });
+  list.addEventListener('dragover', e => {
+    e.preventDefault();
+    const row = e.target.closest('.tb-item');
+    if (!row || row === _dragSrc) return;
+    list.querySelectorAll('.tb-drag-over').forEach(el => el.classList.remove('tb-drag-over'));
+    row.classList.add('tb-drag-over');
+  });
+  list.addEventListener('dragleave', e => {
+    const row = e.target.closest('.tb-item');
+    if (row) row.classList.remove('tb-drag-over');
+  });
+  list.addEventListener('drop', e => {
+    e.preventDefault();
+    const target = e.target.closest('.tb-item');
+    if (!target || !_dragSrc || target === _dragSrc) return;
+    target.classList.remove('tb-drag-over');
+
+    const srcId  = _dragSrc.dataset.id;
+    const tgtId  = target.dataset.id;
+    const srcIdx = _tbState.findIndex(i => i.id === srcId);
+    const tgtIdx = _tbState.findIndex(i => i.id === tgtId);
+    if (srcIdx < 0 || tgtIdx < 0) return;
+
+    const [moved] = _tbState.splice(srcIdx, 1);
+    const newTgt  = _tbState.findIndex(i => i.id === tgtId);
+    const after   = e.clientY > target.getBoundingClientRect().top + target.getBoundingClientRect().height / 2;
+    _tbState.splice(after ? newTgt + 1 : newTgt, 0, moved);
+
+    renderTbList();
+    renderTbPreview();
+    _saveTb();
+  });
+}
+
+let _tbSaveTimer;
+function _saveTb() {
+  clearTimeout(_tbSaveTimer);
+  _tbSaveTimer = setTimeout(async () => {
+    await setTbPrefs(_tbStateToPrefs());
+  }, 400);
+}
+
+// Restaurar padrão topbar
+document.getElementById('tb-reset-btn')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar menu superior para a configuração padrão?')) return;
+  _tbState = _buildTbState(getDefaultTbPrefs());
+  renderTbList();
+  renderTbPreview();
+  await setTbPrefs(getDefaultTbPrefs());
+  toast('Menu superior restaurado para o padrão.');
+});
+
+// Init topbar tab
+initTbPrefs();
+onTbPrefsChanged(prefs => {
+  _tbState = _buildTbState(prefs);
+  renderTbList();
+  renderTbPreview();
+});
+
+_tbState = _buildTbState(getTbPrefs());
+renderTbList();
+renderTbPreview();
+
+// ════════════════════════════════════
+// RESTAURAR PADRÃO SIDEBAR
+// ════════════════════════════════════
+
+// Restaurar padrão
+document.getElementById('sb-reset-btn')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar a barra lateral para a configuração padrão?')) return;
+  _sbState = _buildState(getDefaultPrefs());
+  renderSbList();
+  renderSbPreview();
+  await setSbPrefs(getDefaultPrefs());
+  toast('Barra lateral restaurada para o padrão.');
+});
+
+// Init sidebar tab
+initSbPrefs();
+onPrefsChanged(prefs => {
+  _sbState = _buildState(prefs);
+  renderSbList();
+  renderSbPreview();
+});
+
+// Renderiza imediatamente com o que tiver no localStorage
+_sbState = _buildState(getSbPrefs());
+renderSbList();
+renderSbPreview();
+
+// ════════════════════════════════════════════════════════
+// TAB 4 — PAINEL CENTRAL
+// ════════════════════════════════════════════════════════
+
+let _hpPrefs = getDefaultHpPrefs();
+let _hpDirty = false;   // marcado quando o usuário muda algo antes de salvar
+let _hpSaveTimer;
+
+// Estado local dos módulos (ordem + visibilidade vinda dos favoritos)
+let _hpModOrder = [];   // array de IDs na ordem customizada
+
+function _buildHpModOrder(prefs) {
+  const ordem  = Array.isArray(prefs.modulosOrdem) ? prefs.modulosOrdem : [];
+  const favs   = getFavoritosHome();           // null = todos favoritados
+  const todos  = TODOS_MODULOS.map(m => m.id);
+
+  // Começa com a ordem salva, depois adiciona os que faltam
+  const result = [...ordem.filter(id => todos.includes(id))];
+  todos.forEach(id => { if (!result.includes(id)) result.push(id); });
+  return result;
+}
+
+// ── Seletor de modo ──
+function renderHpModes() {
+  const el = document.getElementById('hp-modes');
+  if (!el) return;
+  el.innerHTML = MODOS.map(m => `
+    <button class="hp-mode-btn${_hpPrefs.modo === m.id ? ' active' : ''}" data-mode="${esc(m.id)}">
+      <div class="hp-mode-ico">${esc(m.icone)}</div>
+      <div class="hp-mode-name">${esc(m.label)}</div>
+      <div class="hp-mode-desc">${esc(m.desc)}</div>
+    </button>`).join('');
+
+  el.querySelectorAll('.hp-mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _hpPrefs = { ..._hpPrefs, modo: btn.dataset.mode };
+      renderHpModes();
+      renderHpSizes();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+  });
+}
+
+// ── Seletor de tamanho ──
+function renderHpSizes() {
+  const el = document.getElementById('hp-sizes');
+  if (!el) return;
+  el.innerHTML = TAMANHOS.map(t => `
+    <button class="hp-size-btn${_hpPrefs.tamanho === t.id ? ' active' : ''}" data-size="${esc(t.id)}">${esc(t.label)}</button>
+  `).join('');
+
+  el.querySelectorAll('.hp-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _hpPrefs = { ..._hpPrefs, tamanho: btn.dataset.size };
+      renderHpSizes();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+  });
+}
+
+// ── Toggle categorias ──
+function renderHpToggleCats() {
+  const el = document.getElementById('hp-toggle-cats');
+  if (!el) return;
+  el.className = 'hp-toggle' + (_hpPrefs.agruparCategorias ? ' on' : '');
+  el.onclick = () => {
+    _hpPrefs = { ..._hpPrefs, agruparCategorias: !_hpPrefs.agruparCategorias };
+    renderHpToggleCats();
+    _hpScheduleSave();
+  };
+}
+
+// ── Lista de módulos (drag-and-drop + toggle favorito) ──
+function renderHpModList() {
+  const el = document.getElementById('hp-mod-list');
+  if (!el) return;
+  const favs = getFavoritosHome();  // null = todos, array = explícitos
+
+  el.innerHTML = _hpModOrder.map(id => {
+    const mod    = TODOS_MODULOS.find(m => m.id === id);
+    if (!mod) return '';
+    const visivel = favs === null || favs.includes(id);
+    return `<div class="hp-mod-item${visivel ? '' : ' mod-oculto'}" data-id="${esc(id)}" draggable="true">
+      <span class="hp-mod-drag">⠿</span>
+      <span class="hp-mod-ico">${esc(mod.icon || '📦')}</span>
+      <span class="hp-mod-name">${esc(mod.label)}</span>
+      <span class="hp-mod-cat">${esc(mod.categoria || '')}</span>
+      <button class="hp-mod-eye" title="${visivel ? 'Remover da home' : 'Adicionar à home'}">${visivel ? '👁' : '🚫'}</button>
+    </div>`;
+  }).join('');
+
+  // Drag-and-drop
+  let _dragId = null;
+  el.querySelectorAll('.hp-mod-item').forEach(item => {
+    item.addEventListener('dragstart', e => {
+      _dragId = item.dataset.id;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => item.classList.remove('dragging'));
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      el.querySelectorAll('.hp-mod-item').forEach(i => i.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      item.classList.remove('drag-over');
+      if (!_dragId || _dragId === item.dataset.id) return;
+      const fromIdx = _hpModOrder.indexOf(_dragId);
+      const toIdx   = _hpModOrder.indexOf(item.dataset.id);
+      if (fromIdx < 0 || toIdx < 0) return;
+      _hpModOrder.splice(fromIdx, 1);
+      _hpModOrder.splice(toIdx, 0, _dragId);
+      _hpPrefs = { ..._hpPrefs, modulosOrdem: [..._hpModOrder] };
+      renderHpModList();
+      renderHpPreview();
+      _hpScheduleSave();
+    });
+
+    // Toggle favorito
+    item.querySelector('.hp-mod-eye')?.addEventListener('click', async () => {
+      await toggleFavorito(item.dataset.id);
+      renderHpModList();
+      renderHpPreview();
+    });
+  });
+}
+
+// ── Widgets (Em breve) ──
+function renderHpWidgets() {
+  const el = document.getElementById('hp-widget-list');
+  if (!el) return;
+  el.innerHTML = WIDGETS_FUTUROS.map(w => `
+    <div class="hp-widget-item">
+      <span class="hp-widget-ico">${esc(w.icone)}</span>
+      <span class="hp-widget-name">${esc(w.label)}</span>
+      <span class="hp-widget-badge">Em breve</span>
+    </div>`).join('');
+}
+
+// ── Fonte do layout ──
+function renderHpFonte() {
+  const el = document.getElementById('hp-layout-fonte-txt');
+  if (!el) return;
+  const fonte = _hpPrefs._fonte;
+  if (fonte === 'empresa') {
+    el.textContent = 'Layout da Empresa (aplicado)';
+  } else {
+    el.textContent = 'Layout Pessoal (ativo)';
+  }
+}
+
+// ── Preview em tempo real ──
+function renderHpPreview() {
+  const grid  = document.getElementById('hp-pv-grid');
+  const stats = document.getElementById('hp-preview-stats');
+  if (!grid) return;
+
+  grid.dataset.mode = _hpPrefs.modo   || 'grade';
+  grid.dataset.size = _hpPrefs.tamanho || 'medio';
+
+  const favs    = getFavoritosHome();
+  const visiveis = _hpModOrder.filter(id => favs === null || favs.includes(id));
+  const max      = Math.min(_hpPrefs.maxModulos || 24, visiveis.length);
+  const exibindo = visiveis.slice(0, max);
+
+  grid.innerHTML = exibindo.map(id => {
+    const mod = TODOS_MODULOS.find(m => m.id === id);
+    if (!mod) return '';
+    return `<div class="hp-pvc" title="${esc(mod.label)}">
+      <span class="hp-pvc-ico">${esc(mod.icon || '📦')}</span>
+      <span class="hp-pvc-name">${esc(mod.label)}</span>
+    </div>`;
+  }).join('');
+
+  if (stats) {
+    stats.textContent = visiveis.length === 0
+      ? 'Nenhum módulo na home — adicione favoritos na aba Módulos'
+      : `${visiveis.length} módulo${visiveis.length !== 1 ? 's' : ''} · modo ${_hpPrefs.modo} · ${_hpPrefs.tamanho}`;
+  }
+}
+
+function renderHpAll() {
+  renderHpModes();
+  renderHpSizes();
+  renderHpToggleCats();
+  renderHpModList();
+  renderHpWidgets();
+  renderHpFonte();
+  renderHpPreview();
+}
+
+// ── Salvar com debounce (setHpPrefs já dispara cc-home-changed) ──
+function _hpScheduleSave() {
+  clearTimeout(_hpSaveTimer);
+  _hpSaveTimer = setTimeout(async () => {
+    await setHpPrefs({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  }, 400);
+}
+
+// ── Botões ──
+document.getElementById('hp-btn-save')?.addEventListener('click', async () => {
+  clearTimeout(_hpSaveTimer);
+  await setHpPrefs({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  toast('Layout da Home salvo!');
+});
+
+document.getElementById('hp-btn-reset')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar o Painel Central para a configuração padrão?')) return;
+  _hpPrefs   = getDefaultHpPrefs();
+  _hpModOrder = _buildHpModOrder(_hpPrefs);
+  renderHpAll();
+  await setHpPrefs(_hpPrefs);
+  toast('Painel Central restaurado para o padrão.');
+});
+
+document.getElementById('hp-btn-corp')?.addEventListener('click', async () => {
+  if (!confirm('Salvar este layout como padrão da empresa?\n\nTodos os usuários sem layout pessoal passarão a usar esta configuração.')) return;
+  const ok = await salvarPadraoEmpresa({ ..._hpPrefs, modulosOrdem: [..._hpModOrder] });
+  toast(ok ? 'Layout salvo como padrão da empresa!' : 'Erro ao salvar — verifique as permissões.');
+});
+
+// ── Reage a mudanças externas de favoritos ──
+onModulosChanged(() => {
+  renderHpModList();
+  renderHpPreview();
+});
+
+// ── Init ──
+initHpPrefs();
+onHpPrefsChanged(prefs => {
+  _hpPrefs    = prefs;
+  _hpModOrder = _buildHpModOrder(prefs);
+  renderHpAll();
+});
+
+_hpPrefs    = getHpPrefs();
+_hpModOrder = _buildHpModOrder(_hpPrefs);
+renderHpAll();
+
+// ════════════════════════════════════════════════════════
+// TAB 5 — LAYOUTS PRONTOS
+// ════════════════════════════════════════════════════════
+
+const LAYOUTS_PRONTOS = [
+  {
+    id: 'executivo',
+    nome: 'Executivo',
+    icone: '📈',
+    cor: '#6366f1',
+    foco: 'Indicadores e gestão',
+    descricao: 'Visão gerencial com métricas financeiras, relatórios e indicadores em modo executivo.',
+    panelModo: 'executivo',
+    panelTamanho: 'grande',
+    favoritosHome:   ['financeiro', 'relatorios', 'central-alertas', 'acaodasemana', 'caixa', 'pendencias', 'fechamento'],
+    sidebarVisiveis: ['os', 'caixa', 'financeiro', 'relatorios', 'pendencias', 'agenda', 'clientes', 'config'],
+    sidebarFixados:  ['financeiro'],
+    topbarVisiveis:  ['financeiro', 'relatorios', 'caixa', 'os'],
+    topbarFixados:   ['financeiro'],
+  },
+  {
+    id: 'tecnico',
+    nome: 'Técnico',
+    icone: '🔧',
+    cor: '#f59e0b',
+    foco: 'Operação da assistência',
+    descricao: 'Focado em ordens de serviço, equipamentos, clientes e garantias com visão em lista.',
+    panelModo: 'lista',
+    panelTamanho: 'medio',
+    favoritosHome:   ['os', 'estoque', 'clientes', 'garantias', 'central-comandos', 'caixa', 'central-alertas'],
+    sidebarVisiveis: ['os', 'caixa', 'clientes', 'estoque', 'garantias', 'central-comandos', 'config'],
+    sidebarFixados:  ['os'],
+    topbarVisiveis:  ['os', 'central-comandos', 'estoque'],
+    topbarFixados:   ['os'],
+  },
+  {
+    id: 'comercial',
+    nome: 'Comercial',
+    icone: '🎯',
+    cor: '#10b981',
+    foco: 'Vendas e CRM',
+    descricao: 'CRM, clientes, agenda e pós-venda com visão em grade.',
+    panelModo: 'grade',
+    panelTamanho: 'medio',
+    favoritosHome:   ['crm-comercial', 'clientes', 'acaodasemana', 'pos-venda', 'caixa', 'catalogo', 'fornecedor'],
+    sidebarVisiveis: ['caixa', 'clientes', 'crm-comercial', 'pos-venda', 'fornecedor', 'agenda', 'config'],
+    sidebarFixados:  ['crm-comercial'],
+    topbarVisiveis:  ['crm', 'caixa', 'os'],
+    topbarFixados:   ['crm'],
+  },
+  {
+    id: 'financeiro',
+    nome: 'Financeiro',
+    icone: '💹',
+    cor: '#3b82f6',
+    foco: 'Controle financeiro',
+    descricao: 'Caixa, contas, fluxo de caixa e relatórios com cards em modo executivo.',
+    panelModo: 'executivo',
+    panelTamanho: 'grande',
+    favoritosHome:   ['caixa', 'pendencias', 'financeiro', 'relatorios', 'fechamento', 'compras'],
+    sidebarVisiveis: ['caixa', 'financeiro', 'pendencias', 'relatorios', 'compras', 'config'],
+    sidebarFixados:  ['financeiro', 'caixa'],
+    topbarVisiveis:  ['financeiro', 'caixa', 'relatorios'],
+    topbarFixados:   ['financeiro'],
+  },
+  {
+    id: 'mobile',
+    nome: 'Mobile',
+    icone: '📱',
+    cor: '#8b5cf6',
+    foco: 'Uso em celular',
+    descricao: 'Ícones compactos e sidebar simplificada para telas pequenas.',
+    panelModo: 'compacto',
+    panelTamanho: 'pequeno',
+    favoritosHome:   ['os', 'caixa', 'clientes', 'central-alertas', 'acaodasemana', 'central-comandos'],
+    sidebarVisiveis: ['os', 'caixa', 'clientes', 'config'],
+    sidebarFixados:  ['os'],
+    topbarVisiveis:  ['os', 'caixa'],
+    topbarFixados:   ['os'],
+  },
+];
+
+const LS_LAYOUT_ATIVO = 'cc_layout_ativo';
+function _getLayoutAtivo()  { try { return localStorage.getItem(LS_LAYOUT_ATIVO) || null; } catch { return null; } }
+function _setLayoutAtivo(id){ try { localStorage.setItem(LS_LAYOUT_ATIVO, id); } catch {} }
+
+// ── Renderiza cards ────────────────────────────────────────────
+function renderLayouts() {
+  const grid = document.getElementById('ly-grid');
+  if (!grid) return;
+  const ativo = _getLayoutAtivo();
+
+  grid.innerHTML = LAYOUTS_PRONTOS.map(ly => {
+    const modo = MODOS.find(m => m.id === ly.panelModo);
+    const tam  = TAMANHOS.find(t => t.id === ly.panelTamanho);
+    const mods = ly.favoritosHome.slice(0, 5).map(id => {
+      const m = TODOS_MODULOS.find(x => x.id === id);
+      return m ? `<span class="ly-mod-pill">${m.icone} ${esc(m.nome)}</span>` : '';
+    }).join('');
+
+    return `<div class="ly-card${ativo === ly.id ? ' ativo' : ''}" style="--ly-cor:${ly.cor}">
+      ${ativo === ly.id ? '<div class="ly-ativo-badge">✓ Ativo</div>' : ''}
+      <div class="ly-card-header">
+        <div class="ly-card-ico">${ly.icone}</div>
+        <div class="ly-card-info">
+          <div class="ly-card-nome">${esc(ly.nome)}</div>
+          <div class="ly-card-foco">${esc(ly.foco)}</div>
+        </div>
+      </div>
+      <div class="ly-card-desc">${esc(ly.descricao)}</div>
+      <div class="ly-badges">
+        <span class="ly-badge ly-badge-modo">${modo?.icone || ''} ${esc(modo?.label || ly.panelModo)}</span>
+        <span class="ly-badge">${esc(tam?.label || ly.panelTamanho)}</span>
+      </div>
+      <div class="ly-mods">${mods}</div>
+      <div class="ly-card-actions">
+        <button class="ly-btn ly-btn-preview" data-lid="${ly.id}">👁 Preview</button>
+        <button class="ly-btn ly-btn-aplicar" data-lid="${ly.id}">▶ Aplicar</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.ly-btn-preview').forEach(btn => {
+    btn.addEventListener('click', () => _abrirPreview(btn.dataset.lid));
+  });
+  grid.querySelectorAll('.ly-btn-aplicar').forEach(btn => {
+    btn.addEventListener('click', () => _abrirPreview(btn.dataset.lid));
+  });
+}
+
+// ── Preview Modal ──────────────────────────────────────────────
+let _previewLid = null;
+
+function _abrirPreview(lid) {
+  const ly = LAYOUTS_PRONTOS.find(l => l.id === lid);
+  if (!ly) return;
+  _previewLid = lid;
+
+  document.getElementById('ly-modal-title').innerHTML = `${ly.icone} Layout ${esc(ly.nome)}`;
+
+  const body = document.getElementById('ly-modal-body');
+  if (!body) return;
+
+  // topbar
+  const tbItems = ly.topbarVisiveis.map(id => {
+    const item = ITENS_TOPBAR.find(i => i.id === id);
+    if (!item) return '';
+    const fixado = ly.topbarFixados.includes(id);
+    return `<div class="ly-pv-tb-item${fixado ? ' fixado' : ''}">${item.icon} ${esc(item.label)}</div>`;
+  }).join('');
+
+  // sidebar
+  const sbItems = ly.sidebarVisiveis.map(id => {
+    const item = ITENS_SIDEBAR.find(i => i.id === id);
+    if (!item) return '';
+    const fixado = ly.sidebarFixados.includes(id);
+    return `<div class="ly-pv-sb-item${fixado ? ' fixado' : ''}">
+      <span>${item.icon}</span><span>${esc(item.label)}</span>
+    </div>`;
+  }).join('');
+
+  // panel cards
+  const maxCards = ly.panelModo === 'lista' ? 6 : ly.panelModo === 'executivo' ? 9 : ly.panelModo === 'compacto' ? 12 : 8;
+  const panelCards = ly.favoritosHome.slice(0, maxCards).map(id => {
+    const m = TODOS_MODULOS.find(x => x.id === id);
+    if (!m) return '';
+    return `<div class="ly-pv-card">
+      <span class="ly-pv-card-ico">${m.icone}</span>
+      <span class="ly-pv-card-name">${esc(m.nome)}</span>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:3px;">${esc(ly.foco)}</div>
+      <div style="font-size:12px;color:var(--text-sec);">${esc(ly.descricao)}</div>
+    </div>
+    <div class="ly-pv-section">
+      <div class="ly-pv-label">🔝 Menus Superiores</div>
+      <div class="ly-pv-topbar">
+        <div class="ly-pv-tb-logo">🟢 Cell City</div>
+        ${tbItems}
+        <div class="ly-pv-tb-sep"></div>
+      </div>
+    </div>
+    <div class="ly-pv-section">
+      <div class="ly-pv-label">🏠 Sidebar + Painel Central — Modo ${esc(ly.panelModo)}</div>
+      <div class="ly-pv-layout">
+        <div class="ly-pv-sidebar">
+          <div class="ly-pv-sb-header">◀ Menu</div>
+          ${sbItems}
+        </div>
+        <div class="ly-pv-panel-wrap">
+          <div class="ly-pv-panel-grid" data-mode="${esc(ly.panelModo)}">
+            ${panelCards}
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('ly-modal-overlay').classList.add('open');
+}
+
+function _fecharModal() {
+  document.getElementById('ly-modal-overlay').classList.remove('open');
+  _previewLid = null;
+}
+
+// ── Aplica o layout ───────────────────────────────────────────
+async function _aplicarLayout(lid) {
+  const ly = LAYOUTS_PRONTOS.find(l => l.id === lid);
+  if (!ly) return;
+
+  // 1. Painel Central (home-prefs)
+  await setHpPrefs({
+    ...getHpPrefs(),
+    modo:          ly.panelModo,
+    tamanho:       ly.panelTamanho,
+    modulosOrdem:  [...ly.favoritosHome],
+  });
+
+  // 2. Favoritos da home
+  await setFavoritos([...ly.favoritosHome]);
+
+  // 3. Sidebar
+  await setSbPrefs({
+    itens: ITENS_SIDEBAR.map((item, i) => {
+      const ordemVis = ly.sidebarVisiveis.indexOf(item.id);
+      return {
+        id:      item.id,
+        visivel: ly.sidebarVisiveis.includes(item.id),
+        fixado:  ly.sidebarFixados.includes(item.id),
+        ordem:   ordemVis >= 0 ? ordemVis : ly.sidebarVisiveis.length + i,
+      };
+    })
+  });
+
+  // 4. Topbar
+  await setTbPrefs({
+    itens: ITENS_TOPBAR.map((item, i) => {
+      const ordemVis = ly.topbarVisiveis.indexOf(item.id);
+      return {
+        id:       item.id,
+        visivel:  ly.topbarVisiveis.includes(item.id),
+        fixado:   ly.topbarFixados.includes(item.id),
+        ordem:    ordemVis >= 0 ? ordemVis : ly.topbarVisiveis.length + i,
+        submenus: item.submenus.map(s => ({ id: s.id, visivel: true })),
+      };
+    })
+  });
+
+  _setLayoutAtivo(lid);
+  renderLayouts();
+  toast(`Layout ${ly.nome} aplicado!`);
+}
+
+// ── Eventos do modal ──────────────────────────────────────────
+document.getElementById('ly-modal-close')?.addEventListener('click', _fecharModal);
+document.getElementById('ly-modal-cancel')?.addEventListener('click', _fecharModal);
+document.getElementById('ly-modal-overlay')?.addEventListener('click', e => {
+  if (e.target.id === 'ly-modal-overlay') _fecharModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('ly-modal-overlay')?.classList.contains('open'))
+    _fecharModal();
+});
+document.getElementById('ly-modal-apply')?.addEventListener('click', async () => {
+  if (!_previewLid) return;
+  const lid = _previewLid;
+  _fecharModal();
+  await _aplicarLayout(lid);
+});
+
+// ── Recursos extras ───────────────────────────────────────────
+
+document.getElementById('ly-btn-exportar')?.addEventListener('click', () => {
+  const config = {
+    versao: 1,
+    exportadoEm: new Date().toISOString(),
+    home:    getHpPrefs(),
+    sidebar: getSbPrefs(),
+    topbar:  getTbPrefs(),
+    modulos: { favoritos: getFavoritosHome() },
+  };
+  const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `cellcity-layout-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Configuração exportada com sucesso!');
+});
+
+document.getElementById('ly-btn-importar')?.addEventListener('click', () => {
+  document.getElementById('ly-import-file').click();
+});
+
+document.getElementById('ly-import-file')?.addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const text   = await file.text();
+    const config = JSON.parse(text);
+    if (!config.versao || !config.home) { toast('Arquivo inválido ou formato não reconhecido.'); return; }
+    if (!confirm(`Importar configuração de ${config.exportadoEm?.slice(0,10) || '?'}?\n\nIsso substituirá suas configurações atuais.`)) return;
+    if (config.home)              await setHpPrefs(config.home);
+    if (config.sidebar)           await setSbPrefs(config.sidebar);
+    if (config.topbar)            await setTbPrefs(config.topbar);
+    if (config.modulos?.favoritos !== undefined) await setFavoritos(config.modulos.favoritos);
+    renderLayouts();
+    toast('Configuração importada com sucesso!');
+  } catch { toast('Erro ao ler o arquivo — verifique se é um JSON válido.'); }
+  e.target.value = '';
+});
+
+document.getElementById('ly-btn-restaurar')?.addEventListener('click', async () => {
+  if (!confirm('Restaurar TODAS as configurações para o padrão do sistema?\n\nSidebar, menus, painel central e módulos da home serão redefinidos.')) return;
+  await setHpPrefs(getDefaultHpPrefs());
+  await setSbPrefs(getDefaultPrefs());
+  await setTbPrefs(getDefaultTbPrefs());
+  await setFavoritos(null);
+  _setLayoutAtivo(null);
+  renderLayouts();
+  toast('Todas as configurações foram restauradas para o padrão.');
+});
+
+// ── Init ──────────────────────────────────────────────────────
+renderLayouts();
+</script>
+</body>
+</html>

@@ -1,5 +1,5 @@
 /* ============================================================
-   SESSÃO / IDENTIDADE DE CONTA — Cell City CRM
+   SESSÃO / IDENTIDADE DE CONTA — Cell City Gestão Empresarial
    ------------------------------------------------------------
    Fornece um identificador de usuário ESTÁVEL e COMPARTILHADO
    entre todos os dispositivos (notebook, PC, celular), para que

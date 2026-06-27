@@ -1,0 +1,1028 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+  data-fav-key="backup" data-fav-label="Backup" data-fav-icon="💾" data-fav-url="/CRM/pages/backup/index.html"
+  data-bc='[{"icon":"🏠","label":"Dashboard","url":"/CRM/pages/dashboard/index.html"},{"icon":"💾","label":"Backup do Sistema"}]'
+  data-bc-before=".bk-header">
+<head>
+<meta charset="UTF-8"/>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Backup do Sistema — Cell City CRM</title>
+<link rel="stylesheet" href="../../assets/css/global.css"/>
+<link rel="stylesheet" href="../../shared/dock.css"/>
+<style>
+/* ── Reset / Base ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d0d;color:#e8e8e8;font-family:'Inter',system-ui,sans-serif;min-height:100vh;padding-top:56px}
+
+/* ── Layout ───────────────────────────────────────────────── */
+.bk-page{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+.bk-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.bk-header h1{font-size:1.4rem;font-weight:700;color:#fff}
+.bk-header .bk-icon{font-size:1.8rem}
+.bk-header p{font-size:.85rem;color:#888;margin-top:2px}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.bk-tabs{display:flex;gap:4px;border-bottom:1px solid #222;margin-bottom:24px;overflow-x:auto}
+.bk-tab{background:none;border:none;color:#888;padding:10px 18px;font-size:.88rem;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:.15s;white-space:nowrap}
+.bk-tab:hover{color:#ccc}
+.bk-tab.ativo{color:#00c853;border-bottom-color:#00c853}
+.bk-panel{display:none}
+.bk-panel.ativo{display:block}
+
+/* ── Card / Section ───────────────────────────────────────── */
+.bk-card{background:#161616;border:1px solid #222;border-radius:10px;padding:20px;margin-bottom:16px}
+.bk-card-title{font-size:.95rem;font-weight:600;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.bk-card-title span{font-size:1.1rem}
+.bk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.bk-grid2{grid-template-columns:1fr}}
+
+/* ── Botões ───────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:7px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;transition:.15s}
+.btn-primary{background:#00c853;color:#000}
+.btn-primary:hover{background:#00e676}
+.btn-primary:disabled{background:#444;color:#888;cursor:not-allowed}
+.btn-danger{background:#c62828;color:#fff}
+.btn-danger:hover{background:#e53935}
+.btn-outline{background:none;border:1px solid #333;color:#ccc}
+.btn-outline:hover{border-color:#555;color:#fff}
+.btn-sm{padding:7px 14px;font-size:.82rem}
+.btn-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+
+/* ── Checkboxes de coleções ───────────────────────────────── */
+.col-grupo{margin-bottom:16px}
+.col-grupo-titulo{font-size:.82rem;font-weight:700;color:#00c853;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.col-grupo-titulo button{background:none;border:none;color:#666;font-size:.75rem;cursor:pointer;padding:2px 6px;border-radius:4px}
+.col-grupo-titulo button:hover{color:#aaa}
+.col-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.col-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#0d0d0d;border:1px solid #222;border-radius:6px;cursor:pointer;transition:.12s}
+.col-item:hover{border-color:#333}
+.col-item input[type=checkbox]{accent-color:#00c853;width:15px;height:15px;cursor:pointer}
+.col-item label{font-size:.83rem;color:#ccc;cursor:pointer;flex:1}
+.col-item .col-count{font-size:.72rem;color:#555;font-variant-numeric:tabular-nums}
+.col-critico .col-item{border-left:2px solid #00c853}
+
+/* ── Progress ─────────────────────────────────────────────── */
+.bk-progress{display:none;margin:14px 0}
+.bk-progress.visivel{display:block}
+.bk-progress-bar-wrap{background:#222;border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px}
+.bk-progress-bar{height:100%;background:#00c853;border-radius:6px;transition:width .3s}
+.bk-progress-msg{font-size:.83rem;color:#888}
+
+/* ── Status toast ─────────────────────────────────────────── */
+.bk-toast{position:fixed;bottom:24px;right:24px;background:#1a1a1a;border:1px solid #00c853;color:#fff;padding:12px 18px;border-radius:8px;font-size:.87rem;z-index:999;display:none;max-width:340px;box-shadow:0 4px 20px rgba(0,0,0,.5)}
+.bk-toast.erro{border-color:#c62828}
+.bk-toast.visivel{display:block}
+
+/* ── Notas ───────────────────────────────────────────────── */
+.bk-textarea{width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:7px;color:#e8e8e8;padding:10px 12px;font-size:.87rem;font-family:inherit;resize:vertical;min-height:72px}
+.bk-textarea:focus{outline:none;border-color:#444}
+
+/* ── Info stats ───────────────────────────────────────────── */
+.bk-stat-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.bk-stat{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:12px 16px;flex:1;min-width:100px}
+.bk-stat .val{font-size:1.4rem;font-weight:700;color:#00c853}
+.bk-stat .lbl{font-size:.75rem;color:#666;margin-top:2px}
+
+/* ── Importar drag-zone ───────────────────────────────────── */
+.bk-drop-zone{border:2px dashed #2a2a2a;border-radius:10px;padding:32px;text-align:center;cursor:pointer;transition:.2s;margin-top:14px}
+.bk-drop-zone:hover,.bk-drop-zone.drag-over{border-color:#00c853;background:rgba(0,200,83,.04)}
+.bk-drop-zone .dz-icon{font-size:2rem;margin-bottom:8px}
+.bk-drop-zone p{font-size:.85rem;color:#666}
+.bk-drop-zone .dz-file-name{font-size:.85rem;color:#00c853;margin-top:6px;font-weight:600}
+
+/* ── Histórico table ──────────────────────────────────────── */
+.bk-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.bk-table th{text-align:left;padding:8px 12px;color:#666;font-size:.78rem;font-weight:600;text-transform:uppercase;border-bottom:1px solid #222}
+.bk-table td{padding:10px 12px;border-bottom:1px solid #1a1a1a;color:#ccc;vertical-align:top}
+.bk-table tr:hover td{background:#141414}
+.bk-badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.75rem;font-weight:600}
+.bk-badge.dados{background:rgba(0,200,83,.15);color:#00c853}
+.bk-badge.sistema{background:rgba(59,130,246,.15);color:#60a5fa}
+.bk-badge.config{background:rgba(245,158,11,.15);color:#fbbf24}
+.bk-empty{text-align:center;padding:40px;color:#444;font-size:.9rem}
+
+/* ── Sistema tab ─────────────────────────────────────────── */
+.bk-git-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.bk-git-item{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:7px;padding:10px 14px}
+.bk-git-item .gk{font-size:.73rem;color:#555;text-transform:uppercase;letter-spacing:.05em}
+.bk-git-item .gv{font-size:.9rem;color:#ccc;font-family:monospace;margin-top:3px;word-break:break-all}
+
+/* ── Cron section ─────────────────────────────────────────── */
+.bk-cron-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d0d0d;border:1px solid #1e1e1e;border-radius:7px;margin-bottom:8px}
+.bk-cron-row label{font-size:.87rem;color:#ccc;display:flex;align-items:center;gap:8px;cursor:pointer}
+.bk-cron-row input[type=checkbox]{accent-color:#00c853}
+.bk-cron-row .cron-cmd{font-size:.75rem;color:#555;font-family:monospace}
+select.bk-select{background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;color:#ccc;padding:6px 10px;font-size:.85rem;cursor:pointer}
+
+/* ── Confirm modal ────────────────────────────────────────── */
+#bk-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;display:none;align-items:center;justify-content:center}
+#bk-confirm-overlay.visivel{display:flex}
+.bk-confirm-box{background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:28px;max-width:440px;width:90%;text-align:center}
+.bk-confirm-box h3{font-size:1.1rem;color:#fff;margin-bottom:8px}
+.bk-confirm-box p{font-size:.87rem;color:#999;margin-bottom:20px;line-height:1.5}
+.bk-confirm-box .conf-btns{display:flex;gap:10px;justify-content:center}
+</style>
+</head>
+<body>
+
+<div id="bk-toast" class="bk-toast"></div>
+
+<!-- Confirm Modal -->
+<div id="bk-confirm-overlay">
+  <div class="bk-confirm-box">
+    <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+    <h3 id="bk-confirm-title">Confirmação</h3>
+    <p id="bk-confirm-msg"></p>
+    <div class="conf-btns">
+      <button class="btn btn-outline" onclick="document.getElementById('bk-confirm-overlay').classList.remove('visivel')">Cancelar</button>
+      <button class="btn btn-danger" id="bk-confirm-ok">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<div class="bk-page">
+  <!-- Header -->
+  <div class="bk-header">
+    <div class="bk-icon">🛡️</div>
+    <div>
+      <h1>Backup do Sistema</h1>
+      <p>Exportar dados do Firestore · Backup do código · Histórico de versões</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="bk-tabs">
+    <button class="bk-tab ativo" data-tab="dados">💾 Backup de Dados</button>
+    <button class="bk-tab" data-tab="sistema">⚙️ Backup do Sistema</button>
+    <button class="bk-tab" data-tab="historico">📋 Histórico</button>
+    <button class="bk-tab" data-tab="log">🔍 Log de Auditoria</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 1 — BACKUP DE DADOS (Firestore)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bk-panel ativo" id="bk-tab-dados">
+
+    <div class="bk-grid2">
+
+      <!-- EXPORTAR -->
+      <div>
+        <div class="bk-card">
+          <div class="bk-card-title"><span>📤</span> Exportar Dados</div>
+
+          <div class="bk-stat-row">
+            <div class="bk-stat">
+              <div class="val" id="stat-cols">—</div>
+              <div class="lbl">Coleções selecionadas</div>
+            </div>
+            <div class="bk-stat">
+              <div class="val" id="stat-docs">—</div>
+              <div class="lbl">Docs estimados</div>
+            </div>
+          </div>
+
+          <div id="col-lista"><!-- renderizado pelo JS --></div>
+
+          <div style="margin-top:12px">
+            <label style="font-size:.82rem;color:#888;display:block;margin-bottom:6px">Observações (opcional)</label>
+            <textarea id="exp-obs" class="bk-textarea" placeholder="Ex: Backup antes da atualização v1.2…"></textarea>
+          </div>
+
+          <div class="bk-progress" id="exp-progress">
+            <div class="bk-progress-bar-wrap"><div class="bk-progress-bar" id="exp-bar" style="width:0%"></div></div>
+            <div class="bk-progress-msg" id="exp-msg"></div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-exportar">📤 Exportar Selecionadas</button>
+            <button class="btn btn-outline btn-sm" id="btn-sel-criticas">Marcar Críticas</button>
+            <button class="btn btn-outline btn-sm" id="btn-sel-tudo">Marcar Tudo</button>
+            <button class="btn btn-outline btn-sm" id="btn-des-tudo">Desmarcar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IMPORTAR / RESTAURAR -->
+      <div>
+        <div class="bk-card">
+          <div class="bk-card-title"><span>📥</span> Restaurar / Importar</div>
+
+          <p style="font-size:.83rem;color:#888;margin-bottom:12px;line-height:1.5">
+            Selecione um arquivo <code style="color:#00c853">.json</code> gerado por este sistema para restaurar os dados.
+            Os documentos existentes serão <strong>sobrescritos</strong> com os dados do backup.
+          </p>
+
+          <div class="bk-drop-zone" id="bk-drop-zone">
+            <div class="dz-icon">📂</div>
+            <p>Arraste o arquivo JSON aqui<br>ou clique para selecionar</p>
+            <div class="dz-file-name" id="dz-file-name"></div>
+            <input type="file" id="imp-file" accept=".json" style="display:none"/>
+          </div>
+
+          <div id="imp-preview" style="display:none;margin-top:14px">
+            <div class="bk-stat-row">
+              <div class="bk-stat">
+                <div class="val" id="imp-stat-cols">—</div><div class="lbl">Coleções no backup</div>
+              </div>
+              <div class="bk-stat">
+                <div class="val" id="imp-stat-docs">—</div><div class="lbl">Total de docs</div>
+              </div>
+              <div class="bk-stat">
+                <div class="val" id="imp-stat-data">—</div><div class="lbl">Data do backup</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bk-progress" id="imp-progress">
+            <div class="bk-progress-bar-wrap"><div class="bk-progress-bar" id="imp-bar" style="width:0%"></div></div>
+            <div class="bk-progress-msg" id="imp-msg"></div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-danger" id="btn-restaurar" disabled>🔄 Restaurar</button>
+          </div>
+
+          <p style="font-size:.76rem;color:#444;margin-top:12px;line-height:1.4">
+            ⚠️ Documentos deletados após o backup NÃO serão removidos. Para restauração total, limpe as coleções no Firebase Console antes de importar.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 2 — BACKUP DO SISTEMA (Código)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bk-panel" id="bk-tab-sistema">
+
+    <div class="bk-grid2">
+
+      <!-- Criar Backup -->
+      <div>
+        <div class="bk-card">
+          <div class="bk-card-title"><span>📦</span> Criar Backup do Código</div>
+
+          <!-- Status do servidor local -->
+          <div id="srv-status" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:8px;margin-bottom:14px;background:#0d0d0d;border:1px solid #1e1e1e;font-size:.83rem">
+            <span id="srv-dot" style="font-size:1rem">⏳</span>
+            <span id="srv-msg" style="color:#666">Verificando servidor local…</span>
+          </div>
+
+          <!-- Execução com 1 clique -->
+          <div id="srv-online-area">
+            <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+              <div style="flex:1;min-width:120px">
+                <label style="font-size:.78rem;color:#666;display:block;margin-bottom:4px">Versão</label>
+                <input id="sis-versao" type="text" value="v1.0" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#e8e8e8;font-size:.85rem"/>
+              </div>
+              <div style="flex:3;min-width:180px">
+                <label style="font-size:.78rem;color:#666;display:block;margin-bottom:4px">Observação (opcional)</label>
+                <input id="sis-obs" type="text" style="width:100%;background:#0d0d0d;border:1px solid #2a2a2a;border-radius:6px;padding:7px 10px;color:#e8e8e8;font-size:.85rem" placeholder="Ex: Atualização do financeiro"/>
+              </div>
+            </div>
+
+            <div class="btn-row" style="margin-bottom:12px">
+              <button class="btn btn-primary" id="btn-criar-backup">🚀 Criar Backup Agora</button>
+              <button class="btn btn-outline btn-sm" id="btn-baixar-ultimo" disabled>⬇️ Baixar Último Backup</button>
+              <button class="btn btn-outline btn-sm" id="btn-abrir-pasta">📂 Abrir Pasta</button>
+            </div>
+
+            <div id="sis-progress" style="display:none">
+              <div class="bk-progress-bar-wrap"><div class="bk-progress-bar" id="sis-bar" style="width:50%;animation:bk-pulse 1s infinite alternate"></div></div>
+              <div id="sis-msg" style="font-size:.8rem;color:#888;margin-top:6px">Executando backup.sh…</div>
+            </div>
+
+            <div id="sis-result" style="display:none;padding:12px;border-radius:8px;margin-top:8px;font-size:.83rem;line-height:1.5"></div>
+          </div>
+
+          <!-- Fallback terminal -->
+          <details style="margin-top:14px">
+            <summary style="font-size:.78rem;color:#444;cursor:pointer;user-select:none">▸ Executar manualmente pelo terminal</summary>
+            <div style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:14px;margin-top:8px">
+              <code style="color:#00c853;font-size:.85rem;display:block">bash ~/Músicas/backup.sh</code>
+              <code style="color:#00c853;font-size:.82rem;display:block;margin-top:6px">bash ~/Músicas/backup.sh "v1.2" "Descrição"</code>
+            </div>
+            <div class="btn-row" style="margin-top:8px">
+              <button class="btn btn-outline btn-sm" id="btn-baixar-script">⬇️ Baixar backup.sh</button>
+              <button class="btn btn-outline btn-sm" onclick="navigator.clipboard?.writeText('bash ~/Músicas/backup.sh')">📋 Copiar</button>
+            </div>
+          </details>
+        </div>
+
+        <!-- Backup automático (cron) -->
+        <div class="bk-card">
+          <div class="bk-card-title"><span>⏰</span> Backup Automático</div>
+          <p style="font-size:.83rem;color:#666;margin-bottom:14px">Configure o cron do Linux para rodar o backup automaticamente.</p>
+
+          <div class="bk-cron-row">
+            <label><input type="checkbox" id="cron-diario"> Diário (todo dia às 23:00)</label>
+            <span class="cron-cmd">0 23 * * * bash ~/Músicas/backup.sh</span>
+          </div>
+          <div class="bk-cron-row">
+            <label><input type="checkbox" id="cron-semanal"> Semanal (domingo às 22:00)</label>
+            <span class="cron-cmd">0 22 * * 0 bash ~/Músicas/backup.sh</span>
+          </div>
+          <div class="bk-cron-row">
+            <label><input type="checkbox" id="cron-mensal"> Mensal (dia 1 às 21:00)</label>
+            <span class="cron-cmd">0 21 1 * * bash ~/Músicas/backup.sh</span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
+            <span style="font-size:.83rem;color:#888">Máximo de versões:</span>
+            <select class="bk-select" id="max-backups-sel">
+              <option value="5">5 versões</option>
+              <option value="10" selected>10 versões</option>
+              <option value="20">20 versões</option>
+            </select>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" id="btn-gerar-cron">📋 Gerar comando crontab</button>
+          </div>
+          <div id="cron-output" style="display:none;margin-top:10px;background:#0d0d0d;padding:10px;border-radius:6px;font-size:.8rem;font-family:monospace;color:#00c853;white-space:pre-wrap"></div>
+        </div>
+      </div>
+
+      <!-- Git Info -->
+      <div>
+        <div class="bk-card">
+          <div class="bk-card-title"><span>📌</span> Integração Git</div>
+
+          <div id="git-loading" style="color:#555;font-size:.85rem">Carregando info do Git…</div>
+          <div id="git-info" style="display:none">
+            <div class="bk-git-info">
+              <div class="bk-git-item">
+                <div class="gk">Branch</div>
+                <div class="gv" id="git-branch">—</div>
+              </div>
+              <div class="bk-git-item">
+                <div class="gk">Último Commit</div>
+                <div class="gv" id="git-commit">—</div>
+              </div>
+              <div class="bk-git-item">
+                <div class="gk">Data do Commit</div>
+                <div class="gv" id="git-date">—</div>
+              </div>
+              <div class="bk-git-item">
+                <div class="gk">Autor</div>
+                <div class="gv" id="git-author">—</div>
+              </div>
+            </div>
+            <div style="margin-top:10px;background:#0d0d0d;border:1px solid #1e1e1e;border-radius:7px;padding:12px">
+              <div style="font-size:.76rem;color:#555;margin-bottom:4px">Mensagem do commit</div>
+              <div id="git-msg" style="font-size:.87rem;color:#ccc"></div>
+            </div>
+            <div style="font-size:.75rem;color:#444;margin-top:10px" id="git-gerado-em"></div>
+          </div>
+          <div id="git-erro" style="display:none;font-size:.83rem;color:#555;line-height:1.5">
+            Arquivo <code>git-info.json</code> não encontrado.<br>
+            Execute <code style="color:#00c853">bash ~/Músicas/backup.sh</code> para gerar as informações do Git.
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-outline btn-sm" id="btn-refresh-git">🔄 Atualizar</button>
+          </div>
+        </div>
+
+        <!-- Nome do backup -->
+        <div class="bk-card">
+          <div class="bk-card-title"><span>🏷️</span> Nome do Próximo Backup</div>
+          <div style="background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:14px;font-family:monospace;font-size:.9rem;color:#00c853" id="preview-nome">
+            CellCity-v1.0-<span id="preview-data">——</span>.zip
+          </div>
+          <p style="font-size:.78rem;color:#555;margin-top:8px">
+            O nome é gerado automaticamente com versão e data/hora pelo <code>backup.sh</code>
+          </p>
+        </div>
+
+        <!-- Exportar configurações JSON -->
+        <div class="bk-card">
+          <div class="bk-card-title"><span>🎨</span> Exportar Configurações do Layout</div>
+          <p style="font-size:.83rem;color:#888;margin-bottom:12px;line-height:1.5">
+            Exporta em JSON as preferências de interface (sidebar, topbar, layouts, painel central) — restaurável pela Central de Controle.
+          </p>
+          <div class="btn-row">
+            <button class="btn btn-outline" id="btn-exp-config">📤 Exportar Configurações</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 3 — HISTÓRICO
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bk-panel" id="bk-tab-historico">
+    <div class="bk-card">
+      <div class="bk-card-title" style="justify-content:space-between">
+        <span><span>📋</span> Histórico de Backups</span>
+        <button class="btn btn-outline btn-sm" id="btn-refresh-hist">🔄 Atualizar</button>
+      </div>
+      <div id="hist-content">
+        <div class="bk-empty">Carregando…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       TAB 4 — LOG DE AUDITORIA
+  ══════════════════════════════════════════════════════════ -->
+  <div class="bk-panel" id="bk-tab-log">
+    <div class="bk-card">
+      <div class="bk-card-title" style="justify-content:space-between">
+        <span><span>🔍</span> Log de Auditoria</span>
+        <button class="btn btn-outline btn-sm" id="btn-refresh-log">🔄 Atualizar</button>
+      </div>
+      <div id="log-content">
+        <div class="bk-empty">Carregando…</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- .bk-page -->
+
+<script type="module">
+import {
+  GRUPOS_COLECOES,
+  exportarFirestore,
+  importarFirestore,
+  registrarBackup,
+  carregarHistorico,
+} from './backup.js';
+import { getPrefs as getSbPrefs } from '../../shared/sidebar-prefs.js';
+import { getPrefs as getTbPrefs } from '../../shared/topbar-prefs.js';
+import { getPrefs as getHpPrefs } from '../../shared/home-prefs.js';
+
+// ── Tab routing ────────────────────────────────────────────────
+document.querySelectorAll('.bk-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.bk-tab,.bk-panel').forEach(el => el.classList.remove('ativo'));
+    tab.classList.add('ativo');
+    document.getElementById('bk-tab-' + tab.dataset.tab).classList.add('ativo');
+    if (tab.dataset.tab === 'historico') carregarHist();
+    if (tab.dataset.tab === 'log')       carregarHist(true);
+    if (tab.dataset.tab === 'sistema')   carregarGitInfo();
+  });
+});
+
+// ── Toast ──────────────────────────────────────────────────────
+let _toastTimer;
+function toast(msg, erro = false) {
+  const el = document.getElementById('bk-toast');
+  el.textContent = msg;
+  el.className = 'bk-toast visivel' + (erro ? ' erro' : '');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('visivel'), 4000);
+}
+
+// ── Confirm modal ──────────────────────────────────────────────
+function confirmar(titulo, msg) {
+  return new Promise(res => {
+    document.getElementById('bk-confirm-title').textContent = titulo;
+    document.getElementById('bk-confirm-msg').textContent = msg;
+    const overlay = document.getElementById('bk-confirm-overlay');
+    overlay.classList.add('visivel');
+    const btnOk = document.getElementById('bk-confirm-ok');
+    const handler = () => {
+      overlay.classList.remove('visivel');
+      btnOk.removeEventListener('click', handler);
+      res(true);
+    };
+    btnOk.addEventListener('click', handler);
+  });
+}
+
+// ── Render coleções ────────────────────────────────────────────
+const lista = document.getElementById('col-lista');
+function renderColecoes() {
+  lista.innerHTML = GRUPOS_COLECOES.map(g => `
+    <div class="col-grupo ${g.critico ? 'col-critico' : ''}">
+      <div class="col-grupo-titulo">
+        ${g.grupo} ${g.critico ? '<span style="color:#00c853;font-size:.7rem">CRÍTICO</span>' : ''}
+        <button onclick="toggleGrupo('${g.grupo}')">selecionar todos</button>
+      </div>
+      <div class="col-grid">
+        ${g.itens.map(item => `
+          <div class="col-item">
+            <input type="checkbox" id="col-${item.id}" value="${item.id}" ${g.critico ? 'checked' : ''} onchange="atualizarStats()"/>
+            <label for="col-${item.id}">${item.icone} ${item.label}</label>
+            <span class="col-count" id="cnt-${item.id}"></span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+  atualizarStats();
+}
+
+window.toggleGrupo = (grupNome) => {
+  const g = GRUPOS_COLECOES.find(x => x.grupo === grupNome);
+  if (!g) return;
+  const checks = g.itens.map(i => document.getElementById('col-' + i.id)).filter(Boolean);
+  const allChecked = checks.every(c => c.checked);
+  checks.forEach(c => { c.checked = !allChecked; });
+  atualizarStats();
+};
+
+function getSelecionadas() {
+  return Array.from(document.querySelectorAll('#col-lista input[type=checkbox]:checked')).map(c => c.value);
+}
+
+function atualizarStats() {
+  const sel = getSelecionadas();
+  document.getElementById('stat-cols').textContent = sel.length;
+  document.getElementById('stat-docs').textContent = '—';
+}
+
+// Seleção rápida
+document.getElementById('btn-sel-criticas').addEventListener('click', () => {
+  document.querySelectorAll('#col-lista input').forEach(c => { c.checked = false; });
+  GRUPOS_COLECOES.filter(g => g.critico).forEach(g =>
+    g.itens.forEach(i => { const el = document.getElementById('col-' + i.id); if (el) el.checked = true; })
+  );
+  atualizarStats();
+});
+document.getElementById('btn-sel-tudo').addEventListener('click', () => {
+  document.querySelectorAll('#col-lista input').forEach(c => { c.checked = true; });
+  atualizarStats();
+});
+document.getElementById('btn-des-tudo').addEventListener('click', () => {
+  document.querySelectorAll('#col-lista input').forEach(c => { c.checked = false; });
+  atualizarStats();
+});
+
+// ── Progress helper ────────────────────────────────────────────
+function setProgress(id, pct, msg) {
+  const wrap = document.getElementById(id + '-progress');
+  wrap.classList.toggle('visivel', pct >= 0);
+  if (pct >= 0) {
+    document.getElementById(id + '-bar').style.width = pct + '%';
+    document.getElementById(id + '-msg').textContent = msg || '';
+  }
+}
+
+// ── EXPORTAR ───────────────────────────────────────────────────
+document.getElementById('btn-exportar').addEventListener('click', async () => {
+  const sel = getSelecionadas();
+  if (!sel.length) { toast('Selecione ao menos uma coleção.', true); return; }
+
+  const btnExp = document.getElementById('btn-exportar');
+  btnExp.disabled = true;
+  btnExp.textContent = '⏳ Exportando…';
+  setProgress('exp', 0, 'Iniciando…');
+
+  try {
+    const backup = await exportarFirestore(sel, (pct, msg) => setProgress('exp', pct, msg));
+    const obs = document.getElementById('exp-obs').value.trim();
+
+    // Download
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const dt   = new Date().toISOString().slice(0, 16).replace('T', '-').replace(':', '');
+    a.href     = url;
+    a.download = `CellCity-dados-${dt}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    const size = (blob.size / 1024 / 1024).toFixed(2) + ' MB';
+    await registrarBackup({
+      tipo: 'dados',
+      nome: a.download,
+      totalDocs: backup.totalDocs,
+      tamanho: size,
+      observacoes: obs,
+    });
+
+    toast(`✅ Backup exportado — ${backup.totalDocs} documentos (${size})`);
+    setProgress('exp', 100, `Concluído! ${backup.totalDocs} docs · ${size}`);
+  } catch (e) {
+    toast('Erro ao exportar: ' + e.message, true);
+    setProgress('exp', -1, '');
+    console.error(e);
+  } finally {
+    btnExp.disabled = false;
+    btnExp.textContent = '📤 Exportar Selecionadas';
+  }
+});
+
+// ── IMPORTAR ───────────────────────────────────────────────────
+let _backupData = null;
+
+const dropZone = document.getElementById('bk-drop-zone');
+const impFile  = document.getElementById('imp-file');
+
+dropZone.addEventListener('click', () => impFile.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processarArquivo(file);
+});
+impFile.addEventListener('change', () => {
+  if (impFile.files[0]) processarArquivo(impFile.files[0]);
+});
+
+function processarArquivo(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.colecoes) throw new Error('Formato inválido — campo "colecoes" não encontrado.');
+      _backupData = data;
+      const cols = Object.keys(data.colecoes);
+      const docs = Object.values(data.colecoes).reduce((s, a) => s + a.length, 0);
+      document.getElementById('dz-file-name').textContent = '✅ ' + file.name;
+      document.getElementById('imp-stat-cols').textContent = cols.length;
+      document.getElementById('imp-stat-docs').textContent = docs;
+      document.getElementById('imp-stat-data').textContent = data.exportadoEm
+        ? new Date(data.exportadoEm).toLocaleDateString('pt-BR')
+        : '—';
+      document.getElementById('imp-preview').style.display = 'block';
+      document.getElementById('btn-restaurar').disabled = false;
+    } catch (err) {
+      toast('Arquivo inválido: ' + err.message, true);
+      _backupData = null;
+      document.getElementById('btn-restaurar').disabled = true;
+    }
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('btn-restaurar').addEventListener('click', async () => {
+  if (!_backupData) return;
+  const ok = await confirmar(
+    'Restaurar Backup?',
+    'Os documentos existentes no Firestore serão SOBRESCRITOS pelos dados do backup. Esta ação não pode ser desfeita. Deseja continuar?'
+  );
+  if (!ok) return;
+
+  const btnRest = document.getElementById('btn-restaurar');
+  btnRest.disabled = true;
+  setProgress('imp', 0, 'Iniciando restauração…');
+
+  try {
+    const total = await importarFirestore(_backupData, null, (pct, msg) => setProgress('imp', pct, msg));
+    await registrarBackup({
+      tipo: 'dados',
+      nome: 'Restauração — ' + (_backupData.exportadoEm || '').slice(0, 10),
+      totalDocs: total,
+      observacoes: 'Restauração de backup importado',
+    });
+    toast(`✅ Restauração concluída — ${total} documentos restaurados`);
+  } catch (e) {
+    toast('Erro na restauração: ' + e.message, true);
+    console.error(e);
+  } finally {
+    btnRest.disabled = false;
+    setProgress('imp', -1, '');
+  }
+});
+
+// ── Preview nome do backup ─────────────────────────────────────
+function atualizarPreviewNome() {
+  const dt = new Date();
+  const s = dt.getFullYear() + '-'
+    + String(dt.getMonth()+1).padStart(2,'0') + '-'
+    + String(dt.getDate()).padStart(2,'0') + '-'
+    + String(dt.getHours()).padStart(2,'0')
+    + String(dt.getMinutes()).padStart(2,'0');
+  document.getElementById('preview-data').textContent = s;
+}
+atualizarPreviewNome();
+setInterval(atualizarPreviewNome, 30000);
+
+// ── Git Info ───────────────────────────────────────────────────
+async function carregarGitInfo() {
+  const loading = document.getElementById('git-loading');
+  const info    = document.getElementById('git-info');
+  const erro    = document.getElementById('git-erro');
+  loading.style.display = 'block';
+  info.style.display = 'none';
+  erro.style.display = 'none';
+  try {
+    const r = await fetch('../../git-info.json?t=' + Date.now());
+    if (!r.ok) throw new Error('not found');
+    const d = await r.json();
+    document.getElementById('git-branch').textContent  = d.branch  || '—';
+    document.getElementById('git-commit').textContent  = d.commit  || '—';
+    document.getElementById('git-author').textContent  = d.autor   || '—';
+    document.getElementById('git-msg').textContent     = d.mensagem|| '—';
+    const dc = d.dataCommit ? new Date(d.dataCommit).toLocaleString('pt-BR') : '—';
+    document.getElementById('git-date').textContent    = dc;
+    const ge = d.geradoEm ? 'Atualizado em ' + new Date(d.geradoEm).toLocaleString('pt-BR') : '';
+    document.getElementById('git-gerado-em').textContent = ge;
+    loading.style.display = 'none';
+    info.style.display = 'block';
+  } catch {
+    loading.style.display = 'none';
+    erro.style.display    = 'block';
+  }
+}
+document.getElementById('btn-refresh-git').addEventListener('click', carregarGitInfo);
+
+// ── Baixar backup.sh ───────────────────────────────────────────
+document.getElementById('btn-baixar-script').addEventListener('click', () => {
+  const conteudo = `#!/bin/bash
+# ============================================================
+#  BACKUP DO SISTEMA — Cell City CRM
+#
+#  Uso: bash ~/Músicas/backup.sh
+#  Uso com versão: bash ~/Músicas/backup.sh "v1.2" "Descrição"
+#
+#  Gera ZIP do código em ~/Músicas/backups/
+#  Registra info do Git em git-info.json (lido pela UI do CRM)
+#  Mantém os últimos MAX_BACKUPS arquivos
+# ============================================================
+
+set -e
+
+PROJ_DIR="/home/cellcity/Músicas/projetos/Cell-City-Site/CRM"
+BACKUP_DIR="/home/cellcity/Músicas/backups"
+GIT_INFO="$PROJ_DIR/git-info.json"
+MAX_BACKUPS=10
+
+VERSION="\${1:-v1.0}"
+OBSERVACAO="\${2:-}"
+DATE=$(date +"%Y-%m-%d")
+TIME=$(date +"%H%M")
+NOME="CellCity-\${VERSION}-\${DATE}-\${TIME}"
+
+mkdir -p "$BACKUP_DIR"
+
+echo ""
+echo "╔══════════════════════════════════════════╗"
+echo "║     BACKUP DO SISTEMA — Cell City CRM    ║"
+echo "╚══════════════════════════════════════════╝"
+echo ""
+
+GIT_BRANCH=$(git -C "$PROJ_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "N/A")
+GIT_COMMIT=$(git -C "$PROJ_DIR" rev-parse --short HEAD 2>/dev/null || echo "N/A")
+GIT_COMMIT_FULL=$(git -C "$PROJ_DIR" rev-parse HEAD 2>/dev/null || echo "N/A")
+GIT_DATE=$(git -C "$PROJ_DIR" log -1 --format="%ci" 2>/dev/null || echo "N/A")
+GIT_MSG=$(git -C "$PROJ_DIR" log -1 --format="%s" 2>/dev/null || echo "N/A")
+GIT_AUTHOR=$(git -C "$PROJ_DIR" log -1 --format="%an" 2>/dev/null || echo "N/A")
+
+echo "🌿 Branch: $GIT_BRANCH  📌 Commit: $GIT_COMMIT"
+echo ""
+
+cat > "$GIT_INFO" <<GITEOF
+{
+  "branch": "$GIT_BRANCH",
+  "commit": "$GIT_COMMIT",
+  "commitFull": "$GIT_COMMIT_FULL",
+  "mensagem": "$GIT_MSG",
+  "autor": "$GIT_AUTHOR",
+  "dataCommit": "$GIT_DATE",
+  "geradoEm": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+  "backupNome": "$NOME"
+}
+GITEOF
+
+PROJ_PAI=$(dirname "$PROJ_DIR")
+PROJ_NOME=$(basename "$PROJ_DIR")
+cd "$PROJ_PAI"
+
+zip -r "$BACKUP_DIR/$NOME.zip" "$PROJ_NOME" \\
+  --exclude "*/.git/*" --exclude "*/node_modules/*" \\
+  --exclude "*/.DS_Store" --exclude "*/Thumbs.db" -q
+
+SIZE=$(du -sh "$BACKUP_DIR/$NOME.zip" | cut -f1)
+echo "✅ ZIP criado: $NOME.zip ($SIZE)"
+
+META_FILE="$BACKUP_DIR/historico.log"
+echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") | $VERSION | $NOME.zip | $SIZE | $GIT_BRANCH | $GIT_COMMIT | $OBSERVACAO" >> "$META_FILE"
+
+TOTAL_ZIPS=$(ls "$BACKUP_DIR"/*.zip 2>/dev/null | wc -l)
+if [ "$TOTAL_ZIPS" -gt "$MAX_BACKUPS" ]; then
+  REMOVER=$(($TOTAL_ZIPS - $MAX_BACKUPS))
+  ls -t "$BACKUP_DIR"/*.zip | tail -n "$REMOVER" | xargs rm -f
+fi
+
+echo ""
+echo "✅ BACKUP CONCLUÍDO: $NOME.zip ($SIZE)"
+echo ""
+`;
+  const blob = new Blob([conteudo], { type: 'text/plain' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'backup.sh'; a.click();
+  URL.revokeObjectURL(url);
+  toast('backup.sh baixado! Coloque em ~/Músicas/ e dê permissão: chmod +x ~/Músicas/backup.sh');
+});
+
+// ── Exportar Configurações ─────────────────────────────────────
+document.getElementById('btn-exp-config').addEventListener('click', async () => {
+  try {
+    const config = {
+      versao: 1,
+      sistema: 'Cell City CRM',
+      exportadoEm: new Date().toISOString(),
+      tipo: 'configuracoes-layout',
+      sidebar: getSbPrefs(),
+      topbar:  getTbPrefs(),
+      home:    getHpPrefs(),
+    };
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'CellCity-config-' + new Date().toISOString().slice(0,10) + '.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Configurações exportadas!');
+  } catch (e) {
+    toast('Erro: ' + e.message, true);
+  }
+});
+
+// ── Gerar cron ─────────────────────────────────────────────────
+document.getElementById('btn-gerar-cron').addEventListener('click', () => {
+  const linhas = [];
+  if (document.getElementById('cron-diario').checked)
+    linhas.push('0 23 * * *   bash ~/Músicas/backup.sh "v-auto" "Backup automático diário"');
+  if (document.getElementById('cron-semanal').checked)
+    linhas.push('0 22 * * 0   bash ~/Músicas/backup.sh "v-semanal" "Backup automático semanal"');
+  if (document.getElementById('cron-mensal').checked)
+    linhas.push('0 21 1 * *   bash ~/Músicas/backup.sh "v-mensal" "Backup automático mensal"');
+
+  const out = document.getElementById('cron-output');
+  if (!linhas.length) { out.style.display = 'none'; toast('Marque ao menos uma opção.', true); return; }
+
+  out.textContent = '# Adicionar ao crontab (crontab -e):\n' + linhas.join('\n');
+  out.style.display = 'block';
+  navigator.clipboard?.writeText(linhas.join('\n')).then(() => toast('Cron copiado!'));
+});
+
+// ── Histórico ──────────────────────────────────────────────────
+async function carregarHist(soLog = false) {
+  const el = document.getElementById(soLog ? 'log-content' : 'hist-content');
+  el.innerHTML = '<div class="bk-empty">Carregando…</div>';
+  try {
+    const hist = await carregarHistorico(50);
+    if (!hist.length) { el.innerHTML = '<div class="bk-empty">Nenhum backup registrado ainda.</div>'; return; }
+
+    const rows = hist.map(h => {
+      const data = h.criadoEm?.toDate ? h.criadoEm.toDate().toLocaleString('pt-BR') : '—';
+      const badge = `<span class="bk-badge ${h.tipo || 'dados'}">${h.tipo || 'dados'}</span>`;
+      const obs   = h.observacoes ? `<div style="font-size:.78rem;color:#555;margin-top:3px">${h.observacoes}</div>` : '';
+      return `<tr>
+        <td>${badge}</td>
+        <td><strong style="color:#ccc">${h.nome || '—'}</strong>${obs}</td>
+        <td>${data}</td>
+        <td>${h.totalDocs ?? '—'}</td>
+        <td>${h.tamanho || '—'}</td>
+        <td style="color:#666">${h.usuario || '—'}</td>
+      </tr>`;
+    }).join('');
+
+    el.innerHTML = `<table class="bk-table">
+      <thead><tr>
+        <th>Tipo</th><th>Nome</th><th>Data</th><th>Docs</th><th>Tamanho</th><th>Usuário</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  } catch (e) {
+    el.innerHTML = '<div class="bk-empty" style="color:#c44">Erro ao carregar histórico.</div>';
+  }
+}
+document.getElementById('btn-refresh-hist').addEventListener('click', () => carregarHist());
+document.getElementById('btn-refresh-log').addEventListener('click', () => carregarHist(true));
+
+// ── Init ───────────────────────────────────────────────────────
+renderColecoes();
+carregarHist();
+
+// ══════════════════════════════════════════════════════════════
+//  SERVIDOR LOCAL — Execução do backup.sh com 1 clique
+// ══════════════════════════════════════════════════════════════
+const SRV = 'http://localhost:9731';
+let _srvOnline = false;
+
+function setSrvStatus(online, msg) {
+  _srvOnline = online;
+  document.getElementById('srv-dot').textContent = online ? '🟢' : '🔴';
+  document.getElementById('srv-msg').textContent = msg;
+  document.getElementById('srv-msg').style.color = online ? '#00c853' : '#666';
+  document.getElementById('srv-online-area').style.opacity = online ? '1' : '.45';
+  document.getElementById('btn-criar-backup').disabled = !online;
+  document.getElementById('btn-abrir-pasta').disabled  = !online;
+}
+
+async function verificarServidor() {
+  try {
+    const r = await fetch(`${SRV}/status`, { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      setSrvStatus(true, 'Servidor local conectado — execução automática disponível');
+      await atualizarUltimoBackup();
+      return;
+    }
+  } catch {}
+  setSrvStatus(false, 'Servidor local não detectado — use o terminal ou inicie: systemctl --user start cc-backup-server');
+}
+
+async function atualizarUltimoBackup() {
+  try {
+    const r = await fetch(`${SRV}/backups`);
+    const d = await r.json();
+    const btn = document.getElementById('btn-baixar-ultimo');
+    if (d.backups?.length) {
+      btn.disabled = false;
+      btn.title = d.backups[0].nome;
+    }
+  } catch {}
+}
+
+// Botão: Criar Backup Agora
+document.getElementById('btn-criar-backup').addEventListener('click', async () => {
+  if (!_srvOnline) return;
+  const versao     = document.getElementById('sis-versao').value.trim() || 'v1.0';
+  const observacao = document.getElementById('sis-obs').value.trim();
+
+  const btnCriar = document.getElementById('btn-criar-backup');
+  const progress = document.getElementById('sis-progress');
+  const result   = document.getElementById('sis-result');
+
+  btnCriar.disabled = true;
+  progress.style.display = 'block';
+  result.style.display   = 'none';
+  document.getElementById('sis-msg').textContent = 'Executando backup.sh… aguarde.';
+
+  try {
+    const r = await fetch(`${SRV}/backup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ versao, observacao }),
+    });
+    const d = await r.json();
+
+    progress.style.display = 'none';
+    result.style.display   = 'block';
+
+    if (d.ok) {
+      result.style.background = '#0a1f0e';
+      result.style.border     = '1px solid #1a4a24';
+      result.style.color      = '#00c853';
+      result.innerHTML = `✅ Backup criado com sucesso<br><strong>${d.nomeZip || ''}</strong>`;
+      toast(`✅ Backup criado: ${d.nomeZip || 'concluído'}`);
+
+      await registrarBackup({
+        tipo: 'sistema',
+        nome: d.nomeZip || `CellCity-${versao}`,
+        tamanho: d.ultimoBackup ? (d.ultimoBackup.tamanho / 1024 / 1024).toFixed(2) + ' MB' : '',
+        observacoes: observacao || 'Backup do código via interface',
+      });
+
+      await atualizarUltimoBackup();
+      carregarGitInfo();
+      carregarHist();
+    } else {
+      result.style.background = '#1f0a0a';
+      result.style.border     = '1px solid #4a1a1a';
+      result.style.color      = '#ff5252';
+      result.innerHTML = `❌ Falha ao criar backup<br><small style="color:#888">${d.erro || 'Erro desconhecido'}</small>`;
+      toast('Erro ao criar backup', true);
+    }
+  } catch (e) {
+    progress.style.display = 'none';
+    toast('Servidor local não respondeu: ' + e.message, true);
+  } finally {
+    btnCriar.disabled = false;
+  }
+});
+
+// Botão: Baixar Último Backup
+document.getElementById('btn-baixar-ultimo').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.href = `${SRV}/backups/ultimo`;
+  a.click();
+});
+
+// Botão: Abrir Pasta
+document.getElementById('btn-abrir-pasta').addEventListener('click', async () => {
+  if (!_srvOnline) return;
+  try {
+    await fetch(`${SRV}/abrir-pasta`, { method: 'POST' });
+    toast('Pasta de backups aberta');
+  } catch { toast('Servidor não respondeu', true); }
+});
+
+// Verifica servidor ao abrir a aba Sistema
+setSrvStatus(false, 'Verificando servidor local…');
+verificarServidor();
+document.querySelectorAll('.bk-tab').forEach(tab => {
+  if (tab.dataset.tab === 'sistema') {
+    tab.addEventListener('click', verificarServidor);
+  }
+});
+</script>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script src="../../shared/breadcrumb.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cell City — Agenda Inteligente</title>
+    <title>Cell City Gestão Empresarial</title>
     <link rel="stylesheet" href="acaodasemana.css">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
@@ -90,10 +90,13 @@
                             <span>⏰ Horário de alerta</span>
                             <input type="time" id="ag-alerta-hora" step="60">
                         </label>
-                        <label class="ag-check">
-                            <input type="checkbox" id="ag-alerta-dash">
-                            <span>Exibir alerta no Dashboard</span>
-                        </label>
+                        <div class="ag-dash-toggle-wrap">
+                            <span class="ag-dash-toggle-label">Dashboard</span>
+                            <button type="button" id="ag-alerta-dash" class="ag-dash-toggle" aria-pressed="false" title="Clique para ativar/desativar alerta no Dashboard">
+                                <span class="ag-dash-toggle-icon">🔴</span>
+                                <span class="ag-dash-toggle-txt">OFF</span>
+                            </button>
+                        </div>
                         <label class="ag-recorr-sel">
                             <span>⟳ Repetir</span>
                             <select id="ag-recorr">
@@ -148,6 +151,7 @@
     <div class="ag-toast" id="ag-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
     <script type="module" src="acaodasemana.js"></script>
     <script type="module" src="../../shared/dock.js"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>

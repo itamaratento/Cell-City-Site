@@ -1,5 +1,5 @@
 import {
-    db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
+    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
 } from "../../scripts/firebase.js";
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
@@ -16,6 +16,7 @@ window.editarAvaliacao = editarAvaliacao;
 window.excluirContato = excluirContato;
 window.editarAgendamentoPendente = editarAgendamentoPendente;
 window.excluirAgendamentoPendente = excluirAgendamentoPendente;
+window.enviarWppPosvenda = enviarWppPosvenda;
 
 // ===== STATE =====
 let pendentes = { 5: [], 15: [], 30: [] };
@@ -32,10 +33,15 @@ const MENSAGENS_PADRAO = {
 // Começa com os padrões; o Firestore só sobrescreve quando tiver mensagem cadastrada
 let mensagensPosvenda = { ...MENSAGENS_PADRAO };
 
+// Templates compartilhados do config/mensagens_whatsapp (pos_venda_5/15/30)
+let mensagensWppShared = {};
+// Rastreia quais OS/prazo tiveram WhatsApp enviado nessa sessão
+const wppEnviados = new Set();
+
 // ===== INIT =====
 async function init() {
     try {
-        await carregarMensagensPosvenda();
+        await Promise.all([carregarMensagensPosvenda(), carregarMensagensWppShared()]);
         window.mensagensPosvenda = mensagensPosvenda; // exposto p/ verificação no console
         await loadData();
     } catch (err) {
@@ -265,11 +271,12 @@ function buildCard(os) {
         </div>
         ${u.label}
         <div class="pv-buttons-row">
+            <button class="pv-wpp-btn" title="Enviar WhatsApp" style="background:#25D366;border:none;color:#000;font-weight:700;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;">💬 WhatsApp</button>
             <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
-            <button class="pv-copy-btn" title="B">💬 Copiar</button>
-            <button class="pv-view-msg-btn" title="Ver">👁 Ver</button>
+            <button class="pv-copy-btn" title="B">📋 Copiar</button>
             <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
         </div>
+        <div class="pv-wpp-indicator" style="font-size:11px;color:#eab308;min-height:14px;margin-top:2px;">${wppEnviados.has(`${os.osId}_${os.prazo}`) ? '🟢 Enviado' : ''}</div>
         <div class="pv-actions-row">
             <button class="pv-edit-btn" title="Editar agendamento">✏️ Editar</button>
             <button class="pv-delete-pendente-btn" title="Excluir agendamento">🗑️ Excluir</button>
@@ -416,6 +423,11 @@ function setupEventDelegation() {
                 || pendentes.futuros?.find(o => o.osId === osId);
         if (!os) return;
 
+        if (e.target.closest('.pv-wpp-btn')) {
+            enviarWppPosvenda(osId, prazo);
+            return;
+        }
+
         if (e.target.closest('.pv-copy-phone-btn')) {
             copiarTelefone(os.phone);
             return;
@@ -492,6 +504,51 @@ function openWhatsApp(phone, name, model, prazo) {
     };
     const msg = msgs[prazo] || msgs[5];
     window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+async function carregarMensagensWppShared() {
+    try {
+        const snap = await getDoc(doc(db, 'config', 'mensagens_whatsapp'));
+        if (!snap.exists()) return;
+        const data = snap.data();
+        // Extrai textos para pos_venda_5/15/30 (aceita string ou { texto: "..." })
+        [5, 15, 30].forEach(prazo => {
+            const key = `pos_venda_${prazo}`;
+            const val = data[key];
+            if (!val) return;
+            const texto = (typeof val === 'object' && val.texto) ? val.texto
+                        : (typeof val === 'string' ? val : '');
+            if (texto.trim()) mensagensWppShared[prazo] = texto;
+        });
+    } catch(e) {
+        console.warn('WPP Pós-venda: usando mensagens locais', e);
+    }
+}
+
+function _getMsgWppPosvenda(prazo, nome, modelo) {
+    // Prioridade: templates WPP compartilhados > mensagensPosvenda > padrão
+    const template = mensagensWppShared[prazo] || mensagensPosvenda[prazo] || mensagensPosvenda[5] || '';
+    return template.replace(/\{\{nome\}\}/g, nome).replace(/\{\{modelo\}\}/g, modelo);
+}
+
+function enviarWppPosvenda(osId, prazo) {
+    const os = pendentes[prazo]?.find(o => o.osId === osId)
+             || pendentes.futuros?.find(o => o.osId === osId);
+    if (!os) { showToast('⚠️ Dados não encontrados'); return; }
+    const phone = (os.phone || '').replace(/\D/g, '');
+    if (!phone || phone.length < 10) { showToast('⚠️ Telefone inválido ou não cadastrado'); return; }
+    const mensagem = _getMsgWppPosvenda(prazo, os.clientName, os.model);
+    const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
+    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensagem)}`, 'whatsapp_crm');
+    // Marca como enviado nessa sessão
+    wppEnviados.add(`${osId}_${prazo}`);
+    // Atualiza indicador visual no card
+    const card = document.querySelector(`.pv-card[data-osid="${osId}"][data-prazo="${prazo}"]`);
+    if (card) {
+        const ind = card.querySelector('.pv-wpp-indicator');
+        if (ind) ind.textContent = '🟢 Enviado';
+    }
+    showToast('✅ WhatsApp aberto! É só enviar ►');
 }
 
 // ===== REGISTRAR RESULTADO =====

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+  data-fav-key="despesas" data-fav-label="Despesas" data-fav-icon="💸" data-fav-url="/CRM/pages/despesas/index.html"
+  data-bc='[{"icon":"💹","label":"Financeiro","url":"/CRM/pages/financeiro/"},{"icon":"💸","label":"Despesas"}]'
+  data-bc-before=".dsp-main-header">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City Gestão Empresarial</title>
+    <link rel="stylesheet" href="despesas.css?v=20260621b">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header" id="mainHeader">
+        <h1>💸 Despesas</h1>
+    </header>
+
+    <main>
+        <div class="dsp-sb-overlay" id="dsp-sb-overlay"></div>
+
+        <div class="dsp-explorer">
+
+            <!-- ===== SIDEBAR ===== -->
+            <aside class="dsp-sidebar" id="dsp-sidebar">
+                <div class="dsp-sb-header">
+                    <span class="dsp-sb-titulo">Despesas</span>
+                </div>
+
+                <a class="dsp-sb-item dsp-sb-parent" href="/CRM/pages/financeiro/" title="Voltar ao Financeiro">
+                    <span class="dsp-sb-icon">💹</span>
+                    <span class="dsp-sb-label">← Financeiro</span>
+                </a>
+                <div class="dsp-sb-sep"></div>
+
+                <div class="dsp-sb-item active" data-sec="home">
+                    <span class="dsp-sb-icon">🏠</span>
+                    <span class="dsp-sb-label">Home</span>
+                </div>
+
+                <div class="dsp-sb-sep"></div>
+
+                <div class="dsp-sb-item" data-sec="todas">
+                    <span class="dsp-sb-icon">📋</span>
+                    <span class="dsp-sb-label">Todas</span>
+                    <span class="dsp-sb-count" id="sb-count-todas">0</span>
+                </div>
+                <div class="dsp-sb-item" data-sec="empresarial">
+                    <span class="dsp-sb-icon">🏢</span>
+                    <span class="dsp-sb-label">Empresariais</span>
+                    <span class="dsp-sb-count" id="sb-count-emp">0</span>
+                </div>
+                <div class="dsp-sb-item" data-sec="pessoal">
+                    <span class="dsp-sb-icon">👤</span>
+                    <span class="dsp-sb-label">Pessoais</span>
+                    <span class="dsp-sb-count" id="sb-count-pes">0</span>
+                </div>
+                <div class="dsp-sb-item" data-sec="recorrentes">
+                    <span class="dsp-sb-icon">🔄</span>
+                    <span class="dsp-sb-label">Recorrentes</span>
+                    <span class="dsp-sb-count" id="sb-count-rec">0</span>
+                </div>
+
+                <div class="dsp-sb-sep"></div>
+
+                <div class="dsp-sb-item" data-sec="resumo">
+                    <span class="dsp-sb-icon">📊</span>
+                    <span class="dsp-sb-label">Resumo</span>
+                </div>
+
+                <div class="dsp-sb-sep"></div>
+
+                <div class="dsp-sb-label-sect">Configurações</div>
+                <div class="dsp-sb-item" data-sec="categorias">
+                    <span class="dsp-sb-icon">🏷️</span>
+                    <span class="dsp-sb-label">Categorias</span>
+                </div>
+                <div class="dsp-sb-item" data-sec="centros">
+                    <span class="dsp-sb-icon">🏗️</span>
+                    <span class="dsp-sb-label">Centros de Custo</span>
+                </div>
+
+                <div class="dsp-sb-sep"></div>
+
+                <div class="dsp-sb-item" onclick="exportarDespesas()">
+                    <span class="dsp-sb-icon">📤</span>
+                    <span class="dsp-sb-label">Exportar</span>
+                </div>
+                <a class="dsp-sb-item" href="/CRM/pages/lixeira/?col=financeiro_despesas" style="text-decoration:none;color:inherit">
+                    <span class="dsp-sb-icon">🗑️</span>
+                    <span class="dsp-sb-label">Lixeira</span>
+                </a>
+            </aside>
+
+            <!-- ===== ÁREA PRINCIPAL ===== -->
+            <div class="dsp-main">
+
+                <div class="dsp-topbar">
+                    <button class="dsp-btn-sb-open" id="dsp-sb-open" title="Abrir menu">📁</button>
+                    <div class="dsp-busca-wrap">
+                        <input type="search" id="dsp-search" class="dsp-search" autocomplete="off"
+                               placeholder="🔍 Buscar despesas, categorias...">
+                    </div>
+                    <button class="dsp-btn-novo-mini" id="dsp-btn-novo">＋ Nova Despesa</button>
+                </div>
+
+                <div class="dsp-main-header">
+                    <span class="dsp-main-titulo" id="dsp-main-titulo">💸 Despesas</span>
+                </div>
+
+                <!-- ===== AÇÕES RÁPIDAS ===== -->
+                <div data-qa="despesas"></div>
+
+                <!-- ===== HOME GRID ===== -->
+                <div class="dsp-home-grid" id="dsp-sec-home">
+                    <div class="dsp-home-block" data-sec="todas">
+                        <div class="dsp-home-icon">📊</div>
+                        <div class="dsp-home-nome">Total do Mês</div>
+                        <div class="dsp-home-count dsp-home-count-zero" id="hc-total-mes">R$ 0,00</div>
+                    </div>
+                    <div class="dsp-home-block" data-sec="empresarial">
+                        <div class="dsp-home-icon">🏢</div>
+                        <div class="dsp-home-nome">Empresarial</div>
+                        <div class="dsp-home-count dsp-home-count-zero" id="hc-emp">R$ 0,00</div>
+                    </div>
+                    <div class="dsp-home-block" data-sec="pessoal">
+                        <div class="dsp-home-icon">👤</div>
+                        <div class="dsp-home-nome">Pessoal</div>
+                        <div class="dsp-home-count dsp-home-count-zero" id="hc-pes">R$ 0,00</div>
+                    </div>
+                    <div class="dsp-home-block" data-sec="recorrentes">
+                        <div class="dsp-home-icon">🔄</div>
+                        <div class="dsp-home-nome">Recorrentes</div>
+                        <div class="dsp-home-count dsp-home-count-zero" id="hc-rec">0</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: LISTA DE DESPESAS ===== -->
+                <div class="dsp-section" id="dsp-sec-lista" style="display:none">
+
+                    <!-- FORMULÁRIO NOVA/EDITAR DESPESA -->
+                    <div class="dsp-form" id="dsp-form" style="display:none">
+                        <div class="dsp-form-titulo" id="dsp-form-titulo">Nova Despesa</div>
+
+                        <div class="dsp-form-grid">
+                            <div class="dsp-form-group dsp-span2">
+                                <label>Descrição *</label>
+                                <input type="text" id="dsp-descricao" placeholder="Ex: Almoço com fornecedor, Gasolina..." maxlength="120">
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Categoria *
+                                    <button type="button" class="dsp-btn-nova-cat" id="dsp-btn-nova-cat" title="Nova categoria">＋ Nova</button>
+                                </label>
+                                <select id="dsp-categoria"></select>
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Valor (R$) *</label>
+                                <input type="number" id="dsp-valor" min="0" step="0.01" placeholder="0,00">
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Data *</label>
+                                <input type="date" id="dsp-data">
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Tipo</label>
+                                <select id="dsp-tipo">
+                                    <option value="empresarial">🏢 Empresarial</option>
+                                    <option value="pessoal">👤 Pessoal</option>
+                                </select>
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Forma de Pagamento</label>
+                                <select id="dsp-pagamento">
+                                    <option value="dinheiro">💵 Dinheiro</option>
+                                    <option value="pix">💸 PIX</option>
+                                    <option value="debito">💳 Débito</option>
+                                    <option value="credito">💳 Crédito</option>
+                                    <option value="conta">🏦 Conta (boleto/transferência)</option>
+                                </select>
+                            </div>
+
+                            <div class="dsp-form-group">
+                                <label>Centro de Custo
+                                    <button type="button" class="dsp-btn-nova-cat" id="dsp-btn-novo-centro" title="Novo centro de custo">＋ Novo</button>
+                                </label>
+                                <select id="dsp-centro"></select>
+                            </div>
+
+                            <div class="dsp-form-group dsp-span2">
+                                <label>Observações</label>
+                                <input type="text" id="dsp-obs" placeholder="Opcional..." maxlength="200">
+                            </div>
+
+                            <div class="dsp-form-group dsp-span2 dsp-form-check-row">
+                                <label class="dsp-check-label">
+                                    <input type="checkbox" id="dsp-recorrente" onchange="toggleFrequencia(this.checked)">
+                                    <span>🔄 Despesa Recorrente</span>
+                                </label>
+                            </div>
+
+                            <div class="dsp-form-group" id="dsp-frequencia-wrap" style="display:none">
+                                <label>Frequência</label>
+                                <select id="dsp-frequencia">
+                                    <option value="mensal">Mensal</option>
+                                    <option value="semanal">Semanal</option>
+                                    <option value="quinzenal">Quinzenal</option>
+                                    <option value="trimestral">Trimestral</option>
+                                    <option value="semestral">Semestral</option>
+                                    <option value="anual">Anual</option>
+                                </select>
+                            </div>
+
+                            <!-- Anexos -->
+                            <div class="dsp-form-group dsp-span2">
+                                <label>📎 Comprovantes</label>
+                                <div class="dsp-anexos-wrap">
+                                    <div id="dsp-anexos-lista" class="dsp-anexos-lista"></div>
+                                    <button type="button" class="dsp-btn-anexo" id="dsp-btn-anexo" onclick="adicionarAnexo()">＋ Adicionar arquivo</button>
+                                    <div class="dsp-anexo-progress" id="dsp-anexo-progress" style="display:none">
+                                        <div class="dsp-anexo-bar" id="dsp-anexo-bar" style="width:0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dsp-form-btns">
+                            <button class="dsp-btn-salvar" id="dsp-btn-salvar">Salvar</button>
+                            <button class="dsp-btn-cancelar" id="dsp-btn-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- FILTROS TIPO -->
+                    <div class="dsp-filtros" id="dsp-filtros">
+                        <button class="dsp-filtro-btn active" data-filtro="todos">Todos</button>
+                        <button class="dsp-filtro-btn" data-filtro="empresarial">🏢 Empresarial</button>
+                        <button class="dsp-filtro-btn" data-filtro="pessoal">👤 Pessoal</button>
+                        <button class="dsp-filtros-nova" onclick="document.getElementById('dsp-btn-novo').click()" title="Nova Despesa">＋ Nova Despesa</button>
+                    </div>
+
+                    <!-- LISTA -->
+                    <div class="dsp-loading" id="dsp-loading"><div class="dsp-spinner"></div><span>Carregando...</span></div>
+                    <div id="dsp-lista"></div>
+                    <div class="dsp-empty" id="dsp-empty" style="display:none">
+                        <div class="dsp-empty-icon">💸</div>
+                        <div class="dsp-empty-title">Nenhuma despesa encontrada</div>
+                        <div class="dsp-empty-sub">Clique em <strong>＋ Nova Despesa</strong> para adicionar.</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: RESUMO ===== -->
+                <div class="dsp-section" id="dsp-sec-resumo" style="display:none">
+                    <div class="dsp-resumo-grid">
+                        <div class="dsp-resumo-card">
+                            <div class="dsp-rc-icon">📊</div>
+                            <div class="dsp-rc-valor" id="res-total-mes">R$ 0,00</div>
+                            <div class="dsp-rc-label">Total este mês</div>
+                            <div class="dsp-rc-count" id="res-qtd-mes">0 despesas</div>
+                        </div>
+                        <div class="dsp-resumo-card dsp-rc-emp">
+                            <div class="dsp-rc-icon">🏢</div>
+                            <div class="dsp-rc-valor" id="res-emp-mes">R$ 0,00</div>
+                            <div class="dsp-rc-label">Empresarial (mês)</div>
+                            <div class="dsp-rc-count" id="res-emp-qtd">0 registros</div>
+                        </div>
+                        <div class="dsp-resumo-card dsp-rc-pes">
+                            <div class="dsp-rc-icon">👤</div>
+                            <div class="dsp-rc-valor" id="res-pes-mes">R$ 0,00</div>
+                            <div class="dsp-rc-label">Pessoal (mês)</div>
+                            <div class="dsp-rc-count" id="res-pes-qtd">0 registros</div>
+                        </div>
+                        <div class="dsp-resumo-card">
+                            <div class="dsp-rc-icon">📈</div>
+                            <div class="dsp-rc-valor" id="res-media">R$ 0,00</div>
+                            <div class="dsp-rc-label">Média mensal</div>
+                            <div class="dsp-rc-count" id="res-meses">nos últimos meses</div>
+                        </div>
+                    </div>
+
+                    <!-- Top categorias -->
+                    <div class="dsp-resumo-sec-titulo">📊 Gastos por Categoria (mês atual)</div>
+                    <div id="dsp-cat-barras"></div>
+
+                    <!-- Por centro de custo -->
+                    <div class="dsp-resumo-sec-titulo">🏗️ Por Centro de Custo (mês atual)</div>
+                    <div id="dsp-centro-barras"></div>
+                </div>
+
+                <!-- ===== SEÇÃO: CATEGORIAS ===== -->
+                <div class="dsp-section" id="dsp-sec-categorias" style="display:none">
+                    <div class="dsp-config-header">
+                        <div class="dsp-config-titulo">🏷️ Categorias de Despesa</div>
+                        <button class="dsp-btn-novo-mini" id="dsp-btn-add-cat">＋ Nova Categoria</button>
+                    </div>
+
+                    <!-- form nova categoria (oculto) -->
+                    <div class="dsp-form dsp-form-small" id="dsp-cat-form" style="display:none">
+                        <div class="dsp-form-titulo" id="dsp-cat-form-titulo">Nova Categoria</div>
+                        <div class="dsp-form-grid">
+                            <div class="dsp-form-group">
+                                <label>Nome *</label>
+                                <input type="text" id="dsp-cat-nome" placeholder="Ex: Higiene, Educação..." maxlength="40">
+                            </div>
+                            <div class="dsp-form-group">
+                                <label>Ícone (emoji)</label>
+                                <input type="text" id="dsp-cat-icone" placeholder="💡" maxlength="4">
+                            </div>
+                        </div>
+                        <div class="dsp-form-btns">
+                            <button class="dsp-btn-salvar" id="dsp-cat-salvar">Salvar</button>
+                            <button class="dsp-btn-cancelar" id="dsp-cat-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="dsp-cat-grid" id="dsp-cat-lista"></div>
+                </div>
+
+                <!-- ===== SEÇÃO: CENTROS DE CUSTO ===== -->
+                <div class="dsp-section" id="dsp-sec-centros" style="display:none">
+                    <div class="dsp-config-header">
+                        <div class="dsp-config-titulo">🏗️ Centros de Custo</div>
+                        <button class="dsp-btn-novo-mini" id="dsp-btn-add-centro">＋ Novo Centro</button>
+                    </div>
+
+                    <!-- form novo centro de custo (oculto) -->
+                    <div class="dsp-form dsp-form-small" id="dsp-centro-form" style="display:none">
+                        <div class="dsp-form-titulo" id="dsp-centro-form-titulo">Novo Centro de Custo</div>
+                        <div class="dsp-form-grid">
+                            <div class="dsp-form-group">
+                                <label>Nome *</label>
+                                <input type="text" id="dsp-centro-nome" placeholder="Ex: Delivery, Marketing Online..." maxlength="50">
+                            </div>
+                            <div class="dsp-form-group">
+                                <label>Ícone (emoji)</label>
+                                <input type="text" id="dsp-centro-icone" placeholder="📦" maxlength="4">
+                            </div>
+                        </div>
+                        <div class="dsp-form-btns">
+                            <button class="dsp-btn-salvar" id="dsp-centro-salvar">Salvar</button>
+                            <button class="dsp-btn-cancelar" id="dsp-centro-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <div class="dsp-cat-grid" id="dsp-centro-lista"></div>
+                </div>
+
+            </div><!-- /dsp-main -->
+        </div><!-- /dsp-explorer -->
+    </main>
+
+    <div class="dsp-toast" id="dsp-toast"></div>
+
+    <!-- Modal inline: Nova Categoria rápida (abre do form de despesa) -->
+    <div class="dsp-modal-overlay" id="dsp-modal-quick" style="display:none">
+        <div class="dsp-modal">
+            <div class="dsp-modal-titulo" id="dsp-modal-quick-titulo">Nova Categoria</div>
+            <div class="dsp-form-grid">
+                <div class="dsp-form-group">
+                    <label>Nome *</label>
+                    <input type="text" id="dsp-quick-nome" placeholder="Nome da categoria" maxlength="40">
+                </div>
+                <div class="dsp-form-group">
+                    <label>Ícone</label>
+                    <input type="text" id="dsp-quick-icone" placeholder="💡" maxlength="4">
+                </div>
+            </div>
+            <div class="dsp-modal-btns">
+                <button class="dsp-btn-salvar" id="dsp-modal-quick-ok">Criar</button>
+                <button class="dsp-btn-cancelar" id="dsp-modal-quick-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal confirmar excluir -->
+    <div class="dsp-modal-overlay" id="dsp-modal-del" style="display:none">
+        <div class="dsp-modal">
+            <div class="dsp-modal-titulo">Confirmar exclusão</div>
+            <div class="dsp-modal-body" id="dsp-modal-del-body">Tem certeza?</div>
+            <div class="dsp-modal-btns">
+                <button class="dsp-btn-salvar dsp-btn-danger" id="dsp-modal-del-ok">Excluir</button>
+                <button class="dsp-btn-cancelar" id="dsp-modal-del-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script src="../../shared/breadcrumb.js"></script>
+    <script src="../../shared/quick-actions.js"></script>
+    <script src="../../shared/sidebar.js"></script>
+    <script type="module" src="despesas.js?v=20260621b"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

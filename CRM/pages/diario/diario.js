@@ -9,7 +9,7 @@
 //    Registros → [Resumo Geral / Estatísticas / Linha do Tempo] (recolhíveis)
 // ============================================
 import {
-    db, collection, getDocs, doc, setDoc, addDoc, deleteDoc, serverTimestamp
+    db, collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc, serverTimestamp, query, where
 } from "../../scripts/firebase.js";
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
 import { excluirEmCascata, detectarAusentes, getApelido, setApelido } from "../../shared/cc-sync.js";
@@ -62,6 +62,11 @@ let timelineAberta = false;
 let eventosCarregados = false;
 let autosaveTimer = null;
 let _carregarGen = 0;       // generation counter p/ evitar race condition
+
+// Estado da sidebar (explorador de arquivos)
+let sidebarCat = '__home__'; // '' | catId | '__home__' | '__fav__' | '__revisoes__'
+let sidebarSubcat = '';      // '' | string da subcategoria
+const sbExpandidas = new Set(); // categorias com subcats abertas
 
 // ── Elementos ─────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
@@ -269,22 +274,33 @@ function atualizarResumo() {
 function aplicarFiltros() {
     let lista = [...registros];
 
-    // Filtro rápido (estatísticas)
-    if (quickFilter === 'alta')     lista = lista.filter(r => r.prioridade === 'alta' && r.status !== 'arquivado');
-    if (quickFilter === 'pendente') lista = lista.filter(r => r.status === 'pendente');
-    if (quickFilter === 'favorito') lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
-    if (quickFilter === 'hoje')     lista = lista.filter(r => ehHoje(r.criadoEm));
-    if (quickFilter === 'revisoes') {
+    // Sidebar especial (Favoritos / Revisões) — têm precedência total
+    if (sidebarCat === '__fav__') {
+        lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
+    } else if (sidebarCat === '__revisoes__') {
         lista = lista.filter(r => { const d = diasAteRevisao(r); return revisaoAtiva(r) && d !== null && d <= 7; });
+    } else {
+        // Filtro rápido das estatísticas
+        if (quickFilter === 'alta')     lista = lista.filter(r => r.prioridade === 'alta' && r.status !== 'arquivado');
+        if (quickFilter === 'pendente') lista = lista.filter(r => r.status === 'pendente');
+        if (quickFilter === 'favorito') lista = lista.filter(r => r.favorito && r.status !== 'arquivado');
+        if (quickFilter === 'hoje')     lista = lista.filter(r => ehHoje(r.criadoEm));
+        if (quickFilter === 'revisoes') {
+            lista = lista.filter(r => { const d = diasAteRevisao(r); return revisaoAtiva(r) && d !== null && d <= 7; });
+        }
+
+        // Sidebar categoria (sobrepõe dropdown filtroCat)
+        const catFilter = sidebarCat || filtroCat.value;
+        if (catFilter) lista = lista.filter(r => r.categoria === catFilter);
+        if (sidebarSubcat) lista = lista.filter(r => r.subcategoria === sidebarSubcat);
     }
 
-    // Filtros de seletor
-    if (filtroCat.value)    lista = lista.filter(r => r.categoria === filtroCat.value);
     if (filtroStatus.value) lista = lista.filter(r => (r.status || 'pendente') === filtroStatus.value);
     if (filtroPrio.value)   lista = lista.filter(r => (r.prioridade || 'media') === filtroPrio.value);
 
-    // Por padrão, esconde arquivados (a menos que filtre explicitamente)
-    if (!filtroStatus.value && quickFilter !== 'hoje') {
+    // Por padrão, esconde arquivados (a menos que filtre explicitamente ou sidebar já filtrou)
+    const sbEspecial = sidebarCat === '__fav__' || sidebarCat === '__revisoes__';
+    if (!filtroStatus.value && quickFilter !== 'hoje' && !sbEspecial) {
         lista = lista.filter(r => r.status !== 'arquivado');
     }
 
@@ -359,9 +375,176 @@ function cardHtml(r) {
     </div>`;
 }
 
+// ── Sidebar: renderiza categorias com contadores ──────────────────────
+function renderSidebar() {
+    // Conta por categoria (excluindo arquivados)
+    const ativos = registros.filter(r => r.status !== 'arquivado');
+    const allCount = ativos.length;
+    const favCount = ativos.filter(r => r.favorito).length;
+    const revCount = contarRevisoes().pendentes;
+
+    const sbAll = $('dia-sb-count-all');
+    const sbFav = $('dia-sb-count-fav');
+    const sbRev = $('dia-sb-count-rev');
+    if (sbAll) sbAll.textContent = allCount;
+    if (sbFav) sbFav.textContent = favCount;
+    if (sbRev) sbRev.textContent = revCount;
+
+    // Marca item especial ativo
+    document.querySelectorAll('.dia-sb-item').forEach(el => {
+        const cat = el.dataset.cat || '';
+        el.classList.toggle('active', cat === sidebarCat && !sidebarSubcat);
+    });
+
+    // Renderiza lista de categorias
+    const catsEl = $('dia-sb-cats');
+    if (!catsEl) return;
+    catsEl.innerHTML = CATEGORIAS.map(c => {
+        const count = ativos.filter(r => r.categoria === c.id).length;
+        const expandida = sbExpandidas.has(c.id);
+        const ativaHead = sidebarCat === c.id && !sidebarSubcat;
+
+        let subcatsHtml = '';
+        if (expandida) {
+            subcatsHtml = c.subs.map(s => {
+                const sCount = ativos.filter(r => r.categoria === c.id && r.subcategoria === s).length;
+                const ativaSubcat = sidebarCat === c.id && sidebarSubcat === s;
+                return `<div class="dia-sb-subitem${ativaSubcat ? ' active' : ''}" data-cat="${c.id}" data-sub="${s}">
+                    <span class="dia-sb-sub-label">${s}</span>
+                    ${sCount ? `<span class="dia-sb-sub-count">${sCount}</span>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        return `<div class="dia-sb-cat-wrap">
+            <div class="dia-sb-cat-head${ativaHead ? ' active' : ''}" data-cat="${c.id}" data-sub="">
+                <span class="dia-sb-cat-toggle${expandida ? ' open' : ''}" data-expand="${c.id}">▶</span>
+                <span class="dia-sb-cat-icon">${c.icon}</span>
+                <span class="dia-sb-cat-nome">${c.nome}</span>
+                ${count ? `<span class="dia-sb-cat-count">${count}</span>` : ''}
+            </div>
+            ${expandida ? `<div class="dia-sb-subcats">${subcatsHtml}</div>` : ''}
+        </div>`;
+    }).join('');
+}
+
+// ── Atualiza o título/breadcrumb da área principal ────────────────────
+function updateMainTitulo() {
+    const el = $('dia-main-cat-titulo');
+    const headerEl = $('dia-main-header');
+    const isHome = sidebarCat === '__home__';
+
+    // Breadcrumb: oculta na tela Home (o grid substitui)
+    if (headerEl) headerEl.style.display = isHome ? 'none' : '';
+
+    if (!el) return;
+    if (isHome) {
+        el.textContent = '🏠 Home';
+    } else if (!sidebarCat) {
+        el.textContent = '📂 Todos os registros';
+    } else if (sidebarCat === '__fav__') {
+        el.textContent = '⭐ Favoritos';
+    } else if (sidebarCat === '__revisoes__') {
+        el.textContent = '🔔 Revisões pendentes';
+    } else if (sidebarCat === '__metas__') {
+        el.textContent = '📋 Lista Geral de Metas';
+    } else {
+        const cat = CAT_MAP[sidebarCat];
+        if (cat) {
+            el.textContent = sidebarSubcat
+                ? `${cat.icon} ${cat.nome}  ›  ${sidebarSubcat}`
+                : `${cat.icon} ${cat.nome}`;
+        }
+    }
+
+    // Seção de favoritos: esconde quando sidebar mostra favs ou Home
+    const favSection = $('dia-bloco-favs');
+    if (favSection) favSection.style.display = (isHome || sidebarCat === '__fav__') ? 'none' : '';
+}
+
+// ── Home: renderiza grid de pastas/categorias ─────────────────────────
+function renderHome() {
+    const homeGrid = $('dia-home-grid');
+    if (!homeGrid) return;
+
+    const ativos = registros.filter(r => r.status !== 'arquivado');
+    const favCount = ativos.filter(r => r.favorito).length;
+    const revCount = contarRevisoes().pendentes;
+
+    const catBlocks = CATEGORIAS.map(c => {
+        const count = ativos.filter(r => r.categoria === c.id).length;
+        return `<div class="dia-home-block" data-home-cat="${c.id}">
+            <span class="dia-home-icon">${c.icon}</span>
+            <span class="dia-home-nome">${c.nome}</span>
+            <span class="dia-home-count${count === 0 ? ' dia-home-count-zero' : ''}">${count}</span>
+        </div>`;
+    }).join('');
+
+    const extraBlocks = [
+        favCount ? `<div class="dia-home-block dia-home-fav-block" data-home-cat="__fav__">
+            <span class="dia-home-icon">⭐</span>
+            <span class="dia-home-nome">Favoritos</span>
+            <span class="dia-home-count">${favCount}</span>
+        </div>` : '',
+        revCount ? `<div class="dia-home-block dia-home-rev-block" data-home-cat="__revisoes__">
+            <span class="dia-home-icon">🔔</span>
+            <span class="dia-home-nome">Revisões</span>
+            <span class="dia-home-count dia-home-count-rev">${revCount}</span>
+        </div>` : '',
+    ].join('');
+
+    homeGrid.innerHTML = catBlocks + extraBlocks;
+
+    homeGrid.onclick = (e) => {
+        const block = e.target.closest('[data-home-cat]');
+        if (!block) return;
+        const cat = block.dataset.homeCat;
+        sidebarCat = cat;
+        sidebarSubcat = '';
+        if (cat && cat !== '__fav__' && cat !== '__revisoes__') {
+            sbExpandidas.add(cat);
+        }
+        quickFilter = null;
+        document.querySelectorAll('.dia-resumo-item').forEach(i => i.classList.remove('ativo'));
+        render();
+        fecharSidebarMobile();
+    };
+}
+
 // ── Render registros + favoritos + resumo ─────────────────────────────
 function render() {
     atualizarResumo();
+    renderSidebar();
+    updateMainTitulo();
+
+    const isHome  = sidebarCat === '__home__';
+    const isMetas = sidebarCat === '__metas__';
+    const homeGrid  = $('dia-home-grid');
+    const filtrosEl = $('dia-filtros');
+    const metasGeralEl = $('dia-metas-geral');
+    const regBloco = listaEl.closest('.dia-bloco');
+
+    if (homeGrid)     homeGrid.style.display     = isHome ? '' : 'none';
+    if (filtrosEl)    filtrosEl.style.display    = (isHome || isMetas) ? 'none' : '';
+    if (metasGeralEl) metasGeralEl.style.display = isMetas ? '' : 'none';
+    if (regBloco)     regBloco.style.display     = isMetas ? 'none' : '';
+
+    const favSection = $('dia-bloco-favs');
+    if (favSection) favSection.style.display = (isHome || isMetas || sidebarCat === '__fav__') ? 'none' : '';
+
+    if (isMetas) {
+        carregarMetasGeral();
+        return;
+    }
+
+    if (isHome) {
+        renderHome();
+        renderFavoritos();
+        listaEl.innerHTML = '';
+        emptyEl.style.display = 'none';
+        return;
+    }
+
     renderFavoritos();
 
     const lista = aplicarFiltros();
@@ -479,6 +662,8 @@ function fecharForm() {
     atualizarSubcategorias();
     colapsarDetalhes();
     setAutosaveStatus('');
+    resetarAbas();
+    if (typeof DiarMetas !== 'undefined') DiarMetas.reset();
 }
 
 $('dia-btn-novo').addEventListener('click', () => { fecharForm(); abrirForm(true); });
@@ -854,6 +1039,57 @@ alertaRevEl.addEventListener('click', () => {
 searchEl.addEventListener('input', () => { render(); renderSearchResults(); });
 searchEl.addEventListener('focus', renderSearchResults);
 
+// ── Sidebar: event handlers ───────────────────────────────────────────
+
+// Cliques nos itens especiais (Todos / Favoritos / Revisões)
+document.getElementById('dia-sidebar').addEventListener('click', (e) => {
+    // Clique direto na seta ▶ (span com data-expand) → apenas expande/recolhe
+    if (e.target.hasAttribute('data-expand')) {
+        const catId = e.target.dataset.expand;
+        if (sbExpandidas.has(catId)) sbExpandidas.delete(catId);
+        else sbExpandidas.add(catId);
+        renderSidebar();
+        return;
+    }
+
+    // Clique em item especial ou cabeçalho de categoria ou subcategoria
+    const item = e.target.closest('[data-cat]');
+    if (!item) return;
+
+    const cat = item.dataset.cat ?? '';
+    const sub = item.dataset.sub ?? '';
+
+    // Clique no cabeçalho de categoria: expande (nunca recolhe via clique direto)
+    const especial = ['__fav__', '__revisoes__', '__metas__', '__home__'];
+    if (cat && !especial.includes(cat) && !sub) {
+        sbExpandidas.add(cat);
+    }
+
+    sidebarCat = cat;
+    sidebarSubcat = sub;
+    quickFilter = null;
+    document.querySelectorAll('.dia-resumo-item').forEach(i => i.classList.remove('ativo'));
+
+    render();
+    fecharSidebarMobile();
+});
+
+// ── Mobile: abrir/fechar sidebar ──────────────────────────────────────
+function abrirSidebarMobile() {
+    $('dia-sidebar').classList.add('open');
+    $('dia-sb-overlay').classList.add('open');
+}
+function fecharSidebarMobile() {
+    $('dia-sidebar').classList.remove('open');
+    $('dia-sb-overlay').classList.remove('open');
+}
+
+const btnSbOpen = $('dia-sb-open');
+if (btnSbOpen) btnSbOpen.addEventListener('click', abrirSidebarMobile);
+
+const sbOverlay = $('dia-sb-overlay');
+if (sbOverlay) sbOverlay.addEventListener('click', fecharSidebarMobile);
+
 // ── Init ──────────────────────────────────────────────────────────────
 popularCategorias();
 initPaineis();
@@ -866,3 +1102,440 @@ initGDrive();
     inp.addEventListener('change', () => setApelido(inp.value));
 })();
 carregar();
+
+
+// ====================================================================
+//  ABAS DO EDITOR (Conteúdo / Metas)
+// ====================================================================
+let abaAtiva = 'conteudo'; // 'conteudo' | 'metas'
+
+document.querySelectorAll('.dia-editor-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const tab = btn.dataset.tab;
+        abaAtiva = tab;
+        document.querySelectorAll('.dia-editor-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+        document.querySelectorAll('.dia-editor-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'dia-tab-' + tab));
+        if (tab === 'metas') DiarMetas.init();
+    });
+});
+
+function resetarAbas() {
+    abaAtiva = 'conteudo';
+    document.querySelectorAll('.dia-editor-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === 'conteudo'));
+    document.querySelectorAll('.dia-editor-tab-panel').forEach(p => p.classList.toggle('active', p.id === 'dia-tab-conteudo'));
+}
+
+// ====================================================================
+//  MÓDULO DE METAS
+// ====================================================================
+const COL_METAS = 'diario_metas';
+
+const PRIO_META = {
+    baixa:   { icon: '🟢', label: 'Baixa' },
+    media:   { icon: '🟡', label: 'Média' },
+    alta:    { icon: '🔴', label: 'Alta' },
+    urgente: { icon: '🚨', label: 'Urgente' },
+};
+const STATUS_META = {
+    pendente:     { icon: '⏳', label: 'Pendente' },
+    em_andamento: { icon: '🔄', label: 'Em andamento' },
+    concluida:    { icon: '✅', label: 'Concluída' },
+    cancelada:    { icon: '❌', label: 'Cancelada' },
+};
+
+let _metas = [];         // metas do registro em edição
+let _metaEditId = null;  // id da meta em edição
+let _metaModo = 'individual';
+let _metasCarregadas = false; // flag para evitar reload desnecessário
+
+const DiarMetas = {
+
+    // ── Inicializa/recarrega metas para o registro atual ──────────
+    async init() {
+        const regId = editandoId;
+        const btnNova = $('dia-btn-nova-meta');
+        const hint = $('dia-metas-hint');
+
+        if (!regId) {
+            // Registro ainda não foi salvo
+            if (btnNova) btnNova.style.display = 'none';
+            if (hint)    hint.style.display = '';
+            $('dia-metas-lista').innerHTML = '';
+            $('dia-metas-empty').style.display = 'none';
+            DiarMetas._atualizarContador(0);
+            return;
+        }
+        if (btnNova) btnNova.style.display = '';
+        if (hint)    hint.style.display = 'none';
+        await DiarMetas.carregar(regId);
+    },
+
+    // ── Redefine estado ao fechar o editor ────────────────────────
+    reset() {
+        _metas = [];
+        _metaEditId = null;
+        _metaModo = 'individual';
+        _metasCarregadas = false;
+        $('dia-form-meta').style.display = 'none';
+        $('dia-metas-lista').innerHTML = '';
+        $('dia-metas-empty').style.display = 'none';
+        DiarMetas._atualizarContador(0);
+        const btnNova = $('dia-btn-nova-meta');
+        if (btnNova) { btnNova.style.display = ''; }
+    },
+
+    // ── Carregar metas do Firestore para este registroId ──────────
+    async carregar(registroId) {
+        try {
+            const q = query(collection(db, COL_METAS), where('registroId', '==', registroId));
+            const snap = await getDocs(q);
+            _metas = [];
+            snap.forEach(d => _metas.push({ id: d.id, ...d.data() }));
+            _metas.sort((a, b) => {
+                const p = { urgente: 0, alta: 1, media: 2, baixa: 3 };
+                return (p[a.prioridade] ?? 2) - (p[b.prioridade] ?? 2);
+            });
+        } catch (e) {
+            console.warn('Metas: erro ao carregar', e);
+            _metas = [];
+        }
+        DiarMetas.render();
+    },
+
+    // ── Renderizar lista de metas ─────────────────────────────────
+    render() {
+        const listaEl = $('dia-metas-lista');
+        const emptyEl = $('dia-metas-empty');
+        DiarMetas._atualizarContador(_metas.length);
+
+        if (!_metas.length) {
+            listaEl.innerHTML = '';
+            emptyEl.style.display = 'flex';
+            return;
+        }
+        emptyEl.style.display = 'none';
+        listaEl.innerHTML = _metas.map(m => DiarMetas._cardHtml(m)).join('');
+    },
+
+    _cardHtml(m) {
+        const prio   = PRIO_META[m.prioridade]   || PRIO_META.media;
+        const status = STATUS_META[m.status]      || STATUS_META.pendente;
+        const concluida = m.status === 'concluida';
+        return `
+        <div class="dia-meta-card ${concluida ? 'meta-concluida' : ''} meta-prio-${m.prioridade || 'media'}" data-meta-id="${m.id}">
+            <div class="dia-meta-card-left">
+                <button class="dia-meta-check ${concluida ? 'checked' : ''}"
+                    onclick="DiarMetas.toggleConcluir('${m.id}', ${concluida})" title="${concluida ? 'Reabrir' : 'Concluir'}">
+                    ${concluida ? '✅' : '☐'}
+                </button>
+            </div>
+            <div class="dia-meta-card-body">
+                <div class="dia-meta-nome">${escapeHtml(m.nome || '')}</div>
+                ${m.obs ? `<div class="dia-meta-obs">${escapeHtml(m.obs)}</div>` : ''}
+                <div class="dia-meta-badges">
+                    <span class="dia-meta-badge prio-${m.prioridade || 'media'}">${prio.icon} ${prio.label}</span>
+                    <span class="dia-meta-badge status-${m.status || 'pendente'}">${status.icon} ${status.label}</span>
+                </div>
+            </div>
+            <div class="dia-meta-card-acoes">
+                <button class="dia-meta-acao-btn" onclick="DiarMetas.editar('${m.id}')" title="Editar">✏️</button>
+                <button class="dia-meta-acao-btn dia-meta-acao-del" onclick="DiarMetas.excluir('${m.id}')" title="Excluir">🗑️</button>
+            </div>
+        </div>`;
+    },
+
+    _atualizarContador(n) {
+        const el = $('dia-metas-tab-count');
+        if (!el) return;
+        if (n > 0) { el.textContent = n; el.style.display = ''; }
+        else        { el.textContent = ''; el.style.display = 'none'; }
+        // também atualiza o contador da sidebar (metas gerais)
+        DiarMetas._atualizarContadorSidebar();
+    },
+
+    async _atualizarContadorSidebar() {
+        try {
+            const snap = await getDocs(collection(db, COL_METAS));
+            const pendentes = snap.docs.filter(d => {
+                const s = d.data().status;
+                return s !== 'concluida' && s !== 'cancelada';
+            }).length;
+            const el = $('dia-sb-count-metas');
+            if (el) el.textContent = pendentes || 0;
+        } catch {}
+    },
+
+    // ── Abrir formulário de nova ou editar meta ───────────────────
+    abrirForm(id) {
+        const formEl    = $('dia-form-meta');
+        const tituloEl  = $('dia-form-meta-titulo');
+        const modoToggle = $('dia-meta-modo-toggle');
+
+        if (id) {
+            _metaEditId = id;
+            const m = _metas.find(x => x.id === id);
+            if (!m) return;
+            tituloEl.textContent = 'Editar Meta';
+            modoToggle.style.display = 'none';
+            DiarMetas.setModo('individual');
+            $('dia-meta-inp-nome').value   = m.nome   || '';
+            $('dia-meta-inp-prio').value   = m.prioridade || 'media';
+            $('dia-meta-inp-status').value = m.status  || 'pendente';
+            $('dia-meta-inp-obs').value    = m.obs     || '';
+        } else {
+            _metaEditId = null;
+            tituloEl.textContent = 'Nova Meta';
+            modoToggle.style.display = '';
+            DiarMetas.setModo(_metaModo);
+            $('dia-meta-inp-nome').value   = '';
+            $('dia-meta-inp-prio').value   = 'media';
+            $('dia-meta-inp-status').value = 'pendente';
+            $('dia-meta-inp-obs').value    = '';
+            $('dia-meta-inp-lote').value   = '';
+        }
+
+        formEl.style.display = 'flex';
+        $('dia-btn-nova-meta').style.display = 'none';
+        (_metaModo === 'lote' && !id)
+            ? $('dia-meta-inp-lote').focus()
+            : $('dia-meta-inp-nome').focus();
+    },
+
+    fecharForm() {
+        $('dia-form-meta').style.display = 'none';
+        $('dia-btn-nova-meta').style.display = '';
+        _metaEditId = null;
+    },
+
+    setModo(modo) {
+        _metaModo = modo;
+        $('dia-meta-modo-individual').classList.toggle('active', modo === 'individual');
+        $('dia-meta-modo-lote').classList.toggle('active', modo === 'lote');
+        $('dia-meta-campos-individual').style.display = modo === 'individual' ? '' : 'none';
+        $('dia-meta-campos-lote').style.display       = modo === 'lote'       ? '' : 'none';
+    },
+
+    // ── Salvar meta (criar / atualizar) ──────────────────────────
+    async salvar() {
+        const regId = editandoId;
+        if (!regId) { toast('⚠ Salve o registro primeiro'); return; }
+
+        // Modo lote
+        if (_metaModo === 'lote' && !_metaEditId) {
+            const linhas = ($('dia-meta-inp-lote').value || '').split('\n').map(l => l.trim()).filter(Boolean);
+            if (!linhas.length) { $('dia-meta-inp-lote').focus(); return; }
+            try {
+                for (let i = 0; i < linhas.length; i++) {
+                    await addDoc(collection(db, COL_METAS), {
+                        registroId: regId,
+                        nome: linhas[i],
+                        prioridade: 'media',
+                        status: 'pendente',
+                        obs: '',
+                        criadoEm: serverTimestamp(),
+                        atualizadoEm: serverTimestamp()
+                    });
+                }
+                toast(`✅ ${linhas.length} meta(s) adicionada(s)!`);
+                DiarMetas.fecharForm();
+                await DiarMetas.carregar(regId);
+            } catch { toast('⚠ Erro ao salvar metas'); }
+            return;
+        }
+
+        // Modo individual
+        const nome = ($('dia-meta-inp-nome').value || '').trim();
+        if (!nome) { $('dia-meta-inp-nome').focus(); return; }
+
+        const dados = {
+            registroId: regId,
+            nome,
+            prioridade: $('dia-meta-inp-prio').value   || 'media',
+            status:     $('dia-meta-inp-status').value || 'pendente',
+            obs:        ($('dia-meta-inp-obs').value   || '').trim(),
+            atualizadoEm: serverTimestamp()
+        };
+
+        try {
+            if (_metaEditId) {
+                await updateDoc(doc(db, COL_METAS, _metaEditId), dados);
+                toast('✏️ Meta atualizada!');
+            } else {
+                dados.criadoEm = serverTimestamp();
+                await addDoc(collection(db, COL_METAS), dados);
+                toast('✅ Meta adicionada!');
+            }
+            DiarMetas.fecharForm();
+            await DiarMetas.carregar(regId);
+        } catch { toast('⚠ Erro ao salvar meta'); }
+    },
+
+    // ── Editar meta ───────────────────────────────────────────────
+    editar(id) {
+        DiarMetas.abrirForm(id);
+    },
+
+    // ── Excluir meta ──────────────────────────────────────────────
+    async excluir(id) {
+        const m = _metas.find(x => x.id === id);
+        const ok = await confirmar('Excluir meta', `Excluir "${m?.nome || 'esta meta'}"?`, 'Excluir');
+        if (!ok) return;
+        try {
+            await deleteDoc(doc(db, COL_METAS, id));
+            toast('🗑️ Meta excluída');
+            const regId = editandoId;
+            if (regId) await DiarMetas.carregar(regId);
+        } catch { toast('⚠ Erro ao excluir'); }
+    },
+
+    // ── Concluir / reabrir meta ───────────────────────────────────
+    async toggleConcluir(id, jaConcluida) {
+        const novoStatus = jaConcluida ? 'pendente' : 'concluida';
+        try {
+            await updateDoc(doc(db, COL_METAS, id), { status: novoStatus, atualizadoEm: serverTimestamp() });
+            toast(jaConcluida ? '↩ Meta reaberta' : '✅ Meta concluída!');
+            const m = _metas.find(x => x.id === id);
+            if (m) m.status = novoStatus;
+            DiarMetas.render();
+            DiarMetas._atualizarContadorSidebar();
+        } catch { toast('⚠ Erro ao atualizar meta'); }
+    },
+};
+
+// Botão "＋ Adicionar Meta"
+$('dia-btn-nova-meta').addEventListener('click', () => {
+    if (!editandoId) { toast('⚠ Salve o registro primeiro'); return; }
+    DiarMetas.abrirForm(null);
+});
+
+// Expõe para os onclick inline do HTML
+window.DiarMetas = DiarMetas;
+
+
+// ====================================================================
+//  LISTA GERAL DE METAS (painel ativado pela sidebar __metas__)
+// ====================================================================
+let _mgTodas = [];
+let _mgCarregadas = false;
+
+async function carregarMetasGeral(forcar = false) {
+    if (_mgCarregadas && !forcar) { renderMetasGeral(); return; }
+    $('dia-mg-loading').style.display = 'flex';
+    try {
+        const snap = await getDocs(collection(db, COL_METAS));
+        _mgTodas = [];
+        snap.forEach(d => _mgTodas.push({ id: d.id, ...d.data() }));
+        _mgCarregadas = true;
+    } catch { _mgTodas = []; }
+    $('dia-mg-loading').style.display = 'none';
+    renderMetasGeral();
+
+    // Atualiza contador sidebar
+    const pendentes = _mgTodas.filter(m => m.status !== 'concluida' && m.status !== 'cancelada').length;
+    const sbEl = $('dia-sb-count-metas');
+    if (sbEl) sbEl.textContent = pendentes;
+}
+
+function renderMetasGeral() {
+    const listaEl = $('dia-mg-lista');
+    const emptyEl = $('dia-mg-empty');
+    const filtroStatus = ($('dia-mg-filtro-status')?.value || '');
+    const filtroPrio   = ($('dia-mg-filtro-prio')?.value   || '');
+
+    let lista = [..._mgTodas];
+    if (filtroStatus) lista = lista.filter(m => (m.status || 'pendente') === filtroStatus);
+    if (filtroPrio)   lista = lista.filter(m => (m.prioridade || 'media') === filtroPrio);
+
+    // Ordenar: urgente > alta > media > baixa, depois concluídas por último
+    const pOrder = { urgente: 0, alta: 1, media: 2, baixa: 3 };
+    const sOrder = { pendente: 0, em_andamento: 1, cancelada: 2, concluida: 3 };
+    lista.sort((a, b) => {
+        const sA = sOrder[a.status || 'pendente'] ?? 0;
+        const sB = sOrder[b.status || 'pendente'] ?? 0;
+        if (sA !== sB) return sA - sB;
+        return (pOrder[a.prioridade] ?? 2) - (pOrder[b.prioridade] ?? 2);
+    });
+
+    if (!lista.length) {
+        listaEl.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+    }
+    emptyEl.style.display = 'none';
+
+    // Agrupa por registroId
+    const grupos = {};
+    lista.forEach(m => {
+        const rid = m.registroId || '__sem_registro__';
+        if (!grupos[rid]) grupos[rid] = [];
+        grupos[rid].push(m);
+    });
+
+    let html = '';
+    Object.entries(grupos).forEach(([rid, metas]) => {
+        const reg = registros.find(r => r.id === rid);
+        const tituloReg = reg ? escapeHtml(reg.titulo || '(sem título)') : '(registro removido)';
+        const iconReg = reg ? (CATEGORIAS.find(c => c.id === reg.categoria)?.icon || '📌') : '📌';
+
+        html += `<div class="dia-mg-grupo">
+            <div class="dia-mg-grupo-titulo">
+                <span>${iconReg}</span>
+                <span>${tituloReg}</span>
+                ${reg ? `<button class="dia-mg-btn-abrir" onclick="DiarMetas._abrirRegistro('${rid}')">Abrir ✏️</button>` : ''}
+            </div>
+            ${metas.map(m => {
+                const prio   = PRIO_META[m.prioridade]   || PRIO_META.media;
+                const status = STATUS_META[m.status]      || STATUS_META.pendente;
+                const concluida = m.status === 'concluida';
+                return `<div class="dia-meta-card dia-mg-card ${concluida ? 'meta-concluida' : ''} meta-prio-${m.prioridade || 'media'}">
+                    <div class="dia-meta-card-left">
+                        <button class="dia-meta-check ${concluida ? 'checked' : ''}"
+                            onclick="DiarMetas._mgToggle('${m.id}', ${concluida})" title="${concluida ? 'Reabrir' : 'Concluir'}">
+                            ${concluida ? '✅' : '☐'}
+                        </button>
+                    </div>
+                    <div class="dia-meta-card-body">
+                        <div class="dia-meta-nome">${escapeHtml(m.nome || '')}</div>
+                        ${m.obs ? `<div class="dia-meta-obs">${escapeHtml(m.obs)}</div>` : ''}
+                        <div class="dia-meta-badges">
+                            <span class="dia-meta-badge prio-${m.prioridade || 'media'}">${prio.icon} ${prio.label}</span>
+                            <span class="dia-meta-badge status-${m.status || 'pendente'}">${status.icon} ${status.label}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    });
+    listaEl.innerHTML = html;
+}
+
+// Filtros da lista geral
+$('dia-mg-filtro-status')?.addEventListener('change', renderMetasGeral);
+$('dia-mg-filtro-prio')?.addEventListener('change', renderMetasGeral);
+
+// Concluir/reabrir meta diretamente da lista geral
+DiarMetas._mgToggle = async (id, jaConcluida) => {
+    const novoStatus = jaConcluida ? 'pendente' : 'concluida';
+    try {
+        await updateDoc(doc(db, COL_METAS, id), { status: novoStatus, atualizadoEm: serverTimestamp() });
+        const m = _mgTodas.find(x => x.id === id);
+        if (m) m.status = novoStatus;
+        renderMetasGeral();
+        DiarMetas._atualizarContadorSidebar();
+        toast(jaConcluida ? '↩ Meta reaberta' : '✅ Meta concluída!');
+    } catch { toast('⚠ Erro ao atualizar'); }
+};
+
+// Abrir registro vinculado diretamente do painel de metas gerais
+DiarMetas._abrirRegistro = (id) => {
+    sidebarCat = '';
+    sidebarSubcat = '';
+    render();
+    abrirEdicao(id);
+    // Ativa aba Metas automaticamente
+    setTimeout(() => {
+        const tabMetas = document.querySelector('.dia-editor-tab[data-tab="metas"]');
+        if (tabMetas) tabMetas.click();
+    }, 200);
+};
+

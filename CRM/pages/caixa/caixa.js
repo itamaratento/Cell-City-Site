@@ -21,7 +21,34 @@ import {
 // 🎯 COLLECTIONS OFICIAIS
 // ═══════════════════════════════════════════
 const COLLECTION_LANCAMENTOS = "caixa_lancamentos";
-const COLLECTION_CATEGORIAS = "categorias_caixa";
+const COLLECTION_CATEGORIAS  = "categorias_caixa";
+
+// 🔗 Integração com Financeiro
+const COL_FIN_DESPESAS  = "financeiro_despesas";
+const COL_FIN_CATS      = "financeiro_cat_despesas";
+const COL_FIN_CENTROS   = "financeiro_centros_custo";
+
+const FIN_CATS_PADRAO = [
+    { id: '_alimentacao', nome: 'Alimentação',     icone: '🍔' },
+    { id: '_combustivel', nome: 'Combustível',     icone: '⛽' },
+    { id: '_limpeza',     nome: 'Limpeza',         icone: '🧹' },
+    { id: '_mercadorias', nome: 'Mercadorias',     icone: '📦' },
+    { id: '_estrutura',   nome: 'Estrutura',       icone: '🏗️' },
+    { id: '_tecnologia',  nome: 'Tecnologia',      icone: '💻' },
+    { id: '_marketing',   nome: 'Marketing',       icone: '📢' },
+    { id: '_transporte',  nome: 'Transporte',      icone: '🚗' },
+    { id: '_adm',         nome: 'Administrativo',  icone: '📋' },
+    { id: '_outros',      nome: 'Outros',          icone: '💡' },
+];
+const FIN_CENTROS_PADRAO = [
+    { id: '_assistencia', nome: 'Assistência Técnica', icone: '🔧' },
+    { id: '_loja',        nome: 'Loja',                icone: '🏪' },
+    { id: '_informatica', nome: 'Informática',         icone: '💻' },
+    { id: '_pessoal',     nome: 'Pessoal',             icone: '👥' },
+];
+
+let finCatsCustom    = [];
+let finCentrosCustom = [];
 
 // ═══════════════════════════════════════════
 // 📊 ARQUITETURA HISTÓRICA V19 (Enterprise)
@@ -110,6 +137,7 @@ async function init() {
     iniciarListenerLancamentos();
     carregarMetaSemanal(); // Carrega meta semanal no topo
     carregarLembretes(); // carrega lembretes no início p/ badge/FAB aparecerem sozinhos
+    carregarFinCatsECentros(); // Integração Financeiro
     setTimeout(() => executarOrquestradorHistorico(), 2500);
 }
 
@@ -676,6 +704,45 @@ function exibirAnaliseCompleta() {
 window.corrigirMigracaoLucroSaidas = corrigirMigracaoLucroSaidas;
 window.exibirAnaliseCompleta = exibirAnaliseCompleta;
 
+// ── Exposição Integração Financeiro ───────────────────────────
+window.toggleFinDetalhes = toggleFinDetalhes;
+
+function toggleFinDetalhes(checked) {
+    const det = document.getElementById('caixa-fin-detalhes');
+    if (det) det.style.display = checked ? 'flex' : 'none';
+}
+
+async function carregarFinCatsECentros() {
+    try {
+        const [snapC, snapCt] = await Promise.all([
+            getDocs(collection(db, COL_FIN_CATS)),
+            getDocs(collection(db, COL_FIN_CENTROS)),
+        ]);
+        finCatsCustom = [];
+        snapC.forEach(d => finCatsCustom.push({ id: d.id, ...d.data() }));
+        finCentrosCustom = [];
+        snapCt.forEach(d => finCentrosCustom.push({ id: d.id, ...d.data() }));
+    } catch {}
+    popularSelectFinCat();
+    popularSelectFinCentro();
+}
+
+function popularSelectFinCat() {
+    const sel = document.getElementById('caixa-fin-cat');
+    if (!sel) return;
+    const todas = [...FIN_CATS_PADRAO, ...finCatsCustom];
+    sel.innerHTML = '<option value="">— Selecione —</option>' +
+        todas.map(c => `<option value="${c.id}">${c.icone} ${c.nome}</option>`).join('');
+}
+
+function popularSelectFinCentro() {
+    const sel = document.getElementById('caixa-fin-centro');
+    if (!sel) return;
+    const todos = [...FIN_CENTROS_PADRAO, ...finCentrosCustom];
+    sel.innerHTML = '<option value="">— Nenhum —</option>' +
+        todos.map(c => `<option value="${c.id}">${c.icone} ${c.nome}</option>`).join('');
+}
+
 // ═══════════════════════════════════════════
 // 🔍 TELA DE AUDITORIA FINANCEIRA (visível)
 // ═══════════════════════════════════════════
@@ -879,6 +946,15 @@ function selecionarTipo(tipo) {
         const cat = categorias.find(c => c.tipoPadrao === 'servico');
         if (cat) { const s = document.getElementById('categoria'); if (s) s.value = cat.nome; }
     }
+    // Mostra bloco de integração com Financeiro apenas para SAÍDAS
+    const finBloco = document.getElementById('caixa-fin-bloco');
+    if (finBloco) {
+        finBloco.style.display = tipo === 'saida' ? 'block' : 'none';
+        if (tipo !== 'saida') {
+            const cb = document.getElementById('caixa-fin-ativar');
+            if (cb) { cb.checked = false; toggleFinDetalhes(false); }
+        }
+    }
 }
 
 function selecionarTipoEdicao(tipo) {
@@ -1008,6 +1084,32 @@ async function salvarLancamento() {
     try {
         const docRef = doc(collection(db, COLLECTION_LANCAMENTOS));
         await setDoc(docRef, { ...dados, id: docRef.id });
+
+        // 🔗 Integração com Financeiro (opcional, apenas para saídas)
+        const finAtivo = document.getElementById('caixa-fin-ativar')?.checked;
+        if (dados.tipo === 'saida' && finAtivo) {
+            const finCat    = document.getElementById('caixa-fin-cat')?.value    || '_outros';
+            const finCentro = document.getElementById('caixa-fin-centro')?.value || '';
+            const finTipo   = document.getElementById('caixa-fin-tipo')?.value   || 'empresarial';
+            const finId = `dsp_caixa_${docRef.id}`;
+            const hoje = new Date().toISOString().slice(0, 10);
+            await setDoc(doc(db, COL_FIN_DESPESAS, finId), {
+                descricao:    dados.descricao,
+                valor:        dados.valor,
+                data:         hoje,
+                categoria:    finCat,
+                centro:       finCentro,
+                tipo:         finTipo,
+                pagamento:    'dinheiro',
+                recorrente:   false,
+                obs:          `Importado do Caixa — ${dados.categoria || ''}`.trim(),
+                criadoEm:     serverTimestamp(),
+                atualizadoEm: serverTimestamp(),
+                origemCaixa:  docRef.id,
+            });
+            console.log(`[FIN] Despesa criada: ${finId}`);
+        }
+
         showToast('✅ Lançamento salvo com sucesso');
         document.getElementById('descricao').value = '';
         document.getElementById('valor').value = '';
@@ -1016,6 +1118,11 @@ async function salvarLancamento() {
         document.getElementById('alertaPrejuizo').style.display = 'none';
         tipoSelecionado = '';
         document.querySelectorAll('#screen-main .tipo-btn').forEach(btn => btn.classList.remove('selected'));
+        // Reset bloco integração
+        const finBloco = document.getElementById('caixa-fin-bloco');
+        if (finBloco) finBloco.style.display = 'none';
+        const finCb = document.getElementById('caixa-fin-ativar');
+        if (finCb) { finCb.checked = false; toggleFinDetalhes(false); }
     } catch (error) {
         console.error('❌ Erro ao salvar:', error);
         showToast('❌ Erro ao salvar lançamento');
@@ -1491,13 +1598,32 @@ window.buscarSugestoesEstoque = async function(termo) {
     if (!termo || termo.length < 2) { dropdown.style.display = 'none'; _ultimoItemSelecionado = null; return; }
     const produtos = await _carregarProdutosEstoque();
     const q = termo.toLowerCase();
-    const matches = produtos.filter(p => (p.nome || p.description || '').toLowerCase().includes(q)).slice(0, 6);
+
+    // Leitor USB: se o código bater exatamente com um codigoBarras, seleciona na hora
+    const barcodeExato = produtos.find(p => p.codigoBarras && p.codigoBarras === termo.trim());
+    if (barcodeExato) {
+        dropdown.style.display = 'none';
+        _selecionarItemEstoque({ dataset: {
+            id:    barcodeExato.id,
+            nome:  barcodeExato.nome || barcodeExato.description || '',
+            venda: String(barcodeExato.venda || ''),
+            custo: String(barcodeExato.custo_medio || barcodeExato.custo || ''),
+        }});
+        return;
+    }
+
+    // Busca normal: por nome OU por código de barras parcial
+    const matches = produtos.filter(p =>
+        (p.nome || p.description || '').toLowerCase().includes(q) ||
+        (p.codigoBarras || '').toLowerCase().includes(q)
+    ).slice(0, 6);
     if (!matches.length) { dropdown.style.display = 'none'; return; }
     dropdown.innerHTML = matches.map(p => {
         const nome = p.nome || p.description || '';
         const preco = p.venda ? ` — R$ ${Number(p.venda).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
         const qty = p.quantidade !== undefined ? ` · ${p.quantidade} em estoque` : '';
-        return `<div class="autocomplete-item" data-id="${p.id}" data-nome="${_esc(nome)}" data-venda="${p.venda || ''}" data-custo="${p.custo || ''}">${nome}${preco}<span style="color:#6b7280;font-size:11px">${qty}</span></div>`;
+        const custoAuto = p.custo_medio || p.custo || '';
+        return `<div class="autocomplete-item" data-id="${p.id}" data-nome="${_esc(nome)}" data-venda="${p.venda || ''}" data-custo="${custoAuto}">${nome}${preco}<span style="color:#6b7280;font-size:11px">${qty}</span></div>`;
     }).join('');
     dropdown.style.display = 'block';
     dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
@@ -1530,6 +1656,29 @@ document.addEventListener('click', e => {
         const d = document.getElementById('desc-dropdown');
         if (d) d.style.display = 'none';
     }
+});
+
+// Fallback para leitor USB: Enter no campo de descrição com código exato
+document.addEventListener('DOMContentLoaded', () => {
+    const descEl = document.getElementById('descricao');
+    if (!descEl) return;
+    descEl.addEventListener('keydown', async e => {
+        if (e.key !== 'Enter') return;
+        const termo = descEl.value.trim();
+        if (!termo) return;
+        const prods = await _carregarProdutosEstoque();
+        const match = prods.find(p => p.codigoBarras && p.codigoBarras === termo);
+        if (match) {
+            e.preventDefault();
+            e.stopPropagation();
+            _selecionarItemEstoque({ dataset: {
+                id: match.id,
+                nome: match.nome || match.description || '',
+                venda: String(match.venda || ''),
+                custo: String(match.custo || '')
+            }});
+        }
+    });
 });
 
 // Hook no salvarLancamento — baixa estoque automaticamente + gerencia produtos

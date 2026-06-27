@@ -1,5 +1,5 @@
 // ============================================
-// CENTRAL DE COMANDOS — Cell City CRM
+// CENTRAL DE COMANDOS — Cell City Gestão Empresarial
 // Versão com blocos modulares de comando
 // ============================================
 import {

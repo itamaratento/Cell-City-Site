@@ -1,93 +1,156 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-fav-key="clientes" data-fav-label="Clientes" data-fav-icon="👥" data-fav-url="/CRM/pages/clientes/index.html">
 <head>
-    <meta charset="UTF-8">
-    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cell City - Configurações de Impressão</title>
-    <link rel="stylesheet" href="clientes.css">
-<link rel="stylesheet" href="../../shared/dock.css">
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>Cell City Gestão Empresarial</title>
+<link rel="stylesheet" href="clientes.css?v=20260619">
+<link rel="stylesheet" href="../../shared/dock.css?v=20260619">
 </head>
 <body>
 
-    <header class="header" id="mainHeader">
-        <h1 id="headerTitle">Impressora</h1>
-    </header>
+<header class="header" id="mainHeader">
+  <h1>👥 Clientes</h1>
+</header>
 
-    <main>
-        <div class="cfg-content">
+<main>
+  <div class="cli-sb-overlay" id="cli-sb-overlay"></div>
 
-            <!-- DADOS DA LOJA -->
-            <div class="cfg-section">
-                <div class="cfg-section-title">🏪 Dados da Loja</div>
-                <div class="cfg-form-group">
-                    <label>Nome</label>
-                    <input type="text" id="loja-nome" placeholder="Ex: Cell City Informática" value="Cell City Informática">
-                </div>
-                <div class="cfg-form-group">
-                    <label>Endereço</label>
-                    <input type="text" id="loja-endereco" placeholder="Rua, número, bairro, cidade" value="Rua 6.455, Setor Central - Goiânia">
-                </div>
-                <div class="cfg-form-group">
-                    <label>WhatsApp</label>
-                    <input type="text" id="loja-whatsapp" placeholder="(62) 99999-9999" value="(62) 98160-5863">
-                </div>
-                <div class="cfg-form-group">
-                    <label>CNPJ</label>
-                    <input type="text" id="loja-cnpj" placeholder="00.000.000/0001-00">
-                </div>
-            </div>
+  <div class="cli-explorer">
 
-            <!-- LOGO -->
-            <div class="cfg-section">
-                <div class="cfg-section-title">🖼️ Logo da Loja</div>
-                <div class="cfg-logo-area">
-                    <div class="cfg-logo-preview" id="logo-preview">
-                        <span class="cfg-logo-placeholder">Sem logo</span>
-                    </div>
-                    <div class="cfg-logo-actions">
-                        <label class="cfg-btn-upload">
-                            📁 Escolher imagem
-                            <input type="file" id="logo-input" accept="image/*" onchange="handleLogoUpload(event)">
-                        </label>
-                        <button class="cfg-btn-remove" id="btn-remove-logo" onclick="removeLogo()" style="display:none">🗑️ Remover</button>
-                    </div>
-                    <p class="cfg-hint">Recomendado: PNG com fundo transparente · Máximo 500kb</p>
-                </div>
-            </div>
+    <!-- ===== SIDEBAR INTERNA ===== -->
+    <aside class="cli-sb" id="cli-sb">
+      <div class="cli-sb-header">Cadastro de Clientes</div>
 
-            <!-- TERMOS DE GARANTIA -->
-            <div class="cfg-section">
-                <div class="cfg-section-title">📋 Termos de Garantia</div>
-                <p class="cfg-hint" style="margin-bottom:16px">Edite os textos que aparecerão na impressão. Na hora de imprimir você escolhe quais incluir.</p>
-                <div id="garantias-list"></div>
-                <button class="cfg-btn-add" onclick="addGarantia()">+ Adicionar nova garantia</button>
-            </div>
+      <div class="cli-sb-item active" data-view="__home__"      onclick="navTo('__home__')">
+        <span class="cli-sb-icon">🏠</span><span class="cli-sb-label">Home</span>
+      </div>
+      <div class="cli-sb-item" data-view="__dashboard__" onclick="navTo('__dashboard__')">
+        <span class="cli-sb-icon">📊</span><span class="cli-sb-label">Dashboard</span>
+      </div>
 
-            <!-- SALVAR -->
-            <button class="cfg-btn-save" id="btn-save" onclick="saveConfig()">💾 Salvar Configurações</button>
+      <div class="cli-sb-sep"></div>
+      <div class="cli-sb-group">CLIENTES</div>
 
+      <div class="cli-sb-item" data-view="__lista__"      onclick="navTo('__lista__')">
+        <span class="cli-sb-icon">👥</span><span class="cli-sb-label">Todos</span>
+        <span class="cli-sb-count" id="cli-count-all">0</span>
+      </div>
+      <div class="cli-sb-item" data-view="__recentes__"   onclick="navTo('__recentes__')">
+        <span class="cli-sb-icon">🔄</span><span class="cli-sb-label">Recentes</span>
+      </div>
+      <div class="cli-sb-item" data-view="__recorrentes__" onclick="navTo('__recorrentes__')">
+        <span class="cli-sb-icon">🔁</span><span class="cli-sb-label">Recorrentes</span>
+        <span class="cli-sb-count" id="cli-count-rec">0</span>
+      </div>
+      <div class="cli-sb-item" data-view="__inativos__"   onclick="navTo('__inativos__')">
+        <span class="cli-sb-icon">💤</span><span class="cli-sb-label">Inativos</span>
+        <span class="cli-sb-count" id="cli-count-inat">0</span>
+      </div>
+
+      <div class="cli-sb-sep"></div>
+      <div class="cli-sb-group">SEGMENTOS</div>
+
+      <div class="cli-sb-item" data-view="__crm__" onclick="navTo('__crm__')">
+        <span class="cli-sb-icon">🎯</span><span class="cli-sb-label">Via CRM</span>
+        <span class="cli-sb-count" id="cli-count-crm">0</span>
+      </div>
+      <div class="cli-sb-item" data-view="__os__"  onclick="navTo('__os__')">
+        <span class="cli-sb-icon">🔧</span><span class="cli-sb-label">Com O.S.</span>
+        <span class="cli-sb-count" id="cli-count-os">0</span>
+      </div>
+
+      <div class="cli-sb-sep"></div>
+      <div class="cli-sb-group">ANÁLISE</div>
+
+      <div class="cli-sb-item" data-view="__ranking__" onclick="navTo('__ranking__')">
+        <span class="cli-sb-icon">🏆</span><span class="cli-sb-label">Ranking</span>
+      </div>
+
+      <div class="cli-sb-sep"></div>
+      <div class="cli-sb-group">🏷️ ETIQUETAS</div>
+      <div id="cli-sb-tags">
+        <div class="cli-sb-no-tags">Carregando...</div>
+      </div>
+    </aside>
+
+    <!-- ===== ÁREA PRINCIPAL ===== -->
+    <div class="cli-main">
+
+      <!-- Topbar -->
+      <div class="cli-topbar">
+        <button class="cli-btn-sb-open" onclick="toggleSb()" title="Menu">☰</button>
+        <div class="cli-busca-wrap">
+          <input type="search" id="cli-search" class="cli-search" autocomplete="off"
+                 oninput="onSearch(this.value)"
+                 placeholder="🔍 Nome, telefone, CPF, tag...">
         </div>
-    </main>
+        <button class="cli-btn-novo" onclick="abrirNovoCliente()">＋ Novo</button>
+      </div>
 
-    <div class="cfg-toast" id="toast"></div>
+      <!-- Breadcrumb -->
+      <div class="cli-main-header">
+        <span class="cli-main-titulo" id="cli-main-titulo">👥 Clientes</span>
+      </div>
 
-    <script src="../../shared/brand-header.js"></script>
-    <script type="module" src="clientes.js"></script>
-    <script>
-    window.addEventListener('load', function() {
-        if (window.innerWidth <= 768) {
-            var bar = document.getElementById('crm-brand-bar');
-            var title = bar && bar.querySelector('.crm-page-title');
-            if (bar && title) {
-                bar.style.flexWrap = 'wrap';
-                bar.style.paddingBottom = '10px';
-                title.style.cssText = 'position:static !important; flex:1 1 100% !important; text-align:center !important; font-size:16px !important; font-weight:800 !important; margin-top:4px !important; left:auto !important; right:auto !important;';
-            }
-        }
-    });
-    </script>
-<script type="module" src="../../shared/dock.js"></script>
-<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+      <!-- Home / Dashboard / Ranking (full-width) -->
+      <div class="cli-home-grid" id="cli-home-grid" style="display:none"></div>
+
+      <!-- Formulário novo/editar cliente -->
+      <div class="cli-form" id="cli-form" style="display:none">
+        <div class="cli-form-titulo" id="cli-form-titulo">🆕 Novo Cliente</div>
+        <form onsubmit="submitCliente(event)">
+          <div class="cli-form-grid">
+            <div class="cli-form-group"><label>Nome *</label><input type="text" id="cf-nome" placeholder="Nome completo" required></div>
+            <div class="cli-form-group"><label>Telefone *</label><input type="tel" id="cf-telefone" placeholder="(62) 99999-9999" required></div>
+            <div class="cli-form-group"><label>WhatsApp</label><input type="tel" id="cf-whatsapp" placeholder="(62) 99999-9999"></div>
+            <div class="cli-form-group"><label>CPF</label><input type="text" id="cf-cpf" placeholder="000.000.000-00"></div>
+            <div class="cli-form-group"><label>RG</label><input type="text" id="cf-rg" placeholder="00.000.000-0"></div>
+            <div class="cli-form-group"><label>E-mail</label><input type="email" id="cf-email" placeholder="email@exemplo.com"></div>
+            <div class="cli-form-group"><label>Data de Nascimento</label><input type="date" id="cf-nascimento"></div>
+            <div class="cli-form-group cli-span2"><label>Endereço</label><input type="text" id="cf-endereco" placeholder="Rua, nº, bairro, cidade, estado"></div>
+            <div class="cli-form-group cli-span2"><label>Observações</label><textarea id="cf-obs" rows="2" placeholder="Informações adicionais..."></textarea></div>
+          </div>
+          <div class="cli-form-btns">
+            <button type="submit" class="cli-btn-salvar">💾 Salvar Cliente</button>
+            <button type="button" class="cli-btn-cancelar" onclick="fecharForm()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Workspace: lista + detalhe -->
+      <div class="cli-workspace" id="cli-workspace" style="display:none">
+        <div class="cli-lista-panel" id="cli-lista-panel">
+          <div class="cli-lista" id="cli-lista"></div>
+          <div class="cli-empty" id="cli-empty" style="display:none">
+            <span class="cli-empty-icon">👥</span>
+            <div class="cli-empty-title">Nenhum cliente encontrado</div>
+            <div class="cli-empty-sub">Clique em <strong>＋ Novo</strong> para cadastrar.</div>
+          </div>
+        </div>
+        <div class="cli-detalhe-panel" id="cli-detalhe-panel">
+          <div class="cli-detalhe-placeholder" id="cli-detalhe-placeholder">
+            <span class="cli-placeholder-icon">👈</span>
+            <span>Selecione um cliente para ver o perfil</span>
+          </div>
+          <div class="cli-detalhe" id="cli-detalhe" style="display:none"></div>
+        </div>
+      </div>
+
+    </div><!-- /cli-main -->
+  </div><!-- /cli-explorer -->
+</main>
+
+<div class="cli-toast" id="cli-toast"></div>
+
+<script src="../../shared/brand-header.js?v=20260619"></script>
+<script src="../../shared/sidebar.js?v=20260619"></script>
+<script type="module" src="../../shared/dock.js?v=20260619"></script>
+<script type="module" src="clientes.js?v=20260619"></script>
+
 </body>
 </html>

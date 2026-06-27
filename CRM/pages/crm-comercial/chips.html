@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="chip-cadastro" data-fav-label="Cadastro de Chip" data-fav-icon="📱" data-fav-url="/CRM/pages/crm-comercial/chips.html">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>Cell City Gestão Empresarial</title>
+<link rel="stylesheet" href="crm.css">
+<link rel="stylesheet" href="chips.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header class="header" id="mainHeader">
+  <h1>📱 Cadastro de Chip</h1>
+</header>
+
+<main>
+  <div class="crm-sb-overlay" id="crm-sb-overlay"></div>
+
+  <div class="crm-explorer">
+
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="crm-sb" id="crm-sb">
+      <div class="crm-sb-header">
+        <span class="crm-sb-titulo">Status de Ativação</span>
+      </div>
+
+      <div class="crm-sb-item" data-view="__home__" onclick="navTo('__home__')">
+        <span class="crm-sb-icon">🏠</span>
+        <span class="crm-sb-label">Home</span>
+      </div>
+      <div class="crm-sb-item" data-view="__todos__" onclick="navTo('__todos__')">
+        <span class="crm-sb-icon">📂</span>
+        <span class="crm-sb-label">Todos</span>
+        <span class="crm-sb-count" id="chip-sb-count-all">0</span>
+      </div>
+
+      <div class="crm-sb-sep"></div>
+
+      <div id="chip-sb-cats"></div>
+
+      <div class="crm-sb-sep"></div>
+
+      <div class="crm-sb-item" onclick="window.location.href='index.html'">
+        <span class="crm-sb-icon">🎯</span>
+        <span class="crm-sb-label">← CRM Comercial</span>
+      </div>
+    </aside>
+
+    <!-- ===== ÁREA PRINCIPAL ===== -->
+    <div class="crm-main">
+
+      <!-- Topbar -->
+      <div class="crm-topbar">
+        <button class="crm-btn-sb-open" onclick="toggleSb()" title="Abrir menu">📁</button>
+        <div class="crm-busca-wrap">
+          <input type="search" id="chip-search" class="crm-search" autocomplete="off"
+                 oninput="onSearchInput(this.value)"
+                 placeholder="🔍 Buscar por nome, CPF ou número...">
+        </div>
+        <button class="crm-btn-chegou" onclick="window.location.href='chips-entrada.html'" title="Novo cadastro de chip">📱 Novo Chip</button>
+      </div>
+
+      <!-- Breadcrumb -->
+      <div class="crm-main-header">
+        <span class="crm-main-titulo" id="chip-main-titulo">📱 Cadastro de Chip</span>
+      </div>
+
+      <!-- Dashboard (visível apenas na home) -->
+      <div id="chip-dashboard" class="chip-dashboard"></div>
+
+      <!-- Home Grid -->
+      <div class="crm-home-grid" id="chip-home-grid"></div>
+
+      <!-- Formulário inline -->
+      <div class="crm-form" id="chip-form">
+        <div class="crm-form-titulo" id="chip-form-titulo">📱 Novo Cadastro de Chip</div>
+        <form onsubmit="submitForm(event)">
+          <div class="chip-stack">
+
+            <div class="chip-field">
+              <label>Operadora *</label>
+              <select id="f-operadora" class="chip-input" required>
+                <option value="">Selecionar...</option>
+                <option value="TIM">TIM</option>
+                <option value="Vivo">Vivo</option>
+                <option value="Claro">Claro</option>
+                <option value="Oi">Oi</option>
+                <option value="Nextel">Nextel</option>
+                <option value="Outra">Outra</option>
+              </select>
+            </div>
+
+            <div class="chip-field">
+              <label>Nome Completo *</label>
+              <input type="text" id="f-nome" class="chip-input"
+                     placeholder="Nome completo" autocomplete="name" required>
+            </div>
+
+            <div class="chip-field">
+              <label>CPF *</label>
+              <input type="text" id="f-cpf" class="chip-input"
+                     placeholder="000.000.000-00" inputmode="numeric"
+                     oninput="formatarCPF(this)" maxlength="14" required>
+              <div id="chip-cpf-status" class="chip-cpf-status"></div>
+            </div>
+
+            <div class="chip-field">
+              <label>Estado de Cadastro do CPF</label>
+              <select id="f-estado-cpf" class="chip-input">
+                <option value="">Selecionar estado...</option>
+                <option value="AC">Acre (AC)</option>
+                <option value="AL">Alagoas (AL)</option>
+                <option value="AP">Amapá (AP)</option>
+                <option value="AM">Amazonas (AM)</option>
+                <option value="BA">Bahia (BA)</option>
+                <option value="CE">Ceará (CE)</option>
+                <option value="DF">Distrito Federal (DF)</option>
+                <option value="ES">Espírito Santo (ES)</option>
+                <option value="GO">Goiás (GO)</option>
+                <option value="MA">Maranhão (MA)</option>
+                <option value="MT">Mato Grosso (MT)</option>
+                <option value="MS">Mato Grosso do Sul (MS)</option>
+                <option value="MG">Minas Gerais (MG)</option>
+                <option value="PA">Pará (PA)</option>
+                <option value="PB">Paraíba (PB)</option>
+                <option value="PR">Paraná (PR)</option>
+                <option value="PE">Pernambuco (PE)</option>
+                <option value="PI">Piauí (PI)</option>
+                <option value="RJ">Rio de Janeiro (RJ)</option>
+                <option value="RN">Rio Grande do Norte (RN)</option>
+                <option value="RS">Rio Grande do Sul (RS)</option>
+                <option value="RO">Rondônia (RO)</option>
+                <option value="RR">Roraima (RR)</option>
+                <option value="SC">Santa Catarina (SC)</option>
+                <option value="SP">São Paulo (SP)</option>
+                <option value="SE">Sergipe (SE)</option>
+                <option value="TO">Tocantins (TO)</option>
+              </select>
+            </div>
+
+            <div class="chip-field">
+              <label>Data de Nascimento *</label>
+              <input type="text" id="f-nascimento" class="chip-input"
+                     placeholder="DD/MM/AAAA" inputmode="numeric"
+                     oninput="formatarData(this)" maxlength="10" required>
+            </div>
+
+            <div class="chip-field">
+              <label>Status</label>
+              <select id="f-status" class="chip-input">
+                <option value="novo_cadastro">🆕 Novo Cadastro</option>
+                <option value="dados_coletados">📋 Dados Coletados</option>
+                <option value="aguardando_ativacao">⏳ Aguardando Ativação</option>
+                <option value="ativado">✅ Ativado</option>
+                <option value="erro_cadastro">❌ Erro no Cadastro</option>
+                <option value="cliente_nao_retornou">🔕 Cliente não retornou</option>
+                <option value="finalizado">🏁 Finalizado</option>
+              </select>
+            </div>
+
+            <div class="chip-field">
+              <label>Telefone de Contato</label>
+              <input type="tel" id="f-telefone" class="chip-input"
+                     placeholder="(62) 99999-9999" inputmode="numeric" autocomplete="tel">
+            </div>
+
+            <div class="chip-field">
+              <label>Número Gerado</label>
+              <input type="tel" id="f-numero-gerado" class="chip-input"
+                     placeholder="(62) 99999-9999" inputmode="numeric">
+            </div>
+
+            <div class="chip-field">
+              <label>Observações</label>
+              <textarea id="f-obs" class="chip-input chip-obs" rows="4"
+                        placeholder="Anotações, erros, pendências..."></textarea>
+            </div>
+
+          </div>
+          <div class="chip-btns">
+            <button type="submit" class="chip-btn-ok">Salvar</button>
+            <button type="button" class="chip-btn-cancel" onclick="fecharForm()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Detalhe do cadastro -->
+      <div class="crm-detalhe" id="chip-detalhe"></div>
+
+      <!-- Lista de cadastros -->
+      <div id="chip-lista-area" style="display:none">
+        <div class="crm-bloco">
+          <div class="crm-lista" id="chip-lista"></div>
+          <div class="crm-empty" id="chip-empty" style="display:none">
+            <span class="crm-empty-icon">📱</span>
+            <div class="crm-empty-title">Nenhum cadastro aqui</div>
+            <div class="crm-empty-sub">Clique em <strong>📱 Novo Chip</strong> para registrar o primeiro cadastro.</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /crm-main -->
+  </div><!-- /crm-explorer -->
+</main>
+
+<!-- Toast -->
+<div class="crm-toast" id="crm-toast"></div>
+
+<!-- Modal de confirmação -->
+<div class="crm-modal-overlay" id="crm-modal" onclick="if(event.target===this)fecharModal()">
+  <div class="crm-modal">
+    <div class="crm-modal-titulo">⚠️ Confirmar exclusão</div>
+    <div class="crm-modal-body" id="crm-modal-body">Este cadastro será excluído permanentemente.</div>
+    <div class="crm-form-btns">
+      <button class="crm-btn-salvar crm-btn-perigo" onclick="confirmarModal()">Excluir</button>
+      <button class="crm-btn-cancelar" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script type="module" src="chips.js"></script>
+
+</body>
+</html>
