@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City Gestão Empresarial — Portal Técnico</title>
+    <link rel="stylesheet" href="portal-tecnico.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <a class="tut-gdrive" href="https://drive.google.com/drive/folders/1s-o7IItbqlVAQa5XwoZDn_BuA-dc8dS4" target="_blank" rel="noopener" title="Abrir Google Drive (repositório técnico)">☁️ Google Drive</a>
+        <span class="header-title">🔓 Portal Técnico</span>
+    </header>
+
+    <div class="pt-screen">
+
+        <!-- BUSCA -->
+        <div class="pt-search" role="search">
+            <span class="pt-search-icon">🔍</span>
+            <input type="text" id="pt-busca" placeholder="Pesquisar no Portal Técnico..." oninput="ptFiltrar()" autocomplete="off" aria-label="Pesquisar no Portal Técnico">
+            <kbd class="pt-search-kbd">/</kbd>
+        </div>
+
+        <!-- ===== SEÇÃO PRINCIPAL ===== -->
+        <div class="pt-section">
+            <div class="pt-section-head">
+                <span class="pt-section-title">🎯 Módulos Principais</span>
+                <span class="pt-section-hint">Uso diário</span>
+            </div>
+            <div class="pt-grid pt-grid-main" id="pt-grid-main">
+                <button class="pt-card" data-nome="tutoriais videos aulas passo a passo guias" onclick="location.href='tutorials/index.html'">
+                    <span class="pt-card-icon">🎬</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Tutoriais</span>
+                        <span class="pt-card-desc">Vídeos e guias passo a passo</span>
+                    </span>
+                    <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+                </button>
+                <button class="pt-card" data-nome="solucoes tecnicas reparo conhecimento base correcoes casos bancada defeitos" onclick="location.href='solucoes-tecnicas/index.html'">
+                    <span class="pt-card-icon">📖</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Soluções Técnicas</span>
+                        <span class="pt-card-desc">Casos da bancada e correções comprovadas</span>
+                    </span>
+                    <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+                </button>
+                <button class="pt-card" data-nome="central do projeto planejamento documentacao ideias evolucao" onclick="location.href='central-projeto/index.html'">
+                    <span class="pt-card-icon">🗺️</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Central do Projeto</span>
+                        <span class="pt-card-desc">Planejamento, documentação, ideias e evolução do Portal Técnico</span>
+                    </span>
+                    <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ===== SEÇÃO SECUNDÁRIA ===== -->
+        <div class="pt-section" id="pt-section-secondary">
+            <div class="pt-section-divider"></div>
+            <div class="pt-section-head">
+                <span class="pt-section-title">📦 Módulos Secundários</span>
+                <button class="pt-toggle-btn" id="pt-toggle-btn" onclick="ptToggleSecundarios()" aria-label="Recolher seção" title="Recolher">
+                    <span class="pt-toggle-icon">▼</span>
+                    <span class="pt-toggle-label">Recolher</span>
+                </button>
+            </div>
+            <div class="pt-grid pt-grid-secondary" id="pt-grid-secondary">
+                <button class="pt-card pt-card-secondary" data-nome="celulares smartphones tablets marcas modelos esquemas" onclick="ptEmBreve('📱 Celulares')">
+                    <span class="pt-card-icon">📱</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Celulares</span>
+                        <span class="pt-card-desc">Modelos, esquemas e procedimentos por marca</span>
+                    </span>
+                    <span class="pt-card-tag">Em breve</span>
+                </button>
+                <button class="pt-card pt-card-secondary" data-nome="frp contas google icloud bypass conta bloqueio" onclick="ptEmBreve('🔒 FRP e Contas')">
+                    <span class="pt-card-icon">🔒</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">FRP e Contas</span>
+                        <span class="pt-card-desc">Remoção de FRP, contas Google/iCloud e bypass</span>
+                    </span>
+                    <span class="pt-card-tag">Em breve</span>
+                </button>
+                <button class="pt-card pt-card-secondary" data-nome="softwares programas ferramentas flash drivers utilitarios samfw odin chimera" onclick="location.href='softwares/index.html'">
+                    <span class="pt-card-icon">🛠️</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Softwares, Drivers e Ferramentas</span>
+                        <span class="pt-card-desc">Biblioteca de programas, drivers e utilitários técnicos</span>
+                    </span>
+                    <span class="pt-card-tag pt-card-tag-on">Disponível</span>
+                </button>
+                <button class="pt-card pt-card-secondary" data-nome="firmwares roms stock oficiais modelo" onclick="ptEmBreve('📁 Firmwares')">
+                    <span class="pt-card-icon">📁</span>
+                    <span class="pt-card-body">
+                        <span class="pt-card-title">Firmwares</span>
+                        <span class="pt-card-desc">ROMs oficiais e stock organizadas por modelo</span>
+                    </span>
+                    <span class="pt-card-tag">Em breve</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="pt-empty" id="pt-empty" style="display:none;">Nenhum item encontrado para a busca.</div>
+    </div>
+
+    <div class="pt-toast" id="pt-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+    <!-- dock.js importa favoritos.js → o botão "📌 Fixar nos Favoritos" aparece automaticamente -->
+    <script type="module" src="../../shared/dock.js"></script>
+    <script>
+        function ptEmBreve(nome) {
+            var t = document.getElementById('pt-toast');
+            if (!t) return;
+            t.textContent = '🚧 ' + nome + ' — Em desenvolvimento';
+            t.classList.add('show');
+            clearTimeout(window.__ptToast);
+            window.__ptToast = setTimeout(function () { t.classList.remove('show'); }, 2500);
+        }
+        function ptFiltrar() {
+            var termo = (document.getElementById('pt-busca').value || '').toLowerCase().trim();
+            var cards = document.querySelectorAll('.pt-card');
+            var sections = document.querySelectorAll('.pt-section');
+            var visiveis = 0;
+            cards.forEach(function (c) {
+                var texto = ((c.dataset.nome || '') + ' ' + (c.textContent || '')).toLowerCase();
+                var ok = !termo || texto.indexOf(termo) >= 0;
+                c.style.display = ok ? '' : 'none';
+                if (ok) visiveis++;
+            });
+            // Mostra/esconde seções vazias
+            sections.forEach(function (s) {
+                var cardsNaSecao = s.querySelectorAll('.pt-card');
+                var temVisivel = false;
+                cardsNaSecao.forEach(function (c) { if (c.style.display !== 'none') temVisivel = true; });
+                s.style.display = temVisivel ? '' : 'none';
+            });
+            var empty = document.getElementById('pt-empty');
+            if (empty) empty.style.display = visiveis ? 'none' : 'block';
+        }
+        // Atalho de teclado "/" foca a busca (consulta rápida, desktop)
+        document.addEventListener('keydown', function (e) {
+            if (e.key === '/' && document.activeElement && document.activeElement.id !== 'pt-busca') {
+                var i = document.getElementById('pt-busca');
+                if (i) { e.preventDefault(); i.focus(); }
+            }
+        });
+        // ===== Toggle Módulos Secundários (recolher/expandir) =====
+        var PT_STORAGE_KEY = 'pt_modulos_secundarios';
+        function ptToggleSecundarios() {
+            var grid = document.getElementById('pt-grid-secondary');
+            var btn = document.getElementById('pt-toggle-btn');
+            if (!grid || !btn) return;
+            var collapsed = grid.classList.toggle('pt-collapsed');
+            var icon = btn.querySelector('.pt-toggle-icon');
+            var label = btn.querySelector('.pt-toggle-label');
+            if (icon) icon.textContent = collapsed ? '▲' : '▼';
+            if (label) label.textContent = collapsed ? 'Expandir' : 'Recolher';
+            if (collapsed) {
+                btn.setAttribute('aria-label', 'Expandir seção');
+                btn.setAttribute('title', 'Expandir');
+            } else {
+                btn.setAttribute('aria-label', 'Recolher seção');
+                btn.setAttribute('title', 'Recolher');
+            }
+            try { localStorage.setItem(PT_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded'); } catch (e) {}
+        }
+        // Restaura estado salvo ao carregar
+        (function ptRestaurarEstado() {
+            var grid = document.getElementById('pt-grid-secondary');
+            var btn = document.getElementById('pt-toggle-btn');
+            if (!grid || !btn) return;
+            var estado;
+            try { estado = localStorage.getItem(PT_STORAGE_KEY); } catch (e) {}
+            if (estado === 'collapsed') {
+                grid.classList.add('pt-collapsed');
+                var icon = btn.querySelector('.pt-toggle-icon');
+                var label = btn.querySelector('.pt-toggle-label');
+                if (icon) icon.textContent = '▲';
+                if (label) label.textContent = 'Expandir';
+                btn.setAttribute('aria-label', 'Expandir seção');
+                btn.setAttribute('title', 'Expandir');
+            }
+        })();
+        window.ptEmBreve = ptEmBreve;
+        window.ptFiltrar = ptFiltrar;
+        window.ptToggleSecundarios = ptToggleSecundarios;
+    </script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

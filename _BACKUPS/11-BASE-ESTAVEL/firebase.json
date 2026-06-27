@@ -1,0 +1,63 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "southamerica-east1",
+    "rules": "CRM/firestore.rules",
+    "indexes": "CRM/firestore.indexes.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/BACKUP*/**",
+      "**/*.backup*",
+      "**/backup-*.js",
+      "backup-dados.js",
+      "backup-server.js",
+      "backup.sh",
+      "apply-cors.js",
+      "cors.json",
+      "package.json",
+      "package-lock.json",
+      "*.md",
+      "*.txt",
+      "*.sh",
+      "*.bak*"
+    ],
+    "headers": [
+      {
+        "source": "/favicon.ico",
+        "headers": [{ "key": "Content-Type", "value": "image/png" }]
+      },
+      {
+        "source": "/**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "img-src 'self' data: https:;"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/portal",
+        "destination": "/CRM/pages/portal-cliente/index.html"
+      },
+      {
+        "source": "/portal/**",
+        "destination": "/CRM/pages/portal-cliente/index.html"
+      },
+      {
+        "source": "/CRM/**",
+        "destination": "/CRM/index.html"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

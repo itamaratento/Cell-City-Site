@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cell City Gestão Empresarial</title>
+<link rel="manifest" href="/CRM/manifest.json">
+<meta name="theme-color" content="#00C853">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cell City">
+<link rel="apple-touch-icon" href="/CRM/assets/logo.png">
+<script>
+  // Registra Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' });
+  }
+  // Redireciona para dashboard ou login
+  if (sessionStorage.getItem('cc_acesso') === 'ok') {
+    window.location.replace('pages/dashboard/index.html');
+  } else {
+    window.location.replace('pages/config/index.html');
+  }
+</script>
+</head>
+<body></body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cell City Gestão Empresarial</title>
+    <link rel="stylesheet" href="comandos.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header">
+        <span class="header-title">⚡ Central de Comandos</span>
+    </header>
+
+    <div class="cmd-screen">
+
+        <!-- PESQUISA + NOVO -->
+        <section class="cmd-topo">
+            <div class="cmd-search">
+                <span class="cmd-search-icon">🔍</span>
+                <input type="text" id="cmd-busca" placeholder="Pesquisar comando..." oninput="filtrarComandos()" autocomplete="off">
+            </div>
+            <button class="cmd-btn-novo" onclick="abrirFormComando()">➕ Novo Comando</button>
+        </section>
+
+        <!-- FILTRO DE CATEGORIAS -->
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+            <section class="cmd-categorias" id="cmd-categorias" style="flex: 1; margin-bottom: 0;"></section>
+            <button class="cmd-btn-nova-cat" onclick="abrirFormCategoria()" title="Adicionar categoria">➕</button>
+        </div>
+
+        <!-- ÚLTIMOS UTILIZADOS -->
+        <section class="cmd-recentes-sec" id="cmd-recentes-sec" style="display:none">
+            <div class="cmd-sec-titulo">🕘 Últimos utilizados</div>
+            <div class="cmd-recentes" id="cmd-recentes"></div>
+        </section>
+
+        <!-- LISTA DE COMANDOS -->
+        <section class="cmd-lista-sec">
+            <div class="cmd-sec-titulo cmd-lista-header">
+                <span>📚 Biblioteca <span class="cmd-contador" id="cmd-contador">0</span></span>
+                <div class="cmd-view-toggle">
+                    <button class="cmd-view-btn" id="cmd-view-lista" onclick="setViewMode('lista')" title="Modo Lista">☰</button>
+                    <button class="cmd-view-btn" id="cmd-view-cards" onclick="setViewMode('cards')" title="Modo Cards">▦</button>
+                </div>
+            </div>
+            <div class="cmd-lista" id="cmd-lista">
+                <div class="cmd-empty">
+                    <div class="cmd-empty-icon">⚡</div>
+                    <p>Nenhum comando ainda. Clique em <strong>➕ Novo Comando</strong> para começar.</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- MODAL CADASTRO / EDIÇÃO (COM BLOCOS) -->
+    <div id="cmd-modal" class="cmd-modal">
+        <div class="cmd-modal-content cmd-modal-content--wide">
+            <div class="cmd-modal-header">
+                <h3 id="cmd-modal-titulo">➕ Novo Comando</h3>
+                <button class="cmd-modal-close" onclick="fecharFormComando()">✕</button>
+            </div>
+            <div class="cmd-modal-body">
+                <input type="hidden" id="cmd-edit-id">
+                <div class="cmd-form-group">
+                    <label>Título *</label>
+                    <input type="text" id="cmd-f-titulo" placeholder="Ex: CRM - Automação" autocomplete="off">
+                </div>
+                <div class="cmd-form-group">
+                    <label>Categoria *</label>
+                    <select id="cmd-f-categoria"></select>
+                </div>
+
+                <!-- BLOCOS DE COMANDO -->
+                <div class="cmd-form-group">
+                    <label>Comandos / Prompts</label>
+                    <div id="cmd-blocos-container"></div>
+                    <button type="button" class="cmd-btn-add-bloco" onclick="adicionarBloco()">➕ Adicionar novo comando</button>
+                </div>
+
+                <label class="cmd-fav-check">
+                    <input type="checkbox" id="cmd-f-favorito">
+                    <span>⭐ Marcar como favorito</span>
+                </label>
+            </div>
+            <div class="cmd-modal-footer">
+                <button class="cmd-btn-cancelar" onclick="fecharFormComando()">Cancelar</button>
+                <button class="cmd-btn-salvar" onclick="salvarComando()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL NOVA CATEGORIA -->
+    <div id="cmd-modal-cat" class="cmd-modal">
+        <div class="cmd-modal-content">
+            <div class="cmd-modal-header">
+                <h3>➕ Nova Categoria</h3>
+                <button class="cmd-modal-close" onclick="fecharFormCategoria()">✕</button>
+            </div>
+            <div class="cmd-modal-body">
+                <div class="cmd-form-group">
+                    <label>Nome da categoria *</label>
+                    <input type="text" id="cmd-f-cat-nome" placeholder="Ex: DevOps" autocomplete="off">
+                </div>
+            </div>
+            <div class="cmd-modal-footer">
+                <button class="cmd-btn-cancelar" onclick="fecharFormCategoria()">Cancelar</button>
+                <button class="cmd-btn-salvar" onclick="salvarCategoria()">💾 Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST -->
+    <div id="cmd-toast" class="cmd-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+    <script type="module" src="comandos.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

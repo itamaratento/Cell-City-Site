@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Portal do Cliente — Cell City</title>
+  <link rel="stylesheet" href="portal.css?v=2.4">
+  <script src="../../../js/header-component.js" defer></script>
+
+  <!-- Firebase SDK (compat) v10.8.0 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
+      "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
+      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
+    }
+  }
+  </script>
+</head>
+<body style="padding-top: 80px;">
+
+  <!-- ===== SAFETY NET: Garante que a tela de login SEMPRE apareça ===== -->
+  <script>
+  (function() {
+    console.log('[Portal-Safety] Script de segurança carregado.');
+
+    // Verifica a cada 1s se o Portal já substituiu o "Carregando..."
+    var _safetyCheck = 0;
+    var _safetyMax = 25; // ~25 segundos (Firebase CDN pode ser lento)
+    function _forceLogin() {
+      _safetyCheck++;
+      var el = document.getElementById('app-content');
+      if (!el) { console.warn('[Portal-Safety] #app-content não encontrado'); return; }
+
+      // Se o Portal já renderizou, não faz nada
+      var btnLogin = document.getElementById('login-phone');
+      if (btnLogin) {
+        console.log('[Portal-Safety] Tela de login já está visível — safety cancelado.');
+        return;
+      }
+
+      // Se portal.js carregou e está funcional, não sobrescreve
+      if (typeof window.Portal !== 'undefined' && typeof window.Portal.doLogin === 'function') {
+        console.log('[Portal-Safety] Portal já carregado — safety cancelado.');
+        return;
+      }
+
+      if (_safetyCheck >= _safetyMax) {
+        console.error('[Portal-Safety] ***** SAFETY NET DISPARADO *****');
+        console.error('[Portal-Safety] portal.js ou Firebase não responderam em ~25s');
+        console.error('[Portal-Safety] Forçando render manual da tela de login');
+
+        // Oculta elementos (footer e whatsapp; o header agora é global via header-component.js)
+        var ftr = document.getElementById('app-footer');
+        var wa  = document.getElementById('whatsapp-float');
+        if (ftr) ftr.style.display = 'none';
+        if (wa)  wa.style.display  = 'none';
+
+        // Renderiza login manualmente (HTML duplicado do portal.js por segurança)
+        el.innerHTML =
+          '<div class="login-container">' +
+          '<div class="login-header">' +
+          '<img src="../../assets/logo.svg" alt="Cell City" class="login-logo-img" onclick="window.location.href=\'/\'">' +
+          '<a href="/" class="login-btn-home">HOME Voltar ao Site</a>' +
+          '</div>' +
+          '<div class="login-card">' +
+          '<h1>Portal do Cliente</h1>' +
+          '<p>Acesse sua área exclusiva utilizando seu telefone</p>' +
+          '<div class="login-form-box">' +
+          '<div class="login-form-group">' +
+          '<input type="tel" id="login-phone" class="login-input" placeholder="Telefone" maxlength="15" inputmode="numeric" autocomplete="tel">' +
+          '<span class="login-error" id="login-error"></span>' +
+          '</div>' +
+          '<button id="btn-login" class="login-btn" onclick="Portal.doLogin()">Entrar</button>' +
+          '<button id="btn-login-loading" class="login-btn" style="display:none" disabled><span class="spinner"></span> Verificando...</button>' +
+          '</div>' +
+          '</div>' +
+          '</div>';
+        console.log('[Portal-Safety] Tela de login renderizada manualmente.');
+      } else {
+        setTimeout(_forceLogin, 1000);
+      }
+    }
+    setTimeout(_forceLogin, 1000);
+  })();
+  </script>
+
+
+  <!-- ===== BOTÃO WHATSAPP FLUTUANTE ===== -->
+  <a id="whatsapp-float"
+     href="https://wa.me/5562981605863?text=Olá!%20Vim%20pelo%20Portal%20do%20Cliente"
+     target="_blank"
+     class="whatsapp-float"
+     title="Falar no WhatsApp"
+     style="display:none;">
+    <span class="whatsapp-float-icon">💬</span>
+    <span class="whatsapp-float-text">Falar no WhatsApp</span>
+  </a>
+
+  <!-- ===== CONTEÚDO PRINCIPAL ===== -->
+  <main id="app-content">
+    <div class="login-container">
+      <div class="login-card">
+        <h1>Portal do Cliente</h1>
+        <p>Acesse sua área exclusiva utilizando seu telefone</p>
+        <div class="login-form-box">
+          <div class="loading-spinner" style="padding:20px 0;"><span class="spinner"></span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ===== NAVEGAÇÃO (menu inferior no celular / menu lateral no desktop) ===== -->
+  <footer id="app-footer" style="display:none;">
+    <nav class="bottom-nav">
+      <span class="sidebar-brand">Portal do Cliente</span>
+      <div class="nav-item active" data-route="painel" onclick="window.Portal?.navegar?.('painel')" title="Início">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Início</span>
+        <span class="nav-label-full">Início</span>
+      </div>
+      <div class="nav-item" data-route="os" onclick="window.Portal?.navegar?.('os')" title="Minhas OS">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">OS</span>
+        <span class="nav-label-full">Minhas OS</span>
+      </div>
+      <div class="nav-item" data-route="garantias" onclick="window.Portal?.navegar?.('garantias')" title="Garantias">
+        <span class="nav-icon">🛡️</span>
+        <span class="nav-label">Garantia</span>
+        <span class="nav-label-full">Garantias</span>
+      </div>
+      <div class="nav-item" data-route="agendar" onclick="window.Portal?.navegar?.('agendar')" title="Agendar Atendimento">
+        <span class="nav-icon">📅</span>
+        <span class="nav-label">Agendar</span>
+        <span class="nav-label-full">Agendamentos</span>
+      </div>
+      <div class="nav-item" data-route="avaliar" onclick="window.Portal?.navegar?.('avaliar')" title="Avaliar">
+        <span class="nav-icon">⭐</span>
+        <span class="nav-label">Avaliar</span>
+        <span class="nav-label-full">Avaliações</span>
+      </div>
+      <div class="nav-item" data-route="mensagens" onclick="window.Portal?.navegar?.('mensagens')" title="Mensagens">
+        <span class="nav-icon">💬</span>
+        <span class="nav-label">Msg</span>
+        <span class="nav-label-full">Mensagens</span>
+      </div>
+      <div class="nav-item nav-contato" data-route="contato" onclick="window.Portal?.navegar?.('contato')" title="Contato">
+        <span class="nav-icon">📞</span>
+        <span class="nav-label">Contato</span>
+        <span class="nav-label-full">Contato</span>
+      </div>
+      <div class="nav-item nav-sair" onclick="window.Portal?.logout?.()" title="Sair">
+        <span class="nav-icon">🚪</span>
+        <span class="nav-label">Sair</span>
+        <span class="nav-label-full">Sair</span>
+      </div>
+    </nav>
+  </footer>
+
+  <script type="module">
+    // ===== FIREBASE INIT =====
+    import { initializeApp } from 'firebase/app';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+    import {
+      getFirestore,
+      collection, query, where, getDocs, getDoc, onSnapshot,
+      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion, limit
+    } from 'firebase/firestore';
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+      authDomain: "cellcity-crm.firebaseapp.com",
+      projectId: "cellcity-crm",
+      storageBucket: "cellcity-crm.firebasestorage.app",
+      messagingSenderId: "645609867368",
+      appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Expõe globais para portal.js (não-module)
+    window.db = db;
+    window.FirebaseModules = {
+      collection, query, where, getDocs, getDoc, onSnapshot,
+      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion, limit
+    };
+
+    // Auth anônima
+    window.authReady = false;
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        try {
+          await signInAnonymously(auth);
+        } catch (err) {
+          console.error('Erro auth anônima:', err);
+          // MESMO COM ERRO, dispara firebase-ready para não travar o Portal
+          window.authReady = true;
+          window.dispatchEvent(new Event('firebase-ready'));
+        }
+      } else {
+        window.authReady = true;
+        window.dispatchEvent(new Event('firebase-ready'));
+      }
+    });
+  </script>
+
+  <!-- ===== MODAL OVERLAY (Orçamento / Recusa) ===== -->
+  <div id="modal-overlay" class="orc-modal-overlay" style="display:none;">
+    <div class="orc-modal">
+      <div class="orc-modal-header">
+        <span id="orc-modal-title">💰 Orçamento</span>
+        <button type="button" class="orc-modal-close" onclick="window.Portal?._fecharModal?.()">&times;</button>
+      </div>
+      <div id="orc-modal-body" class="orc-modal-body">
+        <!-- preenchido dinamicamente por portal.js -->
+      </div>
+    </div>
+  </div>
+
+  <script src="portal.js?v=2.5"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City Gestão Empresarial</title>
+    <link rel="stylesheet" href="importar.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+
+    <header class="header" id="mainHeader">
+        <h1 id="headerTitle">Importar Backup</h1>
+    </header>
+
+    <main>
+        <div class="imp-content">
+
+            <!-- UPLOAD -->
+            <div class="imp-section">
+                <div class="imp-section-title">📁 Arquivo de Backup</div>
+                <p class="imp-hint">Selecione o arquivo JSON exportado do Beepstart.</p>
+                <label class="imp-upload-btn">
+                    📂 Escolher arquivo JSON
+                    <input type="file" id="file-input" accept=".json,.db,.txt" onchange="handleFile(event)">
+                </label>
+                <div class="imp-filename" id="imp-filename" style="display:none"></div>
+            </div>
+
+            <!-- PREVIEW -->
+            <div class="imp-section" id="imp-preview" style="display:none">
+                <div class="imp-section-title">📊 Dados encontrados</div>
+                <div class="imp-preview-grid">
+                    <div class="imp-preview-item">
+                        <span class="imp-preview-num" id="prev-clientes">0</span>
+                        <span class="imp-preview-label">Clientes</span>
+                    </div>
+                    <div class="imp-preview-item">
+                        <span class="imp-preview-num" id="prev-produtos">0</span>
+                        <span class="imp-preview-label">Produtos</span>
+                    </div>
+                    <div class="imp-preview-item">
+                        <span class="imp-preview-num" id="prev-vendas">0</span>
+                        <span class="imp-preview-label">Vendas</span>
+                    </div>
+                    <div class="imp-preview-item">
+                        <span class="imp-preview-num" id="prev-categorias">0</span>
+                        <span class="imp-preview-label">Categorias</span>
+                    </div>
+                </div>
+                <div class="imp-filter-info" id="imp-filter-info"></div>
+            </div>
+
+            <!-- BOTÃO IMPORTAR -->
+            <button class="imp-btn-start" id="imp-btn-start" onclick="iniciarImportacao()" style="display:none">
+                ▶ Iniciar Importação
+            </button>
+
+            <!-- PROGRESSO -->
+            <div class="imp-progress-wrap" id="imp-progress-wrap" style="display:none">
+                <div class="imp-progress-label" id="imp-progress-label">Iniciando...</div>
+                <div class="imp-progress-track">
+                    <div class="imp-progress-bar" id="imp-progress-bar"></div>
+                </div>
+                <div class="imp-progress-pct" id="imp-progress-pct">0%</div>
+            </div>
+
+            <!-- RESUMO FINAL -->
+            <div class="imp-summary" id="imp-summary" style="display:none">
+                <div class="imp-summary-title">✅ Importação concluída!</div>
+                <div id="imp-summary-body"></div>
+            </div>
+
+            <!-- ERROS -->
+            <div class="imp-errors" id="imp-errors" style="display:none">
+                <div class="imp-errors-title">⚠️ Avisos</div>
+                <div id="imp-errors-body"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+    <script type="module" src="importar.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cell City Gestão Empresarial</title>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<link rel="stylesheet" href="../../shared/brand-header.css">
+<style>
+:root { --bg-base:#0a0b0d; --bg-surface:#121418; --bg-elevated:#1a1d23; --cell-green:#00c853; --cell-gold:#ffc107; --accent-red:#ef5350; --border:#1e2028; --text-primary:#f1f3f5; --text-secondary:#9ca3af; --text-muted:#6b7280; }
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg-base); color:var(--text-primary); font-family:'Inter',sans-serif; font-size:14px; }
+.int-layout { max-width:860px; margin:0 auto; padding:80px 20px 40px; }
+.int-titulo { font-size:22px; font-weight:800; margin-bottom:4px; }
+.int-sub    { font-size:13px; color:var(--text-muted); margin-bottom:24px; }
+.int-btn    { padding:10px 24px; background:var(--cell-green); color:#000; font-weight:700; font-size:14px; border:none; border-radius:8px; cursor:pointer; margin-bottom:24px; transition:opacity 0.2s; }
+.int-btn:hover { opacity:0.85; }
+.int-btn:disabled { opacity:0.4; cursor:not-allowed; }
+.int-loading { display:flex; align-items:center; gap:10px; color:var(--text-muted); padding:20px 0; }
+.int-spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--cell-green); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.int-resumo { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:24px; }
+.int-res-card { background:var(--bg-surface); border:1px solid var(--border); border-radius:10px; padding:14px; text-align:center; }
+.int-res-num  { font-size:26px; font-weight:800; margin-bottom:4px; }
+.int-res-lbl  { font-size:11px; color:var(--text-muted); text-transform:uppercase; }
+.int-ok    { color:var(--cell-green); }
+.int-warn  { color:var(--cell-gold); }
+.int-err   { color:var(--accent-red); }
+.int-grupo { margin-bottom:20px; }
+.int-grupo-titulo { font-size:13px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px; padding-left:2px; }
+.int-item  { background:var(--bg-surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:8px; display:flex; align-items:flex-start; gap:10px; }
+.int-item-icone { font-size:18px; flex-shrink:0; }
+.int-item-body  { flex:1; }
+.int-item-titulo { font-size:13px; font-weight:600; color:var(--text-primary); margin-bottom:3px; }
+.int-item-detalhe { font-size:12px; color:var(--text-muted); line-height:1.5; }
+.int-item-detalhe code { background:var(--bg-elevated); padding:1px 6px; border-radius:4px; font-family:monospace; font-size:11px; }
+.int-item-sev-alta  { border-left:3px solid var(--accent-red); }
+.int-item-sev-media { border-left:3px solid var(--cell-gold); }
+.int-item-sev-baixa { border-left:3px solid #29b6f6; }
+.int-ok-msg { text-align:center; padding:32px; color:var(--cell-green); font-size:15px; font-weight:600; }
+@media (max-width:600px) { .int-resumo { grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body data-fav-key="integridade" data-fav-icon="🛡️">
+<div class="int-layout">
+    <div class="int-titulo">🛡️ Verificação de Integridade</div>
+    <div class="int-sub">Detecta inconsistências nos dados do CRM — vendas sem estoque, despesas sem categoria, contas sem lançamento e outros problemas.</div>
+
+    <button class="int-btn" id="int-btn-verificar" onclick="verificar()">🔍 Executar Verificação</button>
+
+    <div class="int-loading" id="int-loading" style="display:none">
+        <div class="int-spinner"></div><span id="int-loading-txt">Lendo coleções...</span>
+    </div>
+
+    <div id="int-resumo" style="display:none">
+        <div class="int-resumo">
+            <div class="int-res-card"><div class="int-res-num int-err"  id="cnt-alta">0</div><div class="int-res-lbl">Críticos</div></div>
+            <div class="int-res-card"><div class="int-res-num int-warn" id="cnt-media">0</div><div class="int-res-lbl">Avisos</div></div>
+            <div class="int-res-card"><div class="int-res-num int-ok"   id="cnt-info">0</div><div class="int-res-lbl">Informativo</div></div>
+            <div class="int-res-card"><div class="int-res-num" id="cnt-total" style="color:var(--text-secondary)">0</div><div class="int-res-lbl">Verificado</div></div>
+        </div>
+    </div>
+
+    <div id="int-resultado"></div>
+</div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module">
+import { db, collection, getDocs } from '../../scripts/firebase.js';
+
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function setTxt(id, v) { const el = document.getElementById(id); if(el) el.textContent = v; }
+
+window.verificar = async function() {
+    const btn     = document.getElementById('int-btn-verificar');
+    const loadEl  = document.getElementById('int-loading');
+    const loadTxt = document.getElementById('int-loading-txt');
+    const resEl   = document.getElementById('int-resumo');
+    const outEl   = document.getElementById('int-resultado');
+
+    btn.disabled       = true;
+    loadEl.style.display = 'flex';
+    resEl.style.display  = 'none';
+    outEl.innerHTML      = '';
+
+    const problemas = [];
+
+    const add = (sev, grupo, titulo, detalhe) => problemas.push({ sev, grupo, titulo, detalhe });
+
+    try {
+        // 1. Carregar coleções
+        loadTxt.textContent = 'Lendo Caixa...';
+        const caixaSnap = await getDocs(collection(db, 'caixa_lancamentos'));
+        const caixa = []; caixaSnap.forEach(d => caixa.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Lendo Despesas...';
+        const despSnap = await getDocs(collection(db, 'financeiro_despesas'));
+        const despesas = []; despSnap.forEach(d => despesas.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Lendo Compras...';
+        const compSnap = await getDocs(collection(db, 'compras_financeiras'));
+        const compras = []; compSnap.forEach(d => compras.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Lendo Contas a Pagar...';
+        const pagarSnap = await getDocs(collection(db, 'financeiro_pagar'));
+        const pagar = []; pagarSnap.forEach(d => pagar.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Lendo Estoque...';
+        const estSnap = await getDocs(collection(db, 'estoque_produtos'));
+        const estoque = []; estSnap.forEach(d => estoque.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Lendo OS...';
+        const osSnap = await getDocs(collection(db, 'os'));
+        const os = []; osSnap.forEach(d => os.push({ id:d.id, ...d.data() }));
+
+        loadTxt.textContent = 'Analisando...';
+
+        const totalDocs = caixa.length + despesas.length + compras.length + pagar.length + estoque.length + os.length;
+
+        // ── VERIFICAÇÕES ────────────────────────────────────────
+        // A. Vendas (caixa entradas) cujo produto tem estoque = 0
+        const estMap = {};
+        estoque.forEach(p => { estMap[(p.nome||'').toUpperCase()] = p; });
+
+        let vendasSemEstoque = 0;
+        caixa.filter(l => l.tipo === 'entrada').forEach(l => {
+            const nome = (l.descricao||'').trim().toUpperCase();
+            if (!nome) return;
+            const prod = estMap[nome];
+            if (prod && Number(prod.quantidade || 0) <= 0) vendasSemEstoque++;
+        });
+        if (vendasSemEstoque > 0) add('alta', 'Estoque', `${vendasSemEstoque} produto(s) com estoque zerado têm vendas recentes`, 'Produto vendido mas quantidade em estoque é 0 ou negativa. Verifique se o estoque foi atualizado corretamente após as compras.');
+
+        // B. Produtos com estoque abaixo do mínimo
+        const baixoMinimo = estoque.filter(p => {
+            const qty = Number(p.quantidade||0);
+            const min = Number(p.quantidadeMinima||1);
+            return qty > 0 && qty <= min;
+        });
+        if (baixoMinimo.length > 0) add('media', 'Estoque', `${baixoMinimo.length} produto(s) com estoque abaixo do mínimo`, `Produtos: ${baixoMinimo.slice(0,5).map(p => escHtml(p.nome)).join(', ')}${baixoMinimo.length > 5 ? '…' : ''}`);
+
+        // C. Despesas sem categoria
+        const despSemCat = despesas.filter(d => !d.categoria);
+        if (despSemCat.length > 0) add('media', 'Despesas', `${despSemCat.length} despesa(s) sem categoria definida`, `IDs: ${despSemCat.slice(0,3).map(d => `<code>${escHtml(d.id.slice(0,10))}</code>`).join(', ')}…`);
+
+        // D. Despesas sem data
+        const despSemData = despesas.filter(d => !d.data);
+        if (despSemData.length > 0) add('alta', 'Despesas', `${despSemData.length} despesa(s) sem data`, 'Despesas sem data não entram nos relatórios mensais e podem distorcer o Resultado Financeiro.');
+
+        // E. Compras sem fornecedor vinculado
+        const compSemForn = compras.filter(c => !c.fornecedorNome && !c.fornecedorId);
+        if (compSemForn.length > 0) add('media', 'Compras', `${compSemForn.length} compra(s) sem fornecedor vinculado`, 'Compras sem fornecedor dificultam análise de fornecedores e rastreabilidade de pedidos.');
+
+        // F. Compras sem itens
+        let compSemItens = 0;
+        for (const c of compras) {
+            try {
+                const itensSnap = await getDocs(collection(db, `compras_financeiras/${c.id}/itens`));
+                if (itensSnap.empty) compSemItens++;
+            } catch {}
+        }
+        if (compSemItens > 0) add('media', 'Compras', `${compSemItens} compra(s) sem itens cadastrados`, 'O total financeiro existe mas os itens individuais não foram registrados, impedindo a atualização correta do estoque.');
+
+        // G. Contas a pagar sem valor
+        const pagarSemValor = pagar.filter(c => !Number(c.valor));
+        if (pagarSemValor.length > 0) add('alta', 'Contas', `${pagarSemValor.length} conta(s) a pagar com valor zero`, 'Contas a pagar com valor R$0,00 distorcem o indicador de A Pagar no Resultado Financeiro.');
+
+        // H. Contas vencidas há mais de 30 dias
+        const hoje30 = new Date(); hoje30.setDate(hoje30.getDate() - 30);
+        const hoje30str = hoje30.toISOString().slice(0,10);
+        const pagarVencidas = pagar.filter(c => c.status !== 'pago' && c.vencimento && c.vencimento < hoje30str);
+        if (pagarVencidas.length > 0) add('alta', 'Contas', `${pagarVencidas.length} conta(s) vencida(s) há mais de 30 dias e ainda em aberto`, `Valor total: R$ ${pagarVencidas.reduce((s,c) => s + Number(c.valor||0), 0).toLocaleString('pt-BR', {minimumFractionDigits:2})}`);
+
+        // I. Lançamentos do Caixa sem valor
+        const caixaSemValor = caixa.filter(l => !Number(l.valor));
+        if (caixaSemValor.length > 0) add('media', 'Caixa', `${caixaSemValor.length} lançamento(s) do Caixa com valor zero`, 'Podem ser entradas/saídas de teste ou lançamentos incompletos.');
+
+        // J. Lançamentos de saída com custo maior que o valor
+        const caixaCustoMaior = caixa.filter(l => l.tipo === 'saida' && Number(l.custo||0) > Number(l.valor||0));
+        if (caixaCustoMaior.length > 0) add('media', 'Caixa', `${caixaCustoMaior.length} saída(s) com custo maior que valor (prejuízo registrado)`, 'Verifique se os valores de custo e venda foram informados corretamente.');
+
+        // K. OS sem cliente
+        const osSemCliente = os.filter(o => !o.clienteNome && !o.cliente && !o.phone);
+        if (osSemCliente.length > 0) add('baixa', 'Ordens de Serviço', `${osSemCliente.length} OS sem cliente identificado`, 'OS sem dados do cliente dificultam o pós-venda e o histórico de atendimento.');
+
+        // ── RENDERIZAÇÃO ────────────────────────────────────────
+        loadEl.style.display = 'none';
+        btn.disabled = false;
+
+        const alta  = problemas.filter(p => p.sev === 'alta').length;
+        const media = problemas.filter(p => p.sev === 'media').length;
+        const info  = problemas.filter(p => p.sev === 'baixa').length;
+
+        setTxt('cnt-alta',  alta);
+        setTxt('cnt-media', media);
+        setTxt('cnt-info',  info);
+        setTxt('cnt-total', totalDocs);
+        resEl.style.display = 'block';
+
+        if (!problemas.length) {
+            outEl.innerHTML = '<div class="int-ok-msg">✅ Nenhuma inconsistência encontrada! Dados íntegros.</div>';
+            return;
+        }
+
+        const grupos = [...new Set(problemas.map(p => p.grupo))];
+        outEl.innerHTML = grupos.map(g => {
+            const itens = problemas.filter(p => p.grupo === g);
+            return `<div class="int-grupo">
+                <div class="int-grupo-titulo">${escHtml(g)}</div>
+                ${itens.map(i => `
+                <div class="int-item int-item-sev-${i.sev}">
+                    <span class="int-item-icone">${i.sev==='alta'?'🔴':i.sev==='media'?'🟡':'🔵'}</span>
+                    <div class="int-item-body">
+                        <div class="int-item-titulo">${escHtml(i.titulo)}</div>
+                        <div class="int-item-detalhe">${i.detalhe}</div>
+                    </div>
+                </div>`).join('')}
+            </div>`;
+        }).join('');
+
+    } catch (e) {
+        console.error(e);
+        loadEl.style.display = 'none';
+        btn.disabled = false;
+        outEl.innerHTML = `<div class="int-item int-item-sev-alta"><span class="int-item-icone">⚠️</span><div class="int-item-body"><div class="int-item-titulo">Erro ao verificar</div><div class="int-item-detalhe">${escHtml(String(e))}</div></div></div>`;
+    }
+};
+</script>
+</body>
+</html>

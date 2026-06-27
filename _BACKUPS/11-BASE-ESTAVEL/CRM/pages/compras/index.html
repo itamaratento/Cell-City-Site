@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR"
+  data-fav-key="compras" data-fav-label="Compras" data-fav-icon="🛒" data-fav-url="/CRM/pages/compras/index.html"
+  data-bc='[{"icon":"💹","label":"Financeiro","url":"/CRM/pages/financeiro/"},{"icon":"🛒","label":"Compras"}]'
+  data-bc-before=".cmp-main-header">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City Gestão Empresarial</title>
+    <link rel="stylesheet" href="compras.css?v=20260621a">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+    <header class="header" id="mainHeader">
+        <h1>🛒 Compras</h1>
+    </header>
+
+    <main>
+        <div class="cmp-sb-overlay" id="cmp-sb-overlay"></div>
+
+        <div class="cmp-explorer">
+
+            <!-- ===== SIDEBAR ===== -->
+            <aside class="cmp-sidebar" id="cmp-sidebar">
+                <div class="cmp-sb-header">
+                    <span class="cmp-sb-titulo">Navegação</span>
+                </div>
+
+                <a class="cmp-sb-item cmp-sb-parent" href="/CRM/pages/financeiro/" title="Voltar ao Financeiro">
+                    <span class="cmp-sb-icon">💹</span>
+                    <span class="cmp-sb-label">← Financeiro</span>
+                </a>
+                <div class="cmp-sb-sep"></div>
+
+                <div class="cmp-sb-item active" data-sec="home">
+                    <span class="cmp-sb-icon">🏠</span>
+                    <span class="cmp-sb-label">Home</span>
+                </div>
+
+                <div class="cmp-sb-sep"></div>
+
+                <div class="cmp-sb-item" data-sec="todas">
+                    <span class="cmp-sb-icon">📋</span>
+                    <span class="cmp-sb-label">Todas as Compras</span>
+                    <span class="cmp-sb-count" id="sb-count-todas">0</span>
+                </div>
+                <div class="cmp-sb-item" data-sec="pendentes">
+                    <span class="cmp-sb-icon">⏳</span>
+                    <span class="cmp-sb-label">Pendentes</span>
+                    <span class="cmp-sb-count" id="sb-count-pendentes">0</span>
+                </div>
+                <div class="cmp-sb-item" data-sec="pagas">
+                    <span class="cmp-sb-icon">✅</span>
+                    <span class="cmp-sb-label">Pagas</span>
+                    <span class="cmp-sb-count" id="sb-count-pagas">0</span>
+                </div>
+
+                <div class="cmp-sb-sep"></div>
+
+                <div class="cmp-sb-item" data-sec="resumo">
+                    <span class="cmp-sb-icon">📊</span>
+                    <span class="cmp-sb-label">Resumo</span>
+                </div>
+            </aside>
+
+            <!-- ===== ÁREA PRINCIPAL ===== -->
+            <div class="cmp-main">
+
+                <div class="cmp-topbar">
+                    <button class="cmp-btn-sb-open" id="cmp-sb-open" title="Abrir menu">📁</button>
+                    <div class="cmp-busca-wrap">
+                        <input type="search" id="cmp-search" class="cmp-search" autocomplete="off"
+                               placeholder="🔍 Buscar compras, fornecedores...">
+                    </div>
+                    <button class="cmp-btn-novo-mini" id="cmp-btn-novo">＋ Nova Compra</button>
+                </div>
+
+                <div class="cmp-main-header">
+                    <span class="cmp-main-titulo" id="cmp-main-titulo">🛒 Compras</span>
+                </div>
+
+                <!-- ===== AÇÕES RÁPIDAS ===== -->
+                <div data-qa="compras"></div>
+
+                <!-- ===== HOME GRID ===== -->
+                <div class="cmp-home-grid" id="cmp-sec-home">
+                    <div class="cmp-home-block" data-sec="todas">
+                        <div class="cmp-home-icon">📦</div>
+                        <div class="cmp-home-nome">Total do Mês</div>
+                        <div class="cmp-home-count cmp-home-count-zero" id="hc-mes">R$ 0,00</div>
+                    </div>
+                    <div class="cmp-home-block" data-sec="todas">
+                        <div class="cmp-home-icon">🏢</div>
+                        <div class="cmp-home-nome">Compras no Mês</div>
+                        <div class="cmp-home-count cmp-home-count-zero" id="hc-qtd-mes">0</div>
+                    </div>
+                    <div class="cmp-home-block" data-sec="pagas">
+                        <div class="cmp-home-icon">✅</div>
+                        <div class="cmp-home-nome">Total Pago</div>
+                        <div class="cmp-home-count cmp-home-count-zero" id="hc-pago">R$ 0,00</div>
+                    </div>
+                    <div class="cmp-home-block" data-sec="pendentes">
+                        <div class="cmp-home-icon">⚠️</div>
+                        <div class="cmp-home-nome">Total Pendente</div>
+                        <div class="cmp-home-count cmp-home-count-zero cmp-count-alerta" id="hc-pendente">R$ 0,00</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: LISTA DE COMPRAS ===== -->
+                <div class="cmp-section" id="cmp-sec-lista" style="display:none">
+
+                    <!-- FORMULÁRIO NOVA/EDITAR COMPRA -->
+                    <div class="cmp-form" id="cmp-form" style="display:none">
+                        <div class="cmp-form-titulo" id="cmp-form-titulo">Nova Compra</div>
+
+                        <div class="cmp-form-grid">
+                            <div class="cmp-form-group cmp-span2">
+                                <label>Fornecedor *</label>
+                                <select id="cmp-fornecedor">
+                                    <option value="">— Selecione o fornecedor —</option>
+                                </select>
+                            </div>
+                            <div class="cmp-form-group">
+                                <label>Data da Compra *</label>
+                                <input type="date" id="cmp-data">
+                            </div>
+                            <div class="cmp-form-group">
+                                <label>Forma de Pagamento</label>
+                                <select id="cmp-pagamento">
+                                    <option value="pix">💸 PIX</option>
+                                    <option value="dinheiro">💵 Dinheiro</option>
+                                    <option value="boleto">🧾 Boleto</option>
+                                    <option value="cartao">💳 Cartão</option>
+                                    <option value="prazo">📅 A Prazo</option>
+                                    <option value="transferencia">🏦 Transferência</option>
+                                </select>
+                            </div>
+                            <div class="cmp-form-group">
+                                <label>Nº Nota Fiscal (opcional)</label>
+                                <input type="text" id="cmp-nf" placeholder="Ex: 12345" maxlength="30">
+                            </div>
+                            <div class="cmp-form-group">
+                                <label>Status</label>
+                                <select id="cmp-status">
+                                    <option value="pendente">⏳ Pendente</option>
+                                    <option value="parcial">🔄 Parcialmente Pago</option>
+                                    <option value="pago">✅ Pago</option>
+                                </select>
+                            </div>
+                            <div class="cmp-form-group cmp-span2">
+                                <label>Observações</label>
+                                <input type="text" id="cmp-obs" placeholder="Opcional..." maxlength="200">
+                            </div>
+                        </div>
+
+                        <!-- Itens da compra -->
+                        <div class="cmp-items-section">
+                            <div class="cmp-items-header">
+                                <span>📦 Itens da Compra</span>
+                                <span class="cmp-items-total" id="cmp-items-total-form">R$ 0,00</span>
+                            </div>
+                            <div id="cmp-items-form-lista"></div>
+                            <div class="cmp-item-add-row">
+                                <input type="text" id="cmp-item-prod" class="cmp-item-input-prod" placeholder="Produto..." maxlength="100">
+                                <input type="number" id="cmp-item-qty" class="cmp-item-input-qty" min="1" value="1" placeholder="Qtd">
+                                <input type="number" id="cmp-item-unit" class="cmp-item-input-unit" min="0" step="0.01" placeholder="R$ unit.">
+                                <button class="cmp-btn-item-add" id="cmp-item-add-btn" title="Adicionar item">＋</button>
+                            </div>
+                            <div class="cmp-items-hint">
+                                Total calculado automaticamente pelos itens.
+                                Se não houver itens, informe o valor total abaixo.
+                            </div>
+                            <div class="cmp-form-group">
+                                <label>Valor Total (R$) <span class="cmp-label-optional">— ignorado se houver itens</span></label>
+                                <input type="number" id="cmp-valor-manual" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                        </div>
+
+                        <div class="cmp-form-btns">
+                            <button class="cmp-btn-salvar" id="cmp-btn-salvar">Salvar</button>
+                            <button class="cmp-btn-cancelar" id="cmp-btn-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- LISTA -->
+                    <div class="cmp-loading" id="cmp-loading"><div class="cmp-spinner"></div><span>Carregando...</span></div>
+                    <div id="cmp-lista"></div>
+                    <div class="cmp-empty" id="cmp-empty" style="display:none">
+                        <div class="cmp-empty-icon">🛒</div>
+                        <div class="cmp-empty-title">Nenhuma compra registrada</div>
+                        <div class="cmp-empty-sub">Clique em <strong>＋ Nova Compra</strong> para adicionar.</div>
+                    </div>
+                </div>
+
+                <!-- ===== SEÇÃO: RESUMO ===== -->
+                <div class="cmp-section" id="cmp-sec-resumo" style="display:none">
+                    <div class="cmp-resumo-grid">
+                        <div class="cmp-resumo-card">
+                            <div class="cmp-rc-icon">📦</div>
+                            <div class="cmp-rc-valor" id="res-total-mes">R$ 0,00</div>
+                            <div class="cmp-rc-label">Compras este mês</div>
+                            <div class="cmp-rc-count" id="res-qtd-mes">0 compras</div>
+                        </div>
+                        <div class="cmp-resumo-card cmp-rc-pago">
+                            <div class="cmp-rc-icon">✅</div>
+                            <div class="cmp-rc-valor" id="res-total-pago">R$ 0,00</div>
+                            <div class="cmp-rc-label">Total pago (mês)</div>
+                            <div class="cmp-rc-count" id="res-qtd-pago">0 compras</div>
+                        </div>
+                        <div class="cmp-resumo-card cmp-rc-pendente">
+                            <div class="cmp-rc-icon">⚠️</div>
+                            <div class="cmp-rc-valor" id="res-total-pendente">R$ 0,00</div>
+                            <div class="cmp-rc-label">Pendente (mês)</div>
+                            <div class="cmp-rc-count" id="res-qtd-pendente">0 compras</div>
+                        </div>
+                        <div class="cmp-resumo-card">
+                            <div class="cmp-rc-icon">📈</div>
+                            <div class="cmp-rc-valor" id="res-media">R$ 0,00</div>
+                            <div class="cmp-rc-label">Média mensal</div>
+                            <div class="cmp-rc-count" id="res-meses">nos últimos meses</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /cmp-main -->
+        </div><!-- /cmp-explorer -->
+    </main>
+
+    <div class="cmp-toast" id="cmp-toast"></div>
+
+    <!-- Modal confirmar excluir -->
+    <div class="cmp-modal-overlay" id="cmp-modal" style="display:none">
+        <div class="cmp-modal">
+            <div class="cmp-modal-titulo">Confirmar exclusão</div>
+            <div class="cmp-modal-body" id="cmp-modal-body">Tem certeza?</div>
+            <div class="cmp-modal-btns">
+                <button class="cmp-btn-salvar cmp-btn-danger" id="cmp-modal-ok">Excluir</button>
+                <button class="cmp-btn-cancelar" id="cmp-modal-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+    <script src="../../shared/breadcrumb.js"></script>
+    <script src="../../shared/quick-actions.js"></script>
+    <script src="../../shared/sidebar.js"></script>
+    <script type="module" src="compras.js?v=20260621a"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>
