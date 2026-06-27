@@ -890,6 +890,7 @@ window.Estoque = {
 // ─────────────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
     await authReady;
+    await (window._ccTenantReady || Promise.resolve());
     await carregarCategorias();
     await carregar();
     navegarPara('home');

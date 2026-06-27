@@ -146,6 +146,7 @@ $('cmp-search')?.addEventListener('input', () => {
 
 /* ── Carregar dados ──────────────────────────────────────────── */
 async function carregar() {
+    await (window._ccTenantReady || Promise.resolve());
     try {
         const eid = getEmpresaId();
         const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));

@@ -100,6 +100,7 @@ function atualizarDashboard() {
    ═══════════════════════════════════════════════════════════════ */
 
 async function carregarFornecedores() {
+  await (window._ccTenantReady || Promise.resolve());
   document.getElementById('forn-loading').style.display = 'flex';
   try {
     const snap = await getDocs(query(collection(db, COL_FORNECEDORES), where('empresa_id', '==', getEmpresaId())));
@@ -363,6 +364,7 @@ function toggleDash() {
    ═══════════════════════════════════════════════════════════════ */
 
 async function carregarCompras() {
+  await (window._ccTenantReady || Promise.resolve());
   document.getElementById('compras-loading').style.display = 'flex';
   try {
     const snap = await getDocs(query(collection(db, COL_COMPRAS), where('empresa_id', '==', getEmpresaId())));

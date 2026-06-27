@@ -378,6 +378,7 @@ const DB = {
     getCounter() { return localCounter; },
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
+        await (window._ccTenantReady || Promise.resolve());
         try {
             localOS = []; localClients = []; localCounter = 0;
             const eid = getEmpresaId();
