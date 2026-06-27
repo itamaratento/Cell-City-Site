@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cell City Gestão Empresarial</title>
+    <title>Caixa - Cell City CRM</title>
     <link rel="stylesheet" href="caixa.css">
 <link rel="stylesheet" href="../../shared/dock.css">
 </head>
@@ -190,36 +190,6 @@
                 </div>
 
                 <button class="btn-salvar" onclick="salvarLancamento()">💾 Salvar Lançamento</button>
-
-                <!-- INTEGRAÇÃO COM FINANCEIRO — aparece apenas para saídas -->
-                <div id="caixa-fin-bloco" class="caixa-fin-bloco" style="display:none">
-                    <div class="caixa-fin-sep"></div>
-                    <label class="caixa-fin-check-label">
-                        <input type="checkbox" id="caixa-fin-ativar" onchange="toggleFinDetalhes(this.checked)">
-                        <span>📊 Registrar também em <strong>Despesas do Financeiro</strong></span>
-                    </label>
-                    <div id="caixa-fin-detalhes" class="caixa-fin-detalhes" style="display:none">
-                        <div class="form-group">
-                            <label>Categoria Financeiro</label>
-                            <select id="caixa-fin-cat">
-                                <option value="">— Selecione —</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Centro de Custo</label>
-                            <select id="caixa-fin-centro">
-                                <option value="">— Nenhum —</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Tipo</label>
-                            <select id="caixa-fin-tipo">
-                                <option value="empresarial">🏢 Empresarial</option>
-                                <option value="pessoal">👤 Pessoal</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
             </div>
         </section>
 
@@ -366,7 +336,6 @@
     <div id="toast" class="premium-toast"></div>
 
     <script src="../../shared/brand-header.js"></script>
-<script src="../../shared/sidebar.js"></script>
     <script type="module" src="caixa.js"></script>
     <script>
     window.addEventListener('load', function() {

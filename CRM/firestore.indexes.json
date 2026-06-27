@@ -4,7 +4,7 @@
       "collectionGroup": "catalogo_produtos",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "ativo",  "order": "ASCENDING" },
+        { "fieldPath": "ativo", "order": "ASCENDING" },
         { "fieldPath": "ordem", "order": "ASCENDING" }
       ]
     },
@@ -12,7 +12,7 @@
       "collectionGroup": "mensagens_portal",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "telefone",   "order": "ASCENDING"  },
+        { "fieldPath": "telefone", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
@@ -20,44 +20,8 @@
       "collectionGroup": "avaliacoes",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "telefone",   "order": "ASCENDING"  },
+        { "fieldPath": "telefone", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
-    },
-
-    {
-      "collectionGroup": "caixa_lancamentos",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING"  },
-        { "fieldPath": "dataISO",    "order": "DESCENDING" }
-      ]
-    },
-
-    {
-      "collectionGroup": "lembretes_pagamento",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING" },
-        { "fieldPath": "createdAt",  "order": "ASCENDING" }
-      ]
-    },
-
-    {
-      "collectionGroup": "os",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING"  },
-        { "fieldPath": "createdAt",  "order": "DESCENDING" }
-      ]
-    },
-
-    {
-      "collectionGroup": "pre_os",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "empresa_id", "order": "ASCENDING" },
-        { "fieldPath": "status",     "order": "ASCENDING" }
       ]
     }
   ],

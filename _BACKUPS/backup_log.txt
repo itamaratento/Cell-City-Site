@@ -40,3 +40,22 @@ Compartilhados restaurados: tenant.js, modulo-guard.js, listener-manager.js, ale
 Problema corrigido: rollback havia apagado TODO o multiempresa — restaurado do backup 10-BEFORE-ROLLBACK
 Pendências (Fase 2): clientes, central-alertas, central-informacoes, relatorios, acaodasemana sem empresa_id
 ----------------------------------------
+----------------------------------------
+27/06/2026
+PRE_SAAS_ESTAVEL
+12-BEFORE-PRE-SAAS-ROLLBACK
+286M
+Backup de proteção criado ANTES do rollback pré-SaaS.
+Contém: estado multiempresa completo (sw v15, tenant.js, modulo-guard.js, 10 módulos com empresa_id)
+----------------------------------------
+27/06/2026
+PRE_SAAS_ESTAVEL
+13-PRE-SAAS-ESTAVEL
+TBD
+RESTAURAÇÃO DO BACKUP 02-DIARIO (14/06/2026)
+Estado: pré-SaaS confirmado
+sw.js: v11 | firebase.json: public=CRM | rules: request.auth!=null
+0 refs empresa_id | sem tenant.js | sem modulo-guard.js | sem pages/saas/
+31 módulos: caixa, os, dashboard, pos-venda, clientes, financeiro, estoque + outros
+Pendente: validação em browser + deploy firebase
+----------------------------------------

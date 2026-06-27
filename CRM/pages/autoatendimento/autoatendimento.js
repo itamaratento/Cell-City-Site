@@ -1,5 +1,5 @@
 // ============================================
-// AUTOATENDIMENTO — Cell City Gestão Empresarial
+// AUTOATENDIMENTO — Cell City CRM
 // ============================================
 import {
     db, collection, getDocs, doc, setDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp

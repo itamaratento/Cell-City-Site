@@ -1,10 +1,6 @@
 import {
-    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, query, orderBy, where, serverTimestamp
+    db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
 } from "../../scripts/firebase.js";
-import { initModulo } from "../../shared/modulo-guard.js?v=20260626";
-import { getEmpresaId } from "../../shared/tenant.js";
-
-console.log('POS 1 — ARQUIVO CARREGADO');
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem
@@ -20,7 +16,6 @@ window.editarAvaliacao = editarAvaliacao;
 window.excluirContato = excluirContato;
 window.editarAgendamentoPendente = editarAgendamentoPendente;
 window.excluirAgendamentoPendente = excluirAgendamentoPendente;
-window.enviarWppPosvenda = enviarWppPosvenda;
 
 // ===== STATE =====
 let pendentes = { 5: [], 15: [], 30: [] };
@@ -37,49 +32,22 @@ const MENSAGENS_PADRAO = {
 // Começa com os padrões; o Firestore só sobrescreve quando tiver mensagem cadastrada
 let mensagensPosvenda = { ...MENSAGENS_PADRAO };
 
-// Templates compartilhados do config/mensagens_whatsapp (pos_venda_5/15/30)
-let mensagensWppShared = {};
-// Rastreia quais OS/prazo tiveram WhatsApp enviado nessa sessão
-const wppEnviados = new Set();
-
 // ===== INIT =====
 async function init() {
-    console.log('[POS-1] init() iniciou');
-    // ── Guard SaaS: autenticação, licença e permissão do módulo ──
-    const ctx = await initModulo('pos-venda');
-    console.log('[POS-2] initModulo retornou:', ctx ? 'true' : 'false/null');
-    if (!ctx) {
-        console.log('[POS-2b] ctx é false/null — interrompendo');
-        return;
-    }
-
     try {
-        console.log('[POS-3] Dentro do try, buscando eid');
-        const eid = getEmpresaId();
-        console.log('[POS-4] eid:', eid);
-        console.log('[POS-5] Antes Promise.all (mensagens)');
-        await Promise.all([carregarMensagensPosvenda(eid), carregarMensagensWppShared(eid)]);
-        console.log('[POS-6] Depois Promise.all (mensagens)');
-        window.mensagensPosvenda = mensagensPosvenda;
-        console.log('[POS-7] Antes loadData()');
+        await carregarMensagensPosvenda();
+        window.mensagensPosvenda = mensagensPosvenda; // exposto p/ verificação no console
         await loadData();
-        console.log('[POS-8] Depois loadData()');
     } catch (err) {
-        console.log('[POS-9] CAPTURADO ERRO NO TRY/CATCH:', err.message, err.stack);
         console.error('❌ Pós-venda: erro ao carregar dados', err);
         document.getElementById('pendentes-container').innerHTML =
             `<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar. Verifique a conexão.</p></div>`;
         return;
     }
-    console.log('[POS-10] Antes renderPendentes()');
     renderPendentes();
-    console.log('[POS-11] Antes renderHistorico()');
     renderHistorico();
-    console.log('[POS-12] Antes setupEventDelegation()');
     setupEventDelegation();
-    console.log('[POS-13] Antes focarDeepLink()');
     focarDeepLink();
-    console.log('[POS-14] FIM DO INIT — TUDO EXECUTADO');
 }
 
 // ===== DEEP-LINK — foca um registro vindo do Painel de Alertas (sino) =====
@@ -110,44 +78,28 @@ function focarDeepLink() {
 
 // ===== CARREGAR DADOS =====
 async function loadData() {
-    console.log('[LOAD-1] loadData() iniciou');
-    const eid = getEmpresaId();
-    console.log('[LOAD-2] eid:', eid);
+    // CORREÇÃO: OS são salvas na coleção "os", não "orders"
     let ordersSnap;
     try {
-        console.log('[LOAD-3] Buscando OS com orderBy');
-        ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid), orderBy("createdAt", "desc")));
-        console.log('[LOAD-4] OS com orderBy OK');
-    } catch (e1) {
-        console.log('[LOAD-4b] OS com orderBy FALHOU:', e1.message, '- tentando sem orderBy');
-        try {
-            ordersSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
-            console.log('[LOAD-4c] OS sem orderBy OK');
-        } catch (e2) {
-            console.log('[LOAD-4d] OS sem orderBy TAMBÉM FALHOU:', e2.message);
-            throw e2;
-        }
+        ordersSnap = await getDocs(query(collection(db, "os"), orderBy("createdAt", "desc")));
+    } catch {
+        // orderBy pode falhar se não houver índice; tenta sem ordenação
+        ordersSnap = await getDocs(collection(db, "os"));
     }
-    console.log('[LOAD-5] OS obtidas, docs:', ordersSnap.size);
-    console.log('[LOAD-6] Buscando contatos');
-    const contatosSnap = await getDocs(query(collection(db, "posvenda_contatos"), where('empresa_id', '==', eid)));
-    console.log('[LOAD-7] Contatos obtidos, docs:', contatosSnap.size);
+    const contatosSnap = await getDocs(collection(db, "posvenda_contatos"));
 
     const contatos = [];
     contatosSnap.forEach(d => {
         const data = d.data();
+        // Filtra registros com soft delete — ativo: false são ocultados
         if (data.ativo === false) return;
         contatos.push({ id: d.id, ...data });
     });
-    console.log('[LOAD-8] Contatos filtrados (sem soft delete):', contatos.length);
     contatosFeitos = new Set(contatos.map(c => `${c.osId}_${c.prazo}`));
-    console.log('[LOAD-9] contatosFeitos size:', contatosFeitos.size);
 
     const now = new Date();
     pendentes = { futuros: [], 5: [], 15: [], 30: [] };
-    console.log('[LOAD-10] Iniciando forEach nas OS, total:', ordersSnap.size);
 
-    let osCount = 0;
     ordersSnap.forEach(d => {
         const os = { firestoreId: d.id, ...d.data() };
         if (os.status !== 'entregue') return;
@@ -158,52 +110,48 @@ async function loadData() {
         const dias = calcDias(deliveryDate, now);
         const osId = os.id || os.firestoreId;
 
+        // Futuros: entregue mas ainda não chegou em 5 dias
         if (dias < 5) {
             pendentes.futuros.push({ ...os, osId, dias, urgencia: 'futuro', prazo: 5 });
             return;
         }
 
+        // Pendentes por prazo — mostra mesmo se passou do prazo (overdue)
         [5, 15, 30].forEach(prazo => {
             if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+            // Janela: de prazo até o próximo prazo - 1
             const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
             if (dias < prazo || dias >= proxPrazo) return;
 
             const urgencia = dias <= prazo + 2 ? 'ok' : dias <= prazo + 5 ? 'atencao' : 'urgente';
             pendentes[prazo].push({ ...os, osId, dias, urgencia, prazo });
         });
-        osCount++;
     });
-    console.log('[LOAD-11] OS processadas (status entregue):', osCount);
-    console.log('[LOAD-12] Pendentes futuros:', pendentes.futuros.length, '| 5:', pendentes[5].length, '| 15:', pendentes[15].length, '| 30:', pendentes[30].length);
 
     historico = contatos.sort((a, b) => {
         const dateA = a.dataContato ? new Date(a.dataContato) : 0;
         const dateB = b.dataContato ? new Date(b.dataContato) : 0;
         return dateB - dateA;
     });
-    console.log('[LOAD-13] Historico sorted:', historico.length);
-    console.log('[LOAD-14] loadData() COMPLETOU');
 }
 
-// ===== CARREGAR MENSAGENS POSVENDA (isolado por empresa_id) =====
-// Estrutura: posvenda_mensagens/{empresaId}_{prazo} (ex: "cellcity-master_5")
-async function carregarMensagensPosvenda(eid) {
+// ===== CARREGAR MENSAGENS POSVENDA =====
+async function carregarMensagensPosvenda() {
+    // Sempre parte dos padrões — garante que nunca fica vazio
     mensagensPosvenda = { ...MENSAGENS_PADRAO };
     try {
-        const prazos = [5, 15, 30];
-        const results = await Promise.all(
-            prazos.map(p => getDoc(doc(db, "posvenda_mensagens", `${eid}_${p}`)))
-        );
-        results.forEach((snap, i) => {
-            if (snap.exists()) {
-                const data = snap.data();
-                if (data.mensagem && data.mensagem.trim().length > 0) {
-                    mensagensPosvenda[prazos[i]] = data.mensagem;
-                }
+        const snap = await getDocs(collection(db, "posvenda_mensagens"));
+        snap.forEach(d => {
+            const prazo = d.id;
+            const data = d.data();
+            // Só sobrescreve o padrão se o Firestore tiver mensagem com conteúdo real
+            if (data.mensagem && data.mensagem.trim().length > 0) {
+                mensagensPosvenda[prazo] = data.mensagem;
             }
         });
         console.log('✅ Mensagens pós-venda carregadas:', mensagensPosvenda);
     } catch (err) {
+        // Em caso de erro, os padrões já estão aplicados acima
         console.warn('⚠️ Erro ao buscar mensagens do Firestore. Usando padrão.', err);
     }
 }
@@ -222,12 +170,7 @@ function getDeliveryDate(os) {
 
 function calcDias(dateStr, now) {
     try {
-        const d = new Date(dateStr);
-        // Compara por dia de calendário local (não por períodos de 24h exatos)
-        // Isso evita que OS entregues à noite apareçam 1 dia antes do prazo por causa do fuso UTC-3
-        const day1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const day2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        return Math.round((day2 - day1) / 86400000);
+        return Math.floor((now - new Date(dateStr)) / 86400000);
     } catch { return 0; }
 }
 
@@ -322,12 +265,11 @@ function buildCard(os) {
         </div>
         ${u.label}
         <div class="pv-buttons-row">
-            <button class="pv-wpp-btn" title="Enviar WhatsApp" style="background:#25D366;border:none;color:#000;font-weight:700;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;">💬 WhatsApp</button>
             <button class="pv-copy-phone-btn" title="V">📞 Telefone</button>
-            <button class="pv-copy-btn" title="B">📋 Copiar</button>
+            <button class="pv-copy-btn" title="B">💬 Copiar</button>
+            <button class="pv-view-msg-btn" title="Ver">👁 Ver</button>
             <button class="pv-copy-all-btn" title="N">📋 Tudo</button>
         </div>
-        <div class="pv-wpp-indicator" style="font-size:11px;color:#eab308;min-height:14px;margin-top:2px;">${wppEnviados.has(`${os.osId}_${os.prazo}`) ? '🟢 Enviado' : ''}</div>
         <div class="pv-actions-row">
             <button class="pv-edit-btn" title="Editar agendamento">✏️ Editar</button>
             <button class="pv-delete-pendente-btn" title="Excluir agendamento">🗑️ Excluir</button>
@@ -474,11 +416,6 @@ function setupEventDelegation() {
                 || pendentes.futuros?.find(o => o.osId === osId);
         if (!os) return;
 
-        if (e.target.closest('.pv-wpp-btn')) {
-            enviarWppPosvenda(osId, prazo);
-            return;
-        }
-
         if (e.target.closest('.pv-copy-phone-btn')) {
             copiarTelefone(os.phone);
             return;
@@ -544,50 +481,17 @@ function setupEventDelegation() {
     });
 }
 
-// ===== WHATSAPP (compartilhado, isolado por empresa_id) =====
-// Cada empresa tem seu próprio doc: config/mensagens_whatsapp_{empresaId}
-async function carregarMensagensWppShared(eid) {
-    try {
-        const snap = await getDoc(doc(db, 'config', `mensagens_whatsapp_${eid}`));
-        if (!snap.exists()) return;
-        const data = snap.data();
-        [5, 15, 30].forEach(prazo => {
-            const key = `pos_venda_${prazo}`;
-            const val = data[key];
-            if (!val) return;
-            const texto = (typeof val === 'object' && val.texto) ? val.texto
-                        : (typeof val === 'string' ? val : '');
-            if (texto.trim()) mensagensWppShared[prazo] = texto;
-        });
-    } catch(e) {
-        console.warn('WPP Pós-venda: usando mensagens locais', e);
-    }
-}
-
-function _getMsgWppPosvenda(prazo, nome, modelo) {
-    // Prioridade: templates WPP compartilhados > mensagensPosvenda > padrão
-    const template = mensagensWppShared[prazo] || mensagensPosvenda[prazo] || mensagensPosvenda[5] || '';
-    return template.replace(/\{\{nome\}\}/g, nome).replace(/\{\{modelo\}\}/g, modelo);
-}
-
-function enviarWppPosvenda(osId, prazo) {
-    const os = pendentes[prazo]?.find(o => o.osId === osId)
-             || pendentes.futuros?.find(o => o.osId === osId);
-    if (!os) { showToast('⚠️ Dados não encontrados'); return; }
-    const phone = (os.phone || '').replace(/\D/g, '');
-    if (!phone || phone.length < 10) { showToast('⚠️ Telefone inválido ou não cadastrado'); return; }
-    const mensagem = _getMsgWppPosvenda(prazo, os.clientName, os.model);
-    const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
-    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(mensagem)}`, 'whatsapp_crm');
-    // Marca como enviado nessa sessão
-    wppEnviados.add(`${osId}_${prazo}`);
-    // Atualiza indicador visual no card
-    const card = document.querySelector(`.pv-card[data-osid="${osId}"][data-prazo="${prazo}"]`);
-    if (card) {
-        const ind = card.querySelector('.pv-wpp-indicator');
-        if (ind) ind.textContent = '🟢 Enviado';
-    }
-    showToast('✅ WhatsApp aberto! É só enviar ►');
+// ===== WHATSAPP =====
+function openWhatsApp(phone, name, model, prazo) {
+    const cleanPhone = (phone || '').replace(/\D/g, '');
+    if (!cleanPhone) { showToast('⚠️ Telefone não cadastrado'); return; }
+    const msgs = {
+        5:  `Olá ${name}, como está o funcionamento do ${model}? Precisa de ajuda?`,
+        15: `Olá ${name}, estamos com uma oferta especial para você. Gostaria de saber?`,
+        30: `Olá ${name}, sua garantia está perto do fim. Agende uma revisão.`
+    };
+    const msg = msgs[prazo] || msgs[5];
+    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 // ===== REGISTRAR RESULTADO =====
@@ -603,7 +507,6 @@ async function registrarResultado(osId, os, prazo, emoji, resultado) {
         prazo,
         emoji,
         resultado,
-        empresa_id: getEmpresaId(),
         dataContato: new Date().toISOString(),
         createdAt: serverTimestamp()
     };
@@ -756,29 +659,15 @@ function abrirModalExclusao(contato) {
 
 async function excluirContato(key, contato) {
     try {
-        // 🔒 Valida que o documento pertence à empresa atual antes de excluir
-        const docRef = doc(db, "posvenda_contatos", key);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
-            showToast('⚠️ Registro não encontrado no banco.');
-            return;
-        }
-
-        const docData = docSnap.data();
-        const eid = getEmpresaId();
-
-        if (docData.empresa_id && docData.empresa_id !== eid) {
-            showToast('❌ Este registro não pertence à sua empresa.');
-            return;
-        }
-
-        await updateDoc(docRef, {
+        await updateDoc(doc(db, "posvenda_contatos", key), {
             ativo: false,
             deletedAt: serverTimestamp()
         });
 
+        // Remove da lista em memória
         historico = historico.filter(c => (c.id || `${c.osId}_${c.prazo}`) !== key);
+
+        // Remove do Set de contatosFeitos para liberar o pendente (se aplicável)
         contatosFeitos.delete(key);
 
         showToast('🗑️ Registro excluído com sucesso');
@@ -1071,17 +960,9 @@ async function salvarConfiguracoes() {
     }
 
     try {
-        const eid = getEmpresaId();
-        // 🔒 Usa doc ID composto com empresa_id para isolar por empresa
-        await setDoc(doc(db, "posvenda_mensagens", `${eid}_5`), {
-            mensagem: msg5, empresa_id: eid, updatedAt: new Date()
-        }, { merge: true });
-        await setDoc(doc(db, "posvenda_mensagens", `${eid}_15`), {
-            mensagem: msg15, empresa_id: eid, updatedAt: new Date()
-        }, { merge: true });
-        await setDoc(doc(db, "posvenda_mensagens", `${eid}_30`), {
-            mensagem: msg30, empresa_id: eid, updatedAt: new Date()
-        }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "5"), { mensagem: msg5, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "15"), { mensagem: msg15, updatedAt: new Date() }, { merge: true });
+        await setDoc(doc(db, "posvenda_mensagens", "30"), { mensagem: msg30, updatedAt: new Date() }, { merge: true });
 
         mensagensPosvenda[5] = msg5;
         mensagensPosvenda[15] = msg15;

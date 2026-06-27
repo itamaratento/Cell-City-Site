@@ -58,23 +58,8 @@ const dropdownEl = $('ag-dropdown');
 const diaTitulo  = $('ag-dia-titulo');
 const areaEl     = $('ag-nota-area');
 const alertaHoraEl = $('ag-alerta-hora');
-const alertaDashEl = $('ag-alerta-dash'); // botão toggle ON/OFF
+const alertaDashEl = $('ag-alerta-dash');
 const recorrEl   = $('ag-recorr');
-
-// ── Toggle Dashboard ON/OFF ────────────────────────────────────────────────
-function _dashOn() {
-  return alertaDashEl && alertaDashEl.getAttribute('aria-pressed') === 'true';
-}
-function _dashSet(on) {
-  if (!alertaDashEl) return;
-  alertaDashEl.setAttribute('aria-pressed', on ? 'true' : 'false');
-  const icon = alertaDashEl.querySelector('.ag-dash-toggle-icon');
-  const txt  = alertaDashEl.querySelector('.ag-dash-toggle-txt');
-  if (icon) icon.textContent = on ? '🟢' : '🔴';
-  if (txt)  txt.textContent  = on ? 'ON'  : 'OFF';
-  alertaDashEl.classList.toggle('ag-dash-on', on);
-}
-
 const recorrPop  = $('ag-recorr-pop');
 const recorrPopTit = $('ag-recorr-pop-tit');
 const recorrPopLista = $('ag-recorr-pop-lista');
@@ -238,7 +223,7 @@ function carregarEditor() {
   // Alerta opcional do dia
   const al = alertaPorDia[diaSelecionado] || {};
   if (alertaHoraEl) alertaHoraEl.value = al.hora || '';
-  _dashSet(!!al.dashboard);
+  if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
   if (recorrEl) recorrEl.value = recorrenciaPorDia[diaSelecionado] || '';
   aplicarFonteLinhas();   // já chama autoGrow()
   // Restaura a cor do texto salva (após pintarArea definir bg/fg do dia)
@@ -474,8 +459,7 @@ async function salvar() {
   const arr = lerLinhas();
   try {
     const alertaHora = (alertaHoraEl && alertaHoraEl.value) || '';
-    // Usa APENAS o estado explícito do botão — nunca auto-ativa
-    const alertaDashboard = _dashOn();
+    const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked);
     const recorrencia = (recorrEl && recorrEl.value) || '';
     if (arr.length === 0) {
       // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
@@ -677,10 +661,7 @@ document.querySelectorAll('.ag-cor-btn').forEach(b => {
 
 // Alerta opcional (salva sozinho)
 if (alertaHoraEl) alertaHoraEl.addEventListener('input', agendarSave);
-if (alertaDashEl) alertaDashEl.addEventListener('click', () => {
-  _dashSet(!_dashOn()); // toggle
-  agendarSave();
-});
+if (alertaDashEl) alertaDashEl.addEventListener('change', agendarSave);
 
 // Recorrência (atualiza o badge na hora e salva)
 if (recorrEl) recorrEl.addEventListener('change', () => {

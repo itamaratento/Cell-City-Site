@@ -1,5 +1,5 @@
 /* ============================================================
-   BARRA DE FAVORITOS — Cell City Gestão Empresarial
+   BARRA DE FAVORITOS — Cell City CRM
    ------------------------------------------------------------
    • Dashboard  → barra horizontal logo abaixo do cabeçalho.
    • Demais módulos → botão flutuante "📌 Fixar nos Favoritos"

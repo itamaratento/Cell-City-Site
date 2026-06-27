@@ -1,7 +1,5 @@
-// Cell City Gestão Empresarial — Service Worker v1.9
-// CORREÇÃO: removido client.navigate() do activate — ele apagava sessionStorage
-// e expulsava usuários na tela de PIN a cada atualização do SW.
-const CACHE = 'cellcity-crm-v15';
+// Cell City CRM — Service Worker v1.5 (PIN como acesso principal)
+const CACHE = 'cellcity-crm-v11';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -31,13 +29,6 @@ const SHELL = [
   '/CRM/pages/config/config.js',
   '/CRM/pages/config/config.css',
   '/CRM/scripts/firebase.js',
-  '/CRM/shared/sidebar.js',
-  '/CRM/pages/garantias/index.html',
-  '/CRM/pages/garantias/garantias.js',
-  '/CRM/pages/garantias/garantias.css',
-  '/CRM/pages/clientes/index.html',
-  '/CRM/pages/clientes/clientes.js',
-  '/CRM/pages/clientes/clientes.css',
 ];
 
 // ── Install: pré-carrega o shell
@@ -47,19 +38,12 @@ self.addEventListener('install', e => {
   );
 });
 
-// ── Activate: limpa caches antigos, assume controle de abas abertas
-// NÃO faz client.navigate() — isso limparia o sessionStorage (cc_acesso)
-// e expulsaria o usuário para a tela de PIN. A aba existente continua
-// com o SW anterior até o usuário recarregar manualmente.
+// ── Activate: limpa caches antigos
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
-      .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window' }))
-      .then(clients => clients.forEach(client =>
-        client.postMessage({ type: 'SW_UPDATED', version: CACHE })
-      ))
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
   );
 });
 

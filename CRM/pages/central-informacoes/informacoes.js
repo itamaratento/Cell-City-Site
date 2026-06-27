@@ -1,5 +1,5 @@
 // ============================================
-// CENTRAL DE INFORMAÇÕES — Cell City Gestão Empresarial
+// CENTRAL DE INFORMAÇÕES — Cell City CRM
 // ============================================
 import {
     db, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp

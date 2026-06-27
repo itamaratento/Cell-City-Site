@@ -14,44 +14,14 @@ import {
     orderBy,
     where,
     runTransaction,
-    serverTimestamp,
-    auth
+    serverTimestamp
 } from "../../scripts/firebase.js";
-import { getEmpresaId } from "../../shared/tenant.js";
-import { registerListener, unregisterAll } from "../../shared/listener-manager.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
 // ═══════════════════════════════════════════
 const COLLECTION_LANCAMENTOS = "caixa_lancamentos";
-const COLLECTION_CATEGORIAS  = "categorias_caixa";
-
-// 🔗 Integração com Financeiro
-const COL_FIN_DESPESAS  = "financeiro_despesas";
-const COL_FIN_CATS      = "financeiro_cat_despesas";
-const COL_FIN_CENTROS   = "financeiro_centros_custo";
-
-const FIN_CATS_PADRAO = [
-    { id: '_alimentacao', nome: 'Alimentação',     icone: '🍔' },
-    { id: '_combustivel', nome: 'Combustível',     icone: '⛽' },
-    { id: '_limpeza',     nome: 'Limpeza',         icone: '🧹' },
-    { id: '_mercadorias', nome: 'Mercadorias',     icone: '📦' },
-    { id: '_estrutura',   nome: 'Estrutura',       icone: '🏗️' },
-    { id: '_tecnologia',  nome: 'Tecnologia',      icone: '💻' },
-    { id: '_marketing',   nome: 'Marketing',       icone: '📢' },
-    { id: '_transporte',  nome: 'Transporte',      icone: '🚗' },
-    { id: '_adm',         nome: 'Administrativo',  icone: '📋' },
-    { id: '_outros',      nome: 'Outros',          icone: '💡' },
-];
-const FIN_CENTROS_PADRAO = [
-    { id: '_assistencia', nome: 'Assistência Técnica', icone: '🔧' },
-    { id: '_loja',        nome: 'Loja',                icone: '🏪' },
-    { id: '_informatica', nome: 'Informática',         icone: '💻' },
-    { id: '_pessoal',     nome: 'Pessoal',             icone: '👥' },
-];
-
-let finCatsCustom    = [];
-let finCentrosCustom = [];
+const COLLECTION_CATEGORIAS = "categorias_caixa";
 
 // ═══════════════════════════════════════════
 // 📊 ARQUITETURA HISTÓRICA V19 (Enterprise)
@@ -132,9 +102,6 @@ let ultimoResumoLiveExecutado = 0;
 // ===== INICIALIZAÇÃO =====
 async function init() {
     console.log('✅ Caixa V19 inicializado.');
-    // Aguarda tenant antes de qualquer query Firestore — garante empresa_id correto
-    await (window._ccTenantReady || Promise.resolve());
-    console.log('[CAIXA] Tenant pronto. empresa_id:', getEmpresaId());
     // Ativa filtro "hoje" por padrão na UI
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-periodo="hoje"]')?.classList.add('active');
@@ -143,7 +110,6 @@ async function init() {
     iniciarListenerLancamentos();
     carregarMetaSemanal(); // Carrega meta semanal no topo
     carregarLembretes(); // carrega lembretes no início p/ badge/FAB aparecerem sozinhos
-    carregarFinCatsECentros(); // Integração Financeiro
     setTimeout(() => executarOrquestradorHistorico(), 2500);
 }
 
@@ -639,7 +605,7 @@ async function corrigirMigracaoLucroSaidas() {
     let totalAtualizado = 0;
     let totalErro = 0;
     try {
-        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
         const saidas = snap.docs.filter(d => d.data().tipo === 'saida');
         console.log(`📊 [MIGRAÇÃO] Encontradas ${saidas.length} saídas para corrigir`);
         for (const docSnap of saidas) {
@@ -710,45 +676,6 @@ function exibirAnaliseCompleta() {
 window.corrigirMigracaoLucroSaidas = corrigirMigracaoLucroSaidas;
 window.exibirAnaliseCompleta = exibirAnaliseCompleta;
 
-// ── Exposição Integração Financeiro ───────────────────────────
-window.toggleFinDetalhes = toggleFinDetalhes;
-
-function toggleFinDetalhes(checked) {
-    const det = document.getElementById('caixa-fin-detalhes');
-    if (det) det.style.display = checked ? 'flex' : 'none';
-}
-
-async function carregarFinCatsECentros() {
-    try {
-        const [snapC, snapCt] = await Promise.all([
-            getDocs(query(collection(db, COL_FIN_CATS), where('empresa_id', '==', getEmpresaId()))),
-            getDocs(query(collection(db, COL_FIN_CENTROS), where('empresa_id', '==', getEmpresaId()))),
-        ]);
-        finCatsCustom = [];
-        snapC.forEach(d => finCatsCustom.push({ id: d.id, ...d.data() }));
-        finCentrosCustom = [];
-        snapCt.forEach(d => finCentrosCustom.push({ id: d.id, ...d.data() }));
-    } catch {}
-    popularSelectFinCat();
-    popularSelectFinCentro();
-}
-
-function popularSelectFinCat() {
-    const sel = document.getElementById('caixa-fin-cat');
-    if (!sel) return;
-    const todas = [...FIN_CATS_PADRAO, ...finCatsCustom];
-    sel.innerHTML = '<option value="">— Selecione —</option>' +
-        todas.map(c => `<option value="${c.id}">${c.icone} ${c.nome}</option>`).join('');
-}
-
-function popularSelectFinCentro() {
-    const sel = document.getElementById('caixa-fin-centro');
-    if (!sel) return;
-    const todos = [...FIN_CENTROS_PADRAO, ...finCentrosCustom];
-    sel.innerHTML = '<option value="">— Nenhum —</option>' +
-        todos.map(c => `<option value="${c.id}">${c.icone} ${c.nome}</option>`).join('');
-}
-
 // ═══════════════════════════════════════════
 // 🔍 TELA DE AUDITORIA FINANCEIRA (visível)
 // ═══════════════════════════════════════════
@@ -805,7 +732,7 @@ function renderAuditoria() {
 
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, COLLECTION_CATEGORIAS));
         categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
         if (categorias.length === 0) {
@@ -824,8 +751,7 @@ async function carregarCategorias() {
                     source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION,
                     createdBy: SYSTEM_META.CREATED_BY,
                     createdAt: serverTimestamp(), createdAtISO: agora.toISOString(),
-                    updatedAt: serverTimestamp(), updatedAtISO: agora.toISOString(),
-                    empresa_id: getEmpresaId()
+                    updatedAt: serverTimestamp(), updatedAtISO: agora.toISOString()
                 });
             }
             categorias = padrao.map(c => ({ id: c.nome, ...c, status: "ativo" }));
@@ -841,20 +767,15 @@ async function carregarCategorias() {
 
 function iniciarListenerCategorias() {
     if (listenerCategorias) listenerCategorias();
-    const eid = getEmpresaId();
-    console.log(`[CAIXA] Iniciando listener categorias — empresa_id: ${eid}`);
     listenerCategorias = onSnapshot(
-        query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', eid)),
+        collection(db, COLLECTION_CATEGORIAS),
         (snap) => {
             categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             atualizarSelectCategorias();
             atualizarSelectCategoriasEdicao();
         },
-        (error) => {
-            console.error('[CAIXA] Erro no listener de categorias:', error.message, '| Código:', error.code);
-        }
+        (error) => console.error('❌ Erro no listener de categorias:', error)
     );
-    registerListener('caixa:categorias', listenerCategorias);
 }
 
 function atualizarSelectCategorias() {
@@ -929,7 +850,6 @@ async function executarSalvarCategoria() {
             nome, status: "ativo", tipoPadrao: "entrada",
             source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
             createdAtISO: agora.toISOString(), updatedAtISO: agora.toISOString(),
-            empresa_id: getEmpresaId(),
             createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         };
         
@@ -958,15 +878,6 @@ function selecionarTipo(tipo) {
     if (tipo === 'servico') {
         const cat = categorias.find(c => c.tipoPadrao === 'servico');
         if (cat) { const s = document.getElementById('categoria'); if (s) s.value = cat.nome; }
-    }
-    // Mostra bloco de integração com Financeiro apenas para SAÍDAS
-    const finBloco = document.getElementById('caixa-fin-bloco');
-    if (finBloco) {
-        finBloco.style.display = tipo === 'saida' ? 'block' : 'none';
-        if (tipo !== 'saida') {
-            const cb = document.getElementById('caixa-fin-ativar');
-            if (cb) { cb.checked = false; toggleFinDetalhes(false); }
-        }
     }
 }
 
@@ -1062,26 +973,33 @@ async function salvarLancamento() {
     // ═══════════════════════════════════════════
     if (dados.tipo !== 'servico' && dados.tipo !== 'saida') {
         const validacao = await validarEstoque(dados.descricao, dados.categoria);
-
+        
         if (validacao.status === 'sem_estoque') {
-            try {
-                await _aguardarModalEstoque(() => abrirModalReposicaoEstoque(validacao.produto));
-                await descontarEstoque(validacao.produto.id, validacao.produto);
-                console.log(`[ESTOQUE↔CAIXA] REPOSTO+VENDIDO - Produto "${validacao.produto.nome}"`);
-            } catch {
+            showToast(`🚫 "${validacao.produto.nome}" está sem estoque! Venda bloqueada.`);
+            console.warn(`[ESTOQUE↔CAIXA] BLOQUEADO - Produto "${validacao.produto.nome}" sem estoque (qtd=0)`);
+            return;
+        }
+        
+        if (validacao.status === 'nao_encontrado') {
+            const confirmar = confirm(
+                `❌ Produto "${dados.descricao}" não encontrado no Estoque!\n\n` +
+                `Deseja cadastrá-lo automaticamente no estoque e continuar a venda?`
+            );
+            if (!confirmar) {
+                console.log(`[ESTOQUE↔CAIXA] CANCELADO - Usuário recusou cadastro automático`);
+                showToast('❌ Venda cancelada — produto não cadastrado no estoque');
                 return;
             }
-        } else if (validacao.status === 'nao_encontrado') {
-            try {
-                const novoId = await _aguardarModalEstoque(() => abrirModalCadastroProduto(dados.descricao, dados.categoria, dados.valor));
-                if (novoId) {
-                    await descontarEstoque(novoId, { nome: dados.descricao });
-                    console.log(`[ESTOQUE↔CAIXA] CADASTRADO+VENDIDO - "${dados.descricao}" (ID: ${novoId})`);
-                }
-            } catch {
-                return;
-            }
-        } else if (validacao.status === 'encontrado') {
+            await cadastrarProdutoAutomatico({
+                nome: dados.descricao.toUpperCase(),
+                descricao: dados.descricao,
+                categoria: dados.categoria,
+                preco: dados.valor
+            });
+            console.log(`[ESTOQUE↔CAIXA] CADASTRO AUTO - Produto "${dados.descricao}" criado no estoque via Caixa`);
+        }
+        
+        if (validacao.status === 'encontrado') {
             await descontarEstoque(validacao.produto.id, validacao.produto);
             console.log(`[ESTOQUE↔CAIXA] DESCONTADO - Produto "${validacao.produto.nome}" (${validacao.produto.quantidade}→${validacao.produto.quantidade - 1})`);
         }
@@ -1089,34 +1007,7 @@ async function salvarLancamento() {
     
     try {
         const docRef = doc(collection(db, COLLECTION_LANCAMENTOS));
-        await setDoc(docRef, { ...dados, id: docRef.id, empresa_id: getEmpresaId() });
-
-        // 🔗 Integração com Financeiro (opcional, apenas para saídas)
-        const finAtivo = document.getElementById('caixa-fin-ativar')?.checked;
-        if (dados.tipo === 'saida' && finAtivo) {
-            const finCat    = document.getElementById('caixa-fin-cat')?.value    || '_outros';
-            const finCentro = document.getElementById('caixa-fin-centro')?.value || '';
-            const finTipo   = document.getElementById('caixa-fin-tipo')?.value   || 'empresarial';
-            const finId = `dsp_caixa_${docRef.id}`;
-            const hoje = new Date().toISOString().slice(0, 10);
-            await setDoc(doc(db, COL_FIN_DESPESAS, finId), {
-                descricao:    dados.descricao,
-                valor:        dados.valor,
-                data:         hoje,
-                categoria:    finCat,
-                centro:       finCentro,
-                tipo:         finTipo,
-                pagamento:    'dinheiro',
-                recorrente:   false,
-                obs:          `Importado do Caixa — ${dados.categoria || ''}`.trim(),
-                criadoEm:     serverTimestamp(),
-                atualizadoEm: serverTimestamp(),
-                origemCaixa:  docRef.id,
-                empresa_id:   getEmpresaId(),
-            });
-            console.log(`[FIN] Despesa criada: ${finId}`);
-        }
-
+        await setDoc(docRef, { ...dados, id: docRef.id });
         showToast('✅ Lançamento salvo com sucesso');
         document.getElementById('descricao').value = '';
         document.getElementById('valor').value = '';
@@ -1125,11 +1016,6 @@ async function salvarLancamento() {
         document.getElementById('alertaPrejuizo').style.display = 'none';
         tipoSelecionado = '';
         document.querySelectorAll('#screen-main .tipo-btn').forEach(btn => btn.classList.remove('selected'));
-        // Reset bloco integração
-        const finBloco = document.getElementById('caixa-fin-bloco');
-        if (finBloco) finBloco.style.display = 'none';
-        const finCb = document.getElementById('caixa-fin-ativar');
-        if (finCb) { finCb.checked = false; toggleFinDetalhes(false); }
     } catch (error) {
         console.error('❌ Erro ao salvar:', error);
         showToast('❌ Erro ao salvar lançamento');
@@ -1146,7 +1032,7 @@ async function validarEstoque(descricao, categoria) {
         const termo = descricao.trim().toUpperCase();
         if (!termo) return { status: 'nao_encontrado' };
         
-        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
         
         let produto = null;
         snap.forEach(d => {
@@ -1251,24 +1137,14 @@ async function descontarEstoque(produtoId, produto) {
 // ═══════════════════════════════════════════
 function iniciarListenerLancamentos() {
     if (listenerLancamentos) { listenerLancamentos(); listenerLancamentos = null; }
-
-    const eid = getEmpresaId();
-    console.log(`[CAIXA] Iniciando listener lançamentos — empresa_id: ${eid}`);
-    const q = query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', eid), orderBy("dataISO", "desc"));
-
+    
+    const q = query(collection(db, COLLECTION_LANCAMENTOS), orderBy("dataISO", "desc"));
+    
     listenerLancamentos = onSnapshot(q, (snap) => {
         lancamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`[CAIXA] Listener lançamentos: ${lancamentos.length} doc(s) recebidos`);
         atualizarInterface();
         atualizarResumosLive("automatico");
-    }, (error) => {
-        console.error('[CAIXA] Erro no listener lançamentos:', error.message);
-        console.error('[CAIXA] Código:', error.code, '| Stack:', error.stack);
-        if (error.code === 'failed-precondition') {
-            console.error('[CAIXA] ⚠️ Índice composto ausente! Acesse o Console Firebase para criar o índice: caixa_lancamentos / empresa_id ASC + dataISO DESC');
-        }
-    });
-    registerListener('caixa:lancamentos', listenerLancamentos);
+    }, (error) => console.error('❌ Erro no listener:', error));
 }
 
 // ═══════════════════════════════════════════
@@ -1452,7 +1328,7 @@ async function reporEstoque(descricao) {
         if (!termo) return;
         
         // Busca o produto pelo nome (mesma lógica da validação)
-        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
         let produto = null;
         snap.forEach(d => {
             const p = { id: d.id, ...d.data() };
@@ -1503,172 +1379,6 @@ async function reporEstoque(descricao) {
         showToast('⚠️ Lançamento excluído, mas estoque não foi reposto');
     }
 }
-
-// ═══════════════════════════════════════════
-// 📦 MODAIS DE REPOSIÇÃO RÁPIDA DE ESTOQUE
-// ═══════════════════════════════════════════
-const COLLECTION_MOVIMENTACOES = 'estoque_movimentacoes';
-
-let _resolveModalEstoque = null;
-let _rejectModalEstoque = null;
-let _produtoModalAtual = null;
-
-function _aguardarModalEstoque(openFn) {
-    return new Promise((resolve, reject) => {
-        _resolveModalEstoque = resolve;
-        _rejectModalEstoque = reject;
-        openFn();
-    });
-}
-
-// — MODAL 1: produto cadastrado, mas sem estoque —
-function abrirModalReposicaoEstoque(produto) {
-    _produtoModalAtual = produto;
-    const el = id => document.getElementById(id);
-    if (el('rep-nome-produto')) el('rep-nome-produto').textContent = produto.nome || produto.description || '—';
-    if (el('rep-estoque-atual')) el('rep-estoque-atual').textContent = produto.quantidade ?? 0;
-    if (el('rep-quantidade')) { el('rep-quantidade').value = 1; }
-    const modal = el('modalReposicaoEstoque');
-    if (modal) { modal.style.display = 'flex'; setTimeout(() => el('rep-quantidade')?.focus(), 120); }
-}
-
-window.cancelarReposicaoEstoque = function() {
-    document.getElementById('modalReposicaoEstoque').style.display = 'none';
-    _produtoModalAtual = null;
-    if (_rejectModalEstoque) { _rejectModalEstoque('cancelado'); _rejectModalEstoque = null; _resolveModalEstoque = null; }
-};
-
-window.confirmarReposicaoEstoque = async function() {
-    const qtd = parseInt(document.getElementById('rep-quantidade')?.value || 1);
-    if (!qtd || qtd < 1) { showToast('⚠️ Informe uma quantidade válida'); return; }
-    const produto = _produtoModalAtual;
-    if (!produto) return;
-
-    const btn = document.querySelector('.btn-rep-confirmar');
-    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
-
-    try {
-        await runTransaction(db, async (t) => {
-            const ref = doc(db, COLLECTION_PRODUTOS, produto.id);
-            const snap = await t.get(ref);
-            const qtdAtual = snap.exists() ? (snap.data().quantidade || 0) : 0;
-            t.update(ref, { quantidade: qtdAtual + qtd, atualizadoEm: serverTimestamp() });
-        });
-
-        await addDoc(collection(db, COLLECTION_MOVIMENTACOES), {
-            produtoId: produto.id,
-            produtoNome: produto.nome || produto.description || '',
-            tipo: 'entrada',
-            quantidade: qtd,
-            origem: 'Reposição pelo Caixa',
-            usuario: SYSTEM_META.CREATED_BY,
-            criadoEm: serverTimestamp(),
-            criadoEmISO: new Date().toISOString()
-        });
-
-        _cacheProdutos = null;
-        document.getElementById('modalReposicaoEstoque').style.display = 'none';
-        showToast(`✅ +${qtd} unidade(s) adicionada(s) ao estoque`);
-
-        const resolve = _resolveModalEstoque;
-        _resolveModalEstoque = null;
-        _rejectModalEstoque = null;
-        _produtoModalAtual = null;
-        if (resolve) resolve();
-
-    } catch (error) {
-        console.error('❌ [REPOSIÇÃO] Erro:', error);
-        showToast('❌ Erro ao atualizar estoque. Tente novamente.');
-        // Rejeita a Promise para não travar o salvarLancamento indefinidamente
-        if (_rejectModalEstoque) {
-            const rej = _rejectModalEstoque;
-            _resolveModalEstoque = null; _rejectModalEstoque = null; _produtoModalAtual = null;
-            rej('erro_firestore');
-        }
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Adicionar ao Estoque'; }
-    }
-};
-
-// — MODAL 2: produto não cadastrado —
-function abrirModalCadastroProduto(descricao, categoria, preco) {
-    const el = id => document.getElementById(id);
-    if (el('cad-descricao-detectada')) el('cad-descricao-detectada').textContent = descricao || '—';
-    if (el('cad-nome')) el('cad-nome').value = descricao || '';
-    if (el('cad-categoria')) el('cad-categoria').value = 'Películas';
-    if (el('cad-quantidade')) el('cad-quantidade').value = 1;
-    if (el('cad-custo')) el('cad-custo').value = '';
-    if (el('cad-preco')) el('cad-preco').value = preco || '';
-    const modal = el('modalCadastroEstoque');
-    if (modal) { modal.style.display = 'flex'; setTimeout(() => el('cad-nome')?.focus(), 120); }
-}
-
-window.cancelarCadastroProduto = function() {
-    document.getElementById('modalCadastroEstoque').style.display = 'none';
-    if (_rejectModalEstoque) { _rejectModalEstoque('cancelado'); _rejectModalEstoque = null; _resolveModalEstoque = null; }
-};
-
-window.confirmarCadastroProduto = async function() {
-    const nome = document.getElementById('cad-nome')?.value.trim().toUpperCase();
-    const qtd  = parseInt(document.getElementById('cad-quantidade')?.value || 1);
-    if (!nome) { showToast('⚠️ Informe o nome do produto'); document.getElementById('cad-nome')?.focus(); return; }
-    if (!qtd || qtd < 1) { showToast('⚠️ Informe uma quantidade válida'); return; }
-
-    const btn = document.querySelectorAll('#modalCadastroEstoque .btn-rep-confirmar')[0];
-    if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
-
-    try {
-        const categoria = document.getElementById('cad-categoria')?.value || 'Outro';
-        const custo  = parseFloat(document.getElementById('cad-custo')?.value  || 0) || 0;
-        const preco  = parseFloat(document.getElementById('cad-preco')?.value  || 0) || 0;
-
-        const novoRef = doc(collection(db, COLLECTION_PRODUTOS));
-        await setDoc(novoRef, {
-            id: novoRef.id,
-            nome,
-            descricao: nome,
-            categoria,
-            quantidade: qtd,
-            quantidadeMinima: 1,
-            venda: preco,
-            custo,
-            empresa_id: getEmpresaId(),
-            atualizadoEm: serverTimestamp()
-        });
-
-        await addDoc(collection(db, COLLECTION_MOVIMENTACOES), {
-            produtoId: novoRef.id,
-            produtoNome: nome,
-            tipo: 'entrada',
-            quantidade: qtd,
-            origem: 'Cadastro pelo Caixa',
-            usuario: SYSTEM_META.CREATED_BY,
-            criadoEm: serverTimestamp(),
-            criadoEmISO: new Date().toISOString()
-        });
-
-        _cacheProdutos = null;
-        document.getElementById('modalCadastroEstoque').style.display = 'none';
-        showToast(`✅ "${nome}" cadastrado com ${qtd} unidade(s)`);
-
-        const resolve = _resolveModalEstoque;
-        _resolveModalEstoque = null;
-        _rejectModalEstoque = null;
-        if (resolve) resolve(novoRef.id);
-
-    } catch (error) {
-        console.error('❌ [CADASTRO CAIXA] Erro:', error);
-        showToast('❌ Erro ao cadastrar produto. Tente novamente.');
-        // Rejeita a Promise para não travar o salvarLancamento indefinidamente
-        if (_rejectModalEstoque) {
-            const rej = _rejectModalEstoque;
-            _resolveModalEstoque = null; _rejectModalEstoque = null;
-            rej('erro_firestore');
-        }
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Cadastrar e Adicionar'; }
-    }
-};
 
 // ═══════════════════════════════════════════
 // EDIÇÃO
@@ -1768,7 +1478,7 @@ let _ultimoItemSelecionado = null; // armazena o item selecionado do estoque
 async function _carregarProdutosEstoque() {
     if (_cacheProdutos) return _cacheProdutos;
     try {
-        const snap = await getDocs(query(collection(db, 'estoque_produtos'), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, 'estoque_produtos'));
         _cacheProdutos = [];
         snap.forEach(d => _cacheProdutos.push({ id: d.id, ...d.data() }));
     } catch { _cacheProdutos = []; }
@@ -1781,32 +1491,13 @@ window.buscarSugestoesEstoque = async function(termo) {
     if (!termo || termo.length < 2) { dropdown.style.display = 'none'; _ultimoItemSelecionado = null; return; }
     const produtos = await _carregarProdutosEstoque();
     const q = termo.toLowerCase();
-
-    // Leitor USB: se o código bater exatamente com um codigoBarras, seleciona na hora
-    const barcodeExato = produtos.find(p => p.codigoBarras && p.codigoBarras === termo.trim());
-    if (barcodeExato) {
-        dropdown.style.display = 'none';
-        _selecionarItemEstoque({ dataset: {
-            id:    barcodeExato.id,
-            nome:  barcodeExato.nome || barcodeExato.description || '',
-            venda: String(barcodeExato.venda || ''),
-            custo: String(barcodeExato.custo_medio || barcodeExato.custo || ''),
-        }});
-        return;
-    }
-
-    // Busca normal: por nome OU por código de barras parcial
-    const matches = produtos.filter(p =>
-        (p.nome || p.description || '').toLowerCase().includes(q) ||
-        (p.codigoBarras || '').toLowerCase().includes(q)
-    ).slice(0, 6);
+    const matches = produtos.filter(p => (p.nome || p.description || '').toLowerCase().includes(q)).slice(0, 6);
     if (!matches.length) { dropdown.style.display = 'none'; return; }
     dropdown.innerHTML = matches.map(p => {
         const nome = p.nome || p.description || '';
         const preco = p.venda ? ` — R$ ${Number(p.venda).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '';
         const qty = p.quantidade !== undefined ? ` · ${p.quantidade} em estoque` : '';
-        const custoAuto = p.custo_medio || p.custo || '';
-        return `<div class="autocomplete-item" data-id="${p.id}" data-nome="${_esc(nome)}" data-venda="${p.venda || ''}" data-custo="${custoAuto}">${nome}${preco}<span style="color:#6b7280;font-size:11px">${qty}</span></div>`;
+        return `<div class="autocomplete-item" data-id="${p.id}" data-nome="${_esc(nome)}" data-venda="${p.venda || ''}" data-custo="${p.custo || ''}">${nome}${preco}<span style="color:#6b7280;font-size:11px">${qty}</span></div>`;
     }).join('');
     dropdown.style.display = 'block';
     dropdown.querySelectorAll('.autocomplete-item').forEach(item => {
@@ -1841,37 +1532,12 @@ document.addEventListener('click', e => {
     }
 });
 
-// Fallback para leitor USB: Enter no campo de descrição com código exato
-document.addEventListener('DOMContentLoaded', () => {
-    const descEl = document.getElementById('descricao');
-    if (!descEl) return;
-    descEl.addEventListener('keydown', async e => {
-        if (e.key !== 'Enter') return;
-        const termo = descEl.value.trim();
-        if (!termo) return;
-        const prods = await _carregarProdutosEstoque();
-        const match = prods.find(p => p.codigoBarras && p.codigoBarras === termo);
-        if (match) {
-            e.preventDefault();
-            e.stopPropagation();
-            _selecionarItemEstoque({ dataset: {
-                id: match.id,
-                nome: match.nome || match.description || '',
-                venda: String(match.venda || ''),
-                custo: String(match.custo || '')
-            }});
-        }
-    });
-});
-
 // Hook no salvarLancamento — baixa estoque automaticamente + gerencia produtos
 const _salvarLancamentoOriginal = window.salvarLancamento;
 window.salvarLancamento = async function() {
-    const descricao  = document.getElementById('descricao')?.value.trim() || '';
-    const categoria  = document.getElementById('categoria')?.value || '';
-    const produtoId  = _ultimoItemSelecionado;
-    // Captura o tipo ANTES do original ser chamado (ele limpa tipoSelecionado ao salvar)
-    const tipoAtual  = tipoSelecionado;
+    const descricao = document.getElementById('descricao')?.value.trim() || '';
+    const categoria = document.getElementById('categoria')?.value || '';
+    const produtoId = _ultimoItemSelecionado;
 
     // Se produto do estoque foi selecionado, garante custo real no cálculo do lucro
     if (produtoId) {
@@ -1879,7 +1545,7 @@ window.salvarLancamento = async function() {
         const prod = produtos.find(p => p.id === produtoId);
         if (prod && prod.custo) {
             document.getElementById('custo').value = prod.custo;
-            calcularLucro();
+            calcularLucro(); // recalcula: lucro = valor - custoReal
         }
     }
 
@@ -1890,35 +1556,34 @@ window.salvarLancamento = async function() {
     if (descDepois !== '' || !descricao) return;
 
     // ═══════════════════════════════════════
-    // 🎯 BAIXA DE ESTOQUE (produto via autocomplete, somente para serviços)
-    // Para tipo 'entrada', o salvarLancamento original já descontou via descontarEstoque().
-    // O hook só desconta por conta própria quando tipo = 'servico' (original pula serviços).
+    // 🎯 BAIXA DE ESTOQUE (produto selecionado do autocomplete)
     // ═══════════════════════════════════════
     if (produtoId) {
-        if (tipoAtual === 'servico') {
-            try {
-                const prodRef = doc(db, 'estoque_produtos', produtoId);
-                const prodSnap = await getDoc(prodRef);
-                if (prodSnap.exists()) {
-                    const prod = prodSnap.data();
-                    const novaQty = Math.max((prod.quantidade || 0) - 1, 0);
-                    await setDoc(prodRef, { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
-                    _cacheProdutos = null;
-                    mostrarToast(`📦 Estoque baixado: ${novaQty} restante(s)`);
-                }
-            } catch (e) {
-                console.error('❌ Erro ao baixar estoque (serviço):', e);
-                mostrarToast('⚠ Erro ao baixar estoque');
+        try {
+            const prodRef = doc(db, 'estoque_produtos', produtoId);
+            const prodSnap = await getDoc(prodRef);
+            if (prodSnap.exists()) {
+                const prod = prodSnap.data();
+                const novaQty = Math.max((prod.quantidade || 0) - 1, 0);
+                await setDoc(prodRef, {
+                    ...prod,
+                    quantidade: novaQty,
+                    atualizadoEm: serverTimestamp()
+                });
+                _cacheProdutos = null; // invalida cache p/ recarregar na próxima
+                mostrarToast(`📦 Estoque baixado: ${novaQty} restante(s)`);
             }
+        } catch (e) {
+            console.error('❌ Erro ao baixar estoque:', e);
+            mostrarToast('⚠ Erro ao baixar estoque');
         }
         _ultimoItemSelecionado = null;
         return;
     }
 
     // ═══════════════════════════════════════
-    // ➕ CRIAÇÃO DE NOVO PRODUTO NO ESTOQUE (digitado manualmente, categoria Vendas)
+    // ➕ CRIAÇÃO DE NOVO PRODUTO NO ESTOQUE (digitou manualmente)
     // ═══════════════════════════════════════
-    _ultimoItemSelecionado = null;
     if (categoria !== 'Vendas') return;
     const produtos = await _carregarProdutosEstoque();
     const jaExiste = produtos.some(p => (p.nome || p.description || '').toLowerCase() === descricao.toLowerCase());
@@ -1938,6 +1603,7 @@ window.salvarLancamento = async function() {
             } catch { mostrarToast('⚠ Erro ao criar no estoque.'); }
         }
     }
+    _ultimoItemSelecionado = null;
 };
 
 function mostrarToast(msg) {
@@ -1970,7 +1636,7 @@ async function carregarMetaSemanal() {
         const numSem   = _weekNum(now);
 
         // Lê todos os lançamentos
-        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
 
         let lucroAtual = 0;
         const lucroPorAno = {};
@@ -2034,7 +1700,7 @@ function atualizarMetaSemanal(realizado, meta) {
 }
 
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
-window.addEventListener('beforeunload', () => unregisterAll('caixa'));
+window.addEventListener('beforeunload', () => { if(listenerLancamentos) listenerLancamentos(); if(listenerCategorias) listenerCategorias(); });
 
 // ═══════════════════════════════════════════
 // ⚠️ LEMBRETES DE PAGAMENTO
@@ -2084,7 +1750,7 @@ function limparFormLembrete() {
 
 async function carregarLembretes() {
     try {
-        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), where('empresa_id', '==', getEmpresaId()), orderBy('createdAt', 'asc')));
+        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), orderBy('createdAt', 'asc')));
         lembretes = [];
         snap.forEach(d => lembretes.push({ id: d.id, ...d.data() }));
     } catch {
@@ -2103,7 +1769,6 @@ async function salvarLembrete() {
         fornecedor, descricao, valor, quantidade,
         vencimento:  document.getElementById('lem-vencimento')?.value  || '',
         observacao:  document.getElementById('lem-observacao')?.value.trim()  || '',
-        empresa_id:  getEmpresaId(),
         createdAt: serverTimestamp(),
         createdAtISO: new Date().toISOString()
     };

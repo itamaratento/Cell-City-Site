@@ -3,486 +3,198 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ═══════════════════════════════════════════════════════════════
-    // HELPERS — Isolamento Multiempresa
-    // ═══════════════════════════════════════════════════════════════
-
-    // Verifica se há documento do usuário na coleção usuarios
-    function temUsuario() {
-      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
-    }
-
-    // Lê os dados do usuário autenticado
-    function getUsuario() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
-    }
-
-    // empresa_id do usuário autenticado
-    function getEmpresaId() {
-      return getUsuario().empresa_id;
-    }
-
-    // Verifica se é master_admin da empresa 'cellcity-master'
-    function isMasterAdmin() {
-      let u = getUsuario();
-      return u.empresa_id == 'cellcity-master' && u.perfil == 'master_admin';
-    }
-
-    // Usuário está autenticado
-    function isAuth() {
-      return request.auth != null;
-    }
-
-    // ── Escrita: novo documento deve conter empresa_id do usuário ──
-    function escritaValida() {
-      return !temUsuario()
-        || isMasterAdmin()
-        || request.resource.data.empresa_id == getEmpresaId();
-    }
-
-    // ── Leitura: documento pertence à empresa do usuário ou é legado ──
-    // Legado = documento criado antes do SaaS (sem campo empresa_id)
-    function leituraPermitida(docData) {
-      return !temUsuario()
-        || isMasterAdmin()
-        || !('empresa_id' in docData)
-        || docData.empresa_id == getEmpresaId();
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // SaaS — COLEÇÕES DE GESTÃO (Isolamento Estrito)
-    // ═══════════════════════════════════════════════════════════════
-
-    // Empresas: somente master_admin gerencia. Empresa lê seus próprios dados.
-    match /empresas/{empresaId} {
-      allow read:  if isAuth() && temUsuario() && (isMasterAdmin() || empresaId == getEmpresaId());
-      allow write: if isAuth() && temUsuario() && isMasterAdmin();
-    }
-
-    match /empresas_arquivadas/{docId} {
-      allow read, write: if isAuth() && temUsuario() && isMasterAdmin();
-    }
-
-    // Usuários: lê e atualiza o próprio doc; master_admin acessa todos
-    match /usuarios/{uid} {
-      allow read:   if isAuth() && (uid == request.auth.uid || (temUsuario() && isMasterAdmin()));
-      allow create: if isAuth() && (uid == request.auth.uid || (temUsuario() && isMasterAdmin()));
-      allow update: if isAuth() && (uid == request.auth.uid || (temUsuario() && isMasterAdmin()));
-      allow delete: if isAuth() && temUsuario() && isMasterAdmin();
-    }
-
-    // Assinaturas, notificações e auditoria: apenas master_admin
-    match /assinaturas/{docId} {
-      allow read, write: if isAuth() && temUsuario() && isMasterAdmin();
-    }
-
-    match /notificacoes_saas/{docId} {
-      allow read, write: if isAuth() && temUsuario() && isMasterAdmin();
-    }
-
-    match /auditoria_saas/{docId} {
-      allow read:   if isAuth() && temUsuario() && isMasterAdmin();
-      allow create: if isAuth(); // todos os módulos podem registrar auditoria
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // PÚBLICO — Acesso sem autenticação
-    // ═══════════════════════════════════════════════════════════════
-
-    // OS: get individual público (Portal do Cliente, garantias)
+    // ─────────────────────────────────────────────
+    // PÚBLICO: OS — leitura de doc único (garantia.html)
+    // ─────────────────────────────────────────────
     match /os/{osId} {
-      allow get:    if true;
-      allow list:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow get:                           if true;
+      allow list, create, update, delete:  if request.auth != null;
     }
 
-    // Config: get individual público (impressão, garantia)
+    // ─────────────────────────────────────────────
+    // PÚBLICO: Config — leitura de doc único (garantia.html lê config/impressao)
+    // ─────────────────────────────────────────────
     match /config/{docId} {
-      allow get:    if true;
-      allow list:   if isAuth();
-      allow write:  if isAuth() && escritaValida();
+      allow get:                           if true;
+      allow list, write:                   if request.auth != null;
     }
 
-    // Pré-OS: criação pública (Autoatendimento / Portal)
+    // ─────────────────────────────────────────────
+    // PÚBLICO: Pré-OS — cliente cria sem login (abrir-atendimento.html)
+    // ─────────────────────────────────────────────
     match /pre_os/{docId} {
-      allow create: if true;
-      allow read, update, delete: if isAuth();
+      allow create:                        if true;
+      allow read, update, delete:          if request.auth != null;
     }
 
-    // Catálogo: leitura pública, escrita autenticada
-    match /catalogo_produtos/{docId} {
-      allow read:   if true;
-      allow write:  if isAuth() && escritaValida();
-    }
-
-    match /catalogo_config/{docId} {
-      allow read:   if true;
-      allow write:  if isAuth() && escritaValida();
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // DADOS DE NEGÓCIO — Isolamento por empresa_id
-    // ═══════════════════════════════════════════════════════════════
-
-    // Clientes
+    // ─────────────────────────────────────────────
+    // PRIVADO: Clientes e OS
+    // ─────────────────────────────────────────────
     match /clientes/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-      // Subcoleções do cliente (equipamentos, histórico)
-      match /{sub}/{subId} {
-        allow read, write: if isAuth();
-      }
-      match /{sub}/{subId}/{deep}/{deepId} {
-        allow read, write: if isAuth();
-      }
+      allow read, write:                   if request.auth != null;
     }
 
-    // Caixa e financeiro básico
+    match /metadata/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Caixa e financeiro
+    // ─────────────────────────────────────────────
     match /caixa_lancamentos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /categorias_caixa/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /historico_diario/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /historico_semanal/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /historico_mensal/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /resumo_live/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
-    // Financeiro
     match /financeiro_pagar/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /financeiro_fixas/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /financeiro_receber/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /financeiro_categorias/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
-    match /financeiro_despesas/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /financeiro_cat_despesas/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /financeiro_centros_custo/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    // Estoque e produtos
+    // ─────────────────────────────────────────────
+    // PRIVADO: Estoque e fornecedores
+    // ─────────────────────────────────────────────
     match /estoque_produtos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /produtos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /categorias_produtos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    // Fornecedores e compras
-    match /fornecedores/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /fornecedor_compras/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /fornecedor_tendencias/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
-    match /compras_financeiras/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    // Pós-venda
-    match /posvenda_contatos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /posvenda_mensagens/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /posvenda_rastreamento/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // BASE DE CONHECIMENTO — Por empresa
-    // ═══════════════════════════════════════════════════════════════
-
-    match /informacoes/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /categorias_informacoes/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /comandos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /categorias_comandos/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // PRODUTIVIDADE PESSOAL / AGENDA — Por empresa
-    // ═══════════════════════════════════════════════════════════════
-
+    // ─────────────────────────────────────────────
+    // PRIVADO: Produtividade pessoal
+    // ─────────────────────────────────────────────
     match /acoes_semana/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
+    // Agenda Inteligente — um documento por evento (calendário permanente)
     match /agenda/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /tarefas_semana/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /notas_usuarios/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /alarme_config/{docId} {
-      allow read, write: if isAuth();
+      allow read, write:                   if request.auth != null;
     }
 
-    match /alertas_usuario/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+    // ─────────────────────────────────────────────
+    // PRIVADO: Base de conhecimento
+    // ─────────────────────────────────────────────
+    match /comandos/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    // AUTOMAÇÃO WHATSAPP — Por empresa
-    // ═══════════════════════════════════════════════════════════════
-
-    match /categorias_wpp/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+    match /categorias_comandos/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
-    match /robo_atividade/{docId} {
-      allow read, write: if isAuth();
+    match /informacoes/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
-    match /notas_projeto/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+    match /categorias_informacoes/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
-    match /blacklist_wpp/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+    // ─────────────────────────────────────────────
+    // PRIVADO: Pós-venda e campanhas
+    // ─────────────────────────────────────────────
+    match /posvenda_contatos/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    // OUTROS DADOS DE NEGÓCIO
-    // ═══════════════════════════════════════════════════════════════
-
-    match /metadata/{docId} {
-      allow read, write: if isAuth();
+    match /posvenda_mensagens/{docId} {
+      allow read, write:                   if request.auth != null;
     }
 
+    match /posvenda_rastreamento/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Importações
+    // ─────────────────────────────────────────────
     match /vendas_importadas/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
-    match /chips_cadastros/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /crm_leads/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
-    }
-
-    match /solicitacoes_diagnostico/{docId} {
-      allow read, update, delete: if isAuth();
-      allow create:               if true;
-    }
-
-
-    // ═══════════════════════════════════════════════════════════════
-    // SINCRONIZAÇÃO / BACKUP / LIXEIRA
-    // ═══════════════════════════════════════════════════════════════
-
+    // ─────────────────────────────────────────────
+    // PRIVADO: Sincronização CRM ↔ Google Drive
+    // Coleções usadas pelos módulos Tutoriais, Soluções Técnicas,
+    // Diário Técnico. Operações via cc-sync.js / gdrive-backup.js.
+    // ─────────────────────────────────────────────
     match /cc_lixeira/{docId} {
-      allow read:   if isAuth() && leituraPermitida(resource.data);
-      allow create: if isAuth() && escritaValida();
-      allow update: if isAuth() && leituraPermitida(resource.data) && escritaValida();
-      allow delete: if isAuth() && leituraPermitida(resource.data);
+      allow read, write:                   if request.auth != null;
     }
 
     match /cc_gdrive_logs/{docId} {
-      allow read, write: if isAuth();
+      allow read, write:                   if request.auth != null;
     }
 
     match /gdrive_backup/{docId} {
-      allow read, write: if isAuth();
+      allow read, write:                   if request.auth != null;
     }
 
-
-    // ═══════════════════════════════════════════════════════════════
-    // BLOQUEADO — Coleções legadas nunca usadas
-    // ═══════════════════════════════════════════════════════════════
-
+    // ─────────────────────────────────────────────
+    // BLOQUEADO: Coleções legadas — nunca usadas pelos módulos
+    // ─────────────────────────────────────────────
     match /orders/{docId} {
-      allow read, write: if false;
+      allow read, write:                   if false;
     }
 
     match /clients/{docId} {
-      allow read, write: if false;
+      allow read, write:                   if false;
     }
 
   }
