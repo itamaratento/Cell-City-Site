@@ -1,7 +1,5 @@
-// Cell City Gestão Empresarial — Service Worker v1.9
-// CORREÇÃO: removido client.navigate() do activate — ele apagava sessionStorage
-// e expulsava usuários na tela de PIN a cada atualização do SW.
-const CACHE = 'cellcity-crm-v15';
+// Cell City Gestão Empresarial — Service Worker v1.8 (force-reload após update)
+const CACHE = 'cellcity-crm-v14';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -47,19 +45,14 @@ self.addEventListener('install', e => {
   );
 });
 
-// ── Activate: limpa caches antigos, assume controle de abas abertas
-// NÃO faz client.navigate() — isso limparia o sessionStorage (cc_acesso)
-// e expulsaria o usuário para a tela de PIN. A aba existente continua
-// com o SW anterior até o usuário recarregar manualmente.
+// ── Activate: limpa caches antigos e força reload nas abas abertas
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
       .then(() => self.clients.matchAll({ type: 'window' }))
-      .then(clients => clients.forEach(client =>
-        client.postMessage({ type: 'SW_UPDATED', version: CACHE })
-      ))
+      .then(clients => clients.forEach(client => client.navigate(client.url)))
   );
 });
 

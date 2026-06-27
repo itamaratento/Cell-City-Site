@@ -5,7 +5,6 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { getEmpresaId } from "../../shared/tenant.js";
-import { registerListener, unregisterAll } from "../../shared/listener-manager.js";
 import { getUid, onUid } from "../../shared/session.js";
 import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
 import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos, TODOS_MODULOS } from "../../shared/central-modulos.js";
@@ -351,30 +350,25 @@ class Dashboard {
     if (!badge) return;
     const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
     try {
-      const _unsub = onSnapshot(
-        query(collection(db, 'diario_registros'), where('empresa_id', '==', getEmpresaId())),
-        snap => {
-          let vencidas = 0;
-          snap.forEach(d => {
-            const r = d.data();
-            if (!r || !r.dataRevisao) return;
-            if (r.status === 'concluido' || r.status === 'arquivado') return;
-            const rev = new Date(r.dataRevisao + 'T00:00:00');
-            if (!isNaN(rev.getTime()) && rev < hoje0) vencidas++;
-          });
-          if (vencidas > 0) {
-            badge.textContent = vencidas;
-            badge.style.display = '';
-            badge.classList.remove('empty');
-          } else {
-            badge.style.display = 'none';
-          }
-        },
-        err => console.error('[DASHBOARD] Erro diario_registros:', err.message)
-      );
-      registerListener('dashboard:diario_registros', _unsub);
+      onSnapshot(query(collection(db, 'diario_registros'), where('empresa_id', '==', getEmpresaId())), snap => {
+        let vencidas = 0;
+        snap.forEach(d => {
+          const r = d.data();
+          if (!r || !r.dataRevisao) return;
+          if (r.status === 'concluido' || r.status === 'arquivado') return;
+          const rev = new Date(r.dataRevisao + 'T00:00:00');
+          if (!isNaN(rev.getTime()) && rev < hoje0) vencidas++;
+        });
+        if (vencidas > 0) {
+          badge.textContent = vencidas;
+          badge.style.display = '';
+          badge.classList.remove('empty');
+        } else {
+          badge.style.display = 'none';
+        }
+      });
     } catch (e) {
-      console.warn('[DASHBOARD] Erro ao carregar revisões do Diário:', e);
+      console.warn('Erro ao carregar revisões do Diário:', e);
     }
   }
 
@@ -786,7 +780,7 @@ class Dashboard {
     let _badgeDeepLinkSetup = false;
 
     // Ouve alertas manuais em tempo real via Firestore
-    const _unsubAlertas = onSnapshot(query(collection(db, 'alertas_usuario'), where('empresa_id', '==', getEmpresaId())), (snap) => {
+    onSnapshot(query(collection(db, 'alertas_usuario'), where('empresa_id', '==', getEmpresaId())), (snap) => {
       const todos = [];
       snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
       const ativos = todos.filter(a => a.status !== 'concluido');
@@ -841,8 +835,7 @@ class Dashboard {
         sub: a.descricao || '',
         detail: `${a.data || ''}${a.hora ? ' às ' + a.hora : ''}`,
       })));
-    }, err => console.error('[DASHBOARD] Erro listener alertas:', err.message));
-    registerListener('dashboard:alertas_usuario', _unsubAlertas);
+    });
 
     // Rotaciona o que estiver na tela (alertas ou dicas)
     setInterval(() => {
@@ -3030,17 +3023,13 @@ class Dashboard {
     const iniciar = () => {
       try {
         const eid = getEmpresaId();
-        console.log('[DASHBOARD] KPI listeners iniciando — empresa_id:', eid);
-        registerListener('dashboard:kpi-os',
-          onSnapshot(query(collection(db, 'os'), where('empresa_id', '==', eid)), atualizarOS,
-            err => console.error('[DASHBOARD] Erro KPI os:', err.message)));
-        registerListener('dashboard:kpi-caixa',
-          onSnapshot(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', eid)), atualizarCaixa,
-            err => console.error('[DASHBOARD] Erro KPI caixa:', err.message)));
-        registerListener('dashboard:kpi-estoque',
-          onSnapshot(query(collection(db, 'estoque'), where('empresa_id', '==', eid)), atualizarEstoque,
-            err => console.error('[DASHBOARD] Erro KPI estoque:', err.message)));
-      } catch (e) { console.error('[DASHBOARD] KPI iniciar falhou:', e); }
+        onSnapshot(query(collection(db, 'os'), where('empresa_id', '==', eid)), atualizarOS,
+          err => console.warn('[KPI] os:', err && err.message));
+        onSnapshot(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', eid)), atualizarCaixa,
+          err => console.warn('[KPI] caixa:', err && err.message));
+        onSnapshot(query(collection(db, 'estoque'), where('empresa_id', '==', eid)), atualizarEstoque,
+          err => console.warn('[KPI] estoque:', err && err.message));
+      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
     };
 
     if (db) iniciar();
@@ -3739,6 +3728,3 @@ if (document.readyState === 'loading') {
 } else {
   new Dashboard();
 }
-
-// Cancela todos os listeners registrados ao sair da página
-window.addEventListener('beforeunload', () => unregisterAll('dashboard'));

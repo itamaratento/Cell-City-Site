@@ -19,10 +19,9 @@
    convivendo silenciosamente com o gate de PIN existente.
    ============================================================ */
 
-// ETAPA 1: session.js usa o evento 'cc-auth-changed' de firebase.js.
-// NÃO cria listener onAuthStateChanged próprio — o listener único fica em firebase.js.
-import { auth, authReady, getAuthUser } from '../scripts/firebase.js';
+import { auth } from '../scripts/firebase.js';
 import {
+  onAuthStateChanged,
   setPersistence,
   browserLocalPersistence,
   GoogleAuthProvider,
@@ -46,37 +45,21 @@ let _readyResolved = false;
 // Garante sessão persistente neste aparelho (não exige novo login a cada visita)
 try { setPersistence(auth, browserLocalPersistence); } catch {}
 
-// Processa a mudança de estado de autenticação recebida do listener único em firebase.js.
-// Chamado tanto no carregamento inicial (via authReady) quanto em mudanças posteriores
-// (logout, re-login) via evento 'cc-auth-changed'.
-function _handleAuthChange(user) {
+onAuthStateChanged(auth, (user) => {
+  // Usuário ANÔNIMO (login anônimo automático do firebase.js) gera um uid
+  // diferente por aparelho → NÃO serve para a conta única. Tratamos como
+  // "sem login" e usamos a chave compartilhada da loja.
   const real = user && user.uid && !user.isAnonymous;
   _user = real ? user : null;
-  _uid  = real ? user.uid : STORE_KEY;
-  console.log(`[AUTH] session.js uid=${_uid} (${real ? 'autenticado' : 'chave da loja'})`);
+  _uid = real ? user.uid : STORE_KEY;
   if (!_readyResolved) { _readyResolved = true; _resolveReady(_uid); }
   window.dispatchEvent(new CustomEvent('cc-uid-changed', { detail: { uid: _uid, user: _user } }));
-}
+});
 
-// Se firebase.js já resolveu antes de session.js ser importado, pega o valor armazenado.
-const _existingUser = getAuthUser();
-if (_existingUser !== undefined) {
-  _handleAuthChange(_existingUser);
-} else {
-  // Aguarda a resolução inicial do listener único em firebase.js
-  authReady.then(_handleAuthChange);
-}
-
-// Reage a mudanças futuras (logout, re-login) sem criar um listener adicional no Firebase.
-window.addEventListener('cc-auth-changed', (e) => _handleAuthChange(e.detail.user));
-
-// Fallback: resolve em 2,5s caso Firebase Auth não responda (ex.: provider não configurado)
+// Resolve mesmo que o Firebase Auth demore/falhe (ex.: provider ainda não
+// habilitado no Console) — após 2,5s assume a chave da loja.
 setTimeout(() => {
-  if (!_readyResolved) {
-    console.warn('[AUTH] session.js: timeout 2.5s — usando chave da loja como fallback');
-    _readyResolved = true;
-    _resolveReady(_uid);
-  }
+  if (!_readyResolved) { _readyResolved = true; _resolveReady(_uid); }
 }, 2500);
 
 /* uid atual (síncrono). Use após `await uidReady` quando precisar de certeza. */

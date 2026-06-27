@@ -23,8 +23,7 @@
    ============================================================ */
 
 import { auth, authReady } from '../scripts/firebase.js';
-// onAuthStateChanged removido — _aguardarUsuario usa evento 'cc-auth-changed'
-// emitido pelo listener único em firebase.js (ver ETAPA 1)
+import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import { getTenant, loadContext, hasModulo, isBloqueado, isMasterAdmin } from './tenant.js';
 
 const LOGIN_URL     = '/CRM/pages/config/index.html';
@@ -148,21 +147,8 @@ function _aguardarUsuario() {
   return new Promise(resolve => {
     const u = auth.currentUser;
     if (u !== undefined && u !== null) { resolve(u); return; }
-
-    // Aguarda o evento global de auth (emitido pelo listener único de firebase.js)
-    function _onAuth(e) {
-      window.removeEventListener('cc-auth-changed', _onAuth);
-      clearTimeout(_timer);
-      resolve(e.detail.user);
-    }
-    window.addEventListener('cc-auth-changed', _onAuth);
-
-    // Fallback: após 3s assume não autenticado e cancela o listener de evento
-    const _timer = setTimeout(() => {
-      window.removeEventListener('cc-auth-changed', _onAuth);
-      console.warn('[AUTH] _aguardarUsuario: timeout 3s — usuário não resolvido');
-      resolve(null);
-    }, 3000);
+    const unsub = onAuthStateChanged(auth, user => { unsub(); resolve(user); });
+    setTimeout(() => resolve(null), 3000);
   });
 }
 

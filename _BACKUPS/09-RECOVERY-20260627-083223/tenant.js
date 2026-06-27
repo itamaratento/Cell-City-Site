@@ -83,11 +83,6 @@ export const FEATURES_DISPONIVEIS = [
 // ── Estado interno ─────────────────────────────────────────────
 let _ctx = null;
 
-// Promise que resolve com o contexto assim que loadContext() for chamado com sucesso.
-// Módulos podem usar: await tenantReady antes de chamar getEmpresaId()
-let _resolveTenantReady;
-export const tenantReady = new Promise(r => { _resolveTenantReady = r; });
-
 function _readCache() {
   try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch { return null; }
 }
@@ -103,15 +98,12 @@ function _writeCache(ctx) {
 export function getTenant() {
   if (_ctx) return _ctx;
   _ctx = _readCache();
-  if (_ctx) console.log('[TENANT] Contexto restaurado do sessionStorage:', _ctx.empresa_id);
   return _ctx;
 }
 
 /** empresa_id da sessão atual. Fallback: 'cellcity-master'. */
 export function getEmpresaId() {
-  const id = getTenant()?.empresa_id || 'cellcity-master';
-  if (!getTenant()) console.warn('[TENANT] getEmpresaId() chamado sem contexto — usando fallback:', id);
-  return id;
+  return getTenant()?.empresa_id || 'cellcity-master';
 }
 
 /** Perfil do usuário atual. */
@@ -206,12 +198,8 @@ export function getWhiteLabel() {
 
 export async function loadContext(uid) {
   try {
-    console.log('[TENANT] Carregando contexto para uid:', uid);
     const userSnap = await getDoc(doc(db, 'usuarios', uid));
-    if (!userSnap.exists()) {
-      console.error('[TENANT] Documento usuarios/' + uid + ' não encontrado no Firestore.');
-      return null;
-    }
+    if (!userSnap.exists()) return null;
 
     const userData = userSnap.data();
 
@@ -225,7 +213,6 @@ export async function loadContext(uid) {
     // ── 1. Status administrativo ──
     const status = empData.status || 'ativo';
     if (status === 'bloqueado' || status === 'cancelado' || status === 'arquivado') {
-      console.warn(`[TENANT] Empresa ${empId} bloqueada: status=${status}`);
       _ctx = {
         uid, empresa_id: empId, perfil: userData.perfil || 'admin',
         nome: userData.nome || '', email: userData.email || '',
@@ -233,7 +220,6 @@ export async function loadContext(uid) {
         bloqueado: true, motivo_bloqueio: status, status
       };
       _writeCache(_ctx);
-      _resolveTenantReady(_ctx);
       return _ctx;
     }
 
@@ -243,7 +229,6 @@ export async function loadContext(uid) {
         ? empData.data_vencimento.toDate()
         : new Date(empData.data_vencimento);
       if (venc < new Date()) {
-        console.warn(`[TENANT] Licença vencida para ${empId} em ${venc.toISOString()}`);
         _ctx = {
           uid, empresa_id: empId, perfil: userData.perfil || 'admin',
           nome: userData.nome || '', email: userData.email || '',
@@ -252,7 +237,6 @@ export async function loadContext(uid) {
           data_vencimento: venc.toISOString()
         };
         _writeCache(_ctx);
-        _resolveTenantReady(_ctx);
         // Registra vencimento (não bloqueia o return)
         _registrarVencimento(empId, empData).catch(() => {});
         return _ctx;
@@ -287,13 +271,6 @@ export async function loadContext(uid) {
     };
 
     _writeCache(_ctx);
-    _resolveTenantReady(_ctx); // libera qualquer módulo aguardando tenantReady
-    console.log(`[TENANT] Contexto carregado: empresa_id=${_ctx.empresa_id} perfil=${_ctx.perfil} bloqueado=${_ctx.bloqueado}`);
-
-    // Notifica módulos que o contexto está disponível
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cc-tenant-ready', { detail: { ctx: _ctx } }));
-    }
 
     // Atualiza último acesso + device info (non-blocking)
     setDoc(doc(db, 'usuarios', uid), {
@@ -303,8 +280,7 @@ export async function loadContext(uid) {
 
     return _ctx;
   } catch (err) {
-    console.error('[TENANT] Erro ao carregar contexto:', err.message);
-    console.error('[TENANT] Stack:', err.stack);
+    console.warn('[Tenant] Erro ao carregar contexto:', err);
     return null;
   }
 }

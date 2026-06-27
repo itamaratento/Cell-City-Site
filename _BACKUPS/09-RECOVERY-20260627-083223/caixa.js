@@ -18,7 +18,6 @@ import {
     auth
 } from "../../scripts/firebase.js";
 import { getEmpresaId } from "../../shared/tenant.js";
-import { registerListener, unregisterAll } from "../../shared/listener-manager.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
@@ -838,20 +837,15 @@ async function carregarCategorias() {
 
 function iniciarListenerCategorias() {
     if (listenerCategorias) listenerCategorias();
-    const eid = getEmpresaId();
-    console.log(`[CAIXA] Iniciando listener categorias — empresa_id: ${eid}`);
     listenerCategorias = onSnapshot(
-        query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', eid)),
+        query(collection(db, COLLECTION_CATEGORIAS), where('empresa_id', '==', getEmpresaId())),
         (snap) => {
             categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             atualizarSelectCategorias();
             atualizarSelectCategoriasEdicao();
         },
-        (error) => {
-            console.error('[CAIXA] Erro no listener de categorias:', error.message, '| Código:', error.code);
-        }
+        (error) => console.error('❌ Erro no listener de categorias:', error)
     );
-    registerListener('caixa:categorias', listenerCategorias);
 }
 
 function atualizarSelectCategorias() {
@@ -1248,24 +1242,14 @@ async function descontarEstoque(produtoId, produto) {
 // ═══════════════════════════════════════════
 function iniciarListenerLancamentos() {
     if (listenerLancamentos) { listenerLancamentos(); listenerLancamentos = null; }
-
-    const eid = getEmpresaId();
-    console.log(`[CAIXA] Iniciando listener lançamentos — empresa_id: ${eid}`);
-    const q = query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', eid), orderBy("dataISO", "desc"));
-
+    
+    const q = query(collection(db, COLLECTION_LANCAMENTOS), where('empresa_id', '==', getEmpresaId()), orderBy("dataISO", "desc"));
+    
     listenerLancamentos = onSnapshot(q, (snap) => {
         lancamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log(`[CAIXA] Listener lançamentos: ${lancamentos.length} doc(s) recebidos`);
         atualizarInterface();
         atualizarResumosLive("automatico");
-    }, (error) => {
-        console.error('[CAIXA] Erro no listener lançamentos:', error.message);
-        console.error('[CAIXA] Código:', error.code, '| Stack:', error.stack);
-        if (error.code === 'failed-precondition') {
-            console.error('[CAIXA] ⚠️ Índice composto ausente! Acesse o Console Firebase para criar o índice: caixa_lancamentos / empresa_id ASC + dataISO DESC');
-        }
-    });
-    registerListener('caixa:lancamentos', listenerLancamentos);
+    }, (error) => console.error('❌ Erro no listener:', error));
 }
 
 // ═══════════════════════════════════════════
@@ -2031,7 +2015,7 @@ function atualizarMetaSemanal(realizado, meta) {
 }
 
 if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
-window.addEventListener('beforeunload', () => unregisterAll('caixa'));
+window.addEventListener('beforeunload', () => { if(listenerLancamentos) listenerLancamentos(); if(listenerCategorias) listenerCategorias(); });
 
 // ═══════════════════════════════════════════
 // ⚠️ LEMBRETES DE PAGAMENTO

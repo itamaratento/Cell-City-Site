@@ -63,50 +63,33 @@ const storage = getStorage(app);
 const auth = initializeAuth(app, {
   persistence: [indexedDBLocalPersistence, browserLocalPersistence, inMemoryPersistence]
 });
-// ── LISTENER ÚNICO DE AUTENTICAÇÃO ──────────────────────────────────────────
-// Esta é a única instância de onAuthStateChanged em todo o sistema.
-// Todos os módulos devem reagir via evento 'cc-auth-changed' ou via authReady.
-// NÃO criar outros listeners onAuthStateChanged em outros arquivos.
-// ─────────────────────────────────────────────────────────────────────────────
-
+// Flag para evitar loop infinito ao limpar sessão anônima
 let _cleaningAnonymous = false;
-let _lastAuthUser = undefined; // undefined = ainda não resolvido; null = sem sessão
-
-/** Retorna o usuário atual de forma síncrona (undefined enquanto não resolvido). */
-export function getAuthUser() { return _lastAuthUser; }
 
 const authReady = new Promise((resolve) => {
   onAuthStateChanged(auth, async (user) => {
-    // ── SESSÃO ANÔNIMA DETECTADA ──────────────────────────────────
+    // ── SESSÃO ANÔNIMA DETECTADA ───────────────────────────────────
     // Impede que sessões anônimas deixadas por outras páginas
     // (ex: consultar-os.html, portal-cliente) contaminem o CRM.
     if (user?.isAnonymous && !_cleaningAnonymous) {
       _cleaningAnonymous = true;
-      console.warn("[AUTH] ⚠️ Sessão anônima detectada. Limpando...");
+      console.warn("[AUTH] ⚠️ Sessão anônima detectada (herdada de outra página). Limpando...");
       try {
         await signOut(auth);
-        console.log("[AUTH] ✅ Sessão anônima removida.");
+        console.log("[AUTH] ✅ Sessão anônima removida com sucesso.");
       } catch (e) {
-        console.error("[AUTH] Erro ao limpar sessão anônima:", e);
+        console.warn("[AUTH] Erro ao limpar sessão anônima:", e);
       }
+      // Redireciona para o login — o usuário precisa se autenticar
+      // de verdade (Google, email/senha, PIN) para usar o CRM.
+      // Não resolve a promise — o redirect leva a uma página nova.
       const loginPath = '/CRM/pages/config/index.html';
       if (window.location.pathname !== loginPath) {
         window.location.replace(loginPath);
       }
-      return; // não resolve — o redirect vai para uma nova página
+      return;
     }
-
-    // ── ESTADO RESOLVIDO (usuário real ou null) ──────────────────
-    _lastAuthUser = user;
-    console.log(`[AUTH] Estado resolvido: ${user ? `uid=${user.uid}` : 'sem sessão'}`);
-
-    // Notifica todos os módulos (session.js, etc.) via evento global.
-    // Isso evita listeners redundantes em outros arquivos.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cc-auth-changed', { detail: { user } }));
-    }
-
-    resolve(user); // no-op após a primeira chamada (Promise já resolvida)
+    resolve(user); // resolve com null se não logado — módulos tratam o redirecionamento
   });
 });
 
@@ -121,7 +104,6 @@ export {
   storage,
   auth,
   authReady,
-  getAuthUser,
   collection,
   addDoc,
   getDocs,

@@ -1,5 +1,5 @@
 import { db, auth, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp, authReady } from "../../scripts/firebase.js";
-import { signInAnonymously, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { loginGoogle } from '../../shared/session.js';
 import { loadContext, clearContext, logAuditoria } from '../../shared/tenant.js';
 
@@ -143,7 +143,6 @@ async function init() {
 
     // Já autenticado nesta sessão
     if (sessionStorage.getItem(SESSION_KEY) === 'ok') {
-        signInAnonymously(auth).catch(() => {});
         mostrarLogado();
         return;
     }
@@ -221,7 +220,6 @@ async function verificarPin() {
     if (inputAtual === pinSalvo) {
         tentativas = 0;
         sessionStorage.setItem(SESSION_KEY, 'ok');
-        signInAnonymously(auth).catch(() => {});
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
     } else {
@@ -286,7 +284,6 @@ async function salvarPin(pin) {
         localStorage.setItem(PIN_CACHE, pin);
         pinSalvo = pin;
         sessionStorage.setItem(SESSION_KEY, 'ok');
-        signInAnonymously(auth).catch(() => {});
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
     } catch (err) {
@@ -1038,7 +1035,6 @@ async function entrarComDispositivo() {
 
         // Sucesso — libera acesso
         sessionStorage.setItem(SESSION_KEY, 'ok');
-        signInAnonymously(auth).catch(() => {});
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
 

@@ -959,29 +959,4 @@
   } else {
     init();
   }
-
-  // ── PRELOAD DE CONTEXTO TENANT ──────────────────────────────────────────────
-  // Inicia o carregamento do contexto da empresa logo que o brand-header carrega,
-  // antes dos módulos JS iniciarem. Isso garante que getEmpresaId() retorne o
-  // valor correto em vez do fallback 'cellcity-master' quando o módulo chamar init().
-  //
-  // Expõe window._ccTenantReady (Promise) para módulos que queiram aguardar:
-  //   await window._ccTenantReady;
-  // ─────────────────────────────────────────────────────────────────────────────
-  window._ccTenantReady = (async function _preloadTenant() {
-    try {
-      const { authReady }           = await import('/CRM/scripts/firebase.js');
-      const { loadContext, getTenant } = await import('/CRM/shared/tenant.js');
-      const user = await authReady;
-      if (user && !user.isAnonymous) {
-        if (!getTenant()) {
-          await loadContext(user.uid);
-        }
-      }
-      return getTenant();
-    } catch (e) {
-      console.warn('[TENANT] brand-header preload falhou:', e.message);
-      return null;
-    }
-  })();
 })();
