@@ -84,9 +84,12 @@ export const FEATURES_DISPONIVEIS = [
 let _ctx = null;
 
 // Promise que resolve com o contexto assim que loadContext() for chamado com sucesso.
-// Módulos podem usar: await tenantReady antes de chamar getEmpresaId()
+// Módulos devem sempre usar: await tenantReady antes de chamar getEmpresaId()
 let _resolveTenantReady;
-export const tenantReady = new Promise(r => { _resolveTenantReady = r; });
+let _tenantResolved = false; // true após tenantReady resolver (contexto disponível)
+export const tenantReady = new Promise(r => {
+  _resolveTenantReady = (ctx) => { _tenantResolved = true; r(ctx); };
+});
 
 function _readCache() {
   try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch { return null; }
@@ -111,10 +114,21 @@ export function getTenant() {
   return _ctx;
 }
 
-/** empresa_id da sessão atual. Fallback: 'cellcity-master'. */
+/** empresa_id da sessão atual.
+ *  REQUER que tenantReady já tenha resolvido.
+ *  Retorna null se chamado antes do contexto carregar — nunca use o resultado
+ *  null em queries Firestore: o módulo deve aguardar await tenantReady primeiro. */
 export function getEmpresaId() {
+  if (!_tenantResolved) {
+    console.error(
+      '[TENANT] ⚠️ getEmpresaId() chamado ANTES de tenantReady resolver!\n' +
+      '         Adicione `await window._ccTenantReady` antes de consultar o Firestore.\n' +
+      '         Retornando null — query Firestore NÃO será executada com empresa incorreta.'
+    );
+    return null;
+  }
   const id = getTenant()?.empresa_id || 'cellcity-master';
-  if (!getTenant()) console.warn('[TENANT] getEmpresaId() chamado sem contexto — usando fallback:', id);
+  if (!getTenant()) console.warn('[TENANT] getEmpresaId(): contexto nulo após tenant resolve — usando fallback:', id);
   return id;
 }
 

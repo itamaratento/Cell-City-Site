@@ -610,7 +610,12 @@ function _esc(s) {
 }
 
 // ── Init ───────────────────────────────────────────────────────
+let _initialized = false;
+
 export function init() {
+  if (_initialized) return; // guarda contra dupla chamada
+  _initialized = true;
+
   _injectStyles();
 
   // Carrega cache local imediatamente (sem esperar Firestore)
@@ -625,8 +630,20 @@ export function init() {
     setTimeout(() => abrirCentralModulos(), 600);
   }
 
-  // Expõe globalmente para sidebar.js, mobile.js e outros scripts
+  // Expõe globalmente para outros scripts não-module (onclick="abrirCentralModulos()")
   window.abrirCentralModulos  = abrirCentralModulos;
   window.__ccSetFavoritos     = setFavoritos;
   window.__ccGetFavoritos     = getFavoritosHome;
+}
+
+// ── Auto-init quando carregado como módulo standalone (não-dashboard) ──
+// O dashboard chama init() explicitamente via central-modulos.js.
+// Nos demais módulos (os, caixa, clientes...) sidebar.js é carregado
+// como <script type="module"> sem chamada explícita a init().
+if (!window.location.pathname.includes('/dashboard/')) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 }

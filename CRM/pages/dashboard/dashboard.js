@@ -226,6 +226,7 @@ class Dashboard {
   }
 
   async _carregarMetaFirestore() {
+    await (window._ccTenantReady || Promise.resolve());
     try {
       const CRESCIMENTO = 1.15;
 
@@ -322,6 +323,7 @@ class Dashboard {
   }
 
   async _carregarContadorAutoatendimento() {
+    await (window._ccTenantReady || Promise.resolve());
     try {
       const q = query(collection(db, 'pre_os'), where('empresa_id', '==', getEmpresaId()), where('status', '==', 'AGUARDANDO_CONVERSAO'));
 
@@ -349,6 +351,8 @@ class Dashboard {
   async setupDiarioBadge() {
     const badge = document.getElementById('diario-badge');
     if (!badge) return;
+    // Aguarda tenant antes de qualquer query Firestore
+    await (window._ccTenantReady || Promise.resolve());
     const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
     try {
       const _unsub = onSnapshot(
@@ -382,6 +386,7 @@ class Dashboard {
   // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
   async _lerAgenda() {
+    await (window._ccTenantReady || Promise.resolve());
     try {
       const snap = await getDocs(query(collection(db, 'agenda'), where('empresa_id', '==', getEmpresaId())));
       const eventos = [];
@@ -669,7 +674,7 @@ class Dashboard {
   }
 
   // ===== ALERTAS + DICAS ROTATIVAS =====
-  setupAlerts() {
+  async setupAlerts() {
     const titleEl    = document.querySelector('.alert-title');
     const subtitleEl = document.querySelector('.alert-subtitle');
     const detailEl   = document.querySelector('.alert-detail');
@@ -784,6 +789,9 @@ class Dashboard {
 
     // Deep link: clique no badge abre Central de Alertas na seção certa
     let _badgeDeepLinkSetup = false;
+
+    // Aguarda tenant antes de qualquer query Firestore
+    await (window._ccTenantReady || Promise.resolve());
 
     // Ouve alertas manuais em tempo real via Firestore
     const _unsubAlertas = onSnapshot(query(collection(db, 'alertas_usuario'), where('empresa_id', '==', getEmpresaId())), (snap) => {
@@ -1030,6 +1038,7 @@ class Dashboard {
     if (this._searchLoading) return this._searchLoading;
 
     this._searchLoading = (async () => {
+      await (window._ccTenantReady || Promise.resolve());
       const idx = { os: [], clientes: [], produtos: [] };
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
@@ -2942,7 +2951,7 @@ class Dashboard {
   }
 
   // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  setupExecutivePanel() {
+  async setupExecutivePanel() {
     const fmt    = (v) => Number(v).toLocaleString('pt-BR');
     const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
@@ -3026,6 +3035,9 @@ class Dashboard {
       });
       set('kpi-pecas-falta', fmt(pecasFalta));
     };
+
+    // Aguarda tenant antes de qualquer query Firestore de KPI
+    await (window._ccTenantReady || Promise.resolve());
 
     const iniciar = () => {
       try {
@@ -3245,6 +3257,7 @@ class Dashboard {
 
     const _carregar = async () => {
       if (!db) return;
+      await (window._ccTenantReady || Promise.resolve());
 
       try {
         // 1. Resumo Live (caixa pre-calculado)

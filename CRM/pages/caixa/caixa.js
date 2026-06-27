@@ -132,6 +132,9 @@ let ultimoResumoLiveExecutado = 0;
 // ===== INICIALIZAÇÃO =====
 async function init() {
     console.log('✅ Caixa V19 inicializado.');
+    // Aguarda tenant antes de qualquer query Firestore — garante empresa_id correto
+    await (window._ccTenantReady || Promise.resolve());
+    console.log('[CAIXA] Tenant pronto. empresa_id:', getEmpresaId());
     // Ativa filtro "hoje" por padrão na UI
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-periodo="hoje"]')?.classList.add('active');
