@@ -1,5 +1,4 @@
-import { db, collection, addDoc, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, query, where, serverTimestamp } from "../../scripts/firebase.js";
-import { getEmpresaId } from "../../shared/tenant.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -72,16 +71,6 @@ window.addDiasRetorno = addDiasRetorno;
 window.copiarMensagemRetorno = copiarMensagemRetorno;
 window.abrirEditarMensagensRetorno = abrirEditarMensagensRetorno;
 window.salvarMensagensRetorno = salvarMensagensRetorno;
-window.abrirMenuWpp = abrirMenuWpp;
-window.previewWpp = previewWpp;
-window._renderPreviewWpp = _renderPreviewWpp;
-window.editarMsgWppInline = editarMsgWppInline;
-window.confirmarEdicaoWpp = confirmarEdicaoWpp;
-window.copiarMsgWpp = copiarMsgWpp;
-window.enviarWppOS = enviarWppOS;
-window.abrirEditorTemplatesWpp = abrirEditorTemplatesWpp;
-window.salvarTemplatesWpp = salvarTemplatesWpp;
-window.verHistoricoOrcamentos = verHistoricoOrcamentos;
 
 function toggleRelatorioTecnico() {
     const body = document.getElementById('rel-tec-body');
@@ -314,38 +303,6 @@ let screenHistory = [], currentListFilter = '', currentClientPhone = '', appInit
 let hasUnsavedChanges = false;
 let retornoMensagens = {};
 
-// ===== WHATSAPP CRM =====
-const LINK_PORTAL_WPP = 'https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html';
-
-const CATEGORIAS_WPP = [
-    { tipo: 'primeiro_contato',   emoji: '📋', label: 'Primeiro Contato' },
-    { tipo: 'orcamento',          emoji: '💰', label: 'Orçamento' },
-    { tipo: 'orcamento_aprovado', emoji: '✅', label: 'Orçamento Aprovado' },
-    { tipo: 'orcamento_recusado', emoji: '❌', label: 'Orçamento Recusado' },
-    { tipo: 'aguardando_peca',    emoji: '⏳', label: 'Aguardando Peça' },
-    { tipo: 'em_reparo',          emoji: '🔧', label: 'Em Reparo' },
-    { tipo: 'servico_concluido',  emoji: '🎉', label: 'Serviço Concluído' },
-    { tipo: 'pronto_retirada',    emoji: '📦', label: 'Pronto p/ Retirada' },
-    { tipo: 'lembrete_retirada',  emoji: '🔔', label: 'Lembrete de Retirada' },
-];
-
-const TEMPLATES_WPP_PADRAO = {
-    primeiro_contato:   `Olá, {{nome}}! 👋\n\nSua OS foi aberta e está disponível para acompanhamento.\n\n📋 OS Nº {{os}}\n\n🔗 Portal do Cliente:\n{{link_portal}}\n\n📱 Use o telefone cadastrado para acessar o portal.\n\nAgradecemos pela confiança!\nCell City Informática`,
-    orcamento:          `Olá, {{nome}}! 👋\n\nO orçamento do seu {{modelo}} está pronto.\n\n📋 OS Nº {{os}}\n💰 Valor: {{valor}}\n\nAguardamos sua aprovação para prosseguir com o serviço.\n\nQualquer dúvida, estamos à disposição!\nCell City Informática`,
-    orcamento_aprovado: `Olá, {{nome}}! ✅\n\nÓtimo! O orçamento do seu {{modelo}} foi aprovado.\n\nJá iniciamos o serviço e avisaremos assim que estiver concluído.\n\nCell City Informática`,
-    orcamento_recusado: `Olá, {{nome}}! 📋\n\nEntendemos sua decisão.\n\nSeu {{modelo}} está disponível para retirada quando preferir.\n\n📋 OS Nº {{os}}\n\nCell City Informática`,
-    aguardando_peca:    `Olá, {{nome}}! ⏳\n\nEstamos aguardando a chegada da peça para o seu {{modelo}}.\n\n📋 OS Nº {{os}}\n\nAssim que a peça chegar, iniciaremos o reparo imediatamente!\n\nCell City Informática`,
-    em_reparo:          `Olá, {{nome}}! 🔧\n\nSeu {{modelo}} está em reparo.\n\n📋 OS Nº {{os}}\n\nEstamos trabalhando para finalizar o mais rápido possível!\n\nCell City Informática`,
-    servico_concluido:  `Olá, {{nome}}! 🎉\n\nÓtimas notícias! O serviço do seu {{modelo}} foi concluído com sucesso.\n\n📋 OS Nº {{os}}\n\nEstamos à sua disposição!\nCell City Informática`,
-    pronto_retirada:    `Olá, {{nome}}! 📦\n\nSeu {{modelo}} está pronto para retirada!\n\n📋 OS Nº {{os}}\n\nEstamos aguardando sua visita.\n\nCell City Informática`,
-    lembrete_retirada:  `Olá, {{nome}}! 🔔\n\nSeu {{modelo}} está aguardando retirada há alguns dias.\n\n📋 OS Nº {{os}}\n\nQualquer dúvida, estamos à disposição!\nCell City Informática`,
-    finalizado:         `Olá, {{nome}}! 👋\n\nSua Ordem de Serviço foi finalizada com sucesso.\n\n📋 OS Nº {{os}}\n\nVocê pode consultar as informações da sua ordem de serviço através do Portal do Cliente Cell City.\n\n🔗 {{link_portal}}\n\n📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n🛡 Garantia: {{garantia}}\n📅 Válida até: {{data_garantia}}\n\nAgradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.{{link_avaliacao}}\n\nCell City Informática`,
-};
-
-let templatesWpp = { ...TEMPLATES_WPP_PADRAO };
-let _wppTipoAtual = '';
-let _wppMensagemAtual = '';
-
 function updateSaveUI() {
     const el = document.getElementById('save-status');
     if (!el) return;
@@ -378,13 +335,11 @@ const DB = {
     getCounter() { return localCounter; },
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
-        await (window._ccTenantReady || Promise.resolve());
         try {
             localOS = []; localClients = []; localCounter = 0;
-            const eid = getEmpresaId();
-            const osSnap = await getDocs(query(collection(db, "os"), where('empresa_id', '==', eid)));
+            const osSnap = await getDocs(collection(db, "os"));
             localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            const clientSnap = await getDocs(query(collection(db, "clientes"), where('empresa_id', '==', eid)));
+            const clientSnap = await getDocs(collection(db, "clientes"));
             localClients = clientSnap.docs.map(d => d.data());
             const counterSnap = await getDocs(collection(db, "metadata"));
             counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });
@@ -439,14 +394,13 @@ function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(scre
 function formatPhone(v) { v = v.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); return v.length > 6 ? `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}` : v.length > 2 ? `(${v.slice(0,2)}) ${v.slice(2)}` : v.length > 0 ? `(${v}` : v; }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
-// ===== FLUXO DE STATUS (10 etapas — padrão Cell City) =====
+// ===== FLUXO DE STATUS (9 etapas — padrão Cell City) =====
 const STATUS_FLOW = [
     { key: 'recebido',             label: 'Recebido',             color: 'var(--blue)' },
     { key: 'em_analise',           label: 'Em análise',           color: 'var(--blue)' },
     { key: 'orcamento_enviado',    label: 'Orçamento enviado',    color: 'var(--yellow)' },
     { key: 'orcamento_aprovado',   label: 'Orçamento aprovado',   color: 'var(--green)' },
     { key: 'orcamento_recusado',   label: 'Orçamento recusado',   color: 'var(--red)' },
-    { key: 'aguardando_peca',      label: 'Aguardando peça',      color: '#f59e0b' },
     { key: 'em_reparo',            label: 'Em reparo',            color: 'var(--orange)' },
     { key: 'testes_finais',        label: 'Testes finais',        color: '#a78bfa' },
     { key: 'concluido',            label: 'Concluído',            color: 'var(--green)' },
@@ -454,6 +408,7 @@ const STATUS_FLOW = [
 ];
 // Mapeia status antigos (OS já gravadas) para os rótulos novos, sem migração forçada.
 const STATUS_LEGACY = {
+    aguardando_peca:       'Aguardando peça',
     orcamento:             'Orçamento enviado',
     pronto:                'Concluído',
     devolvido_orcamento:   'Orçamento recusado',
@@ -492,13 +447,7 @@ function removePhoto(i) { tempPhotos.splice(i, 1); renderPhotoPreview(); }
 function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="${src}" style="width:100%;border-radius:8px;">`); }
 
 // ===== CREATE OS =====
-function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); // Prefill vindo do CRM Comercial (via sessionStorage)
-    try { const _p = JSON.parse(sessionStorage.getItem('cc_crm_prefill') || 'null'); if (_p) { const _s = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; }; _s('f-nome', _p.nome); _s('f-telefone', _p.telefone); _s('f-modelo', _p.modelo); _s('f-defeito', _p.defeito); _s('f-valor', _p.valor); _s('f-obs', _p.obs); if (_p.senha) _s('f-senha', _p.senha); if (_p.lockType) { const lk = document.getElementById('lock-type'); if (lk) { lk.value = _p.lockType; if (typeof toggleLockType === 'function') toggleLockType(); } } if (_p.lockType === 'Padrao' && Array.isArray(_p.patternSequence) && _p.patternSequence.length >= 4) { window.tempPatternSequence = [..._p.patternSequence]; const ps = document.getElementById('pattern-summary'); if (ps) ps.style.display = 'block'; } if (_p.crmLeadId) crmLeadPendente = _p.crmLeadId; if (_p.preOsId) window._crmPreOsId = _p.preOsId; sessionStorage.removeItem('cc_crm_prefill'); } } catch(e) {}
-    // Equipamento prefill (vindo do módulo Clientes)
-    const _eqSel = document.getElementById('os-equip-selector'); if (_eqSel) _eqSel.style.display = 'none';
-    const _eqId  = document.getElementById('os-equip-id');       if (_eqId)  _eqId.value = '';
-    try { const _ep = JSON.parse(sessionStorage.getItem('cc_equip_prefill') || 'null'); if (_ep) { const _s2 = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; }; _s2('f-nome', _ep.nome); _s2('f-telefone', _ep.telefone); _s2('f-marca', _ep.marca || ''); _s2('f-modelo', _ep.modelo || ''); _s2('f-imei', _ep.imei || ''); const _cEl = document.getElementById('os-cliente-id'); if (_cEl && _ep.clienteId) _cEl.value = _ep.clienteId; if (_eqId && _ep.equipamentoId) _eqId.value = _ep.equipamentoId; if (_ep.clienteId) setTimeout(() => carregarEquipamentosOS(_ep.clienteId, _ep.equipamentoId), 400); sessionStorage.removeItem('cc_equip_prefill'); } } catch(e2) {}
-    window.markSaved(); showScreen('form'); }
+function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); }
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
@@ -521,13 +470,11 @@ async function saveOS() {
     const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
     const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
     const os = {
-        id: osId, empresa_id: getEmpresaId(), category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
+        id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
         internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
         orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        origem: crmLeadPendente ? 'crm' : portalOSPendente ? 'portal' : 'presencial', crmLeadId: crmLeadPendente || null, preOsId: window._crmPreOsId || null, solicitacaoId: portalOSPendente || null,
-        equipamentoId: document.getElementById('os-equip-id')?.value || null,
-        clienteId:     document.getElementById('os-cliente-id')?.value || null
+        origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null
     };
     if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
         os.patternSequence = window.tempPatternSequence;
@@ -543,13 +490,6 @@ async function saveOS() {
         }
         preOSPendente = null;
     }
-    if (crmLeadPendente) {
-        try {
-            await updateDoc(doc(db, 'crm_leads', crmLeadPendente), { osId, osConvertido: true, osConvertidoEm: new Date().toISOString(), atualizadoEm: serverTimestamp() });
-            console.log('✅ [CRM] Lead', crmLeadPendente, 'vinculado à O.S.', osId);
-        } catch(e) { console.warn('⚠️ [CRM] Não foi possível vincular O.S. ao lead:', e); }
-        crmLeadPendente = null;
-    }
     if (portalOSPendente) {
         try {
             await updateDoc(doc(db, 'solicitacoes_diagnostico', portalOSPendente), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() });
@@ -562,7 +502,7 @@ async function saveOS() {
     showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
 }
 
-async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; if (!c.empresa_id) c.empresa_id = getEmpresaId(); } else { c = { name, phone, history: [osId], empresa_id: getEmpresaId(), createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
+async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
 // ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
 async function runAutomacoesOS(os) {
@@ -604,7 +544,6 @@ async function runAutomacoesOS(os) {
                 obs:        'OS criada automaticamente',
                 origem:     'os',
                 osId:       os.id,
-                empresa_id: getEmpresaId(),
                 atualizadoEm: serverTimestamp()
             });
         } catch (e) { console.warn('⚠️ [Automação] Financeiro não registrado:', e); }
@@ -670,14 +609,13 @@ function renderList() {
     const orders = DB.getOS(); const s = (document.getElementById('list-search')?.value || '').toLowerCase();
     const isFinal = currentListFilter === 'finalizados';
     let filtered = isFinal ? orders.filter(o => STATUS_TERMINAIS.includes(o.status)) : orders.filter(o => !STATUS_TERMINAIS.includes(o.status));
-    if (s) filtered = filtered.filter(o => (o.clientName||'').toLowerCase().includes(s) || (o.phone||'').includes(s) || (o.id||'').toLowerCase().includes(s) || (o.model||'').toLowerCase().includes(s) || (o.defect||'').toLowerCase().includes(s) || (o.imei||'').includes(s) || (o.imei1||'').includes(s) || (o.imei2||'').includes(s) || (o.nfNumero||'').includes(s) || (o.cnpjEmpresa||'').includes(s) || (o.razaoSocial||'').toLowerCase().includes(s) || (o.observations||'').toLowerCase().includes(s) || (o.cpf||'').includes(s));
+    if (s) filtered = filtered.filter(o => (o.clientName||'').toLowerCase().includes(s) || (o.phone||'').includes(s) || (o.id||'').toLowerCase().includes(s) || (o.model||'').toLowerCase().includes(s));
     const c = document.getElementById('os-list'); if (!c) return;
     if (filtered.length === 0) { c.innerHTML = `<div class="empty-state"><div class="icon">${isFinal ? '✅' : '🔧'}</div><p>${s ? 'Nenhum resultado encontrado' : 'Nenhuma O.S. nesta categoria'}</p></div>`; return; }
     c.innerHTML = filtered.map(os => {
         const d = os.defect || '';
         const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
-        const nfBtn = os.nfLink ? `<button onclick="event.stopPropagation(); window.open('${os.nfLink}', '_blank')" title="Abrir Nota Fiscal no Google Drive" style="background:none;border:none;cursor:pointer;padding:0;margin-left:6px;opacity:0.9;vertical-align:middle;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.9"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 87.3 78" width="18" height="18" style="display:block;"><path d="m6.6 66.85 3.85 6.65c.8 1.4 1.95 2.5 3.3 3.3l13.75-23.8h-27.5c0 1.55.4 3.1 1.2 4.5z" fill="#0066da"/><path d="m43.65 25-13.75-23.8c-1.35.8-2.5 1.9-3.3 3.3l-25.4 44a9.06 9.06 0 0 0-1.2 4.5h27.5z" fill="#00ac47"/><path d="m73.55 76.8c1.35-.8 2.5-1.9 3.3-3.3l1.6-2.75 7.65-13.25c.8-1.4 1.2-2.95 1.2-4.5h-27.5l5.85 11.5z" fill="#ea4335"/><path d="m43.65 25 13.75-23.8c-1.35-.8-2.9-1.2-4.5-1.2h-18.5c-1.6 0-3.15.45-4.5 1.2z" fill="#00832d"/><path d="m59.8 53h-32.3l-13.75 23.8c1.35.8 2.9 1.2 4.5 1.2h50.8c1.6 0 3.15-.45 4.5-1.2z" fill="#2684fc"/><path d="m73.4 26.5-12.7-22c-.8-1.4-1.95-2.5-3.3-3.3l-13.75 23.8 16.15 28h27.45c0-1.55-.4-3.1-1.2-4.5z" fill="#ffba00"/></svg></button>` : '';
-        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span>${nfBtn}<button onclick="event.stopPropagation(); deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div></div>`;
+        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span><button onclick="event.stopPropagation(); deleteOS('${os.id}')" style="background:none;border:none;cursor:pointer;font-size:16px;margin-left:6px;opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">🗑️</button></div></div>`;
     }).join('');
 }
 
@@ -697,11 +635,10 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span><div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="abrirLembreteOS()" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;">🔔</button><button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button></div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;padding-bottom:28px;overflow:hidden;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
-    html += _htmlOrcamentosInteligentes(os);
 
     // Destaque: resposta do cliente ao orçamento (Consulta OS / Portal do Cliente). Somente leitura.
     const _orcResp = os.orcamentoResposta || (os.status === 'orcamento_aprovado' ? 'aprovado' : (os.status === 'orcamento_recusado' ? 'recusado' : ''));
@@ -794,18 +731,6 @@ function renderDetail() {
         </div></div></div>`;
     }
 
-    if (os.nfLink || os.nfNumero || os.cnpjEmpresa) {
-        const nfMeta = [
-            os.nfNumero ? `NF ${os.nfNumero}` : null,
-            os.cnpjEmpresa ? `CNPJ: ${os.cnpjEmpresa}` : null,
-            os.razaoSocial ? os.razaoSocial : null,
-            os.nfEmail ? `✉️ ${os.nfEmail}` : null,
-            os.nfTelefone ? `📞 ${os.nfTelefone}` : null,
-            os.nfData ? os.nfData.split('-').reverse().join('/') : null,
-        ].filter(Boolean).join(' • ');
-        html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📄 Nota Fiscal</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${nfMeta ? `<div style="font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.6">${nfMeta.split(' • ').join('<br>')}</div>` : ''}${os.nfLink ? `<a href="${os.nfLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 18px;background:#1976D2;color:#fff;border-radius:var(--radius-sm);font-weight:700;font-size:13px;text-decoration:none;">👁️ Visualizar Nota Fiscal</a>` : ''}</div></div></div>`;
-    }
-
     html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📜 Histórico</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${(os.timeline||[]).map(t => `<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text2);"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;">${formatDate(t.date)}</div><div>${t.text || ''}</div></div>`).join('')}</div></div></div>`;
     
     if (client?.history.length > 1) {
@@ -814,14 +739,8 @@ function renderDetail() {
     }
     
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento';
-    const _wppAvisarBtn = STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-ghost" onclick="notificarClienteOS('${os.id}')" style="color:#25d366">💬 Avisar no WhatsApp</button>` : '';
     const _acaoBtn = aguardandoAprov ? `<button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;">📋 Devolver Aparelho</button>` : (!STATUS_TERMINAIS.includes(os.status) ? `<button class="btn btn-success" onclick="markDelivered()">📦 Entregue</button>` : '');
-    const _ultimoWpp = (os.wppHistorico || []).slice(-1)[0];
-    const _wppInd = _ultimoWpp
-        ? `<div id="wpp-os-indicator" style="font-size:11px;color:#22c55e;margin-top:2px;">🟢 ${_ultimoWpp.label} • ${_ultimoWpp.data} ${_ultimoWpp.hora}</div>`
-        : `<div id="wpp-os-indicator" style="font-size:11px;color:var(--text3);margin-top:2px;">🟡 Nenhum WhatsApp enviado</div>`;
-    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div>${_wppAvisarBtn}<button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="abrirMenuWpp()" style="color:#25D366">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
-    html += _wppInd;
+    html += `<div class="detail-actions">${_acaoBtn}<button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button><button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -908,39 +827,6 @@ async function toggleOSEdit() {
 
 <label style="font-size:12px;color:var(--text2);">Modelo de Garantia</label>
 <select id="edit-os-garantia-modelo" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" onchange="window.markUnsaved()"></select>
-
-    </div>
-  </div></div>
-</div>
-
-<!-- ===== Seção recolhível: Nota Fiscal (inicia recolhida) ===== -->
-<div class="form-section accordion collapsed" style="margin-top:10px;">
-  <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📄 Nota Fiscal</span><span class="accordion-arrow">▶</span></button>
-  <div class="accordion-content"><div class="accordion-content-inner">
-    <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
-
-<label style="font-size:12px;color:var(--text2);">Número da Nota Fiscal</label>
-<input id="edit-os-nf-numero" value="${os.nfNumero||''}" placeholder="Ex: 000123" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">CNPJ da Empresa</label>
-<input id="edit-os-cnpj-empresa" value="${os.cnpjEmpresa||''}" placeholder="00.000.000/0000-00" maxlength="18" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.maskCnpj(this); window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">Razão Social (Opcional)</label>
-<input id="edit-os-razao-social" value="${os.razaoSocial||''}" placeholder="Ex: Empresa LTDA" maxlength="100" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">Data da Nota Fiscal</label>
-<input id="edit-os-nf-data" type="date" value="${os.nfData||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">E-mail da Empresa</label>
-<input id="edit-os-nf-email" type="email" value="${os.nfEmail||''}" placeholder="Ex: fiscal@empresa.com.br" maxlength="100" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">Telefone da Empresa</label>
-<input id="edit-os-nf-telefone" type="tel" value="${os.nfTelefone||''}" placeholder="Ex: (11) 3000-0000" maxlength="20" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-<label style="font-size:12px;color:var(--text2);">Link da Nota Fiscal (Google Drive)</label>
-<input id="edit-os-nf-link" value="${os.nfLink||''}" placeholder="https://drive.google.com/..." style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
-
-${os.nfLink ? `<a href="${os.nfLink}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;background:#1976D2;color:#fff;border-radius:var(--radius-sm);font-weight:700;font-size:13px;text-decoration:none;">👁️ Visualizar Nota Fiscal</a>` : ''}
 
     </div>
   </div></div>
@@ -1081,16 +967,9 @@ async function saveOSEdit() {
     const bairro = document.getElementById('edit-os-bairro')?.value.trim() || '';
     const cidade = document.getElementById('edit-os-cidade')?.value.trim() || '';
     const estado = document.getElementById('edit-os-estado')?.value.trim() || '';
-    const nfNumero = document.getElementById('edit-os-nf-numero')?.value.trim() || '';
-    const cnpjEmpresa = document.getElementById('edit-os-cnpj-empresa')?.value.trim() || '';
-    const razaoSocial = document.getElementById('edit-os-razao-social')?.value.trim() || '';
-    const nfEmail = document.getElementById('edit-os-nf-email')?.value.trim() || '';
-    const nfTelefone = document.getElementById('edit-os-nf-telefone')?.value.trim() || '';
-    const nfData = document.getElementById('edit-os-nf-data')?.value.trim() || '';
-    const nfLink = document.getElementById('edit-os-nf-link')?.value.trim() || '';
     if (!n || !p || !m) return showToast("⚠️ Preencha todos os campos");
     try {
-        const updates = { clientName: n, phone: p, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, nfNumero: nfNumero || null, cnpjEmpresa: cnpjEmpresa || null, razaoSocial: razaoSocial || null, nfEmail: nfEmail || null, nfTelefone: nfTelefone || null, nfData: nfData || null, nfLink: nfLink || null, updatedAt: new Date().toISOString() };
+        const updates = { clientName: n, phone: p, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
         await updateDoc(doc(db, "os", currentOS.id), updates);
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
@@ -1101,27 +980,7 @@ async function saveOSEdit() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-async function changeStatus(newStatus) {
-    if (!currentOS) return;
-    window.markUnsaved();
-    const old = currentOS.status;
-    currentOS.status = newStatus;
-    currentOS.updatedAt = new Date().toISOString();
-    currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
-    if (newStatus === 'aguardando_peca' && !currentOS.observations) {
-        currentOS.observations = 'Aguardando chegada da peça do fornecedor. Prazo estimado de 15 a 20 dias. Cliente informado.';
-    }
-    if (newStatus === 'entregue') {
-        currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
-    }
-    await saveCurrentOS();
-    if (newStatus === 'entregue') {
-        await gerarLancamentoFinanceiro(currentOS);
-        await agendarPosVenda(currentOS);
-        await vincularOSaEquipamento(currentOS);
-    }
-    renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved();
-}
+async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 
@@ -1148,102 +1007,13 @@ function addObservation() { const input = document.getElementById('obs-input'); 
 
 function addPhotoToOS() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = function(e) { for (let f of e.target.files) { const r = new FileReader(); r.onload = function(ev) { const img = new Image(); img.onload = async function() { const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; if(w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); currentOS.photos.push(c.toDataURL('image/jpeg', 0.7)); await saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); window.markSaved(); }; img.src = ev.target.result; }; r.readAsDataURL(f); } }; input.click(); }
 
-async function markDelivered() {
-    if (!currentOS) return;
-    window.markUnsaved();
-    currentOS.status = 'entregue';
-    currentOS.updatedAt = new Date().toISOString();
-    currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
-    await saveCurrentOS();
-    await gerarLancamentoFinanceiro(currentOS);
-    await agendarPosVenda(currentOS);
-    await vincularOSaEquipamento(currentOS);
-    renderDetail(); showToast('✅ Entregue'); window.markSaved();
-}
+async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
 function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone; showClientDetail(currentOS.phone); } }
 
 async function saveCurrentOS() { if (!currentOS) return; await DB.updateOS(currentOS); }
-
-// ===== OBSERVAÇÃO RÁPIDA =====
-let _obsRapidaTimer = null;
-async function saveObsRapida(val) {
-    if (!currentOS) return;
-    currentOS.obsRapida = val;
-    const idx = localOS.findIndex(o => o.id === currentOS.id);
-    if (idx >= 0) localOS[idx].obsRapida = val;
-    clearTimeout(_obsRapidaTimer);
-    _obsRapidaTimer = setTimeout(async () => {
-        try {
-            await updateDoc(doc(db, 'os', currentOS.id), { obsRapida: val, updatedAt: new Date().toISOString() });
-        } catch (e) {
-            console.error('Erro ao salvar obs rápida:', e);
-        }
-    }, 700);
-}
-window.saveObsRapida = saveObsRapida;
-
-// ===== LEMBRETE DA OS =====
-function abrirLembreteOS() {
-    if (!currentOS) return;
-    const info = document.getElementById('lembrete-os-info');
-    if (info) info.textContent = `${currentOS.id} — ${currentOS.clientName}`;
-    const now = new Date();
-    const pad = n => String(n).padStart(2,'0');
-    document.getElementById('lembrete-data').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
-    document.getElementById('lembrete-hora').value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    document.getElementById('lembrete-desc').value = '';
-    document.getElementById('lembrete-os-overlay').classList.add('active');
-    setTimeout(() => document.getElementById('lembrete-desc')?.focus(), 80);
-}
-window.abrirLembreteOS = abrirLembreteOS;
-
-function fecharLembreteOS(e) {
-    if (e instanceof Event && e.target !== document.getElementById('lembrete-os-overlay')) return;
-    document.getElementById('lembrete-os-overlay').classList.remove('active');
-}
-window.fecharLembreteOS = fecharLembreteOS;
-
-async function salvarLembreteOS() {
-    if (!currentOS) return;
-    const data = document.getElementById('lembrete-data').value;
-    const hora = document.getElementById('lembrete-hora').value;
-    const desc = document.getElementById('lembrete-desc').value.trim();
-    if (!data) return showToast('⚠️ Informe a data do lembrete.');
-    if (!hora) return showToast('⚠️ Informe o horário.');
-    const titulo = `🔧 ${currentOS.id} — ${currentOS.clientName}`;
-    const link = `/CRM/pages/os/index.html#os-${currentOS.id}`;
-    try {
-        const novoRef = doc(collection(db, 'alertas_usuario'));
-        const agora = new Date().toISOString();
-        await setDoc(novoRef, {
-            id: novoRef.id,
-            titulo,
-            descricao: desc || '',
-            tipo: 'os',
-            prioridade: 'media',
-            data,
-            hora,
-            repeticao: 'nenhuma',
-            customDias: null,
-            status: 'pendente',
-            link,
-            osId: currentOS.id,
-            criadoEm: serverTimestamp(),
-            criadoEmISO: agora,
-            atualizadoEm: serverTimestamp(),
-            atualizadoEmISO: agora,
-        });
-        showToast('🔔 Lembrete criado na Central de Alertas!');
-        document.getElementById('lembrete-os-overlay').classList.remove('active');
-    } catch (err) {
-        console.error('Erro ao salvar lembrete:', err);
-        showToast('⚠️ Erro ao criar lembrete.');
-    }
-}
-window.salvarLembreteOS = salvarLembreteOS;
 
 async function deleteOS(id) { const c = prompt("Digite 77 para confirmar a exclusão"); if (c !== "77") { alert("Exclusão cancelada."); return; } try { await deleteDoc(doc(db, "os", id)); localOS = localOS.filter(o => o.id !== id); updateStats(); renderList(); showToast("🗑️ OS excluída."); window.markSaved(); } catch(e) { console.error(e); alert("Erro ao excluir."); } }
 
@@ -1416,47 +1186,6 @@ function copySupplierMessage() {
     }
 }
 window.copySupplierMessage = copySupplierMessage;
-
-function copiarMensagemFinalizado() {
-    if (!currentOS) return;
-    const os = currentOS;
-
-    const firstName = (os.clientName || '').split(' ')[0] || 'Cliente';
-    const garantiaModelo = _getSelectedWarranty(os);
-    const garantiaDias = os.prazoGarantia ?? 90;
-    const garantiaStr = garantiaModelo ? garantiaDias + ' dias — ' + garantiaModelo.nome : garantiaDias + ' dias';
-    let dataGarantiaStr = '';
-    if (os.createdAt) {
-        const d = new Date(os.createdAt);
-        d.setDate(d.getDate() + garantiaDias);
-        dataGarantiaStr = d.toLocaleDateString('pt-BR');
-    }
-    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
-
-    const message =
-        'Olá, ' + firstName + '! 👋\n\n' +
-        'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
-        '📋 OS Nº ' + os.id + '\n\n' +
-        'Você pode consultar as informações da sua ordem de serviço através do Portal do Cliente Cell City.\n\n' +
-        '🔗 ' + LINK_PORTAL_WPP + '\n\n' +
-        '📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n' +
-        '🛡 Garantia: ' + garantiaStr + '\n' +
-        (dataGarantiaStr ? '📅 Válida até: ' + dataGarantiaStr + '\n\n' : '\n') +
-        'Agradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.' +
-        (linkAvaliacao ? '\n\n⭐ Avalie nosso atendimento:\n' + linkAvaliacao : '') +
-        '\n\nCell City Informática';
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(message).then(function () {
-            showToast('✅ Mensagem Finalizado copiada!');
-        }).catch(function () {
-            fallbackCopyMessage(message);
-        });
-    } else {
-        fallbackCopyMessage(message);
-    }
-}
-window.copiarMensagemFinalizado = copiarMensagemFinalizado;
 
 // ===== CENTRAL DE RETORNO =====
 
@@ -1680,224 +1409,6 @@ async function salvarMensagensRetorno() {
     } catch(e) { console.error(e); showToast('❌ Erro ao salvar mensagens'); }
 }
 
-// ===== WHATSAPP CRM — FUNÇÕES =====
-
-async function carregarTemplatesWpp() {
-    try {
-        const snap = await getDoc(doc(db, 'config', 'mensagens_whatsapp'));
-        if (snap.exists()) {
-            const data = snap.data();
-            Object.keys(TEMPLATES_WPP_PADRAO).forEach(tipo => {
-                const val = data[tipo];
-                if (!val) return;
-                // Suporta tanto string quanto objeto { texto: "..." }
-                const texto = (typeof val === 'object' && val.texto) ? val.texto
-                            : (typeof val === 'string' ? val : '');
-                if (texto.trim()) templatesWpp[tipo] = texto;
-            });
-        }
-    } catch(e) {
-        console.warn('WPP CRM: usando templates padrão', e);
-    }
-}
-
-function _substituirVarsWpp(template, os) {
-    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
-    const valorNum = (parseFloat(os.valor) || 0) + (parseFloat(os.valorCartao) || 0);
-    const valor = valorNum > 0 ? `R$ ${valorNum.toFixed(2).replace('.', ',')}` : 'a combinar';
-    const hoje = new Date().toLocaleDateString('pt-BR');
-    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho';
-    const garantiaModelo = _getSelectedWarranty(os);
-    const garantiaDias = os.prazoGarantia ?? 90;
-    const garantiaStr = garantiaModelo ? `${garantiaDias} dias — ${garantiaModelo.nome}` : `${garantiaDias} dias`;
-    let dataGarantiaStr = '';
-    if (os.createdAt) {
-        const dataBase = new Date(os.createdAt);
-        dataBase.setDate(dataBase.getDate() + garantiaDias);
-        dataGarantiaStr = dataBase.toLocaleDateString('pt-BR');
-    }
-    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
-    const linkAvaliacaoStr = linkAvaliacao ? `\n\n⭐ Avalie nosso atendimento:\n${linkAvaliacao}` : '';
-    return template
-        .replace(/\{\{nome\}\}/g, nome)
-        .replace(/\{\{nome_completo\}\}/g, os.clientName || '')
-        .replace(/\{\{aparelho\}\}/g, aparelho)
-        .replace(/\{\{modelo\}\}/g, aparelho)
-        .replace(/\{\{os\}\}/g, os.id || '')
-        .replace(/\{\{valor\}\}/g, valor)
-        .replace(/\{\{defeito\}\}/g, os.defect || '')
-        .replace(/\{\{status\}\}/g, getStatusLabel(os.status) || '')
-        .replace(/\{\{telefone\}\}/g, os.phone || '')
-        .replace(/\{\{data\}\}/g, hoje)
-        .replace(/\{\{garantia\}\}/g, garantiaStr)
-        .replace(/\{\{data_garantia\}\}/g, dataGarantiaStr)
-        .replace(/\{\{link_avaliacao\}\}/g, linkAvaliacaoStr)
-        .replace(/\{\{link_portal\}\}/g, LINK_PORTAL_WPP);
-}
-
-function abrirMenuWpp() {
-    if (!currentOS) return;
-    const cats = CATEGORIAS_WPP.map(c =>
-        `<button onclick="previewWpp('${c.tipo}')" style="width:100%;text-align:left;padding:10px 12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);margin-bottom:6px;">${c.emoji} ${c.label}</button>`
-    ).join('');
-    const primeiroNome = (currentOS.clientName || '').split(' ')[0] || currentOS.clientName || '';
-    openModal(`<div class="modal-handle"></div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px;color:#25D366;">💬 Mensagens WhatsApp</h3>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:12px;">OS: <strong>${currentOS.id}</strong> — ${primeiroNome}</div>
-        ${cats}
-        <div style="height:1px;background:var(--border);margin:10px 0;"></div>
-        <button onclick="abrirEditorTemplatesWpp()" style="width:100%;padding:8px;background:transparent;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text2);">⚙️ Editar Mensagens</button>`);
-}
-
-function previewWpp(tipo) {
-    if (!currentOS) return;
-    _wppTipoAtual = tipo;
-    const template = templatesWpp[tipo] || TEMPLATES_WPP_PADRAO[tipo] || '';
-    _wppMensagemAtual = _substituirVarsWpp(template, currentOS);
-    _renderPreviewWpp();
-    if (tipo === 'finalizado') _registrarEventoFinalizado('✅ Mensagem de finalização gerada');
-}
-
-function _renderPreviewWpp() {
-    if (!currentOS) return;
-    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
-    const phone = (currentOS.phone || '').replace(/\D/g, '');
-    const phoneValido = phone.length >= 10;
-    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    openModal(`<div class="modal-handle"></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <button onclick="abrirMenuWpp()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">← Voltar</button>
-            <h3 style="font-size:14px;font-weight:700;color:#25D366;">${cat ? cat.emoji + ' ' + cat.label : _wppTipoAtual}</h3>
-        </div>
-        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;line-height:1.6;color:var(--text);white-space:pre-wrap;max-height:240px;overflow-y:auto;">${esc(_wppMensagemAtual)}</div>
-        <div style="display:flex;gap:8px;margin-bottom:8px;">
-            <button onclick="editarMsgWppInline()" style="flex:1;padding:9px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:600;color:var(--text);">✏️ Editar</button>
-            <button onclick="copiarMsgWpp()" style="flex:1;padding:9px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:var(--text);">📋 Copiar</button>
-            <button onclick="enviarWppOS()" ${!phoneValido ? 'disabled' : ''} style="flex:2;padding:9px;background:#25D366;border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;${!phoneValido ? 'opacity:0.4;cursor:not-allowed;' : ''}">📤 Enviar</button>
-        </div>
-        ${!phoneValido ? '<div style="font-size:11px;color:var(--red);">⚠️ Telefone inválido ou não cadastrado</div>' : ''}`);
-}
-
-function editarMsgWppInline() {
-    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
-    openModal(`<div class="modal-handle"></div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <button onclick="_renderPreviewWpp()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">← Voltar</button>
-            <h3 style="font-size:14px;font-weight:700;color:var(--text);">✏️ Editar Mensagem</h3>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;">Variáveis: {{nome}} {{modelo}} {{os}} {{valor}} {{defeito}} {{data}} {{garantia}} {{data_garantia}} {{link_portal}}</div>
-        <textarea id="wpp-inline-edit" rows="8" style="width:100%;padding:10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;resize:vertical;min-height:160px;margin-bottom:10px;"></textarea>
-        <div style="display:flex;gap:8px;">
-            <button onclick="_renderPreviewWpp()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);">✕ Cancelar</button>
-            <button onclick="confirmarEdicaoWpp()" style="flex:2;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">✅ Usar esta</button>
-        </div>`);
-    // preenche o textarea após render
-    requestAnimationFrame(() => {
-        const ta = document.getElementById('wpp-inline-edit');
-        if (ta) ta.value = _wppMensagemAtual;
-    });
-}
-
-function confirmarEdicaoWpp() {
-    const ta = document.getElementById('wpp-inline-edit');
-    if (ta) _wppMensagemAtual = ta.value;
-    _renderPreviewWpp();
-}
-
-function copiarMsgWpp() {
-    if (!currentOS || !_wppMensagemAtual) return;
-    closeModal();
-    if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(_wppMensagemAtual).then(() => showToast('✅ Mensagem copiada!')).catch(() => fallbackCopyMessage(_wppMensagemAtual));
-    } else { fallbackCopyMessage(_wppMensagemAtual); }
-    if (_wppTipoAtual === 'finalizado') _registrarEventoFinalizado('📋 Mensagem de finalização copiada');
-}
-
-async function _registrarEventoFinalizado(label) {
-    if (!currentOS) return;
-    const now = new Date();
-    const entrada = {
-        ts: now.toISOString(),
-        data: now.toLocaleDateString('pt-BR'),
-        hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        tipo: 'finalizado',
-        label
-    };
-    try {
-        currentOS.wppHistorico = [...(currentOS.wppHistorico || []), entrada];
-        await updateDoc(doc(db, 'os', currentOS.id), { wppHistorico: currentOS.wppHistorico });
-        const ind = document.getElementById('wpp-os-indicator');
-        if (ind) ind.innerHTML = `🟢 ${label} • ${entrada.data} ${entrada.hora}`;
-    } catch(e) { console.warn('WPP finalizado: erro ao salvar histórico', e); }
-}
-
-async function enviarWppOS() {
-    if (!currentOS || !_wppMensagemAtual) return;
-    const phone = (currentOS.phone || '').replace(/\D/g, '');
-    if (!phone || phone.length < 10) { showToast('⚠️ Telefone não cadastrado ou inválido'); return; }
-    const phoneWa = phone.startsWith('55') ? phone : `55${phone}`;
-    closeModal();
-    window.open(`https://wa.me/${phoneWa}?text=${encodeURIComponent(_wppMensagemAtual)}`, 'whatsapp_crm');
-    const cat = CATEGORIAS_WPP.find(c => c.tipo === _wppTipoAtual);
-    const now = new Date();
-    const entrada = {
-        ts: now.toISOString(),
-        data: now.toLocaleDateString('pt-BR'),
-        hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-        tipo: _wppTipoAtual,
-        label: cat ? cat.emoji + ' ' + cat.label : _wppTipoAtual
-    };
-    try {
-        currentOS.wppHistorico = [...(currentOS.wppHistorico || []), entrada];
-        await updateDoc(doc(db, 'os', currentOS.id), { wppHistorico: currentOS.wppHistorico });
-        const ind = document.getElementById('wpp-os-indicator');
-        if (ind) ind.innerHTML = `🟢 ${entrada.label} • ${entrada.data} ${entrada.hora}`;
-    } catch(e) { console.warn('WPP: erro ao salvar histórico', e); }
-}
-
-async function abrirEditorTemplatesWpp() {
-    const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const campos = CATEGORIAS_WPP.map(c => {
-        const val = esc(templatesWpp[c.tipo] || TEMPLATES_WPP_PADRAO[c.tipo] || '');
-        return `<div style="margin-bottom:14px;">
-            <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${c.emoji} ${c.label}</label>
-            <textarea id="wpp-tpl-${c.tipo}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${val}</textarea>
-        </div>`;
-    }).join('');
-    const linkGoogle = esc(localStorage.getItem('cc_link_avaliacao_google') || '');
-    openModal(`<div class="modal-handle"></div>
-        <h3 style="font-size:15px;font-weight:700;margin-bottom:6px;">⚙️ Editar Mensagens WhatsApp</h3>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{{nome}}</strong> <strong>{{aparelho}}</strong> <strong>{{os}}</strong> <strong>{{valor}}</strong> <strong>{{defeito}}</strong> <strong>{{link_portal}}</strong> <strong>{{garantia}}</strong> <strong>{{data_garantia}}</strong> <strong>{{link_avaliacao}}</strong></div>
-        <div style="margin-bottom:16px;padding:10px 12px;background:var(--surface2);border:1px solid #f59e0b44;border-radius:var(--radius-sm);">
-            <label style="font-size:11px;font-weight:700;color:#f59e0b;display:block;margin-bottom:6px;">⭐ Link de Avaliação Google (usado em {{link_avaliacao}})</label>
-            <input id="wpp-link-avaliacao-google" type="url" placeholder="https://g.page/r/..." value="${linkGoogle}" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:12px;">
-        </div>
-        ${campos}
-        <div style="display:flex;gap:8px;margin-top:4px;">
-            <button onclick="abrirMenuWpp()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text2);">← Voltar</button>
-            <button onclick="salvarTemplatesWpp()" style="flex:2;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">💾 Salvar</button>
-        </div>`);
-}
-
-async function salvarTemplatesWpp() {
-    const payload = {};
-    CATEGORIAS_WPP.forEach(c => {
-        const el = document.getElementById(`wpp-tpl-${c.tipo}`);
-        if (!el) return;
-        const texto = el.value;
-        const padrao = TEMPLATES_WPP_PADRAO[c.tipo] || texto;
-        payload[c.tipo] = { nome: c.label, texto, padrao, categoria: 'os', ativo: true };
-        templatesWpp[c.tipo] = texto;
-    });
-    const linkGoogleEl = document.getElementById('wpp-link-avaliacao-google');
-    if (linkGoogleEl) localStorage.setItem('cc_link_avaliacao_google', linkGoogleEl.value.trim());
-    try {
-        await setDoc(doc(db, 'config', 'mensagens_whatsapp'), { ...payload, updatedAt: new Date().toISOString() });
-        closeModal();
-        showToast('✅ Mensagens salvas com sucesso!');
-    } catch(e) { console.error(e); showToast('❌ Erro ao salvar mensagens'); }
-}
-
 function fallbackCopyMessage(text) {
     var textarea = document.createElement('textarea');
     textarea.value = text;
@@ -2035,7 +1546,7 @@ window._executePrint = function() {
     const w = window.open('', '_blank');
     const statusHtml = os.status === 'entregue' ? `<div class="row"><span class="label">Status:</span><span style="font-weight:bold">ENTREGUE</span></div>` : `<div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div>`;
     const garantiasHtmlAjustado = selecionadas.length ? `<div style="margin-top:14px;border-top:1px dashed #ccc;padding-top:10px"><div style="font-weight:bold;font-size:11px;margin-bottom:8px;text-transform:uppercase">Termos de Garantia</div>${selecionadas.map(g => `<div style="margin-bottom:10px"><b style="font-size:11px">${g.nome}:</b><br><span style="font-size:10px;line-height:1.5">${highlightWarrantyTerms(g.texto)}</span></div>`).join('')}</div>` : '';
-    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div>${os.cpf?`<div class="row"><span class="label">CPF:</span><span>${os.cpf}</span></div>`:''}${os.cnpjEmpresa?`<div class="row"><span class="label">CNPJ:</span><span>${os.cnpjEmpresa}</span></div>`:''}${os.razaoSocial?`<div class="row"><span class="label">Razão Social:</span><span>${os.razaoSocial}</span></div>`:''}${os.nfEmail?`<div class="row"><span class="label">E-mail NF:</span><span>${os.nfEmail}</span></div>`:''}${os.nfTelefone?`<div class="row"><span class="label">Telefone NF:</span><span>${os.nfTelefone}</span></div>`:''}${os.nfNumero?`<div class="row"><span class="label">Nota Fiscal:</span><span>${os.nfNumero}${os.nfData?' — '+os.nfData.split('-').reverse().join('/'):''}</span></div>`:''}${os.cep||os.endereco?`<div class="row"><span class="label">Endereço:</span><span>${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento?` - ${os.complemento}`:''}</span></div><div class="row"><span class="label">Bairro:</span><span>${os.bairro||''}</span></div><div class="row"><span class="label">Cidade/UF:</span><span>${[os.cidade, os.estado].filter(Boolean).join(' - ')}</span></div><div class="row"><span class="label">CEP:</span><span>${os.cep||''}</span></div>`:''}<div class="row"><span class="label">Aparelho:</span><span>${[os.brand, os.model].filter(Boolean).join(' ')}</span></div>${os.imei?`<div class="row"><span class="label">IMEI:</span><span>${os.imei}</span></div>`:''}<div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.valor?`<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`:''}${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section">${statusHtml}</div>${garantiasHtmlAjustado}<div class="footer" style="margin-top:30px"><div style="text-align:center;margin-bottom:20px"><p style="margin:0;font-size:10px">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p><p style="margin:30px 0 10px 0;border-top:1px solid #000;padding-top:10px;min-height:40px;font-size:11px;font-weight:bold">Assinatura do Cliente</p><p style="margin-top:15px;font-size:10px">Data da entrega: ___/___/____</p></div><div style="text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;font-size:9px"><p style="margin:0;font-style:italic;color:#333">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p></div></div></body></html>`);
+    w.document.write(`<!DOCTYPE html><html><head><title>${os.id}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${os.id}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${os.clientName}</span></div><div class="row"><span class="label">Telefone:</span><span>${os.phone}</span></div>${os.cpf?`<div class="row"><span class="label">CPF:</span><span>${os.cpf}</span></div>`:''}${os.cep||os.endereco?`<div class="row"><span class="label">Endereço:</span><span>${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento?` - ${os.complemento}`:''}</span></div><div class="row"><span class="label">Bairro:</span><span>${os.bairro||''}</span></div><div class="row"><span class="label">Cidade/UF:</span><span>${[os.cidade, os.estado].filter(Boolean).join(' - ')}</span></div><div class="row"><span class="label">CEP:</span><span>${os.cep||''}</span></div>`:''}<div class="row"><span class="label">Aparelho:</span><span>${[os.brand, os.model].filter(Boolean).join(' ')}</span></div>${os.imei?`<div class="row"><span class="label">IMEI:</span><span>${os.imei}</span></div>`:''}<div class="row"><span class="label">Defeito:</span><span>${os.defect||''}</span></div>${os.valor?`<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`:''}${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${os.observations}</span></div>`:''}</div><div class="section">${statusHtml}</div>${garantiasHtmlAjustado}<div class="footer" style="margin-top:30px"><div style="text-align:center;margin-bottom:20px"><p style="margin:0;font-size:10px">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p><p style="margin:30px 0 10px 0;border-top:1px solid #000;padding-top:10px;min-height:40px;font-size:11px;font-weight:bold">Assinatura do Cliente</p><p style="margin-top:15px;font-size:10px">Data da entrega: ___/___/____</p></div><div style="text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;font-size:9px"><p style="margin:0;font-style:italic;color:#333">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p></div></div></body></html>`);
     w.document.close();
     w.print();
 };
@@ -2468,7 +1979,7 @@ function renderStarsHTML(rating) {
 }
 
 // ===== GLOBAL SEARCH =====
-function globalSearch() { const t = (document.getElementById('global-search')?.value || document.getElementById('home-search')?.value || '').trim().toLowerCase(); const c = document.getElementById('search-results'); if (!c) return; if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t) || (o.defect||'').toLowerCase().includes(t) || (o.imei||'').includes(t) || (o.imei1||'').includes(t) || (o.imei2||'').includes(t) || (o.nfNumero||'').includes(t) || (o.cnpjEmpresa||'').includes(t) || (o.razaoSocial||'').toLowerCase().includes(t) || (o.observations||'').toLowerCase().includes(t) || (o.cpf||'').includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`;
+function globalSearch() { const t = (document.getElementById('global-search')?.value || '').trim().toLowerCase(); const c = document.getElementById('search-results'); if (!c) return; if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`;
     if (orders.length > 0) {
         const orderCards = orders.map(os => {
             const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
@@ -2479,126 +1990,6 @@ function globalSearch() { const t = (document.getElementById('global-search')?.v
     c.innerHTML = h || `<div class="empty-state"><div class="icon">🔍</div><p>Nenhum resultado</p></div>`; 
 }
 
-// ===== ORÇAMENTOS INTELIGENTES =====
-let _orcResultados = [];
-
-function _calcularOrcamentosInteligentes(modelo, defeito, excludeId) {
-    if (!modelo || !defeito || modelo.length < 2 || defeito.length < 2) return [];
-
-    const norm = s => (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
-    const modeloNorm = norm(modelo);
-    const defeitoNorm = norm(defeito);
-    const modeloWords = modeloNorm.split(/\s+/).filter(w => w.length > 2);
-    const defeitoWords = defeitoNorm.split(/\s+/).filter(w => w.length > 2);
-
-    function getFamilia(m) {
-        const match = norm(m).match(/^(iphone|samsung|motorola|xiaomi|poco|redmi|lg|huawei|nokia|sony|realme|oppo)/);
-        return match ? match[1] : '';
-    }
-    const modeloFamilia = getFamilia(modeloNorm);
-
-    const statusRelevantes = new Set(['concluido', 'entregue', 'orcamento_aprovado', 'em_reparo', 'testes_finais']);
-    const getValor = o => (o.valor && o.valor > 0) ? o.valor : (o.orc1Valor && o.orc1Valor > 0 ? o.orc1Valor : 0);
-
-    const prioridade1 = [], prioridade2 = [], prioridade3 = [];
-
-    for (const o of DB.getOS()) {
-        if (o.id === excludeId) continue;
-        if (!statusRelevantes.has(o.status)) continue;
-        const v = getValor(o);
-        if (!v) continue;
-
-        const osModelo = norm(o.model || '');
-        const osDefeito = norm(o.defect || '');
-
-        const modeloExato = osModelo === modeloNorm || osModelo.includes(modeloNorm) || modeloNorm.includes(osModelo);
-        const modeloParcial = modeloWords.length > 0 && modeloWords.every(w => osModelo.includes(w));
-        const modeloMatch = modeloExato || modeloParcial;
-
-        const defeitoMatchCount = defeitoWords.filter(w => osDefeito.includes(w)).length;
-        const defeitoForte = defeitoWords.length === 0 || defeitoMatchCount >= Math.max(1, Math.ceil(defeitoWords.length * 0.6));
-        const defeitoFraco = defeitoMatchCount > 0 || osDefeito.includes(defeitoNorm);
-
-        if (modeloMatch && defeitoForte) prioridade1.push({ os: o, valor: v, prioridade: 1 });
-        else if (modeloMatch && defeitoFraco) prioridade2.push({ os: o, valor: v, prioridade: 2 });
-        else if (modeloFamilia && norm(o.model || '').startsWith(modeloFamilia) && defeitoFraco) prioridade3.push({ os: o, valor: v, prioridade: 3 });
-    }
-
-    const seen = new Set();
-    return [...prioridade1, ...prioridade2, ...prioridade3].filter(r => {
-        if (seen.has(r.os.id)) return false;
-        seen.add(r.os.id);
-        return true;
-    });
-}
-
-function _htmlOrcamentosInteligentes(os) {
-    const resultados = _calcularOrcamentosInteligentes(os.model, os.defect, os.id);
-    _orcResultados = resultados;
-
-    if (resultados.length === 0) return '';
-
-    const fmt = v => `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
-    const valores = resultados.map(r => r.valor).sort((a, b) => a - b);
-    const menor = valores[0];
-    const maior = valores[valores.length - 1];
-    const media = valores.reduce((s, v) => s + v, 0) / valores.length;
-    const freqMap = {};
-    valores.forEach(v => freqMap[v] = (freqMap[v] || 0) + 1);
-    const maisUsado = parseFloat(Object.entries(freqMap).sort((a, b) => b[1] - a[1])[0][0]);
-    const sugerido = freqMap[maisUsado] > 1 ? maisUsado : valores[Math.floor(valores.length / 2)];
-
-    return `<div class="orc-int-panel">
-        <div class="orc-int-header">
-            <span class="orc-int-icon">📊</span>
-            <div class="orc-int-title-wrap">
-                <span class="orc-int-title">Histórico de Orçamentos</span>
-                <span class="orc-int-count">Baseado em ${resultados.length} OS anterior${resultados.length > 1 ? 'es' : ''}</span>
-            </div>
-        </div>
-        <div class="orc-int-sugerido">
-            <span class="orc-int-sugerido-label">💰 Valor sugerido</span>
-            <span class="orc-int-sugerido-valor">${fmt(sugerido)}</span>
-        </div>
-        <div class="orc-int-stats">
-            <div class="orc-int-stat"><span class="orc-int-stat-label">Menor</span><span class="orc-int-stat-num">${fmt(menor)}</span></div>
-            <div class="orc-int-stat"><span class="orc-int-stat-label">Maior</span><span class="orc-int-stat-num">${fmt(maior)}</span></div>
-            <div class="orc-int-stat"><span class="orc-int-stat-label">Média</span><span class="orc-int-stat-num">${fmt(media)}</span></div>
-            <div class="orc-int-stat"><span class="orc-int-stat-label">+ Usado</span><span class="orc-int-stat-num">${fmt(maisUsado)}</span></div>
-        </div>
-        <button class="orc-int-btn-historico" onclick="verHistoricoOrcamentos()">📋 Ver Histórico</button>
-    </div>`;
-}
-
-function verHistoricoOrcamentos() {
-    if (!_orcResultados.length) return;
-    const fmt = v => `R$ ${v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
-    const fmtDate = d => { try { return new Date(d).toLocaleDateString('pt-BR'); } catch { return '-'; } };
-    const statusLabel = {
-        recebido: 'Recebido', em_analise: 'Em análise', orcamento_enviado: 'Enviado',
-        orcamento_aprovado: 'Aprovado', orcamento_recusado: 'Recusado', em_reparo: 'Em reparo',
-        testes_finais: 'Testes finais', concluido: 'Concluído', entregue: 'Entregue'
-    };
-    const prioIcon = p => p === 1 ? '🎯' : p === 2 ? '🔷' : '🔹';
-    const rows = _orcResultados.map(r => {
-        const o = r.os;
-        return `<div class="orc-hist-item" onclick="closeModal();openDetail('${o.id}')">
-            <div class="orc-hist-top">
-                <span class="orc-hist-id">${prioIcon(r.prioridade)} ${o.id}</span>
-                <span class="orc-hist-valor">${fmt(r.valor)}</span>
-            </div>
-            <div class="orc-hist-cliente">${o.clientName || '-'} · ${fmtDate(o.createdAt)}</div>
-            <div class="orc-hist-detalhe">${o.model || ''} — ${o.defect || ''}</div>
-            <div class="orc-hist-status">${statusLabel[o.status] || o.status || '-'}</div>
-        </div>`;
-    }).join('');
-
-    openModal(`<div class="modal-handle"></div>
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:4px;color:var(--text);">📊 Histórico de Orçamentos</h3>
-        <p style="font-size:12px;color:var(--text3);margin-bottom:14px;">${_orcResultados.length} OS encontrada${_orcResultados.length > 1 ? 's' : ''} · Toque para abrir</p>
-        <div class="orc-hist-list">${rows}</div>
-        <button onclick="closeModal()" style="width:100%;margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>`);
-}
 // ===== MODAL & TOAST =====
 function openModal(content) { document.getElementById('modal-content').innerHTML = content; document.getElementById('modal-overlay').classList.add('active'); }
 function closeModal(event) { if (event && event.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('active'); else document.getElementById('modal-overlay').classList.remove('active'); }
@@ -2606,8 +1997,7 @@ function showToast(msg) { const t = document.getElementById('toast'); t.textCont
 function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document.getElementById('global-search')?.focus(), 150); }
 
 // ===== CONVERSÃO DE PRÉ-OS (vindo do Autoatendimento) =====
-let crmLeadPendente = null; // Lead do CRM Comercial que originou esta O.S.
-let preOSPendente   = null;
+let preOSPendente = null;
 function verificarConversaoPreOS() {
     try {
         const raw = sessionStorage.getItem('cc_dados_preos');
@@ -2670,173 +2060,18 @@ function verificarConversaoPortalOS() {
     }
 }
 
-// ===== INTEGRAÇÕES ENTRE MÓDULOS =====
-
-// ── Fase 1: Buscar cliente pelo telefone ──────────────────────────────────────
-async function buscarClientePorTelefone(telefone) {
-    const digitos = (telefone || '').replace(/\D/g, '');
-    if (digitos.length < 8) return;
-    try {
-        let snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', digitos)));
-        if (snap.empty) snap = await getDocs(query(collection(db, 'clientes'), where('phone', '==', telefone.trim())));
-        if (snap.empty) return;
-        const _cId  = snap.docs[0].id;
-        const _cDat = snap.docs[0].data();
-        preencherOScomCliente(_cId, _cDat);
-        carregarEquipamentosOS(_cId);
-    } catch (e) {
-        console.warn('[Integração] Erro ao buscar cliente:', e);
-    }
-}
-
-function preencherOScomCliente(clienteId, cliente) {
-    const elNome = document.getElementById('f-nome');
-    const elHiddenId = document.getElementById('os-cliente-id');
-    const feedback = document.getElementById('os-cliente-encontrado');
-    if (elNome && !elNome.value) elNome.value = cliente.name || '';
-    if (elHiddenId) elHiddenId.value = clienteId;
-    if (feedback) {
-        feedback.textContent = `✅ Cliente encontrado: ${cliente.name}`;
-        feedback.style.display = 'block';
-        setTimeout(() => { feedback.style.display = 'none'; }, 3000);
-    }
-}
-
-// ── Fase 2: Gerar lançamento no Financeiro ────────────────────────────────────
-async function gerarLancamentoFinanceiro(os) {
-    const valor = parseFloat(os.valor) || 0;
-    if (valor <= 0) return;
-    try {
-        await addDoc(collection(db, 'caixa_lancamentos'), {
-            descricao: `OS ${os.id} — ${os.clientName || ''}`,
-            valor: valor,
-            tipo: 'entrada',
-            data: new Date().toISOString().slice(0, 10),
-            osId: os.id,
-            clienteId: document.getElementById('os-cliente-id')?.value || '',
-            metodo: 'dinheiro',
-            categoria: 'serviço',
-            criadoEm: serverTimestamp()
-        });
-        console.log('[Integração] Lançamento financeiro criado para', os.id);
-    } catch (e) {
-        console.warn('[Integração] Erro ao gerar lançamento:', e);
-    }
-}
-
-// ── Fase 5: Agendar Pós-Venda ─────────────────────────────────────────────────
-// O módulo posvenda.js exibe grupos 5/15/30 automaticamente com base na data de entrega.
-// Não é necessário pré-agendar entradas — o histórico só deve registrar contatos JÁ realizados.
-async function agendarPosVenda(os) {
-    // Mantido por compatibilidade com chamadas existentes; não cria mais entradas pré-agendadas.
-}
-
-// ── Fase 6: Notificar cliente via WhatsApp ────────────────────────────────────
-function notificarClienteOS(osId) {
-    const os = localOS.find(o => o.id === osId) || currentOS;
-    if (!os) return;
-    const tel = (os.phone || '').replace(/\D/g, '');
-    if (!tel) { showToast('⚠️ Cliente sem telefone cadastrado'); return; }
-    const nome = os.clientName || 'Cliente';
-    const valorStr = os.valor ? `\nValor: R$ ${parseFloat(os.valor).toFixed(2)}` : '';
-    const msg = encodeURIComponent(
-        `Olá ${nome}! 🎉\n\nSeu serviço ficou PRONTO! ✅\n${os.id}${valorStr}\n\nPode passar para retirar? 😊\n\n📍 Cell City Informática`
-    );
-    window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
-}
-window.notificarClienteOS = notificarClienteOS;
-
-// ===== INTEGRAÇÃO EQUIPAMENTOS =====
-
-function _escAttr(s) { return (s || '').replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
-
-async function carregarEquipamentosOS(clienteId, preSelId) {
-    if (!clienteId) return;
-    try {
-        const snap = await getDocs(collection(db, 'clientes', clienteId, 'equipamentos'));
-        const equips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        mostrarEquipamentosCliente(equips, preSelId);
-    } catch(e) { console.warn('[Equipamentos] Erro ao carregar:', e); }
-}
-
-function mostrarEquipamentosCliente(equips, preSelId) {
-    const container = document.getElementById('os-equip-selector');
-    if (!container) return;
-    if (!equips.length) { container.style.display = 'none'; return; }
-    const catIcon = c => ({ Celular:'📱', Notebook:'💻', Tablet:'📟', Smartwatch:'⌚', TV:'📺' }[c] || '📦');
-    container.innerHTML = `
-        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">
-            📱 Vincular ao Equipamento <span style="font-weight:400">(opcional)</span>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;">
-            ${equips.map(eq => {
-                const label = _escAttr(((eq.marca||'')+' '+(eq.modelo||'')).trim()) || 'Equipamento';
-                return `<button type="button" class="os-equip-pill${preSelId === eq.id ? ' selected' : ''}" id="os-equip-pill-${eq.id}"
-                    onclick="selecionarEquipamento('${eq.id}','${_escAttr(eq.marca||'')}','${_escAttr(eq.modelo||'')}','${_escAttr(eq.imei||'')}')">
-                    ${catIcon(eq.categoria)} ${label}
-                </button>`;
-            }).join('')}
-            <button type="button" class="os-equip-pill os-equip-pill-none${!preSelId ? ' selected' : ''}" onclick="selecionarEquipamento('','','','')">
-                ✕ Sem vínculo
-            </button>
-        </div>`;
-    container.style.display = 'block';
-    if (preSelId) selecionarEquipamento(preSelId, '', '', '');
-}
-
-window.selecionarEquipamento = function(equipId, marca, modelo, imei) {
-    const hidden = document.getElementById('os-equip-id');
-    if (hidden) hidden.value = equipId;
-    // Preenche campos do aparelho se estiverem vazios
-    const setIfEmpty = (id, v) => { if (!v) return; const el = document.getElementById(id); if (el && !el.value) el.value = v; };
-    setIfEmpty('f-marca',  marca);
-    setIfEmpty('f-modelo', modelo);
-    setIfEmpty('f-imei',   imei);
-    // Destaca pill selecionada
-    document.querySelectorAll('.os-equip-pill').forEach(p => p.classList.remove('selected'));
-    if (equipId) document.getElementById(`os-equip-pill-${equipId}`)?.classList.add('selected');
-    else document.querySelector('.os-equip-pill-none')?.classList.add('selected');
-};
-
-async function vincularOSaEquipamento(os) {
-    const eqId = os.equipamentoId;
-    const cId  = os.clienteId;
-    if (!eqId || !cId) return;
-    try {
-        const ref = doc(collection(db, 'clientes', cId, 'equipamentos', eqId, 'historico'));
-        await setDoc(ref, {
-            tipo:      os.defect || 'Serviço realizado',
-            descricao: `OS ${os.id}${os.model ? ' — ' + os.model : ''}`,
-            valor:     (parseFloat(os.valor) || 0) + (parseFloat(os.valorCartao) || 0) || null,
-            data:      new Date(),
-            origemOS:  os.id,
-            criadoEm:  serverTimestamp()
-        });
-        console.log('[Equipamentos] Histórico criado para equipamento', eqId, 'via OS', os.id);
-    } catch(e) { console.warn('[Equipamentos] Erro ao criar histórico:', e); }
-}
-
 // ===== INIT =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
-    const phoneInput = document.getElementById('f-telefone');
-    if (phoneInput) {
-        phoneInput.addEventListener('input', e => { e.target.value = formatPhone(e.target.value); });
-        let _timerBuscaCliente;
-        phoneInput.addEventListener('input', e => {
-            clearTimeout(_timerBuscaCliente);
-            _timerBuscaCliente = setTimeout(() => buscarClientePorTelefone(e.target.value), 800);
-        });
-    }
+    const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
     const logoEl = document.querySelector('.header-logo');
     if (logoEl && !logoEl.dataset.logoHandler) {
         logoEl.addEventListener('click', () => showScreen('home'));
         logoEl.dataset.logoHandler = 'true';
     }
     await DB.loadFromFirestore(); updateStats(); updateFavStars();
-    await carregarTemplatesWpp();
     // Garante que as configurações de garantia estejam carregadas do Firestore
     // (fallback caso localStorage não tenha sido populado por clientes.js)
     await _fetchWarrantyConfigFromFirestore();

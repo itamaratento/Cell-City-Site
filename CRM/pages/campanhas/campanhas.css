@@ -158,8 +158,3 @@ h1 { font-size:18px; font-weight:800; }
     opacity:0; transition:all 300ms; pointer-events:none; white-space:nowrap; z-index:9500;
 }
 .camp-toast.visivel { opacity:1; transform:translateX(-50%) translateY(0); }
-
-/* === SAFE AREA — dock fica à direita apenas em desktop === */
-@media (min-width: 901px) {
-  .camp-content { padding-right: 96px; }
-}

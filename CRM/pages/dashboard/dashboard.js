@@ -4,13 +4,7 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
-import { getEmpresaId } from "../../shared/tenant.js";
-import { registerListener, unregisterAll } from "../../shared/listener-manager.js";
 import { getUid, onUid } from "../../shared/session.js";
-import { ccTocarSom, ccLog, ccSonsHabilitados } from "../../shared/cc-audio.js";
-import { init as initCentralModulos, abrirCentralModulos, getFavoritosHome, onModulosChanged, setFavoritos, TODOS_MODULOS } from "../../shared/central-modulos.js";
-import { init as initHomePrefs, getPrefs as getHomePrefs, setPrefs as setHomePrefs, onPrefsChanged as onHomePrefsChanged } from "../../shared/home-prefs.js";
-import { SystemUpdater } from "../../shared/system-updater.js";
 
 
 class Dashboard {
@@ -59,12 +53,6 @@ class Dashboard {
   }
 
   init() {
-    // Home prefs + Central de Módulos iniciam antes de setupModules
-    initHomePrefs();
-    initCentralModulos();
-    window.abrirCentralModulos = abrirCentralModulos;
-    window.__cmNavigate = (id) => this.navigateTo(id);
-
     this._verificarFechamentoCaixa();
     this.setupNotas();
     this.setupClock();
@@ -76,21 +64,17 @@ class Dashboard {
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
-    this.setupSea();
     this.setupSidebar();
     this.setupPanelRight();
     this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
-    this.setupAvisoAcoes();
-    this.monitorarCardAcaoSemana();
+    this.setupConfigAlertas();
+    this.atualizarCardAcaoSemana();
     this.setupAlarmeOS();
     this.setupCompactMode();
-    this.setupConfigAlertas();
-    this.setupPainelFinanceiro();
-    this.setupBtnCentralModulos();
-    this.setupSystemUpdater();
-    console.log('✅ Dashboard Cell City v4.3 — Central de Módulos ativa.');
+    this.setupPainelLateralGerencial();
+    console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
   
@@ -226,7 +210,6 @@ class Dashboard {
   }
 
   async _carregarMetaFirestore() {
-    await (window._ccTenantReady || Promise.resolve());
     try {
       const CRESCIMENTO = 1.15;
 
@@ -244,7 +227,7 @@ class Dashboard {
       const numSem   = _weekNum(now);
 
       // Lê todos os lançamentos via SDK (autenticado)
-      const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', getEmpresaId())));
+      const snap = await getDocs(collection(db, 'caixa_lancamentos'));
 
       let lucroAtual = 0;
       // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }
@@ -323,9 +306,8 @@ class Dashboard {
   }
 
   async _carregarContadorAutoatendimento() {
-    await (window._ccTenantReady || Promise.resolve());
     try {
-      const q = query(collection(db, 'pre_os'), where('empresa_id', '==', getEmpresaId()), where('status', '==', 'AGUARDANDO_CONVERSAO'));
+      const q = query(collection(db, 'pre_os'), where('status', '==', 'AGUARDANDO_CONVERSAO'));
 
       // Listener realtime
       onSnapshot(q, snap => {
@@ -351,34 +333,27 @@ class Dashboard {
   async setupDiarioBadge() {
     const badge = document.getElementById('diario-badge');
     if (!badge) return;
-    // Aguarda tenant antes de qualquer query Firestore
-    await (window._ccTenantReady || Promise.resolve());
     const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
     try {
-      const _unsub = onSnapshot(
-        query(collection(db, 'diario_registros'), where('empresa_id', '==', getEmpresaId())),
-        snap => {
-          let vencidas = 0;
-          snap.forEach(d => {
-            const r = d.data();
-            if (!r || !r.dataRevisao) return;
-            if (r.status === 'concluido' || r.status === 'arquivado') return;
-            const rev = new Date(r.dataRevisao + 'T00:00:00');
-            if (!isNaN(rev.getTime()) && rev < hoje0) vencidas++;
-          });
-          if (vencidas > 0) {
-            badge.textContent = vencidas;
-            badge.style.display = '';
-            badge.classList.remove('empty');
-          } else {
-            badge.style.display = 'none';
-          }
-        },
-        err => console.error('[DASHBOARD] Erro diario_registros:', err.message)
-      );
-      registerListener('dashboard:diario_registros', _unsub);
+      onSnapshot(collection(db, 'diario_registros'), snap => {
+        let vencidas = 0;
+        snap.forEach(d => {
+          const r = d.data();
+          if (!r || !r.dataRevisao) return;
+          if (r.status === 'concluido' || r.status === 'arquivado') return;
+          const rev = new Date(r.dataRevisao + 'T00:00:00');
+          if (!isNaN(rev.getTime()) && rev < hoje0) vencidas++;
+        });
+        if (vencidas > 0) {
+          badge.textContent = vencidas;
+          badge.style.display = '';
+          badge.classList.remove('empty');
+        } else {
+          badge.style.display = 'none';
+        }
+      });
     } catch (e) {
-      console.warn('[DASHBOARD] Erro ao carregar revisões do Diário:', e);
+      console.warn('Erro ao carregar revisões do Diário:', e);
     }
   }
 
@@ -386,9 +361,8 @@ class Dashboard {
   // Cada dia é 1 documento { data, texto, cor }. As linhas do texto no formato
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
   async _lerAgenda() {
-    await (window._ccTenantReady || Promise.resolve());
     try {
-      const snap = await getDocs(query(collection(db, 'agenda'), where('empresa_id', '==', getEmpresaId())));
+      const snap = await getDocs(collection(db, 'agenda'));
       const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -546,54 +520,79 @@ class Dashboard {
   //   2. Tarefas do HORÁRIO ATUAL (hoje, janela 0–5 min)
   //   3. Tarefas PRÓXIMAS (hoje, 6–15 min)
   // O card SÓ para de destacar quando TODAS as tarefas vencidas forem concluídas
-  monitorarCardAcaoSemana() {
-    const card = document.querySelector('.module-card[data-module="acaodasemana"]');
-    if (!card) return;
-    const subEl = card.querySelector('.module-sub');
-    const subOriginal = 'Agenda Inteligente';
-
-    const _fmtAtraso = (min) => {
-      if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
-      if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
-      return `${min} min`;
-    };
-
-    const _fmtData = (dataISO) => {
-      if (!dataISO) return '';
-      const [y, m, d] = dataISO.split('-').map(Number);
-      return `${d}/${m}`;
-    };
-
+  // ===== DESTAQUE NO CARD DO MÓDULO AÇÃO DA SEMANA =====
+  // Apenas adiciona/remove classe visual — sem som, sem sobrepor a Central de Alertas
+  atualizarCardAcaoSemana() {
     const verificar = async () => {
+      const card = document.querySelector('.module-card[data-module="acaodasemana"]');
+      if (!card) return;
+      const eventos = await this._lerAgenda();
+      const agora = Date.now();
+      const hojeISO = new Date().toISOString().slice(0, 10);
+      const temVencidas = (eventos || []).some(e => {
+        if (e.concluido || !e.data) return false;
+        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        return e.data < hojeISO;
+      });
+      card.classList.toggle('acao-vencida', temVencidas);
+    };
+    verificar();
+    setInterval(verificar, 30000);
+    window.addEventListener('focus', verificar);
+  }
+
+  // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====
+  async gerarAlertas() {
+    const alertas = [];
+    const now = new Date();
+
+    // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
+    const getDeliveryDate = (os) => {
+      if (Array.isArray(os.timeline)) {
+        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
+        if (entry?.date) return entry.date;
+      }
+      const ua = os.updatedAt;
+      if (!ua) return null;
+      if (typeof ua === 'string') return ua;
+      if (ua.toDate) return ua.toDate().toISOString();
+      return null;
+    };
+    const calcDias = (dateStr) => {
+      try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
+    };
+
+    try {
+      // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (VENCIDAS + horário atual + próximas) =====
+      // Regras:
+      //   1. Vencidas de QUALQUER DIA aparecem sempre (CRÍTICO)
+      //   2. Horário atual aparece se não houver vencidas
+      //   3. Próximas (até 15min) aparece se não houver vencidas nem horário atual
       const eventos = await this._lerAgenda();
       const agora = Date.now();
       const hojeISO = new Date().toISOString().slice(0, 10);
       const d = new Date();
       const minsAtual = d.getHours() * 60 + d.getMinutes();
 
-      // ─── Helper para determinar se um evento está atrasado ───
+      // ─── Helper: verifica se evento está atrasado ───
       const estaAtrasado = (e) => {
         if (e.concluido || !e.data) return false;
-        if (e.hora) {
-          return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
-        }
-        // Sem horário — considera atrasado se a data já passou
-        return e.data < hojeISO;
+        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
+        return e.data < hojeISO; // sem horário — data passou
       };
 
-      // ─── Helper para calcular minutos entre agora e o evento ───
+      // ─── Helper: diff em minutos do evento ───
       const diffMinEvento = (e) => {
-        if (!e.hora) return Infinity; // sem horário, não calcula diff
+        if (!e.hora) return Infinity;
         const [h, m] = e.hora.split(':').map(Number);
         return (h * 60 + m) - minsAtual;
       };
 
-      // ─── Separa atrasados entre dias anteriores e hoje ───
-      const atrasados = (eventos || []).filter(estaAtrasado);
-      const atrasadosDiasAnteriores = atrasados.filter(e => e.data < hojeISO);
-      const atrasadosHoje = atrasados.filter(e => e.data === hojeISO);
+      // Atrasadas de QUALQUER DIA (não concluídas, horário/data passou)
+      const atrasadas = (eventos || []).filter(estaAtrasado);
+      const atrasadasDiasAnteriores = atrasadas.filter(e => e.data < hojeISO);
 
-      // 2. HORÁRIO ATUAL — tarefas de hoje com hora exata agora (janela 0–5 min)
+      // No horário atual (hoje, diff 0–5 min)
       const noHorario = (eventos || []).filter(e => {
         if (e.concluido || !e.data || !e.hora) return false;
         if (e.data !== hojeISO) return false;
@@ -601,86 +600,419 @@ class Dashboard {
         return diff >= 0 && diff <= 5;
       });
 
-      // 3. PRÓXIMOS — tarefas de hoje até 15 min
-      const proximos = (eventos || []).filter(e => {
+      // Próximas (hoje, 6–15 min)
+      const proximas = (eventos || []).filter(e => {
         if (e.concluido || !e.data || !e.hora) return false;
         if (e.data !== hojeISO) return false;
         const diff = diffMinEvento(e);
         return diff > 5 && diff <= 15;
       });
 
-      // ─── Prioridade: atrasados > noHorario > proximos > padrão ───
-      const totalPendentes = atrasados.length + noHorario.length;
-      const contador = totalPendentes > 1 ? `(${totalPendentes}) ` : '';
+      // ─── Gera alertas na ordem de prioridade ───
 
-      if (atrasados.length > 0) {
-        // ⚠ PRIORIDADE 1 — Tarefas VENCIDAS (inclui dias anteriores)
-        // Destaca o card ENQUANTO houver pelo menos uma não concluída
-        card.classList.add('acao-vencida');
-
-        // Pega a MAIS atrasada (mais antiga primeiro)
-        const pior = atrasados.sort((a, b) => {
+      // ⚠ 1. PRIORIDADE MÁXIMA — VENCIDAS (inclui dias anteriores)
+      if (atrasadas.length > 0) {
+        const totalAtrasadas = atrasadas.length;
+        const _fmtAtraso = (min) => {
+          if (min >= 1440) return `${Math.floor(min/1440)}d ${Math.floor((min%1440)/60)}h`;
+          if (min >= 60)   return `${Math.floor(min/60)}h${min%60 ? ' '+(min%60)+'min' : ''}`;
+          return `${min} min`;
+        };
+        const maisAntiga = atrasadas.sort((a, b) => {
           const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
           const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
           return tsA - tsB;
         })[0];
+        const tituloExemplo = maisAntiga.titulo;
+        const dtExemplo = new Date(`${maisAntiga.data}T${maisAntiga.hora || '00:00'}:00`);
+        const atrasoMin = Math.max(0, Math.round((agora - dtExemplo.getTime()) / 60000));
 
-        if (subEl) {
-          const dt = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
-          const atrasoMin = Math.max(0, Math.round((agora - dt.getTime()) / 60000));
-          const rot = pior.rotulo || `${pior.hora || ''} ${pior.titulo}`;
+        // Detail mais informativo: mostra quantas são de dias anteriores
+        const diasAntLabel = atrasadasDiasAnteriores.length > 0
+          ? ` (${atrasadasDiasAnteriores.length} de dias anteriores)`
+          : '';
 
-          // Se tem tarefas de dias anteriores, mostra indicador extra
-          if (atrasadosDiasAnteriores.length > 0 && atrasadosHoje.length > 0) {
-            subEl.textContent = `🔴 ${contador}${atrasadosDiasAnteriores.length} de ontem · ${atrasadosHoje.length} de hoje · ${_fmtAtraso(atrasoMin)} atrasado`;
-          } else if (atrasadosDiasAnteriores.length > 0) {
-            subEl.textContent = `🔴 ${contador}${rot} · ${_fmtAtraso(atrasoMin)} atrasado (${_fmtData(pior.data)})`;
-          } else {
-            subEl.textContent = `🔴 ${contador}${rot} · ${_fmtAtraso(atrasoMin)} atrasado`;
+        alertas.push({
+          icon: '🔴', cat: 'critico', cor: 'critico',
+          title: `AÇÃO DA SEMANA · ${totalAtrasadas} pendente(s)${diasAntLabel}`,
+          sub: `🔴 Aguardando conclusão · ${_fmtAtraso(atrasoMin)} atrasado`,
+          detail: `${totalAtrasadas} tarefa(s) atrasada(s) — Ex.: "${tituloExemplo}". Conclua no módulo Ação da Semana para remover este alerta.`,
+          som: true, pulsar: true, repetir: true, tipo: 'acaoSemanaVencidas'
+        });
+      }
+
+      // ⚠ 2. HORÁRIO ATUAL (só aparece se NÃO houver vencidas)
+      if (atrasadas.length === 0 && noHorario.length > 0) {
+        alertas.push({
+          icon: '⏰', cat: 'critico', cor: 'critico',
+          title: 'AÇÃO DA SEMANA · AGORA',
+          sub: noHorario.length === 1 ? 'Tarefa programada para AGORA' : `${noHorario.length} tarefas AGORA`,
+          detail: noHorario.map(e => `${e.hora} ${e.titulo}`).join(' · '),
+          som: true, pulsar: true, repetir: false, tipo: 'acaoSemanaAgora'
+        });
+      }
+
+      // ⚠ 3. PRÓXIMAS (até 15 min) — só se não houver vencidas nem AGORA
+      if (atrasadas.length === 0 && noHorario.length === 0 && proximas.length > 0) {
+        alertas.push({
+          icon: '⏰', cat: 'atencao', cor: 'atencao',
+          title: 'AÇÃO DA SEMANA · Próximos',
+          sub: proximas.length === 1 ? `Em ${proximas[0].hora}` : `${proximas.length} tarefas em breve`,
+          detail: proximas.map(e => `${e.hora} ${e.titulo}`).join(' · '),
+          som: true, pulsar: false, repetir: false, tipo: 'acaoSemanaProximas'
+        });
+      }
+
+      const osSnap = await getDocs(collection(db, 'os'));
+      const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
+
+      const contatosFeitos = new Set();
+      contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
+
+      const osList = [];
+      osSnap.forEach(d => osList.push({ firestoreId: d.id, ...d.data() }));
+
+      // ===== PRIORIDADE 1 — PÓS-VENDA =====
+      let pvPendentes = 0;
+      let pvVencidos = 0;
+      const pvVencidosClientes = [];
+
+      osList.forEach(os => {
+        if (os.status !== 'entregue') return;
+        const dd = getDeliveryDate(os);
+        if (!dd) return;
+        const dias = calcDias(dd);
+        const osId = os.id || os.firestoreId;
+        [5, 15, 30].forEach(prazo => {
+          if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+          const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
+          if (dias < prazo || dias >= proxPrazo) return;
+          pvPendentes++;
+          if (dias > prazo + 2) {
+            pvVencidos++;
+            pvVencidosClientes.push({ nome: os.clientName || 'Cliente', dias });
+          }
+        });
+      });
+
+      // Clientes vencidos específicos (crítico) — até 3
+      pvVencidosClientes.slice(0, 3).forEach(c => {
+        alertas.push({
+          icon: '💡', cat: 'critico', cor: 'critico',
+          title: 'PÓS-VENDA ATRASADO',
+          sub: `${c.nome} aguardando contato`,
+          detail: `Cliente ${c.nome} está há ${c.dias} dias aguardando o contato de pós-venda.`,
+          som: true, pulsar: true, repetir: false, tipo: 'posVendaCritico'
+        });
+      });
+      if (pvVencidos > 0) {
+        alertas.push({
+          icon: '💡', cat: 'critico', cor: 'critico',
+          title: 'PÓS-VENDA ATRASADO',
+          sub: `${pvVencidos} contato(s) vencido(s)`,
+          detail: `Existem ${pvVencidos} contato(s) de pós-venda vencidos. Entre em contato o quanto antes.`,
+          som: true, pulsar: true, repetir: false, tipo: 'posVendaCritico'
+        });
+      }
+      if (pvPendentes > 0) {
+        alertas.push({
+          icon: '💡', cat: 'atencao', cor: 'atencao',
+          title: 'PÓS-VENDA PENDENTE',
+          sub: `${pvPendentes} cliente(s) pendente(s)`,
+          detail: `Existem ${pvPendentes} cliente(s) aguardando contato de pós-venda.`
+        });
+      }
+
+      // ===== PRIORIDADE 2 — ORDEM DE SERVIÇO =====
+      let osOrcamento = 0;
+      let osPronto = 0;
+      let osOrcamentoParado = 0;
+      osList.forEach(os => {
+        // 'orcamento_enviado' = novo fluxo; 'orcamento' = OS antigas
+        if (os.status === 'orcamento_enviado' || os.status === 'orcamento') {
+          osOrcamento++;
+          const ref = getDeliveryDate(os) || os.createdAt;
+          if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) {
+            osOrcamentoParado++;
           }
         }
-      } else if (noHorario.length > 0) {
-        // ⚠ PRIORIDADE 2 — Tarefas no HORÁRIO ATUAL
-        card.classList.add('acao-vencida');
-        if (subEl) {
-          const ev = noHorario[0];
-          const rot = ev.rotulo || `${ev.hora} ${ev.titulo}`;
-          subEl.textContent = `🔴 ${contador}${rot} · AGORA!`;
-        }
-      } else {
-        // ✅ Nenhuma tarefa urgente — estado normal
-        card.classList.remove('acao-vencida');
-        if (subEl) {
-          // Próximo compromisso futuro
-          const prox = this._proximoCompromisso(eventos);
-          if (prox) {
-            const rotProx = prox.rotulo || `${prox.hora ? prox.hora + ' ' : ''}${prox.titulo}`;
-            subEl.textContent = `📅 Próx.: ${rotProx}`;
-          } else {
-            subEl.textContent = subOriginal;
-          }
+        // 'concluido' = novo fluxo; 'pronto' = OS antigas
+        if (os.status === 'concluido' || os.status === 'pronto') osPronto++;
+      });
+
+      if (osOrcamentoParado > 0) {
+        alertas.push({
+          icon: '💡', cat: 'critico', cor: 'critico',
+          title: 'OS AGUARDANDO CLIENTE',
+          sub: `${osOrcamentoParado} orçamento(s) parado(s)`,
+          detail: `${osOrcamentoParado} cliente(s) com orçamento aguardando aprovação há mais de 2 dias.`,
+          som: true, pulsar: true, repetir: false, tipo: 'osAguardandoCliente'
+        });
+      }
+      if (osOrcamento > 0) {
+        alertas.push({
+          icon: '💡', cat: 'atencao', cor: 'atencao',
+          title: 'OS AGUARDANDO APROVAÇÃO',
+          sub: `${osOrcamento} aparelho(s) no orçamento`,
+          detail: `Existem ${osOrcamento} aparelho(s) aguardando aprovação do orçamento.`
+        });
+      }
+      if (osPronto > 0) {
+        alertas.push({
+          icon: '💡', cat: 'atencao', cor: 'atencao',
+          title: 'OS PRONTAS PARA ENTREGA',
+          sub: `${osPronto} OS pronta(s)`,
+          detail: `Existem ${osPronto} OS pronta(s) para entrega. Avise os clientes.`
+        });
+      }
+
+      // ===== PRIORIDADE 3 — CAIXA (META) =====
+      const meta = this.state && this.state.meta;
+      if (meta && meta.goal > 0) {
+        const percent = Math.round((meta.current / meta.goal) * 100);
+        const falta = Math.max(meta.goal - meta.current, 0);
+        const fmt = (v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
+        if (percent >= 100) {
+          alertas.push({
+            icon: '✅', cat: 'crm', cor: null,
+            title: 'META SEMANAL CONCLUÍDA',
+            sub: 'Parabéns! 🎉',
+            detail: `Meta semanal atingida (${percent}%). Excelente trabalho!`
+          });
+        } else {
+          alertas.push({
+            icon: '💡', cat: 'atencao', cor: 'atencao',
+            title: 'META SEMANAL',
+            sub: `Atingida em ${percent}%`,
+            detail: `Meta semanal em ${percent}%. Faltam ${fmt(falta)} para atingir o objetivo.`
+          });
         }
       }
-    };
 
-    verificar();
-    setInterval(verificar, 30000); // verifica a cada 30s para resposta mais rápida
-    window.addEventListener('focus', verificar);
-  }
+      // ===== PRIORIDADE 4 — PORTAL DO CLIENTE =====
+      try {
+        const portalMsgsSnap = await getDocs(
+          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+        );
+        const msgsNaoLidas = [];
+        portalMsgsSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
 
-  // ===== CENTRAL DE ALERTAS — alertas manuais via onSnapshot =====
-  async gerarAlertas() {
-    return [];
+        if (msgsNaoLidas.length > 0) {
+          const badge = document.getElementById('portal-badge');
+          if (badge) {
+            badge.textContent = msgsNaoLidas.length;
+            badge.style.display = '';
+          }
+
+          alertas.push({
+            icon: '💬', cat: 'atencao', cor: 'atencao',
+            title: 'PORTAL DO CLIENTE',
+            sub: `${msgsNaoLidas.length} mensagem(ns) não lida(s)`,
+            detail: `${msgsNaoLidas.length} cliente(s) enviaram mensagem pelo Portal do Cliente. Acesse o módulo para responder.`
+          });
+
+          msgsNaoLidas.slice(0, 3).forEach(m => {
+            alertas.push({
+              icon: '💬', cat: 'crm', cor: null,
+              title: `📩 ${m.clientName || m.nome || 'Cliente'}`,
+              sub: (m.texto || '').slice(0, 60) + ((m.texto || '').length > 60 ? '...' : ''),
+              detail: `Cliente enviou mensagem pelo portal. Acesse o módulo Portal do Cliente para visualizar e responder.`
+            });
+          });
+        } else {
+          const badge = document.getElementById('portal-badge');
+          if (badge) badge.style.display = 'none';
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar mensagens do portal:', e);
+      }
+
+      // ===== AVALIAÇÕES DO PORTAL =====
+      try {
+        const avaliacoesSnap = await getDocs(
+          query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(5))
+        );
+        const avaliacoesRecentes = [];
+        avaliacoesSnap.forEach(d => avaliacoesRecentes.push({ id: d.id, ...d.data() }));
+
+        if (avaliacoesRecentes.length > 0) {
+          // Filtra avaliações de hoje para alerta
+          const hoje = new Date();
+          hoje.setHours(0, 0, 0, 0);
+          const hojeTs = hoje.toISOString();
+          const avaliacoesHoje = avaliacoesRecentes.filter(a => {
+            if (!a.createdAt) return false;
+            const dt = typeof a.createdAt === 'string' ? new Date(a.createdAt) : (a.createdAt.toDate ? a.createdAt.toDate() : new Date(a.createdAt));
+            return dt >= hoje;
+          });
+
+          if (avaliacoesHoje.length > 0) {
+            alertas.push({
+              icon: '⭐', cat: 'crm', cor: null,
+              title: 'AVALIAÇÕES RECEBIDAS',
+              sub: `${avaliacoesHoje.length} nova(s) avaliação(ões) hoje`,
+              detail: `${avaliacoesHoje.length} cliente(s) avaliaram o atendimento pelo Portal do Cliente hoje.`
+            });
+          }
+
+          // Alerta para avaliações baixas (nota <= 2)
+          const avaliacoesCriticas = avaliacoesRecentes.filter(a => a.nota && a.nota <= 2);
+          if (avaliacoesCriticas.length > 0) {
+            alertas.push({
+              icon: '🔴', cat: 'critico', cor: 'critico',
+              title: 'AVALIAÇÕES CRÍTICAS',
+              sub: `${avaliacoesCriticas.length} avaliação(ões) com nota baixa`,
+              detail: `${avaliacoesCriticas.length} cliente(s) deram nota baixa. Verifique o feedback e entre em contato.`,
+              som: true, pulsar: true, repetir: false, tipo: 'avaliacoesCriticas'
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Central de Alertas — erro ao buscar avaliações:', e);
+      }
+
+    } catch (e) {
+      console.warn('Central de Alertas — erro ao gerar:', e);
+    }
+
+    // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
+    try {
+      const prontoSnap = await getDocs(
+        query(collection(db, 'os'), where('status', '==', 'concluido'))
+      );
+      const prontos = [];
+      prontoSnap.forEach(d => {
+        const os = { id: d.id, ...d.data() };
+        let dataConcluido = null;
+        if (Array.isArray(os.timeline)) {
+          const entry = [...os.timeline].reverse().find(t =>
+            typeof t.text === 'string' && t.text.includes('→ Concluído')
+          );
+          if (entry?.date) dataConcluido = entry.date;
+        }
+        if (!dataConcluido) dataConcluido = os.updatedAt;
+        if (!dataConcluido) return;
+        const dias = calcDias(dataConcluido);
+        if (dias > 3) prontos.push({ ...os, _dias: dias });
+      });
+      if (prontos.length > 0) {
+        prontos.sort((a, b) => b._dias - a._dias);
+        alertas.push({
+          icon: '📦', cat: 'atencao', cor: 'atencao',
+          title: 'APARELHOS NÃO RETIRADOS',
+          sub: `${prontos.length} aparelho(s) pronto(s) há mais de 3 dias`,
+          detail: `Toque para ver a lista. Ex.: ${prontos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
+          _osData: prontos,
+          _tipo: 'pronto_nao_retirado',
+          _titulo: 'Aparelhos Prontos — Não Retirados',
+        });
+      }
+    } catch (e) { console.warn('Central de Alertas — OS prontas:', e); }
+
+    // ===== ORÇAMENTOS SEM RESPOSTA =====
+    try {
+      const orcSnap = await getDocs(
+        query(collection(db, 'os'), where('status', 'in', ['orcamento', 'orcamento_enviado']))
+      );
+      const orcamentos = [];
+      orcSnap.forEach(d => {
+        const os = { id: d.id, ...d.data() };
+        const dias = calcDias(os.updatedAt);
+        if (dias > 2) orcamentos.push({ ...os, _dias: dias });
+      });
+      if (orcamentos.length > 0) {
+        orcamentos.sort((a, b) => b._dias - a._dias);
+        alertas.push({
+          icon: '💬', cat: 'atencao', cor: 'atencao',
+          title: 'ORÇAMENTOS SEM RESPOSTA',
+          sub: `${orcamentos.length} orçamento(s) sem resposta há mais de 2 dias`,
+          detail: `Toque para ver a lista. Ex.: ${orcamentos.slice(0, 2).map(o => `${o.id} (${o._dias}d)`).join(', ')}`,
+          _osData: orcamentos,
+          _tipo: 'orcamento_abandonado',
+          _titulo: 'Orçamentos Sem Resposta',
+        });
+      }
+    } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
+
+    return alertas;
   }
 
   // ===== ALERTAS + DICAS ROTATIVAS =====
-  async setupAlerts() {
+  setupAlerts() {
     const titleEl    = document.querySelector('.alert-title');
     const subtitleEl = document.querySelector('.alert-subtitle');
     const detailEl   = document.querySelector('.alert-detail');
     const iconEl     = document.getElementById('alert-cat-icon');
     const progressEl = document.getElementById('alert-progress-bar');
     if (!titleEl || !subtitleEl || !detailEl) return;
+
+    // ─── Funções de som ───
+    const tocarSomCurto = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.6);
+      } catch {}
+    };
+    const tocarSomVencida = () => {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const beep = (freq, start, dur) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(freq, start);
+          gain.gain.setValueAtTime(0.25, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+          osc.start(start);
+          osc.stop(start + dur);
+        };
+        beep(1047, ctx.currentTime, 0.15);
+        beep(784, ctx.currentTime + 0.2, 0.15);
+        beep(1047, ctx.currentTime + 0.4, 0.15);
+      } catch {}
+    };
+    // Expõe para o botão "Testar Som" do modal
+    this._tocarSomVencida = tocarSomVencida;
+
+    // ─── Verifica se pode tocar som para o tipo de alerta ───
+    const verificarConfigSom = (tipoAlerta) => {
+      const config = this.carregarConfigAlertas();
+      if (!config.som.ativo) return false;
+      const agora = new Date();
+      const hAtual = agora.getHours() * 60 + agora.getMinutes();
+      const [hIni, mIni] = config.som.horarioInicio.split(':').map(Number);
+      const [hFim, mFim] = config.som.horarioFim.split(':').map(Number);
+      if (hAtual < hIni * 60 + mIni || hAtual >= hFim * 60 + mFim) return false;
+      if (!config.som.diasSemana.includes(agora.getDay())) return false;
+      if (config.som.silencio.ativo) {
+        const [hSil, mSil] = config.som.silencio.inicio.split(':').map(Number);
+        const [hSilF, mSilF] = config.som.silencio.fim.split(':').map(Number);
+        if (hAtual >= hSil * 60 + mSil && hAtual < hSilF * 60 + mSilF) return false;
+      }
+      if (tipoAlerta && config.alertasComSom[tipoAlerta] === false) return false;
+      return true;
+    };
+
+    // ─── Verifica se alerta deve pulsar ───
+    const verificarPulsacao = (alerta) => {
+      if (!alerta.pulsar) return false;
+      const config = this.carregarConfigAlertas();
+      if (alerta.cat === 'critico' && config.pulsacao.critico) return true;
+      if (alerta.cat === 'atencao' && config.pulsacao.atencao) return true;
+      return false;
+    };
 
     const DICAS = [
       { icon: '💡', cat: 'crm',          title: 'DICA DO CRM',      sub: 'Cadastre seus clientes',         detail: 'Registre o histórico de cada atendimento para fidelizar melhor.' },
@@ -715,6 +1047,26 @@ class Dashboard {
     };
 
     const mostrar = (dica, animacao) => {
+      this._alertaAtual = dica;
+      const card = document.getElementById('alerts-card');
+      if (card) card.style.cursor = dica._osData?.length ? 'pointer' : '';
+
+      const aplicarSomEPulsacao = () => {
+        // Som
+        if (dica.som && verificarConfigSom(dica.tipo)) {
+          if (dica.cat === 'critico') {
+            tocarSomVencida();
+          } else {
+            tocarSomCurto();
+          }
+        }
+        // Pulsação visual
+        if (card && verificarPulsacao(dica)) {
+          card.classList.add('alert-card-pulsing');
+          setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
+        }
+      };
+
       if (animacao) {
         [titleEl, subtitleEl, detailEl].forEach(el => {
           el.style.transition = 'opacity 0.4s ease';
@@ -728,6 +1080,7 @@ class Dashboard {
           aplicarCategoria(dica);
           [titleEl, subtitleEl, detailEl].forEach(el => el.style.opacity = '1');
           if (iconEl) iconEl.style.opacity = '1';
+          aplicarSomEPulsacao();
         }, 400);
       } else {
         titleEl.textContent    = dica.title;
@@ -736,6 +1089,14 @@ class Dashboard {
         aplicarCategoria(dica);
       }
     };
+
+    // Click no card de alertas abre lista quando for alerta de OS
+    const alertsCard = document.getElementById('alerts-card');
+    if (alertsCard) {
+      alertsCard.addEventListener('click', () => {
+        if (this._alertaAtual?._osData?.length) this.mostrarAlertaOS(this._alertaAtual);
+      });
+    }
 
     mostrar(DICAS[0], false);
 
@@ -746,10 +1107,10 @@ class Dashboard {
       mostrar(lista[0], true);
 
       // Atualiza badge e subtítulo no card de módulo "Central de Alertas"
-      const badge   = document.getElementById('alertas-count-badge');
+      const badge = document.getElementById('alertas-count-badge');
       const cardSub = document.getElementById('alertas-card-sub');
       const criticos = (nova || []).filter(a => a.cat === 'critico').length;
-      const total    = (nova || []).length;
+      const total = (nova || []).length;
       if (badge) {
         if (criticos > 0) {
           badge.textContent = criticos;
@@ -764,99 +1125,47 @@ class Dashboard {
         }
       }
       if (cardSub) {
-        if (criticos > 0) cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
-        else if (total > 0) cardSub.textContent = `${total} alerta(s) pendente(s)`;
-        else cardSub.textContent = 'Sem pendências';
-      }
-
-    };
-
-    // Funções auxiliares para prioridade do alerta manual
-    const prioParaIcone = (p) => {
-      const m = { critica: '🔴', alta: '🟠', media: '🟡', baixa: '⚪' };
-      return m[p] || '🔔';
-    };
-    const prioParaCategoria = (p) => {
-      const m = { critica: 'critico', alta: 'critico', media: 'atencao', baixa: 'crm' };
-      return m[p] || 'crm';
-    };
-    const tocarSomAlerta = (tituloAlerta = '') => {
-      ccTocarSom('alertas', 'Dashboard / Central de Alertas',
-        `Alerta disparado${tituloAlerta ? ': ' + tituloAlerta : ''}`,
-        { chave: `alerta_${tituloAlerta}`, cooldownMs: 60000, arquivo: 'AudioContext — ding duplo',
-          freq: 880, freqEnd: 660, dur: 0.4, vol: 0.2 });
-    };
-
-    // Deep link: clique no badge abre Central de Alertas na seção certa
-    let _badgeDeepLinkSetup = false;
-
-    // Aguarda tenant antes de qualquer query Firestore
-    await (window._ccTenantReady || Promise.resolve());
-
-    // Ouve alertas manuais em tempo real via Firestore
-    const _unsubAlertas = onSnapshot(query(collection(db, 'alertas_usuario'), where('empresa_id', '==', getEmpresaId())), (snap) => {
-      const todos = [];
-      snap.forEach(d => todos.push({ id: d.id, ...d.data() }));
-      const ativos = todos.filter(a => a.status !== 'concluido');
-      const criticos = ativos.filter(a => a.prioridade === 'critica' || a.prioridade === 'alta').length;
-
-      // Badge e subtítulo
-      const badge   = document.getElementById('alertas-count-badge');
-      const cardSub = document.getElementById('alertas-card-sub');
-      if (badge) {
-        if (criticos > 0) { badge.textContent = criticos; badge.style.display = ''; badge.style.background = '#ef4444'; }
-        else if (ativos.length > 0) { badge.textContent = ativos.length; badge.style.display = ''; badge.style.background = ''; }
-        else { badge.style.display = 'none'; }
-        // Deep link — configura uma vez
-        if (!_badgeDeepLinkSetup) {
-          _badgeDeepLinkSetup = true;
-          badge.style.cursor = 'pointer';
-          badge.title = 'Abrir Central de Alertas';
-          badge.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const foco = criticos > 0 ? 'criticos' : (ativos.length > 0 ? 'pendentes' : '');
-            window.location.href = `../../pages/central-alertas/index.html${foco ? '?foco=' + foco : ''}`;
-          });
+        if (criticos > 0) {
+          cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
+        } else if (total > 0) {
+          cardSub.textContent = `${total} alerta(s) pendente(s)`;
+        } else {
+          cardSub.textContent = 'Sem pendências';
         }
       }
-      if (cardSub) {
-        if (criticos > 0) cardSub.textContent = `${criticos} alerta(s) crítico(s)`;
-        else if (ativos.length > 0) cardSub.textContent = `${ativos.length} alerta(s) pendente(s)`;
-        else cardSub.textContent = 'Sem pendências';
-      }
+    };
 
-      // Card pulsante — alertas que dispararam nos últimos 60s
-      const agora60 = Date.now();
-      const disparando = ativos.filter(a => {
-        if (!a.data || !a.hora) return false;
-        const ts = new Date(`${a.data}T${a.hora}:00`).getTime();
-        return !isNaN(ts) && agora60 - ts >= 0 && agora60 - ts < 60000;
-      });
-      const alertCard = document.querySelector('.alerts-card');
-      if (disparando.length > 0 && alertCard) {
-        alertCard.classList.add('alert-card-pulsing');
-        if (localStorage.getItem('cc_sons_sistema') === 'true') tocarSomAlerta();
-        setTimeout(() => alertCard.classList.remove('alert-card-pulsing'), 10000);
-      } else if (alertCard) {
-        alertCard.classList.remove('alert-card-pulsing');
+    // Verifica os módulos e atualiza a lista de alertas
+    const atualizarAlertas = async () => {
+      try {
+        const alertas = await this.gerarAlertas();
+        aplicarLista(alertas);
+      } catch (e) {
+        console.warn('Central de Alertas:', e);
+        aplicarLista(DICAS);
       }
+    };
 
-      // Alimenta card rotativo com alertas ativos (fallback para DICAS se vazio)
-      aplicarLista(ativos.slice(0, 10).map(a => ({
-        icon: prioParaIcone(a.prioridade || 'media'),
-        cat: prioParaCategoria(a.prioridade || 'media'),
-        title: a.titulo || 'Alerta',
-        sub: a.descricao || '',
-        detail: `${a.data || ''}${a.hora ? ' às ' + a.hora : ''}`,
-      })));
-    }, err => console.error('[DASHBOARD] Erro listener alertas:', err.message));
-    registerListener('dashboard:alertas_usuario', _unsubAlertas);
+    // Primeira verificação ao abrir
+    atualizarAlertas();
 
     // Rotaciona o que estiver na tela (alertas ou dicas)
     setInterval(() => {
       idx = (idx + 1) % lista.length;
       mostrar(lista[idx], true);
     }, DURATION); // 120 segundos
+
+    // Re-toca som a cada 30s se o alerta atual tiver repetir:true (ex: vencidas)
+    setInterval(() => {
+      const atual = lista[idx];
+      if (atual && atual.repetir && atual.som && verificarConfigSom(atual.tipo)) {
+        if (atual.cat === 'critico') tocarSomVencida();
+        else tocarSomCurto();
+      }
+    }, 30000);
+
+    // Re-verifica os módulos a cada 3 minutos
+    setInterval(atualizarAlertas, 180000);
   }
 
   // ===== MINI CALENDÁRIO =====
@@ -1038,12 +1347,11 @@ class Dashboard {
     if (this._searchLoading) return this._searchLoading;
 
     this._searchLoading = (async () => {
-      await (window._ccTenantReady || Promise.resolve());
       const idx = { os: [], clientes: [], produtos: [] };
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
       try {
-        const snap = await getDocs(query(collection(db, 'os'), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, 'os'));
         snap.forEach(d => {
           const o = { ...d.data() };
           const id = o.id || d.id;
@@ -1060,7 +1368,7 @@ class Dashboard {
 
       // ----- Clientes (abre a tela de Clientes do módulo OS) -----
       try {
-        const snap = await getDocs(query(collection(db, 'clientes'), where('empresa_id', '==', getEmpresaId())));
+        const snap = await getDocs(collection(db, 'clientes'));
         snap.forEach(d => {
           const c = { ...d.data() };
           const phone = c.phone || d.id;
@@ -1077,8 +1385,8 @@ class Dashboard {
 
       // ----- Produtos (coleção dedicada + fallback) -----
       try {
-        let snap = await getDocs(query(collection(db, 'estoque_produtos'), where('empresa_id', '==', getEmpresaId())));
-        if (snap.empty) snap = await getDocs(query(collection(db, 'produtos'), where('empresa_id', '==', getEmpresaId())));
+        let snap = await getDocs(collection(db, 'estoque_produtos'));
+        if (snap.empty) snap = await getDocs(collection(db, 'produtos'));
         snap.forEach(d => {
           const p = { ...d.data() };
           const nome = p.nome || p.description || '—';
@@ -1127,30 +1435,11 @@ class Dashboard {
     const clR = filt(idx.clientes); if (clR.length) groups.push({ title: 'Clientes', icon: '👥', items: clR });
     const prR = filt(idx.produtos); if (prR.length) groups.push({ title: 'Produtos / Estoque', icon: '📦', items: prR });
 
-    // Favoritos: módulos marcados pelo usuário que batem com o termo
-    const _favIds = getFavoritosHome() || [];
-    const favR = TODOS_MODULOS
-      .filter(m => _favIds.includes(m.id))
-      .filter(m =>
-        m.nome.toLowerCase().includes(term) ||
-        m.id.toLowerCase().includes(term) ||
-        (m.descricao || '').toLowerCase().includes(term)
-      )
+    // Módulos (lista estática já existente em state.searchData.modulos)
+    const modR = (this.state.searchData.modulos || [])
+      .filter(m => m.title.toLowerCase().includes(term) || m.id.toLowerCase().includes(term))
       .slice(0, 5)
-      .map(m => ({ id: m.id, title: m.nome, sub: `${m.icone} Favorito`, module: m.id }));
-    if (favR.length) groups.push({ title: 'Favoritos', icon: '⭐', items: favR });
-
-    // Módulos: catálogo completo (exclui os já listados nos Favoritos)
-    const _favSet = new Set(favR.map(m => m.id));
-    const modR = TODOS_MODULOS
-      .filter(m => !_favSet.has(m.id))
-      .filter(m =>
-        m.nome.toLowerCase().includes(term) ||
-        m.id.toLowerCase().includes(term) ||
-        (m.descricao || '').toLowerCase().includes(term)
-      )
-      .slice(0, 5)
-      .map(m => ({ id: m.id, title: m.nome, sub: `${m.icone} ${m.categoria || 'Módulo'}`, module: m.id }));
+      .map(m => ({ id: m.id, title: m.title, sub: 'Módulo', module: m.id }));
     if (modR.length) groups.push({ title: 'Módulos', icon: '🧩', items: modR });
 
     this._searchActiveIdx = -1;
@@ -1186,163 +1475,13 @@ class Dashboard {
     resultsBox.classList.add('visible');
   }
 
-  // ===== MÓDULOS + FAVORITOS =====
+  // ===== MÓDULOS =====
   setupModules() {
-    const cards = Array.from(document.querySelectorAll('.module-card[data-module]'));
-
-    cards.forEach(card => {
-      const id = card.getAttribute('data-module');
-      card.addEventListener('click', () => this.navigateTo(id));
-    });
-
-    // Aplica modo/tamanho/ordem do Painel Central
-    const applyHomePrefs = () => {
-      const prefs = getHomePrefs();
-      const html = document.documentElement;
-      html.dataset.cardMode = prefs.modo   || 'grade';
-      html.dataset.cardSize = prefs.tamanho || 'medio';
-      const ordem = Array.isArray(prefs.modulosOrdem) ? prefs.modulosOrdem : [];
-      cards.forEach(card => {
-        const id  = card.getAttribute('data-module');
-        const pos = ordem.indexOf(id);
-        card.style.order = pos >= 0 ? String(pos) : '';
+    document.querySelectorAll('.module-card[data-module]').forEach(card => {
+      card.addEventListener('click', () => {
+        const module = card.getAttribute('data-module');
+        this.navigateTo(module);
       });
-    };
-    applyHomePrefs();
-    window.addEventListener('cc-home-changed', applyHomePrefs);
-
-    // ----- drag-and-drop para reordenar cards -----
-    const grid = document.querySelector('.modules-grid');
-    if (grid) {
-      let _dragId = null;
-
-      cards.forEach(card => {
-        card.setAttribute('draggable', 'true');
-
-        card.addEventListener('dragstart', e => {
-          _dragId = card.getAttribute('data-module');
-          card.classList.add('mc-dragging');
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', _dragId);
-        });
-
-        card.addEventListener('dragend', () => {
-          card.classList.remove('mc-dragging');
-          cards.forEach(c => c.classList.remove('mc-drag-over'));
-          _dragId = null;
-        });
-
-        card.addEventListener('dragover', e => {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          if (!_dragId || card.getAttribute('data-module') === _dragId) return;
-          cards.forEach(c => c.classList.remove('mc-drag-over'));
-          card.classList.add('mc-drag-over');
-        });
-
-        card.addEventListener('dragleave', () => {
-          card.classList.remove('mc-drag-over');
-        });
-
-        card.addEventListener('drop', e => {
-          e.preventDefault();
-          card.classList.remove('mc-drag-over');
-          const tgtId = card.getAttribute('data-module');
-          if (!_dragId || tgtId === _dragId) return;
-
-          const prefs = getHomePrefs();
-          const todos = cards.map(c => c.getAttribute('data-module'));
-          let ordem = Array.isArray(prefs.modulosOrdem) && prefs.modulosOrdem.length > 0
-            ? [...prefs.modulosOrdem]
-            : [...todos];
-
-          // Garante que todos os cards visíveis existem na lista de ordem
-          todos.forEach(id => { if (!ordem.includes(id)) ordem.push(id); });
-
-          const fromIdx = ordem.indexOf(_dragId);
-          const toIdx   = ordem.indexOf(tgtId);
-          if (fromIdx < 0 || toIdx < 0) return;
-
-          // Insere antes ou depois do alvo conforme posição do cursor
-          const rect  = card.getBoundingClientRect();
-          const isLista = document.documentElement.dataset.cardMode === 'lista';
-          const after = isLista
-            ? e.clientY > rect.top + rect.height / 2
-            : e.clientX > rect.left + rect.width  / 2;
-
-          ordem.splice(fromIdx, 1);
-          const newTo = ordem.indexOf(tgtId);
-          ordem.splice(after ? newTo + 1 : newTo, 0, _dragId);
-
-          // Aplica visualmente de imediato
-          cards.forEach(c => {
-            const id  = c.getAttribute('data-module');
-            const pos = ordem.indexOf(id);
-            c.style.order = pos >= 0 ? String(pos) : '';
-          });
-
-          // Salva nas preferências
-          setHomePrefs({ ...prefs, modulosOrdem: ordem });
-        });
-      });
-    }
-
-    // Mostra/oculta cards conforme favoritos — sem estrelas na home
-    const aplicar = () => {
-      const favs = getFavoritosHome();
-      let visivel = 0;
-
-      // Auto-adiciona ao favoritos cards novos que ainda não estão na lista
-      if (favs !== null) {
-        const novos = cards
-          .map(c => c.getAttribute('data-module'))
-          .filter(id => id && !favs.includes(id));
-        if (novos.length > 0) setFavoritos([...favs, ...novos]);
-      }
-
-      cards.forEach(card => {
-        const show = favs === null || favs.includes(card.getAttribute('data-module'));
-        card.style.display = show ? '' : 'none';
-        if (show) visivel++;
-      });
-
-      // Estado vazio — nenhum favorito selecionado
-      const sec = document.querySelector('.modules-section');
-      let empty = document.getElementById('cm-home-empty');
-      const nenhum = favs !== null && visivel === 0;
-
-      if (nenhum && !empty && sec) {
-        empty = document.createElement('div');
-        empty.id = 'cm-home-empty';
-        empty.innerHTML = `
-          <div class="cm-empty-ico">🧩</div>
-          <div class="cm-empty-tit">Nenhum módulo favorito</div>
-          <div class="cm-empty-sub">Use a Central de Módulos para escolher o que aparece aqui.</div>
-          <button class="cm-empty-cta" id="cm-empty-open">🧩 Abrir Central de Módulos</button>`;
-        sec.appendChild(empty);
-        document.getElementById('cm-empty-open')?.addEventListener('click', () => abrirCentralModulos());
-      }
-      if (empty) empty.style.display = nenhum ? 'flex' : 'none';
-    };
-
-    aplicar();
-    onModulosChanged(aplicar);
-  }
-
-  // ===== BOTÃO CENTRAL DE CONTROLE NA SIDEBAR NATIVA =====
-  setupBtnCentralModulos() {
-    const btn = document.getElementById('btnCentralModulos');
-    if (btn) btn.addEventListener('click', () => {
-      window.location.href = '/CRM/pages/central-modulos/index.html';
-    });
-  }
-
-  // ===== CONSULTA DE PEÇAS SEA =====
-  setupSea() {
-    const btn = document.getElementById('btnSea');
-    if (!btn) return;
-    btn.addEventListener('click', () => {
-      window.open('https://chat.likezap.com.br/sea9190', '_blank', 'noopener,noreferrer');
     });
   }
 
@@ -1526,33 +1665,24 @@ class Dashboard {
   }
 
   navigateTo(module) {
-    if (module === 'central-alertas') {
-      window.location.href = '../../pages/central-alertas/index.html';
-      return;
-    }
-    if (module === 'favoritos') {
-      abrirCentralModulos();
-      return;
-    }
     const routes = {
-      os:                    '../../pages/os/index.html',
-      'central-comandos':    '../../pages/central-comandos/index.html',
+      os: '../../pages/os/index.html',
+      'central-comandos': '../../pages/central-comandos/index.html',
       'central-informacoes': '../../pages/central-informacoes/index.html',
-      autoatendimento:       '../../pages/autoatendimento/index.html',
-      clientes:              '../../pages/clientes/index.html',
-      caixa:                 '../../pages/caixa/index.html',
-      estoque:               '../../pages/estoque/index.html',
-      campanhas:             '../../pages/campanhas/index.html',
-      analise:               '../../pages/analise/index.html',
-      relatorios:            '../../pages/relatorios/index.html',
-      'pos-venda':           '../../pages/pos-venda/index.html',
-      config:                '../../pages/config/index.html',
-      ferramentas:           '../../pages/config/index.html',
-      garantias:             '../../pages/garantias/index.html',
-      fornecedor:            '../../pages/fornecedor/index.html',
-      financeiro:            '../../pages/financeiro/index.html',
-      despesas:              '../../pages/despesas/index.html',
-      'em-breve':            '../../pages/em-breve/index.html',
+      autoatendimento: '../../pages/autoatendimento/index.html',
+      clientes: '../../pages/clientes/index.html',
+      caixa: '../../pages/caixa/index.html',
+      estoque: '../../pages/estoque/index.html',
+      campanhas: '../../pages/campanhas/index.html',
+      analise: '../../pages/analise/index.html',
+      relatorios: '../../pages/relatorios/index.html',
+      'pos-venda': '../../pages/pos-venda/index.html',
+      config: '../../pages/config/index.html',
+      ferramentas: '../../pages/config/index.html',
+      impressora: '../../pages/config/index.html',
+      fornecedor: '../../pages/fornecedor/index.html',
+      financeiro: '../../pages/financeiro/index.html',
+      'em-breve': '../../pages/em-breve/index.html',
       'minha-semana':        '../../pages/minha-semana/index.html',
       'acaodasemana':        '../../pages/acaodasemana/index.html',
       'portal-cliente':      '../../pages/portal-cliente/admin.html',
@@ -1561,19 +1691,15 @@ class Dashboard {
       'central-organizacao': '../../pages/central-organizacao/index.html',
       'contas':              '../../pages/contas/index.html',
       'catalogo':            '../../pages/catalogo/index.html',
+      'relatorios':          '../../pages/relatorios/index.html',
       'crm-comercial':       '../../pages/crm-comercial/index.html',
       'compras':             '../../pages/compras/index.html',
-      'fechamento':          '../../pages/fechamento/index.html',
-      'auditoria':           '../../pages/auditoria/index.html',
-      'lixeira':             '../../pages/lixeira/index.html',
-      'integridade':         '../../pages/integridade/index.html',
-      'homologacao':         '../../pages/homologacao/index.html',
-      'backup':              '../../pages/backup/index.html',
-      'pendencias':          '../../pages/pendencias/index.html',
-      'mensagens-wpp':       '../../pages/mensagens-wpp/index.html',
-      'venda-rapida':        '../../pages/venda-rapida/index.html',
-      'saas':                '../../pages/saas/index.html',
+      'auditoria':           '../../pages/auditoria/index.html'
     };
+    if (module === 'central-alertas') {
+      this.abrirListaAlertas();
+      return;
+    }
     const url = routes[module];
     if (url) {
       console.log(`[Router] Navegando para: ${module}`);
@@ -1583,173 +1709,344 @@ class Dashboard {
     }
   }
 
-  // ===== AVISO DE EVENTOS DA AGENDA =====
-  // Prioridade: 1. Atrasados, 2. Horário atual, 3. Próximos (até 15 min)
-  // Som de atrasados respeita cooldown de 5 min por item para não spammar.
-  setupAvisoAcoes() {
-    let ultimoAvisoKey = '';
-    let cicloAtrasados = 0;
-    const _somAtrasadoCooldown = {}; // chave → timestamp do último som
+  async abrirListaAlertas() {
+    const modal = document.getElementById('modal-lista-alertas');
+    const body = document.getElementById('lista-alertas-body');
+    if (!modal) return;
 
-    const _fmtAtraso = (min) => {
-      const abs = Math.abs(min);
-      if (abs >= 1440) return `${Math.floor(abs/1440)}d ${Math.floor((abs%1440)/60)}h`;
-      if (abs >= 60)   return `${Math.floor(abs/60)}h${abs%60 ? ' '+(abs%60)+'min' : ''}`;
-      return `${abs} min`;
-    };
+    modal.style.display = 'flex';
+    if (body) body.innerHTML = '<div class="lista-alertas-loading">Carregando alertas...</div>';
 
-    const _fmtData = (dataISO) => {
-      if (!dataISO) return '';
-      const [y, m, d] = dataISO.split('-').map(Number);
-      return `${d}/${m}`;
-    };
+    try {
+      const alertas = await this.gerarAlertas();
+      if (!body) return;
 
-    // ─── Toca som curto (para horário atual / próximos) ───
-    // Sons via módulo centralizado — log + cooldown + controle de permissão
-    const tocarSomCurto = (tituloEvento = '') => {
-      ccTocarSom('agenda', 'Dashboard / Agenda',
-        `Compromisso próximo${tituloEvento ? ': ' + tituloEvento : ''}`,
-        { chave: `agenda_prox_${tituloEvento}`, cooldownMs: 5 * 60000,
-          arquivo: 'AudioContext — sine descendente 880→440',
-          freq: 880, freqEnd: 440, dur: 0.6, vol: 0.3 });
-    };
-
-    const tocarSomVencida = (tituloEvento = '') => {
-      ccTocarSom('agenda', 'Dashboard / Agenda',
-        `Tarefa vencida${tituloEvento ? ': ' + tituloEvento : ''}`,
-        { chave: `agenda_venc_${tituloEvento}`, cooldownMs: 5 * 60000,
-          arquivo: 'AudioContext — 3 beeps square 1047/784',
-          tipo: 'beeps', vol: 0.25,
-          beeps: [[1047, 0, 0.15], [784, 0.2, 0.15], [1047, 0.4, 0.15]] });
-    };
-
-    const dispararAlerta = (evento, label, comSom = true) => {
-      const card = document.querySelector('.alerts-card');
-      const titleEl    = document.querySelector('.alert-title');
-      const subtitleEl = document.querySelector('.alert-subtitle');
-      const detailEl   = document.querySelector('.alert-detail');
-      const iconEl     = document.getElementById('alert-cat-icon');
-      if (!card || !titleEl) return;
-
-      const isAtrasado = label.includes('VENCIDA') || label.includes('PENDENTE');
-      const horaFmt = evento.hora || '';
-      const dataFmt = evento.data ? _fmtData(evento.data) : '';
-      if (iconEl) iconEl.textContent = isAtrasado ? '🔴' : '⏰';
-      titleEl.textContent = `AGENDA — ${label}`;
-      titleEl.className = 'alert-title cat-alerta-acao';
-      if (subtitleEl) subtitleEl.textContent = evento.titulo;
-      if (detailEl) detailEl.textContent = horaFmt ? `Horário: ${horaFmt}${dataFmt ? ` (${dataFmt})` : ''}` : (dataFmt ? `Data: ${dataFmt}` : '');
-
-      card.classList.add('alert-card-pulsing');
-      if (comSom) {
-        if (isAtrasado) tocarSomVencida(evento.titulo);
-        else            tocarSomCurto(evento.titulo);
+      if (!alertas || alertas.length === 0) {
+        body.innerHTML = '<div class="lista-alertas-vazia">✅ Nenhum alerta pendente no momento.</div>';
+        return;
       }
-      setTimeout(() => card.classList.remove('alert-card-pulsing'), 10000);
+
+      const CAT_COR = { critico: '#ef4444', atencao: '#f59e0b', crm: '#3b82f6' };
+      body.innerHTML = alertas.map(a => {
+        const cor = CAT_COR[a.cat] || '#6b7280';
+        return `<div class="lista-alerta-item" style="border-left-color:${cor};">
+          <div class="lista-alerta-topo">
+            <span class="lista-alerta-icon">${a.icon || '💡'}</span>
+            <span class="lista-alerta-title" style="color:${cor};">${this.escapeHtml(a.title)}</span>
+          </div>
+          <div class="lista-alerta-sub">${this.escapeHtml(a.sub || '')}</div>
+          ${a.detail ? `<div class="lista-alerta-detail">${this.escapeHtml(a.detail)}</div>` : ''}
+        </div>`;
+      }).join('');
+    } catch (e) {
+      if (body) body.innerHTML = '<div class="lista-alertas-loading">Erro ao carregar alertas.</div>';
+      console.warn('abrirListaAlertas:', e);
+    }
+  }
+
+  // ===== AVISO DE EVENTOS DA AGENDA =====
+  // Prioridade: 1. Atrasados (qualquer dia), 2. Horário atual, 3. Próximos (até 15 min)
+  // ⚠ O alerta sonoro REPETE a cada ciclo ENQUANTO houver tarefas vencidas não concluídas.
+  // Só para quando TODAS as tarefas atrasadas forem concluídas.
+  // ===== CONFIGURAÇÃO DE ALERTAS =====
+  setupConfigAlertas() {
+    const modal = document.getElementById('modal-config-alertas');
+    const btnFechar = document.getElementById('btn-fechar-config-alertas');
+    const btnSalvar = document.getElementById('btn-salvar-config');
+    const btnTestar = document.getElementById('btn-testar-som');
+    const chkSilencio = document.getElementById('config-silencio-ativo');
+    const camposSilencio = document.getElementById('config-silencio-campos');
+
+    if (!modal) return;
+
+    // Abre a config de alertas (chamado por qualquer botão ⚙️)
+    const abrirConfig = (e) => {
+      if (e) e.stopPropagation();
+      // Fecha modal de lista se estiver aberto
+      const listaModal = document.getElementById('modal-lista-alertas');
+      if (listaModal) listaModal.style.display = 'none';
+      this.carregarConfigAlertasUI();
+      modal.style.display = 'flex';
     };
 
-    const verificar = async () => {
+    // Botão ⚙️ dentro do card oculto (fallback)
+    const btnAbrir = document.getElementById('btn-abrir-config-alertas');
+    if (btnAbrir) btnAbrir.addEventListener('click', abrirConfig);
+
+    // Botão ⚙️ no modal da lista de alertas
+    const btnConfigModal = document.getElementById('btn-config-alertas-modal');
+    if (btnConfigModal) btnConfigModal.addEventListener('click', abrirConfig);
+
+    if (btnFechar) {
+      btnFechar.addEventListener('click', () => { modal.style.display = 'none'; });
+    }
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.style.display = 'none';
+    });
+
+    // Fechamento do modal da lista de alertas
+    const btnFecharLista = document.getElementById('btn-fechar-lista-alertas');
+    const listaModal = document.getElementById('modal-lista-alertas');
+    if (btnFecharLista && listaModal) {
+      btnFecharLista.addEventListener('click', () => { listaModal.style.display = 'none'; });
+    }
+    if (listaModal) {
+      listaModal.addEventListener('click', (e) => {
+        if (e.target === listaModal) listaModal.style.display = 'none';
+      });
+    }
+    if (chkSilencio && camposSilencio) {
+      chkSilencio.addEventListener('change', () => {
+        camposSilencio.style.display = chkSilencio.checked ? 'flex' : 'none';
+      });
+    }
+    if (btnSalvar) {
+      btnSalvar.addEventListener('click', () => {
+        this.salvarConfigAlertas();
+        modal.style.display = 'none';
+      });
+    }
+    if (btnTestar) {
+      btnTestar.addEventListener('click', () => {
+        if (this._tocarSomVencida) this._tocarSomVencida();
+      });
+    }
+  }
+
+  carregarConfigAlertas() {
+    try {
+      const raw = localStorage.getItem('cc_config_alertas');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return {
+      som: {
+        ativo: true,
+        horarioInicio: '08:00',
+        horarioFim: '18:00',
+        diasSemana: [1, 2, 3, 4, 5],
+        silencio: { ativo: false, inicio: '12:00', fim: '13:00' }
+      },
+      alertasComSom: {
+        acaoSemanaVencidas: true,
+        acaoSemanaAgora: false,
+        acaoSemanaProximas: false,
+        posVendaCritico: false,
+        osAguardandoCliente: false,
+        avaliacoesCriticas: false
+      },
+      pulsacao: { critico: true, atencao: false }
+    };
+  }
+
+  carregarConfigAlertasUI() {
+    const config = this.carregarConfigAlertas();
+    this._setChecked('config-som-ativo', config.som.ativo);
+    this._setValue('config-som-inicio', config.som.horarioInicio);
+    this._setValue('config-som-fim', config.som.horarioFim);
+    document.querySelectorAll('.config-dia-sem').forEach(chk => {
+      chk.checked = config.som.diasSemana.includes(parseInt(chk.value));
+    });
+    this._setChecked('config-silencio-ativo', config.som.silencio.ativo);
+    this._setValue('config-silencio-inicio', config.som.silencio.inicio);
+    this._setValue('config-silencio-fim', config.som.silencio.fim);
+    const camposSilencio = document.getElementById('config-silencio-campos');
+    if (camposSilencio) {
+      camposSilencio.style.display = config.som.silencio.ativo ? 'flex' : 'none';
+    }
+    document.querySelectorAll('.config-alerta-som').forEach(chk => {
+      const tipo = chk.getAttribute('data-tipo');
+      chk.checked = config.alertasComSom[tipo] === true;
+    });
+    document.querySelectorAll('.config-pulsacao').forEach(chk => {
+      const nivel = chk.getAttribute('data-nivel');
+      chk.checked = config.pulsacao[nivel] === true;
+    });
+  }
+
+  salvarConfigAlertas() {
+    const config = {
+      som: {
+        ativo: this._getChecked('config-som-ativo'),
+        horarioInicio: this._getValue('config-som-inicio', '08:00'),
+        horarioFim: this._getValue('config-som-fim', '18:00'),
+        diasSemana: Array.from(document.querySelectorAll('.config-dia-sem:checked')).map(c => parseInt(c.value)),
+        silencio: {
+          ativo: this._getChecked('config-silencio-ativo'),
+          inicio: this._getValue('config-silencio-inicio', '12:00'),
+          fim: this._getValue('config-silencio-fim', '13:00')
+        }
+      },
+      alertasComSom: {},
+      pulsacao: {
+        critico: document.querySelector('.config-pulsacao[data-nivel="critico"]')?.checked ?? true,
+        atencao: document.querySelector('.config-pulsacao[data-nivel="atencao"]')?.checked ?? false
+      }
+    };
+    document.querySelectorAll('.config-alerta-som').forEach(chk => {
+      config.alertasComSom[chk.getAttribute('data-tipo')] = chk.checked;
+    });
+    localStorage.setItem('cc_config_alertas', JSON.stringify(config));
+    console.log('✅ Configuração de alertas salva:', config);
+  }
+
+  _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
+  _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+  _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
+  _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
+
+  // ===== PAINEL LATERAL DIREITO — MONITORAMENTO GERENCIAL =====
+  setupPainelLateralGerencial() {
+    const lista = document.getElementById('alertas-direita-list');
+    if (!lista) return;
+
+    const headerSpan = document.querySelector('.pr-section.pr-alertas .pr-section-header > span');
+    if (headerSpan) headerSpan.textContent = '📊 MONITORAMENTO';
+    const linkVerTodos = document.getElementById('alertas-ver-todos');
+    if (linkVerTodos) { linkVerTodos.textContent = 'Ver relatórios ›'; linkVerTodos.href = '../relatorios/index.html'; }
+
+    const calcDias = (dateStr) => {
+      try { return Math.floor((Date.now() - new Date(dateStr)) / 86400000); } catch { return 0; }
+    };
+    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    const getDeliveryDate = (os) => {
+      if (Array.isArray(os.timeline)) {
+        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
+        if (entry?.date) return entry.date;
+      }
+      const ua = os.updatedAt;
+      if (!ua) return null;
+      if (typeof ua === 'string') return ua;
+      if (ua.toDate) return ua.toDate().toISOString();
+      return null;
+    };
+
+    const renderizar = ({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas }) => {
+      const items = [];
+
+      if (metaPct !== null) {
+        const cor = metaPct >= 100 ? '#00e676' : metaPct >= 60 ? '#f59e0b' : '#ef4444';
+        const txt = metaPct >= 100 ? '✅ Meta atingida' : `${metaPct}% da meta`;
+        items.push({ icon: '🎯', label: 'Meta Semanal', value: txt, cor, href: '../relatorios/index.html' });
+      }
+
+      if (ticketMedio) {
+        items.push({ icon: '💰', label: 'Ticket Médio', value: ticketMedio, cor: '#3b82f6', href: '../relatorios/index.html' });
+      }
+
+      if (pvAtrasados > 0) {
+        items.push({ icon: '💡', label: 'Pós-venda atrasado', value: `${pvAtrasados} cliente(s)`, cor: '#ef4444', href: '../pos-venda/index.html' });
+      } else if (pvPendentes > 0) {
+        items.push({ icon: '💡', label: 'Pós-venda pendente', value: `${pvPendentes} cliente(s)`, cor: '#f59e0b', href: '../pos-venda/index.html' });
+      }
+
+      if (avalCriticas > 0) {
+        items.push({ icon: '⭐', label: 'Avaliações críticas', value: `${avalCriticas}`, cor: '#ef4444', href: '../portal-cliente/admin.html' });
+      }
+
+      if (estoqueBaixo > 0) {
+        items.push({ icon: '📦', label: 'Estoque baixo', value: `${estoqueBaixo} item(s)`, cor: '#f59e0b', href: '../estoque/index.html' });
+      }
+
+      if (aparelhos > 0) {
+        items.push({ icon: '🔧', label: 'Ap. não retirados', value: `${aparelhos}`, cor: '#f59e0b', href: '../os/index.html' });
+      }
+
+      if (orcSemResposta > 0) {
+        items.push({ icon: '💬', label: 'Orç. sem resposta', value: `${orcSemResposta}`, cor: '#f59e0b', href: '../os/index.html' });
+      }
+
+      if (!items.length) {
+        lista.innerHTML = '<div class="alertas-vazio">✅ Tudo em dia</div>';
+        return;
+      }
+
+      lista.innerHTML = items.map(a =>
+        `<a class="alerta-item" href="${a.href}" style="border-left-color:${a.cor};">` +
+        `<span class="alerta-icon" style="color:${a.cor};">${a.icon}</span>` +
+        `<div class="alerta-texto"><div class="alerta-label">${esc(a.label)}</div></div>` +
+        `<span class="alerta-count" style="background:${a.cor};">${esc(a.value)}</span>` +
+        `</a>`
+      ).join('');
+    };
+
+    const atualizar = async () => {
       try {
-        const eventos = await this._lerAgenda();
-        const agora = new Date();
-        const agoraTs = Date.now();
-        const hojeISO = `${agora.getFullYear()}-${String(agora.getMonth()+1).padStart(2,'0')}-${String(agora.getDate()).padStart(2,'0')}`;
-        const hAtual = agora.getHours();
-        const mAtual = agora.getMinutes();
-        const minsAtual = hAtual * 60 + mAtual;
+        const meta = this.state && this.state.meta;
+        const metaPct = meta && meta.goal > 0 ? Math.round((meta.current / meta.goal) * 100) : null;
+        const ticketEl = document.getElementById('kpi-ticket-medio');
+        const ticketMedio = ticketEl ? ticketEl.textContent.trim() : null;
 
-        // ─── Helper: verifica se evento está atrasado ───
-        const estaAtrasado = (e) => {
-          if (e.concluido || e.alerta === false || !e.data) return false;
-          if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agoraTs;
-          return e.data < hojeISO; // sem horário — data passou
-        };
+        const [osSnap, contatosSnap] = await Promise.all([
+          getDocs(collection(db, 'os')),
+          getDocs(collection(db, 'posvenda_contatos'))
+        ]);
 
-        // 1. PRIORIDADE MÁXIMA — ATRASADOS (qualquer dia/hora no passado, não concluído)
-        // ⚠ DIFERENTE dos demais: aqui NÃO usa ultimoAvisoKey para bloquear.
-        // O som toca em CADA CICLO enquanto houver vencidas, garantindo que
-        // o usuário será alertado repetidamente até concluir a tarefa.
-        const atrasados = (eventos || []).filter(estaAtrasado);
+        const contatosFeitos = new Set();
+        contatosSnap.forEach(d => { const c = d.data(); if (c.ativo !== false) contatosFeitos.add(`${c.osId}_${c.prazo}`); });
 
-        if (atrasados.length > 0) {
-          const pior = atrasados.sort((a, b) => {
-            const tsA = new Date(`${a.data}T${a.hora || '00:00'}:00`).getTime();
-            const tsB = new Date(`${b.data}T${b.hora || '00:00'}:00`).getTime();
-            return tsA - tsB;
-          })[0];
-          const dtPior = new Date(`${pior.data}T${pior.hora || '00:00'}:00`);
-          const diffMin = Math.round((agoraTs - dtPior.getTime()) / 60000);
-          const key = `atrasado_${pior.data}_${pior.hora}`;
+        let pvAtrasados = 0, pvPendentes = 0, aparelhos = 0, orcSemResposta = 0;
+        osSnap.forEach(d => {
+          const os = { _id: d.id, ...d.data() };
 
-          cicloAtrasados++;
-          const labelAtraso = cicloAtrasados % 2 === 0
-            ? `🔴 VENCIDA · ${_fmtAtraso(diffMin)} atrasado`
-            : `🔴 TAREFA PENDENTE · ${_fmtAtraso(diffMin)} atrasado`;
-
-          // CORREÇÃO: som apenas uma vez a cada 5 minutos por item atrasado
-          const COOLDOWN_ATRASADO = 5 * 60 * 1000;
-          const agora5 = Date.now();
-          const podeTocarSomAgora = !_somAtrasadoCooldown[key] ||
-            (agora5 - _somAtrasadoCooldown[key]) >= COOLDOWN_ATRASADO;
-
-          if (podeTocarSomAgora) {
-            _somAtrasadoCooldown[key] = agora5;
-            dispararAlerta(pior, labelAtraso, true); // com som
-          } else {
-            // Atualiza visual sem som (passa false no 3º param não-sonoro)
-            dispararAlerta(pior, labelAtraso, false);
-          }
-          ultimoAvisoKey = key;
-          return;
-        }
-
-        // Se chegou aqui, não há atrasados — reseta contador
-        cicloAtrasados = 0;
-
-        // 2. SEGUNDA PRIORIDADE — HORÁRIO ATUAL (hoje, diff 0–5 min)
-        for (const evento of eventos) {
-          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
-          if (evento.data !== hojeISO) continue;
-          const [hEv, mEv] = evento.hora.split(':').map(Number);
-          const evMin = hEv * 60 + mEv;
-          const diff = evMin - minsAtual;
-
-          if (diff >= 0 && diff <= 5) {
-            const key = `agora_${evento.hora}`;
-            if (ultimoAvisoKey !== key) {
-              ultimoAvisoKey = key;
-              dispararAlerta(evento, diff === 0 ? 'AGORA!' : `em ${diff} min`, false);
+          if (os.status === 'entregue') {
+            const dd = getDeliveryDate(os);
+            if (dd) {
+              const dias = calcDias(dd);
+              const osId = os.id || os._id;
+              [5, 15, 30].forEach(prazo => {
+                if (contatosFeitos.has(`${osId}_${prazo}`)) return;
+                const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
+                if (dias < prazo || dias >= proxPrazo) return;
+                pvPendentes++;
+                if (dias > prazo + 2) pvAtrasados++;
+              });
             }
-            return;
           }
-        }
 
-        // 3. TERCEIRA PRIORIDADE — PRÓXIMOS (hoje, 6–15 min)
-        for (const evento of eventos) {
-          if (evento.concluido || evento.alerta === false || !evento.data || !evento.hora) continue;
-          if (evento.data !== hojeISO) continue;
-          const [hEv, mEv] = evento.hora.split(':').map(Number);
-          const evMin = hEv * 60 + mEv;
-          const diff = evMin - minsAtual;
-
-          if (diff > 5 && diff <= 15) {
-            const key = `prox_${evento.hora}`;
-            if (ultimoAvisoKey !== key) {
-              ultimoAvisoKey = key;
-              dispararAlerta(evento, `em ${diff} min`, false);
+          if (os.status === 'concluido' || os.status === 'pronto') {
+            let dataConcl = null;
+            if (Array.isArray(os.timeline)) {
+              const e = [...os.timeline].reverse().find(t => typeof t.text === 'string' && t.text.includes('→ Concluído'));
+              if (e?.date) dataConcl = e.date;
             }
-            return;
+            if (!dataConcl) dataConcl = typeof os.updatedAt === 'string' ? os.updatedAt : (os.updatedAt && os.updatedAt.toDate ? os.updatedAt.toDate().toISOString() : null);
+            if (dataConcl && calcDias(dataConcl) > 3) aparelhos++;
           }
-        }
 
-        // Nada a alertar — reseta para permitir novos avisos
-        ultimoAvisoKey = '';
+          if (os.status === 'orcamento' || os.status === 'orcamento_enviado') {
+            const ref = os.updatedAt || os.createdAt;
+            const refStr = typeof ref === 'string' ? ref : (ref && ref.toDate ? ref.toDate().toISOString() : null);
+            if (refStr && calcDias(refStr) > 2) orcSemResposta++;
+          }
+        });
 
-      } catch {}
+        let estoqueBaixo = 0;
+        try {
+          const estSnap = await getDocs(collection(db, 'estoque'));
+          estSnap.forEach(d => {
+            const p = d.data();
+            const qty = Number(p.quantidade ?? p.estoque ?? 0);
+            const min = Number(p.estoqueMinimo ?? p.minimo ?? 1);
+            if (qty < min) estoqueBaixo++;
+          });
+        } catch (e) { console.warn('[Painel] estoque:', e); }
+
+        let avalCriticas = 0;
+        try {
+          const avalSnap = await getDocs(query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(10)));
+          avalSnap.forEach(d => { if ((d.data().nota || 0) <= 2) avalCriticas++; });
+        } catch (e) { console.warn('[Painel] avaliações:', e); }
+
+        renderizar({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas });
+      } catch (e) {
+        console.warn('[Painel Gerencial] erro:', e);
+      }
     };
 
-    verificar();
-    setInterval(verificar, 30000); // 30s para resposta mais rápida em vencidas
+    atualizar();
+    setInterval(atualizar, 180000);
+    window.addEventListener('focus', atualizar);
   }
 
   // ===== ALARME PARA OS NOVA =====
@@ -2271,8 +2568,6 @@ class Dashboard {
 
     const gerarSomAlarme = (duracao = 2, vol = 0.8) => {
       if (isTocarAlarm) return;
-      if (!ccSonsHabilitados('os')) return;
-      ccLog('Dashboard / Alarme OS', 'Alarme de OS nova disparado', 'som', `AudioContext — beeps repetidos ${duracao}s vol=${vol}`);
       isTocarAlarm = true;
 
       try {
@@ -2772,43 +3067,22 @@ class Dashboard {
     const btn = document.getElementById('compact-mode-toggle');
     if (!btn) return;
 
-    // Path multiusuário: usuarios/{uid}/preferencias/layout
-    const prefRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'layout');
-
-    const aplicar = (compacto, salvar = true) => {
+    const aplicar = (compacto) => {
       document.body.classList.toggle('modo-compacto', compacto);
       btn.classList.toggle('ativo', compacto);
       btn.textContent = compacto ? '▣ Compacto' : '▢ Compactar';
       btn.title = compacto ? 'Alternar para modo normal' : 'Alternar para modo compacto';
       localStorage.setItem(COMPACT_KEY, compacto ? 'true' : '');
-      if (salvar) {
-        setDoc(prefRef(getUid()), { sidebarCompacta: compacto, atualizadoEm: serverTimestamp() }, { merge: true })
-          .catch(e => console.warn('[Preferências] salvar sidebarCompacta:', e?.message));
-      }
     };
 
-    // 1. localStorage → imediato
-    aplicar(localStorage.getItem(COMPACT_KEY) === 'true', false);
-
-    // 2. Firestore → assíncrono (carrega e aplica; não conflita com preferência local)
-    onUid(async (uid) => {
-      try {
-        const snap = await getDoc(prefRef(uid));
-        if (snap.exists()) {
-          const d = snap.data();
-          if (typeof d.sidebarCompacta === 'boolean') {
-            const local = localStorage.getItem(COMPACT_KEY) === 'true';
-            if (d.sidebarCompacta !== local) aplicar(d.sidebarCompacta, false);
-          }
-        }
-      } catch (e) {
-        console.warn('[Preferências] carregar sidebarCompacta:', e?.message);
-      }
-    });
+    // Carregar preferência salva
+    const salvo = localStorage.getItem(COMPACT_KEY) === 'true';
+    aplicar(salvo);
 
     // Toggle ao clicar
     btn.addEventListener('click', () => {
-      aplicar(!document.body.classList.contains('modo-compacto'), true);
+      const alvo = !document.body.classList.contains('modo-compacto');
+      aplicar(alvo);
     });
   }
 
@@ -2951,10 +3225,16 @@ class Dashboard {
   }
 
   // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  async setupExecutivePanel() {
+  setupExecutivePanel() {
     const fmt    = (v) => Number(v).toLocaleString('pt-BR');
-    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const setDelta = (id, val, prefix = '') => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = prefix + val;
+      el.className = 'exec-card-delta' + (String(val).startsWith('-') ? ' down' : ' up');
+    };
 
     const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
                            'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
@@ -2982,20 +3262,24 @@ class Dashboard {
         if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
         if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
 
+        // Ticket médio: OS entregues este mês
         if (status === 'entregue' && os.valor) {
           somaValorEntregue += Number(os.valor);
           countEntregue++;
         }
 
+        // Tempo médio: OS entregues com datas
         if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
           const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
           if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
         }
 
+        // Clientes ativos (30 dias)
         if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
           clientesSet.add(os.phone);
         }
 
+        // Orçamentos enviados hoje
         if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
           orcamentosHoje++;
         }
@@ -3036,713 +3320,21 @@ class Dashboard {
       set('kpi-pecas-falta', fmt(pecasFalta));
     };
 
-    // Aguarda tenant antes de qualquer query Firestore de KPI
-    await (window._ccTenantReady || Promise.resolve());
-
+    // Inicia listeners quando Firestore estiver pronto
     const iniciar = () => {
       try {
-        const eid = getEmpresaId();
-        console.log('[DASHBOARD] KPI listeners iniciando — empresa_id:', eid);
-        registerListener('dashboard:kpi-os',
-          onSnapshot(query(collection(db, 'os'), where('empresa_id', '==', eid)), atualizarOS,
-            err => console.error('[DASHBOARD] Erro KPI os:', err.message)));
-        registerListener('dashboard:kpi-caixa',
-          onSnapshot(query(collection(db, 'caixa_lancamentos'), where('empresa_id', '==', eid)), atualizarCaixa,
-            err => console.error('[DASHBOARD] Erro KPI caixa:', err.message)));
-        registerListener('dashboard:kpi-estoque',
-          onSnapshot(query(collection(db, 'estoque'), where('empresa_id', '==', eid)), atualizarEstoque,
-            err => console.error('[DASHBOARD] Erro KPI estoque:', err.message)));
-      } catch (e) { console.error('[DASHBOARD] KPI iniciar falhou:', e); }
+        onSnapshot(collection(db, 'os'), atualizarOS,
+          err => console.warn('[KPI] os:', err && err.message));
+        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
+          err => console.warn('[KPI] caixa:', err && err.message));
+        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
+          err => console.warn('[KPI] estoque:', err && err.message));
+      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
     };
 
+    // Aguarda firebase-ready se necessário (db vem do módulo importado no topo)
     if (db) iniciar();
     else window.addEventListener('firebase-ready', iniciar, { once: true });
-  }
-
-  // ===== CONFIGURAÇÃO DE ALERTAS (persistência) =====
-  setupConfigAlertas() {
-    const modal      = document.getElementById('modal-config-alertas');
-    const btnFechar  = document.getElementById('btn-fechar-config-alertas');
-    const btnSalvar  = document.getElementById('btn-salvar-config');
-    const btnTestar  = document.getElementById('btn-testar-som');
-    const chkSilencio    = document.getElementById('config-silencio-ativo');
-    const camposSilencio = document.getElementById('config-silencio-campos');
-
-    if (!modal) return;
-
-    const abrirConfig = (e) => {
-      if (e) e.stopPropagation();
-      const listaModal = document.getElementById('modal-lista-alertas');
-      if (listaModal) listaModal.style.display = 'none';
-      this.carregarConfigAlertasUI();
-      modal.style.display = 'flex';
-    };
-
-    const btnAbrir = document.getElementById('btn-abrir-config-alertas');
-    if (btnAbrir) btnAbrir.addEventListener('click', abrirConfig);
-
-    const btnConfigModal = document.getElementById('btn-config-alertas-modal');
-    if (btnConfigModal) btnConfigModal.addEventListener('click', abrirConfig);
-
-    if (btnFechar) btnFechar.addEventListener('click', () => { modal.style.display = 'none'; });
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
-
-    const btnFecharLista = document.getElementById('btn-fechar-lista-alertas');
-    const listaModal = document.getElementById('modal-lista-alertas');
-    if (btnFecharLista && listaModal) btnFecharLista.addEventListener('click', () => { listaModal.style.display = 'none'; });
-    if (listaModal) listaModal.addEventListener('click', (e) => { if (e.target === listaModal) listaModal.style.display = 'none'; });
-
-    if (chkSilencio && camposSilencio) {
-      chkSilencio.addEventListener('change', () => {
-        camposSilencio.style.display = chkSilencio.checked ? 'flex' : 'none';
-      });
-    }
-
-    if (btnSalvar) {
-      btnSalvar.addEventListener('click', () => {
-        this.salvarConfigAlertas();
-        modal.style.display = 'none';
-      });
-    }
-
-    if (btnTestar) {
-      btnTestar.addEventListener('click', () => {
-        if (this._tocarSomVencida) this._tocarSomVencida();
-      });
-    }
-  }
-
-  carregarConfigAlertas() {
-    try {
-      const raw = localStorage.getItem('cc_config_alertas');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    return {
-      som: {
-        ativo: true,
-        horarioInicio: '08:00',
-        horarioFim: '18:00',
-        diasSemana: [1, 2, 3, 4, 5],
-        silencio: { ativo: false, inicio: '12:00', fim: '13:00' }
-      },
-      alertasComSom: {
-        acaoSemanaVencidas: true,
-        acaoSemanaAgora: false,
-        acaoSemanaProximas: false,
-        posVendaCritico: false,
-        osAguardandoCliente: false,
-        avaliacoesCriticas: false
-      },
-      pulsacao: { critico: true, atencao: false }
-    };
-  }
-
-  carregarConfigAlertasUI() {
-    const config = this.carregarConfigAlertas();
-    // Sincronizar cc_sons_sistema com o estado salvo (garante consistência ao abrir a página)
-    if (!localStorage.getItem('cc_sons_user_choice')) {
-      localStorage.setItem('cc_sons_sistema', config.som.ativo ? 'true' : 'false');
-    }
-    this._setChecked('config-som-ativo', config.som.ativo);
-    this._setValue('config-som-inicio', config.som.horarioInicio);
-    this._setValue('config-som-fim', config.som.horarioFim);
-    document.querySelectorAll('.config-dia-sem').forEach(chk => {
-      chk.checked = config.som.diasSemana.includes(parseInt(chk.value));
-    });
-    this._setChecked('config-silencio-ativo', config.som.silencio.ativo);
-    this._setValue('config-silencio-inicio', config.som.silencio.inicio);
-    this._setValue('config-silencio-fim', config.som.silencio.fim);
-    const camposSilencio = document.getElementById('config-silencio-campos');
-    if (camposSilencio) camposSilencio.style.display = config.som.silencio.ativo ? 'flex' : 'none';
-    document.querySelectorAll('.config-alerta-som').forEach(chk => {
-      const tipo = chk.getAttribute('data-tipo');
-      chk.checked = config.alertasComSom[tipo] === true;
-    });
-    document.querySelectorAll('.config-pulsacao').forEach(chk => {
-      const nivel = chk.getAttribute('data-nivel');
-      chk.checked = config.pulsacao[nivel] === true;
-    });
-  }
-
-  salvarConfigAlertas() {
-    const config = {
-      som: {
-        ativo: this._getChecked('config-som-ativo'),
-        horarioInicio: this._getValue('config-som-inicio', '08:00'),
-        horarioFim: this._getValue('config-som-fim', '18:00'),
-        diasSemana: Array.from(document.querySelectorAll('.config-dia-sem:checked')).map(c => parseInt(c.value)),
-        silencio: {
-          ativo: this._getChecked('config-silencio-ativo'),
-          inicio: this._getValue('config-silencio-inicio', '12:00'),
-          fim: this._getValue('config-silencio-fim', '13:00')
-        }
-      },
-      alertasComSom: {},
-      pulsacao: {
-        critico: document.querySelector('.config-pulsacao[data-nivel="critico"]')?.checked ?? true,
-        atencao: document.querySelector('.config-pulsacao[data-nivel="atencao"]')?.checked ?? false
-      }
-    };
-    document.querySelectorAll('.config-alerta-som').forEach(chk => {
-      config.alertasComSom[chk.getAttribute('data-tipo')] = chk.checked;
-    });
-    localStorage.setItem('cc_config_alertas', JSON.stringify(config));
-    // Sincronizar com sistema global de som (lido por ccSonsHabilitados e verificações diretas)
-    localStorage.setItem('cc_sons_sistema', config.som.ativo ? 'true' : 'false');
-    localStorage.setItem('cc_sons_user_choice', '1');
-  }
-
-  _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; }
-  _getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
-  _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
-  _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
-
-  // ══════════════════════════════════════════════════════════════════
-  // 💰 PAINEL FINANCEIRO INTELIGENTE
-  // Usa: resumo_live (caixa), financeiro_pagar/receber, estoque_produtos
-  // ══════════════════════════════════════════════════════════════════
-  setupPainelFinanceiro() {
-    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-    const R = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-
-    const now = new Date();
-    const mesKey     = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const semanaKey  = (() => {
-      const d = new Date(now); d.setHours(0,0,0,0);
-      d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-      const jan1 = new Date(d.getFullYear(), 0, 1);
-      const w = Math.ceil(((d - jan1) / 86400000 + 1) / 7);
-      return `${d.getFullYear()}-W${String(w).padStart(2,'0')}`;
-    })();
-    const hojeKey = now.toISOString().slice(0, 10);
-
-    let _period = 'mes';
-    let _liveDocs = {};
-
-    const _getLiveKey = () => ({
-      mes:    `mes_${mesKey}`,
-      semana: `semana_${semanaKey}`,
-      hoje:   `dia_${hojeKey}`,
-    })[_period];
-
-    const _lbl = { mes: 'do Mês', semana: 'da Semana', hoje: 'de Hoje' };
-
-    const _updatePeriodo = () => {
-      const key  = _getLiveKey();
-      const data = _liveDocs[key] || {};
-      set('fin-receita-periodo',  R(data.entradas   || 0));
-      set('fin-despesas-periodo', R(data.saidas     || 0));
-      set('fin-lucro-periodo',    R(data.lucro      || 0));
-      set('fin-receita-lbl',  `Receita ${_lbl[_period]}`);
-      set('fin-despesas-lbl', `Saídas ${_lbl[_period]}`);
-      set('fin-lucro-lbl',    `Lucro ${_lbl[_period]}`);
-      const lucroCard = document.getElementById('fin-card-lucro');
-      if (lucroCard) lucroCard.className = 'fin-card ' + ((data.lucro || 0) >= 0 ? 'fin-card--lucro' : 'fin-card--prejuizo');
-
-      const total = (data.entradas || 0);
-      const qtdVendas = data.totalLancamentos || 0;
-      set('fin-produtos-vendidos', qtdVendas);
-      set('fin-ticket-medio',  qtdVendas > 0 ? R(total / qtdVendas) : '—');
-    };
-
-    // Botões de período
-    document.querySelectorAll('.fin-exec-period').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.fin-exec-period').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        _period = btn.dataset.period;
-        _updatePeriodo();
-      });
-    });
-
-    const _carregar = async () => {
-      if (!db) return;
-      await (window._ccTenantReady || Promise.resolve());
-
-      try {
-        // 1. Resumo Live (caixa pre-calculado)
-        const eid = getEmpresaId();
-        const qEid = col => query(collection(db, col), where('empresa_id', '==', eid));
-        const liveSnap = await getDocs(qEid('resumo_live'));
-        liveSnap.forEach(d => { _liveDocs[d.id] = d.data(); });
-
-        // Saldo = soma de todos os entradas − saídas de todos os documentos mensais/semanais?
-        // Melhor: soma cumulativa de todos os dias
-        let saldoTotal = 0;
-        liveSnap.forEach(d => {
-          const data = d.data();
-          if (data.tipo === 'diario') saldoTotal += (data.saldo || 0);
-        });
-        // Evita double-count: usa apenas dados mensais históricos + dia atual
-        // Abordagem simples: soma lancamentos do saldo já está no live do mes atual
-        const mesDat = _liveDocs[`mes_${mesKey}`] || {};
-        set('fin-saldo-caixa', R(mesDat.saldo || 0));
-
-        _updatePeriodo();
-
-        // Gráfico (últimos 6 meses)
-        const meses6 = [];
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-          const nome = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-          const doc_ = _liveDocs[`mes_${k}`] || {};
-          meses6.push({ nome, receita: doc_.entradas || 0, lucro: doc_.lucro || 0 });
-        }
-        this._renderFinChart(meses6);
-
-        // 2. Compras do mês (compras_financeiras)
-        const compSnap = await getDocs(qEid('compras_financeiras'));
-        let comprasMes = 0;
-        compSnap.forEach(d => {
-          const c = d.data();
-          if ((c.data || '').startsWith(mesKey) || (c.criadoEm?.toDate?.().toISOString() || '').startsWith(mesKey)) {
-            comprasMes += Number(c.valorTotal || 0);
-          }
-        });
-        set('fin-compras-mes', R(comprasMes));
-
-        // 3. Contas a pagar
-        const pagarSnap = await getDocs(qEid('financeiro_pagar'));
-        let aPagar = 0, vencidas = 0;
-        const hojeStr = hojeKey;
-        pagarSnap.forEach(d => {
-          const c = d.data();
-          if (c.status !== 'pago') {
-            aPagar += Number(c.valor || 0);
-            if (c.vencimento && c.vencimento < hojeStr) vencidas++;
-          }
-        });
-
-        // 4. Contas a receber
-        const receberSnap = await getDocs(qEid('financeiro_receber'));
-        let aReceber = 0;
-        receberSnap.forEach(d => {
-          const c = d.data();
-          if (c.status !== 'recebido') {
-            aReceber += Number(c.valor || 0);
-            if (c.status !== 'recebido' && c.vencimento && c.vencimento < hojeStr) vencidas++;
-          }
-        });
-
-        set('fin-a-pagar',  R(aPagar));
-        set('fin-a-receber', R(aReceber));
-        set('fin-vencidas',  vencidas || '—');
-        const vcCard = document.getElementById('fin-card-vencidas');
-        if (vcCard) vcCard.className = 'fin-card ' + (vencidas > 0 ? 'fin-card--vencida fin-card--alerta' : 'fin-card--vencida');
-
-        // 5. Estoque baixo (estoque_produtos)
-        const estSnap = await getDocs(qEid('estoque_produtos'));
-        let baixo = 0, maisVendidoNome = '—', maisLucrativoNome = '—';
-        const prodMap = {};
-        estSnap.forEach(d => {
-          const p = d.data();
-          const qty = Number(p.quantidade || 0);
-          const min = Number(p.quantidadeMinima || p.estoqueMinimo || 1);
-          if (qty > 0 && qty <= min) baixo++;
-          prodMap[(p.nome || '').toUpperCase()] = { ...p, id: d.id };
-        });
-        set('fin-estoque-baixo', baixo || '—');
-
-        // 6. Produto mais vendido / mais lucrativo (dos lançamentos do mês)
-        const caixaSnap = await getDocs(qEid('caixa_lancamentos'));
-        const vendMap = {};
-        caixaSnap.forEach(d => {
-          const l = d.data();
-          const iso = l.dataISO || '';
-          if (!iso.startsWith(mesKey)) return;
-          if (l.tipo !== 'entrada' && l.tipo !== 'servico') return;
-          const nome = (l.descricao || '').trim().toUpperCase();
-          if (!nome) return;
-          if (!vendMap[nome]) vendMap[nome] = { nome: l.descricao || nome, qtd: 0, receita: 0, lucro: 0 };
-          vendMap[nome].qtd++;
-          vendMap[nome].receita += Number(l.valor || 0);
-          vendMap[nome].lucro   += Number(l.lucro || 0);
-        });
-        const vendList = Object.values(vendMap);
-        if (vendList.length) {
-          vendList.sort((a, b) => b.qtd - a.qtd);
-          maisVendidoNome = vendList[0].nome;
-          vendList.sort((a, b) => b.lucro - a.lucro);
-          maisLucrativoNome = vendList[0].nome;
-        }
-        set('fin-mais-vendido',    maisVendidoNome);
-        set('fin-mais-lucrativo',  maisLucrativoNome);
-
-        // 7. Meta mensal: usa mesKey para calcular receita do caixa no mês vs meta
-        const metaGoal = this.state?.meta?.goal || 0;
-        const metaAtual = mesDat.entradas || 0;
-        const metaPct = metaGoal > 0 ? Math.min((metaAtual / metaGoal) * 100, 100) : 0;
-        set('fin-meta-atual', R(metaAtual));
-        set('fin-meta-goal',  R(metaGoal));
-        set('fin-meta-pct',   `${metaPct.toFixed(0)}%`);
-        const fill = document.getElementById('fin-meta-fill');
-        if (fill) requestAnimationFrame(() => { fill.style.width = `${metaPct}%`; });
-        const falta = Math.max(metaGoal - metaAtual, 0);
-        set('fin-meta-falta', falta > 0 ? `Faltam ${R(falta)}` : '✅ Meta atingida!');
-
-        // 8. Alertas destaque
-        this._renderFinAlertas({ vencidas, baixo, aPagar, aReceber });
-
-      } catch (e) {
-        console.warn('[FinPanel] Erro ao carregar:', e);
-      }
-    };
-
-    if (db) _carregar();
-    else window.addEventListener('firebase-ready', _carregar, { once: true });
-  }
-
-  _renderFinChart(meses) {
-    const area = document.getElementById('fin-chart-area');
-    if (!area) return;
-    const maxVal = Math.max(...meses.map(m => m.receita), 1);
-    area.innerHTML = meses.map(m => {
-      const pctR = (m.receita / maxVal * 100).toFixed(1);
-      const pctL = (Math.max(m.lucro, 0) / maxVal * 100).toFixed(1);
-      return `<div class="fin-chart-col">
-        <div class="fin-chart-bars">
-          <div class="fin-chart-bar fin-bar-receita" style="height:${pctR}%" title="Receita: R$ ${m.receita.toLocaleString('pt-BR', {minimumFractionDigits:2})}"></div>
-          <div class="fin-chart-bar fin-bar-lucro"   style="height:${pctL}%" title="Lucro: R$ ${m.lucro.toLocaleString('pt-BR',  {minimumFractionDigits:2})}"></div>
-        </div>
-        <div class="fin-chart-lbl">${m.nome}</div>
-      </div>`;
-    }).join('');
-  }
-
-  _renderFinAlertas({ vencidas, baixo, aPagar, aReceber }) {
-    const lista = document.getElementById('fin-alertas-lista');
-    if (!lista) return;
-    const R = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    const alertas = [];
-    if (vencidas > 0) alertas.push({ cor: 'fin-al-red',    txt: `${vencidas} conta${vencidas>1?'s':''} vencida${vencidas>1?'s':''}`, ico: '⚠️' });
-    if (baixo > 0)    alertas.push({ cor: 'fin-al-orange', txt: `${baixo} produto${baixo>1?'s':''} com estoque baixo`, ico: '📦' });
-    if (aPagar > 0)   alertas.push({ cor: 'fin-al-yellow', txt: `${R(aPagar)} em contas a pagar`, ico: '🏢' });
-    if (aReceber > 0) alertas.push({ cor: 'fin-al-green',  txt: `${R(aReceber)} a receber`, ico: '🧾' });
-    if (!alertas.length) {
-      lista.innerHTML = '<div class="fin-alerta-ok">✅ Tudo em dia</div>';
-      return;
-    }
-    lista.innerHTML = alertas.map(a =>
-      `<div class="fin-alerta-item ${a.cor}">${a.ico} ${a.txt}</div>`
-    ).join('');
-  }
-
-  // ==========================================================================
-  // SISTEMA DE ATUALIZAÇÃO INTELIGENTE
-  // ==========================================================================
-  setupSystemUpdater() {
-    const reloadBtn     = document.getElementById('sys-reload-btn');
-    const statusPill    = document.getElementById('status-pill-main');
-    const banner        = document.getElementById('sys-update-banner');
-    const bannerVers    = document.getElementById('sys-banner-versions');
-    const updateNowBtn  = document.getElementById('sys-update-now-btn');
-    const remindBtn     = document.getElementById('sys-remind-later-btn');
-    const bannerClose   = document.getElementById('sys-banner-close');
-    const changelogPop  = document.getElementById('sys-changelog-popup');
-    const changelogBody = document.getElementById('sys-changelog-body');
-    const changelogClose= document.getElementById('sys-changelog-close');
-    const overlay        = document.getElementById('sys-update-overlay');
-    const overlayTitle   = document.getElementById('sys-update-card-title');
-    const overlaySpinner = document.getElementById('sys-update-spinner');
-    const stepsList      = document.getElementById('sys-update-steps');
-    const successMsg     = document.getElementById('sys-update-success');
-    const errorMsg       = document.getElementById('sys-update-error');
-    const overlayDismiss = document.getElementById('sys-overlay-dismiss');
-    const prefAutoCheck  = document.getElementById('pref-auto-check');
-    const prefAutoUpd    = document.getElementById('pref-auto-update');
-    const prefInterval   = document.getElementById('pref-interval-select');
-
-    // ── RECUPERAÇÃO DE LOCK TRAVADO ──────────────────────────────────────────
-    // Se na sessão anterior o overlay ficou visível sem terminar, limpa tudo.
-    const hadStaleLock = SystemUpdater.clearStaleLock();
-    if (hadStaleLock && overlay) {
-      overlay.style.display = 'none';
-      overlay.setAttribute('hidden', '');
-      console.warn('[Dashboard] Lock de atualização travado da sessão anterior foi limpo.');
-    }
-
-    // Helpers show/hide — usam style.display para não depender do CSS cascade
-    // (evita o bug onde display:flex sobrescreve o atributo [hidden])
-    const _show = (el, displayType = 'flex') => {
-      if (!el) return;
-      el.style.display = displayType;
-      el.removeAttribute('hidden');
-    };
-    const _hide = (el) => {
-      if (!el) return;
-      el.style.display = 'none';
-      el.setAttribute('hidden', '');
-    };
-
-    // Instancia o motor de atualizações
-    const updater = new SystemUpdater({
-
-      onVersionLoaded: (ver) => {
-        try { localStorage.setItem('cc_sys_version', ver || ''); } catch {}
-      },
-
-      onUpdateAvailable: (current, next) => {
-        if (!banner || !bannerVers) return;
-        const fmt = v => updater.formatVersion(v);
-        bannerVers.textContent = `${fmt(current)} → ${fmt(next)}`;
-        _show(banner);
-      },
-
-      onOnlineStatus: (online) => {
-        if (!statusPill) return;
-        if (online) {
-          statusPill.className = 'status-pill online';
-          statusPill.textContent = 'Online';
-        } else {
-          statusPill.className = 'status-pill offline';
-          statusPill.textContent = 'Offline';
-        }
-      },
-
-      onSyncUpdate: (ts) => {
-        try { localStorage.setItem('cc_sys_last_sync_ts', String(ts)); } catch {}
-      }
-    });
-
-    // Elementos do toast (sincronização não-bloqueante)
-    const toast        = document.getElementById('sys-toast');
-    const toastTitle   = document.getElementById('sys-toast-title');
-    const toastSpinner = document.getElementById('sys-toast-spinner');
-    const toastSteps   = document.getElementById('sys-toast-steps');
-
-    const STEP_DEFS = [
-      { id: 'cache',   label: 'Atualizando cache'     },
-      { id: 'modules', label: 'Recarregando módulos'  },
-      { id: 'sync',    label: 'Sincronizando dados'   },
-      { id: 'ui',      label: 'Atualizando interface' },
-    ];
-
-    // ── MODO 1: Sincronização em segundo plano (NÃO BLOQUEANTE) ─────────────
-    // Padrão ao clicar no botão 🔄 — apenas toast discreto, sem overlay
-    let _toastHideTimer = null;
-
-    const _showToast = () => {
-      if (!toast || !toastSteps) return;
-      if (_toastHideTimer) { clearTimeout(_toastHideTimer); _toastHideTimer = null; }
-      toast.classList.remove('sys-toast-done', 'sys-toast-hiding');
-      toastSteps.innerHTML = '';
-      STEP_DEFS.forEach(({ id, label }) => {
-        const li = document.createElement('li');
-        li.id        = `sys-ts-${id}`;
-        li.className = 'sys-toast-step';
-        li.innerHTML = `<span class="sys-toast-step-icon">○</span><span>${label}</span>`;
-        toastSteps.appendChild(li);
-      });
-      if (toastTitle)   toastTitle.textContent = 'Sincronizando...';
-      if (toastSpinner) { toastSpinner.classList.remove('done'); }
-      _show(toast, 'flex');
-    };
-
-    const _hideToast = (delay = 0) => {
-      if (!toast) return;
-      _toastHideTimer = setTimeout(() => {
-        toast.classList.add('sys-toast-hiding');
-        setTimeout(() => { _hide(toast); toast.classList.remove('sys-toast-hiding'); }, 250);
-      }, delay);
-    };
-
-    const _triggerBackgroundSync = () => {
-      _showToast();
-      if (reloadBtn) reloadBtn.classList.add('spinning');
-
-      updater.backgroundSync({
-        onStep: (id, status, label) => {
-          const li  = document.getElementById(`sys-ts-${id}`);
-          if (!li) return;
-          const ico = li.querySelector('.sys-toast-step-icon');
-          if (status === 'loading') {
-            li.classList.add('step-loading');
-            if (ico) ico.textContent = '🔄';
-          } else if (status === 'done') {
-            li.classList.remove('step-loading');
-            li.classList.add('step-done');
-            if (ico) ico.textContent = '✓';
-          }
-        },
-        onDone: () => {
-          if (toastTitle)   toastTitle.textContent   = '✅ Sincronizado';
-          if (toastSpinner) toastSpinner.classList.add('done');
-          if (toast)        toast.classList.add('sys-toast-done');
-          if (reloadBtn)    reloadBtn.classList.remove('spinning');
-          _hideToast(2500);
-        },
-        onError: () => {
-          if (reloadBtn) reloadBtn.classList.remove('spinning');
-          _hideToast(0);
-        }
-      });
-    };
-
-    // ── MODO 2: Atualização completa com reload (BLOQUEANTE intencional) ─────
-    // Ativado apenas pelo "Atualizar Agora" do banner ou Ctrl+clique
-    const _dismissOverlay = () => {
-      _hide(overlay);
-      if (reloadBtn) reloadBtn.classList.remove('spinning');
-      _hide(errorMsg);
-      _hide(successMsg);
-      try { SystemUpdater._clearLock(); } catch {}
-    };
-
-    // Botão "Continuar usando o sistema →" — escape hatch sempre disponível
-    overlayDismiss?.addEventListener('click', _dismissOverlay);
-
-    const _showOverlay = () => {
-      if (!overlay || !stepsList) return;
-      stepsList.innerHTML = '';
-      STEP_DEFS.forEach(({ id, label }) => {
-        const li = document.createElement('li');
-        li.id        = `sys-step-${id}`;
-        li.className = 'sys-update-step';
-        li.innerHTML = `<span class="sys-step-icon">○</span><span>${label}</span>`;
-        stepsList.appendChild(li);
-      });
-      _hide(successMsg);
-      _hide(errorMsg);
-      if (overlayTitle)   overlayTitle.textContent = 'Atualizando sistema...';
-      if (overlaySpinner) overlaySpinner.classList.remove('done');
-      _show(overlay);
-    };
-
-    const _triggerFullReload = () => {
-      _showOverlay();
-      if (reloadBtn) reloadBtn.classList.add('spinning');
-
-      updater.fullReload({
-        onStep: (id, status) => {
-          const li  = document.getElementById(`sys-step-${id}`);
-          if (!li) return;
-          const ico = li.querySelector('.sys-step-icon');
-          if (status === 'loading') {
-            li.classList.add('step-loading');
-            if (ico) ico.textContent = '🔄';
-          } else if (status === 'done') {
-            li.classList.remove('step-loading');
-            li.classList.add('step-done');
-            if (ico) ico.textContent = '✓';
-          }
-        },
-        onDone: () => {
-          if (overlayTitle)   overlayTitle.textContent = '✅ Concluído';
-          if (overlaySpinner) overlaySpinner.classList.add('done');
-          _show(successMsg, 'block');
-        },
-        onError: (err) => {
-          if (reloadBtn) reloadBtn.classList.remove('spinning');
-          if (err?.message === 'timeout' || err?.message?.includes('timeout')) {
-            if (overlayTitle)   overlayTitle.textContent = '⚠️ Tempo esgotado';
-            if (overlaySpinner) overlaySpinner.classList.add('done');
-            _show(errorMsg, 'flex');
-          } else {
-            _dismissOverlay();
-          }
-        }
-      });
-    };
-
-    // Clique simples → sync em segundo plano (não bloqueante)
-    reloadBtn?.addEventListener('click', (e) => {
-      if (e.ctrlKey || e.metaKey) {
-        // Ctrl+clique → atualização completa com reload
-        _triggerFullReload();
-      } else {
-        _triggerBackgroundSync();
-      }
-    });
-
-    // Banner: nova versão disponível → só o "Atualizar Agora" faz reload
-    updateNowBtn?.addEventListener('click', () => {
-      _hide(banner);
-      _triggerFullReload();
-    });
-    const _closeBanner = () => _hide(banner);
-    remindBtn?.addEventListener('click', _closeBanner);
-    bannerClose?.addEventListener('click', _closeBanner);
-
-    // Popup de changelog
-    let changelogLoaded = false;
-
-    const _openChangelog = async () => {
-      if (!changelogPop) return;
-      _show(changelogPop, 'flex');
-
-      // Carrega preferências na UI
-      const prefs = updater.getPrefs();
-      if (prefAutoCheck) prefAutoCheck.checked = prefs.autoCheck;
-      if (prefAutoUpd)   prefAutoUpd.checked   = prefs.autoUpdate;
-      if (prefInterval)  prefInterval.value    = String(prefs.intervalMin);
-
-      // Fetch do changelog (uma vez por sessão)
-      if (!changelogLoaded && changelogBody) {
-        changelogBody.innerHTML = '<div class="sys-changelog-loading">Carregando...</div>';
-        const entries = await updater.fetchChangelog();
-        changelogLoaded = true;
-        if (!entries.length) {
-          changelogBody.innerHTML = '<div class="sys-changelog-loading">Histórico indisponível.</div>';
-        } else {
-          changelogBody.innerHTML = entries.map(e => {
-            const d   = e.date
-              ? new Date(e.date + 'T00:00:00').toLocaleDateString('pt-BR')
-              : '–';
-            const ver = e.version ? updater.formatVersion(e.version) : '';
-            const items = (e.items || []).map(i =>
-              `<li class="sys-cl-item">${i}</li>`
-            ).join('');
-            return `
-              <div class="sys-cl-entry">
-                <div class="sys-cl-date">
-                  ${d}${ver ? `<span class="sys-cl-ver-tag">${ver}</span>` : ''}
-                </div>
-                <ul class="sys-cl-items">${items}</ul>
-              </div>`;
-          }).join('');
-        }
-      }
-    };
-
-    const _closeChangelog = () => _hide(changelogPop);
-    changelogClose?.addEventListener('click', _closeChangelog);
-
-    // Salva preferências ao alterar
-    const _savePrefs = () => updater.savePrefs({
-      autoCheck:  prefAutoCheck?.checked  ?? true,
-      autoUpdate: prefAutoUpd?.checked    ?? false,
-      intervalMin: parseInt(prefInterval?.value || '15', 10)
-    });
-    prefAutoCheck?.addEventListener('change', _savePrefs);
-    prefAutoUpd?.addEventListener('change', _savePrefs);
-    prefInterval?.addEventListener('change', _savePrefs);
-
-    // Fecha o changelog ao clicar fora
-    document.addEventListener('click', (e) => {
-      if (changelogPop && changelogPop.style.display !== 'none' &&
-          !changelogPop.contains(e.target)) {
-        _closeChangelog();
-      }
-    }, true);
-
-    // Ctrl+Shift+U → atualização completa com reload
-    window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'U') {
-        e.preventDefault();
-        _triggerFullReload();
-      }
-    });
-
-    // Escuta eventos de sync de qualquer módulo
-    window.addEventListener('cc-data-synced', () => updater.recordSync());
-
-    // Inicializa o motor
-    updater.init().then(() => {
-      setTimeout(() => {
-        updater.recordSync();
-      }, 2500);
-    });
   }
 }
 
@@ -3752,6 +3344,3 @@ if (document.readyState === 'loading') {
 } else {
   new Dashboard();
 }
-
-// Cancela todos os listeners registrados ao sair da página
-window.addEventListener('beforeunload', () => unregisterAll('dashboard'));

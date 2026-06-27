@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ação da Semana</title>
+    <link rel="stylesheet" href="acaodasemana.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <header class="header" id="mainHeader">
+        <h1 class="ag-header-titulo"><span id="ag-nav-agenda" class="ag-nav-part" title="Ir para o calendário">📅 Agenda</span> <span id="ag-nav-inteligente" class="ag-nav-part" title="Abrir/fechar mini calendário">Inteligente</span><button class="ag-expbtn" id="ag-colapse-btn" type="button" title="Recolher navegação e busca">▲</button></h1>
+    </header>
+
+    <main>
+        <div class="ag-content">
+
+            <!-- BUSCA (recolhível) -->
+            <div class="ag-busca-wrap" id="ag-busca-area">
+                <button type="button" class="ag-lupa" id="ag-lupa" title="Buscar">🔍</button>
+                <input type="search" id="ag-busca" class="ag-busca" autocomplete="off"
+                    placeholder="🔍 Buscar anotação, cliente, compromisso...">
+                <span class="ag-busca-info" id="ag-busca-info"></span>
+            </div>
+            <div class="ag-busca-result" id="ag-busca-result" hidden></div>
+
+            <!-- CABEÇALHO DO CALENDÁRIO -->
+            <div class="ag-cal-header" style="position:relative">
+                <button class="ag-nav-btn" id="ag-prev" title="Mês anterior">◀</button>
+                <div class="ag-cal-titulo-wrap">
+                    <button class="ag-sel-btn" id="ag-mes-btn" title="Escolher mês">Mês ▾</button>
+                    <button class="ag-sel-btn" id="ag-ano-btn" title="Escolher ano">Ano ▾</button>
+                    <button class="ag-hoje-btn" id="ag-hoje">Hoje</button>
+                    <button class="ag-hoje-btn" id="ag-densidade" title="Alternar compacto/expandido">⊞</button>
+                </div>
+                <button class="ag-nav-btn" id="ag-next" title="Próximo mês">▶</button>
+                <div class="ag-dropdown" id="ag-dropdown" hidden></div>
+            </div>
+
+            <!-- GRADE — cada dia é uma nota colada -->
+            <div class="ag-cal">
+                <div class="ag-cal-semana">
+                    <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span>
+                    <span>Qui</span><span>Sex</span><span>Sáb</span>
+                </div>
+                <div class="ag-cal-grade" id="ag-cal-grade"></div>
+            </div>
+
+            <!-- BLOCO DE NOTAS DO DIA (uma única área de texto contínua) -->
+            <div class="ag-nota-painel">
+                <div class="ag-nota-head">
+                    <span class="ag-nota-titulo" id="ag-dia-titulo">Selecione um dia</span>
+                    <div class="ag-nota-controles">
+                        <div class="ag-cores" id="ag-cores">
+                            <button type="button" class="ag-cor-btn" data-cor="verde"    title="Verde"    style="--c:#22C55E"></button>
+                            <button type="button" class="ag-cor-btn" data-cor="amarelo"  title="Amarelo"  style="--c:#EAB308"></button>
+                            <button type="button" class="ag-cor-btn" data-cor="azul"     title="Azul"     style="--c:#3B82F6"></button>
+                            <button type="button" class="ag-cor-btn" data-cor="vermelho" title="Vermelho" style="--c:#EF4444"></button>
+                        </div>
+                    </div>
+                </div>
+                <textarea class="ag-nota-area" id="ag-nota-area" spellcheck="true"
+                    placeholder=""></textarea>
+
+                <button type="button" class="ag-colapse-opts" id="ag-colapse-opts">▲ Ocultar opções</button>
+
+                <div class="ag-opts-wrap" id="ag-opts-wrap">
+                    <!-- FONT CONTROLS + CORES DO TEXTO lado a lado: [A−] [Cores] [A+] -->
+                    <div class="ag-ftext-row">
+                        <button type="button" id="ag-fonte-menos" class="ag-fonte-btn" title="Diminuir fonte">A−</button>
+                        <div class="ag-text-cores" id="ag-text-cores">
+                            <button type="button" class="ag-tcor-btn" data-cor="preto"    style="--c:#1a1a1a"  title="Preto"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="branco"   style="--c:#ffffff"  title="Branco"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="verde"    style="--c:#22C55E"  title="Verde"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="vermelho" style="--c:#EF4444"  title="Vermelho"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="azul"     style="--c:#3B82F6"  title="Azul"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="amarelo"  style="--c:#EAB308"  title="Amarelo"></button>
+                            <button type="button" class="ag-tcor-btn" data-cor="roxo"     style="--c:#A855F7"  title="Roxo"></button>
+                        </div>
+                        <button type="button" id="ag-fonte-mais" class="ag-fonte-btn" title="Aumentar fonte">A+</button>
+                    </div>
+
+                    <div class="ag-charcount" id="ag-charcount">0 / 183 caracteres</div>
+
+                    <!-- ALERTA OPCIONAL NO DASHBOARD -->
+                    <div class="ag-alerta-cfg">
+                        <label class="ag-alerta-hora">
+                            <span>⏰ Horário de alerta</span>
+                            <input type="time" id="ag-alerta-hora" step="60">
+                        </label>
+                        <div class="ag-dash-toggle-wrap">
+                            <span class="ag-dash-toggle-label">Dashboard</span>
+                            <button type="button" id="ag-alerta-dash" class="ag-dash-toggle" aria-pressed="false" title="Clique para ativar/desativar alerta no Dashboard">
+                                <span class="ag-dash-toggle-icon">🔴</span>
+                                <span class="ag-dash-toggle-txt">OFF</span>
+                            </button>
+                        </div>
+                        <label class="ag-recorr-sel">
+                            <span>⟳ Repetir</span>
+                            <select id="ag-recorr">
+                                <option value="">Não repetir</option>
+                                <option value="semanal">Semanalmente</option>
+                                <option value="mensal">Mensalmente</option>
+                                <option value="anual">Anualmente</option>
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="ag-nota-status" id="ag-nota-status"></div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MINI CALENDÁRIO (atalho do título) -->
+    <div class="ag-mini" id="ag-mini" hidden>
+        <div class="ag-mini-head">
+            <button type="button" class="ag-mini-nav" id="ag-mini-prev" title="Mês anterior">◀</button>
+            <span class="ag-mini-titulo" id="ag-mini-titulo">—</span>
+            <button type="button" class="ag-mini-nav" id="ag-mini-next" title="Próximo mês">▶</button>
+        </div>
+        <div class="ag-mini-dow"><span>D</span><span>S</span><span>T</span><span>Q</span><span>Q</span><span>S</span><span>S</span></div>
+        <div class="ag-mini-grade" id="ag-mini-grade"></div>
+    </div>
+
+    <!-- MODAL: conteúdo completo de um dia (quando não cabe no quadrado) -->
+    <div class="ag-modal-overlay" id="ag-modal-overlay" hidden>
+        <div class="ag-modal" role="dialog" aria-modal="true">
+            <div class="ag-modal-head">
+                <span class="ag-modal-tit" id="ag-modal-tit">Dia</span>
+                <button type="button" class="ag-modal-x" id="ag-modal-x" title="Fechar">✕</button>
+            </div>
+            <div class="ag-modal-body" id="ag-modal-body"></div>
+            <button type="button" class="ag-modal-editar" id="ag-modal-editar">✏️ Editar este dia</button>
+        </div>
+    </div>
+
+    <!-- POPUP: lista de lembretes recorrentes do dia -->
+    <div class="ag-recorr-pop" id="ag-recorr-pop" hidden>
+        <div class="ag-recorr-pop-tit" id="ag-recorr-pop-tit">—</div>
+        <ul class="ag-recorr-pop-lista" id="ag-recorr-pop-lista"></ul>
+        <div class="ag-recorr-actions" id="ag-recorr-actions" hidden>
+            <button type="button" class="ag-recorr-btn" id="ag-recorr-esta">⏹ Somente esta ocorrência</button>
+            <button type="button" class="ag-recorr-btn ag-recorr-btn-perigo" id="ag-recorr-futuras">⏹ Esta e todas as futuras</button>
+        </div>
+    </div>
+
+    <div class="ag-toast" id="ag-toast"></div>
+
+    <script src="../../shared/brand-header.js"></script>
+<script type="module" src="../../shared/sidebar.js"></script>
+    <script type="module" src="acaodasemana.js"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+<script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

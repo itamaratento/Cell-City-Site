@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="crm-comercial" data-fav-label="CRM Comercial" data-fav-icon="🎯" data-fav-url="/CRM/pages/crm-comercial/index.html">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>CRM</title>
+<link rel="stylesheet" href="crm.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<!-- HEADER (migrado para brand-bar pelo brand-header.js) -->
+<header class="header" id="mainHeader">
+  <h1>🎯 CRM Comercial</h1>
+</header>
+
+<main>
+  <!-- Overlay mobile para fechar sidebar interna -->
+  <div class="crm-sb-overlay" id="crm-sb-overlay"></div>
+
+  <div class="crm-explorer">
+
+    <!-- ===== SIDEBAR INTERNA (navegação por status) ===== -->
+    <aside class="crm-sb" id="crm-sb">
+      <div class="crm-sb-header">
+        <span class="crm-sb-titulo">Funil de Vendas</span>
+      </div>
+
+      <!-- Itens fixos -->
+      <div class="crm-sb-item" data-view="__home__" onclick="navTo('__home__')">
+        <span class="crm-sb-icon">🏠</span>
+        <span class="crm-sb-label">Home</span>
+      </div>
+      <div class="crm-sb-item" data-view="__todos__" onclick="navTo('__todos__')">
+        <span class="crm-sb-icon">📂</span>
+        <span class="crm-sb-label">Todos</span>
+        <span class="crm-sb-count" id="crm-sb-count-all">0</span>
+      </div>
+
+      <div class="crm-sb-sep"></div>
+
+      <!-- Itens de status (gerados pelo JS) -->
+      <div id="crm-sb-cats"></div>
+
+      <div class="crm-sb-sep"></div>
+
+      <div class="crm-sb-item" data-view="__hist__" onclick="navTo('__hist__')">
+        <span class="crm-sb-icon">📋</span>
+        <span class="crm-sb-label">Histórico (O.S.)</span>
+        <span class="crm-sb-count" id="crm-sb-count-hist">0</span>
+      </div>
+      <div class="crm-sb-item" data-view="__banco__" onclick="navTo('__banco__')">
+        <span class="crm-sb-icon">🔄</span>
+        <span class="crm-sb-label">Banco de Leads</span>
+        <span class="crm-sb-count" id="crm-sb-count-banco" style="background:rgba(248,113,113,0.15);color:#f87171">0</span>
+      </div>
+
+      <div class="crm-sb-sep"></div>
+
+      <div class="crm-sb-item" onclick="window.location.href='chips.html'" title="Controle de ativação de chips">
+        <span class="crm-sb-icon">📱</span>
+        <span class="crm-sb-label">Cadastro de Chip</span>
+        <span class="crm-sb-count" style="background:rgba(99,102,241,0.15);color:#a5b4fc;font-size:9px;padding:2px 6px">NOVO</span>
+      </div>
+    </aside>
+
+    <!-- ===== ÁREA PRINCIPAL ===== -->
+    <div class="crm-main">
+
+      <!-- Topbar: toggle mobile + busca + botão chegou -->
+      <div class="crm-topbar">
+        <button class="crm-btn-sb-open" onclick="toggleSb()" title="Abrir menu de status">📁</button>
+        <div class="crm-busca-wrap">
+          <input type="search" id="crm-search" class="crm-search" autocomplete="off"
+                 oninput="onSearchInput(this.value)"
+                 placeholder="🔍 Buscar cliente, telefone, aparelho ou serviço...">
+        </div>
+        <button class="crm-btn-chegou" onclick="window.location.href='/CRM/pages/crm-comercial/entrada.html'" title="Novo cliente — cadastro rápido">👤 Chegou</button>
+      </div>
+
+      <!-- Breadcrumb da seção atual -->
+      <div class="crm-main-header">
+        <span class="crm-main-titulo" id="crm-main-titulo">🎯 CRM Comercial</span>
+      </div>
+
+      <!-- Home Grid (tela inicial) -->
+      <div class="crm-home-grid" id="crm-home-grid"></div>
+
+      <!-- Formulário inline de criação/edição -->
+      <div class="crm-form" id="crm-form">
+        <div class="crm-form-titulo" id="crm-form-titulo">🆕 Novo Lead</div>
+        <form onsubmit="submitForm(event)">
+          <div class="crm-form-grid">
+            <div class="crm-form-group">
+              <label>Nome *</label>
+              <input type="text" id="f-nome" placeholder="Nome do cliente" required>
+            </div>
+            <div class="crm-form-group">
+              <label>Telefone *</label>
+              <input type="tel" id="f-telefone" placeholder="(62) 99999-9999" required
+                     oninput="onPhoneLookup(this.value)">
+              <div id="crm-cliente-banner" style="display:none"></div>
+            </div>
+            <div class="crm-form-group">
+              <label>Aparelho / Produto</label>
+              <input type="text" id="f-aparelho" placeholder="Ex: iPhone 13, Notebook Dell">
+            </div>
+            <div class="crm-form-group">
+              <label>Serviço solicitado</label>
+              <input type="text" id="f-servico" placeholder="Ex: Troca de tela, Formatação">
+            </div>
+            <div class="crm-form-group">
+              <label>Valor informado (R$)</label>
+              <input type="number" id="f-valor" placeholder="0,00" min="0" step="0.01" inputmode="decimal">
+            </div>
+            <div class="crm-form-group">
+              <label>Status</label>
+              <select id="f-status" onchange="toggleMotivoPerda(this.value)">
+                <option value="novo_contato">🆕 Novo Contato</option>
+                <option value="orcamento_enviado">📤 Orçamento Enviado</option>
+                <option value="aguardando_resposta">⏳ Aguardando Resposta</option>
+                <option value="negociacao">🤝 Negociação</option>
+                <option value="fechado">✅ Fechado</option>
+                <option value="perdido">❌ Perdido</option>
+              </select>
+            </div>
+            <div class="crm-form-group" id="crm-motivo-wrap" style="display:none">
+              <label>Motivo da perda</label>
+              <select id="f-motivo-perda">
+                <option value="">Selecione...</option>
+                <option value="achou_caro">Achou caro</option>
+                <option value="fara_depois">Vai fazer depois</option>
+                <option value="sem_dinheiro">Sem dinheiro no momento</option>
+                <option value="concorrente">Comprou em concorrente</option>
+                <option value="sem_resposta">Não respondeu</option>
+                <option value="desistiu">Desistiu do serviço</option>
+                <option value="outro">Outro</option>
+              </select>
+            </div>
+            <div class="crm-form-group crm-span2">
+              <label>Observações</label>
+              <textarea id="f-obs" rows="3" placeholder="Detalhes relevantes da negociação..."></textarea>
+            </div>
+          </div>
+          <div class="crm-form-btns">
+            <button type="submit" class="crm-btn-salvar">Salvar Lead</button>
+            <button type="button" class="crm-btn-cancelar" onclick="fecharForm()">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Detalhe do lead (inline) -->
+      <div class="crm-detalhe" id="crm-detalhe"></div>
+
+      <!-- Lista de leads (visível fora do home) -->
+      <div id="crm-lista-area" style="display:none">
+        <div class="crm-bloco">
+          <div class="crm-lista" id="crm-lista"></div>
+          <div class="crm-empty" id="crm-empty" style="display:none">
+            <span class="crm-empty-icon">🎯</span>
+            <div class="crm-empty-title">Nenhum lead aqui</div>
+            <div class="crm-empty-sub">Clique em <strong>＋ Novo</strong> para registrar o primeiro contato.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Painel de Estatísticas (recolhível) ── -->
+      <section class="crm-panel" id="crm-panel-stats">
+        <button class="crm-panel-head" onclick="togglePanel('crm-panel-stats')">
+          <span class="crm-panel-arrow">▶</span>
+          <span class="crm-panel-titulo">📊 Estatísticas</span>
+        </button>
+        <div class="crm-panel-body">
+          <div class="crm-stats-grid" id="crm-stats-grid-inner"></div>
+        </div>
+      </section>
+
+    </div><!-- /crm-main -->
+  </div><!-- /crm-explorer -->
+</main>
+
+<!-- Toast -->
+<div class="crm-toast" id="crm-toast"></div>
+
+<!-- Modal de confirmação -->
+<div class="crm-modal-overlay" id="crm-modal" onclick="if(event.target===this)fecharModal()">
+  <div class="crm-modal">
+    <div class="crm-modal-titulo">⚠️ Confirmar exclusão</div>
+    <div class="crm-modal-body" id="crm-modal-body">Este lead será excluído permanentemente.</div>
+    <div class="crm-form-btns">
+      <button class="crm-btn-salvar crm-btn-perigo" onclick="confirmarModal()">Excluir</button>
+      <button class="crm-btn-cancelar" onclick="fecharModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts compartilhados (header fixo + sidebar global + dock flutuante) -->
+<script src="../../shared/brand-header.js"></script>
+<script type="module" src="../../shared/sidebar.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script type="module" src="crm.js"></script>
+
+</body>
+</html>

@@ -1,5 +1,5 @@
 /* ============================================================
-   BARRA DE FAVORITOS — Cell City Gestão Empresarial
+   BARRA DE FAVORITOS — Cell City CRM
    ------------------------------------------------------------
    • Dashboard  → barra horizontal logo abaixo do cabeçalho.
    • Demais módulos → botão flutuante "📌 Fixar nos Favoritos"
@@ -38,35 +38,17 @@ const MODULES = {
   'campanhas':           { icon: '📣', label: 'Campanhas' },
   'estoque':             { icon: '📱', label: 'Estoque' },
   'autoatendimento':     { icon: '🤖', label: 'Autoatendimento' },
-  'central-informacoes': { icon: '📚', label: 'Informações' },
-  'central-alertas':     { icon: '🔔', label: 'Alertas' },
-  'central-comandos':    { icon: '⌨️', label: 'Central de Comandos' },
-  'central-organizacao': { icon: '⚡', label: 'Central de Automação' },
-  'central-modulos':     { icon: '🧩', label: 'Central de Módulos' },
+  'central-informacoes':  { icon: '📚', label: 'Central de Informações' },
+  'central-comandos':    { icon: '📚', label: 'Central de Comandos' },
+  'central-organizacao': { icon: '⚡', label: 'Central Automação' },
   'portal-tecnico':      { icon: '🔓', label: 'Portal Técnico' },
-  'portal-cliente':      { icon: '👤', label: 'Portal do Cliente' },
   'importar':            { icon: '📥', label: 'Importar' },
-  'config':              { icon: '⚙️', label: 'Configurações' },
-  'catalogo':            { icon: '🛍️', label: 'Catálogo' },
-  'crm-comercial':       { icon: '🎯', label: 'CRM' },
-  'compras':             { icon: '🛒', label: 'Compras' },
-  'auditoria':           { icon: '🔍', label: 'Auditoria' },
-  'relatorios':          { icon: '📊', label: 'Relatórios' },
-  'pendencias':          { icon: '⏳', label: 'Contas' },
-  'contas':              { icon: '💳', label: 'Contas' },
-  'diario':              { icon: '📓', label: 'Diário' },
-  'garantias':           { icon: '🛡️', label: 'Garantias' },
-  'homologacao':         { icon: '✅', label: 'Homologação' },
-  'backup':              { icon: '💾', label: 'Backup' },
-  'despesas':            { icon: '💸', label: 'Despesas' },
-  'fechamento':          { icon: '📅', label: 'Fechamento Mensal' },
-  'lixeira':             { icon: '🗑️', label: 'Lixeira' },
-  'mensagens-wpp':       { icon: '💬', label: 'WhatsApp' },
-  'venda-rapida':        { icon: '⚡', label: 'Venda Rápida' },
-  'estrategia':          { icon: '🗺️', label: 'Estratégia' },
-  'integridade':         { icon: '🔒', label: 'Integridade' },
-  'chat':                { icon: '💬', label: 'Chat' },
-  'em-breve':            { icon: '🚧', label: 'Em Breve' }
+  'config':             { icon: '⚙️', label: 'Ferramentas' },
+  'catalogo':           { icon: '🛍️', label: 'Catálogo' },
+  'crm-comercial':      { icon: '🎯', label: 'CRM Comercial' },
+  'compras':            { icon: '🛒', label: 'Compras' },
+  'auditoria':          { icon: '🔍', label: 'Auditoria' },
+  'relatorios':         { icon: '📊', label: 'Relatórios' }
 };
 
 /* Views fixáveis do módulo OS (piloto) — abrem via deep-link (#fav-...) que o

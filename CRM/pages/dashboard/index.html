@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Painel</title>
+<title>Cell City — CRM Operacional</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');try{document.documentElement.setAttribute('data-home-mode',localStorage.getItem('cc_home_mode')||'modulos');}catch(e){}</script>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
 <link rel="stylesheet" href="dashboard.css">
 <link rel="manifest" href="/CRM/manifest.json">
 <meta name="theme-color" content="#00C853">
@@ -21,8 +21,12 @@
 <!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
 <header class="top-bar">
   <div class="top-meta-left">
-    <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <img class="brand-header-logo" src="/CRM/assets/logo.svg" alt="Cell City Gestão Empresarial" draggable="false">
+    <div class="brand-header" id="brand-header" title="Cell City Informática">
+      <div class="brand-header-text">
+        <div class="brand-header-title">Cell City Informática</div>
+        <div class="brand-header-divider"></div>
+        <div class="brand-header-subtitle">CRM Operacional</div>
+      </div>
     </div>
     <button class="meta-date" id="date-display" title="Abrir calendário">
       <span id="date-text">--/--/----</span>
@@ -38,14 +42,6 @@
       <kbd class="search-kbd">⌘K</kbd>
       <div class="search-results" id="search-results"></div>
     </div>
-    <!-- Botão de atualização inteligente -->
-    <button class="sys-reload-btn" id="sys-reload-btn" title="Atualizar Sistema" aria-label="Atualizar Sistema">
-      <svg class="sys-reload-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="23 4 23 10 17 10"/>
-        <polyline points="1 20 1 14 7 14"/>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-      </svg>
-    </button>
   </div>
 
   <div class="top-meta-right">
@@ -53,103 +49,11 @@
       <span class="site-cc-icon">🌐</span>
       <span class="site-cc-label">Site</span>
     </a>
-    <button class="compact-toggle" id="compact-mode-toggle" title="Alternar para modo compacto" style="display:none">▢ Compactar</button>
-    <div class="home-mode-group" id="home-mode-group" title="Modo de exibição da Home" style="display:none">
-      <button class="home-mode-btn active" data-mode="modulos" title="Apenas Módulos">📦 Módulos</button>
-      <button class="home-mode-btn" data-mode="dashboard" title="Dashboard Financeiro">📊 Dashboard</button>
-      <button class="home-mode-btn" data-mode="completo" title="Visão Completa">⊞ Completo</button>
-    </div>
+    <button class="compact-toggle" id="compact-mode-toggle" title="Alternar para modo compacto">▢ Compactar</button>
     <button class="aprov-sino" id="aprov-sino" title="Painel de Alertas" aria-label="Painel de Alertas">🔔<span class="aprov-badge" id="aprov-badge" style="display:none;">0</span></button>
-    <span class="status-pill" id="status-pill-main">Online</span>
+    <span class="status-pill online">Online</span>
   </div>
 </header>
-
-<!-- ========== TOAST: SINCRONIZAÇÃO EM SEGUNDO PLANO (não-bloqueante) ========== -->
-<div class="sys-toast" id="sys-toast" hidden aria-live="polite">
-  <div class="sys-toast-header">
-    <span class="sys-toast-spinner" id="sys-toast-spinner">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <polyline points="23 4 23 10 17 10"/>
-        <polyline points="1 20 1 14 7 14"/>
-        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-      </svg>
-    </span>
-    <span class="sys-toast-title" id="sys-toast-title">Sincronizando...</span>
-  </div>
-  <ul class="sys-toast-steps" id="sys-toast-steps" role="list"></ul>
-</div>
-
-<!-- ========== NOTIFICAÇÃO: NOVA VERSÃO DISPONÍVEL ========== -->
-<div class="sys-update-banner" id="sys-update-banner" hidden style="display:none" role="alert" aria-live="assertive">
-  <div class="sys-banner-inner">
-    <span class="sys-banner-icon">🔔</span>
-    <div class="sys-banner-body">
-      <strong class="sys-banner-title">Nova atualização disponível</strong>
-      <span class="sys-banner-versions" id="sys-banner-versions"></span>
-    </div>
-    <div class="sys-banner-actions">
-      <button class="sys-banner-btn sys-banner-btn--primary" id="sys-update-now-btn">Atualizar Agora</button>
-      <button class="sys-banner-btn" id="sys-remind-later-btn">Lembrar Depois</button>
-    </div>
-    <button class="sys-banner-close" id="sys-banner-close" aria-label="Fechar notificação">×</button>
-  </div>
-</div>
-
-<!-- ========== POPUP: HISTÓRICO DE VERSÕES ========== -->
-<div class="sys-changelog-popup" id="sys-changelog-popup" hidden style="display:none" role="dialog" aria-label="Histórico de versões" aria-modal="true">
-  <div class="sys-changelog-header">
-    <span class="sys-changelog-title">📋 Histórico de Atualizações</span>
-    <button class="sys-changelog-close" id="sys-changelog-close" aria-label="Fechar">×</button>
-  </div>
-  <div class="sys-changelog-body" id="sys-changelog-body">
-    <div class="sys-changelog-loading">Carregando...</div>
-  </div>
-  <div class="sys-changelog-footer" id="sys-changelog-prefs">
-    <label class="sys-pref-row">
-      <input type="checkbox" id="pref-auto-check">
-      Verificar atualizações automaticamente
-    </label>
-    <label class="sys-pref-row">
-      <input type="checkbox" id="pref-auto-update">
-      Atualizar automaticamente quando ocioso
-    </label>
-    <div class="sys-pref-row sys-pref-interval">
-      <span>Intervalo:</span>
-      <select id="pref-interval-select">
-        <option value="15">15 minutos</option>
-        <option value="30">30 minutos</option>
-        <option value="60">1 hora</option>
-      </select>
-    </div>
-  </div>
-</div>
-
-<!-- ========== OVERLAY: PROGRESSO DE ATUALIZAÇÃO ========== -->
-<!-- Aparece APENAS quando usuário confirma "Atualizar Agora" ou faz Ctrl+clique -->
-<div class="sys-update-overlay" id="sys-update-overlay" hidden style="display:none" role="dialog" aria-modal="true" aria-label="Atualizando sistema">
-  <div class="sys-update-card">
-    <div class="sys-update-card-header">
-      <span class="sys-update-spinner" id="sys-update-spinner" aria-hidden="true">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 4 23 10 17 10"/>
-          <polyline points="1 20 1 14 7 14"/>
-          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-        </svg>
-      </span>
-      <span class="sys-update-card-title" id="sys-update-card-title">Atualizando sistema...</span>
-    </div>
-    <ul class="sys-update-steps" id="sys-update-steps" role="list"></ul>
-    <div class="sys-update-success" id="sys-update-success" hidden>✅ Sistema atualizado com sucesso</div>
-    <div class="sys-update-error" id="sys-update-error" hidden>
-      ⚠️ Não foi possível concluir a atualização.
-      <small>O sistema foi liberado para uso.</small>
-    </div>
-    <!-- Escape hatch: sempre visível no overlay -->
-    <button class="sys-overlay-dismiss" id="sys-overlay-dismiss" title="Fechar e continuar usando o sistema" aria-label="Fechar overlay de atualização">
-      Continuar usando o sistema →
-    </button>
-  </div>
-</div>
 
 <!-- ========== MINI CALENDÁRIO POPUP ========== -->
 <div class="calendar-popup" id="calendar-popup">
@@ -228,12 +132,6 @@
         <span class="sidebar-label">Estoque</span>
       </a>
 
-      <button class="sidebar-item sidebar-item--util" id="btnSea" data-tip="Consulta de Peças SEA">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">🔎</span>
-        <span class="sidebar-label">Consulta Peças</span>
-      </button>
-
       <a class="sidebar-item sidebar-item--new" href="../compras/index.html" data-sid="compras" data-tip="Compras" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">🛒</span>
@@ -246,16 +144,16 @@
         <span class="sidebar-label">Fornecedor</span>
       </a>
 
-      <a class="sidebar-item sidebar-item--new" href="../pendencias/index.html" data-sid="pendencias" data-tip="Pendências e Contas" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">📋</span>
-        <span class="sidebar-label">Pendências e Contas</span>
-      </a>
-
       <a class="sidebar-item" href="../pos-venda/index.html" data-sid="pos-venda" data-tip="Pós-venda" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">💝</span>
         <span class="sidebar-label">Pós-venda</span>
+      </a>
+
+      <a class="sidebar-item" href="../config/index.html" data-sid="impressora" data-tip="Impressora" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">🖨️</span>
+        <span class="sidebar-label">Impressora</span>
       </a>
 
       <a class="sidebar-item" href="../relatorios/index.html" data-sid="relatorios" data-tip="Relatórios" draggable="true">
@@ -298,11 +196,6 @@
 
     <!-- Rodapé fixo -->
     <div class="sidebar-footer">
-      <button class="sidebar-util sidebar-item--central-modulos" id="btnCentralModulos"
-        title="Central de Módulos — todos os módulos do sistema" data-tip="Central de Módulos">
-        <span class="sidebar-icon">🧩</span>
-        <span class="sidebar-label">Central de Módulos</span>
-      </button>
       <button class="sidebar-util" onclick="openBackupModal()" title="Backup dos dados" data-tip="Backup">
         <span class="sidebar-icon">💾</span>
         <span class="sidebar-label">Backup</span>
@@ -314,31 +207,14 @@
   <!-- ===== ÁREA PRINCIPAL ===== -->
   <main class="main-content" id="main-content">
 
-
-    <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
-    <section class="alerts-section" id="alerts-section" style="display:none;">
-      <div class="module-card alerts-card" id="alerts-card">
-        <div class="alerts-main">
-          <div class="alert-header-row">
-            <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
-            <div class="alert-title">DICA DO CRM</div>
-            <button class="btn-config-alertas" id="btn-abrir-config-alertas" title="Configurar alertas">⚙️</button>
-          </div>
-          <div class="alert-subtitle">Carregando alertas...</div>
-          <div class="alert-detail"></div>
-        </div>
-        <div class="alert-progress-track">
-          <div class="alert-progress-bar" id="alert-progress-bar"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- PAINEL EXECUTIVO (oculto em modo Módulos) -->
+    <!-- PAINEL EXECUTIVO -->
     <section class="executive-panel" id="executive-panel">
       <div class="exec-header">
         <span class="exec-title">📊 PAINEL EXECUTIVO</span>
         <span class="exec-auto">Atualização automática <span class="exec-dot"></span></span>
       </div>
+
+      <!-- Linha 1 -->
       <div class="exec-row">
         <div class="exec-card exec-card--os" title="Ordens abertas (não entregues/canceladas)">
           <div class="exec-card-label">OS Abertas</div>
@@ -377,6 +253,8 @@
           <div class="exec-card-delta" id="kpi-pecas-delta"></div>
         </div>
       </div>
+
+      <!-- Linha 2 -->
       <div class="exec-row exec-row--2">
         <div class="exec-card exec-card--sm" title="Aparelhos atualmente na bancada">
           <div class="exec-card-label">Aparelhos em Bancada</div>
@@ -406,116 +284,20 @@
       </div>
     </section>
 
-    <!-- PAINEL FINANCEIRO (oculto em modo Módulos) -->
-    <section class="fin-exec-panel" id="fin-exec-panel">
-      <div class="exec-header">
-        <span class="exec-title">💰 PAINEL FINANCEIRO</span>
-        <div class="fin-exec-period-btns">
-          <button class="fin-exec-period active" data-period="mes">Mês</button>
-          <button class="fin-exec-period" data-period="semana">Semana</button>
-          <button class="fin-exec-period" data-period="hoje">Hoje</button>
-        </div>
-      </div>
-      <div class="exec-row fin-exec-row">
-        <div class="fin-card fin-card--saldo">
-          <div class="fin-card-icon">🏦</div>
-          <div class="fin-card-val" id="fin-saldo-caixa">R$ 0,00</div>
-          <div class="fin-card-lbl">Saldo (Caixa)</div>
-        </div>
-        <div class="fin-card fin-card--receita">
-          <div class="fin-card-icon">📈</div>
-          <div class="fin-card-val" id="fin-receita-periodo">R$ 0,00</div>
-          <div class="fin-card-lbl" id="fin-receita-lbl">Receita do Mês</div>
-        </div>
-        <div class="fin-card fin-card--despesa">
-          <div class="fin-card-icon">📉</div>
-          <div class="fin-card-val" id="fin-despesas-periodo">R$ 0,00</div>
-          <div class="fin-card-lbl" id="fin-despesas-lbl">Despesas do Mês</div>
-        </div>
-        <div class="fin-card fin-card--lucro" id="fin-card-lucro">
-          <div class="fin-card-icon">💎</div>
-          <div class="fin-card-val" id="fin-lucro-periodo">R$ 0,00</div>
-          <div class="fin-card-lbl" id="fin-lucro-lbl">Lucro do Mês</div>
-        </div>
-        <div class="fin-card fin-card--compras">
-          <div class="fin-card-icon">📦</div>
-          <div class="fin-card-val" id="fin-compras-mes">R$ 0,00</div>
-          <div class="fin-card-lbl">Compras do Mês</div>
-        </div>
-        <div class="fin-card fin-card--pagar">
-          <div class="fin-card-icon">🏢</div>
-          <div class="fin-card-val" id="fin-a-pagar">R$ 0,00</div>
-          <div class="fin-card-lbl">Contas a Pagar</div>
-        </div>
-        <div class="fin-card fin-card--receber">
-          <div class="fin-card-icon">🧾</div>
-          <div class="fin-card-val" id="fin-a-receber">R$ 0,00</div>
-          <div class="fin-card-lbl">Contas a Receber</div>
-        </div>
-        <div class="fin-card fin-card--vencida" id="fin-card-vencidas">
-          <div class="fin-card-icon">⚠️</div>
-          <div class="fin-card-val" id="fin-vencidas">0</div>
-          <div class="fin-card-lbl">Contas Vencidas</div>
-        </div>
-      </div>
-      <div class="exec-row fin-exec-row fin-exec-row--op">
-        <div class="fin-card fin-card--op">
-          <div class="fin-card-icon">🛒</div>
-          <div class="fin-card-val" id="fin-produtos-vendidos">—</div>
-          <div class="fin-card-lbl">Produtos Vendidos</div>
-        </div>
-        <div class="fin-card fin-card--op">
-          <div class="fin-card-icon">💲</div>
-          <div class="fin-card-val" id="fin-ticket-medio">—</div>
-          <div class="fin-card-lbl">Ticket Médio</div>
-        </div>
-        <div class="fin-card fin-card--op fin-card--lowstock">
-          <div class="fin-card-icon">📦</div>
-          <div class="fin-card-val" id="fin-estoque-baixo">—</div>
-          <div class="fin-card-lbl">Estoque Baixo</div>
-        </div>
-        <div class="fin-card fin-card--op fin-card--best">
-          <div class="fin-card-icon">🏆</div>
-          <div class="fin-card-val fin-card-val--sm" id="fin-mais-vendido">—</div>
-          <div class="fin-card-lbl">Mais Vendido</div>
-        </div>
-        <div class="fin-card fin-card--op fin-card--lucro-prod">
-          <div class="fin-card-icon">💰</div>
-          <div class="fin-card-val fin-card-val--sm" id="fin-mais-lucrativo">—</div>
-          <div class="fin-card-lbl">Mais Lucrativo</div>
-        </div>
-      </div>
-      <div class="fin-meta-row">
-        <div class="fin-meta-card">
-          <div class="fin-meta-header">
-            <span class="fin-meta-titulo">🎯 Meta Mensal</span>
-            <span class="fin-meta-pct" id="fin-meta-pct">0%</span>
+    <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
+    <section class="alerts-section" id="alerts-section" style="display:none;">
+      <div class="module-card alerts-card" id="alerts-card">
+        <div class="alerts-main">
+          <div class="alert-header-row">
+            <span class="alert-cat-icon" id="alert-cat-icon">💡</span>
+            <div class="alert-title">DICA DO CRM</div>
+            <button class="btn-config-alertas" id="btn-abrir-config-alertas" title="Configurar alertas">⚙️</button>
           </div>
-          <div class="fin-meta-track">
-            <div class="fin-meta-fill" id="fin-meta-fill" style="width:0%"></div>
-          </div>
-          <div class="fin-meta-info">
-            <span id="fin-meta-atual">R$ 0,00</span>
-            <span class="fin-meta-sep">de</span>
-            <span id="fin-meta-goal">R$ 0,00</span>
-            <span class="fin-meta-falta" id="fin-meta-falta"></span>
-          </div>
+          <div class="alert-subtitle">Carregando alertas...</div>
+          <div class="alert-detail"></div>
         </div>
-        <div class="fin-alertas-card" id="fin-alertas-card">
-          <div class="fin-alertas-titulo">⚠️ Alertas</div>
-          <div class="fin-alertas-lista" id="fin-alertas-lista">
-            <div class="fin-alerta-vazio">Carregando...</div>
-          </div>
-        </div>
-      </div>
-      <div class="fin-chart-card">
-        <div class="fin-chart-titulo">📊 Últimos 6 meses — Receita vs Lucro</div>
-        <div class="fin-chart-legenda">
-          <span class="fin-leg fin-leg-receita">■ Receita</span>
-          <span class="fin-leg fin-leg-lucro">■ Lucro</span>
-        </div>
-        <div class="fin-chart-area" id="fin-chart-area">
-          <div class="fin-chart-loading">Carregando gráfico...</div>
+        <div class="alert-progress-track">
+          <div class="alert-progress-bar" id="alert-progress-bar"></div>
         </div>
       </div>
     </section>
@@ -530,6 +312,7 @@
 
         <!-- OS — destaque máximo -->
         <div class="module-card module-card--os" data-module="os">
+          <div class="module-indicator live" id="os-indicator"></div>
           <div class="module-icon">📦</div>
           <div class="module-info">
             <h3>Ordem de Serviço</h3>
@@ -538,6 +321,7 @@
         </div>
 
         <div class="module-card" data-module="caixa">
+          <div class="module-indicator"></div>
           <div class="module-icon">💰</div>
           <div class="module-info">
             <h3>Caixa</h3>
@@ -545,8 +329,11 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="central-alertas" id="dash-alertas-card">
-          <div class="module-icon" style="position:relative">🔔<span id="dash-alertas-dot" style="display:none;position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:#ef4444;border-radius:50%;border:2px solid var(--bg,#0d1117)"></span></div>
+        <div class="module-card" data-module="central-alertas">
+          <div class="module-indicator" id="alertas-card-indicator">
+            <span class="badge-contador" id="alertas-count-badge" style="display:none;">0</span>
+          </div>
+          <div class="module-icon">⚠️</div>
           <div class="module-info">
             <h3>Central de Alertas</h3>
             <p class="module-sub" id="alertas-card-sub">Sem pendências</p>
@@ -554,6 +341,7 @@
         </div>
 
         <div class="module-card" data-module="central-comandos">
+          <div class="module-indicator"></div>
           <div class="module-icon">⚡</div>
           <div class="module-info">
             <h3>Central de Comandos</h3>
@@ -561,7 +349,9 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="crm-comercial">
+        <div class="module-card module-card--new" data-module="crm-comercial">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
           <div class="module-icon">🎯</div>
           <div class="module-info">
             <h3>CRM Comercial</h3>
@@ -570,6 +360,7 @@
         </div>
 
         <div class="module-card" data-module="clientes">
+          <div class="module-indicator"></div>
           <div class="module-icon">👥</div>
           <div class="module-info">
             <h3>Clientes</h3>
@@ -578,6 +369,7 @@
         </div>
 
         <div class="module-card" data-module="estoque">
+          <div class="module-indicator"></div>
           <div class="module-icon">📱</div>
           <div class="module-info">
             <h3>Estoque</h3>
@@ -585,16 +377,9 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="acaodasemana">
-          <div class="module-icon">📅</div>
-          <div class="module-info">
-            <h3>Agenda</h3>
-            <p class="module-sub">Agenda Inteligente</p>
-          </div>
-        </div>
-
         <!-- Linha 2 -->
         <div class="module-card" data-module="financeiro">
+          <div class="module-indicator"></div>
           <div class="module-icon">💹</div>
           <div class="module-info">
             <h3>Financeiro</h3>
@@ -602,15 +387,9 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="despesas">
-          <div class="module-icon">💸</div>
-          <div class="module-info">
-            <h3>Despesas</h3>
-            <p class="module-sub">Despesas e saídas</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="compras">
+        <div class="module-card module-card--new" data-module="compras">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
           <div class="module-icon">🛒</div>
           <div class="module-info">
             <h3>Compras</h3>
@@ -618,15 +397,8 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="fechamento">
-          <div class="module-icon">🔒</div>
-          <div class="module-info">
-            <h3>Fechamento</h3>
-            <p class="module-sub">Relatório mensal consolidado</p>
-          </div>
-        </div>
-
         <div class="module-card" data-module="fornecedor">
+          <div class="module-indicator"></div>
           <div class="module-icon">🏭</div>
           <div class="module-info">
             <h3>Fornecedor</h3>
@@ -634,15 +406,8 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="pendencias">
-          <div class="module-icon">📋</div>
-          <div class="module-info">
-            <h3>Pendências e Contas</h3>
-            <p class="module-sub">Clientes, parceiros e empréstimos</p>
-          </div>
-        </div>
-
         <div class="module-card" data-module="pos-venda">
+          <div class="module-indicator"></div>
           <div class="module-icon">💝</div>
           <div class="module-info">
             <h3>Pós-venda</h3>
@@ -650,17 +415,29 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="garantias">
-          <div class="module-icon">🛡️</div>
+        <div class="module-card" data-module="impressora">
+          <div class="module-indicator"></div>
+          <div class="module-icon">🖨️</div>
           <div class="module-info">
-            <h3>Garantias</h3>
-            <p class="module-sub">Termos e configurações</p>
+            <h3>Impressora</h3>
+            <p class="module-sub">Config. de impressão</p>
           </div>
         </div>
 
         <!-- Linha 3 -->
+        <div class="module-card" data-module="contas">
+          <div class="module-indicator"></div>
+          <div class="module-icon">📇</div>
+          <div class="module-info">
+            <h3>Contas &amp; Números</h3>
+            <p class="module-sub">Chips, e-mails, perfis e contas</p>
+          </div>
+        </div>
 
         <div class="module-card" data-module="portal-cliente">
+          <div class="module-indicator" id="portal-indicator">
+            <span class="badge-contador" id="portal-badge" style="display:none;">0</span>
+          </div>
           <div class="module-icon">🔷</div>
           <div class="module-info">
             <h3>Portal do Cliente</h3>
@@ -669,6 +446,7 @@
         </div>
 
         <div class="module-card" data-module="portal-tecnico">
+          <div class="module-indicator"></div>
           <div class="module-icon">🔓</div>
           <div class="module-info">
             <h3>Portal Técnico</h3>
@@ -677,6 +455,7 @@
         </div>
 
         <div class="module-card" data-module="central-organizacao">
+          <div class="module-indicator"></div>
           <div class="module-icon">⚡</div>
           <div class="module-info">
             <h3>Central de Automação</h3>
@@ -685,6 +464,7 @@
         </div>
 
         <div class="module-card" data-module="central-informacoes">
+          <div class="module-indicator"></div>
           <div class="module-icon">📚</div>
           <div class="module-info">
             <h3>Central de Informações</h3>
@@ -694,6 +474,7 @@
 
         <!-- Linha 4 -->
         <div class="module-card" data-module="catalogo">
+          <div class="module-indicator"></div>
           <div class="module-icon">🛍️</div>
           <div class="module-info">
             <h3>Catálogo</h3>
@@ -702,6 +483,7 @@
         </div>
 
         <div class="module-card" data-module="relatorios">
+          <div class="module-indicator"></div>
           <div class="module-icon">📊</div>
           <div class="module-info">
             <h3>Relatórios</h3>
@@ -710,6 +492,9 @@
         </div>
 
         <div class="module-card" data-module="diario">
+          <div class="module-indicator" id="diario-indicator">
+            <span class="badge-contador" id="diario-badge" style="display:none;">0</span>
+          </div>
           <div class="module-icon">📔</div>
           <div class="module-info">
             <h3>Diário</h3>
@@ -717,7 +502,18 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="auditoria">
+        <div class="module-card" data-module="relatorios">
+          <div class="module-indicator"></div>
+          <div class="module-icon">📊</div>
+          <div class="module-info">
+            <h3>Relatórios</h3>
+            <p class="module-sub">Gerenciais e analíticos</p>
+          </div>
+        </div>
+
+        <div class="module-card module-card--new" data-module="auditoria">
+          <div class="module-indicator"></div>
+          <span class="module-badge-new">Novo</span>
           <div class="module-icon">🔍</div>
           <div class="module-info">
             <h3>Auditoria</h3>
@@ -725,48 +521,11 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="lixeira">
-          <div class="module-icon">🗑️</div>
-          <div class="module-info">
-            <h3>Lixeira</h3>
-            <p class="module-sub">Restaurar itens excluídos</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="integridade">
-          <div class="module-icon">🛡️</div>
-          <div class="module-info">
-            <h3>Integridade</h3>
-            <p class="module-sub">Verificar consistência dos dados</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="homologacao">
-          <div class="module-icon">🧪</div>
-          <div class="module-info">
-            <h3>Homologação</h3>
-            <p class="module-sub">Auditoria completa de integrações</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="backup">
-          <div class="module-icon">💾</div>
-          <div class="module-info">
-            <h3>Backup</h3>
-            <p class="module-sub">Exportar e restaurar dados</p>
-          </div>
-        </div>
-
-        <div class="module-card module-card--favoritos" data-module="favoritos">
-          <div class="module-icon">⭐</div>
-          <div class="module-info">
-            <h3>Favoritos</h3>
-            <p class="module-sub">Módulos e atalhos rápidos</p>
-          </div>
-        </div>
-
         <!-- Autoatendimento — mantido para compatibilidade -->
         <div class="module-card" data-module="autoatendimento">
+          <div class="module-indicator" id="auto-indicator">
+            <span class="badge-contador" id="auto-badge">0</span>
+          </div>
           <div class="module-icon">🤖</div>
           <div class="module-info">
             <h3>Autoatendimento</h3>
@@ -836,7 +595,7 @@
             <div class="alertas-loading">Carregando...</div>
           </div>
 
-          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../central-alertas/index.html">Ver Central de Alertas ›</a>
+          <a class="pr-ver-tudo" id="alertas-ver-todos" href="../relatorios/index.html">Ver relatórios ›</a>
 
         </div>
       </div>
@@ -983,8 +742,6 @@
 <script type="module" src="dashboard.js"></script>
 <script type="module" src="../../shared/favoritos.js"></script>
 <script src="../../shared/brand-header.js"></script>
-<script src="modules-order.js"></script>
-<script src="mobile.js"></script>
 
 <!-- ===== PAINEL DE ALERTAS — sino (lógica isolada, inalterada) ===== -->
 <script>
@@ -1050,26 +807,6 @@
   }
 
   function beep() {
-    var origem = 'Dashboard / Widget Orçamentos';
-    var evento = 'Nova notificação de orçamento/agendamento';
-    // Verificar permissão global
-    if (localStorage.getItem('cc_sons_sistema') !== 'true') {
-      try {
-        var log = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-        log.unshift({ ts: new Date().toISOString(), origem: origem, evento: evento, tipo: 'bloqueado', arquivo: 'AudioContext — sine', motivo: 'cc_sons_sistema OFF', status: 'BLOQUEADO' });
-        if (log.length > 300) log.length = 300;
-        localStorage.setItem('cc_eventos_log', JSON.stringify(log));
-      } catch (e) {}
-      return;
-    }
-    // Registrar no log centralizado
-    try {
-      var logE = JSON.parse(localStorage.getItem('cc_eventos_log') || '[]');
-      logE.unshift({ ts: new Date().toISOString(), origem: origem, evento: evento, tipo: 'som', arquivo: 'AudioContext — sine 880', status: 'EXECUTADO' });
-      if (logE.length > 300) logE.length = 300;
-      localStorage.setItem('cc_eventos_log', JSON.stringify(logE));
-      console.log('%c[SOM] ' + new Date().toLocaleTimeString('pt-BR') + ' | ' + origem + ' | ' + evento, 'color:#fbbf24;font-weight:bold');
-    } catch (e) {}
     try {
       var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
       var ctx = new Ctx(); var o = ctx.createOscillator(); var g = ctx.createGain();
@@ -1274,50 +1011,12 @@
       return tb - ta;
     });
 
-    // Alertas criados pelo usuário na Central de Alertas
-    // Só exibe se data+hora já chegou (mesmo critério de jaDisp() em alertas.js)
-    var alertasUsuario = [];
-    try {
-      var cache = localStorage.getItem('cc_alertas_cache');
-      if (cache) {
-        // Usar data/hora LOCAL (toISOString retorna UTC e quebraria em UTC-3)
-        var _n  = new Date();
-        var _hj = _n.getFullYear() + '-' + String(_n.getMonth()+1).padStart(2,'0') + '-' + String(_n.getDate()).padStart(2,'0');
-        var _hm = String(_n.getHours()).padStart(2,'0') + ':' + String(_n.getMinutes()).padStart(2,'0');
-        var todos = JSON.parse(cache);
-        alertasUsuario = todos.filter(function(a) {
-          if (a.status === 'concluido') return false;
-          var d = (a.repeticao && a.repeticao !== 'nenhuma') ? _calcProxima(a) : (a.data || '');
-          if (!d) return false;
-          if (d < _hj) return true;         // vencido
-          if (d > _hj) return false;        // data futura
-          return (a.hora || '00:00') <= _hm; // hoje: só se hora chegou
-        });
-        alertasUsuario.sort(function(a, b) {
-          return (a.hora || '').localeCompare(b.hora || '');
-        });
-      }
-    } catch(e) {}
-
     ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend;
-    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + alertasUsuario.length;
+    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length;
 
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline-flex' : 'none';
     if (sino) sino.classList.toggle('tem-alerta', total > 0);
-
-    // Atualiza card da Central de Alertas no dashboard
-    var qAl = alertasUsuario.length;
-    var cardSub  = document.getElementById('alertas-card-sub');
-    var alertDot = document.getElementById('dash-alertas-dot');
-    var alertCard = document.getElementById('dash-alertas-card');
-    if (cardSub) cardSub.textContent = qAl > 0
-      ? qAl + (qAl === 1 ? ' alerta pendente' : ' alertas pendentes')
-      : 'Sem pendências';
-    if (cardSub) cardSub.style.color = qAl > 0 ? '#ef4444' : '';
-    if (alertDot) alertDot.style.display = qAl > 0 ? 'block' : 'none';
-    if (alertCard) alertCard.classList.toggle('dash-card-alerta', qAl > 0);
-
 
     if (!firstLoad) {
       var novo = aprovPend.some(function (os) { return !jaSoou[keyOf(os)]; })
@@ -1339,7 +1038,6 @@
       footer.style.display = 'none';
     } else {
       var html = '';
-      if (alertasUsuario.length) html += '<div class="aprov-secao">🔔 Meus Alertas</div>' + alertasUsuario.map(alertaUsuarioHTML).join('');
       if (preOSPend.length) html += '<div class="aprov-secao">🆕 Novos Atendimentos do Site</div>' + preOSPend.map(preOSItemHTML).join('');
       if (diagPend.length) html += '<div class="aprov-secao">🔧 Solicitações de Diagnóstico</div>' + diagPend.map(diagItemHTML).join('');
       if (agPend.length) html += '<div class="aprov-secao">📅 Agendamentos</div>' + agPend.map(agItemHTML).join('');
@@ -1377,64 +1075,6 @@
     var v = getVistos(); if (v.indexOf(key) < 0) { v.push(key); setVistos(v); }
     salvarVistoFirestore(key); recompute();
   }
-
-  // Converte Date → YYYY-MM-DD usando data LOCAL (não UTC)
-  function _isoLocal(d) {
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  }
-
-  // Calcula data efetiva para alertas recorrentes
-  function _calcProxima(a) {
-    var base = a.data; if (!base) return '';
-    var d = new Date(base + 'T12:00:00');
-    var now = new Date();
-    while (d <= now) {
-      var dias = { diario:1, semanal:7, mensal:30, quinzenal:15, trinta:30,
-                   custom: parseInt(a.customDias) || 7 }[a.repeticao] || 1;
-      if (a.repeticao === 'mensal') d.setMonth(d.getMonth() + 1);
-      else d.setDate(d.getDate() + dias);
-    }
-    return _isoLocal(d);
-  }
-
-  var PRIO_COR = { critica:'#ef4444', alta:'#fb923c', media:'#fbbf24', baixa:'#6b7280' };
-  var TIPO_ICO = { lembrete:'🔔', comando:'⚡', tarefa:'✅', whatsapp:'📱', instagram:'📸',
-                   financeiro:'💰', os:'🔧', cliente:'👤', fornecedor:'🏢', outro:'📌' };
-
-  function alertaUsuarioHTML(a) {
-    var cor = PRIO_COR[a.prioridade] || PRIO_COR.media;
-    var ico = TIPO_ICO[a.tipo] || '🔔';
-    var hora = a.hora || '--:--';
-    var hoje = _isoLocal(new Date());
-    var de = (a.repeticao && a.repeticao !== 'nenhuma') ? _calcProxima(a) : (a.data || '');
-    var vencido = de < hoje;
-    var tag = vencido
-      ? '<span style="font-size:10px;background:#ef4444;color:#fff;border-radius:6px;padding:1px 6px;font-weight:700;">VENCIDO</span>'
-      : '';
-    return '<div style="padding:10px 14px;border-left:3px solid '+cor+';background:#0d0f0e;border-radius:0 8px 8px 0;margin-bottom:6px;">'
-      + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-      + '<span style="font-size:14px;">'+ico+'</span>'
-      + '<span style="font-size:13px;font-weight:700;color:#f0f2f1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(a.titulo)+'</span>'
-      + tag
-      + '</div>'
-      + '<div style="font-size:11px;color:#7a8480;">'+hora
-      + (a.descricao ? ' — '+esc(a.descricao.slice(0,60)) : '')+'</div>'
-      + '<div style="margin-top:6px;"><a href="/CRM/pages/central-alertas/index.html" style="font-size:11px;color:#00C853;text-decoration:none;">Ver Central de Alertas ›</a></div>'
-      + '</div>';
-  }
-
-  // Reler alertas do usuário quando localStorage mudar (outra aba salvou)
-  window.addEventListener('storage', function(e) {
-    if (e.key === 'cc_alertas_cache' || e.key === 'cc_alertas_badge_count' || e.key === 'cc_alertas_badge') recompute();
-  });
-  // Atualiza card também quando alertas-badge.js emite evento em tempo real
-  window.addEventListener('cc-alertas-badge', function() { recompute(); });
-  // Reavalia alinhado à virada do minuto (nunca antes, nunca depois do horário)
-  (function agendarMinutoDash() {
-    var n = new Date();
-    var ms = (60 - n.getSeconds()) * 1000 - n.getMilliseconds() + 50;
-    setTimeout(function() { recompute(); agendarMinutoDash(); }, ms);
-  })();
 
   function bind() {
     sino = document.getElementById('aprov-sino');
@@ -1523,8 +1163,6 @@
 
   function boot() {
     if (!bind()) return;
-    // Mostra imediatamente com dados do localStorage (sem esperar Firestore)
-    recompute();
     if (window.dbFirestore && window.FirebaseFirestore) start();
     else window.addEventListener('firebase-ready', start, { once: true });
   }
@@ -1573,16 +1211,6 @@
   .bk-tipo-btn .bk-sub { font-size:0.72rem; color:#555; display:block; margin-top:2px; }
   #backup-status { margin-top:14px; font-size:0.8rem; color:#666; min-height:20px;
     text-align:center; line-height:1.5; }
-
-  /* Card Central de Alertas com pendência */
-  #dash-alertas-card.dash-card-alerta {
-    border-color: rgba(239,68,68,0.35);
-  }
-  @keyframes dash-dot-pulse {
-    0%,100%{opacity:1} 50%{opacity:0.3}
-  }
-  #dash-alertas-dot { animation: dash-dot-pulse 1.5s ease infinite; }
-
 </style>
 
 <div id="backup-modal">
@@ -1696,7 +1324,7 @@
         dataISO: agora.toISOString(),
         data: agora.toLocaleDateString('pt-BR'),
         hora: agora.toLocaleTimeString('pt-BR'),
-        totalDocs: totalDocs, versao: '2.0', sistema: 'Cell City Gestão Empresarial',
+        totalDocs: totalDocs, versao: '2.0', sistema: 'Cell City CRM',
       };
 
       var payload = { __meta: meta };
@@ -1862,104 +1490,6 @@
     </div>
   </div>
 </div>
-
-<!-- ===== CONTROLE DE MODO DA HOME ===== -->
-<script>
-(function () {
-  var LS_KEY = 'cc_home_mode';
-  var MODOS = ['modulos', 'dashboard', 'completo'];
-  // UID da conta (padrão da loja; atualizado via cc-uid-changed quando Auth mudar)
-  var _uid = 'loja-cellcity';
-
-  // Path preparado para multiusuário: usuarios/{uid}/preferencias/layout
-  function prefDoc() {
-    var db = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!db || !FB || !FB.doc) return null;
-    return FB.doc(db, 'usuarios', _uid, 'preferencias', 'layout');
-  }
-
-  function aplicarModo(modo, salvar) {
-    if (MODOS.indexOf(modo) < 0) modo = 'modulos';
-    // Atributo no <html> (definido também no head para evitar flash)
-    document.documentElement.setAttribute('data-home-mode', modo);
-    document.querySelectorAll('.home-mode-btn').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.mode === modo);
-    });
-    localStorage.setItem(LS_KEY, modo);
-    if (salvar) salvarNoFirestore(modo);
-  }
-
-  function salvarNoFirestore(modo) {
-    var ref = prefDoc(), FB = window.FirebaseFirestore;
-    if (!ref || !FB) return;
-    try {
-      FB.setDoc(ref, {
-        modoHome: modo,
-        atualizadoEm: (FB.serverTimestamp ? FB.serverTimestamp() : new Date().toISOString())
-      }, { merge: true }).catch(function(e) {
-        console.warn('[Preferências] salvar modoHome:', e && e.message);
-      });
-    } catch (e) {}
-  }
-
-  function carregarDoFirestore() {
-    var ref = prefDoc(), FB = window.FirebaseFirestore;
-    if (!ref || !FB) return;
-    try {
-      FB.getDoc(ref).then(function(snap) {
-        if (snap && snap.exists && snap.exists()) {
-          var d = snap.data();
-          if (d && d.modoHome && MODOS.indexOf(d.modoHome) >= 0) {
-            // Firestore prevalece apenas se diferente do local
-            // (evita sobrescrever mudança recente do usuário neste dispositivo)
-            var local = localStorage.getItem(LS_KEY) || 'modulos';
-            if (d.modoHome !== local) aplicarModo(d.modoHome, false);
-          }
-        }
-      }).catch(function(e) {
-        console.warn('[Preferências] carregar modoHome:', e && e.message);
-      });
-    } catch (e) {}
-  }
-
-  // Atualiza UID e re-sincroniza quando a sessão mudar (Firebase Auth)
-  window.addEventListener('cc-uid-changed', function(e) {
-    if (e.detail && e.detail.uid) {
-      _uid = e.detail.uid;
-      carregarDoFirestore();
-    }
-  });
-
-  function init() {
-    // 1. localStorage → instantâneo, head script já evitou flash
-    var salvo = localStorage.getItem(LS_KEY) || 'modulos';
-    aplicarModo(salvo, false);
-
-    // 2. Firestore → assíncrono, sem flash
-    if (window.dbFirestore && window.FirebaseFirestore) {
-      carregarDoFirestore();
-    } else {
-      window.addEventListener('firebase-ready', carregarDoFirestore, { once: true });
-    }
-
-    // 3. Botões de alternância
-    var grupo = document.getElementById('home-mode-group');
-    if (grupo) {
-      grupo.addEventListener('click', function (e) {
-        var btn = e.target.closest('.home-mode-btn');
-        if (!btn || !btn.dataset.mode) return;
-        aplicarModo(btn.dataset.mode, true);
-      });
-    }
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
-</script>
 
 </body>
 </html>

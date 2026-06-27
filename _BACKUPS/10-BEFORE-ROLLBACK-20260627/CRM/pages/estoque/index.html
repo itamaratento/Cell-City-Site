@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Estoque</title>
+    <link rel="stylesheet" href="estoque.css?v=20260619">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+    <header>
+        <span class="header-title">📦 Estoque</span>
+    </header>
+
+    <main>
+        <div class="est-sb-overlay" id="est-sb-overlay"></div>
+
+        <div class="est-explorer">
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- SIDEBAR                                        -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <aside class="est-sidebar" id="est-sidebar">
+                <div class="est-sb-header">Estoque</div>
+
+                <div class="est-sb-item active" data-nav="home">
+                    <span class="est-sb-icon">🏠</span>
+                    <span class="est-sb-label">Home</span>
+                </div>
+
+                <div class="est-sb-sep"></div>
+
+                <div class="est-sb-item" data-nav="produtos">
+                    <span class="est-sb-icon">📦</span>
+                    <span class="est-sb-label">Produtos</span>
+                    <span class="est-sb-count" id="sb-count-produtos">—</span>
+                </div>
+                <div class="est-sb-item" data-nav="favoritos">
+                    <span class="est-sb-icon">⭐</span>
+                    <span class="est-sb-label">Favoritos</span>
+                    <span class="est-sb-count" id="sb-count-favs">—</span>
+                </div>
+                <div class="est-sb-item" data-nav="baixo">
+                    <span class="est-sb-icon">⚠️</span>
+                    <span class="est-sb-label">Estoque Baixo</span>
+                    <span class="est-sb-count est-sb-count-alerta" id="sb-count-baixo">—</span>
+                </div>
+                <div class="est-sb-item" data-nav="zerado">
+                    <span class="est-sb-icon">🚫</span>
+                    <span class="est-sb-label">Sem Estoque</span>
+                    <span class="est-sb-count est-sb-count-alerta" id="sb-count-zerado">—</span>
+                </div>
+
+                <div class="est-sb-sep"></div>
+
+                <div class="est-sb-item" data-nav="categorias">
+                    <span class="est-sb-icon">📁</span>
+                    <span class="est-sb-label">Categorias</span>
+                    <span class="est-sb-count" id="sb-count-cats">—</span>
+                </div>
+
+                <div class="est-sb-sep"></div>
+
+                <div class="est-sb-item" data-nav="rentabilidade">
+                    <span class="est-sb-icon">📊</span>
+                    <span class="est-sb-label">Rentabilidade</span>
+                </div>
+            </aside>
+
+            <!-- ═══════════════════════════════════════════════ -->
+            <!-- ÁREA PRINCIPAL                                 -->
+            <!-- ═══════════════════════════════════════════════ -->
+            <div class="est-main">
+
+                <!-- Topbar -->
+                <div class="est-topbar">
+                    <button class="est-btn-sb-open" id="est-sb-open" title="Menu">☰</button>
+                    <div class="est-topbar-search" id="est-topbar-search">
+                        <span style="font-size:14px;flex-shrink:0">🔍</span>
+                        <input type="search" id="est-search" class="est-search"
+                            placeholder="Buscar produto, categoria, código, tag...">
+                    </div>
+                    <button class="est-btn-nova" id="est-btn-novo">＋ Produto</button>
+                </div>
+
+                <!-- Breadcrumb -->
+                <div class="est-nav-header">
+                    <span class="est-nav-titulo" id="est-nav-titulo">🏠 Home</span>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: HOME                                -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel active" id="panel-home">
+
+                    <!-- Stats -->
+                    <div class="est-resumo" id="est-resumo">
+                        <div class="est-resumo-item" onclick="Estoque.nav('produtos')">
+                            <span class="est-resumo-num" id="est-total-produtos">—</span>
+                            <span class="est-resumo-label">Produtos</span>
+                        </div>
+                        <div class="est-resumo-div"></div>
+                        <div class="est-resumo-item" onclick="Estoque.nav('favoritos')">
+                            <span class="est-resumo-num est-amarelo" id="est-total-favs">—</span>
+                            <span class="est-resumo-label">Favoritos</span>
+                        </div>
+                        <div class="est-resumo-div"></div>
+                        <div class="est-resumo-item" onclick="Estoque.nav('baixo')">
+                            <span class="est-resumo-num est-vermelho" id="est-total-baixo">—</span>
+                            <span class="est-resumo-label">Estoque Baixo</span>
+                        </div>
+                        <div class="est-resumo-div"></div>
+                        <div class="est-resumo-item" onclick="Estoque.nav('zerado')">
+                            <span class="est-resumo-num est-vermelho" id="est-total-zerado">—</span>
+                            <span class="est-resumo-label">Sem Estoque</span>
+                        </div>
+                        <div class="est-resumo-div"></div>
+                        <div class="est-resumo-item" onclick="Estoque.nav('categorias')">
+                            <span class="est-resumo-num" id="est-total-cats">—</span>
+                            <span class="est-resumo-label">Categorias</span>
+                        </div>
+                    </div>
+
+                    <!-- Últimos cadastrados -->
+                    <div class="est-home-section">
+                        <div class="est-home-section-hdr">
+                            <span class="est-home-section-titulo">🆕 Últimos Cadastrados</span>
+                            <button class="est-btn-link" onclick="Estoque.nav('produtos')">Ver todos →</button>
+                        </div>
+                        <div id="est-home-ultimos"></div>
+                    </div>
+
+                    <!-- Categorias grid -->
+                    <div class="est-home-section">
+                        <div class="est-home-section-hdr">
+                            <span class="est-home-section-titulo">📁 Categorias</span>
+                            <button class="est-btn-link" onclick="Estoque.nav('categorias')">Gerenciar →</button>
+                        </div>
+                        <div class="est-home-grid" id="est-home-grid"></div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: PRODUTOS                            -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-produtos">
+
+                    <!-- Formulário -->
+                    <div class="est-form" id="est-form" style="display:none">
+                        <div class="est-form-titulo" id="est-form-titulo">Novo Produto</div>
+                        <div class="est-form-grid">
+                            <div class="est-form-group est-span2">
+                                <label>Nome do produto *</label>
+                                <input type="text" id="est-inp-nome"
+                                    placeholder="Ex: Cabo USB-C, Película Galaxy A15..." maxlength="100">
+                            </div>
+                            <div class="est-form-group">
+                                <label>Categoria *</label>
+                                <select id="est-inp-cat">
+                                    <!-- populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="est-form-group">
+                                <label>📍 Localização</label>
+                                <input type="text" id="est-inp-local"
+                                    placeholder="Ex: Gaveta A1, Prateleira B2, Vitrine..." maxlength="40">
+                            </div>
+                            <div class="est-form-group">
+                                <label>Qtd. atual</label>
+                                <input type="number" id="est-inp-qty" min="0" value="0">
+                            </div>
+                            <div class="est-form-group">
+                                <label>Qtd. mínima (alerta)</label>
+                                <input type="number" id="est-inp-min" min="0" value="1">
+                            </div>
+                            <div class="est-form-group">
+                                <label>Preço de venda (R$)</label>
+                                <input type="number" id="est-inp-venda" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="est-form-group">
+                                <label>Preço de custo (R$)</label>
+                                <input type="number" id="est-inp-custo" min="0" step="0.01" placeholder="0,00">
+                            </div>
+                            <div class="est-form-group est-span2">
+                                <label>🏷️ Tags (separe por vírgula)</label>
+                                <input type="text" id="est-inp-tags"
+                                    placeholder="Ex: Promoção, Novo, Original, Importado, Premium..." maxlength="120">
+                            </div>
+                            <div class="est-form-group est-span2">
+                                <label>Código de barras</label>
+                                <input type="text" id="est-inp-codigo" class="est-inp-codigo"
+                                    placeholder="Automático — deixe vazio para gerar" maxlength="20" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="est-form-btns">
+                            <button class="est-btn-salvar" id="est-btn-salvar">Salvar</button>
+                            <button class="est-btn-cancelar" id="est-btn-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="est-loading" id="est-loading">
+                        <div class="est-spinner"></div>
+                        <span>Carregando estoque...</span>
+                    </div>
+
+                    <!-- Lista agrupada por categoria -->
+                    <div id="est-cats-container" class="est-cats-container-expanded"></div>
+
+                    <!-- Vazio -->
+                    <div class="est-empty" id="est-empty" style="display:none">
+                        <div class="est-empty-icon">📦</div>
+                        <div class="est-empty-title">Estoque vazio</div>
+                        <div class="est-empty-sub">Clique em <strong>＋ Produto</strong> para começar.</div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: FAVORITOS                           -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-favoritos">
+                    <div id="est-favs-lista"></div>
+                    <div class="est-empty" id="est-favs-vazio" style="display:none">
+                        <div class="est-empty-icon">⭐</div>
+                        <div class="est-empty-title">Sem favoritos</div>
+                        <div class="est-empty-sub">Clique em ⭐ em qualquer produto para favoritá-lo.</div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: ESTOQUE BAIXO                       -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-baixo">
+                    <div id="est-baixo-lista"></div>
+                    <div class="est-empty" id="est-baixo-vazio" style="display:none">
+                        <div class="est-empty-icon">✅</div>
+                        <div class="est-empty-title">Estoque OK</div>
+                        <div class="est-empty-sub">Nenhum produto abaixo do mínimo.</div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: SEM ESTOQUE                         -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-zerado">
+                    <div id="est-zerado-lista"></div>
+                    <div class="est-empty" id="est-zerado-vazio" style="display:none">
+                        <div class="est-empty-icon">✅</div>
+                        <div class="est-empty-title">Tudo em estoque</div>
+                        <div class="est-empty-sub">Nenhum produto zerado.</div>
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: CATEGORIAS                          -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-categorias">
+
+                    <div class="est-cat-mgmt-hdr">
+                        <button class="est-btn-nova" id="est-btn-nova-cat">＋ Nova Categoria</button>
+                    </div>
+
+                    <!-- Formulário de categoria -->
+                    <div class="est-catf" id="est-catf" style="display:none">
+                        <div class="est-form-titulo" id="est-catf-titulo">Nova Categoria</div>
+                        <div class="est-catf-body">
+                            <div class="est-catf-icons" id="est-catf-icons"></div>
+                            <div class="est-catf-fields">
+                                <div class="est-catf-icon-row">
+                                    <span class="est-catf-preview" id="est-catf-preview">📁</span>
+                                    <input type="text" id="est-catf-icon" class="est-catf-icon-inp"
+                                        placeholder="Emoji" maxlength="4" autocomplete="off">
+                                </div>
+                                <input type="text" id="est-catf-nome" class="est-catf-nome-inp"
+                                    placeholder="Nome da categoria *" maxlength="40" autocomplete="off">
+                            </div>
+                        </div>
+                        <div class="est-form-btns">
+                            <button class="est-btn-salvar" id="est-catf-salvar">Salvar</button>
+                            <button class="est-btn-cancelar" id="est-catf-cancelar">Cancelar</button>
+                        </div>
+                    </div>
+
+                    <!-- Lista de categorias -->
+                    <div id="est-cat-lista"></div>
+                </div>
+
+                <!-- ════════════════════════════════════════════ -->
+                <!-- PAINEL: RENTABILIDADE                        -->
+                <!-- ════════════════════════════════════════════ -->
+                <div class="est-panel" id="panel-rentabilidade">
+
+                    <!-- Ordenação -->
+                    <div class="est-rent-filtros">
+                        <button class="est-rent-filtro active" data-ord="receita">💵 Mais Receita</button>
+                        <button class="est-rent-filtro" data-ord="lucro">💎 Mais Lucrativos</button>
+                        <button class="est-rent-filtro" data-ord="margem">📉 Menor Margem</button>
+                        <button class="est-rent-filtro" data-ord="qtd">📦 Mais Vendidos</button>
+                    </div>
+
+                    <!-- Cards resumo -->
+                    <div class="est-rent-resumo" id="est-rent-resumo">
+                        <div class="est-rent-card">
+                            <div class="est-rent-val" id="rent-receita-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">Receita Total</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-custo" id="rent-cpv-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">CPV (Custo)</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-lucro" id="rent-lucro-total">R$ 0,00</div>
+                            <div class="est-rent-lbl">Lucro Bruto</div>
+                        </div>
+                        <div class="est-rent-card">
+                            <div class="est-rent-val est-rent-margem" id="rent-margem-total">0%</div>
+                            <div class="est-rent-lbl">Margem Média</div>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div class="est-loading" id="rent-loading"><div class="est-spinner"></div><span>Carregando dados...</span></div>
+
+                    <!-- Tabela de produtos -->
+                    <div id="est-rent-tabela"></div>
+                </div>
+
+            </div><!-- /est-main -->
+        </div><!-- /est-explorer -->
+    </main>
+
+    <div class="est-toast" id="est-toast"></div>
+
+    <!-- MODAL: MOVIMENTAÇÃO -->
+    <div class="est-modal-overlay" id="est-modal-overlay" style="display:none">
+        <div class="est-modal">
+            <div class="est-modal-titulo" id="est-modal-titulo">Movimentar Estoque</div>
+            <div class="est-modal-body">
+                <div class="est-form-group">
+                    <label id="est-modal-label">Quantidade</label>
+                    <input type="number" id="est-modal-qty" min="1" value="1">
+                </div>
+                <div class="est-form-group">
+                    <label>Observação (opcional)</label>
+                    <input type="text" id="est-modal-obs" placeholder="Ex: Compra, Venda, Ajuste..." maxlength="60">
+                </div>
+            </div>
+            <div class="est-form-btns">
+                <button class="est-btn-salvar" id="est-modal-confirmar">Confirmar</button>
+                <button class="est-btn-cancelar" id="est-modal-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTÓRICO -->
+    <div class="est-modal-overlay" id="est-hist-overlay" style="display:none">
+        <div class="est-modal est-modal-wide">
+            <div class="est-modal-titulo" id="est-hist-titulo">Histórico</div>
+            <div id="est-hist-body" class="est-hist-scroll"></div>
+            <div class="est-form-btns">
+                <button class="est-btn-cancelar" onclick="Estoque.fecharHist()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../shared/brand-header.js"></script>
+<script type="module" src="../../shared/sidebar.js"></script>
+    <script type="module" src="estoque.js?v=20260619"></script>
+    <script type="module" src="../../shared/dock.js"></script>
+    <script src="../../shared/obs-expand.js?v=20260612-1"></script>
+</body>
+</html>

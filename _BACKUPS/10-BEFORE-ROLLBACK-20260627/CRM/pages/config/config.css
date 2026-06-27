@@ -1,0 +1,381 @@
+:root {
+    --bg: #050505;
+    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --surface2: rgba(25, 28, 27, 0.8);
+    --surface3: #1c1f1d;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #ffffff;
+    --text2: #d1d5db;
+    --text3: #6b7280;
+    --green-primary: #00C853;
+    --green-light: #00E676;
+    --green-dark: #009624;
+    --green-glow: rgba(0, 200, 83, 0.25);
+    --red: #EF4444;
+    --radius-sm: 10px;
+    --radius: 14px;
+    --radius-lg: 18px;
+    --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --duration: 0.25s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+body {
+    font-family: var(--font-main);
+    background: var(--bg);
+    background-image: var(--bg-gradient);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+.pin-wrapper {
+    width: 100%;
+    max-width: 400px;
+    padding: 32px 24px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+}
+
+/* ===== LOGO ===== */
+.pin-logo { text-align: center; }
+.pin-logo-icon { font-size: 48px; margin-bottom: 10px; filter: drop-shadow(0 0 16px rgba(0,200,83,0.4)); }
+.pin-logo-title {
+    font-size: 22px;
+    font-weight: 900;
+    background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+}
+.pin-logo-sub { font-size: 12px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+/* ===== SCREENS ===== */
+.pin-screen { display: none; width: 100%; flex-direction: column; align-items: center; gap: 20px; }
+.pin-screen.active { display: flex; animation: fadeIn 0.3s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== LABEL ===== */
+.pin-label { font-size: 16px; font-weight: 700; color: var(--text2); text-align: center; }
+
+/* ===== DOTS ===== */
+.pin-dots { display: flex; gap: 14px; }
+.pin-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    background: transparent;
+    transition: all 0.15s var(--ease);
+}
+.pin-dot.filled {
+    background: var(--green-primary);
+    border-color: var(--green-primary);
+    box-shadow: 0 0 10px var(--green-glow);
+}
+.pin-dot.error {
+    border-color: var(--red);
+    background: var(--red);
+    animation: shake 0.4s ease;
+}
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
+
+/* ===== ERROR ===== */
+.pin-error { font-size: 13px; color: var(--red); font-weight: 600; min-height: 18px; text-align: center; }
+
+/* ===== PAD ===== */
+.pin-pad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    width: 100%;
+}
+.pin-btn {
+    height: 76px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    color: var(--text);
+    font-size: 28px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all 0.15s var(--ease);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.pin-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
+.pin-btn:active { transform: scale(0.93); background: rgba(0,200,83,0.12); border-color: var(--green-primary); }
+.pin-btn-empty { background: transparent; border-color: transparent; cursor: default; pointer-events: none; }
+.pin-btn-empty:hover { background: transparent; border-color: transparent; }
+.pin-btn-del { font-size: 20px; color: var(--text3); }
+.pin-btn-del:active { color: var(--red); border-color: var(--red); }
+
+/* ===== LINKS ===== */
+.pin-link {
+    background: transparent;
+    border: none;
+    color: var(--text3);
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: color var(--duration) var(--ease);
+    padding: 4px;
+}
+.pin-link:hover { color: var(--green-light); }
+.pin-link-sair:hover { color: var(--red); }
+
+/* ===== SUCESSO ===== */
+.pin-success {
+    font-size: 56px;
+    animation: popIn 0.4s var(--ease);
+}
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.pin-btn-entrar {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--green-primary), var(--green-dark));
+    border: none;
+    border-radius: var(--radius);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 6px 20px var(--green-glow);
+    transition: all var(--duration) var(--ease);
+    margin-top: 8px;
+}
+.pin-btn-entrar:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,83,0.4); }
+
+
+.pin-btn-device {
+    /* WebAuthn/Passkey OCULTO da interface (decisão: manter escondido).
+       Implementação preservada em config.js para uso futuro.
+       !important para não ser reexibido por merges dos commits de WebAuthn. */
+    display: none !important;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: var(--radius);
+    color: var(--text2);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    margin-bottom: 16px;
+}
+.pin-btn-device:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); color: var(--text); }
+.pin-btn-device:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== BOTÃO GOOGLE ===== */
+.btn-google {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    border-radius: var(--radius);
+    color: #1a1a1a;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.btn-google:hover { background: #f5f5f5; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+.btn-google:active { transform: scale(0.98); }
+.btn-google:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ===== DIVISOR "ou" ===== */
+.cc-ou {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text3);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.cc-ou::before, .cc-ou::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* ===== CAMPOS DE TEXTO (usuário / senha) ===== */
+.cc-field { width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.cc-field label { font-size: 12px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; }
+.cc-field input {
+    width: 100%;
+    padding: 14px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 16px;
+    font-family: var(--font-main);
+    transition: border-color var(--duration) var(--ease), box-shadow var(--duration) var(--ease);
+}
+.cc-field input:focus {
+    outline: none;
+    border-color: var(--green-primary);
+    box-shadow: 0 0 0 3px var(--green-glow);
+}
+
+/* ===== CHECKBOX (lembrar dispositivo) ===== */
+.cc-check {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+}
+.cc-check input {
+    width: 18px; height: 18px;
+    accent-color: var(--green-primary);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+/* ===== BOTÃO PERIGO ===== */
+.pin-btn-danger {
+    width: 100%;
+    padding: 14px;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    border-radius: var(--radius);
+    color: var(--red);
+    font-size: 14px;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+}
+.pin-btn-danger:hover { background: rgba(239, 68, 68, 0.18); }
+.pin-btn-danger:active { transform: scale(0.97); }
+
+/* ===== LISTA DE DISPOSITIVOS ===== */
+.cc-dev-list { width: 100%; display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto; }
+.cc-dev-empty { text-align: center; color: var(--text3); font-size: 13px; padding: 16px; }
+.cc-dev-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.cc-dev-item.atual { border-color: var(--green-primary); }
+.cc-dev-info { flex: 1; min-width: 0; }
+.cc-dev-nome { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cc-dev-meta { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.cc-dev-tag { color: var(--green-light); font-weight: 700; }
+.cc-dev-x {
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: var(--red);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+}
+.cc-dev-x:hover { background: rgba(239, 68, 68, 0.15); }
+
+/* ===== SEGURANÇA: Usar senha do dispositivo ===== */
+.seg-device-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    width: 100%;
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all var(--duration) var(--ease);
+    text-align: left;
+}
+.seg-device-row:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.18); }
+.seg-device-info { display: flex; flex-direction: column; gap: 3px; }
+.seg-device-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.seg-device-status { font-size: 12px; color: var(--text3); font-weight: 500; }
+
+.seg-device-toggle {
+    flex-shrink: 0;
+    width: 48px; height: 28px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.14);
+    position: relative;
+    transition: background var(--duration) var(--ease);
+}
+.seg-device-toggle.on { background: var(--green-primary); box-shadow: 0 0 12px var(--green-glow); }
+.seg-device-knob {
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    transition: transform var(--duration) var(--ease);
+}
+.seg-device-toggle.on .seg-device-knob { transform: translateX(20px); }
+.seg-device-toggle.loading { opacity: 0.6; pointer-events: none; }
+
+.seg-device-diag {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text2);
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 11px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    text-align: left;
+}
+.seg-device-diag .diag-ok   { color: var(--green-light); }
+.seg-device-diag .diag-err  { color: var(--red); }

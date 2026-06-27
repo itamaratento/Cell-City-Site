@@ -67,6 +67,3 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
-
-# Gerado pelo backup.sh — não commitar
-git-info.json

@@ -145,8 +145,3 @@ select.field-input option { background:#131614; }
     box-shadow:0 4px 20px rgba(0,0,0,.5); z-index:999; white-space:nowrap;
 }
 .toast.hidden { display:none; }
-
-/* === SAFE AREA — dock fica à direita apenas em desktop === */
-@media (min-width: 901px) {
-  .lista { padding-right: 96px; }
-}

@@ -351,22 +351,6 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-alerta-hora input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(0.8); cursor: pointer; }
 .ag-check { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
 .ag-check input { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; flex-shrink: 0; }
-
-/* ── Toggle Dashboard ON/OFF ── */
-.ag-dash-toggle-wrap { display: flex; align-items: center; gap: 8px; }
-.ag-dash-toggle-label { font-size: 13px; font-weight: 700; color: var(--text2); white-space: nowrap; }
-.ag-dash-toggle {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 6px 12px; border-radius: 20px; cursor: pointer;
-    font-size: 13px; font-weight: 700; border: 1px solid rgba(239,68,68,0.35);
-    background: rgba(239,68,68,0.08); color: #f87171;
-    transition: background 150ms, border-color 150ms, color 150ms;
-    user-select: none;
-}
-.ag-dash-toggle.ag-dash-on {
-    background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.35); color: #4ade80;
-}
-.ag-dash-toggle:hover { filter: brightness(1.15); }
 .ag-recorr-sel { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: var(--text2); }
 
 /* ── PALETA DE CORES DO TEXTO ── */

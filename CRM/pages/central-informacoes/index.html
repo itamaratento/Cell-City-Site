@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Informações</title>
+    <title>Central de Informações - Cell City CRM</title>
     <link rel="stylesheet" href="informacoes.css?v=20260612-ux-v1">
     <link rel="stylesheet" href="../../shared/dock.css">
 </head>
@@ -85,10 +85,6 @@
                     <button class="info-tipo-btn" onclick="abrirFormDocumento()" data-icon="📄">
                         <span class="info-tipo-icon">📄</span>
                         <span>Documento</span>
-                    </button>
-                    <button class="info-tipo-btn" onclick="abrirFormContato()" data-icon="👤">
-                        <span class="info-tipo-icon">👤</span>
-                        <span>Contato</span>
                     </button>
                 </div>
             </div>
@@ -216,40 +212,6 @@
                     </div>
                 </div>
 
-                <!-- CONTATO -->
-                <div id="info-form-contato" class="info-form-type" style="display:none;">
-                    <div class="info-form-group">
-                        <label>WhatsApp</label>
-                        <input type="tel" id="info-f-contato-whatsapp" placeholder="Ex: (62) 99999-9999">
-                    </div>
-                    <div class="info-form-group info-collapsible" id="info-contato-telefones-wrap">
-                        <div class="info-collapse-header" onclick="toggleContatoTelefonesCollapse()">
-                            <span class="info-collapse-arrow">▼</span>
-                            <span>Telefones (<span id="info-contato-tel-count">0</span>)</span>
-                        </div>
-                        <div class="info-collapse-body">
-                            <div id="info-contato-tel-list"></div>
-                            <button type="button" class="info-add-url-btn" onclick="adicionarContatoTelefone()">➕ Adicionar Telefone</button>
-                        </div>
-                    </div>
-                    <div class="info-form-group">
-                        <label>E-mail</label>
-                        <input type="email" id="info-f-contato-email" placeholder="Ex: contato@email.com">
-                    </div>
-                    <div class="info-form-group">
-                        <label>Empresa</label>
-                        <input type="text" id="info-f-contato-empresa" placeholder="Ex: Cell City">
-                    </div>
-                    <div class="info-form-group">
-                        <label>Cargo</label>
-                        <input type="text" id="info-f-contato-cargo" placeholder="Ex: Gerente de TI">
-                    </div>
-                    <div class="info-form-group">
-                        <label>Observações</label>
-                        <textarea id="info-f-contato-obs" rows="3" placeholder="Notas adicionais sobre este contato..."></textarea>
-                    </div>
-                </div>
-
                 <!-- COMANDO -->
                 <div id="info-form-comando" class="info-form-type" style="display:none;">
                     <div class="info-form-group">
@@ -314,7 +276,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 
     <script src="../../shared/brand-header.js"></script>
-<script type="module" src="../../shared/sidebar.js"></script>
     <script type="module" src="informacoes.js?v=20260612-ux-v1"></script>
     <script type="module" src="../../shared/dock.js"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
