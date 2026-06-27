@@ -147,9 +147,12 @@ export async function initModulo(moduloId, opcoes = {}) {
 function _aguardarUsuario() {
   return new Promise(resolve => {
     const u = auth.currentUser;
-    if (u !== undefined && u !== null) { resolve(u); return; }
+    // auth.currentUser é null (não logado) ou User (logado) — nunca undefined.
+    // Após await authReady (chamado antes desta função), o valor já é definitivo.
+    // Resolvemos imediatamente seja null ou User para evitar o delay de 3s.
+    if (u !== undefined) { resolve(u); return; }
 
-    // Aguarda o evento global de auth (emitido pelo listener único de firebase.js)
+    // Raro: SDK ainda inicializando. Aguarda via evento.
     function _onAuth(e) {
       window.removeEventListener('cc-auth-changed', _onAuth);
       clearTimeout(_timer);
@@ -157,10 +160,9 @@ function _aguardarUsuario() {
     }
     window.addEventListener('cc-auth-changed', _onAuth);
 
-    // Fallback: após 3s assume não autenticado e cancela o listener de evento
     const _timer = setTimeout(() => {
       window.removeEventListener('cc-auth-changed', _onAuth);
-      console.warn('[AUTH] _aguardarUsuario: timeout 3s — usuário não resolvido');
+      console.warn('[AUTH] _aguardarUsuario: timeout 3s — resolvendo como null');
       resolve(null);
     }, 3000);
   });

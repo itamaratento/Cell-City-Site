@@ -116,12 +116,12 @@ const authReady = new Promise((resolve) => {
 // (coleções reais: "os", "clientes", "estoque_produtos", etc.).
 
 // ===== EXPORTS PARA USO DIRETO (opcional) =====
+// getAuthUser já é exportada acima via `export function getAuthUser()`
 export {
   db,
   storage,
   auth,
   authReady,
-  getAuthUser,
   collection,
   addDoc,
   getDocs,
@@ -147,7 +147,8 @@ export {
   getDownloadURL,
   deleteObject,
   // Firebase Auth extras
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  onAuthStateChanged  // re-exportado para alertas-badge.js e outros módulos com ciclo próprio
 };
 
 // ===== GLOBALS PARA DEBUG / BOOTSTRAP =====

@@ -103,7 +103,11 @@ function _writeCache(ctx) {
 export function getTenant() {
   if (_ctx) return _ctx;
   _ctx = _readCache();
-  if (_ctx) console.log('[TENANT] Contexto restaurado do sessionStorage:', _ctx.empresa_id);
+  if (_ctx) {
+    console.log('[TENANT] Contexto restaurado do sessionStorage:', _ctx.empresa_id);
+    // Resolve tenantReady caso o contexto venha do cache (sessão anterior)
+    _resolveTenantReady(_ctx);
+  }
   return _ctx;
 }
 
