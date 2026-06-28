@@ -10,15 +10,16 @@
  *   node scripts/backfill-empresa-id.js
  */
 
-const admin = require('firebase-admin');
-const serviceAccount = require('../sa-key.json');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const serviceAccount = require('../../sa-key.json');
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+initializeApp({
+  credential: cert(serviceAccount),
   projectId: 'cellcity-crm'
 });
 
-const db = admin.firestore();
+const db = getFirestore();
 const EMPRESA_ID = 'cellcity-master';
 const BATCH_SIZE = 400;
 
