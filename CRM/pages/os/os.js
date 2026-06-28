@@ -1,4 +1,4 @@
-import { db, authReady, storage, storageRef, uploadBytes, getDownloadURL, deleteObject, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { db, authReady, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -158,24 +158,23 @@ function dataURLtoBlob(dataURL) {
 }
 
 async function uploadPhotoToStorage(dataURL, path) {
+    const sm = await getFirebaseStorage();
+    if (!sm) throw new Error('Firebase Storage indisponível');
     const blob = dataURLtoBlob(dataURL);
-    const ref = storageRef(storage, path);
-    await uploadBytes(ref, blob);
-    return await getDownloadURL(ref);
+    const ref = sm.storageRef(sm.storage, path);
+    await sm.uploadBytes(ref, blob);
+    return await sm.getDownloadURL(ref);
 }
 
 async function deletePhotoFromStorage(url) {
-    if (!url || !url.startsWith('https://')) return;
+    if (!url || !url.startsWith('https://firebasestorage')) return;
     try {
-        const ref = storageRef(storage, url);
-        await deleteObject(ref);
-    } catch (e) {
-        try {
-            const u = new URL(url);
-            const path = decodeURIComponent(u.pathname.split('/o/')[1]?.split('?')[0] || '');
-            if (path) await deleteObject(storageRef(storage, path));
-        } catch {}
-    }
+        const sm = await getFirebaseStorage();
+        if (!sm) return;
+        const u = new URL(url);
+        const path = decodeURIComponent(u.pathname.split('/o/')[1]?.split('?')[0] || '');
+        if (path) await sm.deleteObject(sm.storageRef(sm.storage, path));
+    } catch {}
 }
 
 // ===== BANCO DE FOTOS EXTERNO =====

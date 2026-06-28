@@ -25,13 +25,6 @@ import {
   setPersistence,
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import {
-  getStorage,
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -45,7 +38,26 @@ const firebaseConfig = {
 // Inicializa
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-const storage = getStorage(app);
+
+// Storage carregado sob demanda (evita que uma falha de CDN quebre o módulo inteiro)
+let _storageCache = null;
+async function getFirebaseStorage() {
+    if (_storageCache) return _storageCache;
+    try {
+        const mod = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js");
+        _storageCache = {
+            storage:      mod.getStorage(app),
+            storageRef:   mod.ref,
+            uploadBytes:  mod.uploadBytes,
+            getDownloadURL: mod.getDownloadURL,
+            deleteObject: mod.deleteObject
+        };
+        return _storageCache;
+    } catch (e) {
+        console.warn('⚠️ Firebase Storage indisponível:', e);
+        return null;
+    }
+}
 
 // ===== AUTENTICAÇÃO ANÔNIMA (compartilhada por todas as páginas) =====
 // Garante que TODAS as páginas que importam este arquivo tenham um usuário
@@ -84,11 +96,7 @@ export {
   db,
   auth,
   authReady,
-  storage,
-  storageRef,
-  uploadBytes,
-  getDownloadURL,
-  deleteObject,
+  getFirebaseStorage,
   setPersistence,
   browserLocalPersistence,
   collection,

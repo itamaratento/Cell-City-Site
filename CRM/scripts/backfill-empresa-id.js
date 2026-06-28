@@ -1,12 +1,13 @@
 /**
  * BACKFILL: adiciona empresa_id = 'cellcity-master' em documentos antigos
  *
- * Coleções afetadas: caixa_lancamentos, categorias_caixa, lembretes_pagamento
+ * Coleções afetadas: caixa_lancamentos (335 docs), categorias_caixa (10 docs)
+ * Idempotente: pula documentos que já têm empresa_id.
  *
- * ATENÇÃO: Execute manualmente após confirmar com o usuário.
- * Para rodar: node backfill-empresa-id.js
- *
- * Pré-requisito: npm install firebase-admin
+ * Para rodar:
+ *   cd /home/cellcity/Músicas/projetos/Cell-City-Site/CRM
+ *   npm install firebase-admin
+ *   node scripts/backfill-empresa-id.js
  */
 
 const admin = require('firebase-admin');
@@ -19,13 +20,13 @@ admin.initializeApp({
 
 const db = admin.firestore();
 const EMPRESA_ID = 'cellcity-master';
+const BATCH_SIZE = 400;
 
 async function backfillCollection(collectionName) {
   const snap = await db.collection(collectionName).get();
   let updated = 0;
   let skipped = 0;
-
-  const batch = db.batch();
+  let batch = db.batch();
   let batchCount = 0;
 
   for (const doc of snap.docs) {
@@ -34,8 +35,9 @@ async function backfillCollection(collectionName) {
       batchCount++;
       updated++;
 
-      if (batchCount >= 400) {
+      if (batchCount >= BATCH_SIZE) {
         await batch.commit();
+        batch = db.batch(); // novo batch após cada commit
         batchCount = 0;
         console.log(`  ${collectionName}: ${updated} docs atualizados até agora...`);
       }
