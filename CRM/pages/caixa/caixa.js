@@ -1156,12 +1156,13 @@ function iniciarListenerLancamentos() {
 
     const q = query(
         collection(db, COLLECTION_LANCAMENTOS),
-        where("empresa_id", "==", _empresaId),
-        orderBy("dataISO", "desc")
+        where("empresa_id", "==", _empresaId)
     );
 
     listenerLancamentos = onSnapshot(q, (snap) => {
-        lancamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        lancamentos = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.dataISO || '').localeCompare(a.dataISO || ''));
         atualizarInterface();
         atualizarResumosLive("automatico");
     }, (error) => {
@@ -1778,9 +1779,10 @@ function limparFormLembrete() {
 
 async function carregarLembretes() {
     try {
-        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), where("empresa_id", "==", _empresaId), orderBy('createdAt', 'asc')));
+        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), where("empresa_id", "==", _empresaId)));
         lembretes = [];
         snap.forEach(d => lembretes.push({ id: d.id, ...d.data() }));
+        lembretes.sort((a, b) => (a.createdAtISO || '').localeCompare(b.createdAtISO || ''));
     } catch {
         lembretes = JSON.parse(localStorage.getItem('cc_lembretes') || '[]');
     }

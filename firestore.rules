@@ -28,9 +28,31 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
+    // PÚBLICO: Portal — cliente lê eventos e mensagens
+    // ─────────────────────────────────────────────
+    match /portal_eventos/{docId} {
+      allow create:                        if true;
+      allow read, update, delete:          if request.auth != null;
+    }
+
+    match /mensagens_portal/{docId} {
+      allow create:                        if true;
+      allow read, update, delete:          if request.auth != null;
+    }
+
+    match /solicitacoes_diagnostico/{docId} {
+      allow create:                        if true;
+      allow read, update, delete:          if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
     // PRIVADO: Clientes e OS
     // ─────────────────────────────────────────────
     match /clientes/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /crm_leads/{docId} {
       allow read, write:                   if request.auth != null;
     }
 
@@ -42,6 +64,10 @@ service cloud.firestore {
     // PRIVADO: Caixa e financeiro
     // ─────────────────────────────────────────────
     match /caixa_lancamentos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /lancamentos_caixa/{docId} {
       allow read, write:                   if request.auth != null;
     }
 
@@ -81,10 +107,26 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
+    match /financeiro_cat_despesas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /pendencias/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
     // ─────────────────────────────────────────────
     // PRIVADO: Estoque e fornecedores
     // ─────────────────────────────────────────────
     match /estoque_produtos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /estoque_config/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /estoque_movimentacoes/{docId} {
       allow read, write:                   if request.auth != null;
     }
 
@@ -104,6 +146,14 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
+    match /fornecedores/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /encomendas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
     // ─────────────────────────────────────────────
     // PRIVADO: Produtividade pessoal
     // ─────────────────────────────────────────────
@@ -111,7 +161,6 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
-    // Agenda Inteligente — um documento por evento (calendário permanente)
     match /agenda/{docId} {
       allow read, write:                   if request.auth != null;
     }
@@ -125,6 +174,18 @@ service cloud.firestore {
     }
 
     match /alarme_config/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /alertas_usuario/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /historico_alertas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /central_organizacao/{docId} {
       allow read, write:                   if request.auth != null;
     }
 
@@ -166,6 +227,32 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
+    match /categorias_wpp/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Diário técnico
+    // ─────────────────────────────────────────────
+    match /diario_registros/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /diario_eventos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /diario_metas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Chat interno
+    // ─────────────────────────────────────────────
+    match /chat_historico/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
     // ─────────────────────────────────────────────
     // PRIVADO: Importações
     // ─────────────────────────────────────────────
@@ -175,8 +262,6 @@ service cloud.firestore {
 
     // ─────────────────────────────────────────────
     // PRIVADO: Sincronização CRM ↔ Google Drive
-    // Coleções usadas pelos módulos Tutoriais, Soluções Técnicas,
-    // Diário Técnico. Operações via cc-sync.js / gdrive-backup.js.
     // ─────────────────────────────────────────────
     match /cc_lixeira/{docId} {
       allow read, write:                   if request.auth != null;
@@ -191,7 +276,93 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
-    // BLOQUEADO: Coleções legadas — nunca usadas pelos módulos
+    // PRIVADO: Backup e auditoria
+    // ─────────────────────────────────────────────
+    match /backup_historico/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /backup_logs/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /auditoria_logs/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /lixeira/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Automação
+    // ─────────────────────────────────────────────
+    match /automacao_execucoes/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /automacao_logs/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Robô WhatsApp
+    // ─────────────────────────────────────────────
+    match /robo_atividade/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /tarefas_robo/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Monitoramento e configurações gerais
+    // ─────────────────────────────────────────────
+    match /monitoramento/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /configuracoes/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /preferencias_sistema/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /favoritos_usuarios/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: SaaS residual (dados existentes, sem uso ativo)
+    // ─────────────────────────────────────────────
+    match /usuarios/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /empresas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /assinaturas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /auditoria_saas/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Temporários / debug
+    // ─────────────────────────────────────────────
+    match /teste_caixa/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
+    // BLOQUEADO: Coleções legadas
     // ─────────────────────────────────────────────
     match /orders/{docId} {
       allow read, write:                   if false;
