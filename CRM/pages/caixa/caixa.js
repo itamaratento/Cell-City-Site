@@ -1,6 +1,7 @@
-// ===== IMPORTS (Padrão OS) =====
+// ===== IMPORTS =====
 import {
     db,
+    authReady,
     collection,
     doc,
     setDoc,
@@ -16,6 +17,7 @@ import {
     runTransaction,
     serverTimestamp
 } from "../../scripts/firebase.js";
+import { getEmpresaId } from "../../shared/tenant.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
@@ -94,6 +96,9 @@ let termoPesquisa = '';
 let listenerLancamentos = null;
 let listenerCategorias = null;
 
+// empresa_id resolvido após init() — nunca usar antes de init() terminar
+let _empresaId = 'cellcity-master';
+
 // 🔒 LOCKS
 let isFechamentoExecutando = false;
 let isResumoLiveExecutando = false;
@@ -101,7 +106,12 @@ let ultimoResumoLiveExecutado = 0;
 
 // ===== INICIALIZAÇÃO =====
 async function init() {
-    console.log('✅ Caixa V19 inicializado.');
+    // Aguarda autenticação estabelecida — evita PERMISSION_DENIED na primeira carga
+    await authReady;
+    // Aguarda contexto tenant — garante empresa_id correto antes das queries
+    await (window._ccTenantReady || Promise.resolve());
+    _empresaId = getEmpresaId();
+    console.log('✅ Caixa V19 inicializado. empresa_id:', _empresaId);
     // Ativa filtro "hoje" por padrão na UI
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector('[data-periodo="hoje"]')?.classList.add('active');
@@ -257,11 +267,12 @@ async function verificarESalvarSnapshotFechado(collectionName, docId, dadosSnaps
         
         const docFinal = {
             ...dadosSnapshot,
+            empresa_id: _empresaId,
             snapshotHash: hash,
             ...criarMetadataPadrao("fechado", createdFrom),
             criadoEm: serverTimestamp()
         };
-        
+
         await setDoc(ref, docFinal);
         
         console.log(`✅ [🔒 FECHADO] ${label} "${docId}" CRIADO.`);
@@ -382,11 +393,12 @@ async function salvarResumoLive(docId, dados, label) {
         
         const docFinal = {
             ...dados,
+            empresa_id: _empresaId,
             snapshotHash: hash,
             ...criarMetadataPadrao("live", "automatico"),
             atualizadoEm: serverTimestamp()
         };
-        
+
         await setDoc(ref, docFinal, { merge: true });
         
         console.log(`🔥 [🔄 LIVE] ${label} "${docId}" ATUALIZADO.`);
@@ -605,7 +617,7 @@ async function corrigirMigracaoLucroSaidas() {
     let totalAtualizado = 0;
     let totalErro = 0;
     try {
-        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where("empresa_id", "==", _empresaId)));
         const saidas = snap.docs.filter(d => d.data().tipo === 'saida');
         console.log(`📊 [MIGRAÇÃO] Encontradas ${saidas.length} saídas para corrigir`);
         for (const docSnap of saidas) {
@@ -732,9 +744,9 @@ function renderAuditoria() {
 
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(collection(db, COLLECTION_CATEGORIAS));
+        const snap = await getDocs(query(collection(db, COLLECTION_CATEGORIAS), where("empresa_id", "==", _empresaId)));
         categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        
+
         if (categorias.length === 0) {
             const padrao = [
                 { nome: 'Vendas', tipoPadrao: 'entrada' },
@@ -743,11 +755,12 @@ async function carregarCategorias() {
                 { nome: 'Despesas', tipoPadrao: 'saida' },
                 { nome: 'Marketing', tipoPadrao: 'saida' }
             ];
-            
+
             for (const cat of padrao) {
                 const agora = new Date();
-                await setDoc(doc(db, COLLECTION_CATEGORIAS, cat.nome), { 
+                await setDoc(doc(db, COLLECTION_CATEGORIAS, cat.nome), {
                     nome: cat.nome, tipoPadrao: cat.tipoPadrao, status: "ativo",
+                    empresa_id: _empresaId,
                     source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION,
                     createdBy: SYSTEM_META.CREATED_BY,
                     createdAt: serverTimestamp(), createdAtISO: agora.toISOString(),
@@ -768,7 +781,7 @@ async function carregarCategorias() {
 function iniciarListenerCategorias() {
     if (listenerCategorias) listenerCategorias();
     listenerCategorias = onSnapshot(
-        collection(db, COLLECTION_CATEGORIAS),
+        query(collection(db, COLLECTION_CATEGORIAS), where("empresa_id", "==", _empresaId)),
         (snap) => {
             categorias = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             atualizarSelectCategorias();
@@ -853,6 +866,7 @@ async function executarSalvarCategoria() {
             createdAt: serverTimestamp(), updatedAt: serverTimestamp()
         };
         
+        dadosCategoria.empresa_id = _empresaId;
         let docRef;
         try { docRef = doc(db, "categorias_caixa", id); await setDoc(docRef, dadosCategoria); }
         catch { docRef = await addDoc(collection(db, "categorias_caixa"), dadosCategoria); }
@@ -955,6 +969,7 @@ async function salvarLancamento() {
         tipo: tipoSelecionado, descricao: document.getElementById('descricao')?.value.trim() || '',
         categoria: document.getElementById('categoria')?.value || '',
         valor, custo, lucro, status: "ativo", produtoId: _ultimoItemSelecionado || null,
+        empresa_id: _empresaId,
         source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
         createdAt: serverTimestamp(), createdAtISO: t.dataISO,
         updatedAt: serverTimestamp(), updatedAtISO: t.dataISO,
@@ -1031,8 +1046,8 @@ async function validarEstoque(descricao, categoria) {
     try {
         const termo = descricao.trim().toUpperCase();
         if (!termo) return { status: 'nao_encontrado' };
-        
-        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+
+        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where("empresa_id", "==", _empresaId)));
         
         let produto = null;
         snap.forEach(d => {
@@ -1084,6 +1099,7 @@ async function cadastrarProdutoAutomatico({ nome, descricao, categoria, preco })
             quantidadeMinima: 1,
             venda: preco || 0,
             custo: 0,
+            empresa_id: _empresaId,
             atualizadoEm: serverTimestamp()
         };
         
@@ -1137,14 +1153,25 @@ async function descontarEstoque(produtoId, produto) {
 // ═══════════════════════════════════════════
 function iniciarListenerLancamentos() {
     if (listenerLancamentos) { listenerLancamentos(); listenerLancamentos = null; }
-    
-    const q = query(collection(db, COLLECTION_LANCAMENTOS), orderBy("dataISO", "desc"));
-    
+
+    const q = query(
+        collection(db, COLLECTION_LANCAMENTOS),
+        where("empresa_id", "==", _empresaId),
+        orderBy("dataISO", "desc")
+    );
+
     listenerLancamentos = onSnapshot(q, (snap) => {
         lancamentos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         atualizarInterface();
         atualizarResumosLive("automatico");
-    }, (error) => console.error('❌ Erro no listener:', error));
+    }, (error) => {
+        if (error.code === 'failed-precondition') {
+            console.error('❌ [CAIXA] Índice composto ausente! Crie o índice no Firebase Console:', error.message);
+            showToast('⚠️ Índice Firestore ausente — verifique o console do navegador');
+        } else {
+            console.error('❌ Erro no listener de lançamentos:', error);
+        }
+    });
 }
 
 // ═══════════════════════════════════════════
@@ -1328,7 +1355,7 @@ async function reporEstoque(descricao) {
         if (!termo) return;
         
         // Busca o produto pelo nome (mesma lógica da validação)
-        const snap = await getDocs(collection(db, COLLECTION_PRODUTOS));
+        const snap = await getDocs(query(collection(db, COLLECTION_PRODUTOS), where("empresa_id", "==", _empresaId)));
         let produto = null;
         snap.forEach(d => {
             const p = { id: d.id, ...d.data() };
@@ -1478,7 +1505,7 @@ let _ultimoItemSelecionado = null; // armazena o item selecionado do estoque
 async function _carregarProdutosEstoque() {
     if (_cacheProdutos) return _cacheProdutos;
     try {
-        const snap = await getDocs(collection(db, 'estoque_produtos'));
+        const snap = await getDocs(query(collection(db, 'estoque_produtos'), where("empresa_id", "==", _empresaId)));
         _cacheProdutos = [];
         snap.forEach(d => _cacheProdutos.push({ id: d.id, ...d.data() }));
     } catch { _cacheProdutos = []; }
@@ -1596,6 +1623,7 @@ window.salvarLancamento = async function() {
                     nome: descricao, categoria: 'Outro',
                     quantidade: 0, quantidadeMinima: 1,
                     venda: valor, custo: 0,
+                    empresa_id: _empresaId,
                     atualizadoEm: serverTimestamp()
                 });
                 _cacheProdutos = null;
@@ -1635,8 +1663,8 @@ async function carregarMetaSemanal() {
         const anoAtual = now.getFullYear();
         const numSem   = _weekNum(now);
 
-        // Lê todos os lançamentos
-        const snap = await getDocs(collection(db, COLLECTION_LANCAMENTOS));
+        // Lê todos os lançamentos da empresa
+        const snap = await getDocs(query(collection(db, COLLECTION_LANCAMENTOS), where("empresa_id", "==", _empresaId)));
 
         let lucroAtual = 0;
         const lucroPorAno = {};
@@ -1750,7 +1778,7 @@ function limparFormLembrete() {
 
 async function carregarLembretes() {
     try {
-        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), orderBy('createdAt', 'asc')));
+        const snap = await getDocs(query(collection(db, COLL_LEMBRETES), where("empresa_id", "==", _empresaId), orderBy('createdAt', 'asc')));
         lembretes = [];
         snap.forEach(d => lembretes.push({ id: d.id, ...d.data() }));
     } catch {
@@ -1769,6 +1797,7 @@ async function salvarLembrete() {
         fornecedor, descricao, valor, quantidade,
         vencimento:  document.getElementById('lem-vencimento')?.value  || '',
         observacao:  document.getElementById('lem-observacao')?.value.trim()  || '',
+        empresa_id: _empresaId,
         createdAt: serverTimestamp(),
         createdAtISO: new Date().toISOString()
     };
@@ -1807,6 +1836,7 @@ async function pagarLembrete(id, fornecedor, descricao, valor) {
         categoria: 'Fornecedor',
         valor, custo: 0, lucro: -valor,
         status: 'ativo',
+        empresa_id: _empresaId,
         source: SYSTEM_META.SOURCE, version: SYSTEM_META.VERSION, createdBy: SYSTEM_META.CREATED_BY,
         createdAt: serverTimestamp(), createdAtISO: t.dataISO,
         updatedAt: serverTimestamp(), updatedAtISO: t.dataISO,

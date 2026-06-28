@@ -324,4 +324,26 @@
   } else {
     init();
   }
+
+  // ── PRELOAD DE CONTEXTO TENANT ────────────────────────────────
+  // Inicia carregamento do contexto da empresa antes dos módulos JS.
+  // Expõe window._ccTenantReady (Promise) para módulos aguardarem:
+  //   await window._ccTenantReady;
+  // ─────────────────────────────────────────────────────────────
+  window._ccTenantReady = (async function _preloadTenant() {
+    try {
+      const { authReady }              = await import('/CRM/scripts/firebase.js');
+      const { loadContext, getTenant } = await import('/CRM/shared/tenant.js');
+      const user = await authReady;
+      if (user && !user.isAnonymous) {
+        if (!getTenant()) {
+          await loadContext(user.uid);
+        }
+      }
+      return getTenant();
+    } catch (e) {
+      console.warn('[TENANT] brand-header preload falhou:', e.message);
+      return null;
+    }
+  })();
 })();

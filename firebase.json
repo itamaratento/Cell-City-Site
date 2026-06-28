@@ -5,6 +5,9 @@
     "rules": "CRM/firestore.rules",
     "indexes": "CRM/firestore.indexes.json"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": "CRM",
     "ignore": [

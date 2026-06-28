@@ -3,9 +3,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import {
   getFirestore,
   collection,
-  addDoc,        // ← ADICIONADO: cria docs com ID automático
-  getDocs,        // ← ADICIONADO: lê coleções
-  getDoc,         // ← ADICIONADO: lê documento único (CORREÇÃO CRÍTICA)
+  addDoc,
+  getDocs,
+  getDoc,
   doc,
   setDoc,
   updateDoc,
@@ -15,14 +15,23 @@ import {
   where,
   onSnapshot,
   runTransaction,
-  serverTimestamp, // ← ADICIONADO: timestamp do servidor
-  limit           // ← ADICIONADO: limite de resultados
+  serverTimestamp,
+  limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
   signInAnonymously,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -35,7 +44,8 @@ const firebaseConfig = {
 
 // Inicializa
 const app = initializeApp(firebaseConfig);
- const db = getFirestore(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 
 // ===== AUTENTICAÇÃO ANÔNIMA (compartilhada por todas as páginas) =====
 // Garante que TODAS as páginas que importam este arquivo tenham um usuário
@@ -43,12 +53,20 @@ const app = initializeApp(firebaseConfig);
 // O Firestore aguarda automaticamente o token de auth antes de enviar as
 // requisições, então não é preciso alterar as páginas que já usam `db`.
 const auth = getAuth(app);
+
+// Garante persistência local antes de qualquer operação de auth
+// (evita logout ao atualizar a página em qualquer browser)
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
 const authReady = new Promise((resolve) => {
-  onAuthStateChanged(auth, (user) => {
+  const unsubscribe = onAuthStateChanged(auth, (user) => {
     if (user) {
+      unsubscribe(); // Para de escutar após primeira resolução
       resolve(user);
     } else {
-      signInAnonymously(auth).catch((e) => {
+      signInAnonymously(auth).then((cred) => {
+        resolve(cred.user);
+      }).catch((e) => {
         console.warn('⚠️ Falha na autenticação anônima:', e);
         resolve(null);
       });
@@ -66,10 +84,17 @@ export {
   db,
   auth,
   authReady,
+  storage,
+  storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+  setPersistence,
+  browserLocalPersistence,
   collection,
   addDoc,
   getDocs,
-  getDoc,      // ← ESSENCIAL para documentos únicos
+  getDoc,
   doc,
   setDoc,
   updateDoc,

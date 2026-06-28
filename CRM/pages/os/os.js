@@ -1,4 +1,4 @@
-import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { db, authReady, storage, storageRef, uploadBytes, getDownloadURL, deleteObject, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -79,6 +79,103 @@ function toggleRelatorioTecnico() {
     const open = body.style.display !== 'none';
     body.style.display = open ? 'none' : 'block';
     if (btn) btn.textContent = open ? '📖 Abrir Relatório' : '📕 Recolher Relatório';
+}
+
+// ===== ACCORDION =====
+function toggleAccordion(btn) {
+    const section = btn.closest('.accordion');
+    if (!section) return;
+    const isOpen = !section.classList.contains('collapsed');
+    section.classList.toggle('collapsed', isOpen);
+    const arrow = btn.querySelector('.accordion-arrow');
+    if (arrow) arrow.textContent = isOpen ? '▶' : '▼';
+    btn.setAttribute('aria-expanded', String(!isOpen));
+}
+window.toggleAccordion = toggleAccordion;
+
+// ===== HOME STATS TOGGLE =====
+function toggleHomeStats() {
+    const block = document.getElementById('home-stats-block');
+    if (!block) return;
+    const stats = block.querySelector('.premium-stats');
+    const arrow = block.querySelector('.home-stats-arrow');
+    const isOpen = stats && stats.style.display !== 'none';
+    if (stats) stats.style.display = isOpen ? 'none' : '';
+    if (arrow) arrow.textContent = isOpen ? '▶ Mostrar Estatísticas' : '▼ Ocultar Estatísticas';
+    const btn = block.querySelector('.home-stats-toggle');
+    if (btn) btn.setAttribute('aria-expanded', String(!isOpen));
+}
+window.toggleHomeStats = toggleHomeStats;
+
+// ===== MÁSCARAS DE FORMULÁRIO =====
+function cpfMask(el) {
+    let v = el.value.replace(/\D/g, '').slice(0, 11);
+    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+    el.value = v;
+}
+window.cpfMask = cpfMask;
+
+function cepMask(el) {
+    let v = el.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length > 5) v = v.replace(/(\d{5})(\d{1,3})/, '$1-$2');
+    el.value = v;
+}
+window.cepMask = cepMask;
+
+async function buscarCEP(cepRaw) {
+    const cep = (cepRaw || '').replace(/\D/g, '');
+    if (cep.length !== 8) return;
+    try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (data.erro) { showToast('⚠️ CEP não encontrado'); return; }
+        const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+        // Form de nova OS
+        set('f-endereco', data.logradouro);
+        set('f-bairro', data.bairro);
+        set('f-cidade', data.localidade);
+        set('f-estado', data.uf);
+        // Form de edição de OS
+        set('edit-os-endereco', data.logradouro);
+        set('edit-os-bairro', data.bairro);
+        set('edit-os-cidade', data.localidade);
+        set('edit-os-estado', data.uf);
+        showToast('✅ Endereço preenchido pelo CEP');
+    } catch (e) { showToast('❌ Erro ao buscar CEP'); }
+}
+window.buscarCEP = buscarCEP;
+
+// ===== STORAGE DE FOTOS =====
+function dataURLtoBlob(dataURL) {
+    const [header, data] = dataURL.split(',');
+    const mimeType = (header.match(/:(.*?);/) || [])[1] || 'image/jpeg';
+    const binary = atob(data);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+    return new Blob([array], { type: mimeType });
+}
+
+async function uploadPhotoToStorage(dataURL, path) {
+    const blob = dataURLtoBlob(dataURL);
+    const ref = storageRef(storage, path);
+    await uploadBytes(ref, blob);
+    return await getDownloadURL(ref);
+}
+
+async function deletePhotoFromStorage(url) {
+    if (!url || !url.startsWith('https://')) return;
+    try {
+        const ref = storageRef(storage, url);
+        await deleteObject(ref);
+    } catch (e) {
+        try {
+            const u = new URL(url);
+            const path = decodeURIComponent(u.pathname.split('/o/')[1]?.split('?')[0] || '');
+            if (path) await deleteObject(storageRef(storage, path));
+        } catch {}
+    }
 }
 
 // ===== BANCO DE FOTOS EXTERNO =====
@@ -336,6 +433,7 @@ const DB = {
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
         try {
+            await authReady;
             localOS = []; localClients = []; localCounter = 0;
             const osSnap = await getDocs(collection(db, "os"));
             localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -469,9 +567,32 @@ async function saveOS() {
     }
     const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
     const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
+
+    // Upload das fotos para Firebase Storage (substitui Base64 por URLs)
+    if (tempPhotos.length > 0 || currentLockPhoto) showToast('⏳ Enviando fotos...');
+    const photoUrls = [];
+    for (let i = 0; i < tempPhotos.length; i++) {
+        try {
+            const url = await uploadPhotoToStorage(tempPhotos[i], `os/${osId}/photos/photo_${i}_${Date.now()}.jpg`);
+            photoUrls.push(url);
+        } catch (e) {
+            console.warn('⚠️ Foto não enviada para Storage, mantendo Base64:', e);
+            photoUrls.push(tempPhotos[i]);
+        }
+    }
+    let lockPhotoUrl = null;
+    if (currentLockPhoto) {
+        try {
+            lockPhotoUrl = await uploadPhotoToStorage(currentLockPhoto, `os/${osId}/lockphoto/lock_${Date.now()}.jpg`);
+        } catch (e) {
+            console.warn('⚠️ LockPhoto não enviada para Storage:', e);
+            lockPhotoUrl = currentLockPhoto;
+        }
+    }
+
     const os = {
         id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
-        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: currentLockPhoto, photos: tempPhotos, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
+        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
         orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
         timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null
@@ -1005,7 +1126,42 @@ async function saveInternalObservation() {
 
 function addObservation() { const input = document.getElementById('obs-input'); const text = input?.value.trim(); if (!text || !currentOS) return; currentOS.timeline.push({ date: new Date().toISOString(), text: `Nota: ${text}` }); currentOS.updatedAt = new Date().toISOString(); saveCurrentOS(); renderDetail(); showToast('📝 Adicionada'); input.value = ''; window.markSaved(); }
 
-function addPhotoToOS() { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = function(e) { for (let f of e.target.files) { const r = new FileReader(); r.onload = function(ev) { const img = new Image(); img.onload = async function() { const c = document.createElement('canvas'); const max = 800; let w = img.width, h = img.height; if(w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); currentOS.photos.push(c.toDataURL('image/jpeg', 0.7)); await saveCurrentOS(); renderDetail(); showToast('📷 Adicionada'); window.markSaved(); }; img.src = ev.target.result; }; r.readAsDataURL(f); } }; input.click(); }
+function addPhotoToOS() {
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
+    input.onchange = function(e) {
+        for (let f of e.target.files) {
+            const r = new FileReader();
+            r.onload = function(ev) {
+                const img = new Image();
+                img.onload = async function() {
+                    const c = document.createElement('canvas');
+                    const max = 800; let w = img.width, h = img.height;
+                    if (w > max || h > max) w > h ? (h = h * max / w, w = max) : (w = w * max / h, h = max);
+                    c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
+                    const dataURL = c.toDataURL('image/jpeg', 0.7);
+                    if (!currentOS.photos) currentOS.photos = [];
+                    // Upload para Storage
+                    let photoUrl = dataURL;
+                    try {
+                        const idx = currentOS.photos.length;
+                        photoUrl = await uploadPhotoToStorage(dataURL, `os/${currentOS.id}/photos/photo_${idx}_${Date.now()}.jpg`);
+                    } catch (e2) {
+                        console.warn('⚠️ Upload falhou, mantendo Base64:', e2);
+                    }
+                    currentOS.photos.push(photoUrl);
+                    await saveCurrentOS();
+                    renderDetail();
+                    showToast('📷 Foto adicionada');
+                    window.markSaved();
+                };
+                img.src = ev.target.result;
+            };
+            r.readAsDataURL(f);
+        }
+    };
+    input.click();
+}
 
 async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
@@ -1015,7 +1171,26 @@ function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone
 
 async function saveCurrentOS() { if (!currentOS) return; await DB.updateOS(currentOS); }
 
-async function deleteOS(id) { const c = prompt("Digite 77 para confirmar a exclusão"); if (c !== "77") { alert("Exclusão cancelada."); return; } try { await deleteDoc(doc(db, "os", id)); localOS = localOS.filter(o => o.id !== id); updateStats(); renderList(); showToast("🗑️ OS excluída."); window.markSaved(); } catch(e) { console.error(e); alert("Erro ao excluir."); } }
+async function deleteOS(id) {
+    const c = prompt("Digite 77 para confirmar a exclusão");
+    if (c !== "77") { alert("Exclusão cancelada."); return; }
+    try {
+        const osData = localOS.find(o => o.id === id);
+        await deleteDoc(doc(db, "os", id));
+        // Limpar fotos do Storage
+        if (osData) {
+            const allPhotos = [...(osData.photos || []), osData.lockPhoto].filter(Boolean);
+            for (const url of allPhotos) {
+                await deletePhotoFromStorage(url);
+            }
+        }
+        localOS = localOS.filter(o => o.id !== id);
+        if (currentOS && currentOS.id === id) { currentOS = null; showScreen('home'); }
+        else { updateStats(); renderList(); }
+        showToast("🗑️ OS excluída.");
+        window.markSaved();
+    } catch(e) { console.error(e); alert("Erro ao excluir."); }
+}
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${(os.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
 
@@ -1218,7 +1393,6 @@ function _retornoMensagensPadrao() {
 }
 
 function renderRetornoPanelHTML(os) {
-    console.log('🔔 Central de Retorno carregada — OS:', os.id);
     const r = os.retorno || {};
     const status = r.status || {};
     const historico = r.historico || [];
@@ -1532,8 +1706,8 @@ window._executePrint = function() {
     let cfg = { logo: '', garantias: [] };
     try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
-    const selectedIds = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => parseInt(c.dataset.id));
-    const selecionadas = garantias.filter(g => selectedIds.includes(g.id));
+    const selectedIds = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
+    const selecionadas = garantias.filter(g => selectedIds.includes(String(g.id)));
     closeModal();
     const loja = cfg.loja || {};
     const lojaNome = loja.nome || 'Cell City Informática';
@@ -1979,7 +2153,22 @@ function renderStarsHTML(rating) {
 }
 
 // ===== GLOBAL SEARCH =====
-function globalSearch() { const t = (document.getElementById('global-search')?.value || '').trim().toLowerCase(); const c = document.getElementById('search-results'); if (!c) return; if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`;
+function globalSearch() {
+    // Aceita o termo digitado em qualquer input de busca ativo
+    const t = (document.getElementById('global-search')?.value || document.getElementById('home-search')?.value || '').trim().toLowerCase();
+    const c = document.getElementById('search-results');
+    if (!c) {
+        // Chamado da home: navegar para a tela de pesquisa e repetir
+        if (t.length >= 2) {
+            showScreen('pesquisar');
+            setTimeout(() => {
+                const si = document.getElementById('global-search');
+                if (si) { si.value = t; si.focus(); globalSearch(); }
+            }, 150);
+        }
+        return;
+    }
+    if (t.length < 2) { c.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Digite pelo menos 2 caracteres</p></div>`; return; } const orders = DB.getOS().filter(o => (o.clientName||'').toLowerCase().includes(t) || (o.phone||'').includes(t) || (o.id||'').toLowerCase().includes(t) || (o.model||'').toLowerCase().includes(t)); const clients = DB.getClients().filter(cl => (cl.name||'').toLowerCase().includes(t) || (cl.phone||'').includes(t)); let h = ''; if (clients.length > 0) h += `<div class="form-section"><div class="form-section-title">Clientes</div>${clients.map(cl => `<div class="client-card" onclick="showClientDetail('${cl.phone}')"><div class="client-card-name">${cl.name||''}</div><div class="client-card-phone">📞 ${cl.phone||''}</div></div>`).join('')}</div>`;
     if (orders.length > 0) {
         const orderCards = orders.map(os => {
             const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
@@ -2063,6 +2252,7 @@ function verificarConversaoPortalOS() {
 // ===== INIT =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
+    await authReady;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
     const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
