@@ -335,7 +335,7 @@
       const { authReady }              = await import('/CRM/scripts/firebase.js');
       const { loadContext, getTenant } = await import('/CRM/shared/tenant.js');
       const user = await authReady;
-      if (user && !user.isAnonymous) {
+      if (user) {
         if (!getTenant()) {
           await loadContext(user.uid);
         }

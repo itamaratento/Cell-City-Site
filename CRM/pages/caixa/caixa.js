@@ -17,7 +17,7 @@ import {
     runTransaction,
     serverTimestamp
 } from "../../scripts/firebase.js";
-import { getEmpresaId } from "../../shared/tenant.js";
+import { getEmpresaId, tenantReady } from "../../shared/tenant.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
@@ -106,11 +106,14 @@ let ultimoResumoLiveExecutado = 0;
 
 // ===== INICIALIZAÇÃO =====
 async function init() {
-    // Aguarda autenticação estabelecida — evita PERMISSION_DENIED na primeira carga
     await authReady;
-    // Aguarda contexto tenant — garante empresa_id correto antes das queries
-    await (window._ccTenantReady || Promise.resolve());
-    _empresaId = getEmpresaId();
+    await tenantReady;
+    const empresaId = getEmpresaId();
+    if (!empresaId) {
+        console.error('[CAIXA] empresa_id não resolvido — init abortado');
+        return;
+    }
+    _empresaId = empresaId;
     console.log('✅ Caixa V19 inicializado. empresa_id:', _empresaId);
     // Ativa filtro "hoje" por padrão na UI
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));
@@ -1043,6 +1046,12 @@ async function salvarLancamento() {
 const COLLECTION_PRODUTOS = "estoque_produtos";
 
 async function validarEstoque(descricao, categoria) {
+    // Só valida estoque para categorias de venda de produtos físicos
+    const catNorm = (categoria || '').toUpperCase();
+    const categoriasVenda = ['VENDAS', 'VENDA', 'PRODUTO', 'PRODUTOS'];
+    if (!categoriasVenda.some(v => catNorm.includes(v))) {
+        return { status: 'nao_aplicavel' };
+    }
     try {
         const termo = descricao.trim().toUpperCase();
         if (!termo) return { status: 'nao_encontrado' };

@@ -1,4 +1,4 @@
-import { db, authReady, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { db, authReady, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -555,71 +555,81 @@ async function saveOS() {
     const garantiaId = document.getElementById('f-garantia-modelo')?.value || '';
     const imei1 = (document.getElementById('f-imei1')?.value || '').trim();
     const imei2 = (document.getElementById('f-imei2')?.value || '').trim();
-    // Orçamento 1 e Orçamento 2
     const orc1Desc = (document.getElementById('f-orc1-desc')?.value || '').trim();
     const orc1Valor = parseFloat((document.getElementById('f-orc1-valor')?.value || '').replace(',', '.')) || 0;
     const orc2Desc = (document.getElementById('f-orc2-desc')?.value || '').trim();
     const orc2Valor = parseFloat((document.getElementById('f-orc2-valor')?.value || '').replace(',', '.')) || 0;
-    if (!nome || !telefone || !modelo || !defeito) return showToast('⚠️ Preencha todos os campos obrigatórios');
+
+    if (!nome || !telefone || !modelo || !defeito) return showToast('⚠️ Preencha: Nome, Telefone, Modelo e Defeito');
     if (lockType === 'Padrao' && (!window.tempPatternSequence || window.tempPatternSequence.length < 4)) {
         return showToast('⚠️ Registre um padrão com pelo menos 4 pontos');
     }
-    const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
-    const num = await DB.incCounter(); const osId = `OS-${String(num).padStart(4, '0')}`;
 
-    // Upload das fotos para Firebase Storage (substitui Base64 por URLs)
-    if (tempPhotos.length > 0 || currentLockPhoto) showToast('⏳ Enviando fotos...');
-    const photoUrls = [];
-    for (let i = 0; i < tempPhotos.length; i++) {
-        try {
-            const url = await uploadPhotoToStorage(tempPhotos[i], `os/${osId}/photos/photo_${i}_${Date.now()}.jpg`);
-            photoUrls.push(url);
-        } catch (e) {
-            console.warn('⚠️ Foto não enviada para Storage, mantendo Base64:', e);
-            photoUrls.push(tempPhotos[i]);
-        }
-    }
-    let lockPhotoUrl = null;
-    if (currentLockPhoto) {
-        try {
-            lockPhotoUrl = await uploadPhotoToStorage(currentLockPhoto, `os/${osId}/lockphoto/lock_${Date.now()}.jpg`);
-        } catch (e) {
-            console.warn('⚠️ LockPhoto não enviada para Storage:', e);
-            lockPhotoUrl = currentLockPhoto;
-        }
-    }
+    try {
+        const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
+        const num = await DB.incCounter();
+        const osId = `OS-${String(num).padStart(4, '0')}`;
 
-    const os = {
-        id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito, valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: "",
-        internalObservation: "", password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls, entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
-        orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
-        timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-        origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null
-    };
-    if (lockType === 'Padrao' && window.tempPatternSequence && window.tempPatternSequence.length > 0) {
-        os.patternSequence = window.tempPatternSequence;
-    }
-    await DB.addOS(os); await updateClientHistory(telefone, nome, osId);
-    runAutomacoesOS(os);
-    if (preOSPendente) {
-        try {
-            await updateDoc(doc(db, 'pre_os', preOSPendente), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() });
-            console.log('✅ [Conversão] Pré-OS', preOSPendente, 'marcada como CONVERTIDA e vinculada a', osId);
-        } catch (e) {
-            console.warn('⚠️ [Conversão] OS criada, mas não foi possível marcar a Pré-OS como convertida:', e);
+        if (tempPhotos.length > 0 || currentLockPhoto) showToast('⏳ Enviando fotos...');
+        const photoUrls = [];
+        for (let i = 0; i < tempPhotos.length; i++) {
+            try {
+                const url = await uploadPhotoToStorage(tempPhotos[i], `os/${osId}/photos/photo_${i}_${Date.now()}.jpg`);
+                photoUrls.push(url);
+            } catch (e) {
+                console.warn('⚠️ Foto não enviada para Storage, mantendo Base64:', e);
+                photoUrls.push(tempPhotos[i]);
+            }
         }
-        preOSPendente = null;
-    }
-    if (portalOSPendente) {
-        try {
-            await updateDoc(doc(db, 'solicitacoes_diagnostico', portalOSPendente), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() });
-            console.log('✅ [Portal] Solicitação de diagnóstico', portalOSPendente, 'marcada como convertida e vinculada a', osId);
-        } catch (e) {
-            console.warn('⚠️ [Portal] OS criada, mas não foi possível marcar a solicitação como convertida:', e);
+        let lockPhotoUrl = null;
+        if (currentLockPhoto) {
+            try {
+                lockPhotoUrl = await uploadPhotoToStorage(currentLockPhoto, `os/${osId}/lockphoto/lock_${Date.now()}.jpg`);
+            } catch (e) {
+                console.warn('⚠️ LockPhoto não enviada para Storage:', e);
+                lockPhotoUrl = currentLockPhoto;
+            }
         }
-        portalOSPendente = null;
+
+        const os = {
+            id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null,
+            endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null,
+            cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito,
+            valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
+            password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls,
+            entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
+            garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
+            orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
+            timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }],
+            createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+            origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null
+        };
+        if (lockType === 'Padrao' && window.tempPatternSequence?.length > 0) {
+            os.patternSequence = window.tempPatternSequence;
+        }
+
+        await DB.addOS(os);
+        await updateClientHistory(telefone, nome, osId);
+        runAutomacoesOS(os);
+
+        if (preOSPendente) {
+            try { await updateDoc(doc(db, 'pre_os', preOSPendente), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() }); }
+            catch (e) { console.warn('⚠️ Pré-OS não marcada como convertida:', e); }
+            preOSPendente = null;
+        }
+        if (portalOSPendente) {
+            try { await updateDoc(doc(db, 'solicitacoes_diagnostico', portalOSPendente), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() }); }
+            catch (e) { console.warn('⚠️ Solicitação portal não marcada como convertida:', e); }
+            portalOSPendente = null;
+        }
+
+        showToast(`✅ ${osId} criada com sucesso!`);
+        window.markSaved();
+        showScreen('home');
+    } catch (e) {
+        console.error('❌ Erro ao criar OS:', e);
+        showToast(`❌ Erro ao criar OS: ${e.message || e.code || 'verifique o console'}`);
     }
-    showToast(`✅ ${osId} criada com sucesso!`); window.markSaved(); showScreen('home');
 }
 
 async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }

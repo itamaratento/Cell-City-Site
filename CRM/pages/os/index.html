@@ -303,7 +303,7 @@
 
     <script src="../../shared/brand-header.js?v=20260612-accordion-obs-v3"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
-<script type="module" src="os.js?v=20260612-accordion-obs-v4"></script>
+<script type="module" src="os.js?v=20260628-fix-saveos"></script>
 <script type="module" src="../../shared/dock.js?v=20260612-accordion-obs-v3"></script>
 <script>
 function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }
