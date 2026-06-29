@@ -1,4 +1,5 @@
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, authReady }
+import { initModulo } from '/CRM/scripts/kernel.js';
+import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp }
     from '../../scripts/firebase.js';
 
 const COL = 'contas_numeros';
@@ -199,4 +200,4 @@ window.Contas = {
 };
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-authReady.then(() => carregar().catch(console.error));
+initModulo().then(ctx => { if (ctx) carregar().catch(console.error); });

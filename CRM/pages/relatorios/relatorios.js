@@ -3,7 +3,8 @@
    Painel ao vivo via onSnapshot — modo Mês / Semana
    ============================================================ */
 
-import { db, collection, onSnapshot, authReady } from '../../scripts/firebase.js';
+import { initModulo } from '/CRM/scripts/kernel.js';
+import { db, collection, onSnapshot } from '../../scripts/firebase.js';
 
 // ===== PALETA DE CORES POR ANO =====
 const PALETA = [
@@ -889,12 +890,8 @@ function mostrarErroLoading(msg) {
 
 // ===== LISTENERS EM TEMPO REAL (onSnapshot) =====
 async function init() {
-  try {
-    await authReady; // aguarda autenticação anônima antes de abrir listeners
-  } catch (e) {
-    mostrarErroLoading('Falha na autenticação: ' + e.message);
-    return;
-  }
+  const ctx = await initModulo();
+  if (!ctx) return;
 
   onSnapshot(collection(db, 'os'), snap => {
     _os = snap.docs.map(d => d.data());

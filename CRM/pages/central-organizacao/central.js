@@ -1,4 +1,5 @@
-import { db, doc, getDoc, setDoc, serverTimestamp, authReady } from '../../scripts/firebase.js';
+import { initModulo } from '/CRM/scripts/kernel.js';
+import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase.js';
 
 const SECAO_DOC = 'central_organizacao';
 
@@ -326,6 +327,7 @@ document.querySelectorAll('.tab').forEach(btn => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-authReady.then(() => {
+initModulo().then(ctx => {
+    if (!ctx) return;
     Object.keys(estado).filter(k => k !== '_edit').forEach(secao => carregar(secao).catch(console.error));
 });

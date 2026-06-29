@@ -2,7 +2,8 @@
    CATÁLOGO — Painel Administrativo
    ============================================================ */
 
-import { db, authReady } from '../../scripts/firebase.js';
+import { initModulo } from '/CRM/scripts/kernel.js';
+import { db } from '../../scripts/firebase.js';
 import {
   collection, getDocs, doc, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, orderBy, serverTimestamp
@@ -24,7 +25,8 @@ const URL_PUBLICA = 'https://www.cellcityinformatica.com.br/catalogo.html';
 
 // ─── Init ─────────────────────────────────────────────────
 async function init() {
-  await authReady;
+  const ctx = await initModulo();
+  if (!ctx) return;
   document.getElementById('link-publico-url').textContent = URL_PUBLICA;
   document.getElementById('link-publico-href').href = URL_PUBLICA;
 
