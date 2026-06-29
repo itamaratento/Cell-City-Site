@@ -108,9 +108,11 @@ let ultimoResumoLiveExecutado = 0;
 async function init() {
     await authReady;
     await tenantReady;
-    const empresaId = getEmpresaId();
-    if (!empresaId) {
-        console.error('[CAIXA] empresa_id não resolvido — init abortado');
+    let empresaId;
+    try {
+        empresaId = getEmpresaId();
+    } catch (e) {
+        console.error('[CAIXA] Tenant não inicializado — init abortado:', e.message);
         return;
     }
     _empresaId = empresaId;

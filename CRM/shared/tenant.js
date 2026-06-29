@@ -89,13 +89,15 @@ export const tenantReady = new Promise(r => {
   _resolveTenantReady = (ctx) => { _tenantResolved = true; r(ctx); };
 });
 
-// Auto-resolve com fallback após 3s para não bloquear módulos em setup single-empresa
+// Segurança: se loadContext() nunca for chamado (ex.: brand-header.js não carregado),
+// resolve com null após 15s para não travar módulos indefinidamente.
+// NÃO usa cellcity-master como fallback — a falha deve ser visível.
 setTimeout(() => {
   if (!_tenantResolved) {
-    console.warn('[TENANT] Auto-resolve com contexto padrão (single-empresa).');
-    _resolveTenantReady({ empresa_id: 'cellcity-master', perfil: 'admin', bloqueado: false });
+    console.error('[TENANT] TIMEOUT 15s — loadContext() nunca foi chamado. Verifique brand-header.js e a sequência de inicialização.');
+    _resolveTenantReady(null);
   }
-}, 3000);
+}, 15000);
 
 function _readCache() {
   try { return JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch { return null; }
@@ -121,12 +123,19 @@ export function getTenant() {
 
 /**
  * empresa_id da sessão atual.
- * Retorna 'cellcity-master' como fallback seguro quando contexto não foi carregado.
- * Módulos DEVEM aguardar await window._ccTenantReady antes de usar este valor
- * em queries Firestore — caso contrário, pode retornar o fallback prematuramente.
+ * REQUER que `await tenantReady` tenha sido executado antes.
+ * Lança exceção se chamado antes de loadContext() concluir — nunca retorna fallback silencioso.
  */
 export function getEmpresaId() {
-  return getTenant()?.empresa_id || 'cellcity-master';
+  if (!_ctx || !_ctx.empresa_id) {
+    console.group('[TENANT] getEmpresaId() chamado antes da inicialização');
+    console.log('Contexto (_ctx):', _ctx);
+    console.log('Tenant Resolved:', _tenantResolved);
+    console.trace('getEmpresaId() — rastrear quem chamou antes do tempo');
+    console.groupEnd();
+    throw new Error('[TENANT] getEmpresaId() chamado antes da inicialização do tenant. Use: await authReady; await tenantReady;');
+  }
+  return _ctx.empresa_id;
 }
 
 /** Perfil do usuário atual. */
@@ -211,6 +220,19 @@ export function getWhiteLabel() {
 // ═══════════════════════════════════════════════════════════════
 
 export async function loadContext(uid) {
+  console.group('[TENANT] loadContext()');
+  console.log('uid:', uid);
+  console.log('_ctx atual:', _ctx);
+  console.log('tenantResolved:', _tenantResolved);
+  console.groupEnd();
+
+  if (!uid) {
+    console.error('[TENANT] loadContext() chamado sem uid — autenticação falhou. Resolvendo tenant como null.');
+    _ctx = null;
+    _resolveTenantReady(null);
+    return null;
+  }
+
   try {
     console.log('[TENANT] Carregando contexto para uid:', uid);
     const userSnap = await getDoc(doc(db, 'usuarios', uid));
@@ -301,12 +323,10 @@ export async function loadContext(uid) {
 
     return _ctx;
   } catch (err) {
-    console.error('[TENANT] Erro ao carregar contexto:', err.message);
-    // Fallback seguro para não travar o módulo
-    const ctx = { empresa_id: 'cellcity-master', perfil: 'admin', bloqueado: false };
-    _ctx = ctx;
-    _resolveTenantReady(ctx);
-    return ctx;
+    console.error('[TENANT] Erro ao carregar contexto:', err.message, err);
+    _ctx = null;
+    _resolveTenantReady(null);
+    throw err;
   }
 }
 
