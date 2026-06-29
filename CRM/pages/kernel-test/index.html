@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagnóstico do Sistema — Cell City</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0b0d; color: #e5e7eb;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      padding: 24px; font-size: 14px; line-height: 1.5;
+    }
+    h1 { font-size: 18px; font-weight: 800; color: #00e676; margin-bottom: 4px; }
+    .subtitulo { font-size: 12px; color: #6b7280; margin-bottom: 24px; }
+
+    /* ── Painel de status ── */
+    .painel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .painel h2 {
+      font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: #9ca3af; margin-bottom: 14px;
+    }
+    .item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .item:last-child { border-bottom: none; }
+    .item-nome { color: #d1d5db; }
+    .item-valor {
+      font-size: 12px; font-weight: 600;
+      padding: 2px 10px; border-radius: 20px;
+      min-width: 60px; text-align: center;
+    }
+    .ok    { background: rgba(0,200,83,0.15);  color: #00e676; }
+    .erro  { background: rgba(239,68,68,0.15); color: #f87171; }
+    .aviso { background: rgba(251,191,36,0.15);color: #fbbf24; }
+    .pend  { background: rgba(107,114,128,0.2);color: #9ca3af; }
+
+    /* ── Log ── */
+    .log-box {
+      background: #000; border-radius: 10px;
+      padding: 14px; font-family: monospace;
+      font-size: 12px; max-height: 300px;
+      overflow-y: auto; color: #6b7280;
+    }
+    .log-box .log-ok   { color: #00e676; }
+    .log-box .log-err  { color: #f87171; }
+    .log-box .log-warn { color: #fbbf24; }
+    .log-box .log-info { color: #60a5fa; }
+
+    /* ── Formulário de teste de login ── */
+    .form-teste input {
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: #e5e7eb; font-size: 14px;
+      padding: 9px 12px; outline: none; width: 100%; margin-bottom: 8px;
+    }
+    .form-teste input:focus { border-color: rgba(0,200,83,0.5); }
+
+    /* ── Botões ── */
+    .btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    button {
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 13px; font-weight: 600; padding: 9px 16px;
+      transition: opacity 150ms;
+    }
+    button:hover { opacity: 0.85; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary   { background: #00c853; color: #000; }
+    .btn-secondary { background: rgba(255,255,255,0.08); color: #e5e7eb; }
+    .btn-danger    { background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+
+    .resumo {
+      font-size: 13px; text-align: center; padding: 14px;
+      border-radius: 10px; margin-top: 8px; font-weight: 600;
+    }
+    .resumo.tudo-ok  { background: rgba(0,200,83,0.1);  color: #00e676; border: 1px solid rgba(0,200,83,0.2); }
+    .resumo.tem-erro { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
+  </style>
+</head>
+<body>
+
+<h1>🔍 Diagnóstico do Sistema</h1>
+<p class="subtitulo">Cell City Gestão Empresarial — Verificação de infraestrutura</p>
+
+<!-- ── 1. Ambiente ── -->
+<div class="painel">
+  <h2>1 — Ambiente e Navegador</h2>
+  <div class="item"><span class="item-nome">Navegador</span>       <span class="item-valor pend" id="s-browser">—</span></div>
+  <div class="item"><span class="item-nome">IndexedDB</span>       <span class="item-valor pend" id="s-idb">—</span></div>
+  <div class="item"><span class="item-nome">localStorage</span>    <span class="item-valor pend" id="s-ls">—</span></div>
+  <div class="item"><span class="item-nome">sessionStorage</span>  <span class="item-valor pend" id="s-ss">—</span></div>
+  <div class="item"><span class="item-nome">Service Worker</span>  <span class="item-valor pend" id="s-sw">—</span></div>
+  <div class="item"><span class="item-nome">Conexão</span>         <span class="item-valor pend" id="s-net">—</span></div>
+</div>
+
+<!-- ── 2. Firebase ── -->
+<div class="painel">
+  <h2>2 — Firebase e Firestore</h2>
+  <div class="item"><span class="item-nome">SDK carregado</span>   <span class="item-valor pend" id="s-sdk">—</span></div>
+  <div class="item"><span class="item-nome">Auth state</span>      <span class="item-valor pend" id="s-auth">—</span></div>
+  <div class="item"><span class="item-nome">Leitura Firestore</span><span class="item-valor pend" id="s-read">—</span></div>
+  <div class="item"><span class="item-nome">Escrita Firestore</span><span class="item-valor pend" id="s-write">—</span></div>
+</div>
+
+<!-- ── 3. Kernel ── -->
+<div class="painel">
+  <h2>3 — Kernel</h2>
+  <div class="item"><span class="item-nome">kernel.js carregado</span><span class="item-valor pend" id="s-kernel">—</span></div>
+  <div class="item"><span class="item-nome">Sessão ativa</span>       <span class="item-valor pend" id="s-sessao">—</span></div>
+  <div class="item"><span class="item-nome">Usuário</span>            <span class="item-valor pend" id="s-user">—</span></div>
+  <div class="item"><span class="item-nome">Empresa ID</span>         <span class="item-valor pend" id="s-empresa">—</span></div>
+  <div class="item"><span class="item-nome">Perfil</span>             <span class="item-valor pend" id="s-perfil">—</span></div>
+</div>
+
+<!-- ── 4. Teste de login ── -->
+<div class="painel">
+  <h2>4 — Teste de Login</h2>
+  <div class="form-teste">
+    <input type="email"    id="t-email" placeholder="E-mail" autocomplete="off">
+    <input type="password" id="t-senha" placeholder="Senha"  autocomplete="off">
+    <label style="display:flex;align-items:center;gap:8px;margin:4px 0 0;color:#9ca3af;font-size:13px;">
+      <input type="checkbox" id="t-lembrar"> Lembrar de mim
+    </label>
+  </div>
+  <div class="btns">
+    <button class="btn-primary"   id="btn-login">Testar login</button>
+    <button class="btn-secondary" id="btn-reload">Testar reload (sessão persiste?)</button>
+    <button class="btn-danger"    id="btn-logout">Testar logout</button>
+  </div>
+  <div class="item" style="margin-top:12px">
+    <span class="item-nome">Resultado do teste</span>
+    <span class="item-valor pend" id="s-login-teste">aguardando</span>
+  </div>
+</div>
+
+<!-- ── 5. Resumo ── -->
+<div id="resumo" class="resumo" style="display:none"></div>
+
+<!-- ── Log ── -->
+<div class="painel" style="margin-top:20px">
+  <h2>Log detalhado</h2>
+  <div class="log-box" id="log-box"></div>
+  <div class="btns" style="margin-top:12px">
+    <button class="btn-secondary" id="btn-run">▶ Rodar diagnóstico</button>
+    <button class="btn-secondary" id="btn-clear-log">Limpar log</button>
+  </div>
+</div>
+
+<script type="module">
+  import { auth, db, authReady }
+      from '/CRM/scripts/firebase.js';
+  import { initModulo, login, logout, getCtx, getUid, getEmpresaId, getNome, getPerfil }
+      from '/CRM/scripts/kernel.js';
+  import { onAuthStateChanged }
+      from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+  import { doc, setDoc, deleteDoc, serverTimestamp }
+      from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+  // ── Helpers de UI ──
+  const $ = id => document.getElementById(id);
+  const logBox = $('log-box');
+
+  function status(id, texto, tipo = 'ok') {
+    const el = $(id);
+    el.textContent = texto;
+    el.className = `item-valor ${tipo}`;
+  }
+
+  function log(msg, tipo = 'info') {
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    const linha = document.createElement('div');
+    linha.className = `log-${tipo}`;
+    linha.textContent = `[${agora}] ${msg}`;
+    logBox.appendChild(linha);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  // ── 1. Ambiente ──
+  function verificarAmbiente() {
+    log('Verificando ambiente...', 'info');
+
+    // Navegador
+    const ua = navigator.userAgent;
+    let browser = 'Desconhecido';
+    if (ua.includes('Firefox'))          browser = 'Firefox';
+    else if (ua.includes('Edg/'))        browser = 'Edge';
+    else if (ua.includes('Chrome'))      browser = 'Chrome';
+    else if (ua.includes('Safari'))      browser = 'Safari';
+    status('s-browser', browser, 'ok');
+    log(`Navegador: ${browser}`, 'ok');
+
+    // IndexedDB
+    try {
+      const r = indexedDB.open('_cc_test');
+      r.onsuccess = () => { status('s-idb', 'OK', 'ok'); log('IndexedDB: OK', 'ok'); r.result.close(); };
+      r.onerror   = () => { status('s-idb', 'Erro', 'erro'); log('IndexedDB: ERRO', 'err'); };
+    } catch { status('s-idb', 'Indisponível', 'erro'); log('IndexedDB: indisponível', 'err'); }
+
+    // localStorage
+    try {
+      localStorage.setItem('_cc_test', '1');
+      localStorage.removeItem('_cc_test');
+      status('s-ls', 'OK', 'ok'); log('localStorage: OK', 'ok');
+    } catch { status('s-ls', 'Bloqueado', 'erro'); log('localStorage: BLOQUEADO', 'err'); }
+
+    // sessionStorage
+    try {
+      sessionStorage.setItem('_cc_test', '1');
+      sessionStorage.removeItem('_cc_test');
+      status('s-ss', 'OK', 'ok'); log('sessionStorage: OK', 'ok');
+    } catch { status('s-ss', 'Bloqueado', 'erro'); log('sessionStorage: BLOQUEADO', 'err'); }
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      status('s-sw', 'Suportado', 'ok'); log('Service Worker: suportado', 'ok');
+    } else {
+      status('s-sw', 'Não suportado', 'aviso'); log('Service Worker: não suportado', 'warn');
+    }
+
+    // Conexão
+    if (navigator.onLine) {
+      status('s-net', 'Online', 'ok'); log('Conexão: online', 'ok');
+    } else {
+      status('s-net', 'Offline', 'erro'); log('Conexão: OFFLINE', 'err');
+    }
+  }
+
+  // ── 2. Firebase ──
+  async function verificarFirebase() {
+    log('Verificando Firebase...', 'info');
+
+    // SDK carregado
+    try {
+      if (db && auth) {
+        status('s-sdk', 'OK', 'ok'); log('Firebase SDK: carregado', 'ok');
+      } else throw new Error('db ou auth undefined');
+    } catch (e) {
+      status('s-sdk', 'Falhou', 'erro'); log(`Firebase SDK: ERRO — ${e.message}`, 'err');
+    }
+
+    // Auth state
+    const user = await authReady;
+    if (user && !user.isAnonymous) {
+      status('s-auth', 'Autenticado', 'ok');
+      log(`Auth: autenticado como ${user.email}`, 'ok');
+    } else if (user && user.isAnonymous) {
+      status('s-auth', 'Anônimo', 'aviso');
+      log('Auth: sessão anônima (não usa kernel.js)', 'warn');
+    } else {
+      status('s-auth', 'Não autenticado', 'aviso');
+      log('Auth: sem sessão', 'warn');
+    }
+
+    // Leitura Firestore (coleção pública)
+    try {
+      const { getDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
+      await getDoc(doc(db, 'config', 'impressao'));
+      status('s-read', 'OK', 'ok'); log('Leitura Firestore: OK', 'ok');
+    } catch (e) {
+      status('s-read', 'Falhou', 'erro');
+      log(`Leitura Firestore: ERRO — ${e.code || e.message}`, 'err');
+    }
+
+    // Escrita Firestore (documento de teste)
+    if (user) {
+      try {
+        const testRef = doc(db, '_diagnostico_temp', user.uid);
+        await setDoc(testRef, { ok: true, ts: serverTimestamp() });
+        await deleteDoc(testRef);
+        status('s-write', 'OK', 'ok'); log('Escrita Firestore: OK', 'ok');
+      } catch (e) {
+        status('s-write', 'Falhou', 'erro');
+        log(`Escrita Firestore: ERRO — ${e.code || e.message}`, 'err');
+      }
+    } else {
+      status('s-write', 'Sem auth', 'aviso');
+      log('Escrita Firestore: pulada (sem sessão)', 'warn');
+    }
+  }
+
+  // ── 3. Kernel ──
+  async function verificarKernel() {
+    log('Verificando kernel.js...', 'info');
+
+    // Carregamento
+    try {
+      if (typeof initModulo === 'function') {
+        status('s-kernel', 'OK', 'ok'); log('kernel.js: carregado', 'ok');
+      } else throw new Error('initModulo não é função');
+    } catch (e) {
+      status('s-kernel', 'Falhou', 'erro'); log(`kernel.js: ERRO — ${e.message}`, 'err');
+    }
+
+    // Sessão ativa
+    const ctx = getCtx();
+    if (ctx) {
+      status('s-sessao', 'Ativa', 'ok');   log('Sessão: ativa', 'ok');
+      status('s-user', ctx.email, 'ok');    log(`Usuário: ${ctx.email}`, 'ok');
+      status('s-empresa', ctx.empresaId, 'ok'); log(`Empresa ID: ${ctx.empresaId}`, 'ok');
+      status('s-perfil', ctx.perfil, 'ok'); log(`Perfil: ${ctx.perfil}`, 'ok');
+    } else {
+      status('s-sessao', 'Inativa', 'aviso'); log('Sessão: inativa (faça login)', 'warn');
+      status('s-user', '—', 'pend');
+      status('s-empresa', '—', 'pend');
+      status('s-perfil', '—', 'pend');
+    }
+  }
+
+  // ── Resumo final ──
+  function atualizarResumo() {
+    const erros = document.querySelectorAll('.item-valor.erro').length;
+    const avisos = document.querySelectorAll('.item-valor.aviso').length;
+    const el = $('resumo');
+    el.style.display = 'block';
+    if (erros > 0) {
+      el.className = 'resumo tem-erro';
+      el.textContent = `⚠️ ${erros} erro(s) encontrado(s). Verifique o log para detalhes.`;
+    } else if (avisos > 0) {
+      el.className = 'resumo tem-erro';
+      el.style.borderColor = 'rgba(251,191,36,0.3)';
+      el.style.background  = 'rgba(251,191,36,0.08)';
+      el.style.color = '#fbbf24';
+      el.textContent = `ℹ️ ${avisos} aviso(s). Sistema funcional mas com itens a revisar.`;
+    } else {
+      el.className = 'resumo tudo-ok';
+      el.textContent = '✅ Todos os componentes estão funcionando corretamente.';
+    }
+    log('Diagnóstico concluído.', 'info');
+  }
+
+  // ── Botão: rodar diagnóstico ──
+  $('btn-run').addEventListener('click', async () => {
+    $('btn-run').disabled = true;
+    $('btn-run').textContent = '⏳ Verificando...';
+    verificarAmbiente();
+    await verificarFirebase();
+    await verificarKernel();
+    atualizarResumo();
+    $('btn-run').disabled = false;
+    $('btn-run').textContent = '▶ Rodar diagnóstico';
+  });
+
+  $('btn-clear-log').addEventListener('click', () => { logBox.innerHTML = ''; });
+
+  // ── Botão: testar login ──
+  $('btn-login').addEventListener('click', async () => {
+    const email   = $('t-email').value.trim();
+    const senha   = $('t-senha').value;
+    const lembrar = $('t-lembrar').checked;
+    if (!email || !senha) { log('Preencha e-mail e senha para testar.', 'warn'); return; }
+
+    status('s-login-teste', 'testando…', 'pend');
+    log(`Tentando login: ${email} | lembrar=${lembrar}`, 'info');
+    try {
+      await login(email, senha, lembrar);
+      status('s-login-teste', 'OK', 'ok');
+      log(`✅ Login bem-sucedido: ${email}`, 'ok');
+      // Atualiza painel kernel
+      await verificarKernel();
+    } catch (e) {
+      status('s-login-teste', 'Falhou', 'erro');
+      log(`❌ Login falhou: ${e.code || e.message}`, 'err');
+    }
+  });
+
+  // ── Botão: testar logout ──
+  $('btn-logout').addEventListener('click', async () => {
+    log('Executando logout...', 'info');
+    status('s-login-teste', 'logout…', 'pend');
+    try {
+      // logout() do kernel redireciona para login.html.
+      // Aqui usamos signOut direto para não sair da página de diagnóstico.
+      const { signOut } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js');
+      await signOut(auth);
+      localStorage.removeItem('cc_kernel_v1');
+      status('s-login-teste', 'Logout OK', 'ok');
+      log('Logout bem-sucedido. Sessão encerrada.', 'ok');
+      await verificarKernel();
+    } catch (e) {
+      status('s-login-teste', 'Erro logout', 'erro');
+      log(`Logout falhou: ${e.message}`, 'err');
+    }
+  });
+
+  // ── Botão: testar reload ──
+  $('btn-reload').addEventListener('click', () => {
+    log('Recarregando página para testar persistência da sessão...', 'info');
+    location.reload();
+  });
+
+  // ── Roda automaticamente ao carregar ──
+  (async () => {
+    log('Iniciando diagnóstico automático...', 'info');
+    verificarAmbiente();
+    await verificarFirebase();
+    await verificarKernel();
+    atualizarResumo();
+  })();
+</script>
+
+</body>
+</html>

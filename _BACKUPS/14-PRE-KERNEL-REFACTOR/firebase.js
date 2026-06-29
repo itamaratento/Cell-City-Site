@@ -20,6 +20,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
   getAuth,
+  signInAnonymously,
   onAuthStateChanged,
   setPersistence,
   browserLocalPersistence
@@ -58,28 +59,32 @@ async function getFirebaseStorage() {
     }
 }
 
-// ===== AUTENTICAÇÃO =====
-// A autenticação real é gerenciada pelo kernel.js (signInWithEmailAndPassword).
-// Este arquivo apenas expõe `auth` e resolve `authReady` com o estado atual.
-// Módulos que ainda não migraram para kernel.js continuam funcionando enquanto
-// houver uma sessão Firebase ativa (real ou anônima legada).
+// ===== AUTENTICAÇÃO ANÔNIMA (compartilhada por todas as páginas) =====
+// Garante que TODAS as páginas que importam este arquivo tenham um usuário
+// autenticado, satisfazendo as regras do Firestore (request.auth != null).
+// O Firestore aguarda automaticamente o token de auth antes de enviar as
+// requisições, então não é preciso alterar as páginas que já usam `db`.
 const auth = getAuth(app);
 
-// Garante que sessões reais persistam entre visitas
+// Garante persistência local antes de qualquer operação de auth
+// (evita logout ao atualizar a página em qualquer browser)
 setPersistence(auth, browserLocalPersistence).catch(() => {});
 
-// Resolve com o usuário atual na primeira mudança de estado.
-// Com kernel.js ativo: resolve com o usuário real já autenticado.
-// Sem sessão ativa: resolve com null (módulo deve usar kernel.initModulo()).
 const authReady = new Promise((resolve) => {
   const unsubscribe = onAuthStateChanged(auth, (user) => {
-    unsubscribe();
-    resolve(user ?? null);
+    if (user) {
+      unsubscribe(); // Para de escutar após primeira resolução
+      resolve(user);
+    } else {
+      signInAnonymously(auth).then((cred) => {
+        resolve(cred.user);
+      }).catch((e) => {
+        console.warn('⚠️ Falha na autenticação anônima:', e);
+        resolve(null);
+      });
+    }
   });
 });
-
-// Retorna o usuário atual de forma síncrona (null se não autenticado).
-function getAuthUser() { return auth.currentUser; }
 
 // NOTA: o antigo adaptador `FirestoreDB` e a função `listenToOrders` foram
 // removidos — apontavam para coleções legadas ("orders"/"clients") que nenhuma
@@ -91,7 +96,6 @@ export {
   db,
   auth,
   authReady,
-  getAuthUser,
   getFirebaseStorage,
   setPersistence,
   browserLocalPersistence,

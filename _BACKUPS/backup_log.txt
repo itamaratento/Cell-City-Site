@@ -59,3 +59,4 @@ sw.js: v11 | firebase.json: public=CRM | rules: request.auth!=null
 31 módulos: caixa, os, dashboard, pos-venda, clientes, financeiro, estoque + outros
 Pendente: validação em browser + deploy firebase
 ----------------------------------------
+seg. 29 jun 2026 10:56:13 -03: backup 14-PRE-KERNEL-REFACTOR criado
