@@ -20,7 +20,9 @@
    ============================================================ */
 
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
-import { getUid, onUid } from './session.js';
+import { initModulo } from '../scripts/kernel.js';
+
+let _uid = null;
 
 export function syncPortalKeys(keys) {
   const watched = new Map();
@@ -28,9 +30,10 @@ export function syncPortalKeys(keys) {
   let applyingRemote = false;
   let unsubs = [];
 
-  const refOf = (docId) => doc(db, 'usuarios', getUid(), 'portal-tecnico', docId);
+  const refOf = (docId) => doc(db, 'usuarios', _uid, 'portal-tecnico', docId);
 
   function push(key) {
+    if (!_uid) return;
     const meta = watched.get(key);
     if (!meta) return;
     let valor;
@@ -40,20 +43,18 @@ export function syncPortalKeys(keys) {
       .catch(e => console.warn('⚠️ portal-sync push', key, e));
   }
 
-  // Captura gravações locais sem alterar as funções save* da página.
-  const origSet = localStorage.setItem.bind(localStorage);
-  localStorage.setItem = function (k, v) {
-    origSet(k, v);
-    if (!applyingRemote && watched.has(k)) push(k);
-  };
-
   function subscribe() {
+    const origSet = localStorage.setItem.bind(localStorage);
+    localStorage.setItem = function (k, v) {
+      origSet(k, v);
+      if (!applyingRemote && watched.has(k)) push(k);
+    };
+
     unsubs.forEach(u => { try { u(); } catch {} });
     unsubs = [];
     keys.forEach(({ key, docId, onRemote }) => {
       const un = onSnapshot(refOf(docId), (snap) => {
         if (!snap.exists()) {
-          // Migração 1ª vez: já existe algo localmente → sobe para o Firestore.
           if (localStorage.getItem(key) != null) push(key);
           return;
         }
@@ -66,7 +67,6 @@ export function syncPortalKeys(keys) {
           if (typeof onRemote === 'function') {
             try { onRemote(); } catch (e) { console.warn('portal-sync onRemote', e); }
           }
-          // Evento universal — a página re-renderiza mesmo com escopo IIFE.
           window.dispatchEvent(new CustomEvent('cc-portal-synced', { detail: { key, docId } }));
         }
       }, (e) => console.warn('⚠️ portal-sync onSnapshot', docId, e));
@@ -74,5 +74,9 @@ export function syncPortalKeys(keys) {
     });
   }
 
-  onUid(() => subscribe());
+  initModulo().then(ctx => {
+    if (!ctx) return;
+    _uid = ctx.uid;
+    subscribe();
+  });
 }

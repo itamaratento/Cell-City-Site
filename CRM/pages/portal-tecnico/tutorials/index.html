@@ -583,7 +583,7 @@
             if (window.FirebaseFirestore && window.dbFirestore) {
                 var listaAtualizada = load();
                 FirebaseFirestore.setDoc(
-                    FirebaseFirestore.doc(window.dbFirestore, 'usuarios', 'loja-cellcity', 'portal-tecnico', 'tutoriais'),
+                    FirebaseFirestore.doc(window.dbFirestore, 'usuarios', window._ccUid || 'loja-cellcity', 'portal-tecnico', 'tutoriais'),
                     { valor: listaAtualizada, atualizadoEm: FirebaseFirestore.serverTimestamp() }
                 ).catch(function (e) {
                     console.warn('⚠️ Falha ao gravar exclusão diretamente no Firestore:', e);

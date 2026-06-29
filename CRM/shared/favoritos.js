@@ -13,7 +13,9 @@
    ============================================================ */
 
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
-import { getUid, onUid } from './session.js';
+import { initModulo } from '../scripts/kernel.js';
+
+let _uid = null;
 
 const STORAGE_KEY = 'cc_favoritos';            // cache local (pintura rápida)
 const isDashboard = window.location.pathname.includes('/dashboard/');
@@ -69,7 +71,7 @@ function sanitize(arr) {
 }
 
 function favDocRef() {
-  return doc(db, 'favoritos_usuarios', getUid());
+  return doc(db, 'favoritos_usuarios', _uid);
 }
 
 /* Lê o estado atual (memória, com fallback no cache local p/ 1ª pintura). */
@@ -509,11 +511,13 @@ function render() {
 function init() {
   injectStyles();
   render();
-  // Re-renderiza quando favoritos mudarem (nesta aba ou em outra)
   window.addEventListener('cc-favoritos-changed', render);
   window.addEventListener('storage', (e) => { if (e.key === STORAGE_KEY) render(); });
-  // Sincronização em tempo real via Firestore — (re)assina ao definir/trocar uid
-  onUid(() => subscribeFavoritos());
+  initModulo().then(ctx => {
+    if (!ctx) return;
+    _uid = ctx.uid;
+    subscribeFavoritos();
+  });
 }
 
 if (document.readyState === 'loading') {

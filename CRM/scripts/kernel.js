@@ -66,6 +66,10 @@ onAuthStateChanged(auth, async (user) => {
     if (!_readyResolved) {
         _readyResolved = true;
         _resolveReady(_ctx);
+        if (_ctx) {
+            window._ccUid = _ctx.uid;
+            window.dispatchEvent(new CustomEvent('kernel-ready', { detail: _ctx }));
+        }
     }
 });
 

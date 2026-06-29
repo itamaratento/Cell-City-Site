@@ -113,13 +113,11 @@ export {
   limit
 };
 
-// ===== GLOBALS PARA DEBUG (opcional) =====
+// ===== GLOBALS para scripts inline (operações user-triggered) =====
 if (typeof window !== 'undefined') {
   window.dbFirestore = db;
   window.FirebaseFirestore = {
     collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc,
     query, orderBy, onSnapshot, runTransaction, serverTimestamp
   };
-  console.log("🔥 Firebase global carregado");
-  window.dispatchEvent(new CustomEvent("firebase-ready", { detail: { db } }));
 }

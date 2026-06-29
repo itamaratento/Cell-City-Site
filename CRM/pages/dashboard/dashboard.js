@@ -3,8 +3,10 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ✅ ETAPA 1: Data completa + Relógio + Logo + Alertas em modo seguro
 ✅ ETAPA 2: Meta Semanal conectada ao resumo_live do Firestore
 ============================================ */
+import { initModulo } from '/CRM/scripts/kernel.js';
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
-import { getUid, onUid } from "../../shared/session.js";
+
+let _uid = null;
 
 
 class Dashboard {
@@ -153,7 +155,7 @@ class Dashboard {
     if (!btnNotas || !panel || !textarea) return;
 
     // Identidade ESTÁVEL da conta (substitui o antigo cc_nota_uid aleatório).
-    let docRef = doc(db, 'notas_usuarios', getUid());
+    let docRef = doc(db, 'notas_usuarios', _uid);
     let saveTimer = null;
     let notaUnsub = null;
 
@@ -162,7 +164,7 @@ class Dashboard {
     // Sincronização em tempo real — aplica valor remoto quando não está digitando
     const assinarNota = () => {
       if (notaUnsub) { notaUnsub(); notaUnsub = null; }
-      docRef = doc(db, 'notas_usuarios', getUid());
+      docRef = doc(db, 'notas_usuarios', _uid);
       notaUnsub = onSnapshot(docRef, (snap) => {
         const remoto = snap.exists() ? (snap.data().conteudo || '') : '';
         if (document.activeElement !== textarea && textarea.value !== remoto) {
@@ -171,7 +173,7 @@ class Dashboard {
         setStatus('✓ sincronizado');
       }, () => setStatus(''));
     };
-    onUid(() => assinarNota());
+    assinarNota();
 
     // Salva nota no Firestore (debounce 1s)
     const salvarNota = () => {
@@ -183,7 +185,7 @@ class Dashboard {
           await setDoc(docRef, {
             conteudo:    textarea.value,
             atualizadoEm: serverTimestamp(),
-            userId: getUid()
+            userId: _uid
           });
           setStatus('✓ salvo');
         } catch { setStatus('⚠ erro ao salvar'); }
@@ -1511,7 +1513,7 @@ class Dashboard {
     const JS_DIA = ['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
     const diaHoje = JS_DIA[new Date().getDay()];
 
-    const userId = getUid();
+    const userId = _uid;
     const ref = doc(db, 'tarefas_semana', userId);
     let tarefas = {};
 
@@ -1638,7 +1640,7 @@ class Dashboard {
     const statusEl = document.getElementById('sidebar-notas-status');
     if (!area) return;
 
-    const userId = getUid();
+    const userId = _uid;
     const ref    = doc(db, 'notas_usuarios', userId);
     let saveTimer = null;
 
@@ -2124,7 +2126,7 @@ class Dashboard {
     // Envia config para Service Worker
     const enviarConfigSW = (config) => {
       if (navigator.serviceWorker.controller) {
-        const userId = getUid();
+        const userId = _uid;
         navigator.serviceWorker.controller.postMessage({
           tipo: 'iniciarRelogio',
           config: config,
@@ -2351,7 +2353,7 @@ class Dashboard {
       // Salva no Firebase
       try {
         const { setDoc } = await import('../../scripts/firebase.js');
-        const userId = getUid();
+        const userId = _uid;
         const docRef = doc(db, 'alarme_config', userId);
 
         // Inclui informação de dispositivo para rastrear sincronização
@@ -2483,7 +2485,7 @@ class Dashboard {
         }
 
         const { onSnapshot } = await import('../../scripts/firebase.js');
-        const userId = getUid();
+        const userId = _uid;
         const docRef = doc(db, 'alarme_config', userId);
 
         if (unsubscribeFirebase) unsubscribeFirebase();
@@ -2704,7 +2706,7 @@ class Dashboard {
 
     // DEBUG: Função para ver status de sincronização
     window.statusAlarme = () => {
-      const userId = getUid();
+      const userId = _uid;
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
       console.log('=== STATUS DO ALARME ===');
       console.log('User ID:', userId);
@@ -3332,15 +3334,20 @@ class Dashboard {
       } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
     };
 
-    // Aguarda firebase-ready se necessário (db vem do módulo importado no topo)
-    if (db) iniciar();
-    else window.addEventListener('firebase-ready', iniciar, { once: true });
+    iniciar();
   }
 }
 
 // ===== INICIALIZAÇÃO =====
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => new Dashboard());
-} else {
-  new Dashboard();
+async function _bootDashboard() {
+  const ctx = await initModulo();
+  if (!ctx) return;
+  _uid = ctx.uid;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => new Dashboard());
+  } else {
+    new Dashboard();
+  }
+}
+_bootDashboard();
 }

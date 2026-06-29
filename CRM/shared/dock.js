@@ -9,14 +9,16 @@
 import {
   db, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from '../scripts/firebase.js';
-import { getUid, onUid } from './session.js';
+import { initModulo } from '../scripts/kernel.js';
 
 // Barra de favoritos — injeta o lançador flutuante em cada módulo
 import './favoritos.js?v=20260612-fornecedor-fix';
 
+let _uid = null;
+
 const isDashboard = window.location.pathname.includes('/dashboard/');
 const DOCK_ORDEM_KEY = 'cc_dock_ordem';
-const SESSION_LOGGED_KEY = 'cc_acesso';
+const SESSION_LOGGED_KEY = 'cc_kernel_v1';
 
 // ── Lista mestra de itens do dock (com IDs únicos) ──────────────────
 const DOCK_ITEMS = [
@@ -359,7 +361,7 @@ function setupNotas() {
   if (!btnNotas || !panel || !textarea) return;
 
   // Identidade ESTÁVEL da conta (substitui o antigo cc_nota_uid aleatório).
-  let docRef = doc(db, 'notas_usuarios', getUid());
+  let docRef = doc(db, 'notas_usuarios', _uid);
   let saveTimer = null;
   let notaUnsub = null;
   const setStatus = (msg) => { if (statusEl) statusEl.textContent = msg; };
@@ -368,7 +370,7 @@ function setupNotas() {
   // NÃO está digitando (textarea sem foco), evitando sobrescrever a edição.
   const assinarNota = () => {
     if (notaUnsub) { notaUnsub(); notaUnsub = null; }
-    docRef = doc(db, 'notas_usuarios', getUid());
+    docRef = doc(db, 'notas_usuarios', _uid);
     notaUnsub = onSnapshot(docRef, (snap) => {
       const remoto = snap.exists() ? (snap.data().conteudo || '') : '';
       if (document.activeElement !== textarea && textarea.value !== remoto) {
@@ -377,7 +379,7 @@ function setupNotas() {
       setStatus('✓ sincronizado');
     }, () => setStatus(''));
   };
-  onUid(() => assinarNota());
+  assinarNota();
 
   const salvarNota = () => {
     clearTimeout(saveTimer);
@@ -385,7 +387,7 @@ function setupNotas() {
     saveTimer = setTimeout(async () => {
       setStatus('salvando...');
       try {
-        await setDoc(docRef, { conteudo: textarea.value, atualizadoEm: serverTimestamp(), userId: getUid() });
+        await setDoc(docRef, { conteudo: textarea.value, atualizadoEm: serverTimestamp(), userId: _uid });
         setStatus('✓ salvo');
       } catch { setStatus('⚠ erro ao salvar'); }
     }, 1000);
@@ -409,15 +411,16 @@ function setupDashboardDock() {
 
 // ── Inicialização ────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  const ctx = await initModulo();
+  if (!ctx) return;
+  _uid = ctx.uid;
+
   if (isDashboard) {
-    // Dashboard tem seu próprio dock HTML
-    // setupDockReordering VEM PRIMEIRO porque pode substituir innerHTML
     await setupDockReordering('.dock');
     setupDashboardDock();
     return;
   }
 
-  // Páginas comuns: injeta dock, DnD, depois anexa listeners
   injectDock();
   await setupDockReordering('.dock');
   setupNotas();

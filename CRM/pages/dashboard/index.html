@@ -1163,8 +1163,7 @@
 
   function boot() {
     if (!bind()) return;
-    if (window.dbFirestore && window.FirebaseFirestore) start();
-    else window.addEventListener('firebase-ready', start, { once: true });
+    window.addEventListener('kernel-ready', function() { start(); }, { once: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

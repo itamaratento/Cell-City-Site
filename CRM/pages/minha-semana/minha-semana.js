@@ -1,14 +1,13 @@
 import { db, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
-import { getUid, onUid } from '../../shared/session.js';
+import { initModulo } from '/CRM/scripts/kernel.js';
 
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
 
+let _uid = null;
 let tarefas = [];
 let diaSelecionado = null;
-
-// Identidade ESTÁVEL da conta (substitui o antigo cc_nota_uid aleatório).
-let docRef = doc(db, 'tarefas_semana', getUid());
+let docRef = null;
 
 const diasEl  = document.getElementById('ms-dias');
 const formEl  = document.getElementById('ms-form');
@@ -125,6 +124,7 @@ function adicionar() {
 
 // ── salvar no Firestore ────────────────────────────────────────────
 async function salvar() {
+  if (!docRef) return;
   try {
     await setDoc(docRef, { tarefas, atualizadoEm: serverTimestamp() });
   } catch {}
@@ -134,7 +134,7 @@ async function salvar() {
 let unsub = null;
 function carregar() {
   if (unsub) { unsub(); unsub = null; }
-  docRef = doc(db, 'tarefas_semana', getUid());
+  docRef = doc(db, 'tarefas_semana', _uid);
   unsub = onSnapshot(docRef, (snap) => {
     tarefas = snap.exists() ? (snap.data().tarefas || []) : [];
     renderDias();
@@ -151,4 +151,8 @@ document.getElementById('ms-cancelar').addEventListener('click', () => {
   renderDias();
 });
 
-onUid(() => carregar());
+initModulo().then(ctx => {
+  if (!ctx) return;
+  _uid = ctx.uid;
+  carregar();
+});

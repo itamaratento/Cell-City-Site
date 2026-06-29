@@ -325,28 +325,4 @@
     init();
   }
 
-  // ── PRELOAD DE CONTEXTO TENANT ────────────────────────────────
-  // Inicia carregamento do contexto da empresa antes dos módulos JS.
-  // Expõe window._ccTenantReady (Promise) para módulos aguardarem:
-  //   await window._ccTenantReady;
-  // ─────────────────────────────────────────────────────────────
-  window._ccTenantReady = (async function _preloadTenant() {
-    try {
-      const { authReady }              = await import('/CRM/scripts/firebase.js');
-      const { loadContext, getTenant } = await import('/CRM/shared/tenant.js');
-      const user = await authReady;
-      console.group('[TENANT] brand-header preload');
-      console.log('Auth user:', user?.uid || null);
-      console.log('Tenant cache:', getTenant());
-      console.groupEnd();
-      // Sempre chama loadContext — passa null se auth falhou (loadContext trata o caso)
-      if (!getTenant()) {
-        await loadContext(user?.uid || null);
-      }
-      return getTenant();
-    } catch (e) {
-      console.error('[TENANT] brand-header preload falhou:', e.message, e);
-      return null;
-    }
-  })();
 })();
