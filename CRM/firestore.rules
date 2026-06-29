@@ -211,6 +211,41 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
+    // PRIVADO: Dashboard — coleções de analytics e portal
+    // ─────────────────────────────────────────────
+    match /avaliacoes/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /diario_registros/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /estoque/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /mensagens_portal/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /portal_eventos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /agendamentos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /solicitacoes_diagnostico/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    match /catalogo_produtos/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
+    // ─────────────────────────────────────────────
     // BLOQUEADO: Coleções legadas — nunca usadas pelos módulos
     // ─────────────────────────────────────────────
     match /orders/{docId} {
