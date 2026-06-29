@@ -65,8 +65,9 @@ async function getFirebaseStorage() {
 // houver uma sessão Firebase ativa (real ou anônima legada).
 const auth = getAuth(app);
 
-// Garante que sessões reais persistam entre visitas
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+// NOTA: setPersistence é controlado exclusivamente pelo kernel.js (via login()).
+// O padrão do Firebase Auth em browsers já é browserLocalPersistence — não
+// forçar aqui evita sobrescrever a escolha de "lembrar de mim" do kernel.
 
 // Resolve com o usuário atual na primeira mudança de estado.
 // Com kernel.js ativo: resolve com o usuário real já autenticado.

@@ -1,4 +1,5 @@
-import { db, authReady, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
+import { initModulo } from '/CRM/scripts/kernel.js';
+import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -432,8 +433,7 @@ const DB = {
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
         try {
-            await authReady;
-            localOS = []; localClients = []; localCounter = 0;
+                    localOS = []; localClients = []; localCounter = 0;
             const osSnap = await getDocs(collection(db, "os"));
             localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             const clientSnap = await getDocs(collection(db, "clientes"));
@@ -2261,7 +2261,8 @@ function verificarConversaoPortalOS() {
 // ===== INIT =====
 async function init() {
     if (appInitialized) return; appInitialized = true;
-    await authReady;
+    const ctx = await initModulo();
+    if (!ctx) return;
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
     const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));

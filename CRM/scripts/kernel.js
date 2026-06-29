@@ -150,6 +150,13 @@ export async function initModulo() {
  * @throws  {FirebaseError} se credenciais inválidas ou erro de rede
  */
 export async function login(email, senha, lembrar = false) {
+    // Se há sessão anônima ativa, encerra antes de fazer login real.
+    // Evita que onAuthStateChanged dispare com isAnonymous=true e apague cc_kernel_v1.
+    if (auth.currentUser?.isAnonymous) {
+        _log('Sessão anônima detectada — encerrando antes do login real');
+        await signOut(auth).catch(() => {});
+    }
+
     const persistencia = lembrar ? browserLocalPersistence : browserSessionPersistence;
     await setPersistence(auth, persistencia);
     _log(`Login iniciado: ${email} | lembrar=${lembrar}`);

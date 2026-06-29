@@ -1,7 +1,7 @@
 // ===== IMPORTS =====
+import { initModulo } from '/CRM/scripts/kernel.js';
 import {
     db,
-    authReady,
     collection,
     doc,
     setDoc,
@@ -17,7 +17,6 @@ import {
     runTransaction,
     serverTimestamp
 } from "../../scripts/firebase.js";
-import { getEmpresaId, tenantReady } from "../../shared/tenant.js";
 
 // ═══════════════════════════════════════════
 // 🎯 COLLECTIONS OFICIAIS
@@ -106,16 +105,9 @@ let ultimoResumoLiveExecutado = 0;
 
 // ===== INICIALIZAÇÃO =====
 async function init() {
-    await authReady;
-    await tenantReady;
-    let empresaId;
-    try {
-        empresaId = getEmpresaId();
-    } catch (e) {
-        console.error('[CAIXA] Tenant não inicializado — init abortado:', e.message);
-        return;
-    }
-    _empresaId = empresaId;
+    const ctx = await initModulo();
+    if (!ctx) return;
+    _empresaId = ctx.empresaId;
     console.log('✅ Caixa V19 inicializado. empresa_id:', _empresaId);
     // Ativa filtro "hoje" por padrão na UI
     document.querySelectorAll('.filtro-btn').forEach(btn => btn.classList.remove('active'));

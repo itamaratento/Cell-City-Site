@@ -1,3 +1,4 @@
+import { initModulo } from '/CRM/scripts/kernel.js';
 import {
     db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
 } from "../../scripts/firebase.js";
@@ -1054,4 +1055,8 @@ function atalhos(event) {
 document.addEventListener('keydown', atalhos);
 
 // ===== START =====
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await init();
+});

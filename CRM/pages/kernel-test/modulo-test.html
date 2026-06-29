@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!--
+    TESTE DE INTEGRAÇÃO — Módulo Real (sem fluxo legado)
+    Valida exatamente o padrão que todos os módulos usarão após a migração:
+      1. initModulo()  → redireciona para login.html se não autenticado
+      2. getCtx()      → uid, email, nome, empresaId, perfil
+      3. Firestore     → leitura protegida (request.auth != null) com empresa_id
+    Sem import de: config.js · session.js · tenant.js · brand-header.js
+  -->
+  <title>Teste de Integração — Módulo Real</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0b0d;
+      color: #e5e7eb;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    h1 { font-size: 18px; font-weight: 800; color: #00e676; margin-bottom: 4px; }
+    .subtitulo { font-size: 12px; color: #6b7280; margin-bottom: 24px; }
+
+    .painel {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .painel h2 {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #9ca3af;
+      margin-bottom: 14px;
+    }
+
+    .item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .item:last-child { border-bottom: none; }
+    .item-nome { color: #d1d5db; flex-shrink: 0; }
+    .item-valor {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 2px 10px;
+      border-radius: 20px;
+      text-align: right;
+      word-break: break-all;
+    }
+    .ok    { background: rgba(0,200,83,0.15);   color: #00e676; }
+    .erro  { background: rgba(239,68,68,0.15);  color: #f87171; }
+    .pend  { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    .aviso { background: rgba(251,191,36,0.15); color: #fbbf24; }
+
+    .lista-docs {
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      padding: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #9ca3af;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+    .lista-docs .doc-item {
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: #d1d5db;
+    }
+    .lista-docs .doc-item:last-child { border-bottom: none; }
+    .lista-docs .doc-empresa { color: #00e676; }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      color: #6b7280;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-num.ok    { background: rgba(0,200,83,0.2);  color: #00e676; }
+    .step-num.erro  { background: rgba(239,68,68,0.2); color: #f87171; }
+    .step-num.pend  { background: rgba(255,255,255,0.06); color: #6b7280; }
+    .step-texto { flex: 1; }
+    .step-titulo { font-weight: 600; color: #d1d5db; font-size: 13px; }
+    .step-detalhe { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .step-tempo { font-size: 11px; color: #4b5563; }
+
+    .badge-sucesso {
+      background: rgba(0,200,83,0.1);
+      border: 1px solid rgba(0,200,83,0.25);
+      border-radius: 10px;
+      color: #00e676;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .badge-erro {
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 10px;
+      color: #f87171;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 14px;
+      text-align: center;
+      margin-top: 8px;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 9px 18px;
+      transition: opacity 150ms;
+    }
+    button:hover { opacity: 0.85; }
+    .btn-logout {
+      background: rgba(239,68,68,0.15);
+      color: #f87171;
+      border: 1px solid rgba(239,68,68,0.3);
+      margin-top: 4px;
+    }
+    .btn-retry {
+      background: rgba(255,255,255,0.08);
+      color: #e5e7eb;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Teste de Integração — Módulo Real</h1>
+<p class="subtitulo">Valida o padrão exato de autenticação que será usado por todos os módulos após a migração</p>
+
+<!-- ── Fluxo de execução ── -->
+<div class="painel">
+  <h2>Fluxo de inicialização</h2>
+  <div class="step" id="step-1">
+    <div class="step-num pend" id="s1-num">1</div>
+    <div class="step-texto">
+      <div class="step-titulo">initModulo() — aguarda autenticação</div>
+      <div class="step-detalhe" id="s1-detalhe">Aguardando Firebase Auth...</div>
+    </div>
+    <span class="step-tempo" id="s1-tempo"></span>
+  </div>
+  <div class="step" id="step-2">
+    <div class="step-num pend" id="s2-num">2</div>
+    <div class="step-texto">
+      <div class="step-titulo">Contexto do usuário (getCtx)</div>
+      <div class="step-detalhe" id="s2-detalhe">Aguardando step 1...</div>
+    </div>
+    <span class="step-tempo" id="s2-tempo"></span>
+  </div>
+  <div class="step" id="step-3">
+    <div class="step-num pend" id="s3-num">3</div>
+    <div class="step-texto">
+      <div class="step-titulo">Leitura Firestore protegida (caixa_lancamentos)</div>
+      <div class="step-detalhe" id="s3-detalhe">Aguardando step 2...</div>
+    </div>
+    <span class="step-tempo" id="s3-tempo"></span>
+  </div>
+  <div class="step" id="step-4">
+    <div class="step-num pend" id="s4-num">4</div>
+    <div class="step-texto">
+      <div class="step-titulo">Leitura Firestore protegida (os)</div>
+      <div class="step-detalhe" id="s4-detalhe">Aguardando step 3...</div>
+    </div>
+    <span class="step-tempo" id="s4-tempo"></span>
+  </div>
+</div>
+
+<!-- ── Dados do usuário ── -->
+<div class="painel" id="painel-usuario" style="display:none">
+  <h2>Usuário autenticado</h2>
+  <div class="item">
+    <span class="item-nome">UID</span>
+    <span class="item-valor ok" id="v-uid">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">E-mail</span>
+    <span class="item-valor ok" id="v-email">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">Nome</span>
+    <span class="item-valor ok" id="v-nome">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">Empresa ID</span>
+    <span class="item-valor ok" id="v-empresa">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">Perfil</span>
+    <span class="item-valor ok" id="v-perfil">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">isAnonymous</span>
+    <span class="item-valor" id="v-anon">—</span>
+  </div>
+  <button class="btn-logout" id="btn-logout">Encerrar sessão (logout)</button>
+</div>
+
+<!-- ── Dados do Firestore ── -->
+<div class="painel" id="painel-firestore" style="display:none">
+  <h2>Dados do Firestore — caixa_lancamentos</h2>
+  <div class="item">
+    <span class="item-nome">Total de documentos retornados</span>
+    <span class="item-valor ok" id="v-total-caixa">—</span>
+  </div>
+  <div class="item">
+    <span class="item-nome">empresa_id dos docs</span>
+    <span class="item-valor ok" id="v-empresa-caixa">—</span>
+  </div>
+  <div class="lista-docs" id="lista-caixa">
+    <span style="color:#4b5563">Nenhum dado ainda</span>
+  </div>
+</div>
+
+<div class="painel" id="painel-os" style="display:none">
+  <h2>Dados do Firestore — os (Ordens de Serviço)</h2>
+  <div class="item">
+    <span class="item-nome">Total de documentos retornados</span>
+    <span class="item-valor ok" id="v-total-os">—</span>
+  </div>
+  <div class="lista-docs" id="lista-os">
+    <span style="color:#4b5563">Nenhum dado ainda</span>
+  </div>
+</div>
+
+<!-- ── Resultado final ── -->
+<div id="resultado-final"></div>
+
+<script type="module">
+  // ═══════════════════════════════════════════════════════
+  // PADRÃO EXATO DE UM MÓDULO REAL PÓS-MIGRAÇÃO
+  // Sem session.js · sem tenant.js · sem config.js
+  // ═══════════════════════════════════════════════════════
+  import { initModulo, logout } from '/CRM/scripts/kernel.js';
+  import { db, collection, query, where, getDocs, limit } from '/CRM/scripts/firebase.js';
+
+  // ── helpers de UI ──────────────────────────────────────
+  const $ = id => document.getElementById(id);
+
+  function stepOk(num, detalhe, ms) {
+    $(`s${num}-num`).className = 'step-num ok';
+    $(`s${num}-num`).textContent = '✓';
+    $(`s${num}-detalhe`).textContent = detalhe;
+    $(`s${num}-tempo`).textContent = ms != null ? `${ms}ms` : '';
+  }
+
+  function stepErro(num, detalhe) {
+    $(`s${num}-num`).className = 'step-num erro';
+    $(`s${num}-num`).textContent = '✗';
+    $(`s${num}-detalhe`).textContent = detalhe;
+    $(`s${num}-detalhe`).style.color = '#f87171';
+  }
+
+  function mostrarResultado(sucesso, msg) {
+    $('resultado-final').innerHTML = sucesso
+      ? `<div class="badge-sucesso">✅ ${msg}</div>`
+      : `<div class="badge-erro">❌ ${msg}<br><button class="btn-retry" onclick="location.reload()" style="margin-top:10px">Tentar novamente</button></div>`;
+  }
+
+  // ── STEP 1: initModulo() ───────────────────────────────
+  // Se não autenticado → redireciona para /CRM/login.html (comportamento real dos módulos)
+  const t0 = performance.now();
+  $('s1-detalhe').textContent = 'Chamando initModulo()...';
+
+  const ctx = await initModulo();
+
+  if (!ctx) {
+    // initModulo() já redirecionou — este código não executa em produção
+    stepErro(1, 'Não autenticado — redirecionando para login.html');
+    mostrarResultado(false, 'Sessão expirada ou não iniciada.');
+    // Execução para aqui: initModulo() fez location.href já
+  } else {
+    const t1 = performance.now();
+    stepOk(1, `initModulo() resolvido em ${Math.round(t1 - t0)}ms`, Math.round(t1 - t0));
+
+    // ── STEP 2: Contexto do usuário ──────────────────────
+    const t2 = performance.now();
+
+    $('s2-detalhe').textContent = 'Lendo ctx do kernel...';
+
+    const isAnon = ctx.user?.isAnonymous ?? false;
+    const uid     = ctx.uid    || '—';
+    const email   = ctx.email  || '—';
+    const nome    = ctx.nome   || '—';
+    const empresa = ctx.empresaId;
+    const perfil  = ctx.perfil || '—';
+
+    if (!empresa) {
+      stepErro(2, 'empresaId ausente no contexto!');
+      mostrarResultado(false, 'getCtx() retornou sem empresa_id.');
+    } else {
+      stepOk(2, `uid=${uid.slice(0,12)}… empresa=${empresa} perfil=${perfil}`, Math.round(performance.now() - t2));
+
+      // Preenche painel de usuário
+      $('painel-usuario').style.display = 'block';
+      $('v-uid').textContent     = uid;
+      $('v-email').textContent   = email;
+      $('v-nome').textContent    = nome;
+      $('v-empresa').textContent = empresa;
+      $('v-perfil').textContent  = perfil;
+
+      const anonEl = $('v-anon');
+      anonEl.textContent  = String(isAnon);
+      anonEl.className    = `item-valor ${isAnon ? 'erro' : 'ok'}`;
+
+      // ── STEP 3: Firestore — caixa_lancamentos ──────────
+      const t3 = performance.now();
+      $('s3-detalhe').textContent = `Consultando caixa_lancamentos where empresa_id = '${empresa}'...`;
+
+      try {
+        const q3 = query(
+          collection(db, 'caixa_lancamentos'),
+          where('empresa_id', '==', empresa),
+          limit(5)
+        );
+        const snap3 = await getDocs(q3);
+        const t3end = Math.round(performance.now() - t3);
+
+        const docs3 = snap3.docs.map(d => d.data());
+        stepOk(3, `${snap3.size} doc(s) retornados em ${t3end}ms`, t3end);
+
+        $('painel-firestore').style.display = 'block';
+        $('v-total-caixa').textContent = snap3.size;
+
+        const empresasPresentes = [...new Set(docs3.map(d => d.empresa_id).filter(Boolean))];
+        $('v-empresa-caixa').textContent = empresasPresentes.join(', ') || '(campo ausente nos docs)';
+
+        const listaCaixa = $('lista-caixa');
+        if (docs3.length === 0) {
+          listaCaixa.innerHTML = '<span style="color:#4b5563">Nenhum documento encontrado para esta empresa</span>';
+        } else {
+          listaCaixa.innerHTML = docs3.map(d =>
+            `<div class="doc-item">
+              <span class="doc-empresa">${d.empresa_id || '—'}</span>
+              &nbsp;|&nbsp; ${d.descricao || d.tipo || '(sem descrição)'}
+              &nbsp;|&nbsp; R$ ${(d.valor ?? '—')}
+            </div>`
+          ).join('');
+        }
+
+        // ── STEP 4: Firestore — os ────────────────────────
+        const t4 = performance.now();
+        $('s4-detalhe').textContent = 'Consultando coleção os (limit 5)...';
+
+        try {
+          const q4 = query(collection(db, 'os'), limit(5));
+          const snap4 = await getDocs(q4);
+          const t4end = Math.round(performance.now() - t4);
+
+          const docs4 = snap4.docs.map(d => d.data());
+          stepOk(4, `${snap4.size} doc(s) retornados em ${t4end}ms`, t4end);
+
+          $('painel-os').style.display = 'block';
+          $('v-total-os').textContent = snap4.size;
+
+          const listaOS = $('lista-os');
+          if (docs4.length === 0) {
+            listaOS.innerHTML = '<span style="color:#4b5563">Nenhuma OS encontrada</span>';
+          } else {
+            listaOS.innerHTML = docs4.map(d =>
+              `<div class="doc-item">
+                ${d.id || '—'} — ${d.clientName || d.nomeCliente || '(sem nome)'}
+                &nbsp;|&nbsp; ${d.status || '—'}
+              </div>`
+            ).join('');
+          }
+
+          // ── RESULTADO FINAL ───────────────────────────
+          mostrarResultado(true,
+            'Todos os 4 passos aprovados — kernel.js está pronto para migração dos módulos.'
+          );
+
+        } catch (e4) {
+          stepErro(4, `Erro na leitura de os: ${e4.code || e4.message}`);
+          mostrarResultado(false, `Leitura de "os" falhou: ${e4.code || e4.message}`);
+        }
+
+      } catch (e3) {
+        stepErro(3, `Erro na leitura: ${e3.code || e3.message}`);
+        if (e3.code === 'permission-denied') {
+          $('s3-detalhe').style.color = '#f87171';
+          mostrarResultado(false,
+            'PERMISSION_DENIED em caixa_lancamentos — verifique se o deploy das Firestore Rules foi feito.'
+          );
+        } else {
+          mostrarResultado(false, `Firestore: ${e3.code || e3.message}`);
+        }
+      }
+    }
+  }
+
+  // ── Logout ─────────────────────────────────────────────
+  $('btn-logout')?.addEventListener('click', async () => {
+    await logout(); // redireciona para login.html
+  });
+</script>
+
+</body>
+</html>
