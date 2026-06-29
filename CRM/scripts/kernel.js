@@ -33,7 +33,7 @@ import {
 
 // ── Configuração ──────────────────────────────────────────────
 const LOGIN_URL     = '/CRM/login.html';
-const EMPRESA_ID    = 'cellcity';          // empresa padrão (single-store)
+const EMPRESA_ID    = 'cellcity-master';   // empresa padrão (single-store)
 const TIMEOUT_MS    = 10_000;              // 10s para resolver auth
 
 // Chave no localStorage para evitar flash no gate HTML dos módulos.
@@ -172,8 +172,18 @@ export async function logout() {
 // ── Getters síncronos ──────────────────────────────────────────
 // Usar somente APÓS initModulo() ter retornado.
 
-/** Contexto completo do usuário atual. */
+/** Contexto completo do usuário atual (síncrono — use após initModulo()). */
 export const getCtx = () => _ctx;
+
+/**
+ * Aguarda o contexto ser resolvido sem redirecionar para login.
+ * Use em páginas de diagnóstico ou onde o redirect não é desejado.
+ * @returns {Promise<Object|null>}
+ */
+export async function getCtxAsync() {
+    await Promise.race([_ready, new Promise(r => setTimeout(r, TIMEOUT_MS))]);
+    return _ctx;
+}
 
 /** Objeto FirebaseUser ou null. */
 export const getUser = () => _ctx?.user ?? null;
