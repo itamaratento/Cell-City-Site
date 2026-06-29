@@ -58,7 +58,7 @@ function gerarIdUnico() {
 }
 
 function isLogado() {
-  return sessionStorage.getItem(SESSION_LOGGED_KEY) === 'ok';
+  return localStorage.getItem(SESSION_LOGGED_KEY) === '1';
 }
 
 // ── Firebase: carregar/salvar ordem ─────────────────────────────────
