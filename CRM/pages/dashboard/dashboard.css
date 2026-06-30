@@ -203,94 +203,11 @@ body {
   color: #00e676;
 }
 
-/* ============ LOGO INSTITUCIONAL RESTAURADA ============ */
-.brand-header {
-  display: flex;
-  align-items: center;
-  padding: 6px 14px;
-  background: rgba(0, 200, 83, 0.06);
-  border: 1px solid rgba(0, 200, 83, 0.25);
-  border-radius: var(--radius-md);
-  transition: all var(--transition-smooth);
-  cursor: pointer;
-  user-select: none;
-  flex-shrink: 0;
-  position: relative;
-  box-shadow:
-    0 0 20px rgba(0, 200, 83, 0.15),
-    inset 0 1px 0 rgba(0, 230, 118, 0.1);
-}
-
-.brand-header::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--radius-md);
-  background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-.brand-header:hover {
-  background: rgba(0, 200, 83, 0.10);
-  border-color: rgba(0, 200, 83, 0.45);
-  box-shadow:
-    0 0 28px rgba(0, 200, 83, 0.25),
-    inset 0 1px 0 rgba(0, 230, 118, 0.15);
-  transform: translateY(-1px);
-}
-
-.brand-header-logo {
-  height: 32px;
-  width: auto;
-  margin-right: 10px;
-  position: relative;
-  z-index: 1;
-}
-
-.brand-header-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.15;
-  min-width: 0;
-  position: relative;
-  z-index: 1;
-}
-
-.brand-header-title {
-  font-size: 15px;
-  font-weight: 900;
-  color: var(--cell-green-light);
-  letter-spacing: -0.03em;
-  white-space: nowrap;
-  text-shadow:
-    0 0 20px rgba(0, 200, 83, 0.6),
-    0 0 2px rgba(0, 230, 118, 0.9),
-    0 1px 2px rgba(0, 0, 0, 0.5);
-  background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 8px rgba(0, 200, 83, 0.4));
-}
-
-.brand-header-divider {
-  height: 1px;
-  background: linear-gradient(90deg, var(--cell-green) 0%, rgba(0, 200, 83, 0.2) 70%, transparent 100%);
-  margin: 2px 0;
-  width: 100%;
-  opacity: 0.7;
-  box-shadow: 0 0 6px rgba(0, 200, 83, 0.3);
-}
-
-.brand-header-subtitle {
-  font-size: 10.5px;
-  color: var(--text-secondary);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
+/* ============ LOGO INSTITUCIONAL ============
+   Estilos CSS do brand-header são injetados globalmente
+   pelo brand-header.js. Mantém aqui APENAS as regras
+   específicas do Dashboard.
+   ============================================= */
 
 /* ============ RELÓGIO PREMIUM (REPOSICIONADO) ============ */
 .meta-clock {
