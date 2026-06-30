@@ -35,7 +35,7 @@
     .brand-header:active { opacity: 0.7; }
     .brand-header-logo {
       display: block;
-      height: 56px;
+      height: 46px;
       width: auto;
       object-fit: contain;
     }
@@ -103,7 +103,7 @@
 
     /* Compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header-logo { height: 40px; }
+      .brand-header-logo { height: 34px; }
     }
 
     /* === Atalho Site Cell City === */
@@ -144,7 +144,7 @@
 
   const BRAND_HTML = `
     <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <img class="brand-header-logo" src="/CRM/assets/logo-badge.png" alt="Cell City Informática — Gestão Empresarial" draggable="false">
+      <img class="brand-header-logo" src="/CRM/assets/logo.svg" alt="Cell City Informática — Gestão Empresarial" draggable="false">
     </div>
   `;
 
