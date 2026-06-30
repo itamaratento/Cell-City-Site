@@ -242,8 +242,18 @@ main { padding: 0; }
   margin-bottom: 14px;
 }
 .dia-exec-titulo { font-size: 13px; font-weight: 700; color: var(--text-secondary); margin-bottom: 12px; letter-spacing: .3px; }
-.dia-exec-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-.dia-exec-item { display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.dia-exec-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.dia-exec-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 12px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
 .dia-exec-num { font-size: 22px; font-weight: 800; line-height: 1; }
 .dia-exec-label { font-size: 10.5px; color: var(--text-tertiary); }
 
