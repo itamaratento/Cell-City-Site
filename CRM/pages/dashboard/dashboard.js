@@ -68,13 +68,11 @@ class Dashboard {
     this.setupModules();
     this.setupDockTools();
     this.setupSidebar();
-    this.setupPanelRight();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupConfigAlertas();
     this.atualizarCardAcaoSemana();
     this.setupAlarmeOS();
-    this.setupPainelLateralGerencial();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
 
@@ -1838,161 +1836,6 @@ class Dashboard {
   _setValue(id, value) { const el = document.getElementById(id); if (el) el.value = value; }
   _getValue(id, fallback) { const el = document.getElementById(id); return el ? el.value : fallback; }
 
-  // ===== PAINEL LATERAL DIREITO — MONITORAMENTO GERENCIAL =====
-  setupPainelLateralGerencial() {
-    const lista = document.getElementById('alertas-direita-list');
-    if (!lista) return;
-
-    const headerSpan = document.querySelector('.pr-section.pr-alertas .pr-section-header > span');
-    if (headerSpan) headerSpan.textContent = '📊 MONITORAMENTO';
-    const linkVerTodos = document.getElementById('alertas-ver-todos');
-    if (linkVerTodos) { linkVerTodos.textContent = 'Ver relatórios ›'; linkVerTodos.href = '../relatorios/index.html'; }
-
-    const calcDias = (dateStr) => {
-      try { return Math.floor((Date.now() - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-    const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-    const getDeliveryDate = (os) => {
-      if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-      }
-      const ua = os.updatedAt;
-      if (!ua) return null;
-      if (typeof ua === 'string') return ua;
-      if (ua.toDate) return ua.toDate().toISOString();
-      return null;
-    };
-
-    const renderizar = ({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas }) => {
-      const items = [];
-
-      if (metaPct !== null) {
-        const cor = metaPct >= 100 ? '#00e676' : metaPct >= 60 ? '#f59e0b' : '#ef4444';
-        const txt = metaPct >= 100 ? '✅ Meta atingida' : `${metaPct}% da meta`;
-        items.push({ icon: '🎯', label: 'Meta Semanal', value: txt, cor, href: '../relatorios/index.html' });
-      }
-
-      if (ticketMedio) {
-        items.push({ icon: '💰', label: 'Ticket Médio', value: ticketMedio, cor: '#3b82f6', href: '../relatorios/index.html' });
-      }
-
-      if (pvAtrasados > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda atrasado', value: `${pvAtrasados} cliente(s)`, cor: '#ef4444', href: '../pos-venda/index.html' });
-      } else if (pvPendentes > 0) {
-        items.push({ icon: '💡', label: 'Pós-venda pendente', value: `${pvPendentes} cliente(s)`, cor: '#f59e0b', href: '../pos-venda/index.html' });
-      }
-
-      if (avalCriticas > 0) {
-        items.push({ icon: '⭐', label: 'Avaliações críticas', value: `${avalCriticas}`, cor: '#ef4444', href: '../portal-cliente/admin.html' });
-      }
-
-      if (estoqueBaixo > 0) {
-        items.push({ icon: '📦', label: 'Estoque baixo', value: `${estoqueBaixo} item(s)`, cor: '#f59e0b', href: '../estoque/index.html' });
-      }
-
-      if (aparelhos > 0) {
-        items.push({ icon: '🔧', label: 'Ap. não retirados', value: `${aparelhos}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (orcSemResposta > 0) {
-        items.push({ icon: '💬', label: 'Orç. sem resposta', value: `${orcSemResposta}`, cor: '#f59e0b', href: '../os/index.html' });
-      }
-
-      if (!items.length) {
-        lista.innerHTML = '<div class="alertas-vazio">✅ Tudo em dia</div>';
-        return;
-      }
-
-      lista.innerHTML = items.map(a =>
-        `<a class="alerta-item" href="${a.href}" style="border-left-color:${a.cor};">` +
-        `<span class="alerta-icon" style="color:${a.cor};">${a.icon}</span>` +
-        `<div class="alerta-texto"><div class="alerta-label">${esc(a.label)}</div></div>` +
-        `<span class="alerta-count" style="background:${a.cor};">${esc(a.value)}</span>` +
-        `</a>`
-      ).join('');
-    };
-
-    const atualizar = async () => {
-      try {
-        const meta = this.state && this.state.meta;
-        const metaPct = meta && meta.goal > 0 ? Math.round((meta.current / meta.goal) * 100) : null;
-        const ticketEl = document.getElementById('kpi-ticket-medio');
-        const ticketMedio = ticketEl ? ticketEl.textContent.trim() : null;
-
-        const [osSnap, contatosSnap] = await Promise.all([
-          getDocs(collection(db, 'os')),
-          getDocs(collection(db, 'posvenda_contatos'))
-        ]);
-
-        const contatosFeitos = new Set();
-        contatosSnap.forEach(d => { const c = d.data(); if (c.ativo !== false) contatosFeitos.add(`${c.osId}_${c.prazo}`); });
-
-        let pvAtrasados = 0, pvPendentes = 0, aparelhos = 0, orcSemResposta = 0;
-        osSnap.forEach(d => {
-          const os = { _id: d.id, ...d.data() };
-
-          if (os.status === 'entregue') {
-            const dd = getDeliveryDate(os);
-            if (dd) {
-              const dias = calcDias(dd);
-              const osId = os.id || os._id;
-              [5, 15, 30].forEach(prazo => {
-                if (contatosFeitos.has(`${osId}_${prazo}`)) return;
-                const proxPrazo = prazo === 5 ? 15 : prazo === 15 ? 30 : 999;
-                if (dias < prazo || dias >= proxPrazo) return;
-                pvPendentes++;
-                if (dias > prazo + 2) pvAtrasados++;
-              });
-            }
-          }
-
-          if (os.status === 'concluido' || os.status === 'pronto') {
-            let dataConcl = null;
-            if (Array.isArray(os.timeline)) {
-              const e = [...os.timeline].reverse().find(t => typeof t.text === 'string' && t.text.includes('→ Concluído'));
-              if (e?.date) dataConcl = e.date;
-            }
-            if (!dataConcl) dataConcl = typeof os.updatedAt === 'string' ? os.updatedAt : (os.updatedAt && os.updatedAt.toDate ? os.updatedAt.toDate().toISOString() : null);
-            if (dataConcl && calcDias(dataConcl) > 3) aparelhos++;
-          }
-
-          if (os.status === 'orcamento' || os.status === 'orcamento_enviado') {
-            const ref = os.updatedAt || os.createdAt;
-            const refStr = typeof ref === 'string' ? ref : (ref && ref.toDate ? ref.toDate().toISOString() : null);
-            if (refStr && calcDias(refStr) > 2) orcSemResposta++;
-          }
-        });
-
-        let estoqueBaixo = 0;
-        try {
-          const estSnap = await getDocs(collection(db, 'estoque'));
-          estSnap.forEach(d => {
-            const p = d.data();
-            const qty = Number(p.quantidade ?? p.estoque ?? 0);
-            const min = Number(p.estoqueMinimo ?? p.minimo ?? 1);
-            if (qty < min) estoqueBaixo++;
-          });
-        } catch (e) { console.warn('[Painel] estoque:', e); }
-
-        let avalCriticas = 0;
-        try {
-          const avalSnap = await getDocs(query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(10)));
-          avalSnap.forEach(d => { if ((d.data().nota || 0) <= 2) avalCriticas++; });
-        } catch (e) { console.warn('[Painel] avaliações:', e); }
-
-        renderizar({ metaPct, ticketMedio, pvAtrasados, pvPendentes, aparelhos, orcSemResposta, estoqueBaixo, avalCriticas });
-      } catch (e) {
-        console.warn('[Painel Gerencial] erro:', e);
-      }
-    };
-
-    atualizar();
-    setInterval(atualizar, 180000);
-    window.addEventListener('focus', atualizar);
-  }
-
   // ===== ALARME PARA OS NOVA =====
   setupAlarmeOS() {
     const panel = document.getElementById('alarme-panel');
@@ -3095,42 +2938,6 @@ class Dashboard {
       navEl.insertBefore(dragSrc, after ? target.nextSibling : target);
       saveOrder();
     });
-  }
-
-  // ===== PAINEL DIREITO — RECOLHER/EXPANDIR =====
-  setupPanelRight() {
-    const panel   = document.getElementById('panel-right');
-    const btnOpen = document.getElementById('panel-right-open-btn');
-    const btnClose= document.getElementById('panel-right-close-btn');
-    if (!panel) return;
-
-    const KEY = 'cc_panel_right_state';
-    const aplicar = (collapsed) => {
-      panel.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(KEY, collapsed ? '1' : '0');
-    };
-
-    // Restaura estado salvo (default: expandido)
-    aplicar(localStorage.getItem(KEY) === '1');
-
-    if (btnOpen)  btnOpen.addEventListener('click',  () => aplicar(false));
-    if (btnClose) btnClose.addEventListener('click', () => aplicar(true));
-
-    // Toggle das seções internas (metas / alertas)
-    const _bindToggle = (btnId, bodyId) => {
-      const btn  = document.getElementById(btnId);
-      const body = document.getElementById(bodyId);
-      if (!btn || !body) return;
-      const KEY2 = 'cc_pr_' + btnId;
-      if (localStorage.getItem(KEY2) === '1') { body.classList.add('collapsed-body'); btn.textContent = '+'; }
-      btn.addEventListener('click', () => {
-        const col = body.classList.toggle('collapsed-body');
-        btn.textContent = col ? '+' : '−';
-        localStorage.setItem(KEY2, col ? '1' : '0');
-      });
-    };
-    _bindToggle('metas-toggle', 'metas-body');
-    _bindToggle('alertas-toggle', 'alertas-body');
   }
 
 }

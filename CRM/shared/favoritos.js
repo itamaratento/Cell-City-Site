@@ -30,6 +30,7 @@ let _applyingRemote = false;
 const MODULES = {
   'os':                  { icon: '📦', label: 'Ordem de Serviço' },
   'caixa':               { icon: '💰', label: 'Caixa' },
+  'central-alertas':     { icon: '⚠️', label: 'Central de Alertas' },
   'acaodasemana':        { icon: '🎯', label: 'Ação da Semana' },
   'minha-semana':        { icon: '🗓️', label: 'Minha Semana' },
   'pos-venda':           { icon: '📦', label: 'Pós-venda' },
