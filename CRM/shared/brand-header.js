@@ -22,13 +22,13 @@
       margin-bottom: 14px;
     }
 
-    /* === Brand Header (logo clicável) ===
-       Sem caixa/pill ao redor — a logo já tem identidade visual própria
-       (gradiente, linha decorativa); uma borda/fundo verde por cima
-       competia com ela e ficava desproporcional num cabeçalho compacto. */
+    /* === Brand Header (logo clicável): ícone SVG + texto CSS ===
+       Texto renderizado nativamente (Inter font, sempre nítido).
+       Ícone como SVG vetorial (logo-icon.svg), nítido em qualquer DPI. */
     .brand-header {
       display: flex;
       align-items: center;
+      gap: 9px;
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
@@ -36,13 +36,32 @@
     }
     .brand-header:hover { opacity: 0.85; }
     .brand-header:active { opacity: 0.7; }
-    .brand-header-logo {
+    .brand-header-icon {
       display: block;
       height: 36px;
       width: auto;
-      object-fit: contain;
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
+      flex-shrink: 0;
+    }
+    .brand-header-wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      line-height: 1;
+    }
+    .brand-header-title {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      color: #00e676;
+      white-space: nowrap;
+    }
+    .brand-header-sub {
+      font-size: 8.5px;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      color: #7dbf96;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
 
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
@@ -106,9 +125,11 @@
       margin: 0 !important;
     }
 
-    /* Logo compacto em telas muito estreitas */
+    /* Logo em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header-logo { height: 28px; }
+      .brand-header-icon { height: 28px; }
+      .brand-header-title { font-size: 13px; }
+      .brand-header-sub { display: none; }
     }
 
     /* === Atalho Site Cell City === */
@@ -149,7 +170,11 @@
 
   const BRAND_HTML = `
     <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <img class="brand-header-logo" src="/CRM/assets/logo-horizontal.png" alt="Cell City Informática" draggable="false">
+      <img class="brand-header-icon" src="/CRM/assets/logo-icon.svg" alt="" draggable="false">
+      <div class="brand-header-wordmark">
+        <span class="brand-header-title">CELL CITY</span>
+        <span class="brand-header-sub">Informática</span>
+      </div>
     </div>
   `;
 
