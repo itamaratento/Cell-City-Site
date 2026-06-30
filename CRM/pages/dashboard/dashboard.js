@@ -1762,7 +1762,7 @@ class Dashboard {
     } catch {}
     return {
       som: {
-        ativo: true,
+        ativo: false,
         horarioInicio: '08:00',
         horarioFim: '18:00',
         diasSemana: [1, 2, 3, 4, 5],

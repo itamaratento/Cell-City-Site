@@ -637,6 +637,9 @@
 
   function beep() {
     try {
+      var raw = localStorage.getItem('cc_config_alertas');
+      var somAtivo = raw ? (JSON.parse(raw).som || {}).ativo !== false : false;
+      if (!somAtivo) return;
       var Ctx = window.AudioContext || window.webkitAudioContext; if (!Ctx) return;
       var ctx = new Ctx(); var o = ctx.createOscillator(); var g = ctx.createGain();
       o.connect(g); g.connect(ctx.destination); o.type = 'sine'; o.frequency.value = 880;
@@ -1215,7 +1218,7 @@
         <div class="config-secao-titulo">🔊 Som</div>
 
         <label class="config-toggle">
-          <input type="checkbox" id="config-som-ativo" checked>
+          <input type="checkbox" id="config-som-ativo">
           <span>Ativar som nos alertas</span>
         </label>
 
