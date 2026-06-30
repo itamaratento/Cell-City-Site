@@ -15,6 +15,15 @@
         { "fieldPath": "empresa_id", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "caixa_lancamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "empresa_id", "order": "ASCENDING" },
+        { "fieldPath": "data", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
