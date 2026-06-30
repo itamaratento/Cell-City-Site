@@ -22,45 +22,24 @@
       margin-bottom: 14px;
     }
 
-    /* === Brand Header (logo clicável) === */
+    /* === Brand Header (logo clicável) ===
+       Sem caixa/pill ao redor — a logo já tem identidade visual própria
+       (gradiente, linha decorativa); uma borda/fundo verde por cima
+       competia com ela e ficava desproporcional num cabeçalho compacto. */
     .brand-header {
       display: flex;
       align-items: center;
-      padding: 6px 14px;
-      background: rgba(0, 200, 83, 0.06);
-      border: 1px solid rgba(0, 200, 83, 0.25);
-      border-radius: 12px;
-      transition: all 250ms cubic-bezier(0.4,0,0.2,1);
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
-      position: relative;
-      box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.1);
+      transition: opacity 150ms ease;
     }
-    .brand-header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    .brand-header:hover {
-      background: rgba(0, 200, 83, 0.10);
-      border-color: rgba(0, 200, 83, 0.45);
-      box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.15);
-    }
-    .brand-header:active {
-      transform: translateY(0);
-      opacity: 0.85;
-    }
+    .brand-header:hover { opacity: 0.85; }
+    .brand-header:active { opacity: 0.7; }
     .brand-header-logo {
       display: block;
-      height: 46px;
+      height: 44px;
       width: auto;
-      position: relative;
-      z-index: 1;
       object-fit: contain;
       image-rendering: -webkit-optimize-contrast;
       image-rendering: crisp-edges;
@@ -129,7 +108,7 @@
 
     /* Logo compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header { padding: 6px 10px; }
+      .brand-header-logo { height: 34px; }
     }
 
     /* === Atalho Site Cell City === */
