@@ -60,3 +60,11 @@ sw.js: v11 | firebase.json: public=CRM | rules: request.auth!=null
 Pendente: validação em browser + deploy firebase
 ----------------------------------------
 seg. 29 jun 2026 10:56:13 -03: backup 14-PRE-KERNEL-REFACTOR criado
+----------------------------------------
+29/06/2026 23:45
+BASE_GITHUB_ESTAVEL
+15-BASE-GITHUB-ESTAVEL-20260630
+48M
+Congelamento do estado atual do main (commit 3a99ec1) antes da revisão módulo a módulo (login, dashboard, caixa, clientes, os, estoque, financeiro).
+Arquitetura: kernel.js (single-tenant), sem tenant.js/session.js ativos em produção.
+Inclui: site completo exceto _BACKUPS, .git, node_modules.
