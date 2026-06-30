@@ -45,6 +45,16 @@ service cloud.firestore {
       allow read, update, delete:          if request.auth != null;
     }
 
+    // Avaliações enviadas pelo cliente no Portal (sessão anônima via
+    // signInAnonymously) — mesma convenção das demais coleções públicas
+    // do portal: criação livre, leitura/edição restrita a autenticados
+    // (inclui a própria sessão anônima do cliente, que já satisfaz
+    // request.auth != null, e as contas reais da equipe).
+    match /avaliacoes/{docId} {
+      allow create:                        if true;
+      allow read, update, delete:          if request.auth != null;
+    }
+
     // ─────────────────────────────────────────────
     // PRIVADO: Clientes e OS
     // ─────────────────────────────────────────────
@@ -185,8 +195,12 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
+    // Status (novo/lido/resolvido) dos alertas, por usuário. O id do
+    // documento é sempre o próprio uid (central-alertas.js usa
+    // doc(db, 'central_alertas_status', ctx.uid)) — cada usuário só
+    // pode ler/escrever o seu próprio documento, nunca o de outro.
     match /central_alertas_status/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && request.auth.uid == docId;
     }
 
     match /central_organizacao/{docId} {
