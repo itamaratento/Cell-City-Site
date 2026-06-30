@@ -23,51 +23,6 @@
                 <div class="pin-logo-sub">Acesso Seguro</div>
             </div>
 
-            <!-- MODO: LOGIN USUÁRIO + SENHA (em desenvolvimento — não bloqueia) -->
-            <div id="screen-login" class="pin-screen">
-                <p class="pin-label">Entrar no CRM</p>
-                <div class="cc-field">
-                    <label for="login-user">Usuário</label>
-                    <input type="text" id="login-user" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="usuário">
-                </div>
-                <div class="cc-field">
-                    <label for="login-pass">Senha</label>
-                    <input type="password" id="login-pass" autocomplete="current-password" placeholder="senha">
-                </div>
-                <label class="cc-check">
-                    <input type="checkbox" id="login-lembrar">
-                    <span>Lembrar este dispositivo por 90 dias</span>
-                </label>
-                <div class="pin-error" id="login-error"></div>
-                <button class="pin-btn-entrar" id="btn-login">Entrar</button>
-                <button class="pin-link" id="btn-debug" style="margin-top:0;font-size:10px;color:#555;" onclick="toggleDebug()">🔍 Debug</button>
-                <button class="pin-link" onclick="showScreen('pin')">Entrar com PIN</button>
-
-                <!-- WebAuthn preservado, porém oculto (substituído pelo token de dispositivo) -->
-                <button class="pin-btn-device" id="btn-device" onclick="entrarComDispositivo()" style="display:none">
-                    🔐 Usar senha do dispositivo
-                </button>
-            </div>
-
-            <!-- MODO: CRIAR ACESSO (1º uso — define usuário e senha) -->
-            <div id="screen-criar-acesso" class="pin-screen">
-                <p class="pin-label">Criar acesso do CRM</p>
-                <div class="cc-field">
-                    <label for="ca-user">Usuário</label>
-                    <input type="text" id="ca-user" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="defina um usuário">
-                </div>
-                <div class="cc-field">
-                    <label for="ca-pass">Senha</label>
-                    <input type="password" id="ca-pass" placeholder="defina uma senha">
-                </div>
-                <div class="cc-field">
-                    <label for="ca-pass2">Confirmar senha</label>
-                    <input type="password" id="ca-pass2" placeholder="repita a senha">
-                </div>
-                <div class="pin-error" id="ca-error"></div>
-                <button class="pin-btn-entrar" onclick="criarAcesso()">Criar acesso</button>
-            </div>
-
             <!-- MODO: DIGITAR PIN (acesso principal) -->
             <div id="screen-pin" class="pin-screen active">
                 <p class="pin-label" id="pin-label">Digite seu PIN</p>
@@ -92,7 +47,7 @@
                     <button class="pin-btn pin-btn-del" onclick="pinDelete()">⌫</button>
                     <button class="pin-btn pin-btn-empty"></button>
                 </div>
-                <button class="pin-link" onclick="showScreen('login')">← Voltar ao login</button>
+                <button class="pin-link" onclick="sair()">← Sair / entrar com outra conta</button>
                 <button class="pin-link" id="btn-alterar" onclick="showScreen('alterar')" style="display:none">Alterar PIN</button>
                 <button class="pin-link pin-link-sair" id="btn-redefinir" onclick="redefinirPin()" style="display:none">Redefinir PIN</button>
             </div>
@@ -121,7 +76,7 @@
                     <button class="pin-btn pin-btn-del" onclick="pinNovoDelete()">⌫</button>
                     <button class="pin-btn pin-btn-empty"></button>
                 </div>
-                <button class="pin-link" onclick="showScreen('login')">← Voltar</button>
+                <button class="pin-link" onclick="showScreen('logado')">← Voltar</button>
             </div>
 
             <!-- MODO: LOGADO -->
@@ -129,19 +84,6 @@
                 <div class="pin-success">✅</div>
                 <p class="pin-label">Acesso liberado</p>
                 <a href="/CRM/pages/dashboard/index.html" class="pin-btn-entrar">Abrir CRM</a>
-                <button class="pin-link" onclick="showScreen('dispositivos')" style="margin-top:12px">📱 Dispositivos autorizados</button>
-
-                <!-- SEGURANÇA: Usar senha do dispositivo -->
-                <div class="seg-device-row" id="seg-device-row" style="display:none" onclick="toggleDispositivo()">
-                    <div class="seg-device-info">
-                        <div class="seg-device-title">🔐 Usar senha do dispositivo</div>
-                        <div class="seg-device-status" id="seg-device-status">Desativado — usa o PIN do CRM.</div>
-                    </div>
-                    <div class="seg-device-toggle" id="seg-device-toggle"><span class="seg-device-knob"></span></div>
-                </div>
-
-                <!-- DIAGNÓSTICO WebAuthn (preenchido só ao tocar o switch) -->
-                <pre class="seg-device-diag" id="seg-device-diag" style="display:none"></pre>
 
                 <button class="pin-link" onclick="showScreen('conta')" style="margin-top:12px">☁️ Conta de Sincronização</button>
                 <button class="pin-link" onclick="showScreen('alterar')" style="margin-top:12px">🔑 Alterar PIN</button>
@@ -172,17 +114,6 @@
 
                 <button class="pin-btn-danger" id="btn-logout" type="button" style="display:none">Sair da conta de sincronização</button>
                 <button class="pin-link" onclick="showScreen('logado')" style="margin-top:8px">← Voltar</button>
-            </div>
-
-            <!-- MODO: DISPOSITIVOS AUTORIZADOS -->
-            <div id="screen-dispositivos" class="pin-screen">
-                <p class="pin-label">Dispositivos autorizados</p>
-                <div class="pin-error" id="disp-error"></div>
-                <div class="cc-dev-list" id="disp-lista">
-                    <div class="cc-dev-empty">Carregando…</div>
-                </div>
-                <button class="pin-btn-danger" onclick="desconectarTodos()">Desconectar todos os dispositivos</button>
-                <button class="pin-link" onclick="showScreen('logado')">← Voltar</button>
             </div>
 
         </div>
