@@ -16,7 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Cell City">
 <link rel="apple-touch-icon" href="/CRM/assets/logo.png">
 </head>
-<body>
+<body class="modo-compacto">
 
 <!-- ========== BARRA SUPERIOR OPERACIONAL ========== -->
 <header class="top-bar">
@@ -49,7 +49,6 @@
       <span class="site-cc-icon">🌐</span>
       <span class="site-cc-label">Site</span>
     </a>
-    <button class="compact-toggle" id="compact-mode-toggle" title="Alternar para modo compacto">▢ Compactar</button>
     <button class="aprov-sino" id="aprov-sino" title="Painel de Alertas" aria-label="Painel de Alertas">🔔<span class="aprov-badge" id="aprov-badge" style="display:none;">0</span></button>
     <span class="status-pill online">Online</span>
   </div>
@@ -76,11 +75,7 @@
 <div class="workspace-v2" id="workspace-v2">
 
   <!-- ===== SIDEBAR ESQUERDA ===== -->
-  <nav class="sidebar-left" id="sidebar-left">
-
-    <button class="sidebar-toggle" id="sidebar-toggle" title="Recolher menu">
-      <span class="sidebar-toggle-icon" id="sidebar-toggle-icon">◀</span>
-    </button>
+  <nav class="sidebar-left collapsed" id="sidebar-left">
 
     <div class="sidebar-nav" id="sidebar-nav">
 

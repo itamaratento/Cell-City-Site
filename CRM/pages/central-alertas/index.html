@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace('/CRM/login.html');</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cell City — Central de Alertas</title>
+    <link rel="stylesheet" href="central-alertas.css">
+    <link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header class="header" id="mainHeader">
+    <h1>⚠️ Central de Alertas</h1>
+</header>
+
+<main>
+<div class="alr-content">
+
+    <!-- CARDS DE RESUMO -->
+    <div class="alr-resumo" id="alr-resumo">
+        <button class="alr-resumo-item ativo" data-quick="todos">
+            <span class="alr-resumo-num" id="alr-num-total">—</span>
+            <span class="alr-resumo-label">Total</span>
+        </button>
+        <button class="alr-resumo-item" data-quick="critico">
+            <span class="alr-resumo-num alr-vermelho" id="alr-num-critico">—</span>
+            <span class="alr-resumo-label">Críticos</span>
+        </button>
+        <button class="alr-resumo-item" data-quick="atencao">
+            <span class="alr-resumo-num alr-amarelo" id="alr-num-atencao">—</span>
+            <span class="alr-resumo-label">Atenção</span>
+        </button>
+        <button class="alr-resumo-item" data-quick="novo">
+            <span class="alr-resumo-num alr-azul" id="alr-num-novo">—</span>
+            <span class="alr-resumo-label">Novos</span>
+        </button>
+    </div>
+
+    <!-- BUSCA -->
+    <div class="alr-busca-wrap">
+        <input type="search" id="alr-search" class="alr-search" autocomplete="off" placeholder="🔍 Buscar em título, descrição...">
+    </div>
+
+    <!-- FILTROS + AÇÕES -->
+    <div class="alr-toolbar">
+        <div class="alr-filtros">
+            <select id="alr-filtro-prio" class="alr-filtro">
+                <option value="">🚩 Todas prioridades</option>
+                <option value="critico">🔴 Crítico</option>
+                <option value="atencao">🟡 Atenção</option>
+                <option value="crm">🔵 Informativo</option>
+            </select>
+            <select id="alr-filtro-status" class="alr-filtro">
+                <option value="">⏺ Todos status</option>
+                <option value="novo">🆕 Novo</option>
+                <option value="lido">👁️ Lido</option>
+                <option value="resolvido">✅ Resolvido</option>
+            </select>
+            <select id="alr-ordenar" class="alr-filtro">
+                <option value="prioridade">↕ Prioridade</option>
+                <option value="recente">↕ Mais recentes</option>
+            </select>
+        </div>
+        <div class="alr-acoes-topo">
+            <button class="alr-btn-icone" id="alr-btn-atualizar" title="Atualizar agora">🔄</button>
+            <button class="alr-btn-icone" id="alr-btn-marcar-todos" title="Marcar todos como lidos">✅</button>
+            <button class="alr-btn-icone" id="alr-btn-config" title="Configurar alertas">⚙️</button>
+        </div>
+    </div>
+
+    <div class="alr-loading" id="alr-loading">
+        <div class="alr-spinner"></div>
+        <span>Carregando alertas...</span>
+    </div>
+
+    <div id="alr-lista" class="alr-lista"></div>
+
+    <div class="alr-empty" id="alr-empty" style="display:none">
+        <div class="alr-empty-icon">✅</div>
+        <div class="alr-empty-title" id="alr-empty-title">Nenhum alerta pendente</div>
+        <div class="alr-empty-sub" id="alr-empty-sub">Tudo certo por aqui. Novos alertas aparecem automaticamente.</div>
+    </div>
+
+</div>
+</main>
+
+<!-- ===== MODAL: DETALHES DO ALERTA ===== -->
+<div class="alr-modal-overlay" id="alr-modal-detalhe" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="alr-modal">
+        <div class="alr-modal-header">
+            <span id="alr-detalhe-titulo">Detalhes do alerta</span>
+            <button class="alr-modal-close" id="alr-detalhe-fechar">&times;</button>
+        </div>
+        <div class="alr-modal-body" id="alr-detalhe-body"></div>
+        <div class="alr-modal-footer" id="alr-detalhe-acoes"></div>
+    </div>
+</div>
+
+<!-- ===== MODAL: CONFIGURAÇÃO DE ALERTAS ===== -->
+<div class="alr-modal-overlay" id="alr-modal-config" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+    <div class="alr-modal alr-modal-config">
+        <div class="alr-modal-header">
+            <span>⚙️ Configuração de Alertas</span>
+            <button class="alr-modal-close" id="alr-config-fechar">&times;</button>
+        </div>
+
+        <div class="alr-modal-body">
+            <div class="alr-config-secao">
+                <div class="alr-config-secao-titulo">🔊 Som</div>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" id="alr-config-som-ativo" checked>
+                    <span>Ativar som nos alertas</span>
+                </label>
+                <div class="alr-config-horario-row">
+                    <label>Tocar apenas entre:</label>
+                    <input type="time" id="alr-config-som-inicio" value="08:00">
+                    <span>até</span>
+                    <input type="time" id="alr-config-som-fim" value="18:00">
+                </div>
+                <div class="alr-config-dias-row">
+                    <label>Dias da semana:</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="0"> Dom</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="1" checked> Seg</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="2" checked> Ter</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="3" checked> Qua</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="4" checked> Qui</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="5" checked> Sex</label>
+                    <label><input type="checkbox" class="alr-config-dia-sem" value="6"> Sab</label>
+                </div>
+                <div class="alr-config-silencio-row">
+                    <label class="alr-config-toggle">
+                        <input type="checkbox" id="alr-config-silencio-ativo">
+                        <span>Horário de silêncio 🤫</span>
+                    </label>
+                    <div id="alr-config-silencio-campos" class="alr-config-silencio-campos" style="display:none;">
+                        <input type="time" id="alr-config-silencio-inicio" value="12:00">
+                        <span>até</span>
+                        <input type="time" id="alr-config-silencio-fim" value="13:00">
+                    </div>
+                </div>
+            </div>
+
+            <div class="alr-config-secao">
+                <div class="alr-config-secao-titulo">🔔 Alertas com som</div>
+                <p class="alr-config-secao-sub">Mesmo com som global ativo, só tocarão os selecionados abaixo:</p>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="acaoSemanaVencidas" checked>
+                    <span>🔴 Ação da Semana — Vencidas</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="acaoSemanaAgora">
+                    <span>🟡 Ação da Semana — Horário atual</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="acaoSemanaProximas">
+                    <span>🟢 Ação da Semana — Próximas</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="posVendaCritico">
+                    <span>💡 Pós-Venda atrasado</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="osAguardandoCliente">
+                    <span>📦 OS com orçamento parado</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-alerta-som" data-tipo="avaliacoesCriticas">
+                    <span>⭐ Avaliações críticas (nota ≤ 2)</span>
+                </label>
+            </div>
+
+            <div class="alr-config-secao">
+                <div class="alr-config-secao-titulo">🔴 Pulsação Visual</div>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-pulsacao" data-nivel="critico" checked>
+                    <span>Alertas críticos</span>
+                </label>
+                <label class="alr-config-toggle">
+                    <input type="checkbox" class="alr-config-pulsacao" data-nivel="atencao">
+                    <span>Alertas de atenção</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="alr-modal-footer">
+            <button id="alr-btn-testar-som" class="alr-btn-cancelar">🔇 Testar Som</button>
+            <button id="alr-btn-salvar-config" class="alr-btn-salvar">💾 Salvar</button>
+        </div>
+    </div>
+</div>
+
+<div class="alr-toast" id="alr-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script type="module" src="central-alertas.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>
