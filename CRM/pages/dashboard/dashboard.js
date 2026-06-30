@@ -3350,4 +3350,3 @@ async function _bootDashboard() {
   }
 }
 _bootDashboard();
-}
