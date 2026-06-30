@@ -1137,12 +1137,6 @@ body {
   flex-shrink: 0;
 }
 
-.module-indicator.live {
-  background: var(--cell-green);
-  box-shadow: 0 0 10px rgba(0, 200, 83, 0.7);
-  animation: pulse 2s ease-in-out infinite;
-}
-
 .badge-contador {
   display: inline-flex;
   align-items: center;
@@ -2829,20 +2823,6 @@ body {
 .modules-section {
   flex: 1;
 }
-.modules-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.modules-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 /* Grid 5 colunas */
 .modules-grid {
   display: grid;
@@ -2913,48 +2893,6 @@ body {
   position: absolute;
   top: 10px;
   right: 10px;
-}
-
-/* OS — destaque máximo (1.2x) */
-.module-card--os {
-  min-height: 168px !important;
-  border-color: rgba(0, 200, 83, 0.2) !important;
-  background: linear-gradient(135deg, rgba(0, 200, 83, 0.04) 0%, var(--bg-surface) 100%) !important;
-}
-.module-card--os .module-icon { font-size: 36px !important; }
-.module-card--os .module-info h3 { font-size: 16px !important; font-weight: 800 !important; }
-.module-card--os:hover {
-  border-color: rgba(0, 200, 83, 0.45) !important;
-  box-shadow: 0 0 0 1px rgba(0, 200, 83, 0.2), 0 6px 24px rgba(0, 200, 83, 0.12) !important;
-}
-
-/* Badge "Novo" nos cards */
-.module-badge-new {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  background: var(--cell-green);
-  color: #000;
-  font-size: 9px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.module-card--new {
-  border-color: rgba(0, 200, 83, 0.12);
-}
-
-/* Live indicator no card OS */
-.module-indicator.live::after {
-  content: '';
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--cell-green);
-  animation: pulse-dot 1.5s infinite;
 }
 
 /* ===== MODO COMPACTO V2 ===== */
