@@ -207,18 +207,17 @@
   </div>
 
   <script type="module">
-    import { login, getUser } from '/CRM/scripts/kernel.js';
-    import { auth } from '/CRM/scripts/firebase.js';
-    import { onAuthStateChanged }
-        from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { login, getCtxAsync } from '/CRM/scripts/kernel.js';
 
     const DASHBOARD = '/CRM/pages/dashboard/index.html';
 
-    // Se já está autenticado, vai direto ao dashboard
-    onAuthStateChanged(auth, (user) => {
-      if (user && !user.isAnonymous) {
-        location.replace(DASHBOARD);
-      }
+    // Se já está autenticado, vai direto ao dashboard.
+    // Usa getCtxAsync() (não onAuthStateChanged direto) para garantir que a
+    // flag cc_kernel_v1 já foi gravada antes de navegar — senão o gate do
+    // dashboard manda de volta pro login antes da flag existir, causando
+    // um loop de redirecionamento (tela piscando entre login e dashboard).
+    getCtxAsync().then((ctx) => {
+      if (ctx) location.replace(DASHBOARD);
     });
 
     // ── Submissão do formulário ──
