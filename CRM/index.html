@@ -15,12 +15,9 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/CRM/sw.js', { scope: '/CRM/' });
   }
-  // Redireciona para dashboard ou login
-  if (sessionStorage.getItem('cc_acesso') === 'ok') {
-    window.location.replace('pages/dashboard/index.html');
-  } else {
-    window.location.replace('pages/config/index.html');
-  }
+  // Único gate de acesso do CRM: o Dashboard já verifica a sessão Firebase
+  // real (kernel.js) e redireciona para /CRM/login.html se necessário.
+  window.location.replace('pages/dashboard/index.html');
 </script>
 </head>
 <body></body>
