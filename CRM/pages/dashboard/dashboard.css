@@ -240,6 +240,14 @@ body {
   transform: translateY(-1px);
 }
 
+.brand-header-logo {
+  height: 32px;
+  width: auto;
+  margin-right: 10px;
+  position: relative;
+  z-index: 1;
+}
+
 .brand-header-text {
   display: flex;
   flex-direction: column;

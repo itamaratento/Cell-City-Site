@@ -55,6 +55,13 @@
       transform: translateY(0);
       opacity: 0.85;
     }
+    .brand-header-logo {
+      height: 32px;
+      width: auto;
+      margin-right: 10px;
+      position: relative;
+      z-index: 1;
+    }
     .brand-header-text {
       display: flex;
       flex-direction: column;
@@ -195,6 +202,7 @@
 
   const BRAND_HTML = `
     <div class="brand-header" id="brand-header" title="Voltar ao painel">
+      <img class="brand-header-logo" src="/CRM/assets/logo.svg" alt="Cell City">
       <div class="brand-header-text">
         <div class="brand-header-title">Cell City Informática</div>
         <div class="brand-header-divider"></div>
