@@ -259,3 +259,48 @@ header.cx-header h1 { font-size: 18px; font-weight: 700; color: var(--green-ligh
   .card-financeiro { padding: 9px 6px; }
   .card-financeiro .card-valor { font-size: 12.5px; }
 }
+
+/* ── Autocomplete de Estoque ── */
+.campo-desc-wrap { position: relative; }
+.autocomplete-dropdown {
+  display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 150;
+  background: var(--surface3); border: 1px solid var(--border-hover);
+  border-top: none; border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5); max-height: 240px; overflow-y: auto;
+}
+.autocomplete-item {
+  padding: 10px 13px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  border-bottom: 1px solid var(--border); transition: background .12s;
+}
+.autocomplete-item:last-child { border-bottom: none; }
+.autocomplete-item:hover { background: rgba(255,255,255,.06); }
+.ac-nome { font-size: 13px; font-weight: 600; color: var(--text); }
+.ac-info { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.autocomplete-item.ac-zerado .ac-info { color: var(--red); }
+.autocomplete-item.ac-baixo .ac-info { color: #f59e0b; }
+
+/* ── Produto vinculado ── */
+.produto-badge {
+  display: none; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: rgba(0,200,83,.07); border: 1px solid rgba(0,200,83,.22);
+  border-radius: var(--radius-sm); padding: 8px 12px; margin-top: 6px;
+  animation: fadeIn .2s var(--ease);
+}
+.produto-badge.visivel { display: flex; }
+.produto-badge-nome { font-size: 12px; font-weight: 600; color: var(--green-light); flex: 1; min-width: 0; }
+.produto-badge-qty { font-size: 12px; color: var(--text3); display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.produto-badge-qty input {
+  width: 58px; background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; color: var(--text); font-size: 13px;
+  text-align: center; outline: none; font-weight: 700;
+}
+.produto-badge-qty input:focus { border-color: var(--border-focus); }
+.produto-badge-desvincular {
+  background: none; border: none; color: var(--text3); cursor: pointer;
+  font-size: 15px; padding: 0 2px; line-height: 1; transition: color .15s;
+}
+.produto-badge-desvincular:hover { color: var(--red); }
+
+/* ── Bruto info no card ── */
+.lanc-bruto { font-size: 11px; color: var(--text3); margin-top: 2px; }

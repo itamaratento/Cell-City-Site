@@ -81,7 +81,15 @@
 
       <div class="campo-grupo">
         <label>Descrição *</label>
-        <input type="text" id="descricao" placeholder="Ex: Venda de película, Serviço de tela...">
+        <div class="campo-desc-wrap">
+          <input type="text" id="descricao" placeholder="Ex: Carregador Motorola, Troca de tela...">
+          <div id="autocomplete-estoque" class="autocomplete-dropdown"></div>
+        </div>
+        <div class="produto-badge" id="produto-badge">
+          <span class="produto-badge-nome" id="produto-badge-nome">—</span>
+          <span class="produto-badge-qty">Qtd: <input type="number" id="qty-venda" value="1" min="1" max="9999"></span>
+          <button class="produto-badge-desvincular" onclick="desvinculaProduto()" title="Desvincular produto">✕</button>
+        </div>
       </div>
 
       <div class="campo-grupo">
@@ -246,6 +254,50 @@
         <input type="text" id="edit-lucroAuto" class="input-lucro-auto" readonly>
       </div>
       <button class="btn-salvar" onclick="salvarEdicao()">💾 Salvar Alterações</button>
+    </div>
+  </div>
+
+  <!-- MODAL NOVO PRODUTO NO ESTOQUE -->
+  <div class="modal-overlay" id="modal-novo-produto" onclick="if(event.target===this)fecharModalNovoProduto()">
+    <div class="modal-painel">
+      <div class="modal-header">
+        <span>📦 Cadastrar Produto no Estoque</span>
+        <button class="modal-fechar" onclick="fecharModalNovoProduto()">✕</button>
+      </div>
+      <div class="campo-grupo">
+        <label>Nome do produto *</label>
+        <input type="text" id="np-nome" placeholder="Ex: Carregador Motorola">
+      </div>
+      <div class="campo-grupo">
+        <label>Categoria *</label>
+        <select id="np-cat">
+          <option value="Cabo">Cabo</option>
+          <option value="Capinha">Capinha</option>
+          <option value="Película">Película</option>
+          <option value="Carregador" selected>Carregador</option>
+          <option value="Fone">Fone</option>
+          <option value="Bateria">Bateria</option>
+          <option value="Tela">Tela</option>
+          <option value="Peça">Peça</option>
+          <option value="Acessório">Acessório</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </div>
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Qtd. em estoque</label>
+          <input type="number" id="np-qty" value="0" min="0">
+        </div>
+        <div class="campo-grupo">
+          <label>Custo unitário (R$)</label>
+          <input type="number" id="np-custo" placeholder="0,00" step="0.01" min="0">
+        </div>
+      </div>
+      <div class="campo-grupo">
+        <label>Preço de venda (R$)</label>
+        <input type="number" id="np-venda" placeholder="0,00" step="0.01" min="0">
+      </div>
+      <button class="btn-salvar" onclick="salvarNovoProduto()">✅ Cadastrar e Finalizar Venda</button>
     </div>
   </div>
 

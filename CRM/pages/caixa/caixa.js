@@ -2,7 +2,7 @@ import { db } from '../../scripts/firebase.js';
 import { initModulo } from '/CRM/scripts/kernel.js';
 import {
     collection, query, where, orderBy,
-    getDocs, addDoc, deleteDoc, updateDoc, doc, setDoc,
+    getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc,
     onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
@@ -10,6 +10,7 @@ import {
 const COL_LANCAMENTOS = 'caixa_lancamentos';
 const COL_CATEGORIAS  = 'categorias_caixa';
 const COL_LEMBRETES   = 'lembretes_pagamento';
+const COL_ESTOQUE     = 'estoque_produtos';
 const CATEGORIAS_PADRAO = [
     { nome: 'Vendas',       tipo: 'entrada' },
     { nome: 'Serviços',     tipo: 'servico' },
@@ -19,12 +20,15 @@ const CATEGORIAS_PADRAO = [
 ];
 
 // ── Estado ────────────────────────────────────────────────────
-let _empresaId      = null;
+let _empresaId       = null;
 let _periodo         = 'hoje';
 let _unsubLanc       = null;
 let _unsubLembretes  = null;
 let _ultimosLanc     = [];
 let _ultimosLembretes = [];
+let _produtoVinculado = null;  // { id, nome, custo, venda, quantidade }
+let _cacheProdutos   = [];
+let _vendaPendente   = null;   // dados do form aguardando cadastro de produto
 
 // ── Boot ──────────────────────────────────────────────────────
 async function init() {
@@ -38,6 +42,8 @@ async function init() {
     assinarLancamentos();
     assinarLembretes();
     carregarMetaSemanal();
+    _cacheProdutos = await carregarProdutosEstoque();
+    setupAutocomplete();
 }
 
 // ── Categorias ────────────────────────────────────────────────
@@ -146,22 +152,33 @@ window.salvarLancamento = async function () {
     if (!valor || valor <= 0) return showToast('Informe o valor.');
     if (!data) return showToast('Informe a data.');
 
-    const btn = document.querySelector('.btn-salvar');
+    // Auto-vincular produto se nome exato bater no cache
+    if (!_produtoVinculado && tipo !== 'saida') {
+        const nomeLower = descricao.toLowerCase();
+        const encontrado = _cacheProdutos.find(p => (p.nome || '').toLowerCase() === nomeLower);
+        if (encontrado) _produtoVinculado = encontrado;
+    }
+
+    // Produto não encontrado → perguntar se quer cadastrar (só para vendas)
+    if (!_produtoVinculado && tipo === 'entrada') {
+        const nomeLower = descricao.toLowerCase();
+        const existe = _cacheProdutos.some(p => (p.nome || '').toLowerCase().includes(nomeLower));
+        if (!existe) {
+            const cadastrar = confirm(`Produto "${descricao}" não encontrado no estoque.\nDeseja cadastrar agora?`);
+            if (cadastrar) {
+                _vendaPendente = { tipo, descricao, categoria, valor, custo, data, obs };
+                abrirModalNovoProduto(descricao, valor, custo);
+                return;
+            }
+        }
+    }
+
+    const btn = document.querySelector('#bloco-padrao-2 .btn-salvar');
     btn.disabled = true;
     btn.textContent = 'Salvando...';
 
     try {
-        const dataISO = new Date(data + 'T12:00:00').toISOString();
-        await addDoc(collection(db, COL_LANCAMENTOS), {
-            tipo, descricao, categoria, valor, custo,
-            lucro: calcularLucro(tipo, valor, custo),
-            data, dataISO, ano: new Date(data + 'T12:00:00').getFullYear(),
-            obs, empresa_id: _empresaId,
-            criadoEm: serverTimestamp()
-        });
-        limparForm();
-        showToast('Lançamento salvo.');
-        console.log('[CAIXA] Lançamento salvo.');
+        await _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs });
     } catch (e) {
         console.error('[CAIXA] Erro ao salvar:', e);
         showToast('Erro ao salvar. Tente novamente.');
@@ -312,15 +329,20 @@ window.pesquisar = function () {
 
 // ── Render ────────────────────────────────────────────────────
 function cardLancamento(l) {
+    const lucro = l.lucro ?? calcularLucro(l.tipo, l.valor, l.custo);
+    // Para entradas/serviços: mostra lucro líquido; para saídas: mostra valor (despesa)
+    const valorExibido = l.tipo === 'saida' ? l.valor : lucro;
+    const temCusto = l.tipo !== 'saida' && (l.custo || 0) > 0;
     return `
         <div class="lancamento-card tipo-${l.tipo}">
             <div class="lanc-info">
                 <div class="lanc-desc">${esc(l.descricao)}</div>
                 <div class="lanc-meta">${esc(l.categoria)} · ${l.data}</div>
+                ${temCusto ? `<div class="lanc-bruto">💵 bruto: ${formatarMoeda(l.valor)}</div>` : ''}
                 ${l.obs ? `<div class="lanc-obs">${esc(l.obs)}</div>` : ''}
             </div>
             <div class="lanc-dir">
-                <div class="lanc-valor tipo-${l.tipo}">${formatarMoeda(l.valor)}</div>
+                <div class="lanc-valor tipo-${l.tipo}">${formatarMoeda(valorExibido)}</div>
                 <div class="lanc-acoes">
                     <button onclick="editarLancamento('${l.id}')" title="Editar">✏️</button>
                     <button class="btn-excluir" onclick="excluirLancamento('${l.id}')" title="Excluir">✕</button>
@@ -338,9 +360,14 @@ function renderLista(lancamentos) {
 }
 
 function renderTotais(lancamentos) {
-    const faturamento = lancamentos.filter(l => l.tipo !== 'saida').reduce((s, l) => s + (l.valor || 0), 0);
-    const custos       = lancamentos.filter(l => l.tipo !== 'saida').reduce((s, l) => s + (l.custo || 0), 0);
-    const lucro        = lancamentos.reduce((s, l) => s + (l.lucro ?? calcularLucro(l.tipo, l.valor, l.custo)), 0);
+    const vendas   = lancamentos.filter(l => l.tipo !== 'saida');
+    const despesas = lancamentos.filter(l => l.tipo === 'saida');
+
+    const faturamento    = vendas.reduce((s, l) => s + (l.valor || 0), 0);
+    const custoMercadoria = vendas.reduce((s, l) => s + (l.custo || 0), 0);
+    const totalDespesas  = despesas.reduce((s, l) => s + (l.valor || 0), 0);
+    const custos         = custoMercadoria + totalDespesas;
+    const lucro          = faturamento - custos;
 
     document.getElementById('total-faturamento').textContent = formatarMoeda(faturamento);
     document.getElementById('total-custos').textContent      = formatarMoeda(custos);
@@ -561,6 +588,205 @@ function limparForm() {
     document.querySelectorAll('#bloco-padrao-2 .tipo-btn').forEach(b => b.classList.remove('ativo'));
     document.querySelector('#bloco-padrao-2 [data-tipo="entrada"]').classList.add('ativo');
     document.getElementById('tipo').value = 'entrada';
+    // Limpar produto vinculado
+    _produtoVinculado = null;
+    document.getElementById('produto-badge').classList.remove('visivel');
+    document.getElementById('qty-venda').value = '1';
+}
+
+// ── Estoque: carregar cache ────────────────────────────────────
+async function carregarProdutosEstoque() {
+    try {
+        const snap = await getDocs(collection(db, COL_ESTOQUE));
+        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch { return []; }
+}
+
+// ── Estoque: autocomplete ──────────────────────────────────────
+function setupAutocomplete() {
+    const inp  = document.getElementById('descricao');
+    const drop = document.getElementById('autocomplete-estoque');
+    if (!inp || !drop) return;
+
+    inp.addEventListener('input', () => {
+        const tipo  = document.getElementById('tipo').value;
+        const termo = inp.value.trim().toLowerCase();
+        if (termo.length < 2 || tipo === 'saida') { drop.style.display = 'none'; return; }
+
+        const matches = _cacheProdutos
+            .filter(p => (p.nome || '').toLowerCase().includes(termo))
+            .slice(0, 8);
+
+        if (!matches.length) { drop.style.display = 'none'; return; }
+
+        drop.innerHTML = matches.map(p => {
+            const zerado = p.quantidade <= 0;
+            const baixo  = !zerado && p.quantidade <= (p.quantidadeMinima || 1);
+            const cls    = zerado ? 'ac-zerado' : baixo ? 'ac-baixo' : '';
+            const qtyTxt = zerado ? 'Estoque zerado' : `Estoque: ${p.quantidade}`;
+            return `<div class="autocomplete-item ${cls}"
+                         data-id="${p.id}" data-nome="${esc(p.nome)}"
+                         data-custo="${p.custo || 0}" data-venda="${p.venda || 0}"
+                         data-qty="${p.quantidade || 0}">
+                        <span class="ac-nome">${esc(p.nome)}</span>
+                        <span class="ac-info">${qtyTxt} · ${formatarMoeda(p.venda)}</span>
+                    </div>`;
+        }).join('');
+        drop.style.display = 'block';
+
+        drop.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('mousedown', e => {
+                e.preventDefault();
+                vincularProduto({
+                    id:         item.dataset.id,
+                    nome:       item.dataset.nome,
+                    custo:      parseFloat(item.dataset.custo) || 0,
+                    venda:      parseFloat(item.dataset.venda) || 0,
+                    quantidade: parseInt(item.dataset.qty)    || 0
+                });
+                drop.style.display = 'none';
+            });
+        });
+    });
+
+    inp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 150));
+    inp.addEventListener('focus', () => {
+        if (inp.value.trim().length >= 2) inp.dispatchEvent(new Event('input'));
+    });
+}
+
+function vincularProduto(p) {
+    _produtoVinculado = p;
+    document.getElementById('descricao').value = p.nome;
+    document.getElementById('custo').value     = p.custo > 0 ? p.custo : '';
+    if (!document.getElementById('valor').value && p.venda > 0)
+        document.getElementById('valor').value = p.venda;
+    atualizarLucro();
+
+    const badge = document.getElementById('produto-badge');
+    document.getElementById('produto-badge-nome').textContent =
+        `📦 ${p.nome}${p.quantidade <= 0 ? ' — ⚠️ Sem estoque' : ` — ${p.quantidade} un.`}`;
+    badge.classList.add('visivel');
+}
+
+window.desvinculaProduto = function () {
+    _produtoVinculado = null;
+    document.getElementById('produto-badge').classList.remove('visivel');
+    document.getElementById('descricao').value = '';
+    document.getElementById('custo').value     = '';
+    document.getElementById('qty-venda').value = '1';
+    atualizarLucro();
+    document.getElementById('descricao').focus();
+};
+
+// ── Estoque: operações ─────────────────────────────────────────
+async function descontarEstoqueLocal(produtoId, qty) {
+    try {
+        const snap = await getDoc(doc(db, COL_ESTOQUE, produtoId));
+        if (!snap.exists()) return;
+        const prod    = snap.data();
+        const novaQtd = Math.max((prod.quantidade || 0) - qty, 0);
+        await setDoc(doc(db, COL_ESTOQUE, produtoId), { ...prod, quantidade: novaQtd, atualizadoEm: serverTimestamp() });
+        const idx = _cacheProdutos.findIndex(p => p.id === produtoId);
+        if (idx >= 0) _cacheProdutos[idx].quantidade = novaQtd;
+        if (novaQtd === 0)
+            showToast(`⚠️ Estoque zerado: ${prod.nome}`);
+        else if (novaQtd <= (prod.quantidadeMinima || 1))
+            showToast(`⚠️ Estoque mínimo: ${prod.nome} (${novaQtd} un.)`);
+    } catch (e) { console.error('[CAIXA] Erro descontar estoque:', e); }
+}
+
+async function incrementarEstoqueLocal(produtoId, qty, valorTotal) {
+    try {
+        const snap = await getDoc(doc(db, COL_ESTOQUE, produtoId));
+        if (!snap.exists()) return;
+        const prod        = snap.data();
+        const qtdAtual    = prod.quantidade || 0;
+        const custoAtual  = prod.custo      || 0;
+        const custoUnit   = qty > 0 ? valorTotal / qty : 0;
+        const novaQtd     = qtdAtual + qty;
+        const novoCusto   = novaQtd > 0
+            ? (qtdAtual * custoAtual + qty * custoUnit) / novaQtd
+            : custoUnit;
+        await setDoc(doc(db, COL_ESTOQUE, produtoId), { ...prod, quantidade: novaQtd, custo: novoCusto, atualizadoEm: serverTimestamp() });
+        const idx = _cacheProdutos.findIndex(p => p.id === produtoId);
+        if (idx >= 0) { _cacheProdutos[idx].quantidade = novaQtd; _cacheProdutos[idx].custo = novoCusto; }
+        showToast(`✅ Estoque atualizado: ${prod.nome} (+${qty} un.)`);
+    } catch (e) { console.error('[CAIXA] Erro incrementar estoque:', e); }
+}
+
+// ── Modal novo produto ─────────────────────────────────────────
+function abrirModalNovoProduto(nome, valorVenda, custoSugerido) {
+    document.getElementById('np-nome').value  = nome || '';
+    document.getElementById('np-custo').value = custoSugerido > 0 ? custoSugerido : '';
+    document.getElementById('np-venda').value = valorVenda > 0    ? valorVenda    : '';
+    document.getElementById('np-qty').value   = '0';
+    document.getElementById('modal-novo-produto').classList.add('aberto');
+    setTimeout(() => document.getElementById('np-nome').focus(), 100);
+}
+
+window.fecharModalNovoProduto = function () {
+    document.getElementById('modal-novo-produto').classList.remove('aberto');
+    _vendaPendente = null;
+};
+
+window.salvarNovoProduto = async function () {
+    const nome  = document.getElementById('np-nome').value.trim();
+    const cat   = document.getElementById('np-cat').value;
+    const qty   = parseInt(document.getElementById('np-qty').value)    || 0;
+    const custo = parseFloat(document.getElementById('np-custo').value) || 0;
+    const venda = parseFloat(document.getElementById('np-venda').value) || 0;
+
+    if (!nome) return showToast('Informe o nome do produto.');
+
+    const id = `prod_${Date.now()}`;
+    try {
+        await setDoc(doc(db, COL_ESTOQUE, id), {
+            nome, categoria: cat, quantidade: qty, quantidadeMinima: 1,
+            venda, custo, atualizadoEm: serverTimestamp()
+        });
+        const novoProd = { id, nome, custo, venda, quantidade: qty };
+        _cacheProdutos.push(novoProd);
+        _produtoVinculado = novoProd;
+
+        document.getElementById('modal-novo-produto').classList.remove('aberto');
+        showToast('Produto cadastrado! Finalizando venda...');
+
+        if (_vendaPendente) {
+            const dados = { ..._vendaPendente };
+            _vendaPendente = null;
+            await _executarSalvamento(dados);
+        }
+    } catch (e) {
+        console.error('[CAIXA] Erro ao cadastrar produto:', e);
+        showToast('Erro ao cadastrar produto.');
+    }
+};
+
+// ── Core: salvar lançamento no Firestore + estoque ─────────────
+async function _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs }) {
+    const dataISO = new Date(data + 'T12:00:00').toISOString();
+    await addDoc(collection(db, COL_LANCAMENTOS), {
+        tipo, descricao, categoria, valor, custo,
+        lucro: calcularLucro(tipo, valor, custo),
+        data, dataISO, ano: new Date(data + 'T12:00:00').getFullYear(),
+        obs, empresa_id: _empresaId, criadoEm: serverTimestamp()
+    });
+
+    const qty = parseInt(document.getElementById('qty-venda')?.value) || 1;
+    if (_produtoVinculado) {
+        if (tipo === 'entrada' || tipo === 'servico') {
+            await descontarEstoqueLocal(_produtoVinculado.id, qty);
+        } else if (tipo === 'saida' && categoria === 'Fornecedores') {
+            await incrementarEstoqueLocal(_produtoVinculado.id, qty, valor);
+        }
+    }
+
+    _produtoVinculado = null;
+    _vendaPendente    = null;
+    limparForm();
+    showToast('Lançamento salvo.');
+    console.log('[CAIXA] Lançamento salvo.');
 }
 
 // ── Start ─────────────────────────────────────────────────────
