@@ -247,10 +247,8 @@ function atualizarResumo() {
     $('dia-num-revisoes').textContent = rev.pendentes;
     $('dia-revisoes-sub').textContent = `Venc ${rev.vencidas} · Hoje ${rev.hoje} · 7d ${rev.prox7}`;
 
-    // Resumo Geral
+    // Resumo Geral (Alta/Revisões já exibidos acima, nos cards de filtro rápido)
     $('dia-exec-ativos').textContent = ativos.length;
-    $('dia-exec-alta').textContent = alta;
-    $('dia-exec-revisoes').textContent = rev.pendentes;
     $('dia-exec-metas').textContent = ativos.filter(r => r.categoria === 'metas' && r.status === 'em_andamento').length;
     $('dia-exec-decisoes').textContent = ativos.filter(r => r.categoria === 'decisoes' && r.status === 'pendente').length;
 
@@ -818,7 +816,7 @@ document.querySelectorAll('.dia-panel-head').forEach(head => {
 function initPaineis() {
     // Por padrão recolhidos (tela limpa); respeita preferência salva.
     const estado = lerEstadoPaineis();
-    ['resumo', 'stats', 'timeline', 'gdrive'].forEach(nome => aplicarPainel(nome, !!estado[nome]));
+    ['resumo', 'timeline', 'gdrive'].forEach(nome => aplicarPainel(nome, !!estado[nome]));
 }
 
 // ── Filtros rápidos das estatísticas ──────────────────────────────────

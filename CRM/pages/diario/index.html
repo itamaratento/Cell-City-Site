@@ -163,31 +163,18 @@
 
             <!-- ============ PAINÉIS INFERIORES (recolhíveis) ============ -->
 
-            <!-- ===== 6. RESUMO GERAL ===== -->
+            <!-- ===== 6. RESUMO (geral + filtros rápidos, unificado) ===== -->
             <section class="dia-panel" id="dia-panel-resumo">
                 <button class="dia-panel-head" data-panel="resumo">
                     <span class="dia-panel-arrow">▶</span>
-                    <span class="dia-panel-titulo">📊 Resumo Geral</span>
-                </button>
-                <div class="dia-panel-body">
-                    <div class="dia-exec-grid">
-                        <div class="dia-exec-item"><span class="dia-exec-num" id="dia-exec-ativos">—</span><span class="dia-exec-label">Registros ativos</span></div>
-                        <div class="dia-exec-item"><span class="dia-exec-num dia-vermelho" id="dia-exec-alta">—</span><span class="dia-exec-label">Prioridade alta</span></div>
-                        <div class="dia-exec-item"><span class="dia-exec-num dia-laranja" id="dia-exec-revisoes">—</span><span class="dia-exec-label">Revisões pendentes</span></div>
-                        <div class="dia-exec-item"><span class="dia-exec-num dia-verde" id="dia-exec-metas">—</span><span class="dia-exec-label">Metas em andamento</span></div>
-                        <div class="dia-exec-item"><span class="dia-exec-num dia-azul" id="dia-exec-decisoes">—</span><span class="dia-exec-label">Decisões pendentes</span></div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ===== 6b. ESTATÍSTICAS (filtros rápidos) ===== -->
-            <section class="dia-panel" id="dia-panel-stats">
-                <button class="dia-panel-head" data-panel="stats">
-                    <span class="dia-panel-arrow">▶</span>
-                    <span class="dia-panel-titulo">📈 Estatísticas</span>
+                    <span class="dia-panel-titulo">📊 Resumo</span>
                 </button>
                 <div class="dia-panel-body">
                     <div class="dia-resumo" id="dia-resumo">
+                        <div class="dia-resumo-item">
+                            <span class="dia-resumo-num" id="dia-exec-ativos">—</span>
+                            <span class="dia-resumo-label">Ativos</span>
+                        </div>
                         <button class="dia-resumo-item" data-quick="alta">
                             <span class="dia-resumo-num dia-vermelho" id="dia-num-alta">—</span>
                             <span class="dia-resumo-label">Prioridade Alta</span>
@@ -209,6 +196,14 @@
                             <span class="dia-resumo-label">🔔 Revisões</span>
                             <span class="dia-resumo-sub" id="dia-revisoes-sub">—</span>
                         </button>
+                        <div class="dia-resumo-item">
+                            <span class="dia-resumo-num dia-verde" id="dia-exec-metas">—</span>
+                            <span class="dia-resumo-label">Metas em andamento</span>
+                        </div>
+                        <div class="dia-resumo-item">
+                            <span class="dia-resumo-num dia-azul" id="dia-exec-decisoes">—</span>
+                            <span class="dia-resumo-label">Decisões pendentes</span>
+                        </div>
                     </div>
                 </div>
             </section>
