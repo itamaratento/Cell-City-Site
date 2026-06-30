@@ -22,71 +22,22 @@
       margin-bottom: 14px;
     }
 
-    /* === Brand Header (logo clicável) — padrão original === */
+    /* === Brand Header (logo clicável) === */
     .brand-header {
       display: flex;
       align-items: center;
-      padding: 6px 14px;
-      background: rgba(0, 200, 83, 0.06);
-      border: 1px solid rgba(0, 200, 83, 0.25);
-      border-radius: 12px;
-      transition: all 250ms cubic-bezier(0.4,0,0.2,1);
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
-      position: relative;
-      box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.1);
+      transition: opacity 180ms ease;
     }
-    .brand-header::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
-      opacity: 0.6;
-      pointer-events: none;
-    }
-    .brand-header:hover {
-      background: rgba(0, 200, 83, 0.10);
-      border-color: rgba(0, 200, 83, 0.45);
-      box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.15);
-    }
-    .brand-header:active {
-      transform: translateY(0);
-      opacity: 0.85;
-    }
-    .brand-header-text {
-      display: flex;
-      flex-direction: column;
-      line-height: 1.15;
-      position: relative;
-      z-index: 1;
-    }
-    .brand-header-title {
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: -0.03em;
-      white-space: nowrap;
-      background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      filter: drop-shadow(0 0 8px rgba(0, 200, 83, 0.4));
-    }
-    .brand-header-divider {
-      height: 1px;
-      background: linear-gradient(90deg, #00c853 0%, rgba(0, 200, 83, 0.2) 70%, transparent 100%);
-      margin: 2px 0;
-      width: 100%;
-      opacity: 0.7;
-    }
-    .brand-header-subtitle {
-      font-size: 10.5px;
-      color: #a1a8b3;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      white-space: nowrap;
-      text-transform: uppercase;
+    .brand-header:hover { opacity: 0.88; }
+    .brand-header:active { opacity: 0.7; }
+    .brand-header-logo {
+      display: block;
+      height: 56px;
+      width: auto;
+      object-fit: contain;
     }
 
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
@@ -152,9 +103,7 @@
 
     /* Compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header { padding: 6px 10px; }
-      .brand-header-divider,
-      .brand-header-subtitle { display: none; }
+      .brand-header-logo { height: 40px; }
     }
 
     /* === Atalho Site Cell City === */
@@ -194,12 +143,8 @@
   `;
 
   const BRAND_HTML = `
-    <div class="brand-header" id="brand-header" title="Voltar ao painel">
-      <div class="brand-header-text">
-        <div class="brand-header-title">Cell City Informática</div>
-        <div class="brand-header-divider"></div>
-        <div class="brand-header-subtitle">CRM Operacional</div>
-      </div>
+    <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
+      <img class="brand-header-logo" src="/CRM/assets/logo-badge.png" alt="Cell City Informática — Gestão Empresarial" draggable="false">
     </div>
   `;
 
