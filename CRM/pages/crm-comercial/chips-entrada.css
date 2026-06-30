@@ -1,0 +1,16 @@
+/* ── Chips Entrada — estilos adicionais sobre entrada.css ── */
+
+/* Feedback de validação do CPF */
+.cpf-feedback { font-size: 12px; font-weight: 600; margin-top: 6px; min-height: 16px; }
+.cpf-ok   { color: #00c853; }
+.cpf-erro { color: #f87171; }
+
+/* Grid de operadora — 3 colunas */
+#oper-grid .ent-chip { min-height: 70px; font-size: 12px; }
+#oper-grid .ent-chip-icon { font-size: 26px; }
+
+/* Cores por operadora (--chip-color e --chip-rgb injetados via JS) */
+
+/* Grid de status — 2 colunas, chips menores */
+#status-grid .ent-chip { min-height: 60px; font-size: 11px; padding: 10px 4px 8px; }
+#status-grid .ent-chip-icon { font-size: 20px; }

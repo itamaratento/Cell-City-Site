@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<title>Cell City Gestão Empresarial</title>
+<link rel="stylesheet" href="entrada.css">
+<link rel="stylesheet" href="chips-entrada.css">
+</head>
+<body>
+
+<header class="ent-header">
+  <button class="ent-back" type="button" onclick="window.location.href='chips.html'">← Chips</button>
+  <span class="ent-header-title">📱 Novo Chip</span>
+  <div class="ent-header-spacer"></div>
+</header>
+
+<main class="ent-main">
+<form id="chip-form" onsubmit="salvarChip(event)" autocomplete="off" novalidate>
+
+  <!-- OPERADORA -->
+  <div class="ent-field">
+    <label class="ent-label">Operadora *</label>
+    <div class="ent-chips" id="oper-grid" style="grid-template-columns:repeat(3,1fr)"></div>
+  </div>
+
+  <!-- NOME -->
+  <div class="ent-field">
+    <label class="ent-label">👤 Nome Completo *</label>
+    <input type="text" id="f-nome" class="ent-input"
+           placeholder="Nome completo do cliente">
+  </div>
+
+  <!-- CPF -->
+  <div class="ent-field">
+    <label class="ent-label">🆔 CPF *</label>
+    <input type="text" id="f-cpf" class="ent-input"
+           placeholder="000.000.000-00" inputmode="numeric"
+           oninput="formatarCPF(this)" maxlength="14">
+    <div id="cpf-feedback" class="cpf-feedback"></div>
+  </div>
+
+  <!-- ESTADO DO CPF -->
+  <div class="ent-field">
+    <label class="ent-label">📍 Estado do CPF</label>
+    <select id="f-estado" class="ent-input ent-select">
+      <option value="">Selecionar estado...</option>
+      <option value="AC">Acre (AC)</option>
+      <option value="AL">Alagoas (AL)</option>
+      <option value="AP">Amapá (AP)</option>
+      <option value="AM">Amazonas (AM)</option>
+      <option value="BA">Bahia (BA)</option>
+      <option value="CE">Ceará (CE)</option>
+      <option value="DF">Distrito Federal (DF)</option>
+      <option value="ES">Espírito Santo (ES)</option>
+      <option value="GO">Goiás (GO)</option>
+      <option value="MA">Maranhão (MA)</option>
+      <option value="MT">Mato Grosso (MT)</option>
+      <option value="MS">Mato Grosso do Sul (MS)</option>
+      <option value="MG">Minas Gerais (MG)</option>
+      <option value="PA">Pará (PA)</option>
+      <option value="PB">Paraíba (PB)</option>
+      <option value="PR">Paraná (PR)</option>
+      <option value="PE">Pernambuco (PE)</option>
+      <option value="PI">Piauí (PI)</option>
+      <option value="RJ">Rio de Janeiro (RJ)</option>
+      <option value="RN">Rio Grande do Norte (RN)</option>
+      <option value="RS">Rio Grande do Sul (RS)</option>
+      <option value="RO">Rondônia (RO)</option>
+      <option value="RR">Roraima (RR)</option>
+      <option value="SC">Santa Catarina (SC)</option>
+      <option value="SP">São Paulo (SP)</option>
+      <option value="SE">Sergipe (SE)</option>
+      <option value="TO">Tocantins (TO)</option>
+    </select>
+  </div>
+
+  <!-- DATA DE NASCIMENTO -->
+  <div class="ent-field">
+    <label class="ent-label">🎂 Data de Nascimento *</label>
+    <input type="text" id="f-nascimento" class="ent-input"
+           placeholder="DD/MM/AAAA" inputmode="numeric"
+           oninput="formatarData(this)" maxlength="10">
+  </div>
+
+  <!-- TELEFONE DE CONTATO -->
+  <div class="ent-field">
+    <label class="ent-label">📞 Telefone de Contato</label>
+    <input type="tel" id="f-telefone" class="ent-input"
+           placeholder="(62) 99999-9999" inputmode="numeric">
+  </div>
+
+  <!-- NÚMERO GERADO -->
+  <div class="ent-field">
+    <label class="ent-label">📲 Número Gerado</label>
+    <input type="tel" id="f-numero" class="ent-input"
+           placeholder="(62) 99999-9999" inputmode="numeric">
+  </div>
+
+  <!-- SENHA DO CELULAR -->
+  <div class="ent-field">
+    <label class="ent-label">🔑 Senha PIN / Numérica</label>
+    <input type="text" id="f-senha" class="ent-input"
+           placeholder="Ex: 1234" inputmode="numeric" autocomplete="off">
+  </div>
+
+  <!-- SENHA PADRÃO -->
+  <div class="ent-field">
+    <label class="ent-label">🔒 Senha Padrão (Desenho)</label>
+    <button type="button" class="ent-btn-pattern" onclick="openChipPattern()">
+      📱 Registrar Padrão Android
+    </button>
+    <div id="chip-padrao-summary" style="display:none" class="ent-padrao-ok"></div>
+  </div>
+
+  <!-- OBSERVAÇÕES (recolhido) -->
+  <div class="ent-mais-wrap">
+    <button type="button" class="ent-mais-toggle" id="mais-btn" onclick="toggleMais()">
+      ＋ Observações
+    </button>
+    <div id="mais-content" style="display:none">
+      <div class="ent-field" style="margin-top:12px;margin-bottom:0">
+        <label class="ent-label">💬 Observações</label>
+        <textarea id="f-obs" class="ent-input ent-textarea" rows="4"
+                  placeholder="Anotações, erros, pendências..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS DO CADASTRO -->
+  <div class="ent-status-section">
+    <div class="ent-status-lbl">Status</div>
+    <div class="ent-chips" id="status-grid" style="grid-template-columns:repeat(2,1fr)"></div>
+  </div>
+
+  <!-- BOTÃO SUBMIT (sticky) -->
+  <div class="ent-actions">
+    <button type="submit" class="ent-btn-submit" id="btn-submit">Cadastrar Chip</button>
+  </div>
+
+</form>
+</main>
+
+<div class="ent-toast" id="ent-toast"></div>
+
+<!-- Modal Padrão Android -->
+<div class="ent-overlay" id="chip-pattern-overlay" onclick="closeChipPattern(event)">
+  <div class="ent-pattern-modal">
+    <h3 class="ent-pattern-title">📱 Registrar Padrão Android</h3>
+    <p class="ent-pattern-hint">Arraste para conectar os pontos na ordem do padrão</p>
+    <canvas id="chip-pattern-canvas" width="300" height="300" class="ent-pattern-canvas"></canvas>
+    <div class="ent-pattern-btns">
+      <button type="button" class="ent-pattern-btn-sec" onclick="clearChipPattern()">🗑️ Limpar</button>
+      <button type="button" class="ent-pattern-btn-pri" onclick="saveChipPattern()">💾 Salvar</button>
+    </div>
+    <button type="button" class="ent-pattern-btn-cancel" onclick="closeChipPattern()">Cancelar</button>
+  </div>
+</div>
+
+<script type="module" src="chips-entrada.js"></script>
+</body>
+</html>
