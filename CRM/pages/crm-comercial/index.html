@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&sessionStorage.getItem('cc_acesso')!=='ok')window.location.replace('/CRM/pages/config/index.html');</script>
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace('/CRM/login.html');</script>
 <title>Cell City Gestão Empresarial</title>
 <link rel="stylesheet" href="crm.css">
 <link rel="stylesheet" href="../../shared/dock.css">
@@ -121,6 +121,7 @@
                 <option value="orcamento_enviado">📤 Orçamento Enviado</option>
                 <option value="aguardando_resposta">⏳ Aguardando Resposta</option>
                 <option value="negociacao">🤝 Negociação</option>
+                <option value="pre_os">📋 Pré-OS</option>
                 <option value="fechado">✅ Fechado</option>
                 <option value="perdido">❌ Perdido</option>
               </select>
