@@ -10,79 +10,246 @@
 </head>
 <body>
 
-  <header>
+  <!-- HEADER -->
+  <header class="cx-header">
     <h1>💰 Caixa</h1>
+    <div class="meta-indicador" id="meta-card" title="Meta semanal">
+      <div class="meta-card-label">Meta semanal</div>
+      <div class="meta-indicador-linha">
+        <span class="meta-card-valores">
+          <span id="meta-realizado">R$ 0,00</span>
+          <span class="meta-card-separador">/</span>
+          <span id="meta-meta">R$ 0,00</span>
+        </span>
+        <span class="meta-card-percent" id="meta-percent">--</span>
+      </div>
+      <span class="meta-card-faltante">Faltam <span id="meta-faltante">R$ 0,00</span></span>
+    </div>
   </header>
 
-  <!-- TOTAIS -->
-  <div class="totais">
-    <div class="card-total entrada">
-      <div class="card-label">Entradas</div>
-      <div class="card-valor" id="total-entrada">R$ 0,00</div>
-    </div>
-    <div class="card-total saida">
-      <div class="card-label">Saídas</div>
-      <div class="card-valor" id="total-saida">R$ 0,00</div>
-    </div>
-    <div class="card-total saldo">
-      <div class="card-label">Saldo</div>
-      <div class="card-valor" id="total-saldo">R$ 0,00</div>
+  <div class="screen">
+
+    <!-- PESQUISA -->
+    <section class="secao-pesquisa">
+      <div class="premium-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Pesquisar lançamentos..." oninput="pesquisar()">
+      </div>
+    </section>
+
+    <!-- RESULTADOS DA PESQUISA -->
+    <section id="resultados-pesquisa" class="secao-resultados" style="display:none">
+      <div class="form-section">
+        <div class="form-section-title">🔍 Resultados <span id="contador-resultados" class="contador">0</span></div>
+        <div class="totais-pesquisa">
+          <div class="total-pesquisa-item entradas">
+            <span class="label">Entradas</span>
+            <span class="valor" id="pesq-entradas">R$ 0,00</span>
+          </div>
+          <div class="total-pesquisa-item saidas">
+            <span class="label">Saídas</span>
+            <span class="valor" id="pesq-saidas">R$ 0,00</span>
+          </div>
+          <div class="total-pesquisa-item saldo">
+            <span class="label">Saldo</span>
+            <span class="valor" id="pesq-saldo">R$ 0,00</span>
+          </div>
+        </div>
+        <div id="lista-pesquisa"></div>
+      </div>
+    </section>
+
+    <!-- LEMBRETES -->
+    <section class="secao-lembretes-btn" id="bloco-padrao-1">
+      <button class="btn-novo-lembrete" onclick="abrirNovoLembrete()">➕ Novo Lembrete</button>
+      <button class="btn-lembretes" onclick="toggleLembretes(true)">
+        🔔 Lembretes
+        <span class="lembretes-badge" id="lembretes-badge" style="display:none">0</span>
+      </button>
+    </section>
+
+    <!-- NOVO LANÇAMENTO -->
+    <section class="form-section" id="bloco-padrao-2">
+      <div class="form-section-title">➕ Novo Lançamento</div>
+
+      <div class="tipo-grupo">
+        <button class="tipo-btn ativo" data-tipo="entrada" onclick="selecionarTipo(this)">🟢 Entrada</button>
+        <button class="tipo-btn" data-tipo="saida" onclick="selecionarTipo(this)">🔴 Saída</button>
+        <button class="tipo-btn" data-tipo="servico" onclick="selecionarTipo(this)">🔵 Serviço</button>
+      </div>
+      <input type="hidden" id="tipo" value="entrada">
+
+      <div class="campo-grupo">
+        <label>Descrição *</label>
+        <input type="text" id="descricao" placeholder="Ex: Venda de película, Serviço de tela...">
+      </div>
+
+      <div class="campo-grupo">
+        <label>Categoria *</label>
+        <select id="categoria">
+          <option value="">Carregando...</option>
+        </select>
+        <button class="btn-nova-categoria" onclick="novaCategoria()">+ Nova categoria</button>
+      </div>
+
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Valor (R$) *</label>
+          <input type="number" id="valor" placeholder="0,00" step="0.01" min="0" oninput="atualizarLucro()">
+        </div>
+        <div class="campo-grupo">
+          <label>Custo (R$)</label>
+          <input type="number" id="custo" placeholder="0,00" step="0.01" min="0" oninput="atualizarLucro()">
+        </div>
+      </div>
+
+      <div class="campo-grupo">
+        <label>Lucro (auto) 🤖</label>
+        <input type="text" id="lucroAuto" class="input-lucro-auto" readonly placeholder="R$ 0,00">
+      </div>
+
+      <div id="alertaPrejuizo" class="alerta-prejuizo" style="display:none">⚠️ Prejuízo nesta operação — custo maior que o valor.</div>
+
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Data *</label>
+          <input type="date" id="data">
+        </div>
+        <div class="campo-grupo">
+          <label>Observação</label>
+          <input type="text" id="obs" placeholder="Opcional...">
+        </div>
+      </div>
+
+      <button class="btn-salvar" onclick="salvarLancamento()">💾 Salvar</button>
+    </section>
+
+    <!-- VISÃO FINANCEIRA -->
+    <section class="form-section" id="bloco-padrao-3">
+      <div class="visao-financeira-header">
+        <h2>📊 Visão Financeira</h2>
+      </div>
+      <div class="filtros-financeiros">
+        <button class="filtro-btn" data-periodo="todos" onclick="filtrar(this)">Todos</button>
+        <button class="filtro-btn ativo" data-periodo="hoje" onclick="filtrar(this)">Hoje</button>
+        <button class="filtro-btn" data-periodo="semana" onclick="filtrar(this)">Semana</button>
+        <button class="filtro-btn" data-periodo="mes" onclick="filtrar(this)">Mês</button>
+      </div>
+      <div class="cards-financeiros">
+        <div class="card-financeiro card-entradas">
+          <div class="card-label">💵 Faturamento Bruto</div>
+          <div class="card-valor" id="total-faturamento">R$ 0,00</div>
+        </div>
+        <div class="card-financeiro card-custos">
+          <div class="card-label">📦 Custos</div>
+          <div class="card-valor" id="total-custos">R$ 0,00</div>
+        </div>
+        <div class="card-financeiro card-lucro">
+          <div class="card-label">💎 Resultado Líquido</div>
+          <div class="card-valor" id="total-lucro">R$ 0,00</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MOVIMENTAÇÕES -->
+    <section class="form-section" id="bloco-padrao-4">
+      <div class="form-section-title">📋 Movimentações <span id="contador-lancamentos" class="contador">0</span></div>
+      <div id="lista-lancamentos">
+        <div class="vazio">Carregando lançamentos...</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- MODAL LEMBRETES -->
+  <div class="modal-overlay" id="modal-lembretes" onclick="if(event.target===this)toggleLembretes(false)">
+    <div class="modal-painel">
+      <div class="modal-header">
+        <span>🔔 Lembretes de Pagamento</span>
+        <button class="modal-fechar" onclick="toggleLembretes(false)">✕</button>
+      </div>
+      <div id="lista-lembretes"></div>
     </div>
   </div>
 
-  <!-- FORMULÁRIO NOVO LANÇAMENTO -->
-  <div class="form-card">
-    <div class="form-titulo">➕ Novo Lançamento</div>
-
-    <div class="tipo-grupo">
-      <button class="tipo-btn ativo" data-tipo="entrada" onclick="selecionarTipo(this)">🟢 Entrada</button>
-      <button class="tipo-btn" data-tipo="saida" onclick="selecionarTipo(this)">🔴 Saída</button>
-      <button class="tipo-btn" data-tipo="servico" onclick="selecionarTipo(this)">🔵 Serviço</button>
-    </div>
-    <input type="hidden" id="tipo" value="entrada">
-
-    <div class="campo-grupo">
-      <label>Descrição *</label>
-      <input type="text" id="descricao" placeholder="Ex: Venda de película, Serviço de tela...">
-    </div>
-
-    <div class="campo-grupo">
-      <label>Categoria *</label>
-      <select id="categoria">
-        <option value="">Carregando...</option>
-      </select>
-    </div>
-
-    <div class="campo-linha">
-      <div class="campo-grupo">
-        <label>Valor (R$) *</label>
-        <input type="number" id="valor" placeholder="0,00" step="0.01" min="0">
+  <!-- MODAL NOVO LEMBRETE -->
+  <div class="modal-overlay" id="modal-novo-lembrete" onclick="if(event.target===this)fecharNovoLembrete()">
+    <div class="modal-painel">
+      <div class="modal-header">
+        <span>➕ Novo Lembrete</span>
+        <button class="modal-fechar" onclick="fecharNovoLembrete()">✕</button>
       </div>
       <div class="campo-grupo">
-        <label>Data *</label>
-        <input type="date" id="data">
+        <label>Fornecedor *</label>
+        <input type="text" id="lem-fornecedor" placeholder="Ex: Jordão">
       </div>
+      <div class="campo-grupo">
+        <label>Descrição *</label>
+        <input type="text" id="lem-descricao" placeholder="Ex: Tela iPhone 11">
+      </div>
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Quantidade</label>
+          <input type="number" id="lem-quantidade" value="1" min="1">
+        </div>
+        <div class="campo-grupo">
+          <label>Valor (R$) *</label>
+          <input type="number" id="lem-valor" placeholder="0,00" step="0.01">
+        </div>
+      </div>
+      <div class="campo-grupo">
+        <label>Vencimento</label>
+        <input type="date" id="lem-vencimento">
+      </div>
+      <div class="campo-grupo">
+        <label>Observação</label>
+        <input type="text" id="lem-observacao" placeholder="Opcional...">
+      </div>
+      <button class="btn-salvar" onclick="salvarLembrete()">💾 Salvar Lembrete</button>
     </div>
+  </div>
 
-    <div class="campo-grupo">
-      <label>Observação</label>
-      <input type="text" id="obs" placeholder="Opcional...">
+  <!-- MODAL EDIÇÃO -->
+  <div class="modal-overlay" id="modal-edicao" onclick="if(event.target===this)fecharEdicao()">
+    <div class="modal-painel">
+      <div class="modal-header">
+        <span>✏️ Editar Lançamento</span>
+        <button class="modal-fechar" onclick="fecharEdicao()">✕</button>
+      </div>
+      <input type="hidden" id="edit-id">
+      <div class="tipo-grupo">
+        <button class="tipo-btn" data-tipo="entrada" onclick="selecionarTipoEdicao(this)">🟢 Entrada</button>
+        <button class="tipo-btn" data-tipo="saida" onclick="selecionarTipoEdicao(this)">🔴 Saída</button>
+        <button class="tipo-btn" data-tipo="servico" onclick="selecionarTipoEdicao(this)">🔵 Serviço</button>
+      </div>
+      <input type="hidden" id="edit-tipo">
+      <div class="campo-grupo">
+        <label>Descrição *</label>
+        <input type="text" id="edit-descricao">
+      </div>
+      <div class="campo-grupo">
+        <label>Categoria *</label>
+        <select id="edit-categoria"></select>
+      </div>
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Valor (R$) *</label>
+          <input type="number" id="edit-valor" step="0.01" oninput="atualizarLucroEdicao()">
+        </div>
+        <div class="campo-grupo">
+          <label>Custo (R$)</label>
+          <input type="number" id="edit-custo" step="0.01" oninput="atualizarLucroEdicao()">
+        </div>
+      </div>
+      <div class="campo-grupo">
+        <label>Lucro (auto) 🤖</label>
+        <input type="text" id="edit-lucroAuto" class="input-lucro-auto" readonly>
+      </div>
+      <button class="btn-salvar" onclick="salvarEdicao()">💾 Salvar Alterações</button>
     </div>
-
-    <button class="btn-salvar" onclick="salvarLancamento()">💾 Salvar</button>
   </div>
 
-  <!-- FILTROS -->
-  <div class="filtros">
-    <button class="filtro-btn ativo" data-periodo="hoje" onclick="filtrar(this)">Hoje</button>
-    <button class="filtro-btn" data-periodo="semana" onclick="filtrar(this)">Semana</button>
-    <button class="filtro-btn" data-periodo="mes" onclick="filtrar(this)">Mês</button>
-  </div>
-
-  <!-- LISTA DE LANÇAMENTOS -->
-  <div id="lista-lancamentos">
-    <div class="vazio">Carregando lançamentos...</div>
-  </div>
+  <div class="toast" id="toast"></div>
 
   <script type="module" src="caixa.js"></script>
   <script src="../../shared/brand-header.js"></script>
