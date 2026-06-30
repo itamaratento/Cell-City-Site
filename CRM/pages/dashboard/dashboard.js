@@ -64,6 +64,7 @@ class Dashboard {
     this.setupDiarioBadge();
     this.setupAlerts();
     this.setupGlobalSearch();
+    this.setupReloadBtn();
     this.setupCalendar();
     this.setupModules();
     this.setupDockTools();
@@ -1284,6 +1285,16 @@ class Dashboard {
     return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
       { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
     ));
+  }
+
+  // ===== BOTÃO DE ATUALIZAÇÃO (recarrega o painel) =====
+  setupReloadBtn() {
+    const btn = document.getElementById('sys-reload-btn');
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      btn.classList.add('spinning');
+      window.location.reload();
+    });
   }
 
   setupGlobalSearch() {

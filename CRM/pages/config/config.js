@@ -754,7 +754,7 @@ async function registrarWebAuthn() {
     const opts = {
         publicKey: {
             challenge:  _randomBytes(32),
-            rp:         { name: 'Cell City CRM', id: _rpId() },
+            rp:         { name: 'Cell City Gestão Empresarial', id: _rpId() },
             user:       { id: WA_USER_ID, name: 'cellcity', displayName: 'Cell City' },
             pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
             authenticatorSelection: {
