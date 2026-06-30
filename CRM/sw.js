@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.7 (bump força limpeza de cache antigo da logo)
-const CACHE = 'cellcity-crm-v13';
+// Cell City CRM — Service Worker v1.8 (bump força limpeza de cache crm-comercial)
+const CACHE = 'cellcity-crm-v14';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
