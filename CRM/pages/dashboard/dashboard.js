@@ -38,6 +38,7 @@ class Dashboard {
           { id: 'os', title: 'Ordem de Serviço', sub: 'Módulo' },
           { id: 'clientes', title: 'Clientes', sub: 'Módulo' },
           { id: 'caixa', title: 'Caixa', sub: 'Módulo' },
+          { id: 'central-alertas', title: 'Central de Alertas', sub: 'Módulo' },
           { id: 'estoque', title: 'Estoque', sub: 'Módulo' },
           { id: 'campanhas', title: 'Campanhas', sub: 'Módulo' },
           { id: 'analise', title: 'Análise', sub: 'Módulo' },
@@ -68,13 +69,11 @@ class Dashboard {
     this.setupDockTools();
     this.setupSidebar();
     this.setupPanelRight();
-    this.setupExecutivePanel();
     this.setupKeyboardShortcuts();
     this.setupOutsideClicks();
     this.setupConfigAlertas();
     this.atualizarCardAcaoSemana();
     this.setupAlarmeOS();
-    this.setupCompactMode();
     this.setupPainelLateralGerencial();
     console.log('✅ Dashboard Cell City v4.3 — ETAPA 1 concluída. Aguardando ETAPA 2 (os.js + caixa.js).');
   }
@@ -1690,6 +1689,7 @@ class Dashboard {
       'portal-cliente':      '../../pages/portal-cliente/admin.html',
       'portal-tecnico':      '../../pages/portal-tecnico/index.html',
       'diario':              '../../pages/diario/index.html',
+      'central-alertas':     '../../pages/central-alertas/index.html',
       'central-organizacao': '../../pages/central-organizacao/index.html',
       'contas':              '../../pages/contas/index.html',
       'catalogo':            '../../pages/catalogo/index.html',
@@ -1698,51 +1698,12 @@ class Dashboard {
       'compras':             '../../pages/compras/index.html',
       'auditoria':           '../../pages/auditoria/index.html'
     };
-    if (module === 'central-alertas') {
-      this.abrirListaAlertas();
-      return;
-    }
     const url = routes[module];
     if (url) {
       console.log(`[Router] Navegando para: ${module}`);
       window.location.href = url;
     } else {
       console.warn(`[Router] Rota não encontrada: ${module}`);
-    }
-  }
-
-  async abrirListaAlertas() {
-    const modal = document.getElementById('modal-lista-alertas');
-    const body = document.getElementById('lista-alertas-body');
-    if (!modal) return;
-
-    modal.style.display = 'flex';
-    if (body) body.innerHTML = '<div class="lista-alertas-loading">Carregando alertas...</div>';
-
-    try {
-      const alertas = await this.gerarAlertas();
-      if (!body) return;
-
-      if (!alertas || alertas.length === 0) {
-        body.innerHTML = '<div class="lista-alertas-vazia">✅ Nenhum alerta pendente no momento.</div>';
-        return;
-      }
-
-      const CAT_COR = { critico: '#ef4444', atencao: '#f59e0b', crm: '#3b82f6' };
-      body.innerHTML = alertas.map(a => {
-        const cor = CAT_COR[a.cat] || '#6b7280';
-        return `<div class="lista-alerta-item" style="border-left-color:${cor};">
-          <div class="lista-alerta-topo">
-            <span class="lista-alerta-icon">${a.icon || '💡'}</span>
-            <span class="lista-alerta-title" style="color:${cor};">${this.escapeHtml(a.title)}</span>
-          </div>
-          <div class="lista-alerta-sub">${this.escapeHtml(a.sub || '')}</div>
-          ${a.detail ? `<div class="lista-alerta-detail">${this.escapeHtml(a.detail)}</div>` : ''}
-        </div>`;
-      }).join('');
-    } catch (e) {
-      if (body) body.innerHTML = '<div class="lista-alertas-loading">Erro ao carregar alertas.</div>';
-      console.warn('abrirListaAlertas:', e);
     }
   }
 
@@ -1761,23 +1722,15 @@ class Dashboard {
 
     if (!modal) return;
 
-    // Abre a config de alertas (chamado por qualquer botão ⚙️)
+    // Abre a config de alertas (chamado pelo botão ⚙️ do card oculto)
     const abrirConfig = (e) => {
       if (e) e.stopPropagation();
-      // Fecha modal de lista se estiver aberto
-      const listaModal = document.getElementById('modal-lista-alertas');
-      if (listaModal) listaModal.style.display = 'none';
       this.carregarConfigAlertasUI();
       modal.style.display = 'flex';
     };
 
-    // Botão ⚙️ dentro do card oculto (fallback)
     const btnAbrir = document.getElementById('btn-abrir-config-alertas');
     if (btnAbrir) btnAbrir.addEventListener('click', abrirConfig);
-
-    // Botão ⚙️ no modal da lista de alertas
-    const btnConfigModal = document.getElementById('btn-config-alertas-modal');
-    if (btnConfigModal) btnConfigModal.addEventListener('click', abrirConfig);
 
     if (btnFechar) {
       btnFechar.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -1786,17 +1739,6 @@ class Dashboard {
       if (e.target === modal) modal.style.display = 'none';
     });
 
-    // Fechamento do modal da lista de alertas
-    const btnFecharLista = document.getElementById('btn-fechar-lista-alertas');
-    const listaModal = document.getElementById('modal-lista-alertas');
-    if (btnFecharLista && listaModal) {
-      btnFecharLista.addEventListener('click', () => { listaModal.style.display = 'none'; });
-    }
-    if (listaModal) {
-      listaModal.addEventListener('click', (e) => {
-        if (e.target === listaModal) listaModal.style.display = 'none';
-      });
-    }
     if (chkSilencio && camposSilencio) {
       chkSilencio.addEventListener('change', () => {
         camposSilencio.style.display = chkSilencio.checked ? 'flex' : 'none';
@@ -3063,31 +3005,6 @@ class Dashboard {
     });
   }
 
-  // ===== MODO COMPACTO (toggle visual) =====
-  setupCompactMode() {
-    const COMPACT_KEY = 'dashboard_modo_compacto';
-    const btn = document.getElementById('compact-mode-toggle');
-    if (!btn) return;
-
-    const aplicar = (compacto) => {
-      document.body.classList.toggle('modo-compacto', compacto);
-      btn.classList.toggle('ativo', compacto);
-      btn.textContent = compacto ? '▣ Compacto' : '▢ Compactar';
-      btn.title = compacto ? 'Alternar para modo normal' : 'Alternar para modo compacto';
-      localStorage.setItem(COMPACT_KEY, compacto ? 'true' : '');
-    };
-
-    // Carregar preferência salva
-    const salvo = localStorage.getItem(COMPACT_KEY) === 'true';
-    aplicar(salvo);
-
-    // Toggle ao clicar
-    btn.addEventListener('click', () => {
-      const alvo = !document.body.classList.contains('modo-compacto');
-      aplicar(alvo);
-    });
-  }
-
   // ===== MODAL: LISTA DE OS DO ALERTA =====
   mostrarAlertaOS(alerta) {
     const modal   = document.getElementById('os-alerta-modal');
@@ -3109,21 +3026,11 @@ class Dashboard {
     modal.style.display = 'flex';
   }
 
-  // ===== SIDEBAR ESQUERDA — RECOLHER/EXPANDIR =====
+  // ===== SIDEBAR ESQUERDA — REORDENAÇÃO (sempre compacta) =====
   setupSidebar() {
     const sidebar = document.getElementById('sidebar-left');
-    const btn     = document.getElementById('sidebar-toggle');
     const navEl   = document.getElementById('sidebar-nav');
-    if (!sidebar || !btn) return;
-
-    // ----- colapsar / expandir -----
-    const COLLAPSE_KEY = 'cc_sidebar_state';
-    const aplicar = (collapsed) => {
-      sidebar.classList.toggle('collapsed', collapsed);
-      localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
-    };
-    aplicar(localStorage.getItem(COLLAPSE_KEY) === '1');
-    btn.addEventListener('click', () => aplicar(!sidebar.classList.contains('collapsed')));
+    if (!sidebar) return;
 
     // ----- drag-and-drop reordering -----
     if (!navEl) return;
@@ -3226,116 +3133,6 @@ class Dashboard {
     _bindToggle('alertas-toggle', 'alertas-body');
   }
 
-  // ===== PAINEL EXECUTIVO — KPIs EM TEMPO REAL =====
-  setupExecutivePanel() {
-    const fmt    = (v) => Number(v).toLocaleString('pt-BR');
-    const fmtBRL = (v) => `R$ ${Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const set    = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    const setDelta = (id, val, prefix = '') => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.textContent = prefix + val;
-      el.className = 'exec-card-delta' + (String(val).startsWith('-') ? ' down' : ' up');
-    };
-
-    const STATUS_ABERTO = ['em_andamento', 'aguardando', 'orcamento_enviado', 'pendente',
-                           'recebido', 'diagnostico', 'aguardando_peca', 'pronto', 'concluido'];
-    const STATUS_ANDAMENTO = ['em_andamento', 'aguardando', 'diagnostico'];
-    const STATUS_AGUARDANDO_APROV = ['orcamento_enviado'];
-
-    const hojeISO = new Date().toISOString().slice(0, 10);
-    const inicioSemana = (() => {
-      const d = new Date(); d.setDate(d.getDate() - d.getDay()); return d.toISOString().slice(0, 10);
-    })();
-    const ha30dias = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-
-    const atualizarOS = (snap) => {
-      let abertas = 0, andamento = 0, aguardAprov = 0, bancada = 0;
-      const clientesSet = new Set();
-      let somaValorEntregue = 0, countEntregue = 0;
-      let temposTotais = 0, countTempo = 0;
-      let orcamentosHoje = 0;
-
-      snap.forEach(d => {
-        const os = d.data();
-        const status = os.status || '';
-
-        if (STATUS_ABERTO.includes(status)) abertas++;
-        if (STATUS_ANDAMENTO.includes(status)) { andamento++; bancada++; }
-        if (STATUS_AGUARDANDO_APROV.includes(status)) aguardAprov++;
-
-        // Ticket médio: OS entregues este mês
-        if (status === 'entregue' && os.valor) {
-          somaValorEntregue += Number(os.valor);
-          countEntregue++;
-        }
-
-        // Tempo médio: OS entregues com datas
-        if (status === 'entregue' && os.createdAtISO && os.updatedAtISO) {
-          const diff = (new Date(os.updatedAtISO) - new Date(os.createdAtISO)) / 86400000;
-          if (diff > 0 && diff < 60) { temposTotais += diff; countTempo++; }
-        }
-
-        // Clientes ativos (30 dias)
-        if (os.createdAtISO && os.createdAtISO >= ha30dias && os.phone) {
-          clientesSet.add(os.phone);
-        }
-
-        // Orçamentos enviados hoje
-        if (STATUS_AGUARDANDO_APROV.includes(status) && os.updatedAtISO && os.updatedAtISO.startsWith(hojeISO)) {
-          orcamentosHoje++;
-        }
-      });
-
-      set('kpi-os-abertas', fmt(abertas));
-      set('kpi-os-andamento', fmt(andamento));
-      set('kpi-aguardando-aprov', fmt(aguardAprov));
-      set('kpi-bancada', fmt(bancada));
-      set('kpi-ticket-medio', countEntregue > 0 ? fmtBRL(somaValorEntregue / countEntregue) : '—');
-      set('kpi-tempo-entrega', countTempo > 0 ? `${(temposTotais / countTempo).toFixed(1)} dias` : '—');
-      set('kpi-clientes-ativos', fmt(clientesSet.size));
-      set('kpi-orcamentos-enviados', fmt(orcamentosHoje));
-    };
-
-    const atualizarCaixa = (snap) => {
-      let fatHoje = 0, lucroSemana = 0;
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        const val = Number(l.valor || 0);
-        const lucro = Number(l.lucro || 0);
-        if (iso.startsWith(hojeISO) && l.tipo !== 'saida') fatHoje += val;
-        if (iso >= inicioSemana) lucroSemana += lucro;
-      });
-      set('kpi-faturamento-hoje', fmtBRL(fatHoje));
-      set('kpi-lucro-semana', fmtBRL(lucroSemana));
-    };
-
-    const atualizarEstoque = (snap) => {
-      let pecasFalta = 0;
-      snap.forEach(d => {
-        const p = d.data();
-        const qty = Number(p.quantidade || p.estoque || 0);
-        const min = Number(p.estoqueMinimo || p.minimo || 1);
-        if (qty < min) pecasFalta++;
-      });
-      set('kpi-pecas-falta', fmt(pecasFalta));
-    };
-
-    // Inicia listeners quando Firestore estiver pronto
-    const iniciar = () => {
-      try {
-        onSnapshot(collection(db, 'os'), atualizarOS,
-          err => console.warn('[KPI] os:', err && err.message));
-        onSnapshot(collection(db, 'caixa_lancamentos'), atualizarCaixa,
-          err => console.warn('[KPI] caixa:', err && err.message));
-        onSnapshot(collection(db, 'estoque'), atualizarEstoque,
-          err => console.warn('[KPI] estoque:', err && err.message));
-      } catch (e) { console.warn('[KPI] iniciar falhou:', e); }
-    };
-
-    iniciar();
-  }
 }
 
 // ===== INICIALIZAÇÃO =====

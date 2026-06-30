@@ -203,35 +203,6 @@ body {
   color: #00e676;
 }
 
-/* ============ BOTÃO MODO COMPACTO ============ */
-.compact-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.compact-toggle:hover {
-  background: var(--bg-hover);
-  border-color: rgba(0, 200, 83, 0.35);
-  color: var(--cell-green);
-}
-.compact-toggle.ativo {
-  background: rgba(0, 200, 83, 0.1);
-  border-color: rgba(0, 200, 83, 0.35);
-  color: var(--cell-green-light);
-}
-
 /* ============ LOGO INSTITUCIONAL RESTAURADA ============ */
 .brand-header {
   display: flex;
@@ -2668,28 +2639,6 @@ body {
   width: 72px;
 }
 
-/* Botão de toggle */
-.sidebar-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 40px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  transition: background var(--transition-fast), color var(--transition-fast);
-  flex-shrink: 0;
-}
-.sidebar-toggle:hover {
-  background: var(--bg-hover);
-  color: var(--cell-green);
-}
-
 /* Lista de módulos */
 .sidebar-nav {
   flex: 1;
@@ -2762,7 +2711,6 @@ body {
 
 /* Estado recolhido: esconde labels */
 .sidebar-left.collapsed .sidebar-label { opacity: 0; max-width: 0; }
-.sidebar-left.collapsed .sidebar-toggle-icon { transform: rotate(180deg); }
 
 /* Tooltip quando recolhido */
 .sidebar-left.collapsed .sidebar-item[data-tip]:hover::after,
@@ -2864,117 +2812,10 @@ body {
 .main-content::-webkit-scrollbar { width: 6px; }
 .main-content::-webkit-scrollbar-thumb { background: var(--border-medium); border-radius: 3px; }
 
-/* ===== PAINEL EXECUTIVO ===== */
-.executive-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  padding: 14px 16px 12px;
-  flex-shrink: 0;
-}
-
-.exec-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-.exec-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.exec-auto {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-.exec-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--cell-green);
-  animation: pulse-dot 2s infinite;
-}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
-
-.exec-row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 10px;
-}
-.exec-row--2 {
-  grid-template-columns: repeat(5, 1fr);
-  margin-top: 10px;
-}
-
-.exec-card {
-  position: relative;
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  cursor: default;
-  transition: border-color var(--transition-fast), transform var(--transition-fast);
-  overflow: hidden;
-  min-height: 80px;
-}
-.exec-card:hover {
-  border-color: var(--border-medium);
-  transform: translateY(-1px);
-}
-
-.exec-card-icon {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  font-size: 20px;
-  opacity: 0.18;
-}
-.exec-card-label {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
-}
-.exec-card-value {
-  font-size: 26px;
-  font-weight: 800;
-  color: var(--text-primary);
-  line-height: 1;
-  margin-top: 4px;
-}
-.exec-card-value--sm {
-  font-size: 18px;
-}
-.exec-card-delta {
-  font-size: 10px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
-.exec-card-delta.up { color: var(--cell-green); }
-.exec-card-delta.down { color: var(--accent-red); }
-
-/* Cores temáticas dos KPIs */
-.exec-card--os { border-top: 2px solid var(--cell-green); }
-.exec-card--andamento { border-top: 2px solid var(--accent-blue); }
-.exec-card--aprov { border-top: 2px solid var(--cell-gold); }
-.exec-card--fat { border-top: 2px solid var(--cell-green); }
-.exec-card--ticket { border-top: 2px solid var(--accent-purple); }
-.exec-card--pecas { border-top: 2px solid var(--accent-red); }
-.exec-card--lucro { border-top: 2px solid var(--cell-green); }
 
 /* ===== MÓDULOS PRINCIPAIS ===== */
 .modules-section {
@@ -3360,7 +3201,6 @@ body {
 }
 
 /* ===== MODO COMPACTO V2 ===== */
-.modo-compacto .executive-panel { display: none; }
 .modo-compacto .modules-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }
 .modo-compacto .modules-grid .module-card { min-height: 100px; padding: 12px 8px; }
 .modo-compacto .modules-grid .module-card .module-icon { font-size: 22px; }
@@ -3372,8 +3212,6 @@ body {
   .sidebar-left { flex: 0 0 72px; width: 72px; }
   .sidebar-left .sidebar-label { opacity: 0; max-width: 0; }
   .panel-right { flex: 0 0 280px; width: 280px; }
-  .exec-row { grid-template-columns: repeat(3, 1fr); }
-  .exec-row--2 { grid-template-columns: repeat(3, 1fr); }
   .modules-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
@@ -3385,8 +3223,6 @@ body {
 @media (max-width: 640px) {
   .sidebar-left { flex: 0 0 0px; width: 0; overflow: hidden; }
   .modules-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-  .exec-row { grid-template-columns: repeat(2, 1fr); }
-  .exec-row--2 { grid-template-columns: repeat(2, 1fr); }
 }
 .aprov-marcar-todos:hover { color: var(--text-primary, #f5f7fa); }
 
@@ -3416,136 +3252,6 @@ body {
 .btn-config-alertas:hover {
   background: rgba(255,255,255,0.08);
   color: var(--text-primary, #fff);
-}
-
-/* ===== MODAL LISTA DE ALERTAS ===== */
-.modal-lista-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.65);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-}
-
-.modal-lista-content {
-  background: var(--bg-primary, #1a1a2e);
-  border: 1px solid var(--border, #2a2a4a);
-  border-radius: 16px;
-  width: 520px;
-  max-width: 90vw;
-  max-height: 80vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.modal-lista-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  border-bottom: 1px solid var(--border, #2a2a4a);
-  gap: 8px;
-}
-
-.modal-lista-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.modal-lista-config-btn {
-  background: none;
-  border: 1px solid var(--border, #2a2a4a);
-  border-radius: 8px;
-  color: var(--text-secondary, #ccc);
-  font-size: 12px;
-  cursor: pointer;
-  padding: 4px 10px;
-  transition: all 0.15s;
-}
-.modal-lista-config-btn:hover {
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-}
-
-.modal-lista-close {
-  background: none;
-  border: none;
-  color: var(--text-tertiary, #888);
-  font-size: 22px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  line-height: 1;
-}
-.modal-lista-close:hover {
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-}
-
-.modal-lista-body {
-  padding: 12px 16px;
-  overflow-y: auto;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.lista-alertas-loading,
-.lista-alertas-vazia {
-  text-align: center;
-  color: var(--text-tertiary, #888);
-  font-size: 13px;
-  padding: 24px 0;
-}
-
-.lista-alerta-item {
-  border-left: 3px solid #6b7280;
-  border-radius: 6px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.03);
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.lista-alerta-topo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.lista-alerta-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-.lista-alerta-title {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.lista-alerta-sub {
-  font-size: 13px;
-  color: var(--text-primary, #f5f7fa);
-  padding-left: 20px;
-}
-
-.lista-alerta-detail {
-  font-size: 11px;
-  color: var(--text-tertiary, #888);
-  padding-left: 20px;
-  margin-top: 2px;
-  line-height: 1.5;
 }
 
 /* ===== MODAL DE CONFIGURAÇÃO DE ALERTAS ===== */

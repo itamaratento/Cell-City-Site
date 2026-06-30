@@ -202,83 +202,6 @@
   <!-- ===== ÁREA PRINCIPAL ===== -->
   <main class="main-content" id="main-content">
 
-    <!-- PAINEL EXECUTIVO -->
-    <section class="executive-panel" id="executive-panel">
-      <div class="exec-header">
-        <span class="exec-title">📊 PAINEL EXECUTIVO</span>
-        <span class="exec-auto">Atualização automática <span class="exec-dot"></span></span>
-      </div>
-
-      <!-- Linha 1 -->
-      <div class="exec-row">
-        <div class="exec-card exec-card--os" title="Ordens abertas (não entregues/canceladas)">
-          <div class="exec-card-label">OS Abertas</div>
-          <div class="exec-card-value" id="kpi-os-abertas">--</div>
-          <div class="exec-card-icon">📋</div>
-          <div class="exec-card-delta" id="kpi-os-abertas-delta"></div>
-        </div>
-        <div class="exec-card exec-card--andamento" title="OS em andamento agora">
-          <div class="exec-card-label">OS em Andamento</div>
-          <div class="exec-card-value" id="kpi-os-andamento">--</div>
-          <div class="exec-card-icon">⏳</div>
-          <div class="exec-card-delta" id="kpi-os-andamento-delta"></div>
-        </div>
-        <div class="exec-card exec-card--aprov" title="Aguardando aprovação do cliente">
-          <div class="exec-card-label">Aguardando Aprovação</div>
-          <div class="exec-card-value" id="kpi-aguardando-aprov">--</div>
-          <div class="exec-card-icon">🔔</div>
-          <div class="exec-card-delta" id="kpi-aprov-delta"></div>
-        </div>
-        <div class="exec-card exec-card--fat" title="Faturamento de hoje (entradas do caixa)">
-          <div class="exec-card-label">Faturamento Hoje</div>
-          <div class="exec-card-value" id="kpi-faturamento-hoje">--</div>
-          <div class="exec-card-icon">💵</div>
-          <div class="exec-card-delta" id="kpi-fat-delta"></div>
-        </div>
-        <div class="exec-card exec-card--ticket" title="Ticket médio das OS concluídas este mês">
-          <div class="exec-card-label">Ticket Médio</div>
-          <div class="exec-card-value" id="kpi-ticket-medio">--</div>
-          <div class="exec-card-icon">💲</div>
-          <div class="exec-card-delta" id="kpi-ticket-delta"></div>
-        </div>
-        <div class="exec-card exec-card--pecas" title="Peças com estoque abaixo do mínimo">
-          <div class="exec-card-label">Peças em Falta</div>
-          <div class="exec-card-value" id="kpi-pecas-falta">--</div>
-          <div class="exec-card-icon">📦</div>
-          <div class="exec-card-delta" id="kpi-pecas-delta"></div>
-        </div>
-      </div>
-
-      <!-- Linha 2 -->
-      <div class="exec-row exec-row--2">
-        <div class="exec-card exec-card--sm" title="Aparelhos atualmente na bancada">
-          <div class="exec-card-label">Aparelhos em Bancada</div>
-          <div class="exec-card-value" id="kpi-bancada">--</div>
-          <div class="exec-card-icon">📱</div>
-        </div>
-        <div class="exec-card exec-card--sm" title="Tempo médio entre abertura e entrega">
-          <div class="exec-card-label">Tempo Médio de Entrega</div>
-          <div class="exec-card-value exec-card-value--sm" id="kpi-tempo-entrega">--</div>
-          <div class="exec-card-icon">⏱️</div>
-        </div>
-        <div class="exec-card exec-card--sm exec-card--lucro" title="Lucro acumulado desta semana">
-          <div class="exec-card-label">Lucro da Semana</div>
-          <div class="exec-card-value exec-card-value--sm" id="kpi-lucro-semana">--</div>
-          <div class="exec-card-icon">📈</div>
-        </div>
-        <div class="exec-card exec-card--sm" title="Clientes atendidos nos últimos 30 dias">
-          <div class="exec-card-label">Clientes Ativos</div>
-          <div class="exec-card-value" id="kpi-clientes-ativos">--</div>
-          <div class="exec-card-icon">👥</div>
-        </div>
-        <div class="exec-card exec-card--sm" title="Orçamentos emitidos hoje">
-          <div class="exec-card-label">Orçamentos Enviados</div>
-          <div class="exec-card-value" id="kpi-orcamentos-enviados">--</div>
-          <div class="exec-card-icon">📄</div>
-        </div>
-      </div>
-    </section>
-
     <!-- CENTRAL DE ALERTAS ROTATIVA (oculta — mantém lógica de som/config ativa) -->
     <section class="alerts-section" id="alerts-section" style="display:none;">
       <div class="module-card alerts-card" id="alerts-card">
@@ -1365,22 +1288,6 @@
   });
 })();
 </script>
-
-<!-- ===== MODAL LISTA DE ALERTAS ===== -->
-<div id="modal-lista-alertas" class="modal-lista-overlay" style="display:none;">
-  <div class="modal-lista-content">
-    <div class="modal-lista-header">
-      <span>⚠️ Central de Alertas</span>
-      <div class="modal-lista-actions">
-        <button class="modal-lista-config-btn" id="btn-config-alertas-modal" title="Configurar alertas">⚙️ Config</button>
-        <button class="modal-lista-close" id="btn-fechar-lista-alertas">&times;</button>
-      </div>
-    </div>
-    <div class="modal-lista-body" id="lista-alertas-body">
-      <div class="lista-alertas-loading">Carregando alertas...</div>
-    </div>
-  </div>
-</div>
 
 <!-- ===== MODAL DE CONFIGURAÇÃO DE ALERTAS ===== -->
 <div id="modal-config-alertas" class="modal-config-overlay" style="display:none;">
