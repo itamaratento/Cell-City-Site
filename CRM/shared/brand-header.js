@@ -22,46 +22,71 @@
       margin-bottom: 14px;
     }
 
-    /* === Brand Header (logo clicável): ícone SVG + texto CSS ===
-       Texto renderizado nativamente (Inter font, sempre nítido).
-       Ícone como SVG vetorial (logo-icon.svg), nítido em qualquer DPI. */
+    /* === Brand Header (logo clicável) — padrão original === */
     .brand-header {
       display: flex;
       align-items: center;
-      gap: 9px;
+      padding: 6px 14px;
+      background: rgba(0, 200, 83, 0.06);
+      border: 1px solid rgba(0, 200, 83, 0.25);
+      border-radius: 12px;
+      transition: all 250ms cubic-bezier(0.4,0,0.2,1);
       cursor: pointer;
       user-select: none;
       flex-shrink: 0;
-      transition: opacity 150ms ease;
+      position: relative;
+      box-shadow: 0 0 20px rgba(0, 200, 83, 0.15), inset 0 1px 0 rgba(0, 230, 118, 0.1);
     }
-    .brand-header:hover { opacity: 0.85; }
-    .brand-header:active { opacity: 0.7; }
-    .brand-header-icon {
-      display: block;
-      height: 36px;
-      width: auto;
-      flex-shrink: 0;
+    .brand-header::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, transparent 50%);
+      opacity: 0.6;
+      pointer-events: none;
     }
-    .brand-header-wordmark {
+    .brand-header:hover {
+      background: rgba(0, 200, 83, 0.10);
+      border-color: rgba(0, 200, 83, 0.45);
+      box-shadow: 0 0 28px rgba(0, 200, 83, 0.25), inset 0 1px 0 rgba(0, 230, 118, 0.15);
+    }
+    .brand-header:active {
+      transform: translateY(0);
+      opacity: 0.85;
+    }
+    .brand-header-text {
       display: flex;
       flex-direction: column;
-      gap: 1px;
-      line-height: 1;
+      line-height: 1.15;
+      position: relative;
+      z-index: 1;
     }
     .brand-header-title {
-      font-size: 16px;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      color: #00e676;
+      font-size: 15px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
       white-space: nowrap;
+      background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      filter: drop-shadow(0 0 8px rgba(0, 200, 83, 0.4));
     }
-    .brand-header-sub {
-      font-size: 8.5px;
+    .brand-header-divider {
+      height: 1px;
+      background: linear-gradient(90deg, #00c853 0%, rgba(0, 200, 83, 0.2) 70%, transparent 100%);
+      margin: 2px 0;
+      width: 100%;
+      opacity: 0.7;
+    }
+    .brand-header-subtitle {
+      font-size: 10.5px;
+      color: #a1a8b3;
       font-weight: 600;
-      letter-spacing: 0.14em;
-      color: #7dbf96;
-      text-transform: uppercase;
+      letter-spacing: 0.08em;
       white-space: nowrap;
+      text-transform: uppercase;
     }
 
     /* === Layout tripartido: logo | [espaçador flex] | botões direita ===
@@ -125,11 +150,11 @@
       margin: 0 !important;
     }
 
-    /* Logo em telas muito estreitas */
+    /* Compacto em telas muito estreitas */
     @media (max-width: 480px) {
-      .brand-header-icon { height: 28px; }
-      .brand-header-title { font-size: 13px; }
-      .brand-header-sub { display: none; }
+      .brand-header { padding: 6px 10px; }
+      .brand-header-divider,
+      .brand-header-subtitle { display: none; }
     }
 
     /* === Atalho Site Cell City === */
@@ -169,11 +194,11 @@
   `;
 
   const BRAND_HTML = `
-    <div class="brand-header" id="brand-header" title="Cell City Gestão Empresarial">
-      <img class="brand-header-icon" src="/CRM/assets/logo-icon.svg" alt="" draggable="false">
-      <div class="brand-header-wordmark">
-        <span class="brand-header-title">CELL CITY</span>
-        <span class="brand-header-sub">Informática</span>
+    <div class="brand-header" id="brand-header" title="Voltar ao painel">
+      <div class="brand-header-text">
+        <div class="brand-header-title">Cell City Informática</div>
+        <div class="brand-header-divider"></div>
+        <div class="brand-header-subtitle">CRM Operacional</div>
       </div>
     </div>
   `;
