@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="usuarios-permissoes" data-fav-label="Usuários e Permissões" data-fav-icon="🔐" data-fav-url="/CRM/pages/usuarios-permissoes/index.html">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace('/CRM/login.html');</script>
+<title>Cell City — Usuários e Permissões</title>
+<link rel="stylesheet" href="usuarios-permissoes.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header class="header" id="mainHeader">
+  <h1>🔐 Usuários e Permissões</h1>
+</header>
+
+<main>
+  <div class="up-wrap">
+
+    <!-- Bloqueio de acesso (exibido só se o usuário não for admin) -->
+    <div id="up-bloqueado" class="up-bloqueado" style="display:none">
+      <div class="up-bloqueado-icon">🔒</div>
+      <div class="up-bloqueado-titulo">Acesso restrito</div>
+      <div class="up-bloqueado-sub">Este módulo é exclusivo para administradores.</div>
+    </div>
+
+    <!-- Conteúdo do módulo (exibido só após confirmar acesso) -->
+    <div id="up-app" style="display:none">
+
+      <nav class="up-tabs" id="up-tabs">
+        <button class="up-tab active" data-tab="dashboard">📊 Dashboard</button>
+        <button class="up-tab" data-tab="usuarios">👤 Usuários</button>
+        <button class="up-tab" data-tab="perfis">🗂️ Perfis</button>
+        <button class="up-tab" data-tab="permissoes">🛡️ Permissões</button>
+        <button class="up-tab" data-tab="logs">📜 Logs</button>
+      </nav>
+
+      <!-- ===== DASHBOARD ===== -->
+      <section class="up-panel active" id="up-panel-dashboard">
+        <div class="up-cards" id="up-dash-cards"></div>
+        <div class="up-dash-cols">
+          <div class="up-box">
+            <div class="up-box-titulo">Últimas alterações</div>
+            <div id="up-dash-alteracoes" class="up-dash-lista"></div>
+          </div>
+          <div class="up-box">
+            <div class="up-box-titulo">Últimos acessos</div>
+            <div id="up-dash-acessos" class="up-dash-lista">
+              <div class="up-vazio-inline">Rastreamento de acesso ainda não habilitado nesta fase — ver observação no relatório de entrega.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== USUÁRIOS ===== -->
+      <section class="up-panel" id="up-panel-usuarios">
+        <div class="up-toolbar">
+          <input type="search" id="up-usr-busca" class="up-input up-busca" placeholder="🔍 Buscar por nome, e-mail ou setor...">
+          <button class="up-btn up-btn-primary" id="up-btn-novo-usuario">+ Novo usuário</button>
+        </div>
+        <div class="up-table-wrap">
+          <table class="up-table">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>E-mail</th>
+                <th>Perfil</th>
+                <th>Setor</th>
+                <th>Status</th>
+                <th>Última alteração</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="up-usr-tbody"></tbody>
+          </table>
+          <div class="up-vazio" id="up-usr-vazio" style="display:none">Nenhum usuário cadastrado ainda.</div>
+        </div>
+      </section>
+
+      <!-- ===== PERFIS ===== -->
+      <section class="up-panel" id="up-panel-perfis">
+        <div class="up-toolbar">
+          <div class="up-toolbar-info" id="up-perfis-info"></div>
+          <div class="up-toolbar-btns">
+            <button class="up-btn" id="up-btn-seed">🌱 Seed inicial (perfis + contas padrão)</button>
+            <button class="up-btn up-btn-primary" id="up-btn-novo-perfil">+ Novo perfil</button>
+          </div>
+        </div>
+        <div class="up-cards-perfis" id="up-perfis-lista"></div>
+      </section>
+
+      <!-- ===== PERMISSÕES ===== -->
+      <section class="up-panel" id="up-panel-permissoes">
+        <div class="up-toolbar">
+          <label class="up-label-inline">Perfil:
+            <select id="up-perm-select" class="up-input"></select>
+          </label>
+          <button class="up-btn up-btn-primary" id="up-btn-salvar-permissoes">Salvar alterações</button>
+        </div>
+        <div class="up-table-wrap">
+          <table class="up-table" id="up-perm-tabela">
+            <thead>
+              <tr>
+                <th>Módulo</th>
+                <th>Visualizar</th>
+                <th>Criar</th>
+                <th>Editar</th>
+                <th>Excluir</th>
+                <th>Aprovar</th>
+              </tr>
+            </thead>
+            <tbody id="up-perm-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===== LOGS ===== -->
+      <section class="up-panel" id="up-panel-logs">
+        <div class="up-toolbar">
+          <div class="up-periodo" id="up-log-periodo">
+            <button class="up-chip active" data-periodo="hoje">Hoje</button>
+            <button class="up-chip" data-periodo="ontem">Ontem</button>
+            <button class="up-chip" data-periodo="7dias">Últimos 7 dias</button>
+            <button class="up-chip" data-periodo="30dias">Últimos 30 dias</button>
+          </div>
+        </div>
+        <div class="up-table-wrap">
+          <table class="up-table">
+            <thead>
+              <tr>
+                <th>Data/Hora</th>
+                <th>Ação</th>
+                <th>Administrador</th>
+                <th>Alvo</th>
+                <th>Detalhes</th>
+              </tr>
+            </thead>
+            <tbody id="up-log-tbody"></tbody>
+          </table>
+          <div class="up-vazio" id="up-log-vazio" style="display:none">Nenhum registro no período selecionado.</div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<!-- Modal genérico (formulários) -->
+<div class="up-modal-overlay" id="up-modal" onclick="if(event.target===this)window.__upFecharModal&&window.__upFecharModal()">
+  <div class="up-modal">
+    <div class="up-modal-titulo" id="up-modal-titulo"></div>
+    <div class="up-modal-body" id="up-modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="up-toast" id="up-toast"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script src="../../shared/sidebar.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+<script type="module" src="usuarios-permissoes.js"></script>
+
+</body>
+</html>

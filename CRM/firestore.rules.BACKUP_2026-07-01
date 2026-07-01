@@ -201,15 +201,9 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     // KERNEL: Perfis de usuário e empresas
     // kernel.js lê/cria usuarios/{uid} em _buildContext()
-    // Exceção aditiva (módulo Usuários e Permissões, 2026-07-01):
-    // admin/master_admin também podem ler/escrever o doc de outros
-    // usuários. A regra original (dono do próprio doc) continua intacta.
     // ─────────────────────────────────────────────
     match /usuarios/{uid} {
-      allow read, write: if request.auth != null && (
-        request.auth.uid == uid ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
-      );
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     match /empresas/{empId} {
@@ -222,28 +216,6 @@ service cloud.firestore {
     // modoHome/sidebarCompacta). Cada usuário só acessa a própria subcoleção.
     match /usuarios/{uid}/preferencias/{prefId} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-
-    // ─────────────────────────────────────────────
-    // MÓDULO: Usuários e Permissões (2026-07-01)
-    // Catálogo de perfis operacionais (RBAC interno da empresa,
-    // independente do 'perfil' de licenciamento SaaS do kernel.js/tenant.js).
-    // Leitura liberada a qualquer autenticado (necessário para fases
-    // futuras de checagem de permissão dentro dos módulos); escrita
-    // restrita a admin/master_admin.
-    // ─────────────────────────────────────────────
-    match /perfis_operacionais/{perfilId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
-    }
-
-    // Log de auditoria do módulo — imutável (nunca editado/apagado),
-    // leitura e criação restritas a admin/master_admin.
-    match /auditoria_usuarios_permissoes/{logId} {
-      allow read, create: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
-      allow update, delete: if false;
     }
 
     // ─────────────────────────────────────────────

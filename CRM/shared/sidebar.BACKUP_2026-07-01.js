@@ -32,7 +32,6 @@
     { id: 'central-automacao',  href: '/CRM/pages/central-organizacao/index.html', icon: '🤖', label: 'Central de Automação' },
     { id: 'portal-cliente',     href: '/CRM/pages/portal-cliente/admin.html',     icon: '🔷', label: 'Portal do Cliente' },
     { id: 'backup',             href: '/CRM/pages/backup/index.html',              icon: '🛡️', label: 'Backup do Sistema' },
-    { id: 'usuarios-permissoes', href: '/CRM/pages/usuarios-permissoes/index.html', icon: '🔐', label: 'Usuários e Permissões' },
     { id: 'config',             href: '/CRM/pages/config/index.html',              icon: '⚙️', label: 'Configurações' },
   ];
 

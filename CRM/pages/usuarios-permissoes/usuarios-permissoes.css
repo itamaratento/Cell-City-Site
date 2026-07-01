@@ -1,0 +1,216 @@
+/* ============================================================
+   USUÁRIOS E PERMISSÕES — Cell City CRM
+   Módulo isolado (Fase 1): gestão de usuários funcionais, perfis
+   operacionais e matriz de permissões por módulo.
+   ============================================================ */
+:root {
+  --cell-green: #00c853;
+  --cell-green-light: #00e676;
+  --bg-page: #0b0c0f;
+  --bg-surface: #121418;
+  --bg-hover: rgba(255,255,255,0.04);
+  --border-subtle: rgba(255,255,255,0.08);
+  --text-primary: #f5f7fa;
+  --text-secondary: #a1a8b3;
+  --text-muted: #6b7280;
+  --danger: #ff5252;
+  --warn: #ffb300;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.header h1 { font-size: 16px; margin: 0; }
+
+.up-wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+
+/* ── Bloqueio ────────────────────────────────────────────── */
+.up-bloqueado { text-align: center; padding: 80px 20px; }
+.up-bloqueado-icon { font-size: 42px; margin-bottom: 12px; }
+.up-bloqueado-titulo { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.up-bloqueado-sub { color: var(--text-secondary); font-size: 13px; }
+
+/* ── Abas ────────────────────────────────────────────────── */
+.up-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 18px;
+  overflow-x: auto;
+}
+.up-tab {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+}
+.up-tab:hover { color: var(--text-primary); }
+.up-tab.active { color: var(--cell-green-light); border-bottom-color: var(--cell-green); }
+
+.up-panel { display: none; }
+.up-panel.active { display: block; }
+
+/* ── Cards do dashboard ──────────────────────────────────── */
+.up-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.up-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.up-card-valor { font-size: 24px; font-weight: 700; color: var(--cell-green-light); }
+.up-card-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+.up-dash-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 720px) { .up-dash-cols { grid-template-columns: 1fr; } }
+.up-box { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px 16px; }
+.up-box-titulo { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--text-secondary); }
+.up-dash-lista { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.up-vazio-inline { color: var(--text-muted); font-size: 12.5px; line-height: 1.5; }
+
+/* ── Toolbar ─────────────────────────────────────────────── */
+.up-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.up-toolbar-btns { display: flex; gap: 8px; margin-left: auto; }
+.up-toolbar-info { color: var(--text-secondary); font-size: 12.5px; }
+.up-busca { flex: 1; min-width: 200px; }
+.up-label-inline { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+
+.up-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+}
+.up-input:focus { outline: none; border-color: var(--cell-green); }
+
+.up-btn {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.up-btn:hover { background: var(--bg-hover); }
+.up-btn-primary { background: var(--cell-green); border-color: var(--cell-green); color: #04140a; }
+.up-btn-primary:hover { background: var(--cell-green-light); }
+.up-btn-danger { color: var(--danger); }
+.up-btn-sm { padding: 5px 10px; font-size: 12px; }
+
+/* ── Tabela ──────────────────────────────────────────────── */
+.up-table-wrap { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; }
+.up-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.up-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.up-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.up-table tr:last-child td { border-bottom: none; }
+.up-table tr:hover td { background: var(--bg-hover); }
+.up-vazio { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+.up-badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+.up-badge-ativo { background: rgba(0,200,83,0.15); color: var(--cell-green-light); }
+.up-badge-inativo { background: rgba(255,82,82,0.15); color: var(--danger); }
+.up-badge-sistema { background: rgba(255,179,0,0.15); color: var(--warn); }
+
+.up-check { width: 17px; height: 17px; accent-color: var(--cell-green); cursor: pointer; }
+.up-check:disabled { opacity: .25; cursor: not-allowed; }
+
+/* ── Cards de perfis ─────────────────────────────────────── */
+.up-cards-perfis { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.up-perfil-card { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px; }
+.up-perfil-nome { font-weight: 700; font-size: 14px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.up-perfil-desc { color: var(--text-secondary); font-size: 12px; margin-bottom: 10px; min-height: 30px; }
+.up-perfil-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ── Filtros de período (Logs) ───────────────────────────── */
+.up-periodo { display: flex; gap: 6px; }
+.up-chip {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.up-chip.active { background: var(--cell-green); border-color: var(--cell-green); color: #04140a; font-weight: 700; }
+
+/* ── Modal ───────────────────────────────────────────────── */
+.up-modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 2000;
+  align-items: center; justify-content: center;
+  padding: 16px;
+}
+.up-modal-overlay.up-open { display: flex; }
+.up-modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 20px;
+  width: 100%;
+  max-width: 460px;
+  max-height: 88vh;
+  overflow-y: auto;
+}
+.up-modal-titulo { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+.up-modal-body { display: flex; flex-direction: column; gap: 10px; }
+.up-field label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.up-field .up-input { width: 100%; }
+.up-modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.up-modal-aviso { font-size: 12px; color: var(--warn); line-height: 1.5; background: rgba(255,179,0,0.08); border: 1px solid rgba(255,179,0,0.2); border-radius: 8px; padding: 8px 10px; }
+.up-modal-senha { font-family: monospace; font-size: 15px; background: var(--bg-page); border: 1px dashed var(--border-subtle); border-radius: 8px; padding: 10px; word-break: break-all; }
+.up-senha-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+.up-senha-tabela td { padding: 4px 6px; border-bottom: 1px solid var(--border-subtle); font-family: monospace; }
+
+/* ── Toast ───────────────────────────────────────────────── */
+.up-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms, transform 180ms;
+  z-index: 3000;
+  max-width: 90vw;
+}
+.up-toast.up-show { opacity: 1; transform: translateX(-50%) translateY(0); }
