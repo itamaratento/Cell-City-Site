@@ -323,7 +323,39 @@ Todas as 9 seções do checklist de homologação foram executadas e aprovadas (
 
 ---
 
-## 7. Histórico de Entregas
+## 7. Fase 2 — Integração gradual do RBAC
+
+Roadmap oficial (nunca pular a ordem, nunca integrar módulos simultaneamente): **Sprint 1 — Dashboard (piloto) → Sprint 2 — CRM, Agenda → Sprint 3 — Estoque, Caixa → Sprint 4 — Financeiro → Sprint 5 — OS**. Cada sprint segue: Planejamento → Implementação → Testes unitários → Homologação → Correções → TECHDOC → Aprovação formal → Liberação.
+
+### 7.1 Sprint 1 — Dashboard (piloto)
+
+**Escopo aprovado**: só o grid de cards de módulo do Dashboard (`.module-card[data-module]`) passa a respeitar `visualizar` da matriz de `perfis_operacionais`. Busca global e sidebar do Dashboard **não** foram tocadas nesta sprint (ficam com o comportamento atual, sem filtro).
+
+**Arquivos alterados**: `CRM/pages/dashboard/dashboard.js` (backup em `BACKUP_RBAC_DASHBOARD_2026-07-01/`). `index.html` do Dashboard não precisou de alteração.
+
+**Como funciona**:
+```javascript
+// Mapeamento data-module do card → moduloId da matriz (só os que a matriz cobre)
+const RBAC_CARD_PARA_MODULO_ID = {
+  'os': 'os', 'caixa': 'caixa', 'estoque': 'estoque',
+  'financeiro': 'financeiro', 'crm-comercial': 'crm', 'relatorios': 'relatorios',
+};
+```
+Cards fora desse mapa (`central-alertas`, `clientes`, `compras`, `fornecedor`, `pos-venda`, `impressora`, `contas`, `portal-cliente`, `portal-tecnico`, `central-organizacao`, `central-informacoes`, `catalogo`, `diario`, `auditoria`, `autoatendimento`) nunca são ocultados nesta sprint — a matriz de `perfis_operacionais` não cobre esses módulos ainda.
+
+Em `_bootDashboard()`, logo após `initModulo()`, chama `_carregarPermissoesVisualizar(ctx)`:
+- Se `ctx.perfil` (kernel) é `admin` ou `master_admin` → retorna `null` sem nenhuma leitura extra ao Firestore (bypass, sempre mostra tudo — decisão explícita, consistente com o gate do próprio módulo de Usuários e Permissões).
+- Senão, lê `usuarios/{uid}.perfil_operacional_id`; se vazio (usuário ainda não migrado ao RBAC novo) → retorna `null` (mostra tudo, **sem regressão** para quem não foi migrado — decisão explícita e testada).
+- Só se houver `perfil_operacional_id` válido é que a matriz de `perfis_operacionais/{id}` é lida e aplicada; qualquer erro de leitura também cai em `null` (nunca esconde módulo por falha de rede).
+- `setupModules()` oculta (`display:none`) o card cujo `moduloId` mapeado tem `visualizar === false`.
+
+**Testes realizados** (contas descartáveis, removidas ao final): (1) perfil operacional restrito (`estoque.visualizar=false`) + kernel `atendente` → só o card Estoque some, resto intacto; (2) usuário sem `perfil_operacional_id` (simulando a maioria da base atual, ainda não migrada) → todos os 22 cards visíveis, comportamento idêntico ao de antes da mudança; (3) kernel `admin` com perfil operacional restrito → bypass confirmado, todos os cards visíveis. Zero erros de console novos (só o warning pré-existente de Service Worker, não relacionado). Regressão nos demais módulos não re-executada nesta sprint (Dashboard não altera nenhum outro módulo).
+
+**Pendente de aprovação formal do usuário** antes de considerar o Sprint 1 liberado.
+
+---
+
+## 8. Histórico de Entregas
 
 | Data | Funcionalidade |
 |------|---------------|
@@ -331,3 +363,4 @@ Todas as 9 seções do checklist de homologação foram executadas e aprovadas (
 | 2026-07-01 | Novo módulo "🔐 Usuários e Permissões" (`pages/usuarios-permissoes/`) — Fase 1: usuários funcionais, perfis operacionais livres (`perfis_operacionais`), matriz de permissões por módulo, auditoria (`auditoria_usuarios_permissoes`), seed de 7 perfis + 8 contas padrão. Login/kernel.js/firebase.js/tenant.js intocados. Homologado no mesmo dia — ver §6. |
 | 2026-07-01 | Favoritos da Central de Módulos passam a aparecer automaticamente no menu principal (`shared/menu-favoritos.js` consumindo `shared/central-modulos.js`), estrela ⭐ na grade de módulos, regras Firestore para `usuarios/{uid}/preferencias/*` e `crm_leads` corrigidas, gate de sessão real adicionado em `crm-comercial/entrada.js` |
 | 2026-07-01 | Homologação da Fase 1 de "🔐 Usuários e Permissões" **aprovada** — 9/9 seções do checklist, incidente crítico de Firestore Rules em produção corrigido durante o processo. Ver §6.8. Projeto liberado para a Fase 2 (integração gradual do RBAC aos módulos existentes). |
+| 2026-07-01 | Fase 2, Sprint 1 (piloto): Dashboard passa a ocultar cards de módulo sem `visualizar:true` na matriz de `perfis_operacionais`, com bypass para admin/master_admin e fallback seguro (sem regressão) para usuários ainda não migrados ao RBAC novo. `kernel.js`/Firestore Rules intocados. Ver §7.1 — pendente aprovação formal. |

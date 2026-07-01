@@ -8,39 +8,6 @@ import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapsh
 
 let _uid = null;
 
-// ===== RBAC (Fase 2, Sprint 1 — só leitura/ocultação de cards) =====
-// Mapeamento data-module (grid do Dashboard) → moduloId da matriz de
-// perfis_operacionais (CRM/pages/usuarios-permissoes/usuarios-permissoes.js).
-// Cards sem entrada aqui nunca são ocultados (matriz não cobre esses módulos ainda).
-const RBAC_CARD_PARA_MODULO_ID = {
-  'os': 'os',
-  'caixa': 'caixa',
-  'estoque': 'estoque',
-  'financeiro': 'financeiro',
-  'crm-comercial': 'crm',
-  'relatorios': 'relatorios',
-};
-
-// null = sem restrição (mostra tudo — usuário sem perfil_operacional_id
-// atribuído, ou admin/master_admin do kernel, que sempre veem tudo).
-let _permissoesVisualizar = null;
-
-async function _carregarPermissoesVisualizar(ctx) {
-  if (ctx.perfil === 'admin' || ctx.perfil === 'master_admin') return null;
-  try {
-    const usuarioSnap = await getDoc(doc(db, 'usuarios', ctx.uid));
-    const perfilOpId = usuarioSnap.exists() ? usuarioSnap.data().perfil_operacional_id : null;
-    if (!perfilOpId) return null; // ainda não migrado para o RBAC novo — sem restrição
-
-    const perfilSnap = await getDoc(doc(db, 'perfis_operacionais', perfilOpId));
-    if (!perfilSnap.exists()) return null;
-    return perfilSnap.data().permissoes || null;
-  } catch (e) {
-    console.warn('[Dashboard] RBAC: falha ao carregar permissões, mostrando todos os cards por padrão.', e);
-    return null; // falha na leitura nunca esconde módulo por engano
-  }
-}
-
 
 class Dashboard {
   constructor() {
@@ -1521,11 +1488,6 @@ class Dashboard {
   // ===== MÓDULOS =====
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
-      const moduloId = RBAC_CARD_PARA_MODULO_ID[card.getAttribute('data-module')];
-      if (_permissoesVisualizar && moduloId && _permissoesVisualizar[moduloId]?.visualizar === false) {
-        card.style.display = 'none';
-        return;
-      }
       card.addEventListener('click', () => {
         const module = card.getAttribute('data-module');
         this.navigateTo(module);
@@ -2996,7 +2958,6 @@ async function _bootDashboard() {
   const ctx = await initModulo();
   if (!ctx) return;
   _uid = ctx.uid;
-  _permissoesVisualizar = await _carregarPermissoesVisualizar(ctx);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => new Dashboard());
   } else {
