@@ -15,17 +15,6 @@
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 
-// Mesma detecção de ambiente usada em shared/brand-header.js — evita
-// que favoritos/atalhos gravados com URL absoluta (ex.: OS_VIEWS)
-// levem o usuário de volta para a MAIN quando ele está na DEVELOP.
-function envUrl(url) {
-  if (!url || typeof url !== 'string' || url.charAt(0) !== '/') return url;
-  const p = window.location.pathname;
-  const inDev = p === '/dev' || p.startsWith('/dev/');
-  const alreadyDev = url === '/dev' || url.startsWith('/dev/');
-  return (inDev && !alreadyDev) ? '/dev' + url : url;
-}
-
 let _uid = null;
 
 const STORAGE_KEY = 'cc_favoritos';            // cache local (pintura rápida)
@@ -292,7 +281,7 @@ function attachDragReorder(scrollEl) {
   });
 }
 
-function navigate(url) { window.location.href = envUrl(url); }
+function navigate(url) { window.location.href = url; }
 
 /* ============================================================
    DASHBOARD — barra horizontal abaixo do cabeçalho
@@ -345,7 +334,7 @@ function renderDashboardBar() {
       chip.className = 'ccfav-chip';
       chip.title = 'Continuar de onde parei: ' + (ultima.label || ultima.url);
       chip.innerHTML = '<span class="ccfav-ico">▶</span><span class="ccfav-txt">Continuar</span>';
-      chip.addEventListener('click', () => { window.location.href = envUrl(ultima.url); });
+      chip.addEventListener('click', () => { window.location.href = ultima.url; });
       sc.appendChild(chip);
     }
   } catch (e) { /* localStorage indisponível */ }
