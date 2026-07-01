@@ -171,15 +171,17 @@
       border: 1px solid rgba(0, 200, 83, 0.25);
     }
     .status-pill.env-develop {
-      background: rgba(255, 152, 0, 0.12);
-      color: #ffa726;
-      border: 1px solid rgba(255, 152, 0, 0.35);
+      /* Amarelo dourado suave (mesmo tom de --cell-gold-dark do design
+         system), não alaranjado — consistente com o resto da interface. */
+      background: rgba(255, 179, 0, 0.12);
+      color: #ffb300;
+      border: 1px solid rgba(255, 179, 0, 0.35);
       /* Destaque extra: pulso constante para deixar óbvio que NÃO é produção. */
       animation: crm-env-develop-pulse 2s ease-in-out infinite;
     }
     @keyframes crm-env-develop-pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.45); }
-      50% { box-shadow: 0 0 0 5px rgba(255, 152, 0, 0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 179, 0, 0.45); }
+      50% { box-shadow: 0 0 0 5px rgba(255, 179, 0, 0); }
     }
     .crm-env-menu {
       position: absolute;
