@@ -1,9 +1,15 @@
 (function () {
   const DASHBOARD_URL = '/CRM/pages/dashboard/index.html';
 
-  // Ambiente publicado desta branch. 'develop' aqui; o script subir-ok
-  // reescreve esta linha para 'main' automaticamente ao promover a release.
-  const CC_ENV = 'develop';
+  // Mesma implementação publicada nos dois ambientes — o ambiente atual é
+  // detectado pela URL (prefixo /dev), nunca hardcoded por branch.
+  const MAIN_ORIGIN = 'https://www.cellcityinformatica.com.br';
+  const DEV_ORIGIN = 'https://www.cellcityinformatica.com.br/dev';
+
+  function detectEnv() {
+    const p = window.location.pathname;
+    return (p === '/dev' || p.startsWith('/dev/')) ? 'develop' : 'main';
+  }
 
   const CSS = `
     /* === CRM Brand Bar (injetada em todas as páginas exceto dashboard) === */
@@ -168,6 +174,12 @@
       background: rgba(255, 152, 0, 0.12);
       color: #ffa726;
       border: 1px solid rgba(255, 152, 0, 0.35);
+      /* Destaque extra: pulso constante para deixar óbvio que NÃO é produção. */
+      animation: crm-env-develop-pulse 2s ease-in-out infinite;
+    }
+    @keyframes crm-env-develop-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.45); }
+      50% { box-shadow: 0 0 0 5px rgba(255, 152, 0, 0); }
     }
     .crm-env-menu {
       position: absolute;
@@ -259,18 +271,14 @@
     else bar.insertBefore(slot, bar.firstChild);
   }
 
-  // URLs oficiais e absolutas dos dois ambientes publicados — nunca usar
-  // caminho relativo aqui, pois isso pode virar URL protocol-relative
-  // (ex.: "//CRM/...") e o navegador tenta resolver "CRM" como servidor.
-  const MAIN_ORIGIN = 'https://www.cellcityinformatica.com.br';
-  const DEV_ORIGIN = 'https://www.cellcityinformatica.com.br/dev';
-
   // Calcula a URL do outro ambiente publicado, preservando o caminho atual
   // da página (ex.: na MAIN, /CRM/pages/dashboard/index.html; na DEVELOP,
-  // /dev/CRM/pages/dashboard/index.html).
+  // /dev/CRM/pages/dashboard/index.html). Sempre absoluta — nunca caminho
+  // relativo, pois isso pode virar URL protocol-relative (ex.: "//CRM/...")
+  // e o navegador tenta resolver "CRM" como servidor.
   function otherEnvUrl() {
     const path = window.location.pathname;
-    if (CC_ENV === 'develop') {
+    if (detectEnv() === 'develop') {
       const rest = path.replace(/^\/dev(\/|$)/, '/');
       return MAIN_ORIGIN + rest;
     }
@@ -292,7 +300,7 @@
         e.stopPropagation();
         menu.style.display = 'none';
         const target = btn.getAttribute('data-env');
-        if (target === CC_ENV) return;
+        if (target === detectEnv()) return;
         const label = target === 'main' ? 'Produção (MAIN)' : 'Desenvolvimento (DEVELOP)';
         if (window.confirm('Deseja abrir o ambiente de ' + label + '? Você será redirecionado.')) {
           window.location.href = otherEnvUrl();
@@ -304,14 +312,17 @@
   }
 
   // Cria o indicador clicável de ambiente (🟢 ONLINE | MAIN / 🟠 ONLINE | DEVELOP).
+  // O ambiente é sempre detectado pela URL atual — mesma implementação em
+  // MAIN e DEVELOP, sem nenhuma constante hardcoded por branch.
   function buildEnvPill() {
+    const env = detectEnv();
     const wrapper = document.createElement('div');
     wrapper.className = 'crm-env-wrapper';
 
     const pill = document.createElement('button');
     pill.type = 'button';
-    pill.className = 'status-pill ' + (CC_ENV === 'main' ? 'env-main' : 'env-develop');
-    pill.innerHTML = (CC_ENV === 'main' ? '🟢' : '🟠') + ' ONLINE | ' + CC_ENV.toUpperCase();
+    pill.className = 'status-pill ' + (env === 'main' ? 'env-main' : 'env-develop');
+    pill.innerHTML = (env === 'main' ? '🟢' : '🟠') + ' ONLINE | ' + env.toUpperCase();
     wrapper.appendChild(pill);
 
     const menu = buildEnvMenu(wrapper);
