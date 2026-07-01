@@ -17,16 +17,8 @@ const prefsRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'modulos');
 
 let _uid = null;
 
-// ── Ambiente atual (MAIN/DEVELOP) — mesma detecção usada em
-// shared/brand-header.js, para que nenhuma URL do catálogo aponte
-// para a MAIN quando o usuário está navegando na DEVELOP (/dev).
-const ENV_PREFIX = (function () {
-  const p = window.location.pathname;
-  return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
-})();
-
 // ── Catálogo completo (só módulos com página real no sistema) ──
-const RAW_MODULOS = [
+export const TODOS_MODULOS = [
   { id: 'os',                 nome: 'Ordem de Serviço',       icone: '📦', url: '/CRM/pages/os/index.html' },
   { id: 'caixa',               nome: 'Caixa',                   icone: '💰', url: '/CRM/pages/caixa/index.html' },
   { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '🔔', url: '/CRM/pages/central-alertas/index.html' },
@@ -53,11 +45,6 @@ const RAW_MODULOS = [
   { id: 'usuarios-permissoes', nome: 'Usuários e Permissões',   icone: '🔐', url: '/CRM/pages/usuarios-permissoes/index.html' },
   { id: 'config',              nome: 'Configurações',           icone: '⚙️', url: '/CRM/pages/config/index.html' },
 ];
-
-// URLs sempre absolutas do ambiente atual (nunca relativas — path do
-// catálogo é usado tanto pelo menu lateral quanto pela Central de
-// Módulos, hospedados em profundidades de diretório diferentes).
-export const TODOS_MODULOS = RAW_MODULOS.map(m => ({ ...m, url: ENV_PREFIX + m.url }));
 
 // ── Estado interno ──────────────────────────────────────────────
 let _favs  = null; // null = ainda não carregado

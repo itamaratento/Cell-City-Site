@@ -235,8 +235,7 @@
   function attachHandler(el) {
     el.title = 'Voltar ao painel';
     el.addEventListener('click', function () {
-      const prefix = detectEnv() === 'develop' ? '/dev' : '';
-      window.location.href = prefix + DASHBOARD_URL;
+      window.location.href = DASHBOARD_URL;
     });
   }
 

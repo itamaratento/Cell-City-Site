@@ -11,14 +11,6 @@
   if (document.getElementById('cc-global-sidebar')) return;
   if (document.getElementById('sidebar-left')) return; // dashboard usa HTML nativo
 
-  // Mesma detecção de ambiente usada em shared/brand-header.js — evita
-  // que o menu lateral leve o usuário de volta para a MAIN quando ele
-  // está navegando na DEVELOP (/dev).
-  const ENV_PREFIX = (function () {
-    const p = window.location.pathname;
-    return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
-  })();
-
   // ── Lista mestra de módulos ──────────────────────────────────
   const ITEMS = [
     { id: 'os',                 href: '/CRM/pages/os/index.html',                  icon: '📦', label: 'OS',                   highlight: true },
@@ -293,7 +285,7 @@
         isActive       ? 'cc-active'    : ''
       ].filter(Boolean).join(' ');
 
-      return `<a class="${classes}" href="${ENV_PREFIX}${item.href}" data-sid="${item.id}" data-tip="${item.label}" draggable="true">
+      return `<a class="${classes}" href="${item.href}" data-sid="${item.id}" data-tip="${item.label}" draggable="true">
         <span class="cc-drag-handle">⠿</span>
         <span class="cc-si-icon">${item.icon}</span>
         <span class="cc-si-label">${item.label}</span>
@@ -513,7 +505,7 @@
     if (!btn) return;
     btn.addEventListener('click', () => {
       // Navega direto para a Central de Controle
-      window.location.href = ENV_PREFIX + '/CRM/pages/central-modulos/index.html';
+      window.location.href = '/CRM/pages/central-modulos/index.html';
     });
   }
 
