@@ -176,7 +176,7 @@ O Portal do Cliente (`pages/portal-cliente/index.html`) autentica o visitante vi
 
 `os`, `caixa`, `central-alertas`, `central-comandos`, `central-informacoes`, `central-organizacao`, `crm-comercial`, `clientes`, `compras`, `contas`, `diario`, `estoque`, `financeiro`, `fornecedor`, `importar`, `relatorios`, `acaodasemana`, `minha-semana`, `pos-venda`, `portal-cliente`, `portal-tecnico`, `analise`, `auditoria`, `autoatendimento`, `campanhas`, `catalogo`, `config`, `chat`, `em-breve`, `kernel-test`, `usuarios-permissoes` (Fase 1 — gestão de usuários/perfis/permissões, isolado, ver seção 6).
 
-Não existe mais um catálogo centralizado de módulos em código (`shared/central-modulos.js` e a "Central de Controle" de 5 abas descritos em versões antigas desta documentação foram perdidos no rollback de 2026-06-27 e não foram recriados). Descoberta de módulos hoje acontece via: cards do Dashboard, `shared/favoritos.js` (barra de favoritos) e busca global do Dashboard.
+Descoberta de módulos acontece via: cards do Dashboard, `shared/favoritos.js` (barra de favoritos), busca global do Dashboard, sidebar global (`shared/sidebar.js`, lista mestra `ITEMS`) e a **Central de Módulos** (`shared/central-modulos.js`, catálogo `TODOS_MODULOS` — recriada em 2026-07-01; favoritos marcados ali aparecem automaticamente na sidebar via `shared/menu-favoritos.js`). Um módulo listado em `TODOS_MODULOS`/`ITEMS` é tratado como módulo oficial do sistema, com o mesmo tratamento visual e de navegação dos demais (não existe hoje uma categoria separada de "módulo isolado/experimental" nesses catálogos).
 
 ---
 
@@ -216,10 +216,118 @@ Uma frase descrevendo o que foi entregue.
 
 ---
 
-## 6. Histórico de Entregas
+## 6. Módulo "🔐 Usuários e Permissões" (`pages/usuarios-permissoes/`) — Fase 1
+
+Homologado em 2026-07-01 (checklist completo: segurança, CRUD de usuários, CRUD de perfis, Firebase secundário, auditoria, Firestore Rules, regressão, performance e documentação). Ver §6.8 para o resultado da homologação.
+
+### 6.1 Arquitetura e isolamento
+
+| Arquivo | Papel |
+|---|---|
+| `pages/usuarios-permissoes/index.html` | Página do módulo: gate de bloqueio (`#up-bloqueado`), 5 abas (Dashboard/Usuários/Perfis/Permissões/Logs), modal genérico, toast |
+| `pages/usuarios-permissoes/usuarios-permissoes.css` | Visual próprio (prefixo de classes `up-`) |
+| `pages/usuarios-permissoes/usuarios-permissoes.js` | Toda a lógica: CRUD de usuários/perfis, matriz de permissões, auditoria, seed |
+| `pages/usuarios-permissoes/firebase-secondary.js` | Instância Firebase App **separada** (`usuarios-permissoes-secondary`) só para criar contas/redefinir senha sem afetar a sessão do admin logado |
+
+O módulo **não importa** `shared/tenant.js` nem altera `scripts/kernel.js`, `scripts/firebase.js` ou `login.html` — usa apenas as APIs públicas já existentes do kernel (`initModulo`/`temPermissao`/`getUid`/`getNome`). Está listado como módulo oficial em `shared/central-modulos.js` (`TODOS_MODULOS`) e `shared/sidebar.js` (`ITEMS`), com o mesmo tratamento visual/de navegação dos demais módulos — não é uma página acessível apenas por URL direta.
+
+### 6.2 Duas camadas de "perfil" (propositalmente separadas)
+
+| Campo | Onde vive | Papel |
+|---|---|---|
+| `usuarios/{uid}.perfil` | Lido por `kernel.js::temPermissao()` | Nível de acesso do kernel (`master_admin(100) > admin(80) > gerente(60) > tecnico(40) > atendente(20)`) — controla o **gate deste módulo** (exige `admin`) |
+| `usuarios/{uid}.perfil_operacional_id` | Referencia `perfis_operacionais/{id}` | RBAC operacional novo, com matriz de permissões por módulo (visualizar/criar/editar/excluir/aprovar) |
+
+Todo usuário criado por este módulo recebe um `perfil` de kernel mapeado a partir do perfil operacional escolhido (`PERFIL_OPERACIONAL_PARA_KERNEL` em `usuarios-permissoes.js`), pois deixar o campo vazio faria `kernel.js::_buildContext()` assumir `admin` por padrão (comportamento pré-existente do kernel, não introduzido por este módulo — ver §6.7).
+
+### 6.3 Modelo de dados
+
+**`usuarios/{uid}`** (documento já existente do kernel; este módulo só adiciona campos):
+```
+perfil_operacional_id, nome_exibicao, setor, telefone, observacao,
+status ('ativo'|'inativo'), conta_padrao (bool), criado_por,
+ultima_alteracao, createdAt
+```
+Só usuários com `perfil_operacional_id` preenchido aparecem na aba Usuários (filtro em `iniciarListeners()`).
+
+**`perfis_operacionais/{id}`**:
+```
+nome, descricao, sistema (bool — true para os 7 perfis do seed), ativo (bool),
+permissoes: { [moduloId]: { visualizar, criar, editar, excluir, aprovar } },
+criadoEm, criadoPor, atualizadoEm
+```
+Catálogo de módulos da matriz: `dashboard, os, caixa, estoque, financeiro, crm, agenda, relatorios, configuracoes` (só `caixa`/`financeiro` têm coluna "Aprovar" habilitada). 7 perfis seed: Administrador (acesso total), Financeiro, Caixa, Estoque, Técnico, Comercial, Atendimento.
+
+**`auditoria_usuarios_permissoes/{logId}`** (log imutável, append-only):
+```
+acao, admin_uid, admin_nome, alvo_uid, alvo_nome, detalhes, timestamp
+```
+Ações registradas: `usuario_criado, usuario_editado, usuario_desativado, usuario_reativado, perfil_alterado, perfil_criado, perfil_editado, permissoes_alteradas, senha_redefinida`.
+
+### 6.4 Fluxo de autenticação
+
+Idêntico ao padrão do kernel (§2) — `initModulo()` resolve o contexto (timeout 10s) ou redireciona para `login.html`. Este módulo não cria nenhum mecanismo de autenticação próprio.
+
+### 6.5 Fluxo de autorização
+
+Dupla camada, testada na homologação:
+1. **UI**: `usuarios-permissoes.js::boot()` chama `temPermissao('admin')`; se falso, exibe `#up-bloqueado` com a mensagem "Você não possui permissão para acessar este módulo..." e nunca renderiza `#up-app` nem inicia os listeners.
+2. **Firestore Rules** (`CRM/firestore.rules`): mesmo que a UI fosse contornada, as regras bloqueiam de verdade:
+   ```
+   match /usuarios/{uid} {
+     allow read, write: if request.auth != null && (
+       request.auth.uid == uid ||
+       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+     );
+   }
+   match /perfis_operacionais/{perfilId} {
+     allow read: if request.auth != null;
+     allow write: if request.auth != null &&
+       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+   }
+   match /auditoria_usuarios_permissoes/{logId} {
+     allow read, create: if request.auth != null &&
+       get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+     allow update, delete: if false; // imutável
+   }
+   ```
+
+### 6.6 Firebase secundário (criação de conta / redefinição de senha)
+
+Sem Cloud Functions/Admin SDK neste projeto. `firebase-secondary.js` mantém uma **segunda instância** do Firebase App (`usuarios-permissoes-secondary`), com seu próprio `Auth`, isolada da instância principal usada por `kernel.js`/`scripts/firebase.js`. Isso permite `createUserWithEmailAndPassword` (criar conta) e `signInWithEmailAndPassword` + `updatePassword` (redefinir senha) **sem** disparar `onAuthStateChanged` da sessão principal — confirmado na homologação: a sessão do administrador permanece ativa durante e depois de criar contas, rodar o seed e redefinir senhas. Redefinição de senha tem duas vias: informar a senha atual (o admin a define/controla) ou `sendPasswordResetEmail` (link por e-mail) — limitação conhecida da Fase 1 por falta de Admin SDK.
+
+### 6.7 Limitações conhecidas / observações
+
+- **Coluna "Perfil" da aba Usuários pode ficar em "—" indefinidamente** numa carga normal da página: `renderUsuarios()` só é re-executado pelo próprio listener de `usuarios` (`iniciarListeners()`, `usuarios-permissoes.js`), nunca pelo listener de `perfis`. Se o snapshot de `perfis_operacionais` chegar depois do de `usuarios` (comum, já que são `onSnapshot` independentes), a coluna renderiza com o array `perfis` ainda vazio e não se corrige sozinha — só um novo evento em `usuarios` (busca, edição, etc.) força o re-render correto. **Bug confirmado na homologação, não corrigido nesta entrega** (correção sugerida: chamar `renderUsuarios()` também no callback do listener de `perfis`).
+- **Rastreamento de "Últimos acessos"** no Dashboard do módulo: não implementado nesta fase (mensagem explícita na UI).
+- **`kernel.js::_buildContext()` assume `perfil = 'admin'` por padrão** para qualquer UID sem documento `usuarios/{uid}` prévio (primeiro acesso) — comportamento pré-existente do kernel, não introduzido por este módulo, mas relevante para quem for planejar a Fase 2: qualquer conta nova que faça login pela primeira vez sem passar por este módulo vira admin automaticamente.
+- Sem Cloud Functions/Admin SDK: redefinição de senha exige a senha atual ou e-mail de reset (§6.6).
+- Nenhum módulo operacional existente (`os`, `caixa`, `financeiro` etc.) consulta `perfis_operacionais`/`perfil_operacional_id` ainda — a matriz de permissões é gerida aqui, mas não é **aplicada** em nenhum outro lugar do sistema nesta fase.
+
+### 6.8 Homologação — resultado
+
+**Status: ✅ APROVADA em 2026-07-01.** A partir desta data, o módulo Usuários e Permissões passa a fazer parte da arquitetura oficial do sistema, com o mesmo status dos demais módulos.
+
+Todas as 9 seções do checklist de homologação foram executadas e aprovadas (login admin/comum, bloqueio de acesso por UI e por Rules, CRUD completo de usuários e perfis, matriz de permissões com persistência confirmada após reload, Firebase secundário com sessão do admin preservada, redefinição de senha por senha atual e por e-mail, 9/9 tipos de ação de auditoria confirmados com todos os campos, regressão limpa em 10 módulos existentes + o novo módulo, performance: app visível em ~0.9s, ~8 requisições Firestore por carregamento, zero polling desnecessário).
+
+**Incidente crítico encontrado e corrigido durante a homologação:** o release ativo do Firestore Rules em produção estava travado numa versão anterior (2026-06-30), sem os blocos deste módulo — mesmo após confirmação de "Publicar" no Console. Causa raiz identificada via API do Firebase Rules (não pelo Console, que se mostrou não confiável para esse diagnóstico) e corrigida publicando o ruleset correto diretamente pela API. Rules validadas com 18/18 testes automatizados no emulador antes da correção.
+
+**Dados de teste**: contas/perfil/usuário criados exclusivamente para a homologação (conta admin QA, conta comum QA, usuário "QA Teste CRUD Usuario", perfil "QA Perfil Customizado (Editado)") foram removidos após a aprovação, junto de uma alteração de teste na matriz do perfil Estoque (revertida). Os registros de auditoria gerados pelos testes foram **mantidos** — a coleção `auditoria_usuarios_permissoes` é imutável por regra (`allow update, delete: if false`), validada como correta na Seção 6; apagar registros exigiria abrir uma exceção pontual a essa garantia, o que não foi feito. Os 7 perfis padrão e as 8 contas seed (criadas com e-mails de teste `itamaratento+ccqaseed...`) foram mantidos a pedido — a atualização para o padrão de e-mail definitivo da empresa fica para quando essa estratégia for definida.
+
+**Pendências oficiais para a Fase 2**:
+1. Integrar o RBAC operacional (`perfis_operacionais`) aos módulos existentes — gradual, um módulo por vez, começando por um piloto, sem integração em massa.
+2. Corrigir a condição de corrida da coluna "Perfil" (§6.7).
+3. Implementar rastreamento de último acesso.
+4. Evoluir o gerenciamento de senha usando Cloud Functions/Admin SDK, quando houver backend disponível.
+5. Atualizar permissões em tempo real sem exigir recarregar a página.
+
+---
+
+## 7. Histórico de Entregas
 
 | Data | Funcionalidade |
 |------|---------------|
 | 2026-06-30 | Reconstrução da Central de Alertas como módulo independente (`pages/central-alertas/`), status por usuário (`central_alertas_status`), regra Firestore corrigida, TECHDOC.md recriado |
-| 2026-07-01 | Novo módulo isolado "🔐 Usuários e Permissões" (`pages/usuarios-permissoes/`) — Fase 1: usuários funcionais, perfis operacionais livres (`perfis_operacionais`), matriz de permissões por módulo, auditoria (`auditoria_usuarios_permissoes`), seed de 7 perfis + 8 contas padrão. Login/kernel.js/firebase.js/tenant.js intocados. Ver relatório completo no chat. |
+| 2026-07-01 | Novo módulo "🔐 Usuários e Permissões" (`pages/usuarios-permissoes/`) — Fase 1: usuários funcionais, perfis operacionais livres (`perfis_operacionais`), matriz de permissões por módulo, auditoria (`auditoria_usuarios_permissoes`), seed de 7 perfis + 8 contas padrão. Login/kernel.js/firebase.js/tenant.js intocados. Homologado no mesmo dia — ver §6. |
 | 2026-07-01 | Favoritos da Central de Módulos passam a aparecer automaticamente no menu principal (`shared/menu-favoritos.js` consumindo `shared/central-modulos.js`), estrela ⭐ na grade de módulos, regras Firestore para `usuarios/{uid}/preferencias/*` e `crm_leads` corrigidas, gate de sessão real adicionado em `crm-comercial/entrada.js` |
+| 2026-07-01 | Homologação da Fase 1 de "🔐 Usuários e Permissões" **aprovada** — 9/9 seções do checklist, incidente crítico de Firestore Rules em produção corrigido durante o processo. Ver §6.8. Projeto liberado para a Fase 2 (integração gradual do RBAC aos módulos existentes). |
