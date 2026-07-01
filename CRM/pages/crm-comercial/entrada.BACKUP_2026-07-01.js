@@ -3,7 +3,6 @@ import {
   serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
-import { initModulo } from '../../scripts/kernel.js';
 
 // ── Status / Destino ──────────────────────────────────────────
 const STATUSES = [
@@ -405,13 +404,7 @@ window.voltarCRM = function() {
 };
 
 // ── Init ─────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
-  // Garante sessão real (não só a flag de UX) antes de permitir salvar.
-  // Sem isso, uma sessão expirada (persistência de aba) passava pelo
-  // gate do HTML e só falhava na hora do addDoc, com "insufficient permissions".
-  const ctx = await initModulo();
-  if (!ctx) return; // kernel.js já redirecionou para login
-
+document.addEventListener('DOMContentLoaded', () => {
   renderChips();
   // Foco automático no telefone ao abrir
   setTimeout(() => $('ent-tel')?.focus(), 250);
