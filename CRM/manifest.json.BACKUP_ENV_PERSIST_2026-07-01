@@ -3,7 +3,7 @@
   "short_name": "Cell City",
   "description": "CRM Operacional Cell City Informática",
   "start_url": "/CRM/",
-  "scope": "/",
+  "scope": "/CRM/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#050505",
