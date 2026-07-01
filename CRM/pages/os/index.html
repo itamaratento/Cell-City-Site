@@ -298,12 +298,38 @@
         </div>
     </div>
 
+    <!-- MODAL LEMBRETE OS -->
+    <div class="modal-overlay" id="lembrete-os-overlay" onclick="fecharLembreteOS(event)" style="z-index:300;">
+        <div class="premium-modal" style="max-width:400px;">
+            <h3 style="margin-bottom:6px;color:var(--green-light);">🔔 Criar Lembrete</h3>
+            <div id="lembrete-os-info" style="font-size:12px;color:var(--text3);margin-bottom:16px;font-weight:600;"></div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div>
+                    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Data</label>
+                    <input type="date" id="lembrete-data" style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);box-sizing:border-box;font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Horário</label>
+                    <input type="time" id="lembrete-hora" style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);box-sizing:border-box;font-size:14px;">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">Lembrete <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
+                    <textarea id="lembrete-desc" rows="3" placeholder="Ex: Ligar para cliente sobre orçamento..." style="width:100%;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;resize:vertical;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px;">
+                <button onclick="fecharLembreteOS()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;color:var(--text);font-size:13px;">Cancelar</button>
+                <button onclick="salvarLembreteOS()" style="flex:2;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;color:#000;font-weight:800;font-size:13px;">🔔 Criar Lembrete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TOAST -->
     <div class="premium-toast" id="toast"></div>
 
     <script src="../../shared/brand-header.js?v=20260612-accordion-obs-v3"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
-<script type="module" src="os.js?v=20260628-fix-saveos"></script>
+<script type="module" src="os.js?v=20260630-finalizado-lembrete-obsrapida"></script>
 <script type="module" src="../../shared/dock.js?v=20260612-accordion-obs-v3"></script>
 <script>
 function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }

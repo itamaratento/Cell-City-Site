@@ -72,6 +72,11 @@ window.addDiasRetorno = addDiasRetorno;
 window.copiarMensagemRetorno = copiarMensagemRetorno;
 window.abrirEditarMensagensRetorno = abrirEditarMensagensRetorno;
 window.salvarMensagensRetorno = salvarMensagensRetorno;
+window.copiarMensagemFinalizado = copiarMensagemFinalizado;
+window.saveObsRapida = saveObsRapida;
+window.abrirLembreteOS = abrirLembreteOS;
+window.fecharLembreteOS = fecharLembreteOS;
+window.salvarLembreteOS = salvarLembreteOS;
 
 function toggleRelatorioTecnico() {
     const body = document.getElementById('rel-tec-body');
@@ -515,6 +520,8 @@ const STATUS_LEGACY = {
 // Status que encerram a OS (saem de "em andamento").
 const STATUS_TERMINAIS = ['entregue', 'orcamento_recusado', 'devolvido_orcamento'];
 
+const LINK_PORTAL_WPP = 'https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html';
+
 function getStatusLabel(status) {
     const found = STATUS_FLOW.find(s => s.key === status);
     if (found) return found.label;
@@ -765,7 +772,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;padding-bottom:28px;overflow:hidden;"><button onclick="toggleOSEdit()" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;">✏️ Editar O.S.</button><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span><div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="abrirLembreteOS()" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;">🔔</button><button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button></div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div><div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 ${os.phone}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -1202,6 +1209,114 @@ async function deleteOS(id) {
 }
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/${(os.phone||'').replace(/\D/g,'')}?text=${encodeURIComponent(text)}`, '_blank'); }
+
+// ===== OBS RÁPIDA =====
+let _obsRapidaTimer = null;
+async function saveObsRapida(val) {
+    if (!currentOS) return;
+    currentOS.obsRapida = val;
+    const idx = localOS.findIndex(o => o.id === currentOS.id);
+    if (idx >= 0) localOS[idx].obsRapida = val;
+    clearTimeout(_obsRapidaTimer);
+    _obsRapidaTimer = setTimeout(async () => {
+        try {
+            await updateDoc(doc(db, 'os', currentOS.id), { obsRapida: val, updatedAt: new Date().toISOString() });
+        } catch (e) {
+            console.error('Erro ao salvar obs rápida:', e);
+        }
+    }, 700);
+}
+
+// ===== LEMBRETE DA OS =====
+function abrirLembreteOS() {
+    if (!currentOS) return;
+    const info = document.getElementById('lembrete-os-info');
+    if (info) info.textContent = `${currentOS.id} — ${currentOS.clientName}`;
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    document.getElementById('lembrete-data').value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    document.getElementById('lembrete-hora').value = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    document.getElementById('lembrete-desc').value = '';
+    document.getElementById('lembrete-os-overlay').classList.add('active');
+    setTimeout(() => document.getElementById('lembrete-desc')?.focus(), 80);
+}
+
+function fecharLembreteOS(e) {
+    if (e instanceof Event && e.target !== document.getElementById('lembrete-os-overlay')) return;
+    document.getElementById('lembrete-os-overlay').classList.remove('active');
+}
+
+async function salvarLembreteOS() {
+    if (!currentOS) return;
+    const data = document.getElementById('lembrete-data').value;
+    const hora = document.getElementById('lembrete-hora').value;
+    const desc = document.getElementById('lembrete-desc').value.trim();
+    if (!data) return showToast('⚠️ Informe a data do lembrete.');
+    if (!hora) return showToast('⚠️ Informe o horário.');
+    const titulo = `🔧 ${currentOS.id} — ${currentOS.clientName}`;
+    const link = `/CRM/pages/os/index.html#os-${currentOS.id}`;
+    try {
+        const novoRef = doc(collection(db, 'alertas_usuario'));
+        const agora = new Date().toISOString();
+        await setDoc(novoRef, {
+            id: novoRef.id,
+            titulo,
+            descricao: desc || '',
+            tipo: 'os',
+            prioridade: 'media',
+            data,
+            hora,
+            repeticao: 'nenhuma',
+            customDias: null,
+            status: 'pendente',
+            link,
+            osId: currentOS.id,
+            criadoEm: serverTimestamp(),
+            criadoEmISO: agora,
+            atualizadoEm: serverTimestamp(),
+            atualizadoEmISO: agora,
+        });
+        showToast('🔔 Lembrete criado na Central de Alertas!');
+        document.getElementById('lembrete-os-overlay').classList.remove('active');
+    } catch (err) {
+        console.error('Erro ao salvar lembrete:', err);
+        showToast('⚠️ Erro ao criar lembrete.');
+    }
+}
+
+// ===== MENSAGEM FINALIZADO =====
+function copiarMensagemFinalizado() {
+    if (!currentOS) return;
+    const os = currentOS;
+    const firstName = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const garantiaModelo = _getSelectedWarranty(os);
+    const garantiaDias = os.prazoGarantia ?? 90;
+    const garantiaStr = garantiaModelo ? garantiaDias + ' dias — ' + garantiaModelo.nome : garantiaDias + ' dias';
+    let dataGarantiaStr = '';
+    if (os.createdAt) {
+        const d = new Date(os.createdAt);
+        d.setDate(d.getDate() + garantiaDias);
+        dataGarantiaStr = d.toLocaleDateString('pt-BR');
+    }
+    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
+    const message =
+        'Olá, ' + firstName + '! 👋\n\n' +
+        'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
+        '📋 OS Nº ' + os.id + '\n\n' +
+        'Você pode consultar as informações da sua ordem de serviço através do Portal do Cliente Cell City.\n\n' +
+        '🔗 ' + LINK_PORTAL_WPP + '\n\n' +
+        '📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n' +
+        '🛡 Garantia: ' + garantiaStr + '\n' +
+        (dataGarantiaStr ? '📅 Válida até: ' + dataGarantiaStr + '\n\n' : '\n') +
+        'Agradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.' +
+        (linkAvaliacao ? '\n\n⭐ Avalie nosso atendimento:\n' + linkAvaliacao : '') +
+        '\n\nCell City Informática';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(message).then(() => showToast('✅ Mensagem Finalizado copiada!')).catch(() => fallbackCopyMessage(message));
+    } else {
+        fallbackCopyMessage(message);
+    }
+}
 
 /**
  * Retorna o label legível para o tipo de bloqueio
