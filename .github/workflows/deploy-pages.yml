@@ -1,0 +1,55 @@
+name: Deploy Pages (main + develop)
+
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (produção)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site-main
+
+      - name: Checkout develop (desenvolvimento)
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: site-develop
+
+      - name: Montar estrutura publicada (main na raiz, develop em /dev)
+        run: |
+          mkdir -p _site
+          rsync -a --exclude='.git' --exclude='.github' site-main/ _site/
+          mkdir -p _site/dev
+          rsync -a --exclude='.git' --exclude='.github' site-develop/ _site/dev/
+          touch _site/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,10 +1,6 @@
 (function () {
   const DASHBOARD_URL = '/CRM/pages/dashboard/index.html';
 
-  // Ambiente publicado desta branch. 'develop' aqui; o script subir-ok
-  // reescreve esta linha para 'main' automaticamente ao promover a release.
-  const CC_ENV = 'develop';
-
   const CSS = `
     /* === CRM Brand Bar (injetada em todas as páginas exceto dashboard) === */
     #crm-brand-bar {
@@ -144,64 +140,6 @@
     .crm-site-cc-btn:hover .crm-site-cc-label {
       color: #00e676;
     }
-
-    /* === Indicador de ambiente (MAIN/DEVELOP) === */
-    .crm-env-wrapper { position: relative; flex-shrink: 0; }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .status-pill.env-main {
-      background: rgba(0, 200, 83, 0.1);
-      color: #00c853;
-      border: 1px solid rgba(0, 200, 83, 0.25);
-    }
-    .status-pill.env-develop {
-      background: rgba(255, 152, 0, 0.12);
-      color: #ffa726;
-      border: 1px solid rgba(255, 152, 0, 0.35);
-    }
-    .crm-env-menu {
-      position: absolute;
-      top: calc(100% + 6px);
-      right: 0;
-      background: rgba(15, 16, 18, 0.98);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
-      padding: 6px;
-      min-width: 200px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-      z-index: 10000;
-    }
-    .crm-env-menu-title {
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #8b949e;
-      padding: 4px 8px 6px;
-    }
-    .crm-env-menu-item {
-      display: block;
-      width: 100%;
-      text-align: left;
-      background: none;
-      border: none;
-      color: #e6edf3;
-      font-size: 13px;
-      font-family: inherit;
-      padding: 7px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .crm-env-menu-item:hover { background: rgba(255, 255, 255, 0.06); }
   `;
 
   const BRAND_HTML = `
@@ -259,81 +197,13 @@
     else bar.insertBefore(slot, bar.firstChild);
   }
 
-  // Calcula a URL do outro ambiente publicado (MAIN na raiz, DEVELOP em
-  // /dev/), preservando o caminho atual da página.
-  function otherEnvUrl() {
-    const path = window.location.pathname;
-    if (CC_ENV === 'develop') {
-      return path.replace(/^\/dev(\/|$)/, '/$1') || '/';
-    }
-    return '/dev' + (path.startsWith('/') ? path : '/' + path);
-  }
-
-  function buildEnvMenu(wrapper) {
-    const menu = document.createElement('div');
-    menu.className = 'crm-env-menu';
-    menu.style.display = 'none';
-    menu.innerHTML =
-      '<div class="crm-env-menu-title">AMBIENTE</div>' +
-      '<button type="button" class="crm-env-menu-item" data-env="main">🟢 Produção (MAIN)</button>' +
-      '<button type="button" class="crm-env-menu-item" data-env="develop">🟠 Desenvolvimento (DEVELOP)</button>';
-    wrapper.appendChild(menu);
-
-    menu.querySelectorAll('.crm-env-menu-item').forEach(function (btn) {
-      btn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        menu.style.display = 'none';
-        const target = btn.getAttribute('data-env');
-        if (target === CC_ENV) return;
-        const label = target === 'main' ? 'Produção (MAIN)' : 'Desenvolvimento (DEVELOP)';
-        if (window.confirm('Deseja abrir o ambiente de ' + label + '? Você será redirecionado.')) {
-          window.location.href = otherEnvUrl();
-        }
-      });
-    });
-
-    return menu;
-  }
-
-  // Cria o indicador clicável de ambiente (🟢 ONLINE | MAIN / 🟠 ONLINE | DEVELOP).
-  function buildEnvPill() {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'crm-env-wrapper';
-
-    const pill = document.createElement('button');
-    pill.type = 'button';
-    pill.className = 'status-pill ' + (CC_ENV === 'main' ? 'env-main' : 'env-develop');
-    pill.innerHTML = (CC_ENV === 'main' ? '🟢' : '🟠') + ' ONLINE | ' + CC_ENV.toUpperCase();
-    wrapper.appendChild(pill);
-
-    const menu = buildEnvMenu(wrapper);
-    pill.addEventListener('click', function (e) {
-      e.stopPropagation();
-      menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-    });
-    document.addEventListener('click', function () { menu.style.display = 'none'; });
-
-    return wrapper;
-  }
-
-  // Substitui o slot #cc-env-pill (dashboard) pelo indicador real.
-  function mountEnvPillInSlot() {
-    const slot = document.getElementById('cc-env-pill');
-    if (!slot) return null;
-    const pillEl = buildEnvPill();
-    slot.replaceWith(pillEl);
-    return pillEl;
-  }
-
   function init() {
     injectStyles();
 
-    // Dashboard: #brand-header já existe — só adiciona o onclick e monta
-    // o indicador de ambiente no slot fixo do header próprio da página.
+    // Dashboard: #brand-header já existe — só adiciona o onclick
     const existing = document.getElementById('brand-header');
     if (existing) {
       attachHandler(existing);
-      mountEnvPillInSlot();
       return;
     }
 
@@ -365,7 +235,6 @@
     siteBtn.title = 'Abrir Site da Cell City';
     siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
     bar.appendChild(siteBtn);
-    bar.appendChild(buildEnvPill());
 
     // Migra todos os filhos do header existente para dentro do brand bar.
     // O título vira .crm-page-title (centralizado em absolute); os demais
