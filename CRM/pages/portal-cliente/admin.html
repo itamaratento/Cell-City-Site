@@ -118,6 +118,7 @@
       collection, query, where, getDocs, getDoc, onSnapshot,
       addDoc, doc, updateDoc, deleteDoc, setDoc, orderBy, serverTimestamp, limit
     } from 'firebase/firestore';
+    import * as PhoneUtils from '../../shared/phone-utils.js';
 
     const firebaseConfig = {
       apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -140,6 +141,7 @@
         collection, query, where, getDocs, getDoc, onSnapshot,
         addDoc, doc, updateDoc, deleteDoc, setDoc, orderBy, serverTimestamp, limit
       };
+      window.PhoneUtils = PhoneUtils;
 
       window.authReady = false;
       onAuthStateChanged(auth, async (user) => {

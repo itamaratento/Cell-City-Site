@@ -1,6 +1,7 @@
 import {
     db, collection, doc, setDoc, getDocs, serverTimestamp
 } from "../../scripts/firebase.js";
+import { normalizePhoneDigits, maskPhone } from "../../shared/phone-utils.js";
 
 window.handleFile        = handleFile;
 window.iniciarImportacao = iniciarImportacao;
@@ -206,30 +207,20 @@ async function importarCategorias(categorias, stats) {
     return catMap;
 }
 
-// Formata o telefone no MESMO padrão usado pela tela de OS (os.js) e pelo Portal,
-// para que clientes importados se fundam com os criados no CRM (mesmo doc-ID).
-function formatPhoneBR(v) {
-    v = (v || '').replace(/\D/g, '');
-    if (v.length > 11) v = v.slice(0, 11);
-    if (v.length > 6) return `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-    if (v.length > 2) return `(${v.slice(0,2)}) ${v.slice(2)}`;
-    if (v.length > 0) return `(${v}`;
-    return '';
-}
-
 // ===== CLIENTES =====
 // Grava na coleção "clientes" (mesma lida por os.js e portal.js), usando o
-// telefone formatado como doc-ID — exatamente o padrão do CRM.
+// campo canônico phoneDigits como doc-ID — exatamente o padrão do CRM
+// (ver shared/phone-utils.js).
 async function importarClientes(clientes, stats) {
     const clienteMap = {};
 
-    // Mapeia clientes já existentes por telefone (só dígitos) → doc-ID, para deduplicar.
+    // Mapeia clientes já existentes por telefone (dígitos canônicos) → doc-ID, para deduplicar.
     const existentes = {};
     try {
         const snap = await getDocs(collection(db, "clientes"));
         snap.forEach(d => {
             const data = d.data();
-            const digits = (data.phone || '').replace(/\D/g, '');
+            const digits = data.phoneDigits || normalizePhoneDigits(data.phone || d.id);
             if (digits) existentes[digits] = d.id;
         });
     } catch {}
@@ -237,19 +228,20 @@ async function importarClientes(clientes, stats) {
     for (const cl of clientes) {
         const fixed  = fixObj(cl);
         const nome   = (fixed.name || fixed.nome || '').trim();
-        const digits = (fixed.phone || fixed.telefone || '').replace(/\D/g, '');
-        const fone   = formatPhoneBR(digits); // formato canônico do CRM
+        const digits = normalizePhoneDigits(fixed.phone || fixed.telefone || '');
+        const fone   = maskPhone(digits); // formato canônico do CRM
         const idOrig = String(fixed.id || '');
 
         if (!nome && !digits) continue;
 
-        // doc-ID: telefone formatado (igual ao os.js) quando houver; senão, ID automático.
-        const docId  = digits ? (existentes[digits] || fone) : doc(collection(db, "clientes")).id;
+        // doc-ID: phoneDigits canônico quando houver telefone; senão, ID automático.
+        const docId  = digits ? (existentes[digits] || digits) : doc(collection(db, "clientes")).id;
         const isNovo = !digits || !existentes[digits];
 
         const payload = {
             name: nome,
             phone: fone,
+            phoneDigits: digits || null,
             importadoDe: 'beepstart',
             importadoEm: new Date().toISOString()
         };

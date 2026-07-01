@@ -133,6 +133,10 @@ window.Portal = {
     if (saved) {
       try {
         this.session = JSON.parse(saved);
+        // Sessões salvas antes da padronização de telefone não têm telefoneDigits.
+        if (!this.session.telefoneDigits && this.session.telefone) {
+          this.session.telefoneDigits = this._phoneDigits(this.session.telefone);
+        }
         console.log('[Portal] Sessão restaurada:', JSON.stringify(this.session));
         console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
 
@@ -281,39 +285,19 @@ window.Portal = {
     return `https://wa.me/${d}${q}`;
   },
 
-  // ===== TELEFONE — VARIANTES DE FORMATO =====
-  // CAUSA-RAIZ (ETAPA 1 — Item 2): o login canonicaliza o telefone para a máscara
-  // "(NN) NNNNN-NNNN" e salva esse único formato na sessão. Mas as OS no Firestore
-  // podem estar gravadas em OUTROS formatos (dígitos puros "NNNNNNNNNNN", máscara de
-  // 10 dígitos, ou com/sem o 9º dígito). O login tinha fallback p/ dígitos puros, mas
-  // os listeners em tempo real (_listenOS/_listenMensagens) consultavam só a máscara →
-  // retornavam 0 docs. Casos reais: Mauricio MID e Maria Cuba (OS gravadas como dígitos puros).
-  //
-  // Solução mínima e robusta: gerar TODOS os formatos plausíveis a partir dos dígitos e
-  // consultar com where('phone','in', variantes). Cobre máscara-11, raw-11, máscara-10,
-  // raw-10 e a divergência clássica do 9º dígito. Firestore aceita até 30 valores no 'in'.
+  // ===== TELEFONE — CAMPO CANÔNICO =====
+  // Consultas de OS/clientes usam `phoneDigits`/`telefoneDigits` (só dígitos,
+  // gerado por shared/phone-utils.js — a MESMA função usada por os.js para
+  // gravar os dados). Isso elimina a necessidade de adivinhar variantes de
+  // máscara: o valor gravado e o valor consultado vêm sempre da mesma fonte.
+  // Ver shared/phone-utils.js para o histórico do bug que isso substitui
+  // (máscaras divergentes entre os.js e portal.js causavam 0 resultados).
   _phoneMask(dg) {
-    if (dg.length === 11) return `(${dg.slice(0,2)}) ${dg.slice(2,7)}-${dg.slice(7)}`;
-    if (dg.length === 10) return `(${dg.slice(0,2)}) ${dg.slice(2,6)}-${dg.slice(6)}`;
-    return dg;
+    return window.PhoneUtils.maskPhone(dg);
   },
 
-  _phoneVariants(input) {
-    const dg = String(input == null ? '' : input).replace(/\D/g, '');
-    const variants = new Set();
-    const pushAll = (d) => {
-      if (!d || d.length < 10) return;
-      variants.add(d);                 // dígitos puros (raw)
-      variants.add(this._phoneMask(d)); // com máscara
-    };
-    pushAll(dg);
-    // Divergência do 9º dígito (celulares BR): gera a forma alternativa
-    if (dg.length === 11 && dg[2] === '9') {
-      pushAll(dg.slice(0, 2) + dg.slice(3)); // remove o 9 → 10 dígitos
-    } else if (dg.length === 10) {
-      pushAll(dg.slice(0, 2) + '9' + dg.slice(2)); // insere o 9 → 11 dígitos
-    }
-    return [...variants];
+  _phoneDigits(input) {
+    return window.PhoneUtils.normalizePhoneDigits(input);
   },
 
   // ===== LOGIN =====
@@ -365,15 +349,7 @@ window.Portal = {
       return;
     }
     input.addEventListener('input', (e) => {
-      let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-      if (v.length > 7) {
-        v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-      } else if (v.length > 2) {
-        v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-      } else if (v.length > 0) {
-        v = `(${v}`;
-      }
-      e.target.value = v;
+      e.target.value = window.PhoneUtils.maskPhone(e.target.value);
       document.getElementById('login-error').textContent = '';
     });
 
@@ -407,38 +383,36 @@ window.Portal = {
 
     try {
       const db = window.db;
-      const { collection, query, where, getDocs } = window.FirebaseModules;
+      const { collection, query, where, getDocs, getDoc, doc } = window.FirebaseModules;
 
-      // ===== NORMALIZAÇÃO DO TELEFONE =====
-      // A tela de OS (os.js) armazena o telefone em formatos divergentes: máscara
-      // "(62) 98160-5863" OU dígitos puros "62981605863". Geramos TODAS as variantes
-      // plausíveis e consultamos com where('phone','in', variantes) — isso garante que
-      // login, listeners e garantias usem exatamente o mesmo critério de busca.
-      const formatted = this._phoneMask(raw); // formato canônico (exibição na sessão)
-      const variants = this._phoneVariants(raw);
+      // ===== CAMPO CANÔNICO =====
+      // `phoneDigits`/`telefoneDigits` é gravado por os.js e pelo próprio Portal
+      // usando a mesma função (shared/phone-utils.js). Uma comparação exata é
+      // suficiente — não precisamos mais adivinhar variantes de máscara.
+      const digits = this._phoneDigits(raw);
+      const formatted = this._phoneMask(digits); // formato canônico (exibição na sessão)
 
-      console.log('[Portal] Buscando cliente — raw:', raw, 'formatted:', formatted, 'variants:', JSON.stringify(variants));
+      console.log('[Portal] Buscando cliente — raw:', raw, 'digits:', digits, 'formatted:', formatted);
 
-      // Busca em clientes (todas as variantes de formato)
+      // Busca em clientes: doc-ID é o próprio phoneDigits
       let clientName = '';
-      const qClientes = query(collection(db, 'clientes'), where('phone', 'in', variants));
-      const snapClientes = await getDocs(qClientes);
-      if (!snapClientes.empty) {
-        const cl = snapClientes.docs[0].data();
+      const snapCliente = await getDoc(doc(db, 'clientes', digits));
+      if (snapCliente.exists()) {
+        const cl = snapCliente.data();
         clientName = cl.name || '';
-        console.log('[Portal] Cliente encontrado:', clientName, '| phone:', JSON.stringify(cl.phone));
+        console.log('[Portal] Cliente encontrado:', clientName, '| phoneDigits:', digits);
       } else {
-        console.log('[Portal] Cliente não encontrado em nenhuma variante de formato.');
+        console.log('[Portal] Cliente não encontrado para phoneDigits:', digits);
       }
 
-      // Busca OS do cliente (todas as variantes de formato)
-      const qOS = query(collection(db, 'os'), where('phone', 'in', variants));
+      // Busca OS do cliente pelo campo canônico
+      const qOS = query(collection(db, 'os'), where('phoneDigits', '==', digits));
       const snapOS = await getDocs(qOS);
       const osCount = snapOS.size;
-      console.log('[Portal] OSs encontradas (in variantes):', osCount);
+      console.log('[Portal] OSs encontradas (phoneDigits ==):', osCount);
       snapOS.forEach(d => {
         const data = d.data();
-        console.log('[AUDIT:OS] ID:', d.id, '| phone:', JSON.stringify(data.phone), '| status:', data.status, '| model:', data.model);
+        console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
       });
 
       if (osCount === 0 && !clientName) {
@@ -450,13 +424,11 @@ window.Portal = {
       }
 
       // Cria sessão
-      // telefone     = formato canônico (máscara) usado para EXIBIÇÃO e para gravar
-      //                mensagens/avaliações/eventos (dados criados pelo próprio Portal).
-      // telefoneVariants = todos os formatos plausíveis, usados nas CONSULTAS de OS
-      //                (os.js grava em formatos divergentes — ver _phoneVariants).
+      // telefone       = formato canônico (máscara), usado para EXIBIÇÃO.
+      // telefoneDigits = campo canônico (só dígitos), usado em TODAS as consultas.
       this.session = {
         telefone: formatted,
-        telefoneVariants: variants,
+        telefoneDigits: digits,
         clientName: clientName || `Cliente`,
         osCount
       };
@@ -496,27 +468,24 @@ window.Portal = {
     const db = window.db;
     if (!db) { console.warn('[Portal] _listenOS() cancelado — db não disponível'); return; }
     const { collection, query, where, onSnapshot } = window.FirebaseModules;
-    // Usa todas as variantes de formato. Fallback para sessões antigas (restauradas do
-    // sessionStorage) que não têm telefoneVariants: recalcula a partir do telefone.
-    const variants = (this.session.telefoneVariants && this.session.telefoneVariants.length)
-      ? this.session.telefoneVariants
-      : this._phoneVariants(this.session.telefone);
-    console.log('[AUDIT:LISTENER] Iniciando listener com variantes:', JSON.stringify(variants));
-    console.log('[AUDIT:LISTENER] query: where("phone", "in", ' + JSON.stringify(variants) + ')');
-    const q = query(collection(db, 'os'), where('phone', 'in', variants));
+    // Fallback para sessões antigas (restauradas do sessionStorage) que não têm
+    // telefoneDigits ainda: recalcula a partir do telefone mascarado da sessão.
+    const digits = this.session.telefoneDigits || this._phoneDigits(this.session.telefone);
+    console.log('[AUDIT:LISTENER] Iniciando listener com phoneDigits:', digits);
+    const q = query(collection(db, 'os'), where('phoneDigits', '==', digits));
     this.unsubscribeOS = onSnapshot(q, (snap) => {
       console.log('[AUDIT:LISTENER] onSnapshot disparado! size:', snap.size);
       console.log('[AUDIT:LISTENER] metadata.hasPendingWrites:', snap.metadata.hasPendingWrites);
       this.currentOS = [];
       snap.forEach(d => {
         const data = d.data();
-        console.log('[AUDIT:LISTENER:doc] ID:', d.id, '| phone:', JSON.stringify(data.phone), '| status:', data.status, '| model:', data.model);
+        console.log('[AUDIT:LISTENER:doc] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
         this.currentOS.push({ firestoreId: d.id, ...data });
       });
       console.log('[AUDIT:LISTENER] currentOS.length após snapshot:', this.currentOS.length);
       // Se currentOS estiver vazio, logar aviso
       if (this.currentOS.length === 0) {
-        console.warn('[AUDIT:LISTENER] *** ALERTA: listener retornou 0 documentos! variantes usadas:', JSON.stringify(variants));
+        console.warn('[AUDIT:LISTENER] *** ALERTA: listener retornou 0 documentos! phoneDigits usado:', digits);
       }
       this.currentOS.sort((a, b) => {
         const da = a.createdAt || a.updatedAt || '';
@@ -547,7 +516,7 @@ window.Portal = {
     const { collection, query, where, onSnapshot, orderBy } = window.FirebaseModules;
     const q = query(
       collection(db, 'mensagens_portal'),
-      where('telefone', '==', this.session.telefone),
+      where('telefoneDigits', '==', this.session.telefoneDigits),
       orderBy('createdAt', 'desc')
     );
     this.unsubscribeMsgs = onSnapshot(q, (snap) => {
@@ -571,7 +540,7 @@ window.Portal = {
     // para não exigir índice composto no Firestore.
     const q = query(
       collection(db, 'agendamentos'),
-      where('telefone', '==', this.session.telefone)
+      where('telefoneDigits', '==', this.session.telefoneDigits)
     );
     this.unsubscribeAgendamentos = onSnapshot(q, (snap) => {
       this.currentAgendamentos = [];
@@ -732,7 +701,7 @@ window.Portal = {
       const { collection, query, where, getDocs, orderBy, limit } = window.FirebaseModules;
       const q = query(
         collection(db, 'avaliacoes'),
-        where('telefone', '==', this.session.telefone),
+        where('telefoneDigits', '==', this.session.telefoneDigits),
         orderBy('createdAt', 'desc'),
         limit(1)
       );
@@ -745,7 +714,7 @@ window.Portal = {
       try {
         const db = window.db;
         const { collection, query, where, getDocs } = window.FirebaseModules;
-        const q = query(collection(db, 'avaliacoes'), where('telefone', '==', this.session.telefone));
+        const q = query(collection(db, 'avaliacoes'), where('telefoneDigits', '==', this.session.telefoneDigits));
         const snap = await getDocs(q);
         if (!snap.empty) {
           const docs = [];
@@ -1543,7 +1512,7 @@ window.Portal = {
     try {
       const db = window.db;
       const { collection, query, where, getDocs } = window.FirebaseModules;
-      const q = query(collection(db, 'avaliacoes'), where('telefone', '==', this.session.telefone));
+      const q = query(collection(db, 'avaliacoes'), where('telefoneDigits', '==', this.session.telefoneDigits));
       const snap = await getDocs(q);
       if (!snap.empty) {
         const av = snap.docs[0].data();
@@ -1595,6 +1564,7 @@ window.Portal = {
       const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
       await addDoc(collection(db, 'avaliacoes'), {
         telefone: this.session.telefone,
+        telefoneDigits: this.session.telefoneDigits,
         clientName: this.session.clientName,
         nota,
         texto,
@@ -1717,6 +1687,7 @@ window.Portal = {
       const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
       await addDoc(collection(db, 'mensagens_portal'), {
         telefone: this.session.telefone,
+        telefoneDigits: this.session.telefoneDigits,
         clientName: this.session.clientName,
         nome,
         texto,
@@ -2073,11 +2044,7 @@ window.Portal = {
     const tel = document.getElementById('ag-telefone');
     if (tel) {
       tel.addEventListener('input', (e) => {
-        let v = e.target.value.replace(/\D/g, '').slice(0, 11);
-        if (v.length > 7) v = `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}`;
-        else if (v.length > 2) v = `(${v.slice(0,2)}) ${v.slice(2)}`;
-        else if (v.length > 0) v = `(${v}`;
-        e.target.value = v;
+        e.target.value = window.PhoneUtils.maskPhone(e.target.value);
       });
     }
 
@@ -2122,6 +2089,7 @@ window.Portal = {
       await addDoc(collection(db, 'agendamentos'), {
         // telefone canônico da sessão garante que o listener do Portal encontre o doc.
         telefone: this.session?.telefone || telefone,
+        telefoneDigits: this.session?.telefoneDigits || window.PhoneUtils.normalizePhoneDigits(telefone),
         telefoneInformado: telefone,
         clientName: this.session?.clientName || nome,
         nome,

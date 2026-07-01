@@ -2,6 +2,7 @@ import {
   db, collection, addDoc, doc, updateDoc, getDoc, setDoc,
   serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
+import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 
 // ── Status / Destino ──────────────────────────────────────────
 const STATUSES = [
@@ -106,13 +107,12 @@ window.toggleMais = function() {
 };
 
 // ── Lookup de telefone ────────────────────────────────────────
+// Doc-ID = phoneDigits (canônico, ver shared/phone-utils.js).
 async function lookupCliente(phone) {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 8) return null;
+  const digits = normalizePhoneDigits(phone);
+  if (digits.length < 10) return null;
   try {
-    let snap = await getDoc(doc(db, 'clientes', phone.trim()));
-    if (snap.exists()) return { id: snap.id, ...snap.data() };
-    snap = await getDoc(doc(db, 'clientes', digits));
+    const snap = await getDoc(doc(db, 'clientes', digits));
     if (snap.exists()) return { id: snap.id, ...snap.data() };
   } catch(e) { console.warn('Lookup:', e); }
   return null;
@@ -307,12 +307,13 @@ async function linkOuCriarCliente(phone, nome, leadId) {
     if (!crmLeads.includes(leadId)) crmLeads.push(leadId);
     const upd = { crmLeads, atualizadoEm: serverTimestamp() };
     if (!existente.name && nome) upd.name = nome;
+    if (!existente.phoneDigits) upd.phoneDigits = normalizePhoneDigits(existente.phone || phone);
     await updateDoc(doc(db, 'clientes', existente.id), upd);
     return existente.id;
   }
-  const chave = phone.trim();
+  const { phone: telCanon, phoneDigits: chave } = canonicalizePhone(phone);
   await setDoc(doc(db, 'clientes', chave), {
-    name: nome, phone: chave, history: [], crmLeads: [leadId],
+    name: nome, phone: telCanon, phoneDigits: chave, history: [], crmLeads: [leadId],
     cpf: '', email: '', endereco: '', obsCliente: '',
     createdAt: new Date().toISOString(), origem: 'crm'
   });

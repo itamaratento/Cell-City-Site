@@ -1,5 +1,6 @@
 import { initModulo } from '/CRM/scripts/kernel.js';
 import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
+import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -433,7 +434,7 @@ const DB = {
     async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await updateDoc(doc(db, "os", osData.id), osData); },
     async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await deleteDoc(doc(db, "os", id)); },
     getClients() { return localClients; },
-    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await setDoc(doc(db, "clientes", clientData.phone), clientData); },
+    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await setDoc(doc(db, "clientes", clientData.phoneDigits || clientData.phone), clientData); },
     getCounter() { return localCounter; },
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
@@ -493,7 +494,7 @@ async function showScreen(id) {
 function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(screenHistory.length > 0 ? screenHistory[screenHistory.length - 1] : 'home'); }); }
 
 // ===== UTILS =====
-function formatPhone(v) { v = v.replace(/\D/g, ''); if (v.length > 11) v = v.slice(0, 11); return v.length > 6 ? `(${v.slice(0,2)}) ${v.slice(2,7)}-${v.slice(7)}` : v.length > 2 ? `(${v.slice(0,2)}) ${v.slice(2)}` : v.length > 0 ? `(${v}` : v; }
+function formatPhone(v) { return maskPhone(v); }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
 // ===== FLUXO DE STATUS (9 etapas — padrão Cell City) =====
@@ -571,6 +572,7 @@ async function saveOS() {
     if (lockType === 'Padrao' && (!window.tempPatternSequence || window.tempPatternSequence.length < 4)) {
         return showToast('⚠️ Registre um padrão com pelo menos 4 pontos');
     }
+    const { phone: telefoneCanon, phoneDigits } = canonicalizePhone(telefone);
 
     try {
         const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
@@ -599,7 +601,7 @@ async function saveOS() {
         }
 
         const os = {
-            id: osId, category: currentCategory, clientName: nome, phone: telefone, cpf: cpf || null, cep: cep || null,
+            id: osId, category: currentCategory, clientName: nome, phone: telefoneCanon, phoneDigits, cpf: cpf || null, cep: cep || null,
             endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null,
             cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito,
             valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
@@ -616,7 +618,7 @@ async function saveOS() {
         }
 
         await DB.addOS(os);
-        await updateClientHistory(telefone, nome, osId);
+        await updateClientHistory(telefoneCanon, nome, osId, phoneDigits);
         runAutomacoesOS(os);
 
         if (preOSPendente) {
@@ -639,7 +641,7 @@ async function saveOS() {
     }
 }
 
-async function updateClientHistory(phone, name, osId) { let c = DB.getClients().find(cl => cl.phone === phone); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; } else { c = { name, phone, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
+async function updateClientHistory(phone, name, osId, phoneDigits) { phoneDigits = phoneDigits || normalizePhoneDigits(phone); let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; c.phone = phone; c.phoneDigits = phoneDigits; } else { c = { name, phone, phoneDigits, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
 // ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
 async function runAutomacoesOS(os) {
@@ -1106,7 +1108,8 @@ async function saveOSEdit() {
     const estado = document.getElementById('edit-os-estado')?.value.trim() || '';
     if (!n || !p || !m) return showToast("⚠️ Preencha todos os campos");
     try {
-        const updates = { clientName: n, phone: p, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
+        const { phone: pCanon, phoneDigits: pDigits } = canonicalizePhone(p);
+        const updates = { clientName: n, phone: pCanon, phoneDigits: pDigits, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
         await updateDoc(doc(db, "os", currentOS.id), updates);
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
@@ -1962,12 +1965,33 @@ function editClientFromDetail(phone) {
 
 function editClient(phone) { editClientFromDetail(phone); }
 
-async function saveClientEdit(oldPhone) { const n = document.getElementById('edit-name').value.trim(); const p = document.getElementById('edit-phone').value.trim(); if (!n || !p) return alert("Preencha os campos."); try { await updateDoc(doc(db, "clientes", oldPhone), { name: n, phone: p }); showToast("✅ Cliente atualizado."); window.markSaved(); showClientDetail(p); } catch(e) { console.error(e); alert("Erro ao atualizar."); } }
+async function saveClientEdit(oldPhone) {
+    const n = document.getElementById('edit-name').value.trim();
+    const p = document.getElementById('edit-phone').value.trim();
+    if (!n || !p) return alert("Preencha os campos.");
+    try {
+        const oldClient = DB.getClients().find(cl => cl.phone === oldPhone) || {};
+        const oldDocId = oldClient.phoneDigits || normalizePhoneDigits(oldPhone);
+        const { phone: pCanon, phoneDigits: pDigits } = canonicalizePhone(p);
+        const updated = { ...oldClient, name: n, phone: pCanon, phoneDigits: pDigits };
+        if (pDigits !== oldDocId) {
+            // Telefone mudou: doc-ID precisa mudar junto (doc-ID = phoneDigits canônico).
+            await setDoc(doc(db, "clientes", pDigits), updated, { merge: true });
+            await deleteDoc(doc(db, "clientes", oldDocId));
+        } else {
+            await updateDoc(doc(db, "clientes", oldDocId), { name: n, phone: pCanon, phoneDigits: pDigits });
+        }
+        showToast("✅ Cliente atualizado.");
+        window.markSaved();
+        showClientDetail(pCanon);
+    } catch(e) { console.error(e); alert("Erro ao atualizar."); }
+}
 
 async function deleteClient(phone) {
     const confirmCode = prompt("Digite 77 para confirmar a exclusão do cliente");
     if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
-    const docId = phone.trim();
+    const client = DB.getClients().find(c => c.phone === phone);
+    const docId = (client && client.phoneDigits) || normalizePhoneDigits(phone) || phone.trim();
     if (!docId) { alert("ID do cliente inválido."); return; }
     try {
         await deleteDoc(doc(db, "clientes", docId));
@@ -2226,9 +2250,11 @@ async function saveFullClient() {
     const phone1 = document.getElementById('cf-phone1').value.trim();
     const name = document.getElementById('cf-name').value.trim();
     if (!phone1 || !name) return showToast('⚠️ Nome e Telefone Principal são obrigatórios');
+    const { phone: phone1Canon, phoneDigits: phone1Digits } = canonicalizePhone(phone1);
 
     const clientData = {
-        phone: phone1,
+        phone: phone1Canon,
+        phoneDigits: phone1Digits,
         name: name,
         birthDate: document.getElementById('cf-birth').value,
         cpf: document.getElementById('cf-cpf').value,

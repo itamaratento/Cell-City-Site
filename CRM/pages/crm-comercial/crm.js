@@ -2,6 +2,7 @@ import {
   db, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc,
   query, orderBy, where, getDocs, onSnapshot, serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
+import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 
 // ── Status do funil ──────────────────────────────────────────
 const STATUS = [
@@ -75,14 +76,14 @@ function fmtValor(v) {
 }
 
 // ── Base de Clientes (compartilhada com O.S.) ─────────────────
+// Doc-ID = phoneDigits (canônico, só dígitos — ver shared/phone-utils.js).
+// Lookup único e direto: não precisa mais tentar máscara e depois dígitos.
 async function lookupClientePorTelefone(phone) {
   if (!phone) return null;
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length < 8) return null;
+  const digits = normalizePhoneDigits(phone);
+  if (digits.length < 10) return null;
   try {
-    let snap = await getDoc(doc(db, 'clientes', phone.trim()));
-    if (snap.exists()) return { id: snap.id, ...snap.data() };
-    snap = await getDoc(doc(db, 'clientes', digits));
+    const snap = await getDoc(doc(db, 'clientes', digits));
     if (snap.exists()) return { id: snap.id, ...snap.data() };
     return null;
   } catch(e) {
@@ -103,13 +104,15 @@ async function linkOuCriarCliente(phone, nome, leadId) {
     if (!('email'      in existente)) updates.email      = '';
     if (!('endereco'   in existente)) updates.endereco   = '';
     if (!('obsCliente' in existente)) updates.obsCliente = '';
+    if (!existente.phoneDigits) updates.phoneDigits = normalizePhoneDigits(existente.phone || phone);
     await updateDoc(doc(db, 'clientes', existente.id), updates);
     return existente.id;
   } else {
-    const chave = phone.trim();
+    const { phone: telCanon, phoneDigits: chave } = canonicalizePhone(phone);
     await setDoc(doc(db, 'clientes', chave), {
       name:       nome,
-      phone:      chave,
+      phone:      telCanon,
+      phoneDigits: chave,
       history:    [],
       crmLeads:   [leadId],
       cpf:        '',
