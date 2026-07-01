@@ -1,0 +1,108 @@
+/* ============================================================
+   CENTRAL DE MÓDULOS — Cell City CRM
+   Catálogo de módulos do sistema + favoritos do usuário.
+
+   Favoritar um módulo aqui (⭐) faz ele aparecer automaticamente
+   no menu principal (barra lateral do Dashboard) — ver
+   shared/menu-favoritos.js, que consome os favoritos daqui.
+
+   Firestore: usuarios/{uid}/preferencias/modulos → { favoritos: string[] }
+   localStorage: cc_modulos_favs (cache rápido / offline)
+   ============================================================ */
+import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
+import { initModulo } from '../scripts/kernel.js';
+
+const LS_KEY = 'cc_modulos_favs';
+const prefsRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'modulos');
+
+let _uid = null;
+
+// ── Catálogo completo (só módulos com página real no sistema) ──
+export const TODOS_MODULOS = [
+  { id: 'os',                 nome: 'Ordem de Serviço',       icone: '📦', url: '/CRM/pages/os/index.html' },
+  { id: 'caixa',               nome: 'Caixa',                   icone: '💰', url: '/CRM/pages/caixa/index.html' },
+  { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '🔔', url: '/CRM/pages/central-alertas/index.html' },
+  { id: 'central-comandos',    nome: 'Central de Comandos',     icone: '⚡', url: '/CRM/pages/central-comandos/index.html' },
+  { id: 'crm-comercial',       nome: 'CRM Comercial',           icone: '🎯', url: '/CRM/pages/crm-comercial/index.html' },
+  { id: 'clientes',            nome: 'Clientes',                icone: '👥', url: '/CRM/pages/clientes/index.html' },
+  { id: 'estoque',             nome: 'Estoque',                 icone: '📱', url: '/CRM/pages/estoque/index.html' },
+  { id: 'financeiro',          nome: 'Financeiro',              icone: '💹', url: '/CRM/pages/financeiro/index.html' },
+  { id: 'compras',             nome: 'Compras',                 icone: '🛒', url: '/CRM/pages/compras/index.html' },
+  { id: 'fornecedor',          nome: 'Fornecedor',              icone: '🏭', url: '/CRM/pages/fornecedor/index.html' },
+  { id: 'pos-venda',           nome: 'Pós-venda',               icone: '💝', url: '/CRM/pages/pos-venda/index.html' },
+  { id: 'impressora',          nome: 'Impressora',              icone: '🖨️', url: '/CRM/pages/config/index.html' },
+  { id: 'contas',              nome: 'Contas & Números',        icone: '📇', url: '/CRM/pages/contas/index.html' },
+  { id: 'agenda',              nome: 'Agenda',                  icone: '📅', url: '/CRM/pages/acaodasemana/index.html' },
+  { id: 'portal-cliente',      nome: 'Portal do Cliente',       icone: '🔷', url: '/CRM/pages/portal-cliente/admin.html' },
+  { id: 'portal-tecnico',      nome: 'Portal Técnico',          icone: '🔓', url: '/CRM/pages/portal-tecnico/index.html' },
+  { id: 'central-automacao',   nome: 'Central de Automação',    icone: '⚡', url: '/CRM/pages/central-organizacao/index.html' },
+  { id: 'central-informacoes', nome: 'Central de Informações',  icone: '📚', url: '/CRM/pages/central-informacoes/index.html' },
+  { id: 'catalogo',            nome: 'Catálogo',                icone: '🛍️', url: '/CRM/pages/catalogo/index.html' },
+  { id: 'relatorios',          nome: 'Relatórios',              icone: '📊', url: '/CRM/pages/relatorios/index.html' },
+  { id: 'diario',              nome: 'Diário',                  icone: '📔', url: '/CRM/pages/diario/index.html' },
+  { id: 'auditoria',           nome: 'Auditoria',               icone: '🔍', url: '/CRM/pages/auditoria/index.html' },
+  { id: 'autoatendimento',     nome: 'Autoatendimento',         icone: '🤖', url: '/CRM/pages/autoatendimento/index.html' },
+  { id: 'config',              nome: 'Configurações',           icone: '⚙️', url: '/CRM/pages/config/index.html' },
+];
+
+// ── Estado interno ──────────────────────────────────────────────
+let _favs  = null; // null = ainda não carregado
+let _unsub = null;
+
+function _readCache() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch { return null; }
+}
+function _writeCache(arr) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(arr)); } catch {}
+}
+function _notify() {
+  window.dispatchEvent(new CustomEvent('cc-modulos-changed'));
+}
+
+// ── API pública ───────────────────────────────────────────────
+export function getFavoritos() { return _favs || []; }
+export function isFavorito(id) { return getFavoritos().includes(id); }
+
+export async function toggleFavorito(id) {
+  const cur = getFavoritos().slice();
+  const idx = cur.indexOf(id);
+  if (idx >= 0) cur.splice(idx, 1);
+  else cur.push(id);
+
+  _favs = cur;
+  _writeCache(cur);
+  _notify();
+
+  if (!_uid) return;
+  try {
+    await setDoc(prefsRef(_uid), { favoritos: cur, atualizadoEm: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn('[CentralModulos] erro ao salvar favoritos:', e);
+  }
+}
+
+// ── Firestore ─────────────────────────────────────────────────
+function _assinar() {
+  if (_unsub) { _unsub(); _unsub = null; }
+  _unsub = onSnapshot(prefsRef(_uid), (snap) => {
+    if (snap.exists()) {
+      const data = snap.data();
+      _favs = Array.isArray(data.favoritos) ? data.favoritos : [];
+    } else {
+      _favs = _readCache() || [];
+    }
+    _writeCache(_favs);
+    _notify();
+  }, (e) => console.warn('[CentralModulos] onSnapshot:', e));
+}
+
+// ── Init ─────────────────────────────────────────────────────
+export function init() {
+  const cached = _readCache();
+  if (cached) { _favs = cached; _notify(); }
+  initModulo().then((ctx) => {
+    if (!ctx) return;
+    _uid = ctx.uid;
+    _assinar();
+  });
+}

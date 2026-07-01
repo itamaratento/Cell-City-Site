@@ -90,6 +90,18 @@
     padding: 40px 0;
     display: none;
   }
+
+  .cm-legend { text-align: center; color: #6b7280; font-size: 11.5px; margin: -10px 0 18px; }
+
+  .cm-star {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(10,12,16,.7); backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.08); border-radius: 6px;
+    font-size: 14px; line-height: 1; padding: 4px 6px; cursor: pointer;
+    color: #6b7280; transition: background .15s, color .15s, transform .12s;
+  }
+  .cm-star:hover { background: rgba(255,200,0,.18); color: #f5a623; transform: scale(1.15); }
+  .cm-star.on { color: #f5a623; }
 </style>
 </head>
 <body>
@@ -100,38 +112,14 @@
       <span>🔍</span>
       <input type="text" id="cm-busca" placeholder="Buscar módulo..." autocomplete="off" oninput="filtrarModulos()">
     </div>
+    <div class="cm-legend">⭐ = aparece automaticamente no menu principal do Dashboard</div>
 
     <div class="cm-grid" id="cm-grid"></div>
     <div class="cm-vazio" id="cm-vazio">Nenhum módulo encontrado.</div>
   </div>
 
-  <script>
-    var MODULOS = [
-      { icon: '📦', nome: 'Ordem de Serviço', url: '../os/index.html' },
-      { icon: '💰', nome: 'Caixa', url: '../caixa/index.html' },
-      { icon: '🔔', nome: 'Central de Alertas', url: '../central-alertas/index.html' },
-      { icon: '⚡', nome: 'Central de Comandos', url: '../central-comandos/index.html' },
-      { icon: '🎯', nome: 'CRM Comercial', url: '../crm-comercial/index.html' },
-      { icon: '👥', nome: 'Clientes', url: '../clientes/index.html' },
-      { icon: '📱', nome: 'Estoque', url: '../estoque/index.html' },
-      { icon: '💹', nome: 'Financeiro', url: '../financeiro/index.html' },
-      { icon: '🛒', nome: 'Compras', url: '../compras/index.html' },
-      { icon: '🏭', nome: 'Fornecedor', url: '../fornecedor/index.html' },
-      { icon: '💝', nome: 'Pós-venda', url: '../pos-venda/index.html' },
-      { icon: '🖨️', nome: 'Impressora', url: '../config/index.html' },
-      { icon: '📇', nome: 'Contas & Números', url: '../contas/index.html' },
-      { icon: '📅', nome: 'Agenda', url: '../acaodasemana/index.html' },
-      { icon: '🔷', nome: 'Portal do Cliente', url: '../portal-cliente/admin.html' },
-      { icon: '🔓', nome: 'Portal Técnico', url: '../portal-tecnico/index.html' },
-      { icon: '⚡', nome: 'Central de Automação', url: '../central-organizacao/index.html' },
-      { icon: '📚', nome: 'Central de Informações', url: '../central-informacoes/index.html' },
-      { icon: '🛍️', nome: 'Catálogo', url: '../catalogo/index.html' },
-      { icon: '📊', nome: 'Relatórios', url: '../relatorios/index.html' },
-      { icon: '📔', nome: 'Diário', url: '../diario/index.html' },
-      { icon: '🔍', nome: 'Auditoria', url: '../auditoria/index.html' },
-      { icon: '🤖', nome: 'Autoatendimento', url: '../autoatendimento/index.html' },
-      { icon: '⚙️', nome: 'Configurações', url: '../config/index.html' }
-    ];
+  <script type="module">
+    import { init, TODOS_MODULOS, isFavorito, toggleFavorito } from '../../shared/central-modulos.js';
 
     function escHtml(s) {
       return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -141,23 +129,38 @@
       var grid = document.getElementById('cm-grid');
       var vazio = document.getElementById('cm-vazio');
       grid.innerHTML = lista.map(function (m) {
-        return '<a class="cm-card" href="' + m.url + '">' +
-          '<div class="cm-icon">' + m.icon + '</div>' +
+        var on = isFavorito(m.id);
+        return '<a class="cm-card" href="' + m.url + '" style="position:relative;">' +
+          '<button type="button" class="cm-star' + (on ? ' on' : '') + '" data-id="' + m.id + '" ' +
+          'title="' + (on ? 'Remover do menu principal' : 'Adicionar ao menu principal') + '">' + (on ? '⭐' : '☆') + '</button>' +
+          '<div class="cm-icon">' + m.icone + '</div>' +
           '<div class="cm-name">' + escHtml(m.nome) + '</div>' +
           '</a>';
       }).join('');
       vazio.style.display = lista.length ? 'none' : 'block';
+
+      grid.querySelectorAll('.cm-star').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorito(btn.dataset.id).then(function () { filtrarModulos(); });
+        });
+      });
     }
 
     function filtrarModulos() {
       var termo = document.getElementById('cm-busca').value.trim().toLowerCase();
-      if (!termo) { renderModulos(MODULOS); return; }
-      renderModulos(MODULOS.filter(function (m) {
+      if (!termo) { renderModulos(TODOS_MODULOS); return; }
+      renderModulos(TODOS_MODULOS.filter(function (m) {
         return m.nome.toLowerCase().indexOf(termo) !== -1;
       }));
     }
 
-    renderModulos(MODULOS);
+    window.filtrarModulos = filtrarModulos;
+    window.addEventListener('cc-modulos-changed', filtrarModulos);
+
+    init();
+    renderModulos(TODOS_MODULOS);
   </script>
 
   <script src="../../shared/brand-header.js"></script>

@@ -528,6 +528,13 @@
     // Aplica prefs salvas imediatamente (localStorage) e ao receber evento
     _applyPrefs();
     window.addEventListener('cc-sidebar-changed', _applyPrefs);
+
+    // Favoritos da Central de Módulos → itens extras no menu (import
+    // dinâmico pois este arquivo é script clássico, não módulo).
+    import('./menu-favoritos.js').then(({ renderFavoritosNoMenu }) => {
+      renderFavoritosNoMenu(navEl, 'cc-si');
+      window.addEventListener('cc-modulos-changed', () => renderFavoritosNoMenu(navEl, 'cc-si'));
+    });
   }
 
   if (document.readyState === 'loading') {

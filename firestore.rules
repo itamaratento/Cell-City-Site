@@ -353,6 +353,11 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null;
     }
 
+    // Preferências por usuário (ex.: favoritos da Central de Módulos → menu principal)
+    match /usuarios/{uid}/preferencias/{docId} {
+      allow read, write:                   if request.auth != null;
+    }
+
     // ─────────────────────────────────────────────
     // PRIVADO: SaaS residual (dados existentes, sem uso ativo)
     // ─────────────────────────────────────────────
