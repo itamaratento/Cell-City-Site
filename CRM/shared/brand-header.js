@@ -259,14 +259,22 @@
     else bar.insertBefore(slot, bar.firstChild);
   }
 
-  // Calcula a URL do outro ambiente publicado (MAIN na raiz, DEVELOP em
-  // /dev/), preservando o caminho atual da página.
+  // URLs oficiais e absolutas dos dois ambientes publicados — nunca usar
+  // caminho relativo aqui, pois isso pode virar URL protocol-relative
+  // (ex.: "//CRM/...") e o navegador tenta resolver "CRM" como servidor.
+  const MAIN_ORIGIN = 'https://www.cellcityinformatica.com.br';
+  const DEV_ORIGIN = 'https://www.cellcityinformatica.com.br/dev';
+
+  // Calcula a URL do outro ambiente publicado, preservando o caminho atual
+  // da página (ex.: na MAIN, /CRM/pages/dashboard/index.html; na DEVELOP,
+  // /dev/CRM/pages/dashboard/index.html).
   function otherEnvUrl() {
     const path = window.location.pathname;
     if (CC_ENV === 'develop') {
-      return path.replace(/^\/dev(\/|$)/, '/$1') || '/';
+      const rest = path.replace(/^\/dev(\/|$)/, '/');
+      return MAIN_ORIGIN + rest;
     }
-    return '/dev' + (path.startsWith('/') ? path : '/' + path);
+    return DEV_ORIGIN + path;
   }
 
   function buildEnvMenu(wrapper) {
