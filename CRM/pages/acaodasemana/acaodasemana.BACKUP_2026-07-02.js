@@ -5,8 +5,6 @@ import {
   db, collection, doc, setDoc, deleteDoc,
   onSnapshot, serverTimestamp
 } from '../../scripts/firebase.js';
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar } from '../../shared/permissoes.js';
 
 // ── 5 cores estilo lembretes do Windows ────────────────────────────
 const CORES = {
@@ -885,21 +883,4 @@ if (optsColapseBtn && optsWrap) {
 let resizeTimer;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(ajustarQuadrados, 150); });
 
-// ── RBAC (Fase 2, Sprint 2) — moduloId 'agenda'. A UI não distingue
-// criar/editar por nota (autosave reescreve o dia inteiro), então a
-// textarea só fica editável se AMBAS as permissões estiverem liberadas.
-async function _boot() {
-  const ctx = await initModulo();
-  if (!ctx) return; // kernel.js já redirecionou para login
-  await carregarPermissoes(ctx);
-  if (!podeVisualizar('agenda')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
-
-  iniciar();
-
-  if (!(podeCriar('agenda') && podeEditar('agenda'))) {
-    areaEl?.setAttribute('readonly', 'true');
-    $('ag-recorr-esta')?.setAttribute('disabled', 'true');
-    $('ag-recorr-futuras')?.setAttribute('disabled', 'true');
-  }
-}
-_boot();
+iniciar();
