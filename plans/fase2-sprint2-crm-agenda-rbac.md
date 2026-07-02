@@ -2,7 +2,7 @@
 
 > **Natureza deste documento:** registro do resultado real da implementação (não um planejamento prévio — o planejamento foi feito em modo de planejamento na própria sessão de implementação, com aprovação do usuário antes de qualquer edição).
 > Depende do [`fase2-sprint1-dashboard-rbac.md`](fase2-sprint1-dashboard-rbac.md) (Sprint 1, aprovado em 2026-07-02), que criou `CRM/shared/permissoes.js`.
-> **Status: implementado e homologado por verificação automatizada (seção 9). Falta apenas a confirmação visual em navegador real (seção 10, roteiro na seção 12) e a aprovação formal do usuário.**
+> **Status: ✅ APROVADO FORMALMENTE em 2026-07-02.** Homologado por verificação automatizada (seção 9) + testes manuais do usuário em navegador real (seção 13). Sprint encerrado; marco de restauração criado (tag git `sprint2-rbac-crm-agenda-aprovado`).
 
 ---
 
@@ -159,10 +159,48 @@ Login sugerido por cenário (ver `project-padrao-usuarios-homologacao` — ajust
 
 Em qualquer um dos passos acima, qualquer erro no console do navegador (F12 → Console) deve ser reportado antes da aprovação.
 
-## 13. Critérios de aprovação (pendentes)
+## 12.1. Melhoria de UX registrada durante a homologação (não bloqueante)
 
-Todos os itens da seção 10 confirmados no navegador real (roteiro da seção 12); nenhuma regressão encontrada nos fluxos normais dos perfis sem restrição; decisão de produto da seção 5 validada com o usuário na prática (não só na teoria); aprovação formal registrada antes de iniciar o Sprint 3 (Estoque + Caixa).
+Durante a homologação o usuário identificou que o sistema não mostra em lugar nenhum qual usuário/perfil está autenticado — dificulta homologar o RBAC e aumenta o risco de operar com o perfil errado. Registrado como **BL-001** em [`BACKLOG.md`](BACKLOG.md) (indicador permanente "👤 Nome | Perfil" na barra superior), com levantamento preliminar de viabilidade. **Não implementado nesta sprint** — não bloqueia a aprovação do Sprint 2, aguarda autorização para sprint futura.
+
+## 12.2. Análise dos achados do teste manual do usuário (2026-07-02)
+
+O usuário executou testes em navegador real e relatou dois achados. Análise técnica de cada um:
+
+**a) Mensagem "Acesso restrito" apareceu para o usuário restrito.**
+Origem identificada: essa mensagem existe em um único lugar do sistema — `CRM/pages/usuarios-permissoes/index.html:23`, o gate do próprio módulo Usuários e Permissões (Fase 1, pré-existente), que bloqueia não-admins. **Não é produzida pelo RBAC do Sprint 2** — os gates do Sprint 2 redirecionam silenciosamente (para o Dashboard ou para a tela de listagem), sem exibir mensagem. Comportamento correto nos dois casos; registrado para que a diferença de comportamento (mensagem vs. redirect) seja conhecida. Se o usuário preferir unificar (ex.: toast "sem permissão" antes do redirect), é candidato a item de backlog futuro.
+
+**b) `FirebaseError` no console relacionado a Favoritos.**
+Análise do código e das Rules:
+- O único ponto do sistema que fala com o Firestore para Favoritos é `CRM/shared/central-modulos.js` (leitura/escrita em `usuarios/{uid}/preferencias/modulos`); `sidebar.js` usa apenas `localStorage`.
+- **O Sprint 2 não tocou nenhum desses arquivos** — confirmado por `git diff` do commit do Sprint 2: só os 5 módulos + backups + TECHDOC. Ou seja, qualquer erro ali é comportamento pré-existente, não regressão desta sprint.
+- As Firestore Rules cobrem a subcoleção corretamente (`match /usuarios/{uid}/preferencias/{prefId}` — dono lê/escreve). Um usuário autenticado lendo os próprios favoritos não recebe permission-denied.
+- O tratamento no código é defensivo: erro cai em `console.warn('[CentralModulos] ...')` com fallback para cache em `localStorage` — a página nunca quebra, os favoritos degradam para o cache local.
+- **Causa mais provável do aviso observado:** troca de conta/logout durante a homologação. O listener `onSnapshot` dos favoritos da sessão anterior continua ativo no instante em que o token de autenticação cai ou muda de usuário → o Firestore emite `FirebaseError: Missing or insufficient permissions` uma vez, o handler registra o warning e o fluxo segue normal. Homologação com múltiplos logins alternados é exatamente o cenário que dispara isso.
+
+**Conclusão:** comportamento esperado e cosmético, pré-existente ao Sprint 2, sem impacto funcional. Não requer ajuste para aprovação. Ressalva de honestidade técnica: esta análise foi feita sem o texto exato do erro do console — se a mensagem observada NÃO for `Missing or insufficient permissions` vinda de `[CentralModulos]`, o texto exato deve ser colado para reanálise antes de dar o caso por encerrado.
+
+## 13. Aprovação formal — ✅ CONCEDIDA em 2026-07-02
+
+O usuário declarou o Sprint 2 **homologado e aprovado** após análise da implementação, da documentação e da homologação funcional realizada em navegador real.
+
+**Validações realizadas pelo usuário (navegador real):**
+- Login com usuário Administrador.
+- Criação e utilização de usuário Administrador.
+- Edição de perfis.
+- Validação das permissões do RBAC.
+- Login com usuário restrito.
+- Confirmação do bloqueio de acesso para usuário sem permissão ("Acesso restrito").
+- Verificação geral da interface e dos fluxos testados.
+
+**Observações registradas na aprovação:**
+- BL-001 (identificação permanente do usuário e perfil na interface) permanece no backlog como melhoria de UX — não bloqueou esta aprovação.
+- A análise do `FirebaseError` relacionado aos Favoritos (seção 12.2) foi **aceita pelo usuário** como comportamento esperado, sem impacto funcional para esta sprint.
+
+**Marco de restauração:** tag git `sprint2-rbac-crm-agenda-aprovado` no branch `develop`, apontando para o estado aprovado (5 módulos integrados + backups `.BACKUP_2026-07-02*` + documentação). Rollback: `git checkout sprint2-rbac-crm-agenda-aprovado -- <arquivo>` ou restauração pelos backups locais.
+
+**Sprint 3 (Estoque + Caixa) oficialmente autorizado pelo usuário nesta mesma data.**
 
 ---
 
-*Este documento registra o que foi implementado e verificado automaticamente. A aprovação formal da Sprint 2 depende da confirmação manual em navegador descrita nas seções 10 e 12.*
+*Sprint 2 encerrado. Próximo: Sprint 3 — Estoque + Caixa (ver plans/fase2-sprint3-estoque-caixa-rbac.md quando criado).*
