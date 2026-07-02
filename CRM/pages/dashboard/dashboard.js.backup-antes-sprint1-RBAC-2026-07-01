@@ -5,20 +5,6 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { initModulo } from '/CRM/scripts/kernel.js';
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
-import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
-
-// RBAC (Fase 2, Sprint 1 — só leitura/ocultação de cards no grid do
-// Dashboard). Mapeia data-module (grid) → moduloId da matriz de
-// perfis_operacionais. Cards sem entrada aqui nunca são ocultados
-// (matriz não cobre esses módulos ainda — ver plans/fase2-sprint1-dashboard-rbac.md).
-const RBAC_CARD_PARA_MODULO_ID = {
-  'os': 'os',
-  'caixa': 'caixa',
-  'estoque': 'estoque',
-  'financeiro': 'financeiro',
-  'crm-comercial': 'crm',
-  'relatorios': 'relatorios',
-};
 
 let _uid = null;
 
@@ -1502,11 +1488,6 @@ class Dashboard {
   // ===== MÓDULOS =====
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
-      const moduloId = RBAC_CARD_PARA_MODULO_ID[card.getAttribute('data-module')];
-      if (moduloId && !podeVisualizar(moduloId)) {
-        card.style.display = 'none';
-        return;
-      }
       card.addEventListener('click', () => {
         const module = card.getAttribute('data-module');
         this.navigateTo(module);
@@ -2977,7 +2958,6 @@ async function _bootDashboard() {
   const ctx = await initModulo();
   if (!ctx) return;
   _uid = ctx.uid;
-  await carregarPermissoes(ctx);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => new Dashboard());
   } else {
