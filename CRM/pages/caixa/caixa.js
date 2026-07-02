@@ -360,8 +360,8 @@ function cardLancamento(l) {
             <div class="lanc-dir">
                 <div class="lanc-valor tipo-${l.tipo}">${formatarMoeda(valorExibido)}</div>
                 <div class="lanc-acoes">
-                    <button onclick="editarLancamento('${l.id}')" title="Editar">✏️</button>
-                    <button class="btn-excluir" onclick="excluirLancamento('${l.id}')" title="Excluir">✕</button>
+                    ${podeEditar('caixa')  ? `<button onclick="editarLancamento('${l.id}')" title="Editar">✏️</button>` : ''}
+                    ${podeExcluir('caixa') ? `<button class="btn-excluir" onclick="excluirLancamento('${l.id}')" title="Excluir">✕</button>` : ''}
                 </div>
             </div>
         </div>`;
@@ -417,8 +417,8 @@ function renderLembretes(lembretes) {
                     <div class="meta">${formatarMoeda(l.valor)} ${l.vencimento ? '· vence ' + l.vencimento : ''}</div>
                 </div>
                 <div class="lembrete-acoes">
-                    <button class="btn-pagar-lembrete" onclick="pagarLembrete('${l.id}')">Pagar</button>
-                    <button class="btn-excluir-lembrete" onclick="excluirLembrete('${l.id}')">✕</button>
+                    ${podeCriar('caixa')   ? `<button class="btn-pagar-lembrete" onclick="pagarLembrete('${l.id}')">Pagar</button>` : ''}
+                    ${podeExcluir('caixa') ? `<button class="btn-excluir-lembrete" onclick="excluirLembrete('${l.id}')">✕</button>` : ''}
                 </div>
             </div>`;
     }).join('') : '<div class="lembretes-vazio">Nenhum lembrete cadastrado.</div>';
