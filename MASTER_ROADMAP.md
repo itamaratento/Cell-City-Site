@@ -55,9 +55,9 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Escopo:** leitura/gate de permissões (visualizar/criar/editar/excluir/aprovar) nos módulos de negócio já em produção. Não inclui redesenho visual nem novas funcionalidades — só controle de acesso.
 
 **Módulos envolvidos e ordem oficial dos sprints:**
-1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar)
-2. **Sprint 2 — CRM, Agenda**
-3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa)
+1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar) — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.1, `plans/fase2-sprint1-dashboard-rbac.md`)
+2. **Sprint 2 — CRM, Agenda** — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.2, `plans/fase2-sprint2-crm-agenda-rbac.md`; tag de restauração `sprint2-rbac-crm-agenda-aprovado`)
+3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **autorizado em 2026-07-02, em planejamento**
 4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria)
 5. **Sprint 5 — OS** (por último — maior dependência cruzada com os demais módulos; tratar como integração crítica)
 

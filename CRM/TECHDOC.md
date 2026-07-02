@@ -357,6 +357,22 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 **Aprovado formalmente pelo usuário em 2026-07-02.** Sprint 1 liberado. Próximo passo oficial: Sprint 2 — CRM, Agenda (ver `plans/` — planejamento técnico ainda não elaborado).
 
+### 7.2 Sprint 2 — CRM + Agenda
+
+**Status: ✅ aprovado formalmente em 2026-07-02.** Documentação completa (implementação, homologação, análises e aprovação): `plans/fase2-sprint2-crm-agenda-rbac.md`.
+
+**Arquivos alterados** (backups `.BACKUP_2026-07-02*` nas mesmas pastas): `pages/crm-comercial/crm.js`, `entrada.js`, `chips.js`, `chips-entrada.js` (moduloId `crm`) e `pages/acaodasemana/acaodasemana.js` (moduloId `agenda`). Nenhum HTML, `kernel.js`, `firebase.js` ou Firestore Rules alterado.
+
+**Padrão aplicado** (mesmo do Sprint 1, agora com verbos de escrita): boot explícito `initModulo()` → `carregarPermissoes(ctx)` → gate de `podeVisualizar` (redirect) antes de qualquer render; `podeCriar`/`podeEditar`/`podeExcluir` condicionam a renderização de botões/cards/pills. Telas 100% de criação (`entrada.html`, `chips-entrada.html`) bloqueiam a página inteira com redirect se `!podeCriar('crm')`. **Achado estrutural**: 4 dos 5 arquivos nunca chamavam `initModulo()` diretamente (gate real só indireto via `dock.js`; `chips-entrada.html` sem gate real nenhum) — o boot explícito corrigiu isso de tabela.
+
+**Decisão de produto (Agenda)**: a UI não separa criar/editar (autosave reescreve o documento do dia inteiro), então a escrita só é liberada com `podeCriar('agenda') && podeEditar('agenda')` — regra AND, mais restritiva, confirmada pelo usuário e validada em teste (casos cruzados permanecem bloqueados).
+
+**Homologação**: (a) automatizada — harness Node+jsdom executando o código real dos 5 arquivos com kernel/Firestore mockados, 20/20 cenários corretos (admin legado, seed com matriz total, restrito por verbo, não migrado, visualizar=false), zero exceção; (b) manual pelo usuário em navegador real — login admin e restrito, edição de perfis, bloqueios confirmados. `FirebaseError` de Favoritos observado no console foi analisado (pré-existente, cosmético, listener ativo em troca de conta; Sprint 2 não tocou `central-modulos.js`) e aceito pelo usuário como comportamento esperado.
+
+**Pendências registradas (não bloqueantes, fora desta sprint)**: card da Agenda no grid do Dashboard ainda não é ocultado por `podeVisualizar('agenda')` (`RBAC_CARD_PARA_MODULO_ID` sem entrada — Dashboard é módulo fechado do Sprint 1, micro-fix futuro precisa de autorização própria); BL-001 no `plans/BACKLOG.md` (indicador permanente de usuário + os dois perfis na barra superior).
+
+**Marco de restauração**: tag git `sprint2-rbac-crm-agenda-aprovado` (branch `develop`).
+
 ---
 
 ## 8. Histórico de Entregas
@@ -367,4 +383,5 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-01 | Novo módulo "🔐 Usuários e Permissões" (`pages/usuarios-permissoes/`) — Fase 1: usuários funcionais, perfis operacionais livres (`perfis_operacionais`), matriz de permissões por módulo, auditoria (`auditoria_usuarios_permissoes`), seed de 7 perfis + 8 contas padrão. Login/kernel.js/firebase.js/tenant.js intocados. Homologado no mesmo dia — ver §6. |
 | 2026-07-01 | Favoritos da Central de Módulos passam a aparecer automaticamente no menu principal (`shared/menu-favoritos.js` consumindo `shared/central-modulos.js`), estrela ⭐ na grade de módulos, regras Firestore para `usuarios/{uid}/preferencias/*` e `crm_leads` corrigidas, gate de sessão real adicionado em `crm-comercial/entrada.js` |
 | 2026-07-01 | Homologação da Fase 1 de "🔐 Usuários e Permissões" **aprovada** — 9/9 seções do checklist, incidente crítico de Firestore Rules em produção corrigido durante o processo. Ver §6.8. Projeto liberado para a Fase 2 (integração gradual do RBAC aos módulos existentes). |
-| 2026-07-01 | Fase 2, Sprint 1 (piloto): Dashboard passa a ocultar cards de módulo sem `visualizar:true` na matriz de `perfis_operacionais`, com bypass para admin/master_admin e fallback seguro (sem regressão) para usuários ainda não migrados ao RBAC novo. `kernel.js`/Firestore Rules intocados. Ver §7.1 — pendente aprovação formal. |
+| 2026-07-01 | Fase 2, Sprint 1 (piloto): Dashboard passa a ocultar cards de módulo sem `visualizar:true` na matriz de `perfis_operacionais`, com bypass para admin/master_admin e fallback seguro (sem regressão) para usuários ainda não migrados ao RBAC novo. `kernel.js`/Firestore Rules intocados. Ver §7.1 — aprovado em 2026-07-02. |
+| 2026-07-02 | Fase 2, Sprint 2: RBAC integrado ao CRM Comercial (`crm.js`, `entrada.js`, `chips.js`, `chips-entrada.js`) e à Agenda (`acaodasemana.js`) — visualizar/criar/editar/excluir aplicados à UI, boot explícito `initModulo()`+`carregarPermissoes()` adicionado aos 4 arquivos que não o tinham, regra AND criar+editar na Agenda. Homologado (jsdom 20/20 + navegador real) e **aprovado formalmente** no mesmo dia. Tag `sprint2-rbac-crm-agenda-aprovado`. Ver §7.2. |
