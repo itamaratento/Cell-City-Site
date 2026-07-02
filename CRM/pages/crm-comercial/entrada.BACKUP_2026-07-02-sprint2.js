@@ -4,7 +4,6 @@ import {
 } from '../../scripts/firebase.js';
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeCriar } from '../../shared/permissoes.js';
 
 // ── Status / Destino ──────────────────────────────────────────
 const STATUSES = [
@@ -412,8 +411,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // gate do HTML e só falhava na hora do addDoc, com "insufficient permissions".
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
-  await carregarPermissoes(ctx);
-  if (!podeCriar('crm')) { window.location.href = '/CRM/pages/crm-comercial/index.html'; return; }
 
   renderChips();
   // Foco automático no telefone ao abrir

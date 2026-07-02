@@ -3,8 +3,6 @@ import {
   query, orderBy, where, getDocs, onSnapshot, serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
 // ── Status do funil ──────────────────────────────────────────
 const STATUS = [
@@ -303,12 +301,12 @@ function renderHomeGrid() {
   const grid = document.getElementById('crm-home-grid');
   if (!grid) return;
 
-  // Card destacado: Novo Cliente (só quando o perfil pode criar no CRM)
-  const novoCard = podeCriar('crm') ? `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
+  // Card destacado: Novo Cliente
+  const novoCard = `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
     <span class="crm-home-icon">👤</span>
     <span class="crm-home-nome">Novo Cliente</span>
     <span class="crm-home-count" style="color:var(--cell-green);background:rgba(0,200,83,0.15);font-size:20px;font-weight:900">＋</span>
-  </div>` : '';
+  </div>`;
 
   const cards = STATUS.map(s => {
     const n   = count(s.key);
@@ -539,12 +537,10 @@ function buildDetalheHtml(lead) {
   const valor    = lead.valor ? fmtValor(lead.valor) : '—';
   const isFechado = lead.status === 'fechado';
   const isPreOS   = lead.status === 'pre_os';
-  const podeEditarCrm  = podeEditar('crm');
-  const podeExcluirCrm = podeExcluir('crm');
 
   const statusOpts = STATUS.map(s => `
     <div class="crm-status-opt ${lead.status === s.key ? 'selected' : ''}"
-         ${podeEditarCrm ? `onclick="alterarStatus('${lead.id}','${s.key}')"` : ''}>
+         onclick="alterarStatus('${lead.id}','${s.key}')">
       <span class="dot" style="background:${s.dotColor}"></span>
       ${s.icon} ${s.label}
     </div>`).join('');
@@ -608,10 +604,10 @@ function buildDetalheHtml(lead) {
     </div>` : ''}
 
     <div class="crm-detalhe-acoes">
-      ${(isPreOS || isFechado) && !lead.osConvertido && podeEditarCrm ? `<button class="crm-btn-os" onclick="converterEmOS('${lead.id}')">🔧 ${isPreOS ? 'Abrir OS' : 'Converter em O.S.'}</button>` : ''}
+      ${(isPreOS || isFechado) && !lead.osConvertido ? `<button class="crm-btn-os" onclick="converterEmOS('${lead.id}')">🔧 ${isPreOS ? 'Abrir OS' : 'Converter em O.S.'}</button>` : ''}
       <button class="crm-btn-wpp"    onclick="abrirWhatsApp('${lead.id}')">💬 WhatsApp</button>
-      ${podeEditarCrm  ? `<button class="crm-btn-editar" onclick="abrirForm('${lead.id}')">✏️ Editar Lead</button>` : ''}
-      ${podeExcluirCrm ? `<button class="crm-btn-excluir" onclick="confirmarExclusao('${lead.id}')">🗑️ Excluir</button>` : ''}
+      <button class="crm-btn-editar" onclick="abrirForm('${lead.id}')">✏️ Editar Lead</button>
+      <button class="crm-btn-excluir" onclick="confirmarExclusao('${lead.id}')">🗑️ Excluir</button>
     </div>
 
     ${lead.status === 'perdido' ? `<div class="crm-reativar-wrap">
@@ -966,12 +962,7 @@ function showToast(msg) {
 window.showToast = showToast;
 
 // ── Init ─────────────────────────────────────────────────────
-async function _boot() {
-  const ctx = await initModulo();
-  if (!ctx) return; // kernel.js já redirecionou para login
-  await carregarPermissoes(ctx);
-  if (!podeVisualizar('crm')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
-
+document.addEventListener('DOMContentLoaded', () => {
   startListener();
   document.getElementById('crm-sb-overlay')?.addEventListener('click', () => {
     document.getElementById('crm-sb')?.classList.remove('open');
@@ -980,9 +971,4 @@ async function _boot() {
   // Toast de retorno da tela de entrada
   const msg = sessionStorage.getItem('cc_crm_msg');
   if (msg) { sessionStorage.removeItem('cc_crm_msg'); setTimeout(() => showToast(msg), 600); }
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _boot);
-} else {
-  _boot();
-}
+});

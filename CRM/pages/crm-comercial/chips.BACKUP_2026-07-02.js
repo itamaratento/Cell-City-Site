@@ -2,8 +2,6 @@ import {
   db, collection, addDoc, doc, updateDoc, deleteDoc,
   query, orderBy, onSnapshot, serverTimestamp
 } from '../../scripts/firebase.js';
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
 // ── Status ────────────────────────────────────────────────────
 const CHIP_STATUS = [
@@ -239,11 +237,11 @@ function renderHomeGrid() {
   const grid = document.getElementById('chip-home-grid');
   if (!grid) return;
 
-  const novoCard = podeCriar('crm') ? `<div class="crm-home-block crm-novo-cliente-block" onclick="abrirForm(null)">
+  const novoCard = `<div class="crm-home-block crm-novo-cliente-block" onclick="abrirForm(null)">
     <span class="crm-home-icon">📱</span>
     <span class="crm-home-nome">Novo Chip</span>
     <span class="crm-home-count" style="color:var(--cell-green);background:rgba(0,200,83,0.15);font-size:20px;font-weight:900">＋</span>
-  </div>` : '';
+  </div>`;
 
   grid.innerHTML = novoCard + CHIP_STATUS.map(s => {
     const n   = count(s.key);
@@ -296,12 +294,10 @@ function renderLista() {
 function buildDetalheHtml(chip) {
   const st      = getStatus(chip.status);
   const operCls = `chip-oper-${(chip.operadora || 'outra').toLowerCase()}`;
-  const podeEditarCrm  = podeEditar('crm');
-  const podeExcluirCrm = podeExcluir('crm');
 
   const statusOpts = CHIP_STATUS.map(s => `
     <div class="crm-status-opt ${chip.status === s.key ? 'selected' : ''}"
-         ${podeEditarCrm ? `onclick="alterarStatus('${chip.id}','${s.key}')"` : ''}>
+         onclick="alterarStatus('${chip.id}','${s.key}')">
       <span class="dot" style="background:${s.dotColor}"></span>
       ${s.icon} ${s.label}
     </div>`).join('');
@@ -368,8 +364,8 @@ function buildDetalheHtml(chip) {
     <div class="crm-status-sel" style="grid-template-columns:repeat(2,1fr)">${statusOpts}</div>
 
     <div class="crm-detalhe-acoes">
-      ${podeEditarCrm  ? `<button class="crm-btn-editar" onclick="abrirForm('${chip.id}')">✏️ Editar</button>` : ''}
-      ${podeExcluirCrm ? `<button class="crm-btn-excluir" onclick="confirmarExclusao('${chip.id}')">🗑️ Excluir</button>` : ''}
+      <button class="crm-btn-editar" onclick="abrirForm('${chip.id}')">✏️ Editar</button>
+      <button class="crm-btn-excluir" onclick="confirmarExclusao('${chip.id}')">🗑️ Excluir</button>
     </div>
 
     <div class="chip-historico-wrap">
@@ -601,13 +597,7 @@ function showToast(msg) {
 window.showToast = showToast;
 
 // ── Init ──────────────────────────────────────────────────────
-async function _boot() {
-  const ctx = await initModulo();
-  if (!ctx) return; // kernel.js já redirecionou para login
-  await carregarPermissoes(ctx);
-  if (!podeVisualizar('crm')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
-  if (!podeCriar('crm')) { document.querySelector('.crm-btn-chegou')?.style.setProperty('display', 'none'); }
-
+document.addEventListener('DOMContentLoaded', () => {
   startListener();
   document.getElementById('crm-sb-overlay')?.addEventListener('click', () => {
     document.getElementById('crm-sb')?.classList.remove('open');
@@ -616,9 +606,4 @@ async function _boot() {
 
   const msg = sessionStorage.getItem('chips_msg');
   if (msg) { sessionStorage.removeItem('chips_msg'); setTimeout(() => showToast(msg), 600); }
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _boot);
-} else {
-  _boot();
-}
+});

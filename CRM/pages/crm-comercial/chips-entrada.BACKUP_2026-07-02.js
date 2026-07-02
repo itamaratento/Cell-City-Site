@@ -1,8 +1,6 @@
 import {
   db, collection, addDoc, serverTimestamp
 } from '../../scripts/firebase.js';
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeCriar } from '../../shared/permissoes.js';
 
 // ── Operadoras ────────────────────────────────────────────────
 const OPERADORAS = [
@@ -308,17 +306,7 @@ window.salvarChip = async function(e) {
 };
 
 // ── Init ──────────────────────────────────────────────────────
-async function _boot() {
-  const ctx = await initModulo();
-  if (!ctx) return; // kernel.js já redirecionou para login
-  await carregarPermissoes(ctx);
-  if (!podeCriar('crm')) { window.location.href = '/CRM/pages/crm-comercial/chips.html'; return; }
-
+document.addEventListener('DOMContentLoaded', () => {
   renderOperadoras();
   renderStatus();
-}
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', _boot);
-} else {
-  _boot();
-}
+});
