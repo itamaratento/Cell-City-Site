@@ -331,7 +331,9 @@ Roadmap oficial (nunca pular a ordem, nunca integrar módulos simultaneamente): 
 
 **Escopo aprovado**: só o grid de cards de módulo do Dashboard (`.module-card[data-module]`) passa a respeitar `visualizar` da matriz de `perfis_operacionais`. Busca global e sidebar do Dashboard **não** foram tocadas nesta sprint (ficam com o comportamento atual, sem filtro).
 
-**Arquivos alterados**: `CRM/pages/dashboard/dashboard.js` (backup em `BACKUP_RBAC_DASHBOARD_2026-07-01/`). `index.html` do Dashboard não precisou de alteração.
+**Arquivos alterados**: `CRM/pages/dashboard/dashboard.js` (backups em `BACKUP_RBAC_DASHBOARD_2026-07-01/` e `dashboard.js.backup-antes-sprint1-RBAC-2026-07-01`). `index.html` do Dashboard não precisou de alteração.
+
+**Arquivo criado**: `CRM/shared/permissoes.js` — a leitura/verificação da matriz, inicialmente escrita como função interna do Dashboard (`_carregarPermissoesVisualizar`), foi extraída para este módulo isolado logo em seguida, para que os Sprints 2-5 reutilizem a mesma API (`carregarPermissoes`, `podeVisualizar`, `podeCriar`, `podeEditar`, `podeExcluir`, `podeAprovar`) sem redesenho. `dashboard.js` hoje só importa e chama essa API — não tem mais lógica de leitura de `perfis_operacionais` embutida.
 
 **Como funciona**:
 ```javascript
@@ -343,15 +345,17 @@ const RBAC_CARD_PARA_MODULO_ID = {
 ```
 Cards fora desse mapa (`central-alertas`, `clientes`, `compras`, `fornecedor`, `pos-venda`, `impressora`, `contas`, `portal-cliente`, `portal-tecnico`, `central-organizacao`, `central-informacoes`, `catalogo`, `diario`, `auditoria`, `autoatendimento`) nunca são ocultados nesta sprint — a matriz de `perfis_operacionais` não cobre esses módulos ainda.
 
-Em `_bootDashboard()`, logo após `initModulo()`, chama `_carregarPermissoesVisualizar(ctx)`:
-- Se `ctx.perfil` (kernel) é `admin` ou `master_admin` → retorna `null` sem nenhuma leitura extra ao Firestore (bypass, sempre mostra tudo — decisão explícita, consistente com o gate do próprio módulo de Usuários e Permissões).
-- Senão, lê `usuarios/{uid}.perfil_operacional_id`; se vazio (usuário ainda não migrado ao RBAC novo) → retorna `null` (mostra tudo, **sem regressão** para quem não foi migrado — decisão explícita e testada).
-- Só se houver `perfil_operacional_id` válido é que a matriz de `perfis_operacionais/{id}` é lida e aplicada; qualquer erro de leitura também cai em `null` (nunca esconde módulo por falha de rede).
-- `setupModules()` oculta (`display:none`) o card cujo `moduloId` mapeado tem `visualizar === false`.
+Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)` (de `shared/permissoes.js`):
+- Se `ctx.perfil` (kernel) é `admin` ou `master_admin` → matriz interna fica `null` sem nenhuma leitura extra ao Firestore (bypass, sempre mostra tudo — decisão explícita, consistente com o gate do próprio módulo de Usuários e Permissões).
+- Senão, lê `usuarios/{uid}.perfil_operacional_id`; se vazio (usuário ainda não migrado ao RBAC novo) → matriz fica `null` (mostra tudo, **sem regressão** para quem não foi migrado — decisão explícita e testada).
+- Só se houver `perfil_operacional_id` válido é que a matriz de `perfis_operacionais/{id}` é lida e cacheada em memória; qualquer erro de leitura também cai em `null` (nunca esconde módulo por falha de rede).
+- `setupModules()` oculta (`display:none`) o card cujo `moduloId` mapeado retorna `podeVisualizar(moduloId) === false`.
 
 **Testes realizados** (contas descartáveis, removidas ao final): (1) perfil operacional restrito (`estoque.visualizar=false`) + kernel `atendente` → só o card Estoque some, resto intacto; (2) usuário sem `perfil_operacional_id` (simulando a maioria da base atual, ainda não migrada) → todos os 22 cards visíveis, comportamento idêntico ao de antes da mudança; (3) kernel `admin` com perfil operacional restrito → bypass confirmado, todos os cards visíveis. Zero erros de console novos (só o warning pré-existente de Service Worker, não relacionado). Regressão nos demais módulos não re-executada nesta sprint (Dashboard não altera nenhum outro módulo).
 
-**Pendente de aprovação formal do usuário** antes de considerar o Sprint 1 liberado.
+**Extração para `shared/permissoes.js`**: revisão de código confirma que a extração preserva exatamente a mesma sequência e as mesmas regras de fail-open descritas acima — nenhuma lógica nova foi introduzida. Os 3 cenários acima não foram re-executados manualmente no navegador após a extração (ambiente sem `node`/browser automatizado disponível nesta sessão); recomenda-se repetir ao menos o cenário (1) antes do próximo deploy, como checagem de sanidade.
+
+**Aprovado formalmente pelo usuário em 2026-07-02.** Sprint 1 liberado. Próximo passo oficial: Sprint 2 — CRM, Agenda (ver `plans/` — planejamento técnico ainda não elaborado).
 
 ---
 

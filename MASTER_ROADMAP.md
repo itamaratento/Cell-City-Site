@@ -251,4 +251,62 @@ Fase 6  ⚪ Planejada (longo prazo) ──────────────�
 
 ---
 
+## Visão Arquitetural
+
+### Da Fase 1 à Fase 6 — a mesma base, camada por camada
+
+O Cell City Gestão Operacional não muda de arquitetura a cada fase — ele **completa** a mesma arquitetura, uma camada de cada vez. Cada fase deste roadmap corresponde a uma camada específica do sistema, na ordem em que ela precisa amadurecer para sustentar a próxima:
+
+```
+Fase 1  →  Camada de IDENTIDADE E PERMISSÃO
+            (usuarios, perfis_operacionais, matriz de permissões, auditoria imutável)
+
+Fase 2  →  Camada de AUTORIZAÇÃO APLICADA
+            (a matriz da Fase 1 passa a valer nos módulos reais, um por um)
+
+Fase 3  →  Camada de DADOS CONSISTENTE
+            (empresa_id íntegro em todos os módulos, guard único, catálogo único)
+
+Fase 4  →  Camada de FUNCIONALIDADE
+            (recursos novos construídos sobre dados e permissões já confiáveis)
+
+Fase 5  →  Camada DE DECISÃO
+            (o sistema passa a sugerir e, depois, a agir sozinho sobre os dados)
+
+Fase 6  →  Camada DE OPERAÇÃO EM ESCALA
+            (segurança, observabilidade, backup formal e, se preciso, multiempresa real)
+```
+
+Essa ordem não é arbitrária: nenhuma camada superior é confiável se a camada abaixo dela ainda está incompleta. Automatizar (Fase 5) sobre dados sem `empresa_id` íntegro (pendência da Fase 3) propagaria erro em escala; dar mais funcionalidades (Fase 4) a um RBAC parcialmente aplicado (Fase 2 incompleta) criaria brechas de acesso. O roadmap existe justamente para impedir que uma fase "avance" pulando a validação da anterior — o mesmo princípio que já orientou a Fase 1 (homologação formal antes de liberar) se repete em escala crescente até a Fase 6.
+
+### Evolução da superfície técnica
+
+- **Hoje (fim da Fase 1 / início da Fase 2):** identidade e permissão existem como infraestrutura isolada (`usuarios-permissoes/`), ainda não conectada às decisões de acesso dos módulos de negócio. O sistema opera, na prática, sob o `perfil` legado.
+- **Ao fim da Fase 2:** toda decisão de acesso do sistema passa pela matriz de `perfis_operacionais`; o `perfil` legado deixa de ser a fonte de verdade ativa (podendo ser mantido apenas como campo histórico).
+- **Ao fim da Fase 3:** não existe mais divergência entre módulos — todos usam `shared/modulo-guard.js`, todos têm `empresa_id` íntegro, o catálogo de módulos tem fonte única. É o ponto em que o sistema para de acumular dívida técnica de ciclos anteriores (rollback de 2026-06-27, migrações parciais, arquivos duplicados).
+- **Ao fim da Fase 4:** o sistema tem paridade funcional com as pendências historicamente registradas em cada módulo (Financeiro, Usuários e Permissões, Portal do Cliente, WhatsApp CRM) — sem nenhuma dívida de escopo conhecida em aberto.
+- **Ao fim da Fase 5:** parte do trabalho manual e repetitivo (alertas de limiar fixo, fechamento mensal, mensagens de marco de OS) passa a ter uma versão automatizada, sempre precedida por um modo "sugestão/dry-run" homologado.
+- **Ao fim da Fase 6:** o sistema tem uma postura de produção madura — segurança auditada, backup testado e restaurável, observabilidade de erros — e a decisão sobre operar como multiempresa real (a infraestrutura já existe, hoje em modo single-tenant) passa a ser uma escolha de negócio, não uma limitação técnica.
+
+### Constantes que atravessam todas as fases
+
+Independentemente da fase, três princípios continuam valendo sem exceção, porque já se mostraram necessários na prática do projeto:
+1. **Um módulo por vez**, nunca integração simultânea — é o que evita repetir o incidente do rollback de 2026-06-27.
+2. **Verificação via API, nunca só pelo Console** — regra nascida do incidente do release travado de Firestore Rules na Fase 1, e que vale para qualquer configuração de infraestrutura daqui em diante.
+3. **Backup antes, homologação depois, TECHDOC sempre** — o mesmo processo de 8 etapas validado na Fase 1 e replicado sprint a sprint na Fase 2 é o padrão de referência para todas as fases seguintes.
+
+---
+
+## Conclusão
+
+Este Master Roadmap consolida, em um único documento oficial, a trajetória completa do Cell City Gestão Operacional: da infraestrutura de identidade e permissão já homologada na Fase 1, passando pela integração gradual do RBAC (Fase 2, em andamento), até a consolidação arquitetural, evolução funcional, automação e escalabilidade previstas para os próximos ciclos (Fases 3 a 6).
+
+Ele não substitui os documentos operacionais existentes — [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md) continua sendo a referência do estado imediato, e [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md)/[`CRM/TECHDOC.md`](CRM/TECHDOC.md) continuam registrando o histórico técnico detalhado. O papel deste documento é outro: **garantir que nenhuma decisão futura de priorização seja tomada sem visibilidade do caminho inteiro**, e que cada fase só comece depois que a anterior tiver sido formalmente aprovada — nunca por atalho, nunca por pressa.
+
+Nenhum código, banco de dados ou regra de Firestore foi alterado na elaboração deste roadmap. Ele é, por natureza, um documento de planejamento e arquitetura, e deve continuar sendo tratado como tal: atualizado ao fim de cada fase com o resultado real obtido, nunca reescrito para apagar decisões já tomadas.
+
+A partir daqui, a execução segue de forma controlada: **Fase 2 (Sprint 1 — Dashboard) é o próximo passo formalmente autorizado**, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede.
+
+---
+
 *Este documento é vivo: deve ser atualizado ao final de cada fase com o resultado real obtido, mantendo o mesmo espírito de [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) — nunca apagar o que já foi decidido, apenas registrar a evolução.*

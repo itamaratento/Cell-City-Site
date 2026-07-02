@@ -5,12 +5,13 @@ CELL CITY CRM — DASHBOARD CONTROLLER v4.3 FINAL
 ============================================ */
 import { initModulo } from '/CRM/scripts/kernel.js';
 import { db, doc, getDoc, setDoc, serverTimestamp, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
-import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 
-// RBAC (Fase 2, Sprint 1 — só leitura/ocultação de cards no grid do
-// Dashboard). Mapeia data-module (grid) → moduloId da matriz de
-// perfis_operacionais. Cards sem entrada aqui nunca são ocultados
-// (matriz não cobre esses módulos ainda — ver plans/fase2-sprint1-dashboard-rbac.md).
+let _uid = null;
+
+// ===== RBAC (Fase 2, Sprint 1 — só leitura/ocultação de cards) =====
+// Mapeamento data-module (grid do Dashboard) → moduloId da matriz de
+// perfis_operacionais (CRM/pages/usuarios-permissoes/usuarios-permissoes.js).
+// Cards sem entrada aqui nunca são ocultados (matriz não cobre esses módulos ainda).
 const RBAC_CARD_PARA_MODULO_ID = {
   'os': 'os',
   'caixa': 'caixa',
@@ -20,7 +21,25 @@ const RBAC_CARD_PARA_MODULO_ID = {
   'relatorios': 'relatorios',
 };
 
-let _uid = null;
+// null = sem restrição (mostra tudo — usuário sem perfil_operacional_id
+// atribuído, ou admin/master_admin do kernel, que sempre veem tudo).
+let _permissoesVisualizar = null;
+
+async function _carregarPermissoesVisualizar(ctx) {
+  if (ctx.perfil === 'admin' || ctx.perfil === 'master_admin') return null;
+  try {
+    const usuarioSnap = await getDoc(doc(db, 'usuarios', ctx.uid));
+    const perfilOpId = usuarioSnap.exists() ? usuarioSnap.data().perfil_operacional_id : null;
+    if (!perfilOpId) return null; // ainda não migrado para o RBAC novo — sem restrição
+
+    const perfilSnap = await getDoc(doc(db, 'perfis_operacionais', perfilOpId));
+    if (!perfilSnap.exists()) return null;
+    return perfilSnap.data().permissoes || null;
+  } catch (e) {
+    console.warn('[Dashboard] RBAC: falha ao carregar permissões, mostrando todos os cards por padrão.', e);
+    return null; // falha na leitura nunca esconde módulo por engano
+  }
+}
 
 
 class Dashboard {
@@ -1503,7 +1522,7 @@ class Dashboard {
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
       const moduloId = RBAC_CARD_PARA_MODULO_ID[card.getAttribute('data-module')];
-      if (moduloId && !podeVisualizar(moduloId)) {
+      if (_permissoesVisualizar && moduloId && _permissoesVisualizar[moduloId]?.visualizar === false) {
         card.style.display = 'none';
         return;
       }
@@ -2977,7 +2996,7 @@ async function _bootDashboard() {
   const ctx = await initModulo();
   if (!ctx) return;
   _uid = ctx.uid;
-  await carregarPermissoes(ctx);
+  _permissoesVisualizar = await _carregarPermissoesVisualizar(ctx);
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => new Dashboard());
   } else {
