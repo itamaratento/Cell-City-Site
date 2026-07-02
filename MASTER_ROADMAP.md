@@ -3,6 +3,7 @@
 > **Natureza deste documento:** planejamento e arquitetura. Não contém implementação, não altera código, banco de dados ou Firestore Rules.
 > Referência estratégica para todas as decisões futuras de desenvolvimento, homologação e priorização.
 > Para o estado operacional imediato, ver [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md). Para o histórico técnico detalhado, ver [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) e [`CRM/TECHDOC.md`](CRM/TECHDOC.md).
+> Guias operacionais: [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md) · [`GUIA_ROLLBACK.md`](GUIA_ROLLBACK.md) · [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md).
 
 ---
 
@@ -57,7 +58,7 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Módulos envolvidos e ordem oficial dos sprints:**
 1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar) — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.1, `plans/fase2-sprint1-dashboard-rbac.md`)
 2. **Sprint 2 — CRM, Agenda** — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.2, `plans/fase2-sprint2-crm-agenda-rbac.md`; tag de restauração `sprint2-rbac-crm-agenda-aprovado`)
-3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **autorizado em 2026-07-02, em planejamento**
+3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **implementado e verificado automaticamente (12/12 cenários jsdom) em 2026-07-02 — aguardando homologação manual e aprovação formal** (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
 4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria)
 5. **Sprint 5 — OS** (por último — maior dependência cruzada com os demais módulos; tratar como integração crítica)
 
@@ -185,7 +186,7 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Objetivo:** preparar o sistema para operar com mais robustez, segurança e (se necessário) mais de uma empresa/loja simultaneamente.
 
 **Escopo:**
-- **Segurança:** revisão completa de Firestore Rules após Fases 2-5, rotação de credenciais (`sa-key.json` hoje no repositório — avaliar migração para secret manager), auditoria de acesso consolidada.
+- **Segurança:** revisão completa de Firestore Rules após Fases 2-5, rotação de credenciais (`sa-key.json` hoje no diretório de trabalho local, fora do git via `.gitignore` — avaliar migração para secret manager), auditoria de acesso consolidada.
 - **APIs:** avaliar necessidade de uma camada de API própria (Cloud Functions) para operações que hoje dependem de escrita direta do client no Firestore (ex.: fechamento mensal automático da Fase 5).
 - **Monitoramento:** observabilidade de erros em produção (hoje não há Sentry/logging centralizado), alertas de falha de Service Worker/sincronização.
 - **Backup:** formalizar rotina de backup do Firestore (hoje os backups são manuais via `_BACKUPS/`), com retenção e teste periódico de restauração.
@@ -207,6 +208,28 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Estimativa de complexidade:** Alta — envolve infraestrutura, não só código de aplicação, e decisões de custo/negócio além do técnico.
 
 **Ordem recomendada:** Segurança/Backup (mais barato, maior redução de risco) → Monitoramento → APIs (Cloud Functions) → Alta disponibilidade → Multiempresa real (somente sob demanda de negócio).
+
+---
+
+## Infraestrutura de Ambientes DEV/PROD (transversal às fases)
+
+**Status: 🔵 Parcial — frontend implementado em 2026-07-01; separação de backend planejada, aguardando autorização (freeze de infraestrutura em vigor desde 2026-07-02)**
+
+Esta frente não é uma fase do roadmap — é infraestrutura transversal que sustenta a homologação segura de todas as fases. Estado em 2026-07-02:
+
+**Já implementado (frontend):**
+- Dois ambientes publicados a partir do mesmo GitHub Pages: 🟢 **MAIN** (branch `main` → raiz do domínio) e 🟠 **DEVELOP** (branch `develop` → `/dev`), montados pelo workflow `.github/workflows/deploy-pages.yml` a cada push em qualquer dos dois branches.
+- Indicador/seletor de ambiente no cabeçalho padrão (`CRM/shared/brand-header.js`), com detecção pela URL e navegação bidirecional.
+- Documentação: `CRM/TECHDOC.md` §9 e [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md).
+
+**Limitação conhecida (defeito de arquitetura reconhecido em 2026-07-02):**
+- Os dois ambientes compartilham o **mesmo projeto Firebase** (`cellcity-crm`) — Auth, Firestore e Storage únicos. Testes no DEVELOP gravam na produção e consomem a cota Spark da produção.
+
+**Planejado (backend):**
+- Projeto `cellcity-crm-dev` exclusivo de desenvolvimento + seleção de config em runtime (`CRM/shared/env-config.js`, regra fail-safe: em dúvida, DEV). Plano completo com 6 fases, riscos e critérios de aceite: [`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](plans/SEPARACAO_AMBIENTES_DEV_PROD.md), incluindo os adendos da auditoria pré-separação de 2026-07-02.
+- Execução **somente com autorização formal do proprietário** — prioridades definidas em 2026-07-02: (1) homologação do Sprint 3, (2) limpeza do Firestore, (3) decisão sobre a cota/plano Blaze, (4) separação de ambientes.
+
+**Relação com as fases:** a separação de backend não bloqueia a Fase 2, mas é fortemente recomendada antes das Fases 3+ (consolidação e evolução envolvem testes cada vez mais intensos, que hoje consomem cota e tocam dados de produção). Itens de segurança/backup da Fase 6 já se beneficiam dela.
 
 ---
 
@@ -305,7 +328,7 @@ Ele não substitui os documentos operacionais existentes — [`PROXIMA_ETAPA.md`
 
 Nenhum código, banco de dados ou regra de Firestore foi alterado na elaboração deste roadmap. Ele é, por natureza, um documento de planejamento e arquitetura, e deve continuar sendo tratado como tal: atualizado ao fim de cada fase com o resultado real obtido, nunca reescrito para apagar decisões já tomadas.
 
-A partir daqui, a execução segue de forma controlada: **Fase 2 (Sprint 1 — Dashboard) é o próximo passo formalmente autorizado**, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede.
+A partir daqui, a execução segue de forma controlada: **o próximo passo formalmente autorizado é a homologação manual e aprovação do Sprint 3 (Estoque + Caixa) da Fase 2** *(atualizado em 2026-07-02 — Sprints 1 e 2 já aprovados; o texto original apontava o Sprint 1 como próximo passo)*, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede. Em paralelo, permanecem pendentes de decisão do proprietário: a situação da cota do Firestore ([`plans/RELATORIO_COTA_FIRESTORE_20260702.md`](plans/RELATORIO_COTA_FIRESTORE_20260702.md)) e a autorização da separação de backend DEV/PROD.
 
 ---
 

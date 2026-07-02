@@ -1,7 +1,8 @@
 # PLANO — Separação de Ambientes DEV × PRODUÇÃO (Firebase)
 
-**Status:** 🟡 AGUARDANDO APROVAÇÃO — nenhuma implementação iniciada
-**Data:** 2026-07-02
+**Status:** 🟡 EM ANÁLISE — aprovado como necessidade em 2026-07-02, execução aguardando autorização formal; **freeze de alterações de infraestrutura em vigor**. Nenhuma implementação iniciada.
+**Prioridades definidas pelo proprietário (2026-07-02):** (1) homologação do Sprint 3 do RBAC, (2) limpeza do Firestore, (3) decisão sobre cota/plano Blaze, (4) este plano — somente com autorização.
+**Data:** 2026-07-02 (adendos da auditoria pré-separação incorporados na seção 7)
 **Origem:** Auditoria de 2026-07-02 confirmou que MAIN e DEVELOP compartilham o mesmo projeto Firebase (`cellcity-crm`). O seletor 🟢 MAIN / 🟠 DEVELOP troca apenas o código publicado (GitHub Pages `/` vs `/dev`); Auth, Firestore e Storage são únicos. Testes no DEVELOP gravam direto na produção (caso real: usuário `eu@cellcity.com.br` criado no DEVELOP apareceu no MAIN).
 
 ---
@@ -178,3 +179,20 @@ Em **ambos** os ambientes (produção e `/dev`), conforme regra permanente do pr
 
 1. **Cota do Firestore de produção esgotada em 2026-07-02 (~13:30 BRT):** toda leitura via Admin SDK retornou `RESOURCE_EXHAUSTED: Quota exceeded` de forma persistente. A API de billing nunca foi habilitada no projeto, o que indica plano Spark — se confirmado, **o CRM em produção fica sem ler o banco até o reset diário (~04:00 BRT)** sempre que a cota de 50k leituras/dia estourar. Recomendação: verificar o plano no console e avaliar upgrade para Blaze com alerta de orçamento.
 2. **Limpeza do usuário de teste:** `eu@cellcity.com.br` já foi **removido do Firebase Auth** (2026-07-02, uid `kuigLv0DDcQ8o9HHpoMJZYgvPLA2` conferido antes do delete). A remoção do doc na coleção `usuarios` + varredura de referências nas demais coleções está **pendente** exclusivamente por causa da cota esgotada; script pronto para rodar após o reset.
+
+## 7. Adendos — Auditoria pré-separação (2026-07-02)
+
+Auditoria técnica read-only realizada em 2026-07-02, em paralelo à elaboração deste plano, encontrou **6 lacunas que devem entrar no escopo antes da execução** (principalmente da Fase 5):
+
+1. **Dois endpoints REST hardcoded fora da tabela 2.2:** `CRM/pages/analise/analise.js` (linha ~19) e `CRM/pages/dashboard/sw-alarme.js` (linha ~171) chamam `firestore.googleapis.com/v1/projects/cellcity-crm/...` diretamente — e **sem header `Authorization`** (as Rules exigem auth; o módulo Análise possivelmente já está quebrado hoje). A Fase 5 precisa incluí-los na adequação (são 12 + 2 = 14 pontos de config/projeto fixo).
+2. **Providers de Auth no projeto DEV:** o plano previa só e-mail/senha, mas o sistema usa `signInAnonymously` (consultar-os ×2, portal-cliente index + admin) e `GoogleAuthProvider` (`shared/session.js` → Configurações/Ferramentas). O `cellcity-crm-dev` precisa de **Anonymous Auth habilitado** (e Google, se o fluxo de Ferramentas for testado no DEV) — ajustar a Fase 1, item 2.
+3. **`sw-alarme.js` roda em contexto de Service Worker:** `window.CC_FIREBASE_CONFIG` não existe lá — o `env-config.js` clássico (que define `window.*`) **não resolve para SWs**. A Fase 5 precisa de uma solução específica para esse contexto (ex.: derivar o ambiente de `self.location` dentro do próprio SW).
+4. **`garantia.html` usa credenciais de OUTRO registro de app** (senderId `1068710301995` ≠ `645609867368`, bucket `.appspot.com`): a unificação via `env-config.js` muda o app usado pela página — validar a página de garantia explicitamente na Fase 6.
+5. **`_BACKUPS/` publicados no GitHub Pages:** 1032 arquivos html/js versionados, 132 com `initializeApp` apontando para produção — código antigo publicamente acessível rodando contra o banco de produção, que **continuará hardcoded após a separação** (os backups não serão adequados). Decidir: excluir do artefato publicado (workflow), remover do repo, ou aceitar o risco documentado.
+6. **Rules/índices duplicados e divergentes:** `firestore.rules` da raiz está desatualizado (ainda contém coleções SaaS pré-rollback) e difere da fonte oficial `CRM/firestore.rules` (a que o `firebase.json` referencia); `firestore.indexes.json` da raiz está vazio vs. 4 índices reais no de `CRM/`. Ao criar o projeto DEV (Fase 2), usar **exclusivamente** os arquivos de `CRM/` e avaliar a remoção dos da raiz.
+
+**Outros achados registrados (avaliar na Fase 5/6):**
+- 74 arquivos com paths absolutos `/CRM/` + `LOGIN_URL='/CRM/login.html'` no `kernel.js` → no ambiente `/dev`, redirects de navegação/SW podem apontar para a produção.
+- `localStorage`/`sessionStorage` (`cc_kernel_v1`, `cc_tenant_ctx`, `cc_acesso`, preferências) compartilhados entre `/` e `/dev` (mesma origem) — estados vazam entre ambientes.
+- `firebase.json` ainda contém a seção `hosting`, apesar de o Firebase Hosting ser proibido no projeto — resquício a limpar.
+- `CRM/pages/kernel-test/` publicado nos dois ambientes.

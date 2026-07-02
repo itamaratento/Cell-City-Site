@@ -12,7 +12,8 @@
 | Backend | Firebase / Firestore v10 (client SDK modular) |
 | Auth | Firebase Auth (e-mail/senha via `scripts/kernel.js`) |
 | Hosting | **GitHub Pages** (`www.cellcityinformatica.com.br`) — publicação só via `git push`. **Firebase Hosting está proibido** (decisão do projeto). |
-| Firestore | Apenas dados (`firestore.rules` + `firestore.indexes.json`) — deploy via `firebase deploy --only firestore:rules` |
+| Ambientes | 🟢 **MAIN** (branch `main` → raiz do domínio) e 🟠 **DEVELOP** (branch `develop` → `/dev`) — ver §9. ⚠️ Backend Firebase é **único** para os dois (separação planejada, não implementada). |
+| Firestore | Apenas dados (fonte oficial: `CRM/firestore.rules` + `CRM/firestore.indexes.json`) — deploy via `firebase deploy --only firestore:rules`, verificação obrigatória do release via API `firebaserules.googleapis.com` |
 
 **Princípio central:** sem transpilação, sem bundler. Cada módulo é uma pasta em `CRM/pages/<modulo>/` com `index.html`, `<modulo>.js`, `<modulo>.css`. Compartilhamento via ES module imports (`CRM/shared/`, `CRM/scripts/`).
 
@@ -396,3 +397,33 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-01 | Fase 2, Sprint 1 (piloto): Dashboard passa a ocultar cards de módulo sem `visualizar:true` na matriz de `perfis_operacionais`, com bypass para admin/master_admin e fallback seguro (sem regressão) para usuários ainda não migrados ao RBAC novo. `kernel.js`/Firestore Rules intocados. Ver §7.1 — aprovado em 2026-07-02. |
 | 2026-07-02 | Fase 2, Sprint 2: RBAC integrado ao CRM Comercial (`crm.js`, `entrada.js`, `chips.js`, `chips-entrada.js`) e à Agenda (`acaodasemana.js`) — visualizar/criar/editar/excluir aplicados à UI, boot explícito `initModulo()`+`carregarPermissoes()` adicionado aos 4 arquivos que não o tinham, regra AND criar+editar na Agenda. Homologado (jsdom 20/20 + navegador real) e **aprovado formalmente** no mesmo dia. Tag `sprint2-rbac-crm-agenda-aprovado`. Ver §7.2. |
 | 2026-07-02 | Fase 2, Sprint 3: RBAC integrado ao Estoque (`estoque.js`, boot reestruturado) e ao Caixa (`caixa.js`) — visualizar/criar/editar/excluir na UI; guarda de iframe no gate do Caixa (evita loop com o iframe de fechamento do Dashboard); fluxo venda→baixa de estoque preservado sem gate (testado com estoque 100% negado); `aprovar` do Caixa sem efeito por decisão formal (fechamento inexistente no código vivo). Verificação automatizada 12/12. Ver §7.3 — pendente homologação manual e aprovação. |
+| 2026-07-01 | Arquitetura de ambientes DEV/PROD (frontend): workflow `.github/workflows/deploy-pages.yml` publica `main` na raiz e `develop` em `/dev` num único deployment do GitHub Pages; indicador/seletor de ambiente (pill 🟢 MAIN / 🟠 DEVELOP) no `shared/brand-header.js`, detecção pela URL (`detectEnv()`), navegação bidirecional entre ambientes. Ver §9. *(Registro retroativo adicionado em 2026-07-02.)* |
+| 2026-07-02 | Documentação: seção §9 (Ambientes e Publicação) adicionada ao TECHDOC; criados `GUIA_OPERACAO_AMBIENTES.md`, `GUIA_ROLLBACK.md` e `GUIA_MANUTENCAO.md`; `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md` e `plans/SEPARACAO_AMBIENTES_DEV_PROD.md` atualizados; inconsistências entre documentos eliminadas. Sem alteração de código. |
+
+---
+
+## 9. Ambientes e Publicação (DEV/PROD)
+
+> Implementado em 2026-07-01 (frontend). Guia operacional completo: [`GUIA_OPERACAO_AMBIENTES.md`](../GUIA_OPERACAO_AMBIENTES.md).
+
+### 9.1 Arquitetura atual
+
+| | 🟢 MAIN | 🟠 DEVELOP |
+|---|---|---|
+| Branch | `main` | `develop` |
+| URL | `https://www.cellcityinformatica.com.br/` | `https://www.cellcityinformatica.com.br/dev/` |
+| Backend | `cellcity-crm` | **`cellcity-crm` (o mesmo)** |
+
+- **Publicação:** o workflow `.github/workflows/deploy-pages.yml` roda a cada push em `main` **ou** `develop`, faz checkout dos dois branches, monta `_site/` (main na raiz + develop em `/dev` + `.nojekyll`) e publica tudo num único deployment do GitHub Pages. Um push em qualquer branch republica os dois ambientes.
+- **Indicador/seletor de ambiente:** `shared/brand-header.js` — `detectEnv()` classifica pelo pathname (prefixo `/dev` = DEVELOP; caso contrário MAIN, inclusive `localhost`/`file://`). O pill `🟢 ONLINE | MAIN` / `🟠 ONLINE | DEVELOP` abre um menu para alternar de ambiente (com confirmação), preservando o caminho da página atual (`otherEnvUrl()`). Nenhuma constante é hardcoded por branch — o mesmo código roda nos dois ambientes.
+- **Mesma origem:** `/` e `/dev` compartilham origem — Service Worker, `localStorage` e `sessionStorage` são comuns aos dois ambientes.
+
+### 9.2 Limitação central — backend compartilhado
+
+Auth, Firestore e Storage são **únicos** (projeto `cellcity-crm`): dados criados em teste no DEVELOP aparecem na produção, e testes no DEVELOP consomem a cota Spark da produção (50k leituras/dia — ver `plans/RELATORIO_COTA_FIRESTORE_20260702.md`). A separação de backend (projeto `cellcity-crm-dev` + seletor de config em runtime `shared/env-config.js` com regra fail-safe: em dúvida, DEV) está planejada em [`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](../plans/SEPARACAO_AMBIENTES_DEV_PROD.md) — **aguardando autorização formal; freeze de alterações de infraestrutura em vigor desde 2026-07-02**. A auditoria pré-separação de 2026-07-02 registrou adendos obrigatórios ao escopo do plano (endpoints REST hardcoded, Anonymous/Google Auth, config em contexto de Service Worker, `garantia.html` com credenciais divergentes, `_BACKUPS` publicados, rules duplicadas raiz × CRM) — ver seção 7 do próprio plano.
+
+### 9.3 Operação, rollback e manutenção
+
+- Operação do dia a dia (publicar, validar, SW/cache, cota, comandos de verificação): [`GUIA_OPERACAO_AMBIENTES.md`](../GUIA_OPERACAO_AMBIENTES.md)
+- Procedimentos de reversão (código, módulo, rules, dados): [`GUIA_ROLLBACK.md`](../GUIA_ROLLBACK.md)
+- Convenções, dívida técnica conhecida e monitoramento: [`GUIA_MANUTENCAO.md`](../GUIA_MANUTENCAO.md)

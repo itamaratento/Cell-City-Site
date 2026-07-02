@@ -1,5 +1,7 @@
 # 🔗 INSTRUÇÕES DE INTEGRAÇÃO COM O CRM
 
+> ⚠️ **DOCUMENTO HISTÓRICO (nota de 2026-07-02).** Descreve a integração do autoatendimento na época do Firebase Hosting. Os *rewrites* do `firebase.json` citados abaixo **não estão mais ativos** — a publicação atual é via GitHub Pages, que não processa `firebase.json`. Para o fluxo atual de publicação, consulte [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md).
+
 ## 📋 VISÃO GERAL
 
 O site agora possui dois novos links que redirecionam para funcionalidades do CRM:
