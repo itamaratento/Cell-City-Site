@@ -1,8 +1,6 @@
 import {
     db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp
 } from "../../scripts/firebase.js";
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
 const COL = 'estoque_produtos'; // nova coleção dedicada ao estoque
 
@@ -167,8 +165,6 @@ function render(lista) {
 function renderCard(p, fmt) {
     const baixo = p.quantidade <= p.quantidadeMinima;
     const qtyCls = baixo ? ' est-qty-baixo' : (p.quantidade > p.quantidadeMinima * 2 ? ' est-qty-ok' : '');
-    const podeEditarEst  = podeEditar('estoque');
-    const podeExcluirEst = podeExcluir('estoque');
     return `
     <div class="est-card${baixo ? ' est-card-alerta' : ''}">
         <div class="est-card-info">
@@ -179,16 +175,16 @@ function renderCard(p, fmt) {
             </div>
         </div>
         <div class="est-card-qty-area">
-            ${podeEditarEst ? `<button class="est-qty-btn" data-saida="${p.id}" title="Saída">−</button>` : ''}
+            <button class="est-qty-btn" data-saida="${p.id}" title="Saída">−</button>
             <div class="est-qty-wrap">
                 <span class="est-qty${qtyCls}">${p.quantidade}</span>
                 <span class="est-qty-min">mín: ${p.quantidadeMinima}</span>
             </div>
-            ${podeEditarEst ? `<button class="est-qty-btn" data-entrada="${p.id}" title="Entrada">+</button>` : ''}
+            <button class="est-qty-btn" data-entrada="${p.id}" title="Entrada">+</button>
         </div>
         <div class="est-card-acoes">
-            ${podeEditarEst  ? `<button class="est-card-edit" data-edit="${p.id}" title="Editar">✏️</button>` : ''}
-            ${podeExcluirEst ? `<button class="est-card-del" data-del="${p.id}" title="Excluir">✕</button>` : ''}
+            <button class="est-card-edit" data-edit="${p.id}" title="Editar">✏️</button>
+            <button class="est-card-del" data-del="${p.id}" title="Excluir">✕</button>
         </div>
     </div>`;
 }
@@ -226,8 +222,7 @@ function abrirFormEdicao(id) {
 
 function fecharForm() {
     formEl.style.display = 'none';
-    // Sem permissão de criar, o botão "Novo Produto" fica oculto em definitivo
-    btnNovo.style.display = podeCriar('estoque') ? '' : 'none';
+    btnNovo.style.display = '';
     editandoId = null;
 }
 
@@ -323,32 +318,19 @@ function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── eventos + boot (RBAC Fase 2, Sprint 3 — moduloId 'estoque') ─────
-async function _boot() {
-    const ctx = await initModulo();
-    if (!ctx) return; // kernel.js já redirecionou para login
-    await carregarPermissoes(ctx);
-    if (!podeVisualizar('estoque')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
-    if (!podeCriar('estoque')) btnNovo.style.display = 'none';
+// ── eventos ────────────────────────────────────────────────────────
+btnNovo.addEventListener('click', abrirFormNovo);
+btnCancelar.addEventListener('click', fecharForm);
+btnSalvar.addEventListener('click', salvarProduto);
+inpNome.addEventListener('keypress', e => { if (e.key === 'Enter') salvarProduto(); });
+searchEl.addEventListener('input', filtrar);
+document.getElementById('est-modal-confirmar').addEventListener('click', confirmarModal);
+document.getElementById('est-modal-cancelar').addEventListener('click', fecharModal);
+document.getElementById('est-modal-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModal();
+});
 
-    btnNovo.addEventListener('click', abrirFormNovo);
-    btnCancelar.addEventListener('click', fecharForm);
-    btnSalvar.addEventListener('click', salvarProduto);
-    inpNome.addEventListener('keypress', e => { if (e.key === 'Enter') salvarProduto(); });
-    searchEl.addEventListener('input', filtrar);
-    document.getElementById('est-modal-confirmar').addEventListener('click', confirmarModal);
-    document.getElementById('est-modal-cancelar').addEventListener('click', fecharModal);
-    document.getElementById('est-modal-overlay').addEventListener('click', e => {
-        if (e.target === e.currentTarget) fecharModal();
-    });
-
-    carregar();
-}
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _boot);
-} else {
-    _boot();
-}
+document.addEventListener('DOMContentLoaded', carregar);
 
 // ── exporta função de desconto para Caixa ─────────────────────────
 export async function descontarEstoque(produtoId, quantidade = 1) {

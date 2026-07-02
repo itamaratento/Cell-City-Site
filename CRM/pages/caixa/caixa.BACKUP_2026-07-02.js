@@ -1,6 +1,5 @@
 import { db } from '../../scripts/firebase.js';
 import { initModulo } from '/CRM/scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import {
     collection, query, where, orderBy,
     getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc,
@@ -37,21 +36,6 @@ async function init() {
     if (!ctx) return;
     _empresaId = ctx.empresaId;
     console.log('[CAIXA] empresa_id:', _empresaId);
-
-    // RBAC (Fase 2, Sprint 3 — moduloId 'caixa'). O Dashboard carrega esta
-    // página em iframe invisível (_verificarFechamentoCaixa); redirecionar
-    // dentro do iframe criaria loop dashboard→caixa→dashboard→... — por isso
-    // o redirect só acontece na janela principal; no iframe, apenas não boota.
-    await carregarPermissoes(ctx);
-    if (!podeVisualizar('caixa')) {
-        if (window.self === window.top) window.location.href = '/CRM/pages/dashboard/index.html';
-        return;
-    }
-    if (!podeCriar('caixa')) {
-        const form = document.getElementById('bloco-padrao-2');
-        if (form) form.style.display = 'none';
-        document.querySelector('.btn-novo-lembrete')?.style.setProperty('display', 'none');
-    }
 
     document.getElementById('data').value = hoje();
     await carregarCategorias();
