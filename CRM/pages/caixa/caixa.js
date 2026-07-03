@@ -1,5 +1,5 @@
 import { db } from '../../scripts/firebase.js';
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import {
     collection, query, where, orderBy,
