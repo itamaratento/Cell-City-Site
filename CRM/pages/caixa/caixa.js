@@ -44,7 +44,7 @@ async function init() {
     // o redirect só acontece na janela principal; no iframe, apenas não boota.
     await carregarPermissoes(ctx);
     if (!podeVisualizar('caixa')) {
-        if (window.self === window.top) window.location.href = '/CRM/pages/dashboard/index.html';
+        if (window.self === window.top) window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html';
         return;
     }
     if (!podeCriar('caixa')) {
