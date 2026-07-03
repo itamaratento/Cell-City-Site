@@ -1,19 +1,44 @@
 #!/usr/bin/env node
-// Fase 3 (seed) — exporta coleções de PRODUÇÃO para JSON, com anonimização opcional por campo.
-// Evolução de backup-dados.js: aceita a lista de coleções e o mapa de anonimização como
-// parâmetros explícitos, em vez de uma lista fixa incompleta (achado da Fase 3: produção tem
-// 70 coleções raiz, não 21).
+// Fase 3 (seed) — exporta coleções de PRODUÇÃO para JSON, já anonimizadas.
+// A anonimização acontece ANTES de gravar em disco — o arquivo exportado nunca
+// contém telefone/nome real. Ver anonimizacao-dev-seed.mjs para as regras.
 //
-// NÃO EXECUTAR ainda: aguarda decisão do proprietário sobre (a) quais coleções entram no seed
-// e (b) estratégia de anonimização LGPD. Ver relatório da Fase 3 para as opções.
-//
-// Uso pretendido: node seed-dev-export.mjs --config seed-config.json
+// Lista de coleções e critério de inclusão/exclusão: decisão formal do
+// proprietário em 2026-07-03, registrada no relatório de encerramento da Fase 3.
 
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { anonimizarDocumento } from './anonimizacao-dev-seed.mjs';
 
 const EXPORT_DIR = '/home/cellcity/Músicas/backups/dev-seed';
+
+// "Claramente devem entrar" + itens válidos da lista antiga do backup-dados.js
+// (excluídas as 6 que hoje não têm nenhum documento em produção).
+const COLECOES = [
+  'usuarios', 'empresas', 'perfis_operacionais', 'agenda', 'mensagens_portal',
+  'crm_leads', 'diario_registros', 'diario_metas', 'diario_eventos',
+  'estoque_config', 'estoque_movimentacoes', 'favoritos_usuarios', 'produtos',
+  'encomendas', 'comandos', 'categorias_comandos', 'categorias_produtos',
+  'categorias_informacoes', 'informacoes', 'central_organizacao',
+  'chat_historico', 'notas_usuarios', 'preferencias_sistema',
+  'solicitacoes_diagnostico', 'tarefas_semana', 'acoes_semana',
+  'portal_eventos', 'alarme_config', 'pre_os', 'categorias_wpp',
+  'os', 'clientes', 'caixa_lancamentos', 'categorias_caixa',
+  'estoque_produtos', 'pendencias', 'fornecedores', 'fornecedor_compras',
+  'financeiro_fixas', 'financeiro_pagar', 'financeiro_cat_despesas',
+  'config', 'configuracoes', 'posvenda_contatos', 'alertas_usuario',
+];
+
+// Excluídas por decisão formal (legado/teste/logs/operacional, sem valor para
+// homologação funcional no DEV): clients, orders, teste_caixa, lancamentos_caixa,
+// lixeira, cc_lixeira, robo_atividade, tarefas_robo, assinaturas, backup_historico,
+// backup_logs, automacao_execucoes, automacao_logs, cc_gdrive_logs, gdrive_backup,
+// auditoria_logs, monitoramento, metadata, historico_alertas.
+//
+// Adiadas por incerteza ("na dúvida, não copiar" — decisão formal 2026-07-03):
+// historico_diario, historico_semanal, historico_mensal, auditoria_saas,
+// auditoria_usuarios_permissoes, resumo_live.
 
 function _ser(val) {
   if (val === null || val === undefined) return val;
@@ -25,46 +50,29 @@ function _ser(val) {
   return out;
 }
 
-// Aplica a função de anonimização de um campo, se configurada para a coleção.
-function anonimizar(doc, regrasColecao) {
-  if (!regrasColecao) return doc;
-  const out = { ...doc };
-  for (const [campo, fn] of Object.entries(regrasColecao)) {
-    if (campo in out) out[campo] = fn(out[campo]);
-  }
-  return out;
-}
-
 async function main() {
-  const configPath = process.argv.includes('--config')
-    ? process.argv[process.argv.indexOf('--config') + 1]
-    : null;
-  if (!configPath) {
-    console.error('Uso: node seed-dev-export.mjs --config seed-config.json');
-    console.error('O config define: { "colecoes": [...], "anonimizacao": { "clientes": { "telefone": "mask", "sobrenome": "mask" } } }');
-    process.exit(1);
-  }
-
-  const config = JSON.parse(readFileSync(configPath, 'utf8'));
   const sa = JSON.parse(readFileSync('/home/cellcity/Músicas/projetos/Cell-City-Site/sa-key.json', 'utf8'));
   initializeApp({ credential: cert(sa) });
   const db = getFirestore();
 
   mkdirSync(EXPORT_DIR, { recursive: true });
-  const resultado = { exportadoEm: new Date().toISOString(), origem: 'cellcity-crm', colecoes: {} };
+  const resultado = { exportadoEm: new Date().toISOString(), origem: 'cellcity-crm', anonimizado: true, colecoes: {} };
+  let totalDocs = 0;
 
-  for (const nome of config.colecoes) {
+  for (const nome of COLECOES) {
     const snap = await db.collection(nome).get();
     resultado.colecoes[nome] = snap.docs.map(d => ({
       id: d.id,
-      data: _ser(d.data()),
+      data: anonimizarDocumento(_ser(d.data())),
     }));
+    totalDocs += snap.size;
     console.log(`${nome}: ${snap.size} docs`);
   }
 
   const out = `${EXPORT_DIR}/seed-${Date.now()}.json`;
   writeFileSync(out, JSON.stringify(resultado, null, 2));
-  console.log(`\nExportado para ${out}`);
+  console.log(`\nTotal: ${totalDocs} docs em ${COLECOES.length} coleções`);
+  console.log(`Exportado (já anonimizado) para ${out}`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
