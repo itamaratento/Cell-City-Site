@@ -2,7 +2,7 @@
    CATÁLOGO — Painel Administrativo
    ============================================================ */
 
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { db } from '../../scripts/firebase.js';
 import {
   collection, getDocs, doc, getDoc, setDoc, addDoc,

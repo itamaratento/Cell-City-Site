@@ -1,4 +1,4 @@
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 
