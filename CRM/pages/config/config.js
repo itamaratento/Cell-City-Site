@@ -11,7 +11,9 @@ window.sair              = sair;
 const PIN_DOC   = doc(db, "config", "pin");
 const PIN_CACHE = "cc_pin_hash";
 
-const LOGIN_URL = '/CRM/login.html';
+// H-005 (homologação 2026-07-03): era fixo, sem prefixo /dev — mesmo
+// critério de detecção já usado em brand-header.js/kernel.js/login.html.
+const LOGIN_URL = ((p => (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '')(location.pathname)) + '/CRM/login.html';
 
 let inputAtual = '';
 let inputNovo  = '';
