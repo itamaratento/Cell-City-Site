@@ -68,6 +68,7 @@ node_modules/
 # dataconnect generated files
 .dataconnect
 sa-key.json
+sa-key-dev.json
 
 # Backups locais (repositorios git aninhados, nao devem ir pro GitHub)
 _BACKUPS/
