@@ -1,4 +1,4 @@
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp }
     from '../../scripts/firebase.js';
 

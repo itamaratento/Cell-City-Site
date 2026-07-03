@@ -3,7 +3,7 @@
    Painel ao vivo via onSnapshot — modo Mês / Semana
    ============================================================ */
 
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { db, collection, onSnapshot } from '../../scripts/firebase.js';
 
 // ===== PALETA DE CORES POR ANO =====

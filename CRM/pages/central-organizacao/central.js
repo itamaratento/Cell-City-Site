@@ -1,4 +1,4 @@
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase.js';
 
 const SECAO_DOC = 'central_organizacao';

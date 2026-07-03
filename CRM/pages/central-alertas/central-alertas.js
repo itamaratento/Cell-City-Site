@@ -5,7 +5,7 @@
 //  Status (novo/lido/resolvido) é por usuário, sincronizado em tempo real
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import {
     db, collection, getDocs, query, where, orderBy, limit,
     doc, setDoc, onSnapshot, serverTimestamp

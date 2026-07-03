@@ -5,8 +5,10 @@
    Responsabilidade: fornecer um único ponto de inicialização
    para todos os módulos. Nenhuma regra de negócio aqui.
 
-   Uso padrão em todo módulo:
-     import { initModulo } from '/CRM/scripts/kernel.js';
+   Uso padrão em todo módulo (caminho RELATIVO — H-008, homologação
+   2026-07-03: caminho absoluto '/CRM/scripts/kernel.js' resolvia sempre
+   para produção quando executado em /dev, causando app/duplicate-app):
+     import { initModulo } from '../../scripts/kernel.js'; // ajustar profundidade
 
      const ctx = await initModulo();
      if (!ctx) return; // não autenticado → redirecionou para login

@@ -1,5 +1,5 @@
 import { db, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
