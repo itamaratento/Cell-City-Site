@@ -326,10 +326,10 @@ Formato: cada caso indica Ambiente, Usuário, Pré-condição, Passos e Resultad
 - Passos: login → Dashboard.
 - Esperado: vê tudo (fail-open explícito do Sprint 1 — ausência de dado nunca oculta módulo).
 
-**RBAC-06 — Rules bloqueiam escalada**
+**RBAC-06 — Rules bloqueiam escalada** — ✅ correção aplicada e aceita formalmente (BL-006, 2026-07-03); já validada via API/REST com 6 cenários no DEV. Item abaixo é só a repetição via UI/console do navegador, não bloqueante para a decisão de negócio.
 - Ambiente: DEV · Usuário: `cellcityatendimento@gmail.com`.
 - Passos: via console JS da página, tentar `setDoc` no próprio doc `usuarios/{uid}` elevando o perfil, e escrever em `perfis_operacionais`.
-- Esperado: `permission-denied` nas duas tentativas (rules do DEV = PROD; RBAC de UI não é o mecanismo de segurança).
+- Esperado: `permission-denied` nas duas tentativas (rule corrigida do DEV nega escrita de `perfil`/`perfil_operacional_id`/`empresa_id`/`status` pelo próprio dono; produção segue com a rule antiga até a promoção).
 
 ### 7.5 Portal do Cliente
 
