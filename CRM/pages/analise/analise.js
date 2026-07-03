@@ -1,4 +1,6 @@
 import { db, doc, getDoc } from "../../scripts/firebase.js";
+// firebase.js já importou env-config.js e populou window.CC_FIREBASE_CONFIG.
+const CC_PROJECT_ID = window.CC_FIREBASE_CONFIG.projectId;
 
 // ── Estado
 let todos       = [];
@@ -16,7 +18,7 @@ async function carregar() {
     let token = '';
     do {
         const r = await fetch(
-            `https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`
+            `https://firestore.googleapis.com/v1/projects/${CC_PROJECT_ID}/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`
         );
         const d = await r.json();
         if (!d.documents) break;

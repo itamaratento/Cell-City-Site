@@ -1,5 +1,5 @@
-// Cell City CRM — Service Worker v1.8 (bump força limpeza de cache crm-comercial)
-const CACHE = 'cellcity-crm-v14';
+// Cell City CRM — Service Worker v1.9 (bump: separação de ambientes DEV/PROD — env-config.js)
+const CACHE = 'cellcity-crm-v15';
 
 // Arquivos do shell — carregados no install
 const SHELL = [
@@ -29,6 +29,7 @@ const SHELL = [
   '/CRM/pages/config/config.js',
   '/CRM/pages/config/config.css',
   '/CRM/scripts/firebase.js',
+  '/CRM/shared/env-config.js',
 ];
 
 // ── Install: pré-carrega o shell

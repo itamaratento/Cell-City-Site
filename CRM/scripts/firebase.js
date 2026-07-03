@@ -25,14 +25,13 @@ import {
   browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
-  authDomain: "cellcity-crm.firebaseapp.com",
-  projectId: "cellcity-crm",
-  storageBucket: "cellcity-crm.firebasestorage.app",
-  messagingSenderId: "645609867368",
-  appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
-};
+// Seleção de ambiente (DEV/PROD) — env-config.js define window.CC_FIREBASE_CONFIG
+// pela URL, com fallback seguro para DEV. Import de efeito colateral: executa e
+// popula window.* antes de a linha seguinte lê-lo. Ver plans/SEPARACAO_AMBIENTES_DEV_PROD.md.
+import "../shared/env-config.js";
+
+const firebaseConfig = window.CC_FIREBASE_CONFIG;
+console.log(`[Cell City] Firebase ambiente: ${window.CC_ENV} (projeto ${firebaseConfig.projectId})`);
 
 // Inicializa
 const app = initializeApp(firebaseConfig);

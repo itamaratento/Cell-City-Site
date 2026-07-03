@@ -168,15 +168,9 @@
       addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion, limit
     } from 'firebase/firestore';
     import * as PhoneUtils from '../../shared/phone-utils.js';
+    import '../../shared/env-config.js'; // seleção DEV/PROD → window.CC_FIREBASE_CONFIG
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
-      authDomain: "cellcity-crm.firebaseapp.com",
-      projectId: "cellcity-crm",
-      storageBucket: "cellcity-crm.firebasestorage.app",
-      messagingSenderId: "645609867368",
-      appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
-    };
+    const firebaseConfig = window.CC_FIREBASE_CONFIG;
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);

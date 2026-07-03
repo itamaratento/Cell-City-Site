@@ -19,16 +19,12 @@ import {
   signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// Mesmo projeto Firebase de scripts/firebase.js — duplicado aqui de
-// propósito para manter este módulo isolado (não importar de firebase.js).
-const firebaseConfig = {
-  apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
-  authDomain: "cellcity-crm.firebaseapp.com",
-  projectId: "cellcity-crm",
-  storageBucket: "cellcity-crm.firebasestorage.app",
-  messagingSenderId: "645609867368",
-  appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
-};
+// Mesmo projeto Firebase do ambiente atual (selecionado por env-config.js).
+// Ler window.CC_FIREBASE_CONFIG garante que usuário criado no /dev nasce no
+// Auth do DEV — corrige o caso original (eu@cellcity.com.br) que motivou a
+// separação de ambientes. Import de efeito colateral popula window.* antes.
+import "../../shared/env-config.js";
+const firebaseConfig = window.CC_FIREBASE_CONFIG;
 
 function _secondaryAuth() {
   const existing = getApps().find(a => a.name === 'usuarios-permissoes-secondary');
