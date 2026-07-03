@@ -892,7 +892,7 @@ async function _boot() {
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('agenda')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('agenda')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
 
   iniciar();
 
