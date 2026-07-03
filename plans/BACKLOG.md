@@ -178,4 +178,48 @@ Exibir (no mesmo painel do BL-004): percentual consumido, horário previsto do p
 
 ---
 
+## BL-006 — 🔴 CRÍTICO DE SEGURANÇA: escalada de privilégio via auto-escrita em `usuarios/{uid}`
+
+**Origem:** descoberto durante a validação de rules da Fase 4 (separação de ambientes), 2026-07-03, ao reproduzir o caso RBAC-06 da homologação.
+**Severidade:** 🔴 Crítica. **Pré-existente em PRODUÇÃO** — não foi introduzido pela separação de ambientes (as rules do DEV são cópia idênticas das de produção, deployadas na Fase 2 e verificadas via API).
+
+### A falha
+
+A rule de `usuarios/{uid}` (`CRM/firestore.rules`, ~linha 208) permite que o dono do doc escreva **qualquer campo** do próprio documento:
+
+```
+match /usuarios/{uid} {
+  allow read, write: if request.auth != null && (
+    request.auth.uid == uid ||
+    get(.../usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+  );
+}
+```
+
+Como o campo `perfil` está **dentro** desse mesmo doc, e é exatamente o campo que todas as outras rules consultam para autorizar admin (`get(...).data.perfil in ['admin','master_admin']`), qualquer usuário autenticado comum pode:
+
+1. Fazer `PATCH usuarios/{seu-uid}` com `perfil: "master_admin"` — **permitido** pela cláusula `request.auth.uid == uid`.
+2. A partir daí, passar em toda checagem de admin do sistema (escrever em `perfis_operacionais`, ler `auditoria_usuarios_permissoes`, gerenciar outros usuários etc.).
+
+**Comprovado no DEV** (teste isolado com o usuário `cellcityestoque`, perfil `atendente`): o `PATCH` do próprio `perfil` para `master_admin` retornou HTTP 200 e o valor foi persistido. Revertido em seguida.
+
+### Impacto
+
+Qualquer conta autenticada (inclusive as anônimas? — a verificar) pode se auto-promover a administrador via chamada REST direta ao Firestore, sem passar pela UI. O RBAC de interface não protege contra isso (nunca protegeu — a segurança real são as rules). Afeta produção hoje.
+
+### Correção proposta (a planejar, NÃO implementar sem autorização)
+
+Separar a permissão de escrita do próprio doc dos campos sensíveis. Opções:
+- Negar ao próprio usuário a escrita dos campos `perfil`, `perfil_operacional_id`, `empresa_id`, `status` (permitir só a admin/master_admin) — ex.: `request.resource.data.perfil == resource.data.perfil` na cláusula do dono.
+- Ou mover `perfil` para uma subcoleção/doc que o próprio usuário não escreve.
+- Requer homologação cuidadosa: `kernel.js` cria `usuarios/{uid}` no primeiro login (`_buildContext()`) — a correção não pode quebrar esse fluxo de auto-provisionamento.
+
+### Regras
+
+- Processo formal (planejamento → aprovação → backup de `CRM/firestore.rules` → deploy DEV → verificação API → homologação → deploy PROD).
+- **`CRM/firestore.rules` é arquivo sensível** — alteração de rules afeta os dois ambientes; testar no DEV primeiro (agora é possível, graças à separação).
+- Bloqueia o caso RBAC-06 [Bloqueante] da homologação da separação de ambientes: como está, RBAC-06 **reprova** (esperava `permission-denied`, obtém escrita permitida). Decidir se a homologação da separação segue com essa ressalva registrada ou se a correção entra antes.
+
+---
+
 *Novos itens de backlog devem ser adicionados abaixo, com numeração sequencial BL-XXX.*
