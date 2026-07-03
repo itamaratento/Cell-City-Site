@@ -1888,8 +1888,13 @@ class Dashboard {
     const registrarServiceWorker = async () => {
       if ('serviceWorker' in navigator) {
         try {
+          // H-002 (homologação 2026-07-03): scope '/CRM/' excede o máximo
+          // permitido para um script em '/CRM/pages/dashboard/' (o browser
+          // recusa o registro sem o header Service-Worker-Allowed, que o
+          // GitHub Pages não permite configurar). Escopo restrito à pasta
+          // real do arquivo — único valor que o browser aceita aqui.
           const reg = await navigator.serviceWorker.register('/CRM/pages/dashboard/sw-alarme.js', {
-            scope: '/CRM/'
+            scope: '/CRM/pages/dashboard/'
           });
           console.log('✓ Service Worker Alarme registrado');
 
