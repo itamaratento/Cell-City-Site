@@ -32,7 +32,16 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // ── Configuração ──────────────────────────────────────────────
-const LOGIN_URL     = '/CRM/login.html';
+// H-003 (homologação 2026-07-03): LOGIN_URL era fixo, sem prefixo /dev — ao
+// redirecionar por sessão ausente ou logout dentro do /dev, mandava o
+// usuário para o login de PRODUÇÃO (mesma origem, mesmo localStorage —
+// risco AUTH-05 já registrado no plano de separação de ambientes). Mesmo
+// critério de detecção já usado em shared/brand-header.js (detectEnv()).
+function loginUrl() {
+    const p = location.pathname;
+    const prefix = (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
+    return prefix + '/CRM/login.html';
+}
 const EMPRESA_ID    = 'cellcity-master';   // empresa padrão (single-store)
 const TIMEOUT_MS    = 10_000;              // 10s para resolver auth
 
@@ -137,7 +146,7 @@ export async function initModulo() {
 
     if (!ctx) {
         _log('Sessão não encontrada — redirecionando para login');
-        location.href = LOGIN_URL;
+        location.href = loginUrl();
         return null;
     }
 
@@ -177,7 +186,7 @@ export async function logout() {
     await signOut(auth);
     localStorage.removeItem(FLAG_AUTH);
     _ctx = null;
-    location.href = LOGIN_URL;
+    location.href = loginUrl();
 }
 
 // ── Getters síncronos ──────────────────────────────────────────
