@@ -6,9 +6,9 @@
 //
 // STATUS: arquivo criado na Fase 1 (infraestrutura). Ainda NÃO é referenciado por
 // nenhum módulo do sistema — carregar/importar este arquivo é a Fase 5, que só
-// começa com o TECHDOC aprovado e as Fases 1-4 concluídas. CONFIG_DEV abaixo é
-// placeholder até a Fase 1 terminar (Auth + bucket Storage do cellcity-crm-dev
-// ainda pendentes) e o Web App do projeto DEV ser registrado no Firebase.
+// começa com o TECHDOC aprovado e as Fases 1-4 concluídas. CONFIG_DEV já usa os
+// valores reais do Web App registrado no cellcity-crm-dev; Auth e o bucket padrão
+// do Storage desse projeto ainda estão pendentes de habilitação no console.
 
 const CONFIG_PROD = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
@@ -19,16 +19,16 @@ const CONFIG_PROD = {
   appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
 };
 
-// TODO (Fase 1, pendente): preencher com o Web App real do projeto cellcity-crm-dev
-// assim que Auth + Storage estiverem provisionados. Não usar em produção enquanto
-// projectId não for "cellcity-crm-dev".
+// Web App "Cell City CRM DEV Web", registrado no Firebase (Fase 1). Auth e o
+// bucket padrão do Storage ainda estão pendentes de habilitação no console —
+// até lá, Firestore funciona mas Auth/Storage do DEV retornam erro.
 const CONFIG_DEV = {
-  apiKey: "PENDENTE_FASE_1",
+  apiKey: "AIzaSyBq7Qq34lXXfFjvWUE8xFWBCboTHc2HAlQ",
   authDomain: "cellcity-crm-dev.firebaseapp.com",
   projectId: "cellcity-crm-dev",
   storageBucket: "cellcity-crm-dev.firebasestorage.app",
-  messagingSenderId: "PENDENTE_FASE_1",
-  appId: "PENDENTE_FASE_1"
+  messagingSenderId: "107140334516",
+  appId: "1:107140334516:web:c8ff9a9c8f2e20d4a768e1"
 };
 
 // Regra: só é PRODUÇÃO quando está no domínio oficial E fora de /dev.
