@@ -178,10 +178,12 @@ Exibir (no mesmo painel do BL-004): percentual consumido, horário previsto do p
 
 ---
 
-## BL-006 — 🔴 CRÍTICO DE SEGURANÇA: escalada de privilégio via auto-escrita em `usuarios/{uid}`
+## BL-006 — 🔴 CRÍTICO DE SEGURANÇA: escalada de privilégio via auto-escrita em `usuarios/{uid}` — ✅ CORRIGIDO E ACEITO (2026-07-03)
 
 **Origem:** descoberto durante a validação de rules da Fase 4 (separação de ambientes), 2026-07-03, ao reproduzir o caso RBAC-06 da homologação.
 **Severidade:** 🔴 Crítica. **Pré-existente em PRODUÇÃO** — não foi introduzido pela separação de ambientes (as rules do DEV são cópia idênticas das de produção, deployadas na Fase 2 e verificadas via API).
+
+**STATUS FINAL:** corrigido, testado (6 cenários reais no DEV, todos passaram) e **aceito formalmente pelo dono em 2026-07-03**. Gate removido da homologação da separação de ambientes. Rule já publicada e verificada no DEV (`develop`, commit `eb6fa72`); produção segue com a rule original vulnerável até a promoção `develop` → `main` ser autorizada. Ver seção "Correção aplicada" abaixo.
 
 ### A falha
 
@@ -207,18 +209,24 @@ Como o campo `perfil` está **dentro** desse mesmo doc, e é exatamente o campo 
 
 Qualquer conta autenticada (inclusive as anônimas? — a verificar) pode se auto-promover a administrador via chamada REST direta ao Firestore, sem passar pela UI. O RBAC de interface não protege contra isso (nunca protegeu — a segurança real são as rules). Afeta produção hoje.
 
-### Correção proposta (a planejar, NÃO implementar sem autorização)
+### Correção aplicada (2026-07-03)
 
-Separar a permissão de escrita do próprio doc dos campos sensíveis. Opções:
-- Negar ao próprio usuário a escrita dos campos `perfil`, `perfil_operacional_id`, `empresa_id`, `status` (permitir só a admin/master_admin) — ex.: `request.resource.data.perfil == resource.data.perfil` na cláusula do dono.
-- Ou mover `perfil` para uma subcoleção/doc que o próprio usuário não escreve.
-- Requer homologação cuidadosa: `kernel.js` cria `usuarios/{uid}` no primeiro login (`_buildContext()`) — a correção não pode quebrar esse fluxo de auto-provisionamento.
+Rule `usuarios/{uid}` reescrita separando `read`/`create`/`update`/`delete`: `create` continua livre (auto-provisionamento do `kernel.js`/`_buildContext()` preservado), `update` do próprio dono agora exige que `perfil`/`perfil_operacional_id`/`empresa_id`/`status` fiquem inalterados (só admin/master_admin mexem nesses campos), `delete` preserva o comportamento original.
 
-### Regras
+**6 testes reais no DEV, todos passaram:** exploit original bloqueado (403), campo não-sensível ainda editável pelo dono (200), leitura preservada (200), admin edita outro usuário (200), admin muda perfil de outro usuário (200), criação no primeiro login preservada (200, testado com usuário novo real).
 
-- Processo formal (planejamento → aprovação → backup de `CRM/firestore.rules` → deploy DEV → verificação API → homologação → deploy PROD).
-- **`CRM/firestore.rules` é arquivo sensível** — alteração de rules afeta os dois ambientes; testar no DEV primeiro (agora é possível, graças à separação).
-- Bloqueia o caso RBAC-06 [Bloqueante] da homologação da separação de ambientes: como está, RBAC-06 **reprova** (esperava `permission-denied`, obtém escrita permitida). Decidir se a homologação da separação segue com essa ressalva registrada ou se a correção entra antes.
+Deploy de rules feito via Firebase CLI, verificado via API antes e depois. Merge em `develop` (commit `eb6fa72`). **Produção confirmada com a rule vulnerável original, intocada** (esperado — nada promovido ainda).
+
+### Aceite formal (2026-07-03)
+
+> "Registro o aceite formal do BL-006. Considero a correção validada tecnicamente com base nos testes apresentados e removo esse gate da homologação. A partir deste momento, o único bloqueio restante para a promoção à produção é a homologação funcional completa do ambiente DEV. Após a homologação, caso não sejam encontrados problemas, autorizarei a promoção da branch `develop` para `main` seguindo o procedimento padrão e com backup prévio."
+
+RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado (ver `plans/HOMOLOGACAO_SEPARACAO_AMBIENTES.md`) — não é mais bloqueante para a decisão de negócio, só falta a execução do teste em navegador junto com o resto do checklist.
+
+### Regras (histórico)
+
+- Processo formal seguido (planejamento → aprovação → backup de `CRM/firestore.rules` → deploy DEV → verificação API → aceite formal do dono).
+- **`CRM/firestore.rules` é arquivo sensível** — alteração de rules afeta os dois ambientes; testado no DEV primeiro, produção não tocada.
 
 ---
 
