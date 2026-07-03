@@ -217,7 +217,34 @@ service cloud.firestore {
     // usuários. A regra original (dono do próprio doc) continua intacta.
     // ─────────────────────────────────────────────
     match /usuarios/{uid} {
-      allow read, write: if request.auth != null && (
+      allow read: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+      );
+
+      // BL-006 (homologação 2026-07-03): a regra antiga permitia que o
+      // dono escrevesse QUALQUER campo do próprio doc, inclusive `perfil`
+      // — o mesmo campo que todas as outras rules consultam para
+      // autorizar admin. Isso permitia auto-escalação de privilégio
+      // (comprovado: usuário comum virava master_admin com um PATCH
+      // direto no Firestore, sem passar pela UI). Correção: criação do
+      // próprio doc continua livre (auto-provisionamento do kernel.js
+      // no primeiro login, _buildContext()); admin/master_admin mantêm
+      // escrita total; o próprio dono só pode escrever campos NÃO
+      // sensíveis — perfil, perfil_operacional_id, empresa_id e status
+      // ficam congelados fora de admin.
+      allow create: if request.auth != null && request.auth.uid == uid;
+
+      allow update: if request.auth != null && (
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'] ||
+        (request.auth.uid == uid &&
+         request.resource.data.get('perfil', null) == resource.data.get('perfil', null) &&
+         request.resource.data.get('perfil_operacional_id', null) == resource.data.get('perfil_operacional_id', null) &&
+         request.resource.data.get('empresa_id', null) == resource.data.get('empresa_id', null) &&
+         request.resource.data.get('status', null) == resource.data.get('status', null))
+      );
+
+      allow delete: if request.auth != null && (
         request.auth.uid == uid ||
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
       );
