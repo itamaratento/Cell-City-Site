@@ -209,7 +209,13 @@
   <script type="module">
     import { login, getCtxAsync } from '/CRM/scripts/kernel.js';
 
-    const DASHBOARD = '/CRM/pages/dashboard/index.html';
+    // H-003 (homologação 2026-07-03): era fixo em /CRM/..., sem prefixo
+    // /dev — usuário já autenticado dentro do /dev era mandado de volta
+    // para o dashboard de PRODUÇÃO (mesma origem, mesmo localStorage).
+    // Mesmo critério de detecção já usado em shared/brand-header.js.
+    const _p = location.pathname;
+    const _prefix = (_p === '/dev' || _p.startsWith('/dev/')) ? '/dev' : '';
+    const DASHBOARD = _prefix + '/CRM/pages/dashboard/index.html';
 
     // Se já está autenticado, vai direto ao dashboard.
     // Usa getCtxAsync() (não onAuthStateChanged direto) para garantir que a
