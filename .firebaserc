@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "cellcity-crm"
+    "default": "cellcity-crm",
+    "dev": "cellcity-crm-dev"
   }
 }
