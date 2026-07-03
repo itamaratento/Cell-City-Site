@@ -8,15 +8,9 @@ import {
   getFirestore, collection, getDocs, doc, getDoc
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
-// ─── Config Firebase (mesma do CRM) ────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
-  authDomain: "cellcity-crm.firebaseapp.com",
-  projectId: "cellcity-crm",
-  storageBucket: "cellcity-crm.firebasestorage.app",
-  messagingSenderId: "645609867368",
-  appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
-};
+// ─── Config Firebase (ambiente selecionado por env-config.js) ──
+import '../../../shared/env-config.js';
+const FIREBASE_CONFIG = window.CC_FIREBASE_CONFIG;
 
 // ─── Estado ─────────────────────────────────────────────────
 let _app, _db;

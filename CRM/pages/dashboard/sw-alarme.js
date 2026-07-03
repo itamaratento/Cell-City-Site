@@ -1,6 +1,17 @@
 // Service Worker para Alarme em Background (PWA)
 const CACHE_NAME = 'alarme-os-v1';
 
+// Seleção de ambiente DENTRO do Service Worker: env-config.js define window.*,
+// que NÃO existe aqui — então derivamos o projeto de self.location, com a mesma
+// regra fail-safe (só é PROD no domínio oficial E fora de /dev). Ver lacuna 3 do
+// plano de separação de ambientes.
+function ccProjectId() {
+  const host = self.location.hostname;
+  const isProdHost = host === 'www.cellcityinformatica.com.br' || host === 'cellcityinformatica.com.br';
+  const isDevPath  = self.location.pathname === '/dev' || self.location.pathname.startsWith('/dev/');
+  return (isProdHost && !isDevPath) ? 'cellcity-crm' : 'cellcity-crm-dev';
+}
+
 self.addEventListener('install', (event) => {
   console.log('🔧 [PWA] Service Worker Alarme instalado');
   self.skipWaiting();
@@ -168,7 +179,7 @@ async function buscarConfigDoFirebase(userId) {
   try {
     // Usa a API REST do Firestore
     const response = await fetch(
-      `https://firestore.googleapis.com/v1/projects/cellcity-crm/databases/(default)/documents/alarme_config/${userId}`,
+      `https://firestore.googleapis.com/v1/projects/${ccProjectId()}/databases/(default)/documents/alarme_config/${userId}`,
       {
         method: 'GET',
         headers: {
