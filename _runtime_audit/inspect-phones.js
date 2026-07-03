@@ -1,16 +1,35 @@
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs } = require('firebase/firestore');
 
-const cfg = {
-  apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
-  authDomain: "cellcity-crm.firebaseapp.com",
-  projectId: "cellcity-crm",
-  storageBucket: "cellcity-crm.firebasestorage.app",
-  messagingSenderId: "645609867368",
-  appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
+// Ambiente EXPLÍCITO (--dev/--prod), sem detecção automática. Recusa sem flag.
+const CONFIGS = {
+  prod: {
+    apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
+    authDomain: "cellcity-crm.firebaseapp.com",
+    projectId: "cellcity-crm",
+    storageBucket: "cellcity-crm.firebasestorage.app",
+    messagingSenderId: "645609867368",
+    appId: "1:645609867368:web:b3ee19ccfe3d17c61c53dd"
+  },
+  dev: {
+    apiKey: "AIzaSyBq7Qq34lXXfFjvWUE8xFWBCboTHc2HAlQ",
+    authDomain: "cellcity-crm-dev.firebaseapp.com",
+    projectId: "cellcity-crm-dev",
+    storageBucket: "cellcity-crm-dev.firebasestorage.app",
+    messagingSenderId: "107140334516",
+    appId: "1:107140334516:web:c8ff9a9c8f2e20d4a768e1"
+  },
 };
+const ENV = process.argv.includes('--prod') ? 'prod'
+          : process.argv.includes('--dev')  ? 'dev'
+          : null;
+if (!ENV) {
+  console.error('ERRO: informe o ambiente: node inspect-phones.js --prod | --dev');
+  process.exit(1);
+}
+console.log(`Ambiente: ${ENV} (projeto ${CONFIGS[ENV].projectId})`);
 
-const app = initializeApp(cfg);
+const app = initializeApp(CONFIGS[ENV]);
 const db = getFirestore(app);
 
 // Classifica o formato do telefone

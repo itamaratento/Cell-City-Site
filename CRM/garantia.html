@@ -12,15 +12,11 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import './shared/env-config.js'; // seleção DEV/PROD → window.CC_FIREBASE_CONFIG
+        // NOTA: esta página usava um registro de app distinto (senderId 1068710301995);
+        // unificada com o app oficial do ambiente via env-config.js (lacuna 4 da auditoria).
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyC3ZLx2m-IWG2tNvIGZYKEqcXh2mEzJGP8",
-            authDomain: "cellcity-crm.firebaseapp.com",
-            projectId: "cellcity-crm",
-            storageBucket: "cellcity-crm.appspot.com",
-            messagingSenderId: "1068710301995",
-            appId: "1:1068710301995:web:45a59e12bf48a929ca9b8b"
-        };
+        const firebaseConfig = window.CC_FIREBASE_CONFIG;
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);

@@ -34,14 +34,37 @@ function _ser(val) {
   return out;
 }
 
-const app  = initializeApp({
-  apiKey:            'AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE',
-  authDomain:        'cellcity-crm.firebaseapp.com',
-  projectId:         'cellcity-crm',
-  storageBucket:     'cellcity-crm.firebasestorage.app',
-  messagingSenderId: '645609867368',
-  appId:             '1:645609867368:web:b3ee19ccfe3d17c61c53dd',
-});
+// Ambiente EXPLÍCITO (sem detecção automática — operação consciente).
+// Recusa rodar sem --dev ou --prod, para nunca exportar do projeto errado por engano.
+const CONFIGS = {
+  prod: {
+    apiKey:            'AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE',
+    authDomain:        'cellcity-crm.firebaseapp.com',
+    projectId:         'cellcity-crm',
+    storageBucket:     'cellcity-crm.firebasestorage.app',
+    messagingSenderId: '645609867368',
+    appId:             '1:645609867368:web:b3ee19ccfe3d17c61c53dd',
+  },
+  dev: {
+    apiKey:            'AIzaSyBq7Qq34lXXfFjvWUE8xFWBCboTHc2HAlQ',
+    authDomain:        'cellcity-crm-dev.firebaseapp.com',
+    projectId:         'cellcity-crm-dev',
+    storageBucket:     'cellcity-crm-dev.firebasestorage.app',
+    messagingSenderId: '107140334516',
+    appId:             '1:107140334516:web:c8ff9a9c8f2e20d4a768e1',
+  },
+};
+
+const ENV = process.argv.includes('--prod') ? 'prod'
+          : process.argv.includes('--dev')  ? 'dev'
+          : null;
+if (!ENV) {
+  console.error('ERRO: informe o ambiente explicitamente.\n  node backup-dados.js --prod   (projeto cellcity-crm)\n  node backup-dados.js --dev    (projeto cellcity-crm-dev)');
+  process.exit(1);
+}
+console.log(`Ambiente: ${ENV} (projeto ${CONFIGS[ENV].projectId})`);
+
+const app  = initializeApp(CONFIGS[ENV]);
 
 const db   = getFirestore(app);
 const auth = getAuth(app);

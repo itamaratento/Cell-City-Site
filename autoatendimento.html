@@ -75,8 +75,9 @@
     </div>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore-compat.js"></script>
+    <script src="CRM/shared/env-config.js"></script>
     <script>
-        firebase.initializeApp({apiKey:"AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",authDomain:"cellcity-crm.firebaseapp.com",projectId:"cellcity-crm",storageBucket:"cellcity-crm.firebasestorage.app",messagingSenderId:"645609867368",appId:"1:645609867368:web:b3ee19ccfe3d17c61c53dd"});
+        firebase.initializeApp(window.CC_FIREBASE_CONFIG);
         const db=firebase.firestore();
 
         document.getElementById('autoatendimento-form').addEventListener('submit',async(e)=>{e.preventDefault();const btn=document.querySelector('.btn-submit');if(btn.dataset.sending==='1')return;btn.dataset.sending='1';btn.disabled=true;btn.textContent='Enviando...';try{await db.collection('pre_os').add({cliente:{nome:document.getElementById('cliente-nome').value,whatsapp:document.getElementById('cliente-whatsapp').value.replace(/\D/g,''),cpf:document.getElementById('cliente-cpf').value,email:document.getElementById('cliente-email').value},aparelho:{marca:document.getElementById('aparelho-marca').value,modelo:document.getElementById('aparelho-modelo').value},problema:document.getElementById('problema-descricao').value,status:'AGUARDANDO_CONVERSAO',origem:'Autoatendimento',criadoEm:new Date(),criadoEmISO:new Date().toISOString(),osId:null});btn.textContent='Enviado com sucesso';document.getElementById('success-overlay').classList.add('active');}catch(error){alert('Erro ao enviar: '+error.message);btn.disabled=false;btn.textContent='ENVIAR';btn.dataset.sending='0';}});
