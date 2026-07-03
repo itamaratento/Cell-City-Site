@@ -90,7 +90,34 @@ Ao finalizar cada tarefa informar:
 - Riscos encontrados.
 - O que ficou pendente.
 
-## 9. Regra principal
+## 9. Eficiência de leitura/escrita Firebase
+
+Regra permanente desde 2026-07-03, motivada por um esgotamento real de cota Firestore em produção (plano Spark) e pela criação do ambiente DEV no plano Blaze (pay-as-you-go, sem teto automático de gasto). Vale a partir de agora, em qualquer código novo — não depende do módulo de controle de cotas (BL-004/BL-005 no backlog).
+
+Evitar obrigatoriamente:
+
+**Firestore**
+- Loops de leitura desnecessários.
+- Consultas repetidas da mesma coleção quando o resultado já está disponível.
+- Consultas sem `limit()`, paginação ou filtros quando aplicável.
+- Listeners (`onSnapshot`) esquecidos ao sair da tela — sempre desinscrever.
+- Atualizações contínuas (polling) sem necessidade — preferir listener a poll quando cabível.
+- Escritas duplicadas.
+- Exclusões em massa sem controle.
+
+**Storage**
+- Upload da mesma imagem várias vezes.
+- Upload de imagens sem compressão.
+- Downloads repetitivos do mesmo arquivo.
+- Arquivos temporários esquecidos sem limpeza.
+
+**Geral**
+- Polling constante quando um listener resolve.
+- Scripts automáticos rodando continuamente sem necessidade.
+- Reconsultar dados já disponíveis em cache/memória.
+- Operações em lote sem necessidade real.
+
+## 10. Regra principal
 
 A prioridade máxima é preservar a estabilidade do Cell City.
 

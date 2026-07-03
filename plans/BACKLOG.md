@@ -48,4 +48,134 @@ Motivo: durante a migração pode haver divergência entre o perfil legado (kern
 
 ---
 
+---
+
+## BL-002 — PWA instalado a partir de `/dev` abre em produção
+
+**Origem:** auditoria de dependências da Fase 1 do plano de separação de ambientes (`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`), 2026-07-03.
+**Prioridade sugerida:** média — só afeta quem instala o CRM como PWA a partir do `/dev`; não bloqueia a Fase 1 nem a Fase 5 desse plano.
+
+### O que foi encontrado
+
+`CRM/manifest.json` tem `start_url: "/CRM/"` e `scope: "/"` absolutos. Se alguém instalar o app como PWA a partir de `cellcityinformatica.com.br/dev/...`, o atalho instalado abre em `/CRM/` (produção), não em `/dev/CRM/`. É uma instância concreta do achado já registrado no plano ("74 arquivos com paths absolutos `/CRM/`"), específica do fluxo de instalação de PWA — os casos de teste atuais da homologação (F-15, CX-03) cobrem navegação/redirect, não instalação de PWA.
+
+### Regras para quando for implementado
+
+- Processo formal completo (planejamento → aprovação → homologação).
+- Provável solução: `manifest.json` servido dinamicamente (ou dois manifests) para que `start_url`/`scope` respeitem o ambiente atual — decisão de desenho a fazer no planejamento, não nesta entrada.
+- Adicionar caso de teste PWA-01 na homologação da separação de ambientes antes de considerar resolvido.
+
+---
+
+## BL-003 — `cors.json` não lista o domínio sem `www`
+
+**Origem:** mesma auditoria da Fase 1 (2026-07-03).
+**Prioridade sugerida:** baixa — gap pré-existente em produção, não introduzido pela separação de ambientes.
+
+### O que foi encontrado
+
+`cors.json` (raiz, usado tanto em produção quanto será reaproveitado para o bucket DEV na Fase 1) libera como origem `https://www.cellcityinformatica.com.br`, mas não `https://cellcityinformatica.com.br` (sem `www`). `CRM/shared/env-config.js` trata os dois como produção igualmente — se algum cliente acessa o domínio sem `www` e tenta um upload/download de Storage, pode esbarrar em erro de CORS.
+
+### Regras para quando for implementado
+
+- Processo formal completo (planejamento → aprovação → backup → homologação).
+- Mudança é em arquivo compartilhado por produção e DEV — testar os dois ambientes antes de publicar.
+
+---
+
+---
+
+## BL-004 — Módulo de Controle de Cotas Firebase (CRÍTICO)
+
+**Origem:** solicitação do usuário em 2026-07-03, decorrente do esgotamento real de cota Firestore em produção (2026-07-02, ~13:30 BRT, plano Spark) e da criação do ambiente DEV na separação de ambientes ([[project-fase1-separacao-ambientes-status]] nas memórias — ver `plans/SEPARACAO_AMBIENTES_DEV_PROD.md` e `plans/RELATORIO_COTA_FIRESTORE_20260702.md`).
+**Prioridade sugerida:** alta — proteção ativa contra estouro de cota/faturamento inesperado, especialmente relevante agora que o `cellcity-crm-dev` está no plano Blaze (pay-as-you-go, sem teto automático de gasto). **Sequenciamento (confirmado pelo usuário em 2026-07-03):** (1) concluir a separação DEV/PROD, (2) validar que os dois ambientes funcionam de forma independente (homologação completa, ver `plans/HOMOLOGACAO_SEPARACAO_AMBIENTES.md`), (3) só então implementar este item. Não adicionar módulo novo enquanto a infraestrutura da separação ainda está sendo consolidada.
+
+### Objetivo
+
+Módulo permanente do CRM para monitorar em tempo real o consumo das cotas do Firebase (produção e DEV), evitando estouro de franquia gratuita ou cobranças inesperadas.
+
+### Localização proposta
+
+Dentro do **módulo de Auditoria** do CRM, junto com saúde do sistema, logs, alertas e monitoramento — um único lugar para consultar antes de operações de alto consumo.
+
+### O que monitorar
+
+- **Firestore:** leituras, escritas, exclusões.
+- **Storage:** espaço utilizado, uploads, downloads.
+- **Authentication:** operações relevantes, se houver métrica disponível.
+
+### Dashboard
+
+Painel com barra de progresso por métrica (leituras/escritas/exclusões Firestore, Storage — armazenamento/uploads/downloads —, Auth, demais serviços usados). Para cada recurso, exibir: cota oficial do Google, consumo atual, percentual utilizado, **saldo restante**, horário do próximo reset (quando aplicável), e status geral (🟢 Normal / 🟡 Atenção / 🔴 Crítico).
+
+### Histórico
+
+Consumo por hora, por dia, por semana; gráfico de evolução; maior pico do dia; tendência de consumo.
+
+### Política automática de limiares
+
+- **80%** → alerta amarelo (atenção).
+- **90%** → alerta vermelho (crítico).
+- **95%** → **bloqueio automático** de operações que aumentem o consumo (scripts, varreduras, cargas em lote, uploads em massa etc.).
+
+### Integração com a IA (Claude)
+
+Antes de executar operações de alto consumo (leituras/escritas em lote, backups, migrações), consultar este painel. Acima de 95%, interromper automaticamente a operação e informar o motivo ao usuário.
+
+### Fonte dos dados
+
+Priorizar métricas oficiais do Google Cloud/Firebase (Cloud Monitoring, Billing, APIs de métricas); complementar com contadores internos do CRM onde não houver métrica oficial exposta.
+
+### Regras para quando for implementado
+
+- Processo formal completo (planejamento → aprovação → backup → homologação → TECHDOC).
+- Módulo novo e isolado — não altera módulos existentes do CRM além da integração com Auditoria.
+- Definir explicitamente as fontes de métrica oficiais disponíveis por API antes do planejamento (nem toda métrica do Firebase tem endpoint de leitura simples — validar viabilidade técnica de cada item do dashboard antes de aprovar o desenho final).
+- Considerar que o bloqueio automático em 95% não pode travar operações críticas de produção (ex.: login, OS, Caixa) — só operações de alto consumo not-essenciais (scripts/cargas em lote).
+
+---
+
+---
+
+## BL-005 — Política Inteligente de Consumo de Cotas Firebase
+
+**Origem:** solicitação do usuário em 2026-07-03, como camada de política complementar ao BL-004 (módulo/dashboard de cotas) — BL-004 mede e exibe o consumo, BL-005 define o comportamento (do programador humano e da IA) em função do que o painel mostra.
+**Prioridade sugerida:** alta, mesmo motivo do BL-004. **Depende do BL-004** (o painel de cotas é o que fornece o percentual usado nas regras abaixo) — não faz sentido implementar isoladamente. Mesmo sequenciamento do BL-004: só depois de (1) concluída e (2) homologada a separação de ambientes DEV/PROD.
+
+### Objetivo
+
+Garantir que o ambiente DEV nunca ultrapasse as cotas gratuitas do Firebase e que tarefas de alto consumo só rodem quando houver margem suficiente.
+
+### Faixas de consumo e comportamento
+
+| Faixa | Status | Comportamento |
+|---|---|---|
+| 0–50% | 🟢 Normal | Execução normal |
+| 50–80% | 🟡 Atenção | IA avalia o impacto antes de iniciar tarefas grandes |
+| 80–90% | 🟠 Cautela | Evitar novas tarefas pesadas; priorizar só desenvolvimento de baixo consumo |
+| 90–95% | 🔴 Crítico | Somente operações essenciais |
+| ≥95% | ⛔ Bloqueio | Bloqueio automático de tarefas que aumentem o consumo |
+
+### Comportamento esperado da IA (Claude)
+
+- Antes de qualquer tarefa que possa consumir muitas leituras/escritas/uploads/consultas, consultar o painel de cotas (BL-004).
+- Acima de 50%: avaliar se a tarefa pode esperar; se não for urgente, sugerir adiar para depois do reset diário, com uma mensagem no estilo: "Esta operação consumirá muitas cotas. O ambiente já utilizou mais de 50% da cota diária. Recomendo executá-la após o reset diário."
+- Acima de 95%: **não iniciar** a tarefa (ou **cancelar automaticamente** se já estiver em andamento e cruzar o limiar durante a execução — não só bloquear no início). Sem pedir confirmação: registrar no log, informar o motivo, aguardar o próximo ciclo de reset. Mensagem padrão (texto final definido pelo usuário em 2026-07-03): "Operação bloqueada automaticamente para preservar as cotas diárias do Firebase. Aguarde o próximo ciclo de renovação ou reduza o consumo antes de executar esta tarefa."
+
+### Painel — campo adicional
+
+Além do que o BL-004 já lista: **consumo previsto** (estimativa de quando a cota vai esgotar, com base na tendência de consumo do dia) — ajuda a decidir se vale iniciar uma tarefa grande sem esperar chegar em 95% para descobrir.
+
+### Painel — informações de reset
+
+Exibir (no mesmo painel do BL-004): percentual consumido, horário previsto do próximo reset diário, tempo restante até o reset.
+
+### Regras para quando for implementado
+
+- Processo formal completo (planejamento → aprovação → backup → homologação → TECHDOC), junto com o BL-004.
+- Definir explicitamente o que conta como "tarefa que pode esperar" vs. "operação essencial" antes do planejamento — sem essa definição a regra de 50%/90% fica subjetiva demais para implementar de forma consistente.
+- A regra de bloqueio acima de 95% precisa da mesma ressalva do BL-004: nunca travar operações essenciais de produção (login, OS, Caixa), só tarefas de alto consumo não-essenciais.
+
+---
+
 *Novos itens de backlog devem ser adicionados abaixo, com numeração sequencial BL-XXX.*
