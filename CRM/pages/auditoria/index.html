@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Auditoria — Cell City</title>
-<script>var _h=location.hostname;if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace('/CRM/login.html');</script>
+<script>var _h=location.hostname;var _p=location.pathname;var _dev=(_p==='/dev'||_p.indexOf('/dev/')===0);if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace((_dev?'/dev':'')+'/CRM/login.html');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
