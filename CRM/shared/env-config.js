@@ -4,11 +4,10 @@
 // consumível tanto por <script src> (páginas compat) quanto por import de efeito
 // colateral (módulos ES). Ver plans/SEPARACAO_AMBIENTES_DEV_PROD.md, seção 3.2.
 //
-// STATUS: arquivo criado na Fase 1 (infraestrutura). Ainda NÃO é referenciado por
-// nenhum módulo do sistema — carregar/importar este arquivo é a Fase 5, que só
-// começa com o TECHDOC aprovado e as Fases 1-4 concluídas. CONFIG_DEV já usa os
-// valores reais do Web App registrado no cellcity-crm-dev; Auth e o bucket padrão
-// do Storage desse projeto ainda estão pendentes de habilitação no console.
+// STATUS: em uso desde a Fase 5 (2026-07-03) — este arquivo é consumido pelos 12
+// pontos de configuração Firebase do sistema (via import de efeito colateral em
+// firebase.js/módulos ES, ou <script src> nas páginas compat). Auth, Firestore e
+// Storage do cellcity-crm-dev estão habilitados e operacionais.
 
 const CONFIG_PROD = {
   apiKey: "AIzaSyD5wQRvcVdweOhVqwd8e08JuzRXOESEbqE",
