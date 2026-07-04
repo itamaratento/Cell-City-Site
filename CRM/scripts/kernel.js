@@ -17,7 +17,9 @@
      // ctx.email      — e-mail do usuário
      // ctx.nome       — nome de exibição
      // ctx.empresaId  — ID da empresa ativa
-     // ctx.perfil     — perfil de acesso (admin, tecnico, atendente…)
+     // ctx.perfil     — perfil de acesso (admin, tecnico, atendente…
+     //                  ou 'pendente' — conta nova sem acesso liberado,
+     //                  ver _buildContext() e temPermissao() mais abaixo)
    ============================================================ */
 
 import { auth, db } from './firebase.js';
@@ -85,9 +87,17 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 // ── Construção do contexto ─────────────────────────────────────
+// Auditoria de segurança 2026-07-04 (TECHDOC §6.12/§6.13): o padrão aqui
+// era 'admin' — qualquer conta nova (inclusive autocadastrada via API
+// pública do Firebase Auth, sem nenhuma tela deste app) virava admin no
+// primeiro login, e o create-rule do Firestore não validava o valor
+// gravado. 'pendente' não existe na hierarquia de temPermissao() (kernel.js
+// mais abaixo), então falha em QUALQUER checagem — a conta só ganha acesso
+// real quando um admin a cadastra formalmente pelo módulo Usuários e
+// Permissões (que sempre grava um perfil válido explícito).
 async function _buildContext(user) {
     let empresaId = EMPRESA_ID;
-    let perfil    = 'admin';
+    let perfil    = 'pendente';
     let nome      = user.displayName || user.email?.split('@')[0] || 'Usuário';
 
     try {
@@ -99,7 +109,9 @@ async function _buildContext(user) {
             if (d.perfil)     perfil    = d.perfil;
             if (d.nome)       nome      = d.nome;
         } else {
-            // Primeiro acesso com este UID — cria documento base
+            // Primeiro acesso com este UID — cria documento base, sem
+            // nenhum privilégio (ver comentário acima). A Firestore Rule
+            // de `create` exige perfil:'pendente' exato para autoprovisionamento.
             await setDoc(doc(db, 'usuarios', user.uid), {
                 email:      user.email,
                 nome,
@@ -107,11 +119,11 @@ async function _buildContext(user) {
                 perfil,
                 createdAt:  serverTimestamp()
             });
-            _log(`Documento usuarios/${user.uid} criado (primeiro acesso)`);
+            _log(`Documento usuarios/${user.uid} criado (primeiro acesso, perfil pendente)`);
         }
     } catch (e) {
         _log('Não foi possível carregar perfil do Firestore — usando padrões', e);
-        // Não lança: sistema funciona com os valores padrão
+        // Não lança: sistema funciona com os valores padrão (perfil 'pendente' = sem acesso)
     }
 
     _log(`Contexto pronto: uid=${user.uid} empresa=${empresaId} perfil=${perfil}`);
@@ -219,7 +231,7 @@ export const getEmail = () => _ctx?.email ?? '';
 /** Nome de exibição do usuário. */
 export const getNome = () => _ctx?.nome ?? '';
 
-/** Perfil de acesso: 'admin' | 'tecnico' | 'atendente' | … */
+/** Perfil de acesso: 'admin' | 'tecnico' | 'atendente' | … | 'pendente' (conta nova, sem acesso) */
 export const getPerfil = () => _ctx?.perfil ?? '';
 
 /**

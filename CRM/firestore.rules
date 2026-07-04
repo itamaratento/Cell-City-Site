@@ -244,8 +244,21 @@ service cloud.firestore {
       // existente (update); aqui é sobre um admin CRIAR o doc de outro —
       // operações e regras distintas. Um usuário comum continua podendo
       // criar só o próprio doc (auto-provisionamento), nunca o de outro.
+      //
+      // 🔴 Auditoria de segurança 2026-07-04 (TECHDOC §6.12/§6.13): a
+      // linha acima permitia auto-provisionamento com QUALQUER `perfil`,
+      // inclusive 'master_admin' — comprovado explorável de ponta a ponta
+      // (signup público via API do Firebase Auth, só com a apiKey já
+      // pública, seguido de PATCH direto gravando perfil:'master_admin').
+      // Corrigido: auto-provisionamento só é aceito com perfil EXATAMENTE
+      // 'pendente' (o único valor que kernel.js::_buildContext() grava no
+      // primeiro acesso — ver kernel.js). Qualquer outro valor no create
+      // do próprio uid cai fora das duas condições e é negado. Contas
+      // pendentes não passam em nenhum temPermissao() (fora da hierarquia
+      // master_admin/admin/gerente/tecnico/atendente) — só um admin,
+      // pelo módulo Usuários e Permissões, pode atribuir um perfil real.
       allow create: if request.auth != null && (
-        request.auth.uid == uid ||
+        (request.auth.uid == uid && request.resource.data.perfil == 'pendente') ||
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
       );
 
