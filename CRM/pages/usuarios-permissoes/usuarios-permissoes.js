@@ -47,9 +47,10 @@ const excluirUsuarioAdminFn = httpsCallable(getFunctions(getApp(), 'southamerica
 
 // Senha administrativa de confirmação de exclusão (pedido do proprietário,
 // briefing 2026-07-03). É uma trava contra exclusão acidental, NÃO uma
-// barreira de segurança: quem protege a coleção de verdade são as Firestore
-// Rules (delete só para perfil admin/master_admin).
-const SENHA_ADMIN_EXCLUSAO = '77';
+// barreira de segurança: quem protege de verdade é a Cloud Function
+// excluirUsuarioAdmin (functions/index.js), que confere no servidor se
+// quem chama é admin/master_admin antes de apagar qualquer coisa.
+const SENHA_ADMIN_EXCLUSAO = '1056';
 
 // ── Catálogo de módulos (matriz de permissões) ─────────────────
 const MODULOS = [
