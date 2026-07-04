@@ -27,10 +27,16 @@
    ============================================================ */
 import { initModulo, temPermissao, getUid, getNome } from '../../scripts/kernel.js';
 import {
-  db, collection, addDoc, doc, setDoc, updateDoc,
+  db, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
   query, orderBy, onSnapshot, serverTimestamp, limit
 } from '../../scripts/firebase.js';
-import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
+import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail, excluirContaSecundaria } from './firebase-secondary.js';
+
+// Senha administrativa de confirmação de exclusão (pedido do proprietário,
+// briefing 2026-07-03). É uma trava contra exclusão acidental, NÃO uma
+// barreira de segurança: quem protege a coleção de verdade são as Firestore
+// Rules (delete só para perfil admin/master_admin).
+const SENHA_ADMIN_EXCLUSAO = '77';
 
 // ── Catálogo de módulos (matriz de permissões) ─────────────────
 const MODULOS = [
@@ -52,36 +58,6 @@ function matrizVazia(padraoVisualizar = true) {
   });
   return m;
 }
-function matrizComExtras(extras) {
-  const m = matrizVazia(true);
-  Object.entries(extras || {}).forEach(([modId, perms]) => {
-    if (m[modId]) Object.assign(m[modId], perms);
-  });
-  return m;
-}
-function matrizTotal() {
-  const m = {};
-  MODULOS.forEach(mod => { m[mod.id] = { visualizar: true, criar: true, editar: true, excluir: true, aprovar: true }; });
-  return m;
-}
-
-// ── Perfis padrão (Seed) ────────────────────────────────────────
-const PERFIS_SEED = [
-  { id: 'administrador', nome: 'Administrador', descricao: 'Acesso total a todos os módulos.', matriz: matrizTotal() },
-  { id: 'financeiro',    nome: 'Financeiro',     descricao: 'Contas a pagar/receber, caixa e relatórios financeiros.',
-    matriz: matrizComExtras({ financeiro: { criar: true, editar: true, excluir: true, aprovar: true }, caixa: { criar: true, editar: true, aprovar: true } }) },
-  { id: 'caixa',         nome: 'Caixa',          descricao: 'Operação do caixa e abertura de OS.',
-    matriz: matrizComExtras({ caixa: { criar: true, editar: true, aprovar: true }, os: { criar: true, editar: true } }) },
-  { id: 'estoque',       nome: 'Estoque',        descricao: 'Cadastro e controle de produtos em estoque.',
-    matriz: matrizComExtras({ estoque: { criar: true, editar: true, excluir: true } }) },
-  { id: 'tecnico',       nome: 'Técnico',        descricao: 'Execução e atualização de ordens de serviço.',
-    matriz: matrizComExtras({ os: { criar: true, editar: true, excluir: true }, agenda: { criar: true, editar: true } }) },
-  { id: 'comercial',     nome: 'Comercial',      descricao: 'CRM comercial, leads e relacionamento com clientes.',
-    matriz: matrizComExtras({ crm: { criar: true, editar: true, excluir: true }, agenda: { criar: true, editar: true } }) },
-  { id: 'atendimento',   nome: 'Atendimento',    descricao: 'Recepção, abertura de atendimento e agenda.',
-    matriz: matrizComExtras({ agenda: { criar: true, editar: true }, os: { criar: true } }) },
-];
-
 // Nível mínimo do kernel.js (hierarquia existente: master_admin/admin/gerente/tecnico/atendente)
 // atribuído a cada perfil operacional na criação da conta. Não altera o
 // significado desse campo — apenas evita deixá-lo vazio (o que faria o
@@ -99,18 +75,6 @@ const PERFIL_OPERACIONAL_PARA_KERNEL = {
 function kernelPerfilPara(perfilOperacionalId) {
   return PERFIL_OPERACIONAL_PARA_KERNEL[perfilOperacionalId] || 'atendente';
 }
-
-// ── Contas padrão (Seed) ────────────────────────────────────────
-const CONTAS_SEED = [
-  { local: 'caixa01',       nome: 'Caixa 01',       perfilId: 'caixa',       setor: 'Caixa' },
-  { local: 'caixa02',       nome: 'Caixa 02',       perfilId: 'caixa',       setor: 'Caixa' },
-  { local: 'tecnico01',     nome: 'Técnico 01',     perfilId: 'tecnico',     setor: 'Técnico' },
-  { local: 'tecnico02',     nome: 'Técnico 02',     perfilId: 'tecnico',     setor: 'Técnico' },
-  { local: 'financeiro01',  nome: 'Financeiro 01',  perfilId: 'financeiro',  setor: 'Financeiro' },
-  { local: 'financeiro02',  nome: 'Financeiro 02',  perfilId: 'financeiro',  setor: 'Financeiro' },
-  { local: 'estoque01',     nome: 'Estoque 01',     perfilId: 'estoque',     setor: 'Estoque' },
-  { local: 'atendimento01', nome: 'Atendimento 01', perfilId: 'atendimento', setor: 'Atendimento' },
-];
 
 // ── Estado ──────────────────────────────────────────────────────
 let usuarios = [];
@@ -175,7 +139,34 @@ function traduzErroAuth(e) {
   if (c.includes('wrong-password') || c.includes('invalid-credential')) return 'Senha atual incorreta.';
   if (c.includes('user-not-found')) return 'Conta não encontrada no Firebase Auth.';
   if (c.includes('too-many-requests')) return 'Muitas tentativas — aguarde alguns minutos.';
+  if (c.includes('permission-denied')) return 'Sem permissão para esta operação.';
   return (e && e.message) || 'Falha na operação.';
+}
+
+/** 'admin'/'master_admin' no nível do kernel.js — quem acessa este módulo (temPermissao('admin') no boot). */
+function ehAdministrador(u) {
+  return u.perfil === 'admin' || u.perfil === 'master_admin';
+}
+
+/**
+ * Desabilita `btn` e troca seu texto durante `fn` (indicação de carregamento
+ * e trava contra duplo clique), restaura ao final, e centraliza o
+ * tratamento de erro (console + toast) — usado em toda ação de escrita
+ * disparada por botão neste módulo.
+ */
+async function comCarregamento(btn, textoCarregando, fn) {
+  const textoOriginal = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = textoCarregando;
+  try {
+    await fn();
+  } catch (e) {
+    console.error('[usuarios-permissoes]', e);
+    toast(traduzErroAuth(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = textoOriginal;
+  }
 }
 
 // =================================================================
@@ -257,6 +248,7 @@ function descricaoAcao(acao) {
   const map = {
     usuario_criado: 'Usuário criado', usuario_editado: 'Usuário editado',
     usuario_desativado: 'Usuário desativado', usuario_reativado: 'Usuário reativado',
+    usuario_excluido: 'Usuário excluído',
     perfil_alterado: 'Perfil alterado', permissoes_alteradas: 'Permissões alteradas',
     senha_redefinida: 'Senha redefinida', perfil_criado: 'Perfil criado', perfil_editado: 'Perfil editado'
   };
@@ -275,8 +267,11 @@ function setupUsuariosUI() {
     const u = usuarios.find(x => x.id === btn.dataset.uid);
     if (!u) return;
     if (btn.dataset.acao === 'editar') abrirFormUsuario(u);
-    if (btn.dataset.acao === 'toggle-status') toggleStatusUsuario(u);
+    // Sucesso reconstrói a tbody via listener (renderUsuarios) — o texto/estado
+    // do botão só precisa ser restaurado pelo comCarregamento no caminho de erro.
+    if (btn.dataset.acao === 'toggle-status') comCarregamento(btn, '...', () => toggleStatusUsuario(u));
     if (btn.dataset.acao === 'redefinir-senha') abrirRedefinirSenha(u);
+    if (btn.dataset.acao === 'excluir') abrirExcluirUsuario(u);
   });
 }
 
@@ -298,10 +293,13 @@ function renderUsuarios() {
       <td>${esc(u.setor || '—')}</td>
       <td><span class="up-badge ${inativo ? 'up-badge-inativo' : 'up-badge-ativo'}">${inativo ? 'Inativo' : 'Ativo'}</span></td>
       <td>${fmtData(u.ultima_alteracao)}</td>
-      <td style="white-space:nowrap">
-        <button class="up-btn up-btn-sm" data-acao="editar" data-uid="${u.id}">Editar</button>
-        <button class="up-btn up-btn-sm" data-acao="redefinir-senha" data-uid="${u.id}">Senha</button>
-        <button class="up-btn up-btn-sm ${inativo ? '' : 'up-btn-danger'}" data-acao="toggle-status" data-uid="${u.id}">${inativo ? 'Reativar' : 'Desativar'}</button>
+      <td class="up-td-acoes">
+        <div class="up-acoes">
+          <button class="up-btn up-btn-sm" data-acao="editar" data-uid="${u.id}">Editar</button>
+          <button class="up-btn up-btn-sm" data-acao="redefinir-senha" data-uid="${u.id}">Senha</button>
+          <button class="up-btn up-btn-sm ${inativo ? '' : 'up-btn-danger'}" data-acao="toggle-status" data-uid="${u.id}">${inativo ? 'Reativar' : 'Desativar'}</button>
+          <button class="up-btn up-btn-sm up-btn-danger" data-acao="excluir" data-uid="${u.id}">Excluir</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -331,7 +329,7 @@ function abrirFormUsuario(usuarioExistente) {
     </div>
   `);
 
-  $('uf-salvar').addEventListener('click', async () => {
+  $('uf-salvar').addEventListener('click', (e) => {
     const nome = $('uf-nome').value.trim();
     const email = $('uf-email').value.trim();
     const perfilId = $('uf-perfil').value;
@@ -339,8 +337,9 @@ function abrirFormUsuario(usuarioExistente) {
     const telefone = $('uf-telefone').value.trim();
     const observacao = $('uf-obs').value.trim();
     if (!nome || !email || !perfilId) { toast('Preencha nome, e-mail e perfil.'); return; }
+    if (!editando && $('uf-senha').value.length < 6) { toast('Senha temporária deve ter ao menos 6 caracteres.'); return; }
 
-    try {
+    comCarregamento(e.currentTarget, 'Salvando...', async () => {
       if (editando) {
         const perfilAnterior = u.perfil_operacional_id;
         await updateDoc(doc(db, 'usuarios', u.id), {
@@ -358,7 +357,6 @@ function abrirFormUsuario(usuarioExistente) {
         fecharModal();
       } else {
         const senha = $('uf-senha').value;
-        if (senha.length < 6) { toast('Senha temporária deve ter ao menos 6 caracteres.'); return; }
         const uid = await criarContaSecundaria(email, senha);
         await setDoc(doc(db, 'usuarios', uid), {
           email, nome, nome_exibicao: nome, setor, telefone, observacao,
@@ -377,10 +375,7 @@ function abrirFormUsuario(usuarioExistente) {
           <div class="up-modal-btns"><button class="up-btn up-btn-primary" onclick="window.__upFecharModal()">Entendi</button></div>
         `);
       }
-    } catch (e) {
-      console.error(e);
-      toast(traduzErroAuth(e));
-    }
+    });
   });
 }
 
@@ -402,11 +397,11 @@ function abrirRedefinirSenha(u) {
     </div>
   `);
 
-  $('rs-salvar').addEventListener('click', async () => {
+  $('rs-salvar').addEventListener('click', (e) => {
     const atual = $('rs-atual').value;
     const nova = $('rs-nova').value;
     if (!atual || nova.length < 6) { toast('Informe a senha atual e uma nova senha com 6+ caracteres.'); return; }
-    try {
+    comCarregamento(e.currentTarget, 'Redefinindo...', async () => {
       await redefinirSenhaSecundaria(u.email, atual, nova);
       await registrarAuditoria('senha_redefinida', u.id, u.nome_exibicao, { via: 'senha_atual' });
       fecharModal();
@@ -414,22 +409,65 @@ function abrirRedefinirSenha(u) {
         <div class="up-modal-senha">${esc(u.email)}<br>${esc(nova)}</div>
         <div class="up-modal-btns"><button class="up-btn up-btn-primary" onclick="window.__upFecharModal()">Entendi</button></div>
       `);
-    } catch (e) {
-      console.error(e);
-      toast(traduzErroAuth(e));
-    }
+    });
   });
 
-  $('rs-email').addEventListener('click', async () => {
-    try {
+  $('rs-email').addEventListener('click', (e) => {
+    comCarregamento(e.currentTarget, 'Enviando...', async () => {
       await enviarResetPorEmail(u.email);
       await registrarAuditoria('senha_redefinida', u.id, u.nome_exibicao, { via: 'email' });
       toast('Link de redefinição enviado por e-mail.');
       fecharModal();
-    } catch (e) {
-      console.error(e);
-      toast(traduzErroAuth(e));
+    });
+  });
+}
+
+function abrirExcluirUsuario(u) {
+  if (u.id === getUid()) {
+    toast('Você não pode excluir a conta com a qual está logado.');
+    return;
+  }
+  // "Último administrador" = último usuário com perfil de kernel admin/master_admin
+  // entre os geridos por este módulo (usuarios[] só contém quem tem
+  // perfil_operacional_id — ver iniciarListeners). Contas legadas sem esse
+  // campo não entram na contagem, o que só torna o bloqueio mais restritivo,
+  // nunca menos seguro.
+  if (ehAdministrador(u) && usuarios.filter(ehAdministrador).length <= 1) {
+    toast('Não é possível excluir o último administrador do sistema.');
+    return;
+  }
+
+  abrirModal('Excluir usuário — ' + (u.nome_exibicao || u.email), `
+    <div class="up-modal-aviso up-aviso-danger">Esta ação é <b>definitiva</b>: o cadastro e o login (Firebase Auth) do usuário serão removidos e não poderão ser recuperados.</div>
+    <div class="up-field"><label>Senha administrativa *</label><input class="up-input" id="ex-senha-admin" type="password" autocomplete="off" placeholder="Informe a senha para confirmar"></div>
+    <div class="up-field"><label>Senha atual da conta *</label><input class="up-input" id="ex-senha-conta" type="password" autocomplete="off" placeholder="Necessária para remover o login (Auth)"></div>
+    <div class="up-modal-aviso">Sem Cloud Functions/Admin SDK neste projeto, remover o login exige a senha atual da própria conta — não há como excluí-lo apenas com a senha do administrador. Se não souber a senha, use "Senha" → "Enviar link por e-mail" antes de excluir.</div>
+    <div class="up-modal-btns">
+      <button class="up-btn" onclick="window.__upFecharModal()">Cancelar</button>
+      <button class="up-btn up-btn-danger" id="ex-confirmar">Excluir definitivamente</button>
+    </div>
+  `);
+
+  $('ex-confirmar').addEventListener('click', (e) => {
+    const senhaAdmin = $('ex-senha-admin').value;
+    const senhaConta = $('ex-senha-conta').value;
+    if (senhaAdmin !== SENHA_ADMIN_EXCLUSAO) {
+      toast('Senha administrativa incorreta — exclusão cancelada.');
+      return;
     }
+    if (!senhaConta) {
+      toast('Informe a senha atual da conta para concluir a exclusão.');
+      return;
+    }
+    comCarregamento(e.currentTarget, 'Excluindo...', async () => {
+      // Se a senha da conta estiver errada, isto lança ANTES do deleteDoc —
+      // evita apagar o cadastro e deixar um login (Auth) órfão para trás.
+      await excluirContaSecundaria(u.email, senhaConta);
+      await deleteDoc(doc(db, 'usuarios', u.id));
+      await registrarAuditoria('usuario_excluido', u.id, u.nome_exibicao || u.email, { email: u.email });
+      fecharModal();
+      toast('Usuário e login excluídos definitivamente.');
+    });
   });
 }
 
@@ -438,14 +476,13 @@ function abrirRedefinirSenha(u) {
 // =================================================================
 function setupPerfisUI() {
   $('up-btn-novo-perfil').addEventListener('click', () => abrirFormPerfil(null));
-  $('up-btn-seed').addEventListener('click', executarSeed);
   $('up-perfis-lista').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-acao]');
     if (!btn) return;
     const p = perfis.find(x => x.id === btn.dataset.id);
     if (!p) return;
     if (btn.dataset.acao === 'editar-perfil') abrirFormPerfil(p);
-    if (btn.dataset.acao === 'toggle-perfil') toggleAtivoPerfil(p);
+    if (btn.dataset.acao === 'toggle-perfil') comCarregamento(btn, '...', () => toggleAtivoPerfil(p));
   });
 }
 
@@ -460,7 +497,7 @@ function renderPerfis() {
         <button class="up-btn up-btn-sm" data-acao="toggle-perfil" data-id="${p.id}">${p.ativo === false ? 'Ativar' : 'Desativar'}</button>
       </div>
     </div>
-  `).join('') || '<div class="up-vazio-inline">Nenhum perfil cadastrado — use "Seed inicial" ou "Novo perfil".</div>';
+  `).join('') || '<div class="up-vazio-inline">Nenhum perfil cadastrado — use "Novo perfil".</div>';
 }
 
 function abrirFormPerfil(perfilExistente) {
@@ -476,11 +513,11 @@ function abrirFormPerfil(perfilExistente) {
     </div>
   `);
 
-  $('pf-salvar').addEventListener('click', async () => {
+  $('pf-salvar').addEventListener('click', (e) => {
     const nome = $('pf-nome').value.trim();
     const descricao = $('pf-desc').value.trim();
     if (!nome) { toast('Informe o nome do perfil.'); return; }
-    try {
+    comCarregamento(e.currentTarget, 'Salvando...', async () => {
       if (editando) {
         await updateDoc(doc(db, 'perfis_operacionais', p.id), { nome, descricao, atualizadoEm: serverTimestamp() });
         await registrarAuditoria('perfil_editado', null, nome);
@@ -494,10 +531,7 @@ function abrirFormPerfil(perfilExistente) {
       }
       toast('Perfil salvo.');
       fecharModal();
-    } catch (e) {
-      console.error(e);
-      toast('Falha ao salvar perfil: ' + (e.message || e));
-    }
+    });
   });
 }
 
@@ -508,65 +542,12 @@ async function toggleAtivoPerfil(p) {
   toast(novo ? 'Perfil ativado.' : 'Perfil desativado.');
 }
 
-async function executarSeed() {
-  abrirModal('Seed inicial', `
-    <p style="font-size:13px;color:var(--text-secondary)">Cria os 7 perfis padrão e as 8 contas funcionais padrão. Contas já existentes (mesmo e-mail) são ignoradas.</p>
-    <div class="up-field"><label>Modelo de e-mail (use <code>{conta}</code> como marcador)</label>
-      <input class="up-input" id="seed-modelo" placeholder="seuemail+{conta}@gmail.com" value="seuemail+{conta}@gmail.com"></div>
-    <div class="up-modal-aviso">Dica: com Gmail, "seuemail+caixa01@gmail.com" chega na mesma caixa de entrada de "seuemail@gmail.com", mas o Firebase trata como e-mails distintos.</div>
-    <div class="up-modal-btns">
-      <button class="up-btn" onclick="window.__upFecharModal()">Cancelar</button>
-      <button class="up-btn up-btn-primary" id="seed-executar">Executar Seed</button>
-    </div>
-  `);
-
-  $('seed-executar').addEventListener('click', async () => {
-    const modelo = $('seed-modelo').value.trim();
-    if (!modelo.includes('{conta}')) { toast('O modelo de e-mail precisa conter {conta}.'); return; }
-    fecharModal();
-    toast('Executando seed — aguarde...');
-
-    for (const perfil of PERFIS_SEED) {
-      await setDoc(doc(db, 'perfis_operacionais', perfil.id), {
-        nome: perfil.nome, descricao: perfil.descricao, sistema: true, ativo: true,
-        permissoes: perfil.matriz, criadoEm: serverTimestamp(), criadoPor: getUid(), atualizadoEm: serverTimestamp()
-      }, { merge: true });
-    }
-    await registrarAuditoria('perfil_criado', null, 'Seed de 7 perfis padrão');
-
-    const credenciais = [];
-    for (const conta of CONTAS_SEED) {
-      const email = modelo.replace('{conta}', conta.local);
-      const senha = gerarSenhaTemp();
-      try {
-        const uid = await criarContaSecundaria(email, senha);
-        await setDoc(doc(db, 'usuarios', uid), {
-          email, nome: conta.nome, nome_exibicao: conta.nome, setor: conta.setor,
-          perfil_operacional_id: conta.perfilId, perfil: kernelPerfilPara(conta.perfilId),
-          status: 'ativo', conta_padrao: true, criado_por: getUid(),
-          ultima_alteracao: serverTimestamp(), createdAt: serverTimestamp()
-        }, { merge: true });
-        credenciais.push({ email, senha, ok: true });
-      } catch (e) {
-        credenciais.push({ email, senha: '—', ok: false, erro: traduzErroAuth(e) });
-      }
-    }
-    await registrarAuditoria('usuario_criado', null, 'Seed de 8 contas padrão');
-
-    abrirModal('Seed concluído — anote as credenciais', `
-      <p style="font-size:13px;color:var(--text-secondary)">Estas senhas não serão exibidas novamente.</p>
-      <table class="up-senha-tabela">${credenciais.map(c => `<tr><td>${esc(c.email)}</td><td>${c.ok ? esc(c.senha) : 'já existia / erro'}</td></tr>`).join('')}</table>
-      <div class="up-modal-btns"><button class="up-btn up-btn-primary" onclick="window.__upFecharModal()">Entendi</button></div>
-    `);
-  });
-}
-
 // =================================================================
 // ABA PERMISSÕES
 // =================================================================
 function setupPermissoesUI() {
   $('up-perm-select').addEventListener('change', (e) => carregarMatrizPerfil(e.target.value));
-  $('up-btn-salvar-permissoes').addEventListener('click', salvarMatrizPerfil);
+  $('up-btn-salvar-permissoes').addEventListener('click', (e) => comCarregamento(e.currentTarget, 'Salvando...', salvarMatrizPerfil));
   $('up-perm-tbody').addEventListener('change', (e) => {
     const chk = e.target.closest('input[type=checkbox]');
     if (!chk || !matrizEdicao) return;

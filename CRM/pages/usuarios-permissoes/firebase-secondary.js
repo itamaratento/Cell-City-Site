@@ -16,7 +16,8 @@ import {
   signInWithEmailAndPassword,
   updatePassword,
   sendPasswordResetEmail,
-  signOut
+  signOut,
+  deleteUser
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // Mesmo projeto Firebase do ambiente atual (selecionado por env-config.js).
@@ -56,5 +57,19 @@ export async function redefinirSenhaSecundaria(email, senhaAtual, novaSenha) {
 export async function enviarResetPorEmail(email) {
   const auth = _secondaryAuth();
   await sendPasswordResetEmail(auth, email);
+  await signOut(auth).catch(() => {});
+}
+
+/**
+ * Exclui a conta do Firebase Auth. Como não há Admin SDK, é preciso
+ * autenticar como o próprio usuário-alvo (senha atual dele) para poder
+ * apagá-lo — client SDK só permite deleteUser() no usuário autenticado
+ * na instância corrente. Roda na instância secundária, sem afetar a
+ * sessão do admin logado.
+ */
+export async function excluirContaSecundaria(email, senhaAtual) {
+  const auth = _secondaryAuth();
+  await signInWithEmailAndPassword(auth, email, senhaAtual);
+  await deleteUser(auth.currentUser);
   await signOut(auth).catch(() => {});
 }

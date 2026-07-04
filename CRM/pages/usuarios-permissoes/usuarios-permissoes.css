@@ -38,6 +38,18 @@ body {
 
 .up-wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
 
+/* O dock global (shared/dock.css) fica fixo à direita da tela (right: 20px,
+   ~68px de largura útil). A reserva abaixo garante que tabela e botões parem
+   antes dele, com folga visível (~2 dedos), em qualquer largura de janela.
+   Abaixo de 900px o dock migra para o rodapé — a reserva muda de lado. */
+@media (min-width: 901px) {
+  .up-wrap { max-width: 1350px; padding-right: 170px; }
+}
+@media (max-width: 900px) {
+  /* 120px de folga acima do dock horizontal (~76px) + inset de gestos do SO. */
+  .up-wrap { padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+}
+
 /* ── Bloqueio ────────────────────────────────────────────── */
 .up-bloqueado { text-align: center; padding: 80px 20px; }
 .up-bloqueado-icon { font-size: 42px; margin-bottom: 12px; }
@@ -80,8 +92,6 @@ body {
 .up-card-valor { font-size: 24px; font-weight: 700; color: var(--cell-green-light); }
 .up-card-label { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
 
-.up-dash-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-@media (max-width: 720px) { .up-dash-cols { grid-template-columns: 1fr; } }
 .up-box { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px 16px; }
 .up-box-titulo { font-size: 13px; font-weight: 700; margin-bottom: 10px; color: var(--text-secondary); }
 .up-dash-lista { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
@@ -121,18 +131,38 @@ body {
 .up-btn-sm { padding: 5px 10px; font-size: 12px; }
 
 /* ── Tabela ──────────────────────────────────────────────── */
-.up-table-wrap { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; }
+/* overflow-x: em telas estreitas a tabela rola horizontalmente dentro do
+   card em vez de espremer as colunas e os botões de ação. */
+.up-table-wrap { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 10px; overflow: hidden; overflow-x: auto; }
 .up-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#up-panel-usuarios .up-table { min-width: 920px; }
 .up-table th {
   text-align: left;
-  padding: 10px 12px;
+  padding: 10px 14px;
   color: var(--text-secondary);
   font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: .03em;
   border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
 }
-.up-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.up-table td { padding: 10px 14px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
+.up-td-acoes { text-align: right; }
+.up-acoes { display: inline-flex; gap: 6px; flex-wrap: nowrap; }
+
+/* Coluna de ações sempre visível: fica "grudada" na borda direita do
+   card enquanto a tabela rola horizontalmente por baixo dela. Precisa de
+   background opaco próprio (senão o conteúdo rolado aparece por trás) e
+   de uma regra de hover própria (mais específica que ".up-table tr:hover
+   td" para não perder o destaque de linha nessa coluna). */
+#up-panel-usuarios .up-table th:last-child,
+#up-panel-usuarios .up-table td.up-td-acoes {
+  position: sticky;
+  right: 0;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border-subtle);
+}
+#up-panel-usuarios .up-table tr:hover td.up-td-acoes { background: var(--bg-hover); }
 .up-table tr:last-child td { border-bottom: none; }
 .up-table tr:hover td { background: var(--bg-hover); }
 .up-vazio { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -170,7 +200,10 @@ body {
   display: none;
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
-  z-index: 2000;
+  /* Acima do dock global (shared/dock.css, z-index 9000) — senão o dock
+     fica visualmente por cima do modal aberto (e dos seus botões) no mobile,
+     onde ambos ocupam a faixa inferior da tela. */
+  z-index: 9500;
   align-items: center; justify-content: center;
   padding: 16px;
 }
@@ -191,6 +224,7 @@ body {
 .up-field .up-input { width: 100%; }
 .up-modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .up-modal-aviso { font-size: 12px; color: var(--warn); line-height: 1.5; background: rgba(255,179,0,0.08); border: 1px solid rgba(255,179,0,0.2); border-radius: 8px; padding: 8px 10px; }
+.up-aviso-danger { color: var(--danger); background: rgba(255,82,82,0.08); border-color: rgba(255,82,82,0.25); }
 .up-modal-senha { font-family: monospace; font-size: 15px; background: var(--bg-page); border: 1px dashed var(--border-subtle); border-radius: 8px; padding: 10px; word-break: break-all; }
 .up-senha-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
 .up-senha-tabela td { padding: 4px 6px; border-bottom: 1px solid var(--border-subtle); font-family: monospace; }
@@ -198,7 +232,7 @@ body {
 /* ── Toast ───────────────────────────────────────────────── */
 .up-toast {
   position: fixed;
-  bottom: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%) translateY(20px);
   background: var(--bg-surface);
@@ -210,7 +244,13 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms, transform 180ms;
-  z-index: 3000;
+  z-index: 9600; /* acima do modal (9500) e do dock (9000) */
   max-width: 90vw;
 }
 .up-toast.up-show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Abaixo de 900px o dock migra para uma faixa horizontal centralizada no
+   rodapé (shared/dock.css) — subimos o toast para não nascer sobre ele. */
+@media (max-width: 900px) {
+  .up-toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
+}
