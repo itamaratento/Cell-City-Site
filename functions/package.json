@@ -1,0 +1,13 @@
+{
+  "name": "cellcity-functions",
+  "description": "Cloud Functions do Cell City CRM — só ações que exigem Admin SDK (sem equivalente seguro no client SDK).",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^6.0.1"
+  },
+  "private": true
+}

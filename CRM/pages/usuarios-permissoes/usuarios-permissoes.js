@@ -19,18 +19,31 @@
                                      Referenciado em usuarios/{uid}.perfil_operacional_id.
 
    Como toda conta criada por este módulo precisa de um valor em
-   usuarios/{uid}.perfil (senão o kernel.js assume 'admin' por padrão
-   na sessão — ver _buildContext), mapeamos cada perfil operacional
-   para o nível mínimo sensato do kernel em PERFIL_OPERACIONAL_PARA_KERNEL.
-   A aplicação fina de permissões dentro dos módulos existentes fica
-   para fases futuras (gradual, um módulo por vez).
+   usuarios/{uid}.perfil (senão o kernel.js assume 'pendente' por padrão
+   na sessão — sem nenhum acesso, ver _buildContext), mapeamos cada perfil
+   operacional para o nível mínimo sensato do kernel em
+   PERFIL_OPERACIONAL_PARA_KERNEL. A aplicação fina de permissões dentro
+   dos módulos existentes fica para fases futuras (gradual, um módulo
+   por vez).
+
+   Exclusão de usuário (2026-07-04): usa a Cloud Function
+   excluirUsuarioAdmin (functions/index.js) — o client SDK não consegue
+   apagar a conta de OUTRO usuário no Firebase Auth sem impersoná-lo
+   (exigiria a senha atual dele); a function roda com Admin SDK e checa
+   no servidor se quem está chamando é admin/master_admin, sem precisar
+   de nenhuma senha da conta-alvo.
    ============================================================ */
 import { initModulo, temPermissao, getUid, getNome } from '../../scripts/kernel.js';
 import {
-  db, collection, addDoc, doc, setDoc, updateDoc, deleteDoc,
+  db, collection, addDoc, doc, setDoc, updateDoc,
   query, orderBy, onSnapshot, serverTimestamp, limit
 } from '../../scripts/firebase.js';
-import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail, excluirContaSecundaria } from './firebase-secondary.js';
+import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
+import { getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
+
+// Mesma região do deploy da function (functions/index.js) e do Firestore.
+const excluirUsuarioAdminFn = httpsCallable(getFunctions(getApp(), 'southamerica-east1'), 'excluirUsuarioAdmin');
 
 // Senha administrativa de confirmação de exclusão (pedido do proprietário,
 // briefing 2026-07-03). É uma trava contra exclusão acidental, NÃO uma
@@ -472,8 +485,6 @@ function abrirExcluirUsuario(u) {
   abrirModal('Excluir usuário — ' + (u.nome_exibicao || u.email), `
     <div class="up-modal-aviso up-aviso-danger">Esta ação é <b>definitiva</b>: o cadastro e o login (Firebase Auth) do usuário serão removidos e não poderão ser recuperados.</div>
     <div class="up-field"><label>Senha administrativa *</label><input class="up-input" id="ex-senha-admin" type="password" autocomplete="off" placeholder="Informe a senha para confirmar"></div>
-    <div class="up-field"><label>Senha atual da conta *</label><input class="up-input" id="ex-senha-conta" type="password" autocomplete="off" placeholder="Necessária para remover o login (Auth)"></div>
-    <div class="up-modal-aviso">Sem Cloud Functions/Admin SDK neste projeto, remover o login exige a senha atual da própria conta — não há como excluí-lo apenas com a senha do administrador. Se não souber a senha, use "Senha" → "Enviar link por e-mail" antes de excluir.</div>
     <div class="up-modal-btns">
       <button class="up-btn" onclick="window.__upFecharModal()">Cancelar</button>
       <button class="up-btn up-btn-danger" id="ex-confirmar">Excluir definitivamente</button>
@@ -482,21 +493,14 @@ function abrirExcluirUsuario(u) {
 
   $('ex-confirmar').addEventListener('click', (e) => {
     const senhaAdmin = $('ex-senha-admin').value;
-    const senhaConta = $('ex-senha-conta').value;
     if (senhaAdmin !== SENHA_ADMIN_EXCLUSAO) {
       toast('Senha administrativa incorreta — exclusão cancelada.');
       return;
     }
-    if (!senhaConta) {
-      toast('Informe a senha atual da conta para concluir a exclusão.');
-      return;
-    }
     comCarregamento(e.currentTarget, 'Excluindo...', async () => {
-      // Se a senha da conta estiver errada, isto lança ANTES do deleteDoc —
-      // evita apagar o cadastro e deixar um login (Auth) órfão para trás.
-      await excluirContaSecundaria(u.email, senhaConta);
-      await deleteDoc(doc(db, 'usuarios', u.id));
-      await registrarAuditoria('usuario_excluido', u.id, u.nome_exibicao || u.email, { email: u.email });
+      // Cloud Function (Admin SDK) faz a checagem real de quem pode excluir
+      // e remove Auth + Firestore + auditoria no servidor — ver functions/index.js.
+      await excluirUsuarioAdminFn({ uid: u.id });
       fecharModal();
       toast('Usuário e login excluídos definitivamente.');
     });
