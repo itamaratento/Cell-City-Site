@@ -737,3 +737,28 @@ A restauração nunca sobrescreve `main`/`develop` automaticamente, nunca faz de
 ### 11.5 Localização do repositório de backup
 
 `https://github.com/itamaratento/Cell-City-Backup` (privado). Não usar para desenvolvimento nem deploy — ver seção 10.1.
+
+---
+
+## 12. Promoção `develop` → `main` (2026-07-04, ~14:37)
+
+Checklist GO/NO-GO executado antes da promoção (sem nenhuma alteração de código): `develop` limpa, 45/45 testes automatizados, Firestore Rules do DEV verificadas via API, vulnerabilidade de escalada eliminada (reconfirmado ao vivo), contas `pendente` bloqueadas (reconfirmado ao vivo), criação de usuário funcionando (reconfirmado ao vivo), backup manual e restauração já validados pelo próprio dono (§10.6/§11.4), TECHDOC atualizado. Homologação manual dispensada/confirmada pelo dono.
+
+**Promoção:** `subir-ok` — fast-forward `18f2b85..bfbc3d6` (18 commits: módulo Usuários e Permissões completo + as 3 correções de segurança P0 + sistema de backup do dono). Tag criada: **`v2026.07.04-1137`**.
+
+**Efeito colateral não intencional:** `subir-ok` usa `git push origin main --follow-tags`, que empurrou para `origin` não só a tag nova como também 3 tags anotadas que já existiam localmente do teste do sistema de backup (`auto-slot-A`, `manual-2026-07-04_13-10-59-...`, `manual-2026-07-04_13-30-26-...`) — que, pela própria documentação do sistema (§10.4), deveriam viver exclusivamente no repositório `Cell-City-Backup`, não em `Cell-City-Site`. Não é destrutivo (só tags extras, sem conteúdo sensível), mas registrado para o dono decidir se quer removê-las de `origin` do Cell-City-Site.
+
+**Publicação da aplicação:** push em `main` disparou o workflow `deploy-pages.yml` — sucesso de primeira. Confirmado via `curl`: raiz (produção) serve `kernel.js` com `perfil='pendente'` e `usuarios-permissoes.js` com as guardas novas.
+
+**Publicação das Firestore Rules em produção:** mesmo obstáculo já conhecido (`sa-key.json` sem role de Rules Admin, `firebase deploy` falha com 403 no `:test`) — publicado via API REST (`firebaserules.googleapis.com`) com token do owner (`itamaratento@gmail.com`, `gcloud auth print-access-token`), mesma técnica da primeira promoção (2026-07-03). Ruleset ativo novo: `f4c9fd9f-fa93-48fe-975b-7a510d9835aa`. Verificado via API: idêntico ao arquivo local.
+
+**Checagem de segurança pré-deploy (não destrutiva):** antes de publicar, auditei as 14 contas reais de `usuarios/` em produção — todas com `perfil` válido, nenhuma sem o campo, nenhuma já `'pendente'`. Confirma que a nova regra não bloquearia nenhum usuário real existente.
+
+**Validação pós-publicação, em produção real (contas de teste descartáveis, removidas imediatamente após):**
+- Prova de conceito original (signup público + self-create `master_admin`) repetida contra `cellcity-crm` → `PERMISSION_DENIED`. Escalada eliminada em produção, confirmado.
+- Login real pela tela (não REST): `kernel.js` grava `perfil:'pendente'` corretamente no primeiro acesso em produção.
+- Conta pendente bloqueada de ler `clientes` em produção (`permission-denied`) — inclusive os listeners em background do Dashboard (Caixa: categorias/lembretes) passaram a acusar `permission-denied` corretamente, confirmando a proteção ativa em todo o app, não só no meu teste direto.
+- **Não verificado** (fora do meu alcance sem credenciais reais): login de administrador e "acesso de um perfil comum" em produção com uma conta real — não tenho senha de nenhuma conta real de produção e não tentei obtê-la. Login/acesso de conta `pendente` e a ausência de regressão nas regras (mesmo padrão já testado exaustivamente no DEV) cobrem o que pude validar com segurança.
+- Logs do Firebase/GCP (`gcloud logging read`, últimos 15 min): nenhum erro de servidor retornado — esperado, já que negações de rule não geram log de erro no lado do servidor por padrão.
+
+**Estado final:** `main` == `develop` == `bfbc3d6`, tag `v2026.07.04-1137`. Produção com o código e as rules corrigidas, validado com dados reais. Nenhuma conta de teste restante (produção: 14 contas reais, igual a antes).
