@@ -594,11 +594,21 @@ Cada tag (manual ou automática) guarda, na própria mensagem anotada: data, hor
 | Backup manual ponta a ponta (commit + push origin + mirror + tag) | ✅ sucesso |
 | Backup automático — primeira execução da semana | ✅ sucesso (seq 1, slot A) |
 | Backup automático — segunda tentativa na mesma semana | ✅ idempotente, nenhuma ação repetida |
-| Rotação dos 3 slots (semanas simuladas 1→2→3→4) | ✅ A→B→C→A confirmado (tag A passou a refletir a semana 4) |
+| Rotação dos 3 slots (semanas simuladas 1→2→3→4, via `WEEK_OVERRIDE`) | ✅ A→B→C→A confirmado (tag A passou a refletir a semana 4) |
 | Falha de push (credencial sem permissão de escrita) | ✅ detectada, `result: falha`, sequência não avançada |
 | Retry após falha (credencial corrigida) | ✅ reprocessou a mesma semana/slot com sucesso |
+| **Encerramento — 1ª execução real** (semana ISO real `2026-W27`, sem override) | ✅ sucesso — seq 1, slot `auto-slot-A`, commit `develop@b9c97a8` |
+| **Encerramento — idempotência com a semana real** (2ª chamada, mesma semana `2026-W27`) | ✅ encerrou sem nova ação |
+| **Encerramento — auditoria de integridade** (`git fsck --full` no clone espelho do repo de backup) | ✅ sem nenhum erro/objeto corrompido |
+| **Encerramento — sincronização** (`git ls-remote` main/develop: origin × backup) | ✅ hashes idênticos nos dois repositórios |
 
-> As semanas de teste (`TEST-W1`…`TEST-W5`, via variável `WEEK_OVERRIDE`, exclusiva para testes) foram removidas do manifesto e as tags de slot recriadas do zero antes da entrega — o ambiente de produção do backup fica limpo para a primeira execução real.
+> As semanas de teste (`TEST-W1`…`TEST-W5`, exclusivas para testes) foram removidas do manifesto e as tags de slot recriadas do zero antes da 1ª execução real — o backup automático em produção partiu de um estado limpo, com dado genuíno desde a semana `2026-W27`.
+
+### 10.7 Rotina operacional recomendada
+
+- **Backup automático:** não exige ação manual — roda sozinho aos domingos assim que o workflow estiver na `main` (ver seção 10.3, ativação pendente de autorização). Mantém sempre os 3 backups semanais mais recentes em rotação.
+- **Backup manual (`backup ["descrição"]`):** rodar antes de qualquer alteração estrutural, migração de dados, mudança de segurança (regras Firestore, autenticação, permissões) ou intervenção de alto impacto — antes de mexer, não depois. Os backups manuais não entram na rotação e ficam disponíveis indefinidamente, até remoção manual explícita.
+- Nenhuma das duas rotinas exige acompanhamento além de conferir o relatório impresso ao final da execução (ou o resultado do job no GitHub Actions, uma vez ativo).
 
 ## 11. Procedimento Oficial de Restauração
 
@@ -636,6 +646,9 @@ A restauração nunca sobrescreve `main`/`develop` automaticamente, nunca faz de
 | Restauração de um backup manual para branch temporária | ✅ `restore/2026-07-04_1025-manual-...` criada, apontando para o commit correto |
 | Validação de integridade pós-restauração (`git fsck` + commit idêntico) | ✅ íntegro |
 | `develop` preservada durante e depois da restauração | ✅ HEAD de `develop` inalterado |
+| **Encerramento — restauração de um backup automático real** (`auto-slot-A`, semana `2026-W27`) | ✅ branch `restore/2026-07-04_1100-auto-slot-A` criada, árvore com os mesmos 2701 arquivos de `develop` |
+| **Encerramento — projeto funcional pós-restauração** (arquivos-chave legíveis: `package.json`, `CRM/TECHDOC.md`, scripts de backup) | ✅ conteúdo íntegro, tamanhos consistentes |
+| **Encerramento — remoção da branch temporária após validação** | ✅ `restore/2026-07-04_1100-auto-slot-A` removida ao final do teste |
 
 ### 11.5 Localização do repositório de backup
 
