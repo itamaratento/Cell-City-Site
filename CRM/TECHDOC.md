@@ -427,6 +427,53 @@ Auditoria de segurança pedida pelo dono antes da promoção `develop`→`main` 
 
 **Estado da promoção:** **interrompida**, conforme instrução do dono. `develop` permanece em `e5dab0a`+documentação, sem merge para `main`, sem deploy de rules em produção, sem tag. Nenhuma alteração de código/regra aplicada nesta auditoria — só investigação, prova de conceito controlada (limpa integralmente) e este relatório.
 
+### 6.13 🟢 P0 de segurança — vulnerabilidade eliminada (2026-07-04)
+
+Correção autorizada explicitamente para a vulnerabilidade do §6.12. Sequência seguida: mapear o fluxo inteiro antes de mudar código → decidir a regra de negócio → aplicar só o necessário → regressão → repetir a prova de conceito.
+
+**Mapeamento do fluxo (ETAPA 1)** — confirmado que existe um único ponto de criação/decisão de perfil:
+- `login.html` não tem nenhuma lógica própria de criação de doc ou perfil (confirmado por busca — zero ocorrências).
+- `kernel.js`, `onAuthStateChanged` (linha 62-63): só constrói contexto (`_buildContext`) para usuário **não-anônimo** — sessão anônima nunca recebe `_ctx`, então nunca passa em nenhum `temPermissao()`. Esse vetor específico já estava fechado pela própria aplicação.
+- `kernel.js::_buildContext()` (linha 88-119): único lugar que lê `usuarios/{uid}`, decide o `perfil` do contexto e **cria o documento no primeiro acesso** (`else` do `if (snap.exists())`). Antes da correção, usava `'admin'` como padrão local — tanto para o `create` do primeiro acesso quanto como *fallback* silencioso caso um doc existente não tivesse o campo `perfil`.
+- `temPermissao()` (kernel.js): hierarquia fechada `master_admin(100) > admin(80) > gerente(60) > tecnico(40) > atendente(20)` — qualquer valor de `perfil` fora dessa lista cai no `NIVEL[...] ?? 0`, falhando em **qualquer** checagem.
+- `CRM/firestore.rules`, `usuarios/{uid}`: o `create` de autoprovisionamento (`request.auth.uid == uid`) não validava o conteúdo gravado.
+
+**Regra de negócio definida (ETAPA 2)**, sem depender de comportamento implícito:
+- **Quem cria usuário:** só admin/master_admin, pelo módulo Usuários e Permissões (`criarContaSecundaria` + `setDoc` com `perfil` explícito escolhido pelo admin). Autoprovisionamento (kernel.js) deixa de ser um caminho de acesso — vira só um placeholder.
+- **Cadastro público (nível Firebase Auth, fora do código deste repo):** continua tecnicamente possível — o projeto não tem Cloud Functions/blocking functions para desabilitá-lo, e desabilitar exigiria mudança de infraestrutura fora do escopo de hoje. **Decisão:** em vez de tentar impedir o cadastro em si, torná-lo **inofensivo** — nenhuma conta nasce com qualquer privilégio.
+- **Perfil inicial de conta nova:** `'pendente'` — valor sentinela fora da hierarquia de `temPermissao()`, falha em toda checagem de permissão até intervenção de um admin.
+- **Quem altera esse perfil:** só admin/master_admin — já garantido pela regra `update` do BL-006 (congela `perfil`/`perfil_operacional_id`/`empresa_id`/`status` fora de admin), sem necessidade de mudança adicional.
+- **Momento da criação do doc:** inalterado — primeiro login bem-sucedido, dentro de `_buildContext()`.
+
+**Correção aplicada (ETAPA 3)** — commit `b9c97a8`, duas mudanças coordenadas (uma sem a outra quebra o primeiro login legítimo):
+```diff
+--- kernel.js ---
+- let perfil    = 'admin';
++ let perfil    = 'pendente';
+
+--- firestore.rules, allow create de usuarios/{uid} ---
+  allow create: if request.auth != null && (
+-   request.auth.uid == uid ||
++   (request.auth.uid == uid && request.resource.data.perfil == 'pendente') ||
+    get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+  );
+```
+Aplicado e testado **somente em `cellcity-crm-dev`** (rules via `firebase deploy --project dev`; `kernel.js` publicado em `/dev` via push em `develop`). Produção confirmada intocada nos dois (rule ativa de `cellcity-crm` continua no ruleset `490b0139`; `kernel.js` de produção nunca tocado).
+
+**Regressão (ETAPA 4)**, Firestore/Auth reais, contas descartáveis (removidas ao final):
+- ✅ **Deve funcionar — 15/15**: criar usuário como admin comum e como master_admin (ciclo completo: criar → aparecer na tabela → alterar perfil → desativar → ativar → excluir), tudo repetido para os dois papéis, zero `console.error` inesperado.
+- ✅ **Deve falhar — confirmado**: usuário comum não cria doc de outro uid (`permission-denied`, já validado antes e revalidado agora sem regressão).
+
+**Prova de segurança repetida (ETAPA 5)** — exatamente o mesmo ataque do §6.12, agora:
+1. Signup público via REST (sempre funciona — é do Firebase Auth, a rule não controla isso).
+2. `PATCH` self-create com `perfil:'master_admin'` → **`403 PERMISSION_DENIED`** (antes: sucesso). Vulnerabilidade fechada.
+3. Controle: o MESMO `PATCH` com `perfil:'pendente'` exato → sucesso (fluxo legítimo preservado).
+4. Confirmação via navegador real, login normal pela tela (não REST): conta autocadastrada grava `perfil:'pendente'` sozinha (kernel.js real, não simulado) e o módulo Usuários e Permissões mostra `#up-bloqueado` (não acessa) — a escalada para admin está de fato eliminada ponta a ponta.
+
+**Achado correlato, fora do escopo de hoje, registrado e NÃO corrigido:** a mesma conta "pendente" recém-autocadastrada, ao logar, **vê o Dashboard inteiro com todos os cards de módulo visíveis** (OS, Caixa, CRM, Estoque, Financeiro, Clientes, etc.). Causa: nenhum desses módulos (`os.js`, `caixa.js`, `estoque.js` — confirmado por busca) chama `temPermissao()`; dependem só do RBAC novo (`shared/permissoes.js`), que é **fail-open por design** quando `perfil_operacional_id` está ausente ("Usuário ainda não migrado... sem restrição" — comportamento intencional para não esconder módulo de usuário legado durante a migração gradual, mas também libera visualmente um autocadastrado). A segurança real desses módulos depende das Firestore Rules das respectivas coleções — que, pela leitura já feita nesta sessão, majoritariamente exigem só `request.auth != null` (sem checar `perfil`). Isso é **exatamente o achado já registrado e rastreado separadamente** em [[project-auditoria-seguranca-20260703]] ("Firestore aberto via Anonymous Auth") — hoje tenho prova de que o mesmo problema vale para contas normais autocadastradas, não só anônimas. **Não é uma regressão de hoje, não foi introduzido por esta correção, e corrigi-lo exigiria revisar dezenas de regras de coleções de negócio — bem além do escopo autorizado hoje** (que era eliminar a escalada para *privilégio administrativo*, não redesenhar o controle de acesso geral do sistema). Fica registrado para decisão futura.
+
+**Veredito final:** a vulnerabilidade de escalada de privilégio administrativo via autoprovisionamento está **eliminada e comprovada** — mesma prova de conceito original, agora falha como esperado; nenhuma regressão nos fluxos administrativos. **Promoção `develop`→`main` segue bloqueada** aguardando autorização explícita e separada do dono (conforme instrução), incluindo a decisão sobre o achado correlato acima.
+
 ---
 
 ## 7. Fase 2 — Integração gradual do RBAC
@@ -509,6 +556,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-04 | Usuários e Permissões — homologação em navegador real (Chrome headless, login/dados reais do DEV): confirmado com evidência real z-index, sticky, safe-area e fluxos de editar/ativar/desativar/cancelar/autoexclusão. Corrigida coluna "Perfil" presa em "—" (bug conhecido desde a Fase 1, reproduzido com dados reais, commit `6bf116b`). **Achado crítico NÃO corrigido**: `allow create` de `usuarios/{uid}` em `CRM/firestore.rules` não tem exceção de admin (só `update`/`delete` têm) — nenhum admin consegue criar usuário novo, provavelmente também quebrado em produção desde o rewrite do BL-006 (2026-07-03). Diff proposto apresentado, aguardando autorização explícita antes de aplicar (Firestore Rules = exceção de segurança). Módulo NÃO homologado enquanto isso não for resolvido. Ver §6.10. |
 | 2026-07-04 | Usuários e Permissões — `allow create` de `usuarios/{uid}` corrigido (commit `e5dab0a`), autorizado e deployado **somente em `cellcity-crm-dev`** (produção confirmada intocada via API). Homologado com Firestore/Auth reais: 14/14 positivo (criar/editar/alterar perfil/ativar/desativar/excluir como admin E como master_admin) + 2/2 negativo (usuário comum não cria doc de outro; controle positivo no próprio doc). Contas de teste descartáveis, todas removidas. **Módulo Usuários e Permissões homologado.** `develop` (`e5dab0a`) sem merge/tag/promoção — aguardando autorização para `develop`→`main`. Ver §6.11. |
 | 2026-07-04 | 🔴 Auditoria pré-promoção encontrou vulnerabilidade CRÍTICA real e confirmada por prova de conceito completa: cadastro público (REST, só com a `apiKey` já pública) + autoprovisionamento em `usuarios/{uid}` sem validação de conteúdo = qualquer visitante externo vira `master_admin`. Agravado por `kernel.js::_buildContext()` (linha 90) que já grava `perfil:'admin'` por padrão em qualquer conta nova, mesmo sem exploit manual. Existe também em produção (mesma regra/mesmo kernel.js publicados). **Promoção `develop`→`main` INTERROMPIDA** conforme instrução — nada mesclado, publicado ou taggeado. Prova de conceito limpa (contas de teste removidas). Correção proposta (rule + kernel.js) documentada, não aplicada — exige autorização explícita separada por tocar Autenticação. Ver §6.12. |
+| 2026-07-04 | 🟢 P0 de segurança corrigido (commit `b9c97a8`, só `cellcity-crm-dev`): `kernel.js::_buildContext()` passa a gravar `perfil:'pendente'` (fora da hierarquia de `temPermissao()`) em vez de `'admin'` para conta nova; `firestore.rules` só aceita autoprovisionamento com `perfil` exatamente `'pendente'`. Prova de conceito original repetida — agora nega com `403`. 15/15 regressão (criar/editar/alterar perfil/ativar/desativar/excluir como admin e master_admin). Achado correlato registrado, fora do escopo: Dashboard mostra todos os módulos a uma conta "pendente" (RBAC novo é fail-open por design quando não migrado) — mesma classe do risco já rastreado em [[project-auditoria-seguranca-20260703]], não corrigido hoje. Produção segue intocada. **Promoção `develop`→`main` continua bloqueada**, aguardando autorização explícita separada. Ver §6.13. |
 
 ---
 
