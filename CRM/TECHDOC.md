@@ -978,4 +978,18 @@ Sem navegador real disponível neste ambiente. Teste automatizado (jsdom) simula
 
 ### 16.6 Status
 
-Implementado e mesclado em `develop` (commit `23fc15c`, merge `f967ae1`), publicado em `/dev`. Aguardando homologação do dono em `/dev` (confirmar no Console que só aparece o log `dev`, sem o `prod` duplicado) e autorização explícita para promoção a `main`.
+Implementado e mesclado em `develop` (commit `23fc15c`, merge `f967ae1`), publicado em `/dev`.
+
+### 16.7 Homologação e promoção a produção (2026-07-04, ~19:31)
+
+Homologado pelo dono em `/dev` (navegador real) e autorizado formalmente para produção. Validação complementar feita com requisições HTTP reais contra o site publicado (não mock):
+
+- `https://cellcityinformatica.com.br/dev/CRM/pages/caixa/index.html` (novo alvo do iframe em `/dev`) — HTTP 200.
+- `https://cellcityinformatica.com.br/CRM/pages/caixa/index.html` (produção, sem `/dev`) — HTTP 200, conteúdo idêntico, sem regressão.
+- `dashboard-caixa.js` publicado em `/dev` confirmado contendo o fix antes da promoção.
+
+**Promoção:** `develop` → `main` via squash merge (mesmo procedimento do item 15.7 — `main` não aceita merge commits). Conflito esperado em `CRM/TECHDOC.md` e `dashboard-caixa.js` (mesma causa: `main` e `develop` não compartilham commit-base desde o squash anterior), resolvido tomando a versão de `develop` — `git diff develop main` confirmado vazio antes e depois do commit. Backup manual executado antes de tocar em `main`. Commit em produção: `5401192`. Tag: `v2026.07.04-1931`.
+
+**Pós-deploy:** deploy de produção concluído com sucesso já na primeira tentativa (sem falha transitória desta vez). Confirmado via HTTP real: `dashboard-caixa.js` em produção contém o fix; `/CRM/pages/caixa/index.html` e `/CRM/pages/dashboard/index.html` respondem 200 em produção. `develop` e `main` com conteúdo idêntico. Working tree limpo.
+
+**H-009 oficialmente encerrado.** Pendência remanescente, fora deste escopo: o achado à parte da seção 16.4 (janela flutuante do alarme, mesma classe de bug) continua sem correção, aguardando autorização separada (H-010 em potencial).
