@@ -593,6 +593,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-04 | 🔴 Auditoria pré-promoção encontrou vulnerabilidade CRÍTICA real e confirmada por prova de conceito completa: cadastro público (REST, só com a `apiKey` já pública) + autoprovisionamento em `usuarios/{uid}` sem validação de conteúdo = qualquer visitante externo vira `master_admin`. Agravado por `kernel.js::_buildContext()` (linha 90) que já grava `perfil:'admin'` por padrão em qualquer conta nova, mesmo sem exploit manual. Existe também em produção (mesma regra/mesmo kernel.js publicados). **Promoção `develop`→`main` INTERROMPIDA** conforme instrução — nada mesclado, publicado ou taggeado. Prova de conceito limpa (contas de teste removidas). Correção proposta (rule + kernel.js) documentada, não aplicada — exige autorização explícita separada por tocar Autenticação. Ver §6.12. |
 | 2026-07-04 | 🟢 P0 de segurança corrigido (commit `b9c97a8`, só `cellcity-crm-dev`): `kernel.js::_buildContext()` passa a gravar `perfil:'pendente'` (fora da hierarquia de `temPermissao()`) em vez de `'admin'` para conta nova; `firestore.rules` só aceita autoprovisionamento com `perfil` exatamente `'pendente'`. Prova de conceito original repetida — agora nega com `403`. 15/15 regressão (criar/editar/alterar perfil/ativar/desativar/excluir como admin e master_admin). Achado correlato registrado, fora do escopo: Dashboard mostra todos os módulos a uma conta "pendente" (RBAC novo é fail-open por design quando não migrado) — mesma classe do risco já rastreado em [[project-auditoria-seguranca-20260703]], não corrigido hoje. Produção segue intocada. **Promoção `develop`→`main` continua bloqueada**, aguardando autorização explícita separada. Ver §6.13. |
 | 2026-07-04 | 🟢 P0 de segurança parte 2 (commit `2edd4ba`, só `cellcity-crm-dev`): confirmado que o achado correlato do dia era risco real de dados — conta pendente lia E escrevia em clientes/os/caixa/estoque/catálogo/financeiro via SDK direto. Nova função `temAcessoLiberado()` aplicada a ~45 coleções de negócio (troca mecânica via sed da mesma condição, endpoints públicos de os/config/pre_os preservados). Custo (+1 leitura por operação) aceito conscientemente pelo dono após eu apresentar a análise. 17/17 regressão: pendente bloqueado (12/12), zero regressão em atendente/tecnico/gerente/admin/master_admin (5/5). Produção intocada. **Promoção `develop`→`main` continua bloqueada.** Ver §6.14. |
+| 2026-07-04 | 🆕 Primeira Cloud Function do projeto (commit `87dd648`): `excluirUsuarioAdmin`, Admin SDK, resolve o pedido do dono de excluir qualquer usuário só com a senha/PIN de admin (sem precisar da senha da conta-alvo). Produção migrada de Spark para Blaze (mesma conta de faturamento do DEV, autorizado). Testada em DEV e depois em produção: positivo (exclusão sem senha do alvo, exclusão de admin com outros existindo) e negativo (não-admin bloqueado, autoexclusão bloqueada) confirmados ao vivo nos dois ambientes. `usuarios-permissoes.js` migrado para chamar a function; campo "senha da conta" removido do modal; `excluirContaSecundaria()` removida (código morto). Promovido a produção com autorização explícita. Ver §14. |
 
 ---
 
@@ -815,3 +816,49 @@ Executados contra um repositório Git isolado de teste (bare + clone, com 3 rele
 | Aritmética de versionamento semântico (patch/minor/major, primeira versão) | ✅ testada isoladamente, valores corretos |
 
 > A promoção real de `subir-ok` (merge `develop→main`) não foi re-executada como teste nesta etapa — ela já é, por natureza, uma ação real de produção; só é exercida quando o dono decide promover de verdade (o que já aconteceu de forma independente em 2026-07-04, ver §12, usando a versão anterior do comando).
+
+---
+
+## 14. Cloud Functions (2026-07-04) — primeira infraestrutura de backend do projeto
+
+Até esta data o projeto nunca teve Cloud Functions nem Admin SDK rodando em servidor — decisão deliberada, por custo/simplicidade (repetido em várias notas deste documento). Motivo da mudança: excluir um usuário exigia a senha atual da própria conta-alvo (o client SDK só apaga o usuário autenticado na instância corrente, nunca outro uid), e o dono pediu explicitamente uma forma de excluir qualquer usuário só com a senha/PIN de administrador.
+
+### 14.1 Infraestrutura habilitada
+
+- **Billing**: `cellcity-crm` (produção) estava no plano Spark (sem faturamento). Vinculado à mesma conta de faturamento já usada pelo DEV (`014813-6E6FAD-EF7BA9`, já ativa) — não foi preciso cadastrar cartão novo. Autorizado explicitamente pelo dono antes de vincular.
+- **APIs habilitadas** (nos dois projetos): `cloudfunctions`, `cloudbuild`, `artifactregistry`, `run`, `eventarc`, `cloudbilling`.
+- **IAM**: a service account `firebase-adminsdk-fbsvc@<projeto>` de cada ambiente recebeu `roles/iam.serviceAccountUser` (na própria SA e na SA de compute padrão), `roles/serviceusage.serviceUsageAdmin`, `roles/cloudfunctions.admin`, `roles/run.admin`, `roles/artifactregistry.admin` e `roles/eventarc.admin` — necessárias só para o **deploy** de Cloud Functions Gen2 (o deploy CLI usa a mesma `sa-key-dev.json`/`sa-key.json` já existentes, não foi criada nenhuma credencial nova).
+
+### 14.2 A function
+
+`functions/index.js`, `excluirUsuarioAdmin` (HTTPS Callable, região `southamerica-east1`, Node 20, 2ª geração):
+1. Exige `request.auth` (chamador autenticado).
+2. Lê o próprio doc `usuarios/{auth.uid}` do chamador e confere `perfil` — só `admin`/`master_admin` passam (`permission-denied` senão).
+3. Bloqueia excluir a própria conta logada (`failed-precondition`).
+4. Se o alvo tiver `perfil` `admin`/`master_admin`, conta quantos usuários no total têm esse perfil (`db.collection('usuarios').where('perfil','in',[...])`, sem o filtro de `perfil_operacional_id` que o client usa — mais abrangente, então mais restritivo) e bloqueia se seria o último.
+5. Apaga o Auth (`admin.auth().deleteUser`) e o doc do Firestore, e grava a auditoria (`usuario_excluido`, `via:'cloud-function'`) — tudo com Admin SDK, ignorando as Firestore Rules (é o próprio servidor, não precisa da regra `delete` do client).
+
+Roda com Admin SDK — por isso as checagens de autorização acima **são** a segurança real desta operação (a function ignora completamente as Firestore Rules), diferente de tudo mais no app onde a regra é a última linha de defesa.
+
+### 14.3 Mudança no client
+
+`usuarios-permissoes.js`: exclusão chama `httpsCallable(getFunctions(getApp(), 'southamerica-east1'), 'excluirUsuarioAdmin')` — sem tocar em `scripts/firebase.js` (arquivo protegido): `getApp()` importado direto do SDK, resolve para o mesmo app "[DEFAULT]" que `firebase.js` já inicializou. Campo "Senha atual da conta" removido do modal (não é mais necessário); "Senha administrativa" (PIN `77`) mantida como trava de confirmação de UX. `firebase-secondary.js`: `excluirContaSecundaria()` removida (código morto — impersonava a conta-alvo, técnica agora substituída).
+
+### 14.4 Testes executados (Firestore/Auth/Functions reais, DEV e depois produção)
+
+- ✅ **Positivo**: admin exclui usuário comum pela tela, sem informar nenhuma senha do alvo — confirmado Auth removido, Firestore removido, auditoria gravada com o admin_uid/nome corretos.
+- ✅ **Positivo**: exclusão de um usuário com perfil `master_admin` funciona quando outros admins existem (exercita o caminho de código da contagem, sem bloquear indevidamente).
+- ✅ **Negativo**: usuário comum (perfil `tecnico`) chama a function diretamente (fora da UI) → `permission-denied`.
+- ✅ **Negativo**: admin tenta excluir a própria conta logada → `failed-precondition`, mensagem clara.
+- ✅ **Defesa em profundidade** (harness jsdom, 45/45 no total): rejeição da Cloud Function (simulada) vira toast amigável no client, sem `unhandledRejection`.
+- **Último administrador via function**: não forçado ao vivo (mesma razão do §6.9/6.14 — pool real de admins tem redundância, reduzir a 1 exigiria mexer em contas reais); a lógica (`allUsers.size <= 1`) é simples o suficiente para revisão direta de código, e o caminho "alvo é admin, outros existem" já foi exercitado com sucesso.
+
+Testado primeiro no DEV, depois repetido em produção com uma conta descartável criada e removida só para o teste (produção: 12 contas reais antes e depois — nenhuma alteração residual).
+
+### 14.5 Pendência menor
+
+Política de limpeza de imagens de contêiner (`firebase functions:artifacts:setpolicy`) foi configurada com sucesso em produção, mas falhou no DEV mesmo após conceder `roles/artifactregistry.admin` — sem risco (o DEV já tem outras imagens de build acumulando de outras funções/deploys da conta), só custo de armazenamento marginal. Não investigado a fundo por ser de baixíssima prioridade; revisitar se algum dia o custo se tornar perceptível.
+
+### 14.6 Achado à parte — tag de versão possivelmente malformada
+
+A promoção `develop→main` desta entrega (via `subir-ok` "reforçado" do dono, com backup automático embutido) gerou a tag `v2026.07.-1198` — falta o dia (`04`) no meio do nome, diferente do padrão das tags anteriores (`v2026.07.04-1137`). Não mexi no script (é ferramenta do dono, em pleno desenvolvimento paralelo por ele mesmo nesta mesma data — ver commits "Versionamento semantico...") — só registrando para ele checar a lógica de formatação de data/hora na nova versão do `subir-ok`.
