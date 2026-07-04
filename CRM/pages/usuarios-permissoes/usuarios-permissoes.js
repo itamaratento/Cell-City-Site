@@ -149,6 +149,27 @@ function ehAdministrador(u) {
 }
 
 /**
+ * Guarda compartilhada por exclusão e desativação: bloqueia agir sobre a
+ * própria conta logada e bloqueia remover a última capacidade de admin do
+ * sistema. `baseAdmins` é o conjunto relevante para CADA ação — todos os
+ * usuários geridos pelo módulo na exclusão (perder o cadastro é definitivo,
+ * não importa o status atual); só os com status "ativo" na desativação (um
+ * admin já inativo não conta como capacidade disponível agora). Retorna
+ * true e mostra o toast quando bloqueado; false quando pode prosseguir.
+ */
+function bloqueadoPorProtecaoAdmin(u, baseAdmins, msgProprio, msgUltimoAdmin) {
+  if (u.id === getUid()) {
+    toast(msgProprio);
+    return true;
+  }
+  if (ehAdministrador(u) && baseAdmins.filter(ehAdministrador).length <= 1) {
+    toast(msgUltimoAdmin);
+    return true;
+  }
+  return false;
+}
+
+/**
  * Desabilita `btn` e troca seu texto durante `fn` (indicação de carregamento
  * e trava contra duplo clique), restaura ao final, e centraliza o
  * tratamento de erro (console + toast) — usado em toda ação de escrita
@@ -381,6 +402,14 @@ function abrirFormUsuario(usuarioExistente) {
 
 async function toggleStatusUsuario(u) {
   const novoStatus = u.status === 'inativo' ? 'ativo' : 'inativo';
+  // Guarda só se aplica a DESATIVAR — reativar nunca reduz a capacidade de
+  // admin disponível, então nunca precisa ser bloqueado.
+  if (novoStatus === 'inativo') {
+    const ativos = usuarios.filter(x => x.status !== 'inativo');
+    if (bloqueadoPorProtecaoAdmin(u, ativos,
+        'Você não pode desativar a conta com a qual está logado.',
+        'Não é possível desativar o último administrador ativo do sistema.')) return;
+  }
   await updateDoc(doc(db, 'usuarios', u.id), { status: novoStatus, ultima_alteracao: serverTimestamp() });
   await registrarAuditoria(novoStatus === 'inativo' ? 'usuario_desativado' : 'usuario_reativado', u.id, u.nome_exibicao);
   toast(novoStatus === 'inativo' ? 'Usuário desativado.' : 'Usuário reativado.');
@@ -423,19 +452,15 @@ function abrirRedefinirSenha(u) {
 }
 
 function abrirExcluirUsuario(u) {
-  if (u.id === getUid()) {
-    toast('Você não pode excluir a conta com a qual está logado.');
-    return;
-  }
   // "Último administrador" = último usuário com perfil de kernel admin/master_admin
   // entre os geridos por este módulo (usuarios[] só contém quem tem
   // perfil_operacional_id — ver iniciarListeners). Contas legadas sem esse
   // campo não entram na contagem, o que só torna o bloqueio mais restritivo,
-  // nunca menos seguro.
-  if (ehAdministrador(u) && usuarios.filter(ehAdministrador).length <= 1) {
-    toast('Não é possível excluir o último administrador do sistema.');
-    return;
-  }
+  // nunca menos seguro. Conta TODOS (não só ativos) — excluir é definitivo,
+  // independe do status atual do admin restante.
+  if (bloqueadoPorProtecaoAdmin(u, usuarios,
+      'Você não pode excluir a conta com a qual está logado.',
+      'Não é possível excluir o último administrador do sistema.')) return;
 
   abrirModal('Excluir usuário — ' + (u.nome_exibicao || u.email), `
     <div class="up-modal-aviso up-aviso-danger">Esta ação é <b>definitiva</b>: o cadastro e o login (Firebase Auth) do usuário serão removidos e não poderão ser recuperados.</div>

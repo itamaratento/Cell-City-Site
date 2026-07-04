@@ -163,6 +163,13 @@ body {
   border-left: 1px solid var(--border-subtle);
 }
 #up-panel-usuarios .up-table tr:hover td.up-td-acoes { background: var(--bg-hover); }
+/* Em telas muito estreitas os 4 botões de ação (~340px) tomariam quase a
+   tela inteira dentro da coluna sticky — reduz para caber com folga sem
+   deixar de mostrar os 4 de uma vez (nenhum vira ícone/oculto). */
+@media (max-width: 480px) {
+  #up-panel-usuarios .up-acoes { gap: 4px; }
+  #up-panel-usuarios .up-acoes .up-btn-sm { padding: 5px 7px; font-size: 11px; }
+}
 .up-table tr:last-child td { border-bottom: none; }
 .up-table tr:hover td { background: var(--bg-hover); }
 .up-vazio { padding: 30px; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -200,10 +207,11 @@ body {
   display: none;
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.6);
-  /* Acima do dock global (shared/dock.css, z-index 9000) — senão o dock
-     fica visualmente por cima do modal aberto (e dos seus botões) no mobile,
-     onde ambos ocupam a faixa inferior da tela. */
-  z-index: 9500;
+  /* Acima de todo z-index global conhecido: dock (shared/dock.css, 9000),
+     barra de marca sticky (shared/brand-header.js, #crm-brand-bar, 9999) e
+     seu menu de ambiente (.crm-env-menu, 10000). Sem isso, a barra/dock
+     ficavam visualmente por cima do modal aberto em telas baixas/mobile. */
+  z-index: 10500;
   align-items: center; justify-content: center;
   padding: 16px;
 }
@@ -244,7 +252,7 @@ body {
   opacity: 0;
   pointer-events: none;
   transition: opacity 180ms, transform 180ms;
-  z-index: 9600; /* acima do modal (9500) e do dock (9000) */
+  z-index: 10600; /* acima do modal (10500), da barra de marca (9999) e do dock (9000) */
   max-width: 90vw;
 }
 .up-toast.up-show { opacity: 1; transform: translateX(-50%) translateY(0); }
