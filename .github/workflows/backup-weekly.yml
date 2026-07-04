@@ -1,0 +1,44 @@
+name: Backup Semanal (Cell City)
+
+# Executa apenas aos domingos, verificando periodicamente se o backup da
+# semana já foi concluído (idempotente — ver scripts/backup/backup-automatic.sh).
+# Nunca altera main/develop, nunca faz deploy, nunca cria merge.
+#
+# Observação: gatilhos "schedule" só são disparados a partir do workflow
+# presente na branch padrão do repositório. Enquanto este arquivo viver
+# apenas em 'develop', use "workflow_dispatch" para testes manuais; a
+# execução automática real só começa após a promoção deste arquivo para 'main'.
+on:
+  schedule:
+    - cron: '0 */3 * * 0' # a cada 3h, somente aos domingos (UTC)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cellcity-backup-semanal
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (scripts de backup vivem em 'develop')
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+
+      - name: Configurar deploy key SSH do repositório de backup
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.BACKUP_DEPLOY_KEY }}" > ~/.ssh/backup_deploy_key
+          chmod 600 ~/.ssh/backup_deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          echo "GIT_SSH_COMMAND=ssh -i $HOME/.ssh/backup_deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes" >> "$GITHUB_ENV"
+
+      - name: Executar backup automático semanal
+        env:
+          SOURCE_REPO_URL: https://github.com/itamaratento/Cell-City-Site.git
+          BACKUP_REPO_SSH: git@github.com:itamaratento/Cell-City-Backup.git
+        run: bash scripts/backup/backup-automatic.sh
