@@ -855,10 +855,22 @@ Roda com Admin SDK — por isso as checagens de autorização acima **são** a s
 
 Testado primeiro no DEV, depois repetido em produção com uma conta descartável criada e removida só para o teste (produção: 12 contas reais antes e depois — nenhuma alteração residual).
 
-### 14.5 Pendência menor
+### 14.5 Pendência menor — RESOLVIDA (2026-07-04)
 
-Política de limpeza de imagens de contêiner (`firebase functions:artifacts:setpolicy`) foi configurada com sucesso em produção, mas falhou no DEV mesmo após conceder `roles/artifactregistry.admin` — sem risco (o DEV já tem outras imagens de build acumulando de outras funções/deploys da conta), só custo de armazenamento marginal. Não investigado a fundo por ser de baixíssima prioridade; revisitar se algum dia o custo se tornar perceptível.
+Política de limpeza de imagens de contêiner (`firebase functions:artifacts:setpolicy`) foi configurada com sucesso em produção, mas falhou no DEV mesmo após conceder `roles/artifactregistry.admin`.
 
-### 14.6 Achado à parte — tag de versão possivelmente malformada
+**Causa:** o Firebase CLI (`functions:artifacts:setpolicy`) exige `firebase login` interativo — não aceita `GOOGLE_APPLICATION_CREDENTIALS` (service account) para essa operação específica, diferente do `firebase deploy`. Sem terminal interativo disponível, o comando sempre falhava com "Failed to authenticate".
 
-A promoção `develop→main` desta entrega (via `subir-ok` "reforçado" do dono, com backup automático embutido) gerou a tag `v2026.07.-1198` — falta o dia (`04`) no meio do nome, diferente do padrão das tags anteriores (`v2026.07.04-1137`). Não mexi no script (é ferramenta do dono, em pleno desenvolvimento paralelo por ele mesmo nesta mesma data — ver commits "Versionamento semantico...") — só registrando para ele checar a lógica de formatação de data/hora na nova versão do `subir-ok`.
+**Correção:** a mesma política aplicada em produção foi replicada no DEV diretamente via `gcloud artifacts repositories set-cleanup-policies gcf-artifacts --project=cellcity-crm-dev --location=southamerica-east1 --policy=<arquivo> --no-dry-run` (API nativa do Artifact Registry, não passa pelo Firebase CLI). Achado adicional: o repositório do DEV já estava com `cleanupPolicyDryRun: true` residual de uma tentativa anterior malsucedida — precisou do `--no-dry-run` explícito para desativar o modo simulação.
+
+**Verificação:** `describe` do repositório do DEV confere byte-a-byte com o de produção (`firebase-functions-cleanup`, `DELETE`, `olderThan: 86400s`, `tagState: ANY`, sem `cleanupPolicyDryRun`). Nenhuma imagem foi removida manualmente — o DEV só tinha 1 função (`excluirUsuarioAdmin`) com 1 imagem + 1 imagem de cache, ambas em uso; confirmado que continuam intactas (mesmos digests) e que a function segue `ACTIVE` após a mudança.
+
+### 14.6 Achado à parte — tag de versão malformada — RESOLVIDA (2026-07-04)
+
+A promoção `develop→main` desta entrega (via `subir-ok` "reforçado" do dono, com backup automático embutido) gerou a tag `v2026.07.-1198` — falta o dia (`04`) no meio do nome, diferente do padrão das tags anteriores (`v2026.07.04-1137`).
+
+**Correção:** confirmado pelo `taggerdate` das tags vizinhas que o padrão real é `vYYYY.MM.DD-HHMM` a partir do horário de *criação da tag* (não do commit) — a malformada foi criada às 13:44:51, então o nome correto é `v2026.07.04-1344`. Criada nova tag anotada com esse nome, apontando para o mesmo commit (`87dd648`, preservando a data original via `GIT_COMMITTER_DATE`), publicada no remoto; em seguida a tag antiga malformada foi apagada local e remotamente (`git tag -d` + `git push origin --delete`). Nenhum commit foi reescrito — tags são referências independentes, o histórico de commits não foi tocado.
+
+**Verificação:** `git ls-remote --tags origin` confirma `v2026.07.04-1344` presente e `v2026.07.-1198` ausente; `develop`, `main`, `origin/develop` e `origin/main` seguem idênticos (`6b6c6fc`); working tree limpo.
+
+**Não corrigido (fora de escopo):** o script `subir-ok` em si (fonte do bug de formatação) não foi alterado — é ferramenta do dono, em desenvolvimento paralelo por ele mesmo. Observação para ele investigar: a versão "reforçada" com tag semântica (`v${major}.${minor}.${patch}`) já tinha sido commitada (`908ed74`, 11:59) antes desta promoção (13:44) ter gerado uma tag no formato antigo por data — sugere que o terminal que rodou essa promoção ainda tinha a função antiga do `subir-ok` carregada na sessão do shell, sem `source ~/.bashrc` desde a atualização.
