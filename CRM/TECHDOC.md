@@ -874,3 +874,55 @@ A promoção `develop→main` desta entrega (via `subir-ok` "reforçado" do dono
 **Verificação:** `git ls-remote --tags origin` confirma `v2026.07.04-1344` presente e `v2026.07.-1198` ausente; `develop`, `main`, `origin/develop` e `origin/main` seguem idênticos (`6b6c6fc`); working tree limpo.
 
 **Não corrigido (fora de escopo):** o script `subir-ok` em si (fonte do bug de formatação) não foi alterado — é ferramenta do dono, em desenvolvimento paralelo por ele mesmo. Observação para ele investigar: a versão "reforçada" com tag semântica (`v${major}.${minor}.${patch}`) já tinha sido commitada (`908ed74`, 11:59) antes desta promoção (13:44) ter gerado uma tag no formato antigo por data — sugere que o terminal que rodou essa promoção ainda tinha a função antiga do `subir-ok` carregada na sessão do shell, sem `source ~/.bashrc` desde a atualização.
+
+## 15. Refatoração modular do Dashboard (2026-07-04)
+
+`CRM/pages/dashboard/dashboard.js` (2991 linhas, uma única classe `Dashboard`) foi reorganizado em 10 arquivos na mesma pasta, sem alterar nenhuma regra de negócio, permissão, consulta ao Firestore, Cloud Function, autenticação, HTML (além de nada — `index.html` não precisou de nenhuma alteração) ou CSS. Trabalho feito na branch `refactor-dashboard-modular` (a partir de `develop`), um commit por etapa, plano e levantamento completo em `plans/REFATORACAO_DASHBOARD_ETAPA1_MAPA.md`.
+
+### 15.1 Nova arquitetura
+
+Padrão de mixin: cada `dashboard-X.js` exporta um objeto plano de métodos; `dashboard.js` importa todos e aplica `Object.assign(Dashboard.prototype, ...)` antes do bootstrap. Mesma classe, mesma instância, mesmo `this`, mesmos closures internos — zero mudança de comportamento, só relocação mecânica de código. `_uid` (variável solta antes) virou `dashboardShared.uid` (objeto mutável em `dashboard-state.js`), única forma de compartilhar um valor mutável entre módulos ES sem getter/setter.
+
+### 15.2 Estrutura e responsabilidade de cada arquivo
+
+| Arquivo | Linhas | Responsabilidade |
+|---|---|---|
+| `dashboard.js` | 38 | imports, classe `Dashboard` (constructor), `Object.assign` dos 8 mixins, bootstrap (`_bootDashboard`) |
+| `dashboard-state.js` | 67 | state inicial (`criarEstadoInicial()`), `dashboardShared.uid`, `RBAC_CARD_PARA_MODULO_ID` |
+| `dashboard-utils.js` | 19 | `escapeHtml`, helpers de DOM (`_setChecked`/`_getChecked`/`_setValue`/`_getValue`) |
+| `dashboard-events.js` | 139 | cliques fora, atalhos de teclado, sidebar (drag-and-drop), dock, botão de reload |
+| `dashboard-ui.js` | 425 | relógio, bloco de notas, mini calendário, grid de módulos (RBAC), navegação, config de alertas, modal de OS |
+| `dashboard-caixa.js` | 132 | fechamento automático do Caixa (iframe), Meta Semanal (lê `caixa_lancamentos`) |
+| `dashboard-busca.js` | 197 | índice e busca global (OS, clientes, produtos) |
+| `dashboard-alertas.js` | 877 | agenda/Ação da Semana, badges de autoatendimento e diário, motor de geração de alertas (pós-venda, OS, meta, portal, avaliações) |
+| `dashboard-alarme-os.js` | 987 | alarme configurável de nova OS (Service Worker, notificações, Wake Lock, janela flutuante) — maior bloco, 1/3 do arquivo original |
+| `dashboard-init.js` | 29 | sequência de chamadas `setupX()` do `init()` |
+
+Total: 2910 linhas em 10 arquivos (era 2991 em 1 arquivo — a diferença é o código morto removido, líquido dos imports/cabeçalhos novos de cada módulo).
+
+**Código morto removido** (decisão do dono, não estava no escopo original mas foi encontrado no levantamento): `setupMinhaSemana_REMOVIDO` e `setupSidebarNotas_REMOVIDO` (165 linhas), nunca chamados em `init()`, já substituídos por `acaodasemana.js`.
+
+**Divergência do plano original:** os módulos `dashboard-clientes.js`, `dashboard-produtos.js` e `dashboard-financeiro.js` do plano inicial não foram criados — o levantamento mostrou que `dashboard.js` nunca teve CRUD dessas áreas (isso vive nos módulos próprios `clientes.js`/`estoque.js`/`financeiro.js`, fora da pasta `dashboard/`); o que existia era só a fatia de índice de busca (foi para `dashboard-busca.js`). Em vez disso, o conteúdo real foi reagrupado por tema (Caixa, Busca Global, Central de Alertas) e ganhou um módulo novo (`dashboard-alarme-os.js`) para o maior bloco do arquivo, que não é CRUD de OS.
+
+### 15.3 Fluxo de inicialização
+
+`index.html` carrega só `<script type="module" src="dashboard.js">` (sem alteração). `dashboard.js` importa os 8 mixins + `criarEstadoInicial`/`dashboardShared` de `dashboard-state.js`, monta `Dashboard.prototype` via `Object.assign`, e `_bootDashboard()` (auto-executado no fim do arquivo) chama `initModulo()` → grava `dashboardShared.uid` → `carregarPermissoes()` → `new Dashboard()` (constructor chama `this.init()`, que dispara as 18 chamadas `setupX()` na mesma ordem de antes).
+
+### 15.4 Dependências entre módulos
+
+Todos os mixins importam de `../../scripts/firebase.js` e/ou `../../shared/permissoes.js` diretamente (cada um só o que usa — sem reimportar tudo em cascata). `dashboard-ui.js`, `dashboard-alarme-os.js` e (indiretamente, via `this`) outros mixins leem `dashboardShared.uid`/`RBAC_CARD_PARA_MODULO_ID` de `dashboard-state.js`. Referências entre métodos de mixins diferentes (ex.: `dashboard-events.js` chamando `this.navigateTo(...)`, que vive em `dashboard-ui.js`) funcionam normalmente porque todos os mixins são aplicados ao mesmo `Dashboard.prototype` antes do bootstrap rodar — não há import circular entre os arquivos `dashboard-*.js` em si.
+
+### 15.5 Verificação (Etapa 13)
+
+Duas camadas, sem ferramenta de automação de navegador disponível neste ambiente:
+1. **Estática**, repetida a cada commit: `node --check` nos 10 arquivos + checagem estrutural (grep) confirmando os 44 métodos originais (46 menos os 2 mortos) em exatamente 1 lugar cada.
+2. **Dinâmica (jsdom)** — método já validado no projeto (ver nota de homologação sem navegador): os arquivos reais + `index.html` real carregados num ambiente Node+jsdom isolado no scratchpad, com `kernel.js`/`firebase.js`/`permissoes.js` mockados. **10/10 checagens passaram**, incluindo RBAC positivo e negativo (card ocultado corretamente quando o perfil não tem permissão).
+
+**Não coberto** (registrado para o dono decidir sobre homologação visual antes de promover): renderização visual/CSS real, Firestore real, Service Worker real, cliques de mouse reais, e as demais páginas do checklist do CLAUDE.md — nenhuma foi tocada por esta refatoração, mas nenhuma foi re-testada.
+
+### 15.6 Benefícios da refatoração
+
+- Arquivo principal de 2991 linhas → 38 linhas (só orquestração); cada responsabilidade agora em arquivo próprio, navegável e revisável isoladamente.
+- Maior bloco antes invisível (`setupAlarmeOS`, 976 linhas / 33% do arquivo) agora é um módulo nomeado e explícito.
+- 165 linhas de código morto eliminadas.
+- Zero mudança de comportamento: mesma classe, mesmo `this`, mesmos closures, mesmas 18 chamadas de `init()` na mesma ordem — só a localização do código mudou.
