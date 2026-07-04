@@ -336,8 +336,42 @@ Fechamento dos itens deixados em aberto pela Fase 1, a pedido do proprietário, 
 - **Robustez**: helper `comCarregamento(btn, texto, fn)` centraliza loading (desabilita botão + texto de progresso), trava de duplo clique e tratamento de erro (`console.error` + toast) em todo botão de escrita do módulo — e corrigiu 3 funções (`toggleStatusUsuario`, `toggleAtivoPerfil`, `salvarMatrizPerfil`) que antes não tinham nenhum tratamento de erro (uma `Promise` rejeitada nelas passava em silêncio, sem feedback ao usuário).
 - **Layout**: coluna de ações da tabela de usuários agora é `position: sticky` (sempre visível durante scroll horizontal em telas estreitas, com ajuste de padding/gap abaixo de 480px para caber os 4 botões); `env(safe-area-inset-bottom)` somado ao padding/posição inferior. Modal e toast tiveram o `z-index` revisado duas vezes: primeiro para ficar acima do dock global (`shared/dock.css`, 9000), depois — achado numa segunda auditoria — para também ficar acima da barra de marca sticky injetada por `shared/brand-header.js` (`#crm-brand-bar`, `z-index:9999`) e do menu de ambiente dela (`.crm-env-menu`, `z-index:10000`); sem esse segundo ajuste, a barra fixa no topo (presente em toda página do sistema) podia renderizar por cima do modal em telas baixas. Valores finais: modal `10500`, toast `10600`.
 - **Homologação funcional automatizada** (sem navegador — método [[feedback-homologacao-sem-browser]]): harness em jsdom carrega o **arquivo real** `usuarios-permissoes.js` sem nenhuma modificação, com `kernel.js`/`firebase.js`/`firebase-secondary.js` substituídos por mocks que capturam cada chamada e simulam os `onSnapshot` do Firestore. **43/43 casos aprovados**, cobrindo: boot/gate, criar/editar usuário, alterar perfil, ativar/desativar (incl. as duas guardas novas e a auto-ação), excluir (cancelar, senha administrativa errada, senha da conta obrigatória, sucesso, bloqueio do último admin), atualização automática da tabela via listener, pesquisa, filtro de período dos Logs, estado de carregamento do botão durante a operação assíncrona, tratamento de erro (Firestore rejeitado → toast, zero `unhandledRejection`), e exatamente 1 `onSnapshot` por coleção (sem listener duplicado). Não existe paginação nesta tela (não é uma pendência: nunca foi implementada, não há necessidade identificada com os volumes atuais).
-- **Continua pendente**: homologação **visual** em navegador real — layout (desktop/mobile, sticky/z-index/dock na prática, safe-area em device real) e o clique físico do fluxo completo. jsdom não renderiza CSS/layout, então isso não é verificável sem navegador; é passo manual do proprietário antes de autorizar a promoção `develop` → `main`.
 - Produção (`main`) não foi tocada — mudanças só em `develop`/`/dev`.
+
+### 6.10 Homologação em navegador real (2026-07-04)
+
+Diferente do §6.9 (jsdom + mocks), esta rodada usou **Chrome real** (`playwright-core` pilotando o binário já instalado no ambiente, headless) logado de verdade em `cellcityadmin@gmail.com` (conta de homologação da Fase 4) contra o Firestore/Auth reais do projeto `cellcity-crm-dev`, viewport desktop (1440×900) e mobile (390×844).
+
+**Aprovado, com evidência real (screenshots, `getComputedStyle`, `getBoundingClientRect`, `document.elementFromPoint`, não simulação):**
+- z-index real: modal `10500` e toast `10600` ficam acima da barra de marca `#crm-brand-bar` (`9999`) e do menu dela (`10000`) — inclusive confirmado por `elementFromPoint` que o próprio overlay (não a página por trás) é o elemento clicável na região onde a barra/dock ficariam.
+- Sticky real: `position:sticky` computado; após scroll horizontal total da tabela (mobile), a coluna de ações permanece dentro da área visível.
+- Safe-area real: `padding-bottom` computado do `.up-wrap` = 120px no mobile.
+- Dashboard, Perfis, Permissões, Logs renderizam corretamente com dados reais (18 usuários, 7 perfis).
+- Editar usuário, ativar/desativar (com reversão, testado em conta de teste pré-existente "Tecnico Homolog"), cancelar exclusão, bloqueio real de autoexclusão (toast real) — todos confirmados **com o Firestore de verdade**, sem mock.
+- Pesquisa filtra corretamente com dados reais.
+
+**Defeito real encontrado e corrigido nesta rodada:** coluna "Perfil" presa em "—" para as 18 contas reais — é o bug de condição de corrida já documentado desde a Fase 1 (§6.7), agora reproduzido com dados reais. Causa raiz confirmada (`renderUsuarios()` só era chamado pelo listener de `usuarios`), corrigido com 1 linha (chamar `renderUsuarios()` também no listener de `perfis_operacionais`), coberto por novo teste de regressão no harness jsdom (45/45 agora) e **revalidado no navegador real** após o deploy: as 18 linhas passaram a mostrar o nome do perfil corretamente. Commit `6bf116b` (+ `adaf849`, redisparo de deploy).
+
+**🔴 Defeito CRÍTICO encontrado, NÃO corrigido — exige autorização explícita:** a regra `allow create` de `usuarios/{uid}` em `CRM/firestore.rules` (linha ~236, escrita durante a correção do BL-006 em 2026-07-03) é:
+```
+allow create: if request.auth != null && request.auth.uid == uid;
+```
+Só permite que o próprio usuário crie o **seu** documento (auto-provisionamento no primeiro login) — **sem** a mesma exceção de admin/master_admin que as regras de `update` e `delete` têm logo abaixo. Na prática: **nenhum admin consegue mais criar um usuário novo por este módulo** — reproduzido ao vivo (`FirebaseError: Missing or insufficient permissions`, toast "Sem permissão para esta operação"). Como o `criarContaSecundaria()` roda ANTES do `setDoc()`, o teste chegou a criar uma conta de teste órfã no Firebase Auth do DEV (`qa.homolog.<timestamp>@teste.cellcity.invalid`) — **removida manualmente logo em seguida**, sem deixar rastro.
+
+Isso **não é uma regressão desta sessão** — é uma consequência do rewrite da rule no BL-006 (2026-07-03), que corrigiu a escalada de privilégio mas esqueceu de preservar a exceção de admin no `create` (só ficou em `update`/`delete`). E como aquela correção **foi promovida a produção** na mesma sessão (ver [[project-vuln-usuarios-escalada]]), **é provável que a criação de usuários esteja quebrada em produção também**, não só no DEV — não confirmado aqui (não testei contra produção), mas a regra publicada é a mesma.
+
+**Correção proposta (não aplicada — Firestore Rules exige apresentação prévia antes de aplicar, mesmo em DEV):**
+```
+allow create: if request.auth != null && (
+  request.auth.uid == uid ||
+  get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+);
+```
+Mesmo padrão já usado em `update`/`delete` logo abaixo. Não reabre o BL-006: aquele exploit era sobre um usuário comum **alterar o próprio doc já existente** (`update`), não sobre um admin **criar o doc de outro**. As duas operações são regidas por regras diferentes.
+
+**Achado à parte, fora do escopo, não corrigido:** o iframe de "fechamento automático do Caixa" do Dashboard carrega o contexto de **produção** mesmo dentro de `/dev`; como `/` e `/dev` compartilham `localStorage`, o `kernel.js` desse iframe (sem sessão no Auth de produção) roda `logout()` e apaga a flag `cc_kernel_v1` compartilhada — mesmo com a sessão DEV do admin válida. Contornado só no script de teste (reafirma a flag antes de navegar); a causa real pertence ao Dashboard/Caixa/kernel.js, fora do escopo desta entrega.
+
+**Veredito:** layout e a maior parte dos fluxos administrativos aprovados com evidência real de navegador. **Não posso declarar o módulo homologado** enquanto o defeito crítico de `allow create` não for corrigido — "Criar usuário" é o primeiro item do checklist de homologação e está quebrado em produção e em DEV. `develop` seguiu sem promoção a `main`.
 
 ---
 
@@ -418,6 +452,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-02 | Documentação: seção §9 (Ambientes e Publicação) adicionada ao TECHDOC; criados `GUIA_OPERACAO_AMBIENTES.md`, `GUIA_ROLLBACK.md` e `GUIA_MANUTENCAO.md`; `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md` e `plans/SEPARACAO_AMBIENTES_DEV_PROD.md` atualizados; inconsistências entre documentos eliminadas. Sem alteração de código. |
 | 2026-07-04 | Usuários e Permissões: seed de perfis/contas removido, coluna "Últimos acessos" removida, exclusão de usuário concluída (remove Firestore + Auth secundário, senha da conta agora obrigatória, bloqueia autoexclusão e exclusão do último admin), coluna de ações da tabela sticky, modal/toast acima do dock global, `env(safe-area-inset-bottom)`, helper `comCarregamento` cobre loading/erro em todos os botões de escrita. Publicado só em `/dev` (branch `develop`); produção (`main`) intocada. Homologação em navegador real pendente. Ver §6.9. |
 | 2026-07-04 | Usuários e Permissões (sprint final): guarda do último administrador estendida à desativação (mesma função de exclusão, sem duplicar lógica); corrigido z-index do modal/toast vs. `#crm-brand-bar` (`shared/brand-header.js`, 9999/10000) — achado numa segunda auditoria de interface; ajuste de responsividade da coluna de ações abaixo de 480px. Homologação funcional automatizada em jsdom (código real + mocks) — 43/43 casos aprovados. Homologação visual em navegador real (não verificável sem navegador) segue como único item pendente antes da promoção `develop`→`main`. Ver §6.9. |
+| 2026-07-04 | Usuários e Permissões — homologação em navegador real (Chrome headless, login/dados reais do DEV): confirmado com evidência real z-index, sticky, safe-area e fluxos de editar/ativar/desativar/cancelar/autoexclusão. Corrigida coluna "Perfil" presa em "—" (bug conhecido desde a Fase 1, reproduzido com dados reais, commit `6bf116b`). **Achado crítico NÃO corrigido**: `allow create` de `usuarios/{uid}` em `CRM/firestore.rules` não tem exceção de admin (só `update`/`delete` têm) — nenhum admin consegue criar usuário novo, provavelmente também quebrado em produção desde o rewrite do BL-006 (2026-07-03). Diff proposto apresentado, aguardando autorização explícita antes de aplicar (Firestore Rules = exceção de segurança). Módulo NÃO homologado enquanto isso não for resolvido. Ver §6.10. |
 
 ---
 
