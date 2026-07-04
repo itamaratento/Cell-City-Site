@@ -227,8 +227,8 @@ Homologado em 2026-07-01 (checklist completo: segurança, CRUD de usuários, CRU
 |---|---|
 | `pages/usuarios-permissoes/index.html` | Página do módulo: gate de bloqueio (`#up-bloqueado`), 5 abas (Dashboard/Usuários/Perfis/Permissões/Logs), modal genérico, toast |
 | `pages/usuarios-permissoes/usuarios-permissoes.css` | Visual próprio (prefixo de classes `up-`) |
-| `pages/usuarios-permissoes/usuarios-permissoes.js` | Toda a lógica: CRUD de usuários/perfis, matriz de permissões, auditoria, seed |
-| `pages/usuarios-permissoes/firebase-secondary.js` | Instância Firebase App **separada** (`usuarios-permissoes-secondary`) só para criar contas/redefinir senha sem afetar a sessão do admin logado |
+| `pages/usuarios-permissoes/usuarios-permissoes.js` | Toda a lógica: CRUD de usuários/perfis, matriz de permissões, auditoria, exclusão de usuário |
+| `pages/usuarios-permissoes/firebase-secondary.js` | Instância Firebase App **separada** (`usuarios-permissoes-secondary`) só para criar contas/redefinir senha/excluir conta sem afetar a sessão do admin logado |
 
 O módulo **não importa** `shared/tenant.js` nem altera `scripts/kernel.js`, `scripts/firebase.js` ou `login.html` — usa apenas as APIs públicas já existentes do kernel (`initModulo`/`temPermissao`/`getUid`/`getNome`). Está listado como módulo oficial em `shared/central-modulos.js` (`TODOS_MODULOS`) e `shared/sidebar.js` (`ITEMS`), com o mesmo tratamento visual/de navegação dos demais módulos — não é uma página acessível apenas por URL direta.
 
@@ -322,6 +322,19 @@ Todas as 9 seções do checklist de homologação foram executadas e aprovadas (
 4. Evoluir o gerenciamento de senha usando Cloud Functions/Admin SDK, quando houver backend disponível.
 5. Atualizar permissões em tempo real sem exigir recarregar a página.
 
+### 6.9 Conclusão da tela para produção (2026-07-04)
+
+Fechamento dos itens deixados em aberto pela Fase 1, a pedido do proprietário, na branch `develop` (commits `3459486`/`bed1793`/`d11821b`, publicados só em `/dev`):
+
+- **Seed removido**: os 7 perfis padrão e as 8 contas seed (§6.3/6.8) deixaram de ter botão/rotina de criação automática na UI — cadastro de perfis e usuários passa a ser sempre manual, pelo próprio módulo. Coluna "Últimos acessos" do Dashboard também removida (item nunca implementado, §6.7).
+- **Exclusão de usuário** (nova, `abrirExcluirUsuario()`): remove o documento em `usuarios/{uid}` **e** a conta no Firebase Auth secundário — a senha atual da conta-alvo passou a ser **obrigatória** (antes era opcional/"mantém login"), pela mesma limitação de falta de Admin SDK do §6.6: o client SDK só apaga o usuário autenticado na instância corrente, então é preciso autenticar como o próprio alvo antes de excluí-lo. Duas guardas novas, client-side (não substituem as Firestore Rules — reforço de UX):
+  - Bloqueia autoexclusão (`u.id === getUid()`).
+  - Bloqueia excluir o último administrador do sistema — definido como o último usuário com `perfil` (kernel) `admin`/`master_admin` entre os geridos por este módulo (`ehAdministrador()`); contas legadas sem `perfil_operacional_id` não entram nessa contagem (fora do array `usuarios[]` por construção, §6.3), o que torna o bloqueio mais restritivo, nunca menos seguro.
+- **Robustez**: helper `comCarregamento(btn, texto, fn)` centraliza loading (desabilita botão + texto de progresso), trava de duplo clique e tratamento de erro (`console.error` + toast) em todo botão de escrita do módulo — e corrigiu 3 funções (`toggleStatusUsuario`, `toggleAtivoPerfil`, `salvarMatrizPerfil`) que antes não tinham nenhum tratamento de erro (uma `Promise` rejeitada nelas passava em silêncio, sem feedback ao usuário).
+- **Layout**: coluna de ações da tabela de usuários agora é `position: sticky` (sempre visível durante scroll horizontal em telas estreitas); modal e toast passaram para `z-index` acima do dock global (`shared/dock.css`, 9000) — antes o dock (que também migra para uma faixa horizontal no rodapé em telas ≤900px) podia renderizar por cima de um modal aberto no mobile; padding/posição inferior passam a somar `env(safe-area-inset-bottom)`.
+- **Testado**: `node --check` nos 2 arquivos JS alterados; lógica das duas guardas de exclusão (próprio/último admin) validada isoladamente em Node (cópia verbatim das funções, 4 cenários, todos passando) — sem jsdom/navegador nesta entrega. **Homologação visual em navegador real (layout mobile/desktop, fluxo de exclusão ponta a ponta) continua pendente**, é passo manual do proprietário.
+- Produção (`main`) não foi tocada — mudanças só em `develop`/`/dev`.
+
 ---
 
 ## 7. Fase 2 — Integração gradual do RBAC
@@ -399,6 +412,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-02 | Fase 2, Sprint 3: RBAC integrado ao Estoque (`estoque.js`, boot reestruturado) e ao Caixa (`caixa.js`) — visualizar/criar/editar/excluir na UI; guarda de iframe no gate do Caixa (evita loop com o iframe de fechamento do Dashboard); fluxo venda→baixa de estoque preservado sem gate (testado com estoque 100% negado); `aprovar` do Caixa sem efeito por decisão formal (fechamento inexistente no código vivo). Verificação automatizada 12/12. Ver §7.3 — pendente homologação manual e aprovação. |
 | 2026-07-01 | Arquitetura de ambientes DEV/PROD (frontend): workflow `.github/workflows/deploy-pages.yml` publica `main` na raiz e `develop` em `/dev` num único deployment do GitHub Pages; indicador/seletor de ambiente (pill 🟢 MAIN / 🟠 DEVELOP) no `shared/brand-header.js`, detecção pela URL (`detectEnv()`), navegação bidirecional entre ambientes. Ver §9. *(Registro retroativo adicionado em 2026-07-02.)* |
 | 2026-07-02 | Documentação: seção §9 (Ambientes e Publicação) adicionada ao TECHDOC; criados `GUIA_OPERACAO_AMBIENTES.md`, `GUIA_ROLLBACK.md` e `GUIA_MANUTENCAO.md`; `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md` e `plans/SEPARACAO_AMBIENTES_DEV_PROD.md` atualizados; inconsistências entre documentos eliminadas. Sem alteração de código. |
+| 2026-07-04 | Usuários e Permissões: seed de perfis/contas removido, coluna "Últimos acessos" removida, exclusão de usuário concluída (remove Firestore + Auth secundário, senha da conta agora obrigatória, bloqueia autoexclusão e exclusão do último admin), coluna de ações da tabela sticky, modal/toast acima do dock global, `env(safe-area-inset-bottom)`, helper `comCarregamento` cobre loading/erro em todos os botões de escrita. Publicado só em `/dev` (branch `develop`); produção (`main`) intocada. Homologação em navegador real pendente. Ver §6.9. |
 
 ---
 
