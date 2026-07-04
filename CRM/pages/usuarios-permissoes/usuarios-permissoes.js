@@ -233,6 +233,13 @@ function iniciarListeners() {
     perfis = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     renderPerfis();
     renderPermissoesSelect();
+    // A coluna "Perfil" da aba Usuários é resolvida a partir de `perfis` (join
+    // em memória, ver renderUsuarios). Se o snapshot de perfis chegar DEPOIS
+    // do de usuarios (comum — são onSnapshot independentes), a tabela já
+    // desenhada ficava presa em "—" para sempre, porque só o listener de
+    // usuarios chamava renderUsuarios(). Bug conhecido desde a Fase 1
+    // (TECHDOC §6.7), reproduzido com dados reais na homologação de 2026-07-04.
+    renderUsuarios();
     renderDashboard();
   }, (err) => console.error('[usuarios-permissoes] listener perfis:', err));
 
