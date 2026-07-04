@@ -474,6 +474,41 @@ Aplicado e testado **somente em `cellcity-crm-dev`** (rules via `firebase deploy
 
 **Veredito final:** a vulnerabilidade de escalada de privilégio administrativo via autoprovisionamento está **eliminada e comprovada** — mesma prova de conceito original, agora falha como esperado; nenhuma regressão nos fluxos administrativos. **Promoção `develop`→`main` segue bloqueada** aguardando autorização explícita e separada do dono (conforme instrução), incluindo a decisão sobre o achado correlato acima.
 
+### 6.14 🟢 P0 de segurança (parte 2) — conta "pendente" sem acesso a dados reais (2026-07-04)
+
+Continuação do §6.13: o "achado correlato" registrado ali (Dashboard mostra todos os módulos a uma conta pendente) foi investigado a fundo e **confirmado como risco efetivo de dados, não só exposição visual** — autorizado a corrigir pelo dono.
+
+**Auditoria completa (ETAPA 1):**
+- Só **1 de 33 módulos** (`usuarios-permissoes`) chama `temPermissao()` (gate no kernel).
+- Só **5 módulos** (`dashboard`, `crm-comercial`, `caixa`, `acaodasemana`, `estoque`) usam `shared/permissoes.js` — fail-open por design quando `perfil_operacional_id` está ausente.
+- **29 dos 33 módulos não têm nenhum controle de acesso no código** — alguns (`clientes.js`, `financeiro.js`) nem importam `kernel.js`. A segurança real depende só das Firestore Rules.
+- Rules: **~45 coleções de negócio** (`clientes`, `os`, `caixa_lancamentos`, `estoque_produtos`, `financeiro_*`, `produtos`, `agenda`, etc.) tinham só `allow read, write: if request.auth != null;` — sem checar `perfil`.
+
+**Validação real (ETAPA 2)**, conta pendente de teste (criada e removida ao final): confirmado por chamada direta ao SDK (não só UI) — **leitura E escrita bem-sucedidas** em `caixa_lancamentos`, `estoque_produtos`, `clientes`, `catalogo_produtos`, `financeiro_receber` e `os`. Risco de dados real, comprovado.
+
+**Decisão de escopo:** dado o custo real (Firestore Rules `get()` custa 1 leitura extra por operação nas coleções que passam a chamá-lo, e o projeto já teve estouro de cota do Spark antes — [[project-firestore-cota-spark]]), apresentei a análise ao dono antes de aplicar em massa. **Decisão do dono: aplicar em todas as ~45 coleções**, aceitando o custo conscientemente.
+
+**Correção aplicada (ETAPA 3)** — commit `2edd4ba`. Nova função em `CRM/firestore.rules`:
+```
+function temAcessoLiberado() {
+  return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil != 'pendente';
+}
+```
+Falha **fechado** (nega) se o doc `usuarios/{uid}` do próprio requisitante nem existir ainda — fecha a brecha de alguém nunca deixar o `kernel.js` rodar para escapar da checagem. Aplicada a `&& temAcessoLiberado()` em:
+- 3 coleções com endpoint público (`os`, `config`, `pre_os`): só a parte **autenticada** (`list/create/update/delete` ou `list/write` ou `read/update/delete`) ganhou a checagem — o `get`/`create` público (garantia.html, abrir-atendimento.html) ficou **intocado**, confirmado por diff.
+- **45 coleções restantes** com o padrão idêntico `allow read, write: if request.auth != null;`: substituição mecânica via `sed`, mesma condição em todas — `git diff --numstat` confirma só a linha da condição mudou em cada bloco, nada mais.
+- **Não alteradas** (já corretamente restritas ou fora do escopo): `favoritos_usuarios`, `central_alertas_status`, `usuarios/{uid}/preferencias`, `_diagnostico_temp` (já só o próprio uid); `usuarios/{uid}`, `perfis_operacionais` write, `auditoria_usuarios_permissoes` (já geridas por perfil); `orders`/`clients` (já `if false`).
+
+Aplicado e testado **somente em `cellcity-crm-dev`** — verificado via API que produção continua no ruleset antigo (`490b0139`).
+
+**Regressão (ETAPA 4)** — 17/17, Firestore/Auth reais, contas de teste removidas ao final:
+- ✅ Conta **pendente**: `permission-denied` em leitura E escrita nas 6 coleções antes vulneráveis (12/12).
+- ✅ **Sem regressão** em nenhum perfil legítimo — `atendente`, `tecnico`, `gerente`, `admin` (contas reais da Fase 4) e `master_admin` (descartável, criada só para este teste): leitura e escrita normais nas mesmas 6 coleções (5/5).
+- O módulo Usuários e Permissões não foi afetado por construção — suas 3 coleções próprias (`usuarios`, `perfis_operacionais`, `auditoria_usuarios_permissoes`) já tinham regra por perfil antes desta sprint e não entraram na varredura.
+
+**Veredito final:** contas com perfil `pendente` não têm mais acesso a nenhuma funcionalidade ou dado que exija autorização — nem visual (já fechado no §6.13, módulo Usuários e Permissões) nem de dados (fechado agora, ~45 coleções de negócio). Custo assumido: +1 leitura por operação nessas coleções — monitorar cota do DEV/produção se e quando isso for promovido. **Promoção `develop`→`main` continua bloqueada**, aguardando autorização explícita do dono.
+
 ---
 
 ## 7. Fase 2 — Integração gradual do RBAC
@@ -557,6 +592,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-04 | Usuários e Permissões — `allow create` de `usuarios/{uid}` corrigido (commit `e5dab0a`), autorizado e deployado **somente em `cellcity-crm-dev`** (produção confirmada intocada via API). Homologado com Firestore/Auth reais: 14/14 positivo (criar/editar/alterar perfil/ativar/desativar/excluir como admin E como master_admin) + 2/2 negativo (usuário comum não cria doc de outro; controle positivo no próprio doc). Contas de teste descartáveis, todas removidas. **Módulo Usuários e Permissões homologado.** `develop` (`e5dab0a`) sem merge/tag/promoção — aguardando autorização para `develop`→`main`. Ver §6.11. |
 | 2026-07-04 | 🔴 Auditoria pré-promoção encontrou vulnerabilidade CRÍTICA real e confirmada por prova de conceito completa: cadastro público (REST, só com a `apiKey` já pública) + autoprovisionamento em `usuarios/{uid}` sem validação de conteúdo = qualquer visitante externo vira `master_admin`. Agravado por `kernel.js::_buildContext()` (linha 90) que já grava `perfil:'admin'` por padrão em qualquer conta nova, mesmo sem exploit manual. Existe também em produção (mesma regra/mesmo kernel.js publicados). **Promoção `develop`→`main` INTERROMPIDA** conforme instrução — nada mesclado, publicado ou taggeado. Prova de conceito limpa (contas de teste removidas). Correção proposta (rule + kernel.js) documentada, não aplicada — exige autorização explícita separada por tocar Autenticação. Ver §6.12. |
 | 2026-07-04 | 🟢 P0 de segurança corrigido (commit `b9c97a8`, só `cellcity-crm-dev`): `kernel.js::_buildContext()` passa a gravar `perfil:'pendente'` (fora da hierarquia de `temPermissao()`) em vez de `'admin'` para conta nova; `firestore.rules` só aceita autoprovisionamento com `perfil` exatamente `'pendente'`. Prova de conceito original repetida — agora nega com `403`. 15/15 regressão (criar/editar/alterar perfil/ativar/desativar/excluir como admin e master_admin). Achado correlato registrado, fora do escopo: Dashboard mostra todos os módulos a uma conta "pendente" (RBAC novo é fail-open por design quando não migrado) — mesma classe do risco já rastreado em [[project-auditoria-seguranca-20260703]], não corrigido hoje. Produção segue intocada. **Promoção `develop`→`main` continua bloqueada**, aguardando autorização explícita separada. Ver §6.13. |
+| 2026-07-04 | 🟢 P0 de segurança parte 2 (commit `2edd4ba`, só `cellcity-crm-dev`): confirmado que o achado correlato do dia era risco real de dados — conta pendente lia E escrevia em clientes/os/caixa/estoque/catálogo/financeiro via SDK direto. Nova função `temAcessoLiberado()` aplicada a ~45 coleções de negócio (troca mecânica via sed da mesma condição, endpoints públicos de os/config/pre_os preservados). Custo (+1 leitura por operação) aceito conscientemente pelo dono após eu apresentar a análise. 17/17 regressão: pendente bloqueado (12/12), zero regressão em atendente/tecnico/gerente/admin/master_admin (5/5). Produção intocada. **Promoção `develop`→`main` continua bloqueada.** Ver §6.14. |
 
 ---
 
