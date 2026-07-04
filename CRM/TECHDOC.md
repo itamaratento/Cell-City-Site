@@ -393,6 +393,40 @@ Deploy via `firebase deploy --only firestore:rules --project dev` (com `GOOGLE_A
 
 **Veredito final:** `criar usuário` — o bloqueador que impedia a homologação — está corrigido e comprovado no DEV, para admin e master_admin, com testes negativos passando. Módulo **Usuários e Permissões homologado**. `develop` (`e5dab0a`) segue sem merge, sem tag, sem promoção a `main` — produção (`cellcity-crm`/`main`) confirmada intocada em código e em Firestore Rules.
 
+### 6.12 🔴 Auditoria pré-promoção — vulnerabilidade CRÍTICA confirmada, promoção INTERROMPIDA (2026-07-04)
+
+Auditoria de segurança pedida pelo dono antes da promoção `develop`→`main` (revisar `allow create` para confirmar que autoprovisionamento não permite privilégio indevido). **Resultado: risco real confirmado empiricamente — promoção interrompida, nada mesclado/publicado/taggeado.**
+
+**Prova de conceito completa, ponta a ponta, sem NENHUM acesso prévio ao sistema:**
+1. `POST identitytoolkit.googleapis.com/v1/accounts:signUp` com a `apiKey` pública (já exposta em `shared/env-config.js`, publicada no site) — cria uma conta nova, sem precisar de convite/admin. Confirmado contra `cellcity-crm-dev`.
+2. Com o `idToken` da própria resposta, `PATCH firestore.googleapis.com/.../usuarios/{uid}` (o mesmo uid do passo 1) gravando `perfil: 'master_admin'`. **Sucesso — o Firestore aceitou.**
+3. Doc confirmado gravado via leitura de volta. Removido manualmente (Firestore + Auth) logo em seguida.
+
+**Causa raiz — dois problemas empilhados, não só a regra:**
+1. **`CRM/firestore.rules`, `allow create` de `usuarios/{uid}`**: a branch de autoprovisionamento (`request.auth.uid == uid`) não valida o CONTEÚDO do documento sendo criado — aceita qualquer `perfil`, incluindo `master_admin`. Isso já existia assim desde o próprio BL-006 (2026-07-03) — minha correção de hoje (§6.11) só adicionou a exceção de admin, não mexeu nessa branch de autoprovisionamento.
+2. **`CRM/scripts/kernel.js::_buildContext()` (linha 90)**: `let perfil = 'admin';` — **o valor PADRÃO para qualquer conta nova sem doc prévio é `'admin'`**, e a própria função grava esse padrão no Firestore no primeiro acesso (linha 103-109). Ou seja: mesmo sem o PATCH manual do passo 2 acima, um invasor que só fizesse o signup (passo 1) e depois logasse pela **tela normal de login** já viraria `admin` automaticamente — o passo 2 só demonstra que dá pra pular direto pra `master_admin`. Esse comportamento já estava anotado como observação em §6.7 desde a Fase 1, mas nunca foi tratado como o risco crítico que é.
+
+**Por que o vetor de Anonymous Auth NÃO é o caminho aqui** (só para registro): `kernel.js` linha 63 (`if (user && !user.isAnonymous)`) nunca constrói contexto para sessão anônima — esse vetor específico está bloqueado pela própria aplicação. O vetor real é o **cadastro público de e-mail/senha**, que não tem nenhuma restrição (sem allow-list, sem verificação, sem Cloud Function/App Check) — qualquer pessoa na internet, com a `apiKey` que já está pública no HTML/JS do site, consegue se cadastrar.
+
+**Impacto:** comprometimento total do sistema — qualquer visitante externo pode se tornar `master_admin` (ou simplesmente `admin`, sem nem precisar do PATCH manual) e acessar/alterar qualquer dado do CRM, incluindo clientes, OS, financeiro e o próprio módulo de Usuários e Permissões. **Existe hoje em produção também** — a regra de `create` de produção (ruleset `490b0139`) tem a mesma branch de autoprovisionamento sem validação, e o `kernel.js` publicado em produção é o mesmo arquivo. Não testei diretamente contra produção (risco desproporcional para uma prova que já é conclusiva via DEV com o mesmo código).
+
+**Correção proposta (NÃO aplicada — fora do escopo autorizado hoje, que era só revisar; e span duas áreas sensíveis: Firestore Rules e `kernel.js`/Autenticação):**
+1. `CRM/firestore.rules` — restringir a branch de autoprovisionamento do `create` para não aceitar `perfil` privilegiado:
+   ```
+   allow create: if request.auth != null && (
+     (request.auth.uid == uid &&
+      request.resource.data.perfil in ['atendente', null] &&
+      request.resource.data.get('perfil_operacional_id', null) == null) ||
+     get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+   );
+   ```
+   (ajustar a lista de valores permitidos conforme decisão de negócio — o ponto é nunca aceitar `admin`/`master_admin`/`gerente` no autoprovisionamento).
+2. `CRM/scripts/kernel.js::_buildContext()` — trocar o padrão `let perfil = 'admin'` (linha 90) para o nível mínimo (`'atendente'`) ou para um estado explícito de "sem acesso" que force um admin a liberar manualmente. **Esta mudança tem prioridade sobre a da rule** — mesmo com a rule corrigida, se o app continuar tentando gravar `'admin'` por padrão, o próprio `setDoc` do primeiro login passaria a ser negado pela rule corrigida, quebrando o login de contas legítimas novas; as duas mudanças precisam ser decididas e testadas juntas.
+
+**Não implementado nesta sessão** — precisa de autorização explícita separada (toca `kernel.js`, arquivo de Autenticação) e de uma decisão de negócio (qual o perfil padrão seguro para conta nova, e se cadastro público deveria sequer ser possível).
+
+**Estado da promoção:** **interrompida**, conforme instrução do dono. `develop` permanece em `e5dab0a`+documentação, sem merge para `main`, sem deploy de rules em produção, sem tag. Nenhuma alteração de código/regra aplicada nesta auditoria — só investigação, prova de conceito controlada (limpa integralmente) e este relatório.
+
 ---
 
 ## 7. Fase 2 — Integração gradual do RBAC
@@ -474,6 +508,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-04 | Usuários e Permissões (sprint final): guarda do último administrador estendida à desativação (mesma função de exclusão, sem duplicar lógica); corrigido z-index do modal/toast vs. `#crm-brand-bar` (`shared/brand-header.js`, 9999/10000) — achado numa segunda auditoria de interface; ajuste de responsividade da coluna de ações abaixo de 480px. Homologação funcional automatizada em jsdom (código real + mocks) — 43/43 casos aprovados. Homologação visual em navegador real (não verificável sem navegador) segue como único item pendente antes da promoção `develop`→`main`. Ver §6.9. |
 | 2026-07-04 | Usuários e Permissões — homologação em navegador real (Chrome headless, login/dados reais do DEV): confirmado com evidência real z-index, sticky, safe-area e fluxos de editar/ativar/desativar/cancelar/autoexclusão. Corrigida coluna "Perfil" presa em "—" (bug conhecido desde a Fase 1, reproduzido com dados reais, commit `6bf116b`). **Achado crítico NÃO corrigido**: `allow create` de `usuarios/{uid}` em `CRM/firestore.rules` não tem exceção de admin (só `update`/`delete` têm) — nenhum admin consegue criar usuário novo, provavelmente também quebrado em produção desde o rewrite do BL-006 (2026-07-03). Diff proposto apresentado, aguardando autorização explícita antes de aplicar (Firestore Rules = exceção de segurança). Módulo NÃO homologado enquanto isso não for resolvido. Ver §6.10. |
 | 2026-07-04 | Usuários e Permissões — `allow create` de `usuarios/{uid}` corrigido (commit `e5dab0a`), autorizado e deployado **somente em `cellcity-crm-dev`** (produção confirmada intocada via API). Homologado com Firestore/Auth reais: 14/14 positivo (criar/editar/alterar perfil/ativar/desativar/excluir como admin E como master_admin) + 2/2 negativo (usuário comum não cria doc de outro; controle positivo no próprio doc). Contas de teste descartáveis, todas removidas. **Módulo Usuários e Permissões homologado.** `develop` (`e5dab0a`) sem merge/tag/promoção — aguardando autorização para `develop`→`main`. Ver §6.11. |
+| 2026-07-04 | 🔴 Auditoria pré-promoção encontrou vulnerabilidade CRÍTICA real e confirmada por prova de conceito completa: cadastro público (REST, só com a `apiKey` já pública) + autoprovisionamento em `usuarios/{uid}` sem validação de conteúdo = qualquer visitante externo vira `master_admin`. Agravado por `kernel.js::_buildContext()` (linha 90) que já grava `perfil:'admin'` por padrão em qualquer conta nova, mesmo sem exploit manual. Existe também em produção (mesma regra/mesmo kernel.js publicados). **Promoção `develop`→`main` INTERROMPIDA** conforme instrução — nada mesclado, publicado ou taggeado. Prova de conceito limpa (contas de teste removidas). Correção proposta (rule + kernel.js) documentada, não aplicada — exige autorização explícita separada por tocar Autenticação. Ver §6.12. |
 
 ---
 
