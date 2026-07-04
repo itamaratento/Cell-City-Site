@@ -762,3 +762,56 @@ Checklist GO/NO-GO executado antes da promoção (sem nenhuma alteração de có
 - Logs do Firebase/GCP (`gcloud logging read`, últimos 15 min): nenhum erro de servidor retornado — esperado, já que negações de rule não geram log de erro no lado do servidor por padrão.
 
 **Estado final:** `main` == `develop` == `bfbc3d6`, tag `v2026.07.04-1137`. Produção com o código e as rules corrigidas, validado com dados reais. Nenhuma conta de teste restante (produção: 14 contas reais, igual a antes).
+
+**Efeito colateral para o sistema de backup:** esta promoção incluiu `.github/workflows/backup-weekly.yml` — como o gatilho `schedule` do GitHub Actions só é lido a partir da branch padrão (ver §10.3), a partir desta promoção o backup automático semanal **passou a estar ativo de verdade** (workflow confirmado como `active` na API de Actions). A pendência registrada em §10.3/§10.6 ("aguardando promoção") está resolvida.
+
+## 13. Versionamento Semântico, `subir-ok` e Rollback de Produção
+
+> Implementado em 2026-07-04, a pedido do dono, para tornar a promoção `develop→main` e a reversão de produção mais seguras e previsíveis. Script: [`scripts/release/rollback.sh`](../scripts/release/rollback.sh); comando de promoção continua sendo `subir-ok` (`~/.bashrc`).
+
+### 13.1 Versionamento semântico
+
+Toda promoção `develop→main` via `subir-ok` agora gera obrigatoriamente uma tag `vMAJOR.MINOR.PATCH` (antes era uma tag opcional no formato `vAAAA.MM.DD-HHMM`). `subir-ok` lê a última tag `v[0-9]*.[0-9]*.[0-9]*` existente (`git tag -l ... --sort=-v:refname`), pergunta o tipo de incremento (1=patch, padrão / 2=minor / 3=major) e cria a próxima versão. Se nenhuma tag semântica existir ainda, a primeira é `v1.0.0`. Essas tags são a lista de releases que o comando `rollback` oferece para reverter.
+
+### 13.2 `subir-ok` — reforços de segurança
+
+Além do fluxo já existente (checkout `develop` limpa, sincronizar com origin, merge `--ff-only` em `main`), `subir-ok` agora:
+1. Exige confirmação explícita de que o checklist obrigatório do CLAUDE.md §5 (Login, Dashboard, CRM, OS, Caixa, Estoque, Financeiro, Portal do Cliente) foi validado — não há suíte de testes automatizados neste projeto (site estático, sem build step), então este é o gate real existente, formalizado como pergunta obrigatória em vez de apenas uma regra escrita.
+2. Roda `backup` automaticamente (com a descrição `"pre-promocao develop->main <data/hora>"`) antes de tocar em `main` — se o backup falhar, a promoção é cancelada.
+3. Publica a tag da release com `git push origin main "$tagname"` — **nunca `--follow-tags`**. Motivo: em 2026-07-04 uma promoção real usando a versão antiga (`--follow-tags`) publicou sem querer, em `origin` do Cell-City-Site, 3 tags internas do sistema de backup que só deveriam existir em `Cell-City-Backup` (`auto-slot-A` e duas `manual-*` — ver §12). Não foi destrutivo, mas contraria o design do §10.4; corrigido para não se repetir. **Pendência:** as 3 tags já publicadas em `origin` continuam lá — remoção é uma decisão do dono, não foi feita automaticamente.
+
+### 13.3 `rollback` — reversão de produção sem reescrever histórico
+
+Comando (`~/.bashrc`, delega para `scripts/release/rollback.sh`):
+
+```bash
+rollback
+```
+
+**Modelo de segurança (decisão explícita do dono em 2026-07-04):** ao contrário de um rollback clássico (`git reset --hard` + `push --force`), este comando **nunca reescreve histórico e nunca faz force-push**. Ele:
+1. Lista as tags `vX.Y.Z` existentes (mais recente primeiro), marcando qual é a versão atual de produção.
+2. Pede confirmação da versão escolhida.
+3. Roda `backup` automaticamente antes de qualquer alteração em `main`.
+4. Restaura a árvore de arquivos da versão escolhida com `git read-tree --reset -u <tag>` (substitui exatamente o conteúdo — adiciona o que faltar, remove o que não existia naquela versão) e cria um **commit novo** em `main` com esse conteúdo. `main` nunca é rebobinada; o histórico só cresce.
+5. Push normal (`git push origin main`, sem `--force`). Se o conteúdo já for idêntico ao commit atual, encerra sem commitar nada.
+6. Oferece marcar o rollback com uma tag de rastreio opcional (`rollback-<data_hora>-para-<versão>`).
+7. Valida no final: `origin/main` aponta para o commit esperado, `git fsck` sem erros, `develop` intocada, branch original do terminal restaurada.
+
+Nunca apaga tags/versões existentes, nunca cria merge, nunca faz deploy além do push normal em `main` (que já dispara o `deploy-pages.yml` existente, do mesmo jeito que qualquer push em `main`).
+
+### 13.4 Testes executados (2026-07-04)
+
+Executados contra um repositório Git isolado de teste (bare + clone, com 3 releases simuladas `v1.0.0`/`v1.1.0`/`v1.2.0` e um stub no lugar de `backup-manual.sh`) — **nunca contra a `main` real do Cell-City-Site**, para não afetar produção durante o teste da própria ferramenta de rollback:
+
+| Teste | Resultado |
+|---|---|
+| Listagem de versões com marcação da versão atual | ✅ sucesso |
+| Selecionar a versão já vigente | ✅ encerra sem ação ("já é a versão atual") |
+| Cancelamento na confirmação | ✅ nada alterado |
+| Rollback real para uma versão anterior (arquivos adicionados **e removidos** corretamente) | ✅ árvore final idêntica à da tag alvo |
+| Histórico e tags preservados após o rollback | ✅ todos os commits/tags originais continuam visíveis (`git log --all`) |
+| `git fsck` pós-rollback | ✅ sem erros |
+| Push sem `--force` | ✅ fast-forward normal, aceito pelo remoto |
+| Aritmética de versionamento semântico (patch/minor/major, primeira versão) | ✅ testada isoladamente, valores corretos |
+
+> A promoção real de `subir-ok` (merge `develop→main`) não foi re-executada como teste nesta etapa — ela já é, por natureza, uma ação real de produção; só é exercida quando o dono decide promover de verdade (o que já aconteceu de forma independente em 2026-07-04, ver §12, usando a versão anterior do comando).
