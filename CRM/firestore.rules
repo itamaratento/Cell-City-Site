@@ -233,7 +233,21 @@ service cloud.firestore {
       // escrita total; o próprio dono só pode escrever campos NÃO
       // sensíveis — perfil, perfil_operacional_id, empresa_id e status
       // ficam congelados fora de admin.
-      allow create: if request.auth != null && request.auth.uid == uid;
+      //
+      // Homologação 2026-07-04 (módulo Usuários e Permissões): o rewrite
+      // acima corrigiu o `update`/`delete` com a exceção de admin, mas
+      // esqueceu o `create` — nenhum admin conseguia mais criar um usuário
+      // NOVO (uid diferente do próprio), porque só request.auth.uid==uid
+      // era aceito. Restaurada a mesma exceção de admin/master_admin já
+      // usada em update/delete logo abaixo. Não reabre o BL-006: aquele
+      // exploit era sobre um usuário comum ALTERAR o próprio doc já
+      // existente (update); aqui é sobre um admin CRIAR o doc de outro —
+      // operações e regras distintas. Um usuário comum continua podendo
+      // criar só o próprio doc (auto-provisionamento), nunca o de outro.
+      allow create: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+      );
 
       allow update: if request.auth != null && (
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'] ||
