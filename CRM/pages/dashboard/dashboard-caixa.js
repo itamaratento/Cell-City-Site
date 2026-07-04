@@ -23,7 +23,13 @@ export const dashboardCaixaMixin = {
     console.log('🔄 [Dashboard] Disparando fechamento automático do Caixa em background...');
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'display:none;width:0;height:0;position:absolute;';
-    iframe.src = '/CRM/pages/caixa/index.html';
+    // H-009 (homologação 2026-07-04): era caminho absoluto fixo, sem
+    // prefixo /dev — o iframe sempre carregava a Caixa de PRODUÇÃO, mesmo
+    // com o Dashboard aberto em /dev (env-config.js decide o ambiente pelo
+    // próprio location.pathname do iframe, que ignorava o /dev do pai).
+    // Mesmo critério de detecção já usado em brand-header.js/kernel.js/
+    // login.html/config.js/H-004/H-005/H-006.
+    iframe.src = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/caixa/index.html';
     document.body.appendChild(iframe);
 
     // Remove após 40s (tempo suficiente para o orquestrador concluir)

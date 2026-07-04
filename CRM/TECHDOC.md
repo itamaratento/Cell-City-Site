@@ -936,3 +936,46 @@ Homologação em `/dev` feita pelo dono em navegador real (console + navegação
 **Decisão do dono:** promover a refatoração agora (não é afetada pelo bug do iframe, que é pré-existente e independente) e tratar a correção do iframe como item separado depois.
 
 **Promoção:** `develop` → `main` via **squash merge** (não fast-forward/merge commit) — descoberto nesta promoção que o repositório tem uma regra do GitHub (`main` não pode conter merge commits), então o merge normal foi rejeitado e refeito como squash (`git merge --squash` + commit único). Histórico completo das 15 etapas preservado em `develop` e na branch `refactor-dashboard-modular`; `main` recebeu 1 commit equivalente. Conteúdo de `develop` e `main` confirmado idêntico (`git diff` vazio) apesar da forma do histórico ter divergido. Tag `v2026.07.04-1849` criada e publicada. Backup manual executado antes de tocar em `main` (padrão `subir-ok`). Deploy de produção confirmado com sucesso.
+
+## 16. H-009 — Iframe do fechamento automático do Caixa sem prefixo `/dev` (2026-07-04)
+
+Correção do bug registrado na seção 15.7, implementada como entrega própria e independente da refatoração do Dashboard (branch `fix-h009-iframe-caixa-dev-path`, a partir de `develop`).
+
+### 16.1 Causa raiz confirmada
+
+`_verificarFechamentoCaixa()` (`CRM/pages/dashboard/dashboard-caixa.js`) cria um iframe oculto com `iframe.src = '/CRM/pages/caixa/index.html'` — caminho absoluto, sem prefixo `/dev`. `CRM/shared/env-config.js` decide o ambiente por `location.pathname` — mas dentro do iframe esse `location` é o do PRÓPRIO iframe, não da página pai. Como o caminho nunca incluía `/dev`, o iframe sempre concluía `isProdHost && !isDevPath = true` → ambiente `prod`, mesmo com o Dashboard aberto em `/dev`.
+
+**Por que só se manifesta em `/dev`:** em produção, tanto a página pai (`/CRM/pages/dashboard/index.html`) quanto o iframe (`/CRM/pages/caixa/index.html`) concluem `prod` — concordância, sem sintoma visível. Só em `/dev` há discrepância: o pai corretamente detecta `dev`, mas o iframe (carregado por um caminho absoluto que nunca aponta para `/dev`) incorretamente resolve para `prod`.
+
+### 16.2 Solução adotada
+
+Mesmo critério de detecção já usado em `brand-header.js`/`kernel.js`/`login.html`/`config.js`, e mais diretamente igual ao já aplicado no **H-006** (que corrigiu a mesma classe de bug — "guardas RBAC/iframe hardcoded sem prefixo /dev" — em 5 arquivos irmãos, incluindo o próprio `caixa.js`):
+
+```js
+iframe.src = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/caixa/index.html';
+```
+
+Nenhuma outra linha alterada — regra de negócio, autenticação, RBAC, consultas ao Firestore, Cloud Functions e demais funcionalidades do Dashboard permanecem intocadas.
+
+### 16.3 Arquivos alterados
+
+- `CRM/pages/dashboard/dashboard-caixa.js` — 1 linha (`iframe.src`), + comentário explicativo.
+
+### 16.4 Achado à parte (não corrigido, fora do escopo desta entrega)
+
+Varredura de diligência em todos os arquivos do Dashboard encontrou a **mesma classe de bug** em `dashboard-alarme-os.js` (`abrirJanelaFlutuante`, `window.open('/CRM/pages/dashboard/index.html?mini=1', ...)`) — caminho absoluto sem `/dev`, abrindo a janela flutuante do alarme sempre contra a página de produção quando acionada a partir de `/dev`. Não corrigido por estar fora do escopo explícito desta entrega (função diferente, não é o iframe do Caixa) — registrado para autorização separada.
+
+Também revisado (e mantido como está, intencional): o registro do Service Worker do alarme (`sw-alarme.js`) em `dashboard-alarme-os.js` também usa um caminho `/CRM/pages/dashboard/` fixo — mas isso já foi analisado e decidido no H-002 (2026-07-03): o escopo máximo permitido pelo navegador para um Service Worker é derivado do caminho do próprio arquivo do worker, não da página que o registra, e o GitHub Pages não permite o header `Service-Worker-Allowed` necessário para um escopo mais amplo. Não é a mesma categoria de bug (não depende de `env-config.js`/`location.pathname` da mesma forma) — não mexido.
+
+### 16.5 Validação
+
+Sem navegador real disponível neste ambiente. Teste automatizado (jsdom) simulando os dois ambientes via URL do documento (`https://cellcityinformatica.com.br/dev/CRM/pages/dashboard/index.html` e `.../CRM/pages/dashboard/index.html`, sem `/dev`), interceptando `document.createElement('iframe')` para capturar o `src` resolvido:
+
+- **Cenário `/dev`:** `iframe.src` resolvido para `https://cellcityinformatica.com.br/dev/CRM/pages/caixa/index.html` — correto. 5/5 checagens (boot sem exceção, zero erro de console/jsdom, iframe criado, `src` contém `/dev/`, `src` não aponta para produção sem `/dev`).
+- **Cenário produção:** `iframe.src` resolvido para `https://cellcityinformatica.com.br/CRM/pages/caixa/index.html` (sem `/dev`) — comportamento de produção preservado, sem regressão. 4/4 checagens.
+
+**Não coberto:** confirmação visual em navegador real de que o iframe, uma vez carregado de verdade em `/dev`, de fato inicializa com `cellcity-crm-dev` (o teste automatizado prova a URL correta, mas não executa o carregamento real da página de destino).
+
+### 16.6 Status
+
+Implementado e mesclado em `develop` (commit `23fc15c`, merge `f967ae1`), publicado em `/dev`. Aguardando homologação do dono em `/dev` (confirmar no Console que só aparece o log `dev`, sem o `prod` duplicado) e autorização explícita para promoção a `main`.
