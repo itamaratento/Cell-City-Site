@@ -502,3 +502,106 @@ Auth, Firestore e Storage são **únicos** (projeto `cellcity-crm`): dados criad
 - Operação do dia a dia (publicar, validar, SW/cache, cota, comandos de verificação): [`GUIA_OPERACAO_AMBIENTES.md`](../GUIA_OPERACAO_AMBIENTES.md)
 - Procedimentos de reversão (código, módulo, rules, dados): [`GUIA_ROLLBACK.md`](../GUIA_ROLLBACK.md)
 - Convenções, dívida técnica conhecida e monitoramento: [`GUIA_MANUTENCAO.md`](../GUIA_MANUTENCAO.md)
+
+## 10. Sistema Oficial de Backup
+
+> Implementado em 2026-07-04. Camada de proteção independente de `main`/`develop`, dedicada exclusivamente a disaster recovery. Scripts em [`scripts/backup/`](../scripts/backup/); workflow em [`.github/workflows/backup-weekly.yml`](../.github/workflows/backup-weekly.yml).
+
+### 10.1 Arquitetura (camadas)
+
+| Camada | O quê | Função |
+|---|---|---|
+| Produção | branch `main` | ambiente oficial; só recebe versões aprovadas via `subir-ok` |
+| Desenvolvimento | branch `develop` | desenvolvimento/homologação; nada é publicado em `main` automaticamente |
+| Repositório de backup | [`itamaratento/Cell-City-Backup`](https://github.com/itamaratento/Cell-City-Backup) (privado) | espelho fiel de `main`+`develop`+tags do Cell-City-Site; nunca usado para desenvolvimento ou deploy |
+| Backup automático | GitHub Actions (`backup-weekly.yml`) | 1x/semana (domingo), com verificação de idempotência e retry |
+| Backup manual | comando `backup` | sob demanda, antes de mudanças importantes; fora da rotação |
+
+O repositório de backup possui:
+- Branches `main`/`develop`: mirror atualizado a cada execução (branch, não usada para trabalho).
+- Tags `auto-slot-A` / `auto-slot-B` / `auto-slot-C`: os 3 backups automáticos mais recentes, em rotação (semana 1→A, 2→B, 3→C, 4→substitui A, ...).
+- Tags `manual-<data>-<descrição>`: backups manuais, fora da rotação — permanecem até remoção manual (`git push` com `:refs/tags/<nome>` no repo de backup).
+- Branch `backup-meta`: `manifest/automatic.json` — índice/log dos backups automáticos (usado para checar idempotência e calcular o próximo slot).
+
+### 10.2 Backup manual
+
+Comando (definido em `~/.bashrc`, delega para `scripts/backup/backup-manual.sh`):
+
+```bash
+backup ["descrição opcional"]
+```
+
+Fluxo: identifica a branch atual → verifica alterações pendentes → commita apenas se necessário (`git add .` + mensagem com data/hora, ou a descrição informada) → push em `origin/<branch>` (não faz push em `main`; isso continua exclusivo de `subir-ok`) → sincroniza `main`/`develop` de `origin` para o repositório de backup → cria uma tag anotada `manual-<timestamp>[-slug-da-descrição]` no repositório de backup com data, hora, branch, commit, autor e descrição → apresenta relatório final. A tag é criada localmente, enviada e removida do repositório local em seguida — nenhuma tag nova fica em `main`/`develop`. Nunca faz deploy, merge ou troca de branch.
+
+### 10.3 Backup automático
+
+Workflow `.github/workflows/backup-weekly.yml`, script `scripts/backup/backup-automatic.sh`:
+
+- Gatilho `schedule` (`cron: '0 */3 * * 0'`) — a cada 3h, somente aos domingos (UTC) — mais `workflow_dispatch` para execução manual/testes.
+- **Idempotência:** calcula a semana ISO atual (`date -u +%G-W%V`) e consulta `manifest/automatic.json` (branch `backup-meta`); se o último registro daquela semana já tiver `result: sucesso`, encerra imediatamente sem qualquer ação.
+- Caso contrário: clona um mirror completo de `origin` (main+develop+tags), envia para o repositório de backup, e atualiza a tag do slot da vez com metadados (semana, data, hora, branch, commit de `develop` e de `main`, autor, resultado).
+- **Rotação:** slot = `(sequência - 1) mod 3`, mapeado em `auto-slot-A/B/C` — reproduz exatamente semana1→A, semana2→B, semana3→C, semana4→substitui A, etc. A tag do slot só é sobrescrita **depois** que o push do mirror (branches+tags) já teve sucesso; se o push da tag do slot falhar, a tag anterior permanece intacta.
+- **Falha e retry:** qualquer etapa que falhe marca o registro da semana como `falha` no manifesto **sem avançar** o contador de sequência — a próxima verificação periódica do mesmo domingo recalcula a mesma semana/slot e tenta de novo. Só depois de um sucesso a semana é considerada concluída.
+- **Importante — limitação do GitHub Actions:** o gatilho `schedule` só é disparado a partir do workflow presente na **branch padrão** (`main`). Enquanto este arquivo existir apenas em `develop`, a execução automática real não inicia sozinha; a ativação definitiva ocorre somente quando este workflow for promovido para `main` (fluxo normal `subir-ok`, mediante autorização explícita — ver seção 9).
+
+### 10.4 Segurança
+
+O sistema de backup (manual e automático) nunca: altera `main`/`develop` diretamente (só lê de `origin`, nunca escreve nelas), executa deploy, cria merge, cria tags em `main`/`develop`, ou modifica arquivos do projeto. Toda tag/branch criada pelo backup vive exclusivamente no repositório `Cell-City-Backup`. A credencial usada pelo GitHub Actions (`secrets.BACKUP_DEPLOY_KEY`) é uma **deploy key SSH dedicada**, com acesso de escrita restrito somente ao repositório de backup — não é o token pessoal de longa duração usado para `origin`, então um eventual vazamento do secret do workflow não dá acesso a nenhum outro repositório.
+
+### 10.5 Registro de cada backup
+
+Cada tag (manual ou automática) guarda, na própria mensagem anotada: data, hora, branch de origem, hash do commit, autor e (quando houver) descrição/resultado. O backup automático também é indexado em `manifest/automatic.json` (branch `backup-meta`) para a checagem de idempotência.
+
+### 10.6 Testes executados na homologação (2026-07-04)
+
+| Teste | Resultado |
+|---|---|
+| Backup manual ponta a ponta (commit + push origin + mirror + tag) | ✅ sucesso |
+| Backup automático — primeira execução da semana | ✅ sucesso (seq 1, slot A) |
+| Backup automático — segunda tentativa na mesma semana | ✅ idempotente, nenhuma ação repetida |
+| Rotação dos 3 slots (semanas simuladas 1→2→3→4) | ✅ A→B→C→A confirmado (tag A passou a refletir a semana 4) |
+| Falha de push (credencial sem permissão de escrita) | ✅ detectada, `result: falha`, sequência não avançada |
+| Retry após falha (credencial corrigida) | ✅ reprocessou a mesma semana/slot com sucesso |
+
+> As semanas de teste (`TEST-W1`…`TEST-W5`, via variável `WEEK_OVERRIDE`, exclusiva para testes) foram removidas do manifesto e as tags de slot recriadas do zero antes da entrega — o ambiente de produção do backup fica limpo para a primeira execução real.
+
+## 11. Procedimento Oficial de Restauração
+
+Comando (definido em `~/.bashrc`, aliases `restore-backup` / `restaurar`, delega para `scripts/backup/restore-backup.sh`):
+
+```bash
+restore-backup
+# ou
+restaurar
+```
+
+### 11.1 Quando utilizar
+
+Falha operacional, erro humano (ex.: commit/push indevido), corrupção local ou necessidade de consultar/retornar a uma versão anterior do projeto.
+
+### 11.2 Fluxo
+
+1. Conecta ao repositório de backup e lista todas as tags `auto-slot-*` e `manual-*` disponíveis, mostrando data, hora, branch de origem, commit e descrição (lidos da mensagem da própria tag).
+2. Pede o número do backup a restaurar (`0` cancela).
+3. Mostra os metadados completos do backup escolhido e pede confirmação (`s/N`).
+4. Cria uma branch local **temporária** `restore/<data_hora>-<tag>` apontando exatamente para o commit do backup — `develop` e `main` não são tocadas.
+5. Valida integridade (`git fsck`, e confere que o commit da branch de recuperação é idêntico ao commit do backup escolhido).
+6. Apresenta relatório final com o resultado e os próximos passos possíveis (todos manuais).
+
+### 11.3 Segurança
+
+A restauração nunca sobrescreve `main`/`develop` automaticamente, nunca faz deploy nem merge automático, e nunca apaga backups existentes — ela sempre parte de uma branch nova e isolada. Cabe ao desenvolvedor decidir, depois de consultar a branch `restore/...`, se quer apenas inspecionar, copiar arquivos pontuais, promover para `develop` (`git merge --ff-only`) ou — somente mediante autorização explícita — publicar depois em `main` via `subir-ok`.
+
+### 11.4 Testes executados na homologação (2026-07-04)
+
+| Teste | Resultado |
+|---|---|
+| Listagem de backups disponíveis (data/hora/branch/commit/descrição) | ✅ sucesso |
+| Restauração cancelada pelo usuário (opção `0`) | ✅ nenhuma alteração feita |
+| Restauração de um backup manual para branch temporária | ✅ `restore/2026-07-04_1025-manual-...` criada, apontando para o commit correto |
+| Validação de integridade pós-restauração (`git fsck` + commit idêntico) | ✅ íntegro |
+| `develop` preservada durante e depois da restauração | ✅ HEAD de `develop` inalterado |
+
+### 11.5 Localização do repositório de backup
+
+`https://github.com/itamaratento/Cell-City-Backup` (privado). Não usar para desenvolvimento nem deploy — ver seção 10.1.

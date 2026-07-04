@@ -7,6 +7,9 @@
 # Variáveis de ambiente:
 #   SOURCE_REPO_URL  URL (https, leitura pública) do repositório principal. Default: Cell-City-Site.
 #   BACKUP_REPO_SSH  URL SSH do repositório de backup (push via deploy key). Default: Cell-City-Backup.
+#   WEEK_OVERRIDE    Uso exclusivo de testes: força a "semana" usada na checagem de
+#                    idempotência/rotação, no lugar de "date -u +%G-W%V". Nunca definida
+#                    pelo workflow real de produção.
 set -uo pipefail
 
 SOURCE_REPO_URL="${SOURCE_REPO_URL:-https://github.com/itamaratento/Cell-City-Site.git}"
@@ -17,7 +20,7 @@ WORKDIR="$(mktemp -d)"
 trap 'rm -rf "$WORKDIR"' EXIT
 
 echo "== Backup automático semanal — Cell City =="
-week_key=$(date -u +%G-W%V)
+week_key="${WEEK_OVERRIDE:-$(date -u +%G-W%V)}"
 echo "Semana ISO atual (UTC): $week_key"
 
 echo "-- Buscando manifesto (branch backup-meta) --"
@@ -91,12 +94,13 @@ python3 - "$MANIFEST" "$week_key" "$next_seq" "$slot" "$status" "$develop_commit
 import json, sys, datetime
 manifest_path, week, seq, slot, status, dev_commit, main_commit, author, fail_reason = sys.argv[1:10]
 d = json.load(open(manifest_path))
+now_utc = datetime.datetime.now(datetime.timezone.utc)
 entry = {
     "seq": int(seq),
     "week": week,
     "slot": slot,
-    "date": datetime.datetime.utcnow().strftime("%Y-%m-%d"),
-    "time_utc": datetime.datetime.utcnow().strftime("%H:%M:%S"),
+    "date": now_utc.strftime("%Y-%m-%d"),
+    "time_utc": now_utc.strftime("%H:%M:%S"),
     "branch": "develop",
     "commit_develop": dev_commit,
     "commit_main": main_commit,
