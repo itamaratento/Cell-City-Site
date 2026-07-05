@@ -4,6 +4,7 @@
 > Referência estratégica para todas as decisões futuras de desenvolvimento, homologação e priorização.
 > Para o estado operacional imediato, ver [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md). Para o histórico técnico detalhado, ver [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) e [`CRM/TECHDOC.md`](CRM/TECHDOC.md).
 > Guias operacionais: [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md) · [`GUIA_ROLLBACK.md`](GUIA_ROLLBACK.md) · [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md).
+> **Atualizado em 2026-07-04** após o ciclo de auditoria geral do projeto — ver [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md), [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md) (roadmap detalhado item a item) e [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md) (encerramento formal do ciclo). A ordem oficial das próximas sprints, definida nesse encerramento, está resumida na seção "Situação em 2026-07-04" abaixo.
 
 ---
 
@@ -85,7 +86,19 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 
 ---
 
+## Situação em 2026-07-04 — Auditoria Geral e Nova Prioridade
+
+A auditoria geral de 2026-07-04 (`plans/AUDITORIA_GERAL_20260704.md` + `_EXECUTIVA_`) identificou um achado crítico não coberto pela saga de segurança anterior (§6.12-6.14 do TECHDOC): exposição de dados reais de clientes associada ao fluxo OS/Portal do Cliente. O detalhe técnico está redigido nos documentos públicos por política de segurança — ver `plans/AUDITORIA_GERAL_20260704_INTERNO.md` (interno, não publicado).
+
+**Isso altera a ordem imediata de execução, sem alterar a estrutura de Fases abaixo:** a Fase 2 (RBAC) continua exatamente como estava — Sprint 3 pronto e aguardando homologação, Sprints 4/5 não iniciados — mas a correção do achado crítico do Portal/OS passa a ser o item 1 da fila, na frente até da homologação do Sprint 3, por se tratar de um incidente ativo (dado real exposto agora), não de uma pendência de processo. Ordem oficial completa, com critérios de aceite, em [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md) Etapa 3.
+
+A auditoria também confirmou que a produção migrou do plano Firebase Spark para Blaze em 2026-07-04 (junto com a criação das Cloud Functions) — o risco de cota diária esgotada, citado em versões anteriores de `PROXIMA_ETAPA.md`, não se aplica mais.
+
+---
+
 ## Fase 3 — Consolidação da Arquitetura
+
+> ⚠️ **Aviso da auditoria de 2026-07-04:** o escopo abaixo (isolamento por `empresa_id`, `shared/tenant.js`, Central SaaS) descreve uma arquitetura multiempresa que **não existe mais no código atual**. O experimento multiempresa foi **revertido** no rollback de 2026-06-27 (não restaurado — ver [[project-saas-multiempresa]] na memória do projeto) e o sistema opera hoje em regime single-tenant; `shared/tenant.js` é código morto, sem nenhum módulo importando (confirmado em `plans/AUDITORIA_GERAL_20260704.md` §5). **Esta Fase 3 precisa de uma revisão de escopo dedicada antes de ser iniciada** — não reescrita nesta consolidação por ser uma decisão de arquitetura de longo prazo, não uma correção de auditoria. Até essa revisão, tratar o conteúdo abaixo como desatualizado.
 
 **Status: ⚪ Planejada**
 
@@ -180,6 +193,8 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 ---
 
 ## Fase 6 — Escalabilidade
+
+> ⚠️ **Mesmo aviso da Fase 3 (auditoria de 2026-07-04):** o item "Multiempresa" do escopo abaixo descreve a infraestrutura `shared/tenant.js`/Central SaaS como "restaurada em 2026-06-27" — o que ocorreu de fato foi o **rollback que reverteu** essa infraestrutura nessa mesma data. O código correspondente é hoje código morto. Tratar como desatualizado até revisão dedicada (mesma pendência da Fase 3).
 
 **Status: ⚪ Planejada (visão de longo prazo)**
 
@@ -328,7 +343,7 @@ Ele não substitui os documentos operacionais existentes — [`PROXIMA_ETAPA.md`
 
 Nenhum código, banco de dados ou regra de Firestore foi alterado na elaboração deste roadmap. Ele é, por natureza, um documento de planejamento e arquitetura, e deve continuar sendo tratado como tal: atualizado ao fim de cada fase com o resultado real obtido, nunca reescrito para apagar decisões já tomadas.
 
-A partir daqui, a execução segue de forma controlada: **o próximo passo formalmente autorizado é a homologação manual e aprovação do Sprint 3 (Estoque + Caixa) da Fase 2** *(atualizado em 2026-07-02 — Sprints 1 e 2 já aprovados; o texto original apontava o Sprint 1 como próximo passo)*, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede. Em paralelo, permanecem pendentes de decisão do proprietário: a situação da cota do Firestore ([`plans/RELATORIO_COTA_FIRESTORE_20260702.md`](plans/RELATORIO_COTA_FIRESTORE_20260702.md)) e a autorização da separação de backend DEV/PROD.
+A partir daqui, a execução segue de forma controlada: **o próximo passo da fila oficial é a correção do achado crítico do Portal do Cliente/OS pública, seguida da homologação manual e aprovação do Sprint 3 (Estoque + Caixa) da Fase 2** *(atualizado em 2026-07-04 — ver "Situação em 2026-07-04" acima e a ordem completa em `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`; a versão anterior, de 2026-07-02, apontava só o Sprint 3 como próximo passo, antes do achado crítico ser identificado)*, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede. A situação da cota do Firestore foi resolvida em 2026-07-04 (migração para o plano Blaze). Permanece pendente de decisão do proprietário: a autorização da separação de backend DEV/PROD.
 
 ---
 

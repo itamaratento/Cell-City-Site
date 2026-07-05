@@ -1034,4 +1034,29 @@ Pendente: teste visual no navegador.
 
 ---
 
+---
+
+### 04/07/2026 — Auditoria Geral do Projeto + Encerramento da Fase de Auditoria e Planejamento — CONCLUÍDA
+
+**Tarefa:** Consolidar os resultados da auditoria geral do sistema em um plano de execução organizado e priorizado, e em seguida encerrar formalmente essa fase antes do início da próxima sprint de desenvolvimento. Nenhuma funcionalidade nova foi implementada; nenhum código, Firestore Rule, branch ou tag foi alterado.
+
+**Contexto:** o projeto acumulou, ao longo do dia, uma saga de correções de segurança (escalada de privilégio via `usuarios/{uid}`), a primeira Cloud Function (`excluirUsuarioAdmin`), migração de Spark para Blaze, refatoração modular do Dashboard e a correção H-009 — tudo já registrado no `CRM/TECHDOC.md`, mas não refletido em `MASTER_ROADMAP.md`/`PROXIMA_ETAPA.md`, que seguiam desatualizados desde 2026-07-02. Uma auditoria geral foi conduzida para levantar o estado real de todos os ~35 módulos, banco de dados, arquitetura, segurança e performance.
+
+**Entregue:**
+- `plans/AUDITORIA_GERAL_20260704.md` — inventário completo dos módulos, banco de dados, arquitetura, segurança e performance; identificou um achado crítico novo (exposição de dados reais de clientes no fluxo OS/Portal do Cliente, ainda sem correção) e 3 módulos aparentando funcionar sem funcionar (Análise, Catálogo, Central de Organização).
+- `plans/AUDITORIA_EXECUTIVA_GERAL_20260704.md` — complemento cobrindo branches, TECHDOC, `plans/`, Cloud Functions, PWA e uma Fase de Qualidade dedicada (confirmou zero suíte de testes automatizados persistente).
+- `plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md` — consolidação em roadmap oficial (15 itens com objetivo/dependências/complexidade/esforço/critério de aceite/prioridade), plano de qualidade, organização do repositório e priorização.
+- `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md` — encerramento formal: revisão de consistência entre os 4 documentos estratégicos (encontrou e corrigiu 2 divergências: cota Firestore desatualizada, prioridade do próximo passo desatualizada; sinalizou 1 inconsistência estrutural não resolvida — escopo de `empresa_id`/multiempresa das Fases 3/6 do Master Roadmap descreve arquitetura já revertida em 2026-06-27), revisão de segurança dos documentos antes do commit (corrigiu 2 trechos do Plano Diretor que expunham o mecanismo da vulnerabilidade do Portal/OS além da política do projeto), definição oficial da ordem das próximas sprints, classificação de toda a documentação do projeto (Oficiais/Históricos/Arquivados/Internos), e preparação (sem implementar) da Sprint 1.
+- `MASTER_ROADMAP.md` atualizado: nova seção "Situação em 2026-07-04" (achado crítico + nova prioridade), avisos de desatualização nas Fases 3 e 6, conclusão final revisada.
+- `PROXIMA_ETAPA.md` atualizado: estado atual, próximas tarefas e riscos realinhados a 2026-07-04 (Sprint 1 = segurança do Portal/OS, antes da homologação do Sprint 3 RBAC).
+
+**Decisão oficial resultante:** Sprint 1 = corrigir a exposição do Portal do Cliente/OS pública (incidente ativo, dado real exposto); homologação do Sprint 3 do RBAC (Estoque+Caixa) segue como item 2, podendo correr em paralelo. Início de qualquer um dos dois exige autorização explícita do proprietário, por tocar Autenticação/Firestore Rules (`CLAUDE.md` §1).
+
+**Arquivos criados:** `plans/AUDITORIA_GERAL_20260704.md`, `plans/AUDITORIA_GERAL_20260704_INTERNO.md` (interno, não versionado), `plans/AUDITORIA_EXECUTIVA_GERAL_20260704.md`, `plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`, `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`.
+**Arquivos alterados:** `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`.
+**Validação:** conferência de consistência cruzada entre os 4 documentos estratégicos e revisão de segurança da documentação pública antes do commit, ambas registradas em `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`. Nenhum teste de código aplicável — esta entrega é só documentação.
+**Pendente:** aprovação formal do proprietário para este encerramento; autorização explícita para iniciar a Sprint 1 (Portal/OS) e/ou a homologação do Sprint 3 (RBAC).
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*
