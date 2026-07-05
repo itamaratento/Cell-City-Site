@@ -177,9 +177,14 @@ let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatus
         async function responderOrcamentoConsulta(docId, resposta){
             try{
                 await authReady;
-                var ref = db.collection('os').doc(docId);
-                var snap = await ref.get();
-                if(!snap.exists){ alert('OS não encontrada.'); return; }
+                // Sprint 1a (2026-07-05): trocado de `.doc(docId).get()` (get, fechado
+                // pela Rule) para uma query por `id` (list, já liberado) — mesmo
+                // resultado (docId aqui sempre é o id do doc), sem depender de get
+                // público. Fix definitivo (Cloud Function dedicada): Sprint 1b.
+                var query = await db.collection('os').where('id', '==', docId).limit(1).get();
+                if(query.empty){ alert('OS não encontrada.'); return; }
+                var snap = query.docs[0];
+                var ref = snap.ref;
                 var st = snap.data().status;
                 if(st !== 'orcamento_enviado' && st !== 'orcamento'){ alert('Este orçamento já foi respondido.'); searchOS(); return; }
                 var now = new Date();
