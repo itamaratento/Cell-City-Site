@@ -72,3 +72,8 @@ sa-key-dev.json
 
 # Backups locais (repositorios git aninhados, nao devem ir pro GitHub)
 _BACKUPS/
+
+# Auditorias com detalhe técnico explorável de vulnerabilidade aberta —
+# nunca publicar (plans/ é servido ao vivo no site via GitHub Pages).
+# Convenção: sufixo _INTERNO.md em plans/ = não versionar.
+plans/*_INTERNO.md
