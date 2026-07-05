@@ -1072,109 +1072,16 @@ Todos os fluxos testados em produção real (não DEV) após o fechamento de `os
 
 **Status final: Sprint 1a concluída, homologada e promovida a produção.** `main` e `develop` com conteúdo idêntico (commits `ab681d7`/`dcfa3c0` respectivamente). Rules ativas em produção verificadas via API (`firebaserules.googleapis.com`), não só pela CLI. Pendência remanescente, formalmente proposta e não implementada: Sprint 1b (`plans/SPRINT_1B_PORTAL_CLOUD_FUNCTIONS.md`) — migra as 5 coleções do Portal e aprovar/recusar orçamento para Cloud Functions, fechando a checagem de perfil (`temAcessoLiberado()`) nessas 6 coleções sem repetir o bloqueio a cliente anônimo que motivou o hotfix de hoje.
 
-## 18. Camada Repository — abstração de acesso a dados Firestore (2026-07-05)
+## 18. Lições aprendidas — endurecimento de Firestore Rules em produção (2026-07-05)
 
-### 18.1 Motivação
+Registradas ao encerrar formalmente a Sprint 1a, a partir de dois incidentes reais desta mesma entrega (§17.7–17.9: o hotfix P0 do `temAcessoLiberado()` e a interrupção/correção ao fechar `os.get`). Aplicam-se a qualquer sprint futura que toque em Firestore Rules, não só à Sprint 1b.
 
-Análise técnica Firestore→PostgreSQL feita nesta mesma sessão concluiu: **não migrar de banco agora**, mas o dono autorizou explicitamente preparar a arquitetura para reduzir o custo de uma migração futura, sem trocar o Firestore. A ação de maior alavancagem identificada foi introduzir uma camada Repository entre a UI e o SDK do Firestore — antes desta entrega, ~46 arquivos chamavam `getDocs/setDoc/addDoc/onSnapshot/...` diretamente, misturados com lógica de UI/negócio, sem nenhuma abstração de dados.
+1. **Nunca endurecer uma Rule antes de confirmar que todo o código em produção já usa a nova arquitetura.** Fechar `os.get` antes do push do site quebrou `garantia.html` (código antigo, ainda dependente de `getDoc()`) por ~2 minutos em produção real. Ordem correta: Functions (aditivo, sem risco) → push do código novo → confirmar que o código novo está realmente ao vivo (sem cache) → só então endurecer a Rule.
 
-### 18.2 Arquitetura (camadas)
+2. **Sempre executar busca exaustiva por dependências antes de fechar uma permissão.** A análise original da Sprint 1a assumiu, por uma leitura parcial do código, que nenhuma funcionalidade pública dependia de `get()`. Uma segunda dependência (`responderOrcamentoConsulta()`, `consultar-os.html`) só foi encontrada ao grepar explicitamente por `.get()`/`getDoc()` ligados à coleção antes do fechamento definitivo. "Migrei a busca" não é o mesmo que "migrei tudo que toca a coleção".
 
-```
-página (CRM/pages/**)
-  → repository (CRM/repositories/*.repository.js)
-    → CRM/firebase/client.js (reexport)
-      → CRM/scripts/firebase.js (inicialização real do SDK — protegido, intocado)
-```
+3. **Toda alteração de Rules deve ter um checklist específico de dependências**, não só a suíte de testes de Rules (que valida a regra em si, não quem a consome). Checklist mínimo: grep exaustivo por `get()`/`getDoc()`/`list()`/`update()` na coleção afetada em todo o código público; confirmar via captura de rede real (não só leitura de código) o que cada consumidor efetivamente chama; testar em produção real antes de considerar a etapa concluída, não só em DEV.
 
-`services/` (vazio nesta entrega) fica reservado para lógica que orquestra múltiplos repositórios numa mesma operação de negócio — ver §18.7.
+4. **Toda sprint de infraestrutura (Rules, Cloud Functions, mudança de ambiente) deve ter plano de rollback validado antes da execução**, não escrito depois de um incidente. Neste caso o rollback funcionou porque o ruleset anterior já estava salvo localmente e o método de publicação via API direta (contornando a falta de permissão `firebaserules.admin` da CLI) já tinha sido validado — se essas duas coisas não estivessem prontas, os ~2 minutos de indisponibilidade do item 1 poderiam ter sido bem maiores.
 
-### 18.3 Decisão de design: pasta `firebase/`
-
-`CRM/scripts/firebase.js` é arquivo protegido (regra permanente do projeto — não alterar sem autorização explícita nova) e não foi tocado, nem uma linha. `CRM/firebase/client.js` é um arquivo **novo** que só reexporta o necessário:
-
-```js
-export {
-  db, auth,
-  collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc,
-  query, orderBy, where, onSnapshot, runTransaction, serverTimestamp, limit
-} from '../scripts/firebase.js';
-```
-
-Isso dá ao projeto a pasta `firebase/` fisicamente real (pedida pelo dono), sem editar o arquivo protegido e sem alterar nenhum dos ~44 imports existentes que continuam apontando para `scripts/firebase.js` normalmente.
-
-### 18.4 Inventário de repositórios criados
-
-17 arquivos novos em `CRM/repositories/`, cobrindo ~52 coleções de 1º nível + subcoleções de `usuarios/{uid}`:
-
-| Arquivo | Coleções |
-|---|---|
-| `base.repository.js` | factory genérica (não é uma entidade) |
-| `chips.repository.js` | `chips_cadastros` ← **único consumido nesta entrega (piloto)** |
-| `usuarios.repository.js` | `usuarios`, `favoritos_usuarios`, `notas_usuarios` + subcoleções `usuarios/{uid}/preferencias/*`, `/portal-tecnico/*` |
-| `clientes.repository.js` | `clientes` |
-| `os.repository.js` | `os`, `pre_os`, `solicitacoes_diagnostico` |
-| `estoque.repository.js` | `estoque_produtos` |
-| `produtos.repository.js` | `produtos`, `catalogo_produtos`, `categorias_produtos`, `catalogo_config` |
-| `caixa.repository.js` | `caixa_lancamentos`, `categorias_caixa` |
-| `financeiro.repository.js` | `financeiro_pagar`, `financeiro_receber`, `financeiro_categorias`, `financeiro_fixas`, `lembretes_pagamento` |
-| `empresas.repository.js` | `empresas`, `perfis_operacionais`, `auditoria_usuarios_permissoes` |
-| `crm.repository.js` | `crm_leads`, `contas_numeros` |
-| `central.repository.js` | `comandos`, `categorias_comandos`, `informacoes`, `categorias_informacoes` |
-| `portal.repository.js` | `portal_eventos`, `mensagens_portal`, `avaliacoes` |
-| `posvenda.repository.js` | `posvenda_contatos`, `posvenda_mensagens`, `posvenda_rastreamento` |
-| `diario.repository.js` | `diario_registros`, `diario_eventos`, `tarefas_semana` |
-| `fornecedor.repository.js` | `fornecedor_compras`, `fornecedor_tendencias` |
-| `sistema.repository.js` | `metadata`, `config`, `alarme_config`, `resumo_live`, `historico_diario`, `historico_mensal`, `historico_semanal`, `vendas_importadas`, `alertas_usuario` |
-| `saas.repository.js` | `notificacoes_saas`, `auditoria_saas`, `cc_lixeira`, `cc_gdrive_logs` |
-
-`categorias_comandos` e `categorias_informacoes` foram descobertas durante o levantamento (constantes `CAT_COL` em `central-comandos/comandos.js` e `central-informacoes/informacoes.js`) e entraram no inventário.
-
-**Nenhum destes 17 arquivos, exceto `chips.repository.js`, tem qualquer consumidor nesta entrega** — são estrutura pura, aditiva, sem risco. Os ~44 arquivos que hoje importam `scripts/firebase.js` continuam exatamente como estavam.
-
-### 18.5 Template padrão (`createRepository`)
-
-Factory reaproveitável em `base.repository.js`, só primitivas de dados (sem lógica de negócio) — `getById`, `list`, `create`, `set`, `update`, `remove`, `onChange`. Cada `*.repository.js` só instancia a factory por entidade:
-
-```js
-// CRM/repositories/chips.repository.js
-import { createRepository } from './base.repository.js';
-export const ChipsRepository = createRepository('chips_cadastros');
-```
-
-Entidades com subcoleção (ex. `usuarios/{uid}/preferencias/*`) recebem métodos escritos à mão ao lado do repositório principal (ver `usuarios.repository.js`), mesma convenção de nomes, sem generalizar a factory para paths aninhados.
-
-### 18.6 Piloto: módulo Chips (`crm-comercial/chips.js` + `chips-entrada.js`)
-
-Único módulo com comportamento tocado nesta entrega. Confirmado por grep: `chips_cadastros` só era referenciada nesses 2 arquivos em todo o projeto — migração 100% contida, sem impacto em nenhum outro módulo.
-
-| Arquivo | O que mudou |
-|---|---|
-| `chips.js` | Import do SDK cru trocado por `ChipsRepository`; `startListener()` usa `Chips.onChange(...)`; `removeCadastro()` usa `Chips.remove()`; `alterarStatus()` e `submitForm()` (edição) usam `Chips.update()`; `submitForm()` (criação) usa `Chips.create()`. 6 call sites migrados. |
-| `chips-entrada.js` | Import trocado; `salvarChip()` usa `Chips.create()`. 1 call site migrado. |
-
-Nenhum dado gravado, nenhuma regra de negócio, nenhum texto de UI mudou — só a origem da chamada Firestore.
-
-### 18.7 `services/` — por que vazio nesta entrega
-
-`services/README.md` documenta a intenção: orquestração entre **múltiplos** repositórios numa mesma operação de negócio (ex.: uma venda futura que debita `estoque.repository.js` e lança em `caixa.repository.js`). O piloto Chips é CRUD simples de uma única coleção, sem orquestração — criar uma camada de serviço vazia agora seria abstração sem uso real.
-
-### 18.8 Homologação
-
-Sem navegador real disponível. Reaproveitado o método já validado no projeto (jsdom + mocks das bordas, código real sem modificação — ver §6.9): os arquivos reais `chips.js`, `chips-entrada.js`, `chips.repository.js`, `base.repository.js` e `firebase/client.js` foram copiados sem alteração para um harness isolado no scratchpad, com `kernel.js`, `shared/permissoes.js` e o `firebase.js` original mockados (capturando cada chamada crua do SDK — `collection/doc/addDoc/updateDoc/deleteDoc/query/orderBy/onSnapshot` — num trace comparável ao comportamento pré-migração).
-
-**20/20 casos aprovados**, cobrindo: boot com permissão negada (redirect, zero listener aberto) e concedida; listener com `orderBy(criadoEm, desc)` idêntico ao original; exatamente 1 listener ativo (sem duplicação); snapshot populando a lista corretamente; criar chip (via `chips.js` e via `chips-entrada.js`) com `historico`/`serverTimestamp()` idênticos ao original; editar chip; alterar status; excluir chip; erro do listener tratado sem exceção não capturada. `jsdom` foi instalado como devDependency temporária e removido ao final (`git diff package.json` confirmado limpo).
-
-### 18.9 Benefícios e redução de esforço de uma futura migração
-
-Antes desta entrega, uma troca de banco exigiria caçar chamadas cruas do SDK espalhadas em ~46 arquivos de página. Com o esqueleto completo (mesmo com só 1 módulo migrado de fato), o trabalho futuro de migração se concentra em **17 pontos de mudança conhecidos e isolados** (trocar a implementação interna de cada `*.repository.js`), e cada módulo migrado nas próximas fases é um módulo a menos para migrar depois. Fora de escopo desta camada, registrado para decisão futura: `kernel.js` (autenticação/sessão) importa o SDK do Firestore direto do CDN, e as Cloud Functions (`functions/index.js`) usam o Admin SDK — nenhum dos dois é coberto por este padrão.
-
-### 18.10 Riscos e pendências
-
-- Os 16 repositórios não-piloto ficam sem consumidor até fases futuras — código morto controlado e documentado, sem custo de runtime (nada os importa ainda).
-- `kernel.js` bypassa `firebase.js`/`firebase/client.js` (importa o SDK direto do CDN) — gap pré-existente, não corrigido nesta entrega.
-- Expansão módulo a módulo (migrar os ~44 arquivos restantes) fica para fases futuras, seguindo a mesma disciplina de 1 módulo por vez usada nos Sprints de RBAC.
-
-### 18.11 Status
-
-**Criado em `develop`, não commitado, não publicado.** Estrutura completa (17 repositórios + `firebase/client.js` + `services/README.md`) e piloto Chips homologado via jsdom (20/20). Aguardando decisão do dono sobre commit/push e sobre a ordem de expansão módulo a módulo das próximas fases.
+**Achado operacional à parte, registrado por transparência:** durante o fechamento desta sprint, um commit de outra frente de trabalho (`Camada Repository`, não relacionada) foi encontrado misturado no mesmo checkout local compartilhado. Foi preservado intacto numa branch separada (`preserve-camada-repository-20260705`) e removido da documentação publicada (a seção que o descrevia tinha sido incluída em `main`/`develop` sem querer, junto de um commit de TECHDOC desta sprint, antes de o código correspondente existir). Lição operacional: ao commitar um arquivo compartilhado como `CRM/TECHDOC.md`, conferir o diff completo antes de commitar, não só a seção que se pretende alterar — `git add` captura o estado inteiro do arquivo no working tree, inclusive edições de terceiros ainda não commitadas.
