@@ -595,6 +595,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-04 | 🟢 P0 de segurança parte 2 (commit `2edd4ba`, só `cellcity-crm-dev`): confirmado que o achado correlato do dia era risco real de dados — conta pendente lia E escrevia em clientes/os/caixa/estoque/catálogo/financeiro via SDK direto. Nova função `temAcessoLiberado()` aplicada a ~45 coleções de negócio (troca mecânica via sed da mesma condição, endpoints públicos de os/config/pre_os preservados). Custo (+1 leitura por operação) aceito conscientemente pelo dono após eu apresentar a análise. 17/17 regressão: pendente bloqueado (12/12), zero regressão em atendente/tecnico/gerente/admin/master_admin (5/5). Produção intocada. **Promoção `develop`→`main` continua bloqueada.** Ver §6.14. |
 | 2026-07-04 | 🆕 Primeira Cloud Function do projeto (commit `87dd648`): `excluirUsuarioAdmin`, Admin SDK, resolve o pedido do dono de excluir qualquer usuário só com a senha/PIN de admin (sem precisar da senha da conta-alvo). Produção migrada de Spark para Blaze (mesma conta de faturamento do DEV, autorizado). Testada em DEV e depois em produção: positivo (exclusão sem senha do alvo, exclusão de admin com outros existindo) e negativo (não-admin bloqueado, autoexclusão bloqueada) confirmados ao vivo nos dois ambientes. `usuarios-permissoes.js` migrado para chamar a function; campo "senha da conta" removido do modal; `excluirContaSecundaria()` removida (código morto). Promovido a produção com autorização explícita. Ver §14. |
 | 2026-07-05 | 🔴 Sprint 1a — fecha exposição pública de `os/{osId}` (`allow get: if true` → `if false`) e gate de autenticação real em `admin.html` do Portal do Cliente. Duas Cloud Functions novas (`consultarOSPublica`, `consultarOSPorTelefonePublica`) migram as consultas públicas para Admin SDK com whitelist de campos. Achado paralelo durante a homologação: `temAcessoLiberado()` (commit `2edd4ba`) já estava ativo em produção havia ~20h, bloqueando clientes anônimos reais — hotfix P0 aplicado, depois reconciliado com a Sprint 1a. Duas dependências de `os.get` não previstas foram encontradas e corrigidas antes do fechamento definitivo (`garantia.html`, `responderOrcamentoConsulta`). Homologado e testado em produção real (não só DEV). **Promovido a `main`.** Ver §17, §18. |
+| 2026-07-05 | 🆕 Camada Repository (padrão de acesso a dados): esqueleto completo criado (`CRM/repositories/` com 17 arquivos cobrindo ~52 coleções, `CRM/firebase/client.js`, `CRM/services/README.md`), sem tocar `scripts/firebase.js` (protegido) nem qualquer outro módulo. Piloto migrado: `crm-comercial/chips.js` + `chips-entrada.js` passam a usar `ChipsRepository` em vez do SDK direto — zero mudança de comportamento (7 call sites, mapeamento 1:1). Homologado via jsdom (código real + mocks) — 20/20 casos aprovados. Commit original (`b0270b6`) foi temporariamente separado da `develop` por colisão de checkout com a Sprint 1a (ver achado em §18) e trazido de volta via cherry-pick (`91afeaf`) após confirmação de integridade. Ver §22. |
 
 ---
 
@@ -1196,3 +1197,51 @@ Fast-forward limpo `09b861a..cbe68c6` (22 commits: Sprint 1b completa + hardenin
 - **Não verificado nesta sessão** (sem navegador): login real de cliente pela tela, fluxo completo do Portal via UI. Cobertura substituta: 77/77 testes automatizados + chamadas HTTP diretas às Cloud Functions.
 
 **Status final: Sprint 1b promovida e publicada em produção (`main` == `develop` == `cbe68c6`, tag `v2026.07.06-2226`). Incidente de credencial encerrado. Quase-incidente de Cloud Functions ausentes identificado e corrigido antes de declarar sucesso.**
+## 22. Camada Repository — abstração de acesso a dados Firestore (2026-07-05)
+
+> Reconciliação: o código desta seção (17 repositories + `firebase/client.js` + `services/README.md` + piloto Chips) foi commitado originalmente como `b0270b6`, temporariamente perdido da `develop` por uma colisão de checkout compartilhado com a Sprint 1a (ver achado em §18), preservado intacto na branch `preserve-camada-repository-20260705`, e trazido de volta via `git cherry-pick` (commit `91afeaf`) — revalidado (sintaxe + jsdom) após o cherry-pick, sem nenhuma alteração de conteúdo em relação ao commit original.
+
+### 22.1 Motivação
+
+Análise técnica Firestore→PostgreSQL concluiu: **não migrar de banco agora**, mas o dono autorizou explicitamente preparar a arquitetura para reduzir o custo de uma migração futura, sem trocar o Firestore. A ação de maior alavancagem identificada foi introduzir uma camada Repository entre a UI e o SDK do Firestore — antes desta entrega, ~46 arquivos chamavam `getDocs/setDoc/addDoc/onSnapshot/...` diretamente, misturados com lógica de UI/negócio, sem nenhuma abstração de dados.
+
+### 22.2 Arquitetura (camadas)
+
+```
+página (CRM/pages/**)
+  → repository (CRM/repositories/*.repository.js)
+    → CRM/firebase/client.js (reexport)
+      → CRM/scripts/firebase.js (inicialização real do SDK — protegido, intocado)
+```
+
+`services/` (vazio nesta entrega) fica reservado para lógica que orquestra múltiplos repositórios numa mesma operação de negócio.
+
+### 22.3 Decisão de design: pasta `firebase/`
+
+`CRM/scripts/firebase.js` é arquivo protegido (regra permanente do projeto — não alterar sem autorização explícita nova) e não foi tocado, nem uma linha. `CRM/firebase/client.js` é um arquivo **novo** que só reexporta o necessário, dando à camada Repository um endereço estável sem editar o arquivo protegido nem alterar nenhum dos ~44 imports existentes.
+
+### 22.4 Inventário de repositórios criados
+
+17 arquivos em `CRM/repositories/`, cobrindo ~52 coleções de 1º nível + subcoleções de `usuarios/{uid}`: `base` (factory), `chips` (piloto — único consumido nesta entrega), `usuarios`, `clientes`, `os`, `estoque`, `produtos`, `caixa`, `financeiro`, `empresas`, `crm`, `central`, `portal`, `posvenda`, `diario`, `fornecedor`, `sistema`, `saas`.
+
+**Gap conhecido, encontrado numa auditoria posterior (2026-07-05):** 3 coleções em uso real ainda sem repository — `agenda`, `agendamentos`, `central_organizacao`. Fecho previsto para a Fase 0 da expansão módulo a módulo, antes de migrar qualquer módulo que dependa delas.
+
+### 22.5 Template padrão (`createRepository`)
+
+Factory reaproveitável em `base.repository.js` — `getById`, `list`, `create`, `set`, `update`, `remove`, `onChange`. Cada `*.repository.js` só instancia a factory por entidade. Entidades com subcoleção (ex. `usuarios/{uid}/preferencias/*`) recebem métodos escritos à mão ao lado do repositório principal, mesma convenção de nomes.
+
+### 22.6 Piloto: módulo Chips
+
+Único módulo com comportamento tocado nesta entrega. `chips_cadastros` só era referenciada em `chips.js`/`chips-entrada.js` em todo o projeto — migração 100% contida. 7 call sites migrados (6 em `chips.js`, 1 em `chips-entrada.js`), sem mudança de dado gravado, regra de negócio ou texto de UI.
+
+### 22.7 Homologação
+
+Sem navegador real disponível. Reaproveitado o método já validado no projeto (jsdom + mocks das bordas, código real sem modificação — ver §6.9): arquivos reais copiados para harness isolado no scratchpad, com `kernel.js`, `shared/permissoes.js` e `firebase.js` mockados (capturando cada chamada crua do SDK). **20/20 casos aprovados**, cobrindo boot com permissão negada/concedida, listener idêntico ao original, criar/editar/alterar status/excluir, erro tratado sem exceção não capturada. `jsdom` foi instalado como devDependency temporária e removido ao final.
+
+### 22.8 Benefícios e redução de esforço de uma futura migração
+
+Antes desta entrega, uma troca de banco exigiria caçar chamadas cruas do SDK espalhadas em ~46 arquivos de página. Com o esqueleto completo, o trabalho futuro se concentra em pontos de mudança conhecidos e isolados (os repositórios). Fora de escopo: `kernel.js` (importa o SDK direto do CDN) e as Cloud Functions (Admin SDK) — nenhum dos dois é coberto por este padrão.
+
+### 22.9 Status
+
+**Commitado em `develop` (`91afeaf`, após reconciliação com a Sprint 1a).** Piloto Chips homologado via jsdom (20/20). Expansão módulo a módulo planejada, ordenada por risco, aguardando autorização para início da execução (Fase 0: fechar o gap de coleções do §22.4).
