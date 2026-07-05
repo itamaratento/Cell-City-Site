@@ -993,3 +993,54 @@ Homologado pelo dono em `/dev` (navegador real) e autorizado formalmente para pr
 **Pós-deploy:** deploy de produção concluído com sucesso já na primeira tentativa (sem falha transitória desta vez). Confirmado via HTTP real: `dashboard-caixa.js` em produção contém o fix; `/CRM/pages/caixa/index.html` e `/CRM/pages/dashboard/index.html` respondem 200 em produção. `develop` e `main` com conteúdo idêntico. Working tree limpo.
 
 **H-009 oficialmente encerrado.** Pendência remanescente, fora deste escopo: o achado à parte da seção 16.4 (janela flutuante do alarme, mesma classe de bug) continua sem correção, aguardando autorização separada (H-010 em potencial).
+
+## 17. Sprint 1a — Segurança do Portal do Cliente / OS pública (2026-07-05)
+
+Correção do achado crítico da auditoria de 2026-07-04 (`plans/AUDITORIA_GERAL_20260704.md`, Alerta no topo; detalhe técnico completo em `plans/AUDITORIA_GERAL_20260704_INTERNO.md`, não publicado). Autorizada pelo dono **exclusivamente em `develop`**, com homologação obrigatória antes de qualquer promoção a `main` — ver `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md` Etapa 6 e `/home/cellcity/.claude/plans/majestic-booping-walrus.md` para o plano completo aprovado.
+
+### 17.1 Causa raiz confirmada
+
+Dois problemas independentes, confirmados por leitura direta de código (não só pela auditoria):
+
+1. **`CRM/pages/portal-cliente/admin.html`** (painel administrativo interno) não tinha nenhum gate de autenticação de equipe — criava sua própria app Firebase e só fazia `signInAnonymously()`, a mesma sessão anônima do cliente comum. Diferente de todo o resto do CRM, nunca importava `kernel.js`/`initModulo()`. `admin.js` (1409 linhas) também não tinha nenhuma checagem de perfil/permissão.
+2. **`CRM/firestore.rules`** — `match /os/{osId} { allow get: if true; ... }` expunha o documento **inteiro** de qualquer OS (incluindo `password`/`patternSequence`/`lockPhoto` — senha/padrão/foto de desbloqueio do aparelho em texto puro —, endereço, IMEI e `technicalObservation`) para qualquer visitante sem login, por ID sequencial/previsível (`OS-0001`, `OS-0002`...). Três arquivos consomem essa leitura publicamente: `CRM/garantia.html` (busca por ID) e dois `consultar-os.html` (raiz e `CRM/`) — o da raiz, além de já ter `allow get: if true`, fazia **`db.collection('os').get()` sem filtro** na busca por telefone (baixava a coleção `os` inteira para o navegador antes de filtrar no client).
+
+**Achado técnico relevante para o desenho da correção:** Firestore Rules não conseguem projetar campos numa leitura (um `get`/`list` retorna o documento inteiro ou nada) nem validar com segurança um filtro `where` alegado por um cliente anônimo. Servir só os campos públicos necessários exigiu a primeira Cloud Function de **leitura** do projeto (as anteriores eram só de escrita — `excluirUsuarioAdmin`).
+
+### 17.2 Solução adotada
+
+- **`admin.html`**: gate substituído por `initModulo()` (`kernel.js`) + `carregarPermissoes()`/`podeVisualizar('portal-cliente')` (`shared/permissoes.js`), mesmo padrão de `caixa.js`/`estoque.js`. Passa a usar a mesma app Firebase compartilhada de `scripts/firebase.js` (antes criava a própria). `admin.js` não foi alterado — o contrato (`window.db`/`window.FirebaseModules`/evento `admin-firebase-ready`) foi preservado.
+- **Duas Cloud Functions novas** (`functions/index.js`, mesmo padrão de `excluirUsuarioAdmin`: `onCall`, região `southamerica-east1`, Admin SDK — ignora Rules): `consultarOSPublica({osId})` e `consultarOSPorTelefonePublica({phoneDigits})`, ambas retornando só uma whitelist de campos (`OS_CAMPOS_PUBLICOS`, nunca senha/padrão/foto/endereço/IMEI/notas internas) via `projetarCamposPublicosOS()`. Sem exigir `request.auth` — mantém o modelo de confiança já aceito hoje ("link direto"/"posse do número", sem OTP).
+- **`CRM/firestore.rules`**: `allow get` de `os/{osId}` fechado (`if false`). A parte `list/create/update/delete` (protegida por `temAcessoLiberado()`) não foi alterada — confirmado por grep que nenhum código de equipe usa `get` de doc único em `os`.
+- **`CRM/garantia.html`, `consultar-os.html` (raiz) e `CRM/consultar-os.html`**: passaram a chamar as duas Cloud Functions em vez de Firestore direto. A busca por telefone mudou de fuzzy-match client-side (comparação de sufixo sobre `os.phone` bruto) para busca exata por `phoneDigits` (campo canônico já migrado — `CRM/scripts/migrate-phone-canonico.cjs`) — decisão validada com o dono.
+
+### 17.3 Escopo explicitamente fora desta entrega (Sprint 1b, proposta e não implementada)
+
+As 5 coleções do Portal (`mensagens_portal`, `avaliacoes`, `agendamentos`, `solicitacoes_diagnostico`, `portal_eventos`) e o fluxo de aprovar/recusar orçamento (escrita em `os/{osId}.status`) têm a mesma limitação estrutural de Firestore Rules, mas não foram tocados nesta sprint — ver `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`/plano aprovado para o detalhamento.
+
+**Achado paralelo, não corrigido, sinalizado para verificação urgente e independente:** essas mesmas 5 coleções (mais a parte `list/create/update/delete` de `os`) já estão protegidas por `temAcessoLiberado()` desde o commit `2edd4ba` (2026-07-04) — função que exige `usuarios/{uid}` com `perfil != 'pendente'`, nunca satisfeita por sessão anônima. Não há confirmação de que esse ruleset esteja de fato deployado em produção agora (só estar no arquivo do git não significa publicado). **Se estiver ativo, o Portal do Cliente real pode já estar com `permission-denied` para clientes reais** (mensagens, avaliações, agendamentos, solicitações) desde 2026-07-04 — uma possível quebra de produto, independente desta sprint. Verificação recomendada via `node _runtime_audit/verify-firestore-rules.mjs --project cellcity-crm`, não executada nesta sessão (sem Node/CLI disponível).
+
+Também identificados, para correção futura junto da Sprint 1b: falha silenciosa em `portal.js::_executarAprovacao`/`_executarRecusa` (`updateDoc` sem `await`/`.catch()`) e em `enviarAvaliacao()` (ignora o resultado de erro de `_salvarAvaliacao()`) — em ambos, o toast de sucesso pode aparecer ao cliente mesmo que a escrita falhe.
+
+### 17.4 Arquivos alterados/criados
+
+- `CRM/pages/portal-cliente/admin.html` — gate de autenticação.
+- `functions/index.js` — 2 Cloud Functions novas + whitelist de campos.
+- `CRM/firestore.rules` — `os/{osId}.get` fechado.
+- `CRM/garantia.html`, `consultar-os.html` (raiz), `CRM/consultar-os.html` — migrados para as Cloud Functions.
+- `tests/firestore-rules/os-publico.test.mjs` + `package.json` (novo diretório) — suíte de testes de Rules com `@firebase/rules-unit-testing`, 7 cenários (ver §17.5).
+
+### 17.5 Testes e homologação
+
+Suíte de testes escrita nesta sessão (`tests/firestore-rules/os-publico.test.mjs`), cobrindo: `get` sem autenticação (negado), `get` com sessão anônima (negado), `get` com staff real (negado — a Rule fecha para todos, staff usa `list`), `list` sem autenticação (negado, não-regressão), `list` com staff real (permitido, não-regressão), `list` com perfil `pendente` (negado, não-regressão), `update` sem autenticação (negado).
+
+**Não executada nesta sessão** — este ambiente não tem `node`/`npm`/Firebase CLI instalados. Pendente, fora desta sessão, antes de qualquer homologação formal:
+1. `cd tests/firestore-rules && npm install && npm test` (emulador local).
+2. Deploy das 2 Cloud Functions e da nova Rule em `cellcity-crm-dev` (ordem obrigatória: Functions → migrar os 3 consumidores → só então fechar a Rule — inverter quebra `garantia.html`/`consultar-os.html` imediatamente).
+3. Confirmação via `node _runtime_audit/verify-firestore-rules.mjs --project cellcity-crm-dev` de que o release ativo é o novo arquivo.
+4. Homologação manual em `/dev` (Console + aba Network do navegador) nas 3 páginas públicas.
+5. Verificação do achado paralelo da seção 17.3 (Portal do Cliente real, quebrado ou não).
+
+### 17.6 Status
+
+**Implementado em `develop`, não deployado, não homologado, não promovido a `main`.** Aguardando execução dos passos da seção 17.5 pelo dono (ou em ambiente com Node) antes de qualquer promoção.

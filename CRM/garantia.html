@@ -12,6 +12,7 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
         import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
         import './shared/env-config.js'; // seleção DEV/PROD → window.CC_FIREBASE_CONFIG
         // NOTA: esta página usava um registro de app distinto (senderId 1068710301995);
         // unificada com o app oficial do ambiente via env-config.js (lacuna 4 da auditoria).
@@ -20,6 +21,13 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        // Sprint 1a (2026-07-05): a leitura de `os/{osId}` deixou de ser um
+        // `getDoc` direto — a Rule pública foi fechada (achado crítico da
+        // auditoria: o documento inteiro, incluindo senha/padrão/foto de
+        // desbloqueio, endereço e IMEI, ficava exposto a qualquer visitante).
+        // Esta function (Admin SDK, ignora Rules) devolve só os campos que
+        // esta página realmente usa — ver functions/index.js::consultarOSPublica.
+        const consultarOSPublica = httpsCallable(getFunctions(app, 'southamerica-east1'), 'consultarOSPublica');
 
         window.loadGarantia = async function() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -33,15 +41,17 @@
             }
 
             try {
-                const osDocRef = doc(db, "os", osId);
-                const osDoc = await getDoc(osDocRef);
-
-                if (!osDoc.exists()) {
-                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não encontrada no banco de dados</div>';
-                    return;
+                let osData;
+                try {
+                    const result = await consultarOSPublica({ osId });
+                    osData = result.data.os;
+                } catch (fnErr) {
+                    if (fnErr.code === 'functions/not-found') {
+                        document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não encontrada no banco de dados</div>';
+                        return;
+                    }
+                    throw fnErr;
                 }
-
-                const osData = osDoc.data();
 
                 const configDocRef = doc(db, "config", "impressao");
                 const configDoc = await getDoc(configDocRef);

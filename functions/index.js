@@ -1,8 +1,12 @@
 /* ============================================================
    CLOUD FUNCTIONS — Cell City CRM
 
-   Só existe aqui o que precisa mesmo de Admin SDK (o client SDK não
-   consegue fazer sem impersonar a conta-alvo). Hoje: excluirUsuarioAdmin.
+   Só existe aqui o que precisa mesmo de Admin SDK: ações que o client
+   SDK não consegue fazer sem impersonar a conta-alvo (excluirUsuarioAdmin)
+   ou leituras públicas que precisam devolver só um subconjunto seguro
+   de campos, sem expor o documento inteiro via Firestore Rules
+   (consultarOSPublica, consultarOSPorTelefonePublica — Sprint 1a,
+   2026-07-05).
 
    Autorização 2026-07-04: até então este projeto não tinha nenhuma
    Cloud Function (decisão deliberada, por custo/simplicidade — ver
@@ -77,4 +81,85 @@ exports.excluirUsuarioAdmin = onCall({ region: REGIAO }, async (request) => {
   });
 
   return { ok: true };
+});
+
+/* ============================================================
+   PROJEÇÃO PÚBLICA DE OS — Sprint 1a (auditoria 2026-07-04)
+
+   Antes: `os/{osId}` tinha `allow get: if true` no Firestore Rules —
+   qualquer visitante, sem login, lia o documento INTEIRO por ID
+   (sequencial/previsível, ex. OS-0001) — incluindo password/
+   patternSequence/lockPhoto (senha/padrão/foto de desbloqueio do
+   aparelho, em texto puro), endereço, IMEI e technicalObservation
+   (notas internas da equipe). `garantia.html` e os dois
+   `consultar-os.html` (público, sem login) são os únicos consumidores
+   legítimos, e nenhum deles usa esses campos sensíveis — só o
+   subconjunto abaixo. Estas duas functions passam a ser o único
+   caminho público de leitura de `os` (Admin SDK, ignora Rules); a
+   Rule de `get` foi fechada (`if false`) depois de todos os
+   consumidores migrarem para elas.
+   ============================================================ */
+
+// Único ponto que decide quais campos de `os/{osId}` podem sair para
+// o público sem login. NUNCA incluir aqui: password, patternSequence,
+// lockPhoto, endereço, imei1/imei2, technicalObservation.
+const OS_CAMPOS_PUBLICOS = [
+  'id', 'clientName', 'phone', 'cpf', 'model', 'category', 'defect', 'status',
+  'createdAt', 'updatedAt', 'deliveredAt', 'technician', 'garantiaId', 'prazoGarantia',
+  'valor', 'valorCartao', 'observations', 'timeline',
+  'orcamentoResposta', 'orcamentoDataResposta', 'orcamentoHoraResposta',
+];
+
+function projetarCamposPublicosOS(data) {
+  const out = {};
+  for (const campo of OS_CAMPOS_PUBLICOS) {
+    if (data[campo] !== undefined) out[campo] = data[campo];
+  }
+  // relatorioTecnico só é público quando o técnico autorizou
+  // explicitamente — mesma regra que garantia.html já aplica hoje.
+  if (data.relatorioTecnico && data.relatorioTecnico.exibirPortal === true) {
+    out.relatorioTecnico = data.relatorioTecnico;
+  }
+  return out;
+}
+
+// Duplicado deliberado de CRM/shared/phone-utils.js::normalizePhoneDigits
+// — `functions/` só empacota o próprio diretório no deploy (ver
+// firebase.json), não há como importar arquivos de fora dele em
+// runtime sem um passo de build (que este projeto não usa). Se a
+// regra de normalização mudar em phone-utils.js, replicar aqui também.
+function normalizePhoneDigitsServer(input) {
+  let d = String(input == null ? '' : input).replace(/\D/g, '');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+  if (d.length === 10 && /^[6-9]/.test(d.slice(2))) {
+    d = d.slice(0, 2) + '9' + d.slice(2);
+  }
+  return d.slice(0, 11);
+}
+
+exports.consultarOSPublica = onCall({ region: REGIAO }, async (request) => {
+  const osId = request.data && request.data.osId;
+  if (!osId || typeof osId !== 'string' || osId.length > 30) {
+    throw new HttpsError('invalid-argument', 'Informe o número da OS.');
+  }
+
+  const db = admin.firestore();
+  const snap = await db.collection('os').doc(osId).get();
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'OS não encontrada.');
+  }
+
+  return { os: projetarCamposPublicosOS(snap.data()) };
+});
+
+exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (request) => {
+  const digits = normalizePhoneDigitsServer(request.data && request.data.phoneDigits);
+  if (digits.length < 10) {
+    throw new HttpsError('invalid-argument', 'Informe um telefone válido.');
+  }
+
+  const db = admin.firestore();
+  const snap = await db.collection('os').where('phoneDigits', '==', digits).limit(50).get();
+
+  return { lista: snap.docs.map((d) => projetarCamposPublicosOS(d.data())) };
 });

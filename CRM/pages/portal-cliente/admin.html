@@ -6,16 +6,6 @@
   <title>Painel Administrativo — Portal do Cliente</title>
   <link rel="stylesheet" href="admin.css?v=2.4">
 
-  <!-- Firebase SDK (compat) v10.8.0 → carregamento lazy via defer -->
-  <script type="importmap">
-  {
-    "imports": {
-      "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-      "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
-      "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
-    }
-  }
-  </script>
   <style>
     /* ⚡ OTIMIZAÇÃO: oculta conteúdo até JS carregar (evita flash) */
     .admin-content > *:not(.admin-loading) { display: none; }
@@ -110,26 +100,38 @@
   </footer>
 
   <script type="module">
-    // ===== FIREBASE INIT (OTIMIZADO) =====
-    import { initializeApp } from 'firebase/app';
-    import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+    // ===== GATE DE EQUIPE (Sprint 1a — segurança, 2026-07-05) =====
+    // Antes: este arquivo criava sua PRÓPRIA app Firebase e só fazia
+    // signInAnonymously() — a mesma sessão anônima do cliente comum,
+    // sem checar login de equipe nenhum. Qualquer visitante da internet
+    // conseguia abrir este painel e operar mensagens/avaliações/agendamentos
+    // de clientes reais. Agora usa o mesmo padrão de todo o resto do CRM
+    // (ver CRM/pages/caixa/caixa.js): initModulo() exige sessão real e
+    // não-anônima (kernel.js já redireciona para login se não houver),
+    // na MESMA app Firebase compartilhada — nunca cria uma app própria.
+    import { initModulo } from '../../scripts/kernel.js';
+    import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
     import {
-      getFirestore,
+      db,
       collection, query, where, getDocs, getDoc, onSnapshot,
       addDoc, doc, updateDoc, deleteDoc, setDoc, orderBy, serverTimestamp, limit
-    } from 'firebase/firestore';
+    } from '../../scripts/firebase.js';
     import * as PhoneUtils from '../../shared/phone-utils.js';
-    import '../../shared/env-config.js'; // seleção DEV/PROD → window.CC_FIREBASE_CONFIG
 
-    const firebaseConfig = window.CC_FIREBASE_CONFIG;
+    (async function gate() {
+      const ctx = await initModulo();
+      if (!ctx) return; // kernel.js já redirecionou para login
 
-    // ⚡ OTIMIZAÇÃO #2: Inicialização única, evita recriação
-    if (!window._adminFirebaseInit) {
-      window._adminFirebaseInit = true;
-      const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
-      const db = getFirestore(app);
+      await carregarPermissoes(ctx);
+      if (!podeVisualizar('portal-cliente')) {
+        const p = location.pathname;
+        const prefix = (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
+        location.href = prefix + '/CRM/pages/dashboard/index.html';
+        return;
+      }
 
+      // Contrato preservado para admin.js (não alterado): window.db e
+      // window.FirebaseModules com exatamente os mesmos nomes de antes.
       window.db = db;
       window.FirebaseModules = {
         collection, query, where, getDocs, getDoc, onSnapshot,
@@ -137,19 +139,9 @@
       };
       window.PhoneUtils = PhoneUtils;
 
-      window.authReady = false;
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          try {
-            await signInAnonymously(auth);
-          } catch (err) {
-            console.error('[Admin] Erro auth:', err);
-          }
-        }
-        window.authReady = true;
-        window.dispatchEvent(new Event('admin-firebase-ready'));
-      });
-    }
+      window.authReady = true;
+      window.dispatchEvent(new Event('admin-firebase-ready'));
+    })();
   </script>
 
   <script src="admin.js?v=2.5"></script>

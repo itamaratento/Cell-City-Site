@@ -21,15 +21,28 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
-    // PÚBLICO: OS — leitura de doc único (garantia.html)
+    // OS — Sprint 1a (2026-07-05): `allow get: if true` fechado. Antes,
+    // qualquer visitante sem login lia o documento INTEIRO de qualquer OS
+    // por ID (sequencial/previsível, ex. OS-0001) — incluindo senha/padrão/
+    // foto de desbloqueio do aparelho, endereço e IMEI (achado crítico da
+    // auditoria 2026-07-04). garantia.html e os dois consultar-os.html
+    // (públicos, sem login) agora usam as Cloud Functions
+    // consultarOSPublica/consultarOSPorTelefonePublica (functions/index.js,
+    // Admin SDK, ignoram estas Rules), que devolvem só um subconjunto seguro
+    // de campos. Nenhum código de equipe usa `get` de doc único em `os`
+    // (confirmado por grep — só `list`/query, inalterado abaixo).
     // ─────────────────────────────────────────────
     match /os/{osId} {
-      allow get:                           if true;
-      // HOTFIX 2026-07-05: temAcessoLiberado() exige doc usuarios/{uid}, que sessões
-      // anônimas do Portal/Consultar OS (signInAnonymously) nunca têm — commit 2edd4ba
-      // bloqueou sem querer clientes reais aprovando/recusando orçamento (e a própria
-      // Consulta de OS pública, que faz list() em sessão anônima). Revertido para o
-      // estado pré-2edd4ba só aqui. Fix definitivo: Sprint 1b (Cloud Functions).
+      allow get:                           if false;
+      // RECONCILIAÇÃO 2026-07-05 (plano de implantação da Sprint 1a, item 0):
+      // o HOTFIX P0 aplicado direto em produção (commit 60173b7) removeu
+      // `&& temAcessoLiberado()` daqui porque orçamento (aprovar/recusar,
+      // via update — não migrado para Cloud Function, é Sprint 1b) é
+      // operado por sessão anônima do cliente, que nunca tem doc
+      // usuarios/{uid}. Sprint 1a nunca tinha tocado esta linha (só a de
+      // `get`, acima) — promover sem reconciliar reabriria o incidente.
+      // Mantém a checagem de perfil desligada aqui até a Sprint 1b migrar
+      // aprovar/recusar orçamento para Cloud Function.
       allow list, create, update, delete:  if request.auth != null;
     }
 
@@ -351,8 +364,10 @@ service cloud.firestore {
     // PRIVADO: Dashboard — coleções de analytics e portal
     // ─────────────────────────────────────────────
     match /avaliacoes/{docId} {
-      // HOTFIX 2026-07-05 (ver comentário em /os acima): cliente do Portal avalia
-      // via sessão anônima, sem doc usuarios/{uid}. Fix definitivo: Sprint 1b.
+      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): cliente do
+      // Portal avalia via sessão anônima, sem doc usuarios/{uid}. Fix
+      // definitivo (fecha para conta 'pendente' sem bloquear anônimo real):
+      // Sprint 1b, migrar para Cloud Function.
       allow read, write:                   if request.auth != null;
     }
 
@@ -365,22 +380,22 @@ service cloud.firestore {
     }
 
     match /mensagens_portal/{docId} {
-      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
       allow read, write:                   if request.auth != null;
     }
 
     match /portal_eventos/{docId} {
-      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
       allow read, write:                   if request.auth != null;
     }
 
     match /agendamentos/{docId} {
-      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
       allow read, write:                   if request.auth != null;
     }
 
     match /solicitacoes_diagnostico/{docId} {
-      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
       allow read, write:                   if request.auth != null;
     }
 

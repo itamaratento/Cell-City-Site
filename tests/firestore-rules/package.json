@@ -1,0 +1,12 @@
+{
+  "name": "cellcity-firestore-rules-tests",
+  "private": true,
+  "description": "Testes de Firestore Rules (@firebase/rules-unit-testing) — reexecutáveis, não descartáveis como o harness jsdom ad-hoc usado nos sprints de RBAC anteriores. Cobre, por ora, só o diff da Sprint 1a (os/{osId}).",
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore \"node --test\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4"
+  }
+}
