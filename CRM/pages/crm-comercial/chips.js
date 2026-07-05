@@ -1,7 +1,5 @@
-import {
-  db, collection, addDoc, doc, updateDoc, deleteDoc,
-  query, orderBy, onSnapshot, serverTimestamp
-} from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { ChipsRepository as Chips } from '../../repositories/chips.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
@@ -94,15 +92,14 @@ window.formatarData = function(input) {
 // ── Firestore ─────────────────────────────────────────────────
 function startListener() {
   if (unsub) unsub();
-  const q = query(collection(db, 'chips_cadastros'), orderBy('criadoEm', 'desc'));
-  unsub = onSnapshot(q, snap => {
-    chips = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  unsub = Chips.onChange(list => {
+    chips = list;
     renderAll();
-  }, err => console.warn('Chips:', err));
+  }, { orderByField: 'criadoEm', direction: 'desc', onError: err => console.warn('Chips:', err) });
 }
 
 async function removeCadastro(id) {
-  await deleteDoc(doc(db, 'chips_cadastros', id));
+  await Chips.remove(id);
 }
 
 // ── Contagens ─────────────────────────────────────────────────
@@ -403,7 +400,7 @@ window.alterarStatus = async function(id, key) {
       acao: `Status: ${getStatus(key).label}`,
       data: new Date().toISOString()
     }];
-    await updateDoc(doc(db, 'chips_cadastros', id), {
+    await Chips.update(id, {
       status: key, historico, atualizadoEm: serverTimestamp()
     });
     showToast('✅ Status atualizado');
@@ -514,12 +511,12 @@ window.submitForm = async function(e) {
       const historico = [...(existing?.historico || []), {
         acao: 'Editado', data: new Date().toISOString()
       }];
-      await updateDoc(doc(db, 'chips_cadastros', editingId), {
+      await Chips.update(editingId, {
         ...data, historico, atualizadoEm: serverTimestamp()
       });
       showToast('✅ Atualizado');
     } else {
-      await addDoc(collection(db, 'chips_cadastros'), {
+      await Chips.create({
         ...data,
         historico:   [{ acao: 'Criado', data: new Date().toISOString() }],
         criadoEm:    serverTimestamp(),

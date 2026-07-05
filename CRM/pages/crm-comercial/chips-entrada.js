@@ -1,6 +1,5 @@
-import {
-  db, collection, addDoc, serverTimestamp
-} from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { ChipsRepository as Chips } from '../../repositories/chips.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeCriar } from '../../shared/permissoes.js';
 
@@ -281,7 +280,7 @@ window.salvarChip = async function(e) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
 
   try {
-    await addDoc(collection(db, 'chips_cadastros'), {
+    await Chips.create({
       operadora:      operadoraSelecionada,
       nome,
       cpf:            cpfInput?.value || '',
