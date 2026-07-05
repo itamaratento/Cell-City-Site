@@ -25,7 +25,12 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /os/{osId} {
       allow get:                           if true;
-      allow list, create, update, delete:  if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05: temAcessoLiberado() exige doc usuarios/{uid}, que sessões
+      // anônimas do Portal/Consultar OS (signInAnonymously) nunca têm — commit 2edd4ba
+      // bloqueou sem querer clientes reais aprovando/recusando orçamento (e a própria
+      // Consulta de OS pública, que faz list() em sessão anônima). Revertido para o
+      // estado pré-2edd4ba só aqui. Fix definitivo: Sprint 1b (Cloud Functions).
+      allow list, create, update, delete:  if request.auth != null;
     }
 
     // ─────────────────────────────────────────────
@@ -346,7 +351,9 @@ service cloud.firestore {
     // PRIVADO: Dashboard — coleções de analytics e portal
     // ─────────────────────────────────────────────
     match /avaliacoes/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05 (ver comentário em /os acima): cliente do Portal avalia
+      // via sessão anônima, sem doc usuarios/{uid}. Fix definitivo: Sprint 1b.
+      allow read, write:                   if request.auth != null;
     }
 
     match /diario_registros/{docId} {
@@ -358,19 +365,23 @@ service cloud.firestore {
     }
 
     match /mensagens_portal/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      allow read, write:                   if request.auth != null;
     }
 
     match /portal_eventos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      allow read, write:                   if request.auth != null;
     }
 
     match /agendamentos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      allow read, write:                   if request.auth != null;
     }
 
     match /solicitacoes_diagnostico/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      // HOTFIX 2026-07-05 (ver comentário em /os acima): mesmo motivo.
+      allow read, write:                   if request.auth != null;
     }
 
     match /catalogo_produtos/{docId} {
