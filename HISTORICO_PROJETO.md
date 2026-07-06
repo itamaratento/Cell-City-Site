@@ -1059,4 +1059,46 @@ Pendente: teste visual no navegador.
 
 ---
 
+### 05/07/2026 — Sprint 1a: Segurança do Portal do Cliente / OS pública — CONCLUÍDA
+
+**Tarefa:** corrigir o achado crítico de 2026-07-04 (exposição de dados reais de clientes no fluxo OS/Portal do Cliente).
+
+**Entregue:** gate de autenticação em `admin.html` do Portal (não tinha nenhum); duas Cloud Functions novas (`consultarOSPublica`, `consultarOSPorTelefonePublica`, Admin SDK, whitelist de campos — nunca senha/padrão/foto/endereço/IMEI); `os/{osId}.get` fechado nas Rules; `garantia.html`/`consultar-os.html` (raiz e CRM) migrados para as Cloud Functions; suíte de testes de Rules (`tests/firestore-rules/`, primeira suíte automatizada persistente do projeto).
+
+**Incidentes durante a entrega:** hotfix P0 em produção (commit `60173b7`) — `temAcessoLiberado()` aplicado mecanicamente a ~45 coleções (2026-07-04) bloqueava sessão anônima do Portal/Consultar OS; revertido só nas 6 coleções afetadas. Tentativa de fechar a Rule antes do push do site quebrou `garantia.html` por ~2min (revertido, corrigido, replicado).
+
+**Resultado:** homologado e promovido a produção. Detalhe completo: `CRM/TECHDOC.md` §17-18. Pendência formalmente proposta e não implementada: Sprint 1b (migrar as 5 coleções do Portal + aprovar/recusar orçamento para Cloud Functions).
+
+---
+
+### 06/07/2026 — Sprint 1b: Portal do Cliente migrado para Cloud Functions — CONCLUÍDA e INTEGRADA em `develop`
+
+**Tarefa:** migrar as 7 funcionalidades restantes do Portal do Cliente (mensagens, avaliações, agendamentos, solicitação de diagnóstico, eventos, aprovar/recusar orçamento) de acesso direto ao Firestore para Cloud Functions, fechando a brecha de conta `pendente` reaberta pela reconciliação do hotfix P0 da Sprint 1a.
+
+**Entregue:** 13 Cloud Functions novas em `functions/index.js` (incluindo fix definitivo do nome do cliente no login, substituindo um hotfix órfão reconciliado nesta sprint); Firestore Rules fechadas para `avaliacoes`/`mensagens_portal`/`portal_eventos`/`agendamentos`/`solicitacoes_diagnostico` (completo) e `os` (parcial — `create/update/delete` fechados, `list` deliberadamente aberto, ver TECHDOC §19.5); suíte de testes ampliada (`tests/functions/`, 25 casos; `tests/firestore-rules/`, 31 casos); whitelist de campos nas 3 functions de listagem do Portal.
+
+**Bugs encontrados e corrigidos durante homologação com fluxo real de login (9 no total):** normalização de rota com hash "/", link do WhatsApp travando testes automatizados, race condition DOM-após-await em 2 handlers, "Invalid Date" nas mensagens (Timestamp achatado pelo encoder do `onCall`), fuso horário errado no orçamento (código de browser copiado para Cloud Function sem `timeZone` explícito), `phoneDigits` reconstruído via regex quebrando silenciosamente, imports mortos, corrida em avaliação duplicada.
+
+**Decisões técnicas registradas (não são pendências esquecidas):** `os.list` continua aberto (migrar login/listener exige tocar Autenticação — autorização explícita, fora do escopo mecânico da sprint); de-duplicação dos 4 handlers "enviar X" do Portal avaliada e não extraída (risco/benefício desfavorável em código já homologado).
+
+**Integração:** branch `sprint-1b-portal-cloud-functions` (14 commits) integrada em `develop` via fast-forward (sem merge commit, mesmo padrão já usado no projeto) — commit final `f0d2389229cf51a53b2dcef8da9c72583fe98060`. **Não promovida a `main`, sem deploy em produção.**
+
+**Resultado:** homologado (12/12 Puppeteer com login real, 0 erro), documentado em `CRM/TECHDOC.md` §19-19.8.
+
+---
+
+### 06/07/2026 — Auditoria de preparação da próxima Sprint (pós-integração da 1b) — CONCLUÍDA
+
+**Tarefa:** auditoria somente-leitura do projeto (dívida técnica, segurança, testes, documentação) para planejar a sprint seguinte — nenhum código, Rule ou Cloud Function alterado.
+
+**Entregue:** `plans/AUDITORIA_GERAL_20260706.md` (público) + `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (detalhe explorável, gitignored) — inventário priorizado de riscos, dívida técnica e ordem recomendada das próximas sprints.
+
+**Achado crítico, ainda sem correção (fora do escopo desta rodada, só documentação/planejamento):** credencial administrativa (service account) vazada em commit antigo de 2026-06-25, confirmada **ainda ativa** em produção — conhecida desde 2026-07-03, nunca rotacionada. Detalhe técnico completo (ID da chave, comando de remediação) só no documento interno. Recomendado tratar como item isolado e urgente antes de qualquer outra prioridade.
+
+**Documentação sincronizada nesta rodada:** vários itens do registro de dívida técnica (`GUIA_MANUTENCAO.md`) e do estado do projeto (`PROXIMA_ETAPA.md`, `MASTER_ROADMAP.md`) estavam desatualizados desde 2026-07-04 (não refletiam a conclusão das Sprints 1a/1b, a separação DEV/PROD já promovida, a migração Spark→Blaze, e outras correções já feitas) — atualizados para o estado real confirmado nesta auditoria.
+
+**Nenhum código, dado ou configuração de produção alterado nesta rodada** — só documentação e planejamento.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

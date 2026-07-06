@@ -64,50 +64,57 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-04)
+## ✅ ESTADO ATUAL (2026-07-06)
 
 ### Arquitetura de ambientes
-- 🟢 **MAIN** (produção): branch `main` → `https://www.cellcityinformatica.com.br/`
-- 🟠 **DEVELOP**: branch `develop` → `https://www.cellcityinformatica.com.br/dev/`
+- 🟢 **MAIN** (produção): branch `main` → `https://www.cellcityinformatica.com.br/` — commit `09b861a`.
+- 🟠 **DEVELOP**: branch `develop` → `https://www.cellcityinformatica.com.br/dev/` — commit `f0d2389` (14 commits à frente de `main`, ainda não promovido).
 - Publicação exclusivamente via `git push` (workflow GitHub Pages). **Firebase Hosting proibido.**
-- ⚠️ **Backend Firebase único** (`cellcity-crm`) para os dois ambientes — separação planejada em [`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](plans/SEPARACAO_AMBIENTES_DEV_PROD.md), aguardando autorização. **Freeze de alterações de infraestrutura em vigor desde 2026-07-02.**
-- Produção migrada do plano Firebase **Spark para Blaze em 2026-07-04** (junto com a criação das Cloud Functions) — a cota diária deixou de travar o sistema; custo direto substitui o risco de indisponibilidade (ver dívida de performance em `GUIA_MANUTENCAO.md`).
+- ✅ **Backend Firebase separado por ambiente** (`cellcity-crm` produção / `cellcity-crm-dev` DEV) — a separação planejada em `plans/SEPARACAO_AMBIENTES_DEV_PROD.md` foi concluída e promovida a produção. O freeze de infraestrutura relacionado a essa separação **não está mais em vigor**.
+- Produção no plano Firebase **Blaze** desde 2026-07-04 — sem trava de cota diária.
 
-### Fase 2 — Integração gradual do RBAC (em andamento)
-- Sprint 1 (Dashboard): ✅ aprovado (2026-07-02)
-- Sprint 2 (CRM + Agenda): ✅ aprovado (2026-07-02, tag `sprint2-rbac-crm-agenda-aprovado`)
-- Sprint 3 (Estoque + Caixa): 🔵 **implementado + verificado (12/12 jsdom) — AGUARDANDO HOMOLOGAÇÃO MANUAL E APROVAÇÃO FORMAL desde 2026-07-02** (`CRM/TECHDOC.md` §7.3)
+### Sprint 1a — Segurança do Portal do Cliente / OS pública — ✅ CONCLUÍDA (2026-07-05)
+Corrigiu o achado crítico então ativo (exposição de dados reais de clientes no fluxo OS/Portal). Homologada e promovida a `main`. Detalhe: `CRM/TECHDOC.md` §17-18, `HISTORICO_PROJETO.md` (entrada de 05/07/2026).
+
+### Sprint 1b — Portal do Cliente migrado para Cloud Functions — ✅ CONCLUÍDA e INTEGRADA em `develop` (2026-07-06)
+As 7 funcionalidades restantes do Portal (mensagens, avaliações, agendamentos, solicitação de diagnóstico, eventos, aprovar/recusar orçamento) migraram para Cloud Functions; Firestore Rules fechadas para as 5 coleções do Portal + `os` (parcialmente — `list` fica aberto de propósito, ver `CRM/TECHDOC.md` §19.5). 56 testes automatizados (25 unitários + 31 de Rules), homologação Puppeteer com login real (12/12). **Integrada em `develop` via fast-forward, commit `f0d2389`. Não promovida a `main`, sem deploy em produção.** Detalhe: `CRM/TECHDOC.md` §19-19.8, `HISTORICO_PROJETO.md` (entrada de 06/07/2026).
+
+### Fase 2 — Integração gradual do RBAC (em andamento, sem mudança desde 2026-07-02/03)
+- Sprint 1 (Dashboard): ✅ aprovado
+- Sprint 2 (CRM + Agenda): ✅ aprovado (tag `sprint2-rbac-crm-agenda-aprovado`)
+- Sprint 3 (Estoque + Caixa): 🔵 **implementado + verificado (12/12 jsdom) — AINDA aguardando homologação manual e aprovação formal** (parado desde 2026-07-02/03, sem progresso — ver `CRM/TECHDOC.md` §7.3). Nenhuma sprint de segurança do Portal bloqueou este item; ele só não avançou.
 - Sprints 4 (Financeiro) e 5 (OS): ⚪ não iniciados
 
-### Auditoria geral e encerramento do ciclo de planejamento (2026-07-04)
-- Auditoria completa do projeto realizada em 2 sessões complementares: [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md) (inventário de módulos, banco de dados, arquitetura, segurança, performance) + [`plans/AUDITORIA_EXECUTIVA_GERAL_20260704.md`](plans/AUDITORIA_EXECUTIVA_GERAL_20260704.md) (branches, TECHDOC, plans/, Cloud Functions, PWA, qualidade).
-- Consolidação em roadmap oficial: [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md).
-- Ciclo formalmente encerrado em [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md), que define a ordem oficial das próximas sprints e prepara a Sprint 1 (sem iniciar implementação).
-- **Achado crítico de segurança, ainda sem correção:** exposição de dados reais de clientes associada ao fluxo OS/Portal do Cliente — não coberta pela saga de segurança já registrada em `TECHDOC.md` §6.12-6.14. Detalhe técnico redigido nos documentos públicos por política de segurança; registro completo em `plans/AUDITORIA_GERAL_20260704_INTERNO.md` (interno, não publicado). **Passa a ser a Sprint 1 oficial — ver "Próximas Tarefas" abaixo.**
-- `MASTER_ROADMAP.md` atualizado nesta rodada: nova seção "Situação em 2026-07-04", e aviso de que o escopo de `empresa_id`/multiempresa das Fases 3 e 6 está desatualizado (multiempresa foi revertido, não restaurado, no rollback de 2026-06-27) — precisa de revisão de escopo dedicada antes de ser iniciado.
-- **Nenhum código, dado ou configuração de produção alterado nesta rodada** — só documentação estratégica.
+### Auditoria de preparação da próxima Sprint (2026-07-06, pós-integração da 1b)
+Auditoria completa somente-leitura: `plans/AUDITORIA_GERAL_20260706.md` (público) + `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (achado explorável, gitignored). **Achado crítico novo, ainda sem correção:** credencial administrativa (service account) vazada em commit de 2026-06-25, confirmada ainda ativa em produção (conhecida desde 2026-07-03, nunca rotacionada) — ver "Riscos Atuais" abaixo. Documentação sincronizada nesta rodada: vários itens deste arquivo e de `GUIA_MANUTENCAO.md` estavam desatualizados desde 2026-07-04 (referenciavam riscos já corrigidos ou etapas já concluídas).
 
 ---
 
-## 🎯 PRÓXIMAS TAREFAS (ordem oficial definida em 2026-07-04, ver `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md` Etapa 3)
+## 🎯 PRÓXIMAS TAREFAS (ordem recomendada, ver `plans/AUDITORIA_GERAL_20260706.md` para detalhe/esforço/risco de cada item)
 
-1. **Sprint 1 — Segurança do Portal do Cliente / OS pública** — corrigir o achado crítico acima; toca Auth + Firestore Rules, exige autorização explícita do proprietário (`CLAUDE.md` §1) antes de qualquer alteração de código. Preparação (escopo, critérios de aceite, estratégia de testes/homologação) já pronta no documento de encerramento, Etapa 6.
-2. **Homologação manual do Sprint 3 RBAC (Estoque + Caixa)** — roteiro em `plans/fase2-sprint3-estoque-caixa-rbac.md`; aprovação formal libera o Sprint 4. Pode correr em paralelo ao item 1 (não compartilha componentes críticos).
-3. **Sprint 4 do RBAC — Financeiro** — só após o item 2 aprovado.
-4. **Correção dos 3 módulos quebrados** (Análise, Catálogo, Central de Organização) — causa já identificada em cada caso, ver `plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md` Etapa 3.
-5. **Limpeza do Firestore** — remover doc `usuarios/{uid}` órfão do usuário de teste `eu@cellcity.com.br` (Auth já deletado; uid `kuigLv0DDcQ8o9HHpoMJZYgvPLA2`) + varredura de referências. Pendente desde 2026-07-02, sem mais bloqueio de cota (já em Blaze).
-6. **Separação de backend DEV/PROD** — somente com autorização formal; plano pronto com adendos da auditoria.
+1. **🔴 Rotacionar a credencial vazada** (Sprint 0, fora da numeração normal) — infraestrutura, não toca código de produto; ainda assim exige autorização explícita e planejamento (pode afetar consumidores da chave atual). Detalhe no documento interno.
+2. **Homologação manual + aprovação formal do Sprint 3 RBAC (Estoque + Caixa)** — roteiro em `plans/fase2-sprint3-estoque-caixa-rbac.md`; parado há 4 dias sem bloqueio técnico real.
+3. **Excluir `plans/`, `CLAUDE.md`, `CRM/pages/kernel-test/` do deploy do GitHub Pages** — mudança de infraestrutura (CI), baixo esforço.
+4. **Adicionar Firestore Rules para as 4 coleções sem regra nenhuma** (`alertas_usuario`, `chips_cadastros`, `diario_eventos`, `contas_numeros`) — hoje falham fechado (bug funcional confirmado, não vazamento).
+5. **Investigar o gap de gate client-side nos 9 módulos sem `initModulo()`** (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — checar se a Rule correspondente cobre o gap real de acesso.
+6. **Sprint 4 do RBAC — Financeiro** — só após o item 2 aprovado.
+7. **Sprint 5 do RBAC — OS** — só após o item 6.
+8. **Migrar `doLogin()`/`_listenOS()` do Portal** para poder fechar `os.list` — toca Login, exige autorização explícita (`CLAUDE.md` §1) e decisão de arquitetura própria.
+9. **Limpeza de código morto** (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`) — baixo risco, a qualquer momento.
+10. **CI mínima** (rodar as 2 suítes de teste existentes em push/PR) — baixo esforço, previne regressão silenciosa.
 
 ---
 
 ## ⚠️ RISCOS ATUAIS
 
-- 🔴 **Exposição de dados reais de clientes via OS/Portal do Cliente** — incidente ativo, maior risco do projeto até a Sprint 1 ser concluída. Detalhe técnico só no registro interno.
-- **Testes no DEVELOP tocam dados de produção** (backend Firebase compartilhado) — tratar todo teste como operação em produção até a separação de backend.
-- **Sprint 3 publicado no `develop` sem aprovação formal** desde 2026-07-02 (2 dias) — não fazer merge para `main` antes da homologação manual.
-- **`_BACKUPS/`, `plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages** (confirmado em 2026-07-04 via inspeção do workflow de deploy) — informação operacional interna pública; ver `plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md` Etapa 3, item 7.
-- Dívida técnica consolidada: ver [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) §5 e `plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md` Etapa 1.6 (lista completa, mais extensa que a de `GUIA_MANUTENCAO.md`).
+- 🔴 **Credencial administrativa vazada em commit antigo, ainda ATIVA em produção** — conhecida desde 2026-07-03, nunca rotacionada, repositório público. Maior risco do projeto agora. Detalhe técnico só no registro interno (`plans/AUDITORIA_GERAL_20260706_INTERNO.md`).
+- 🟠 **`plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages** (workflow de deploy não exclui) — confirmado ainda presente em 2026-07-06.
+- 🟠 **4 coleções sem nenhuma Firestore Rule** — falham fechado hoje (funcional, não exposição), mas indicam módulos possivelmente quebrados em produção.
+- 🟡 **Sprint 3 do RBAC publicado no `develop` sem aprovação formal** há 4 dias — não promover para `main` antes da homologação manual.
+- 🟡 **9 módulos sem gate de permissão no client** — risco real depende de verificação cruzada com as Rules (não feita ainda).
+- 🟡 **`os.list` aberto a qualquer sessão autenticada** (decisão deliberada da Sprint 1b, documentada) — pendente de sprint futura para fechar via migração do login/listener.
+- Dívida técnica consolidada: ver [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) §5 e `plans/AUDITORIA_GERAL_20260706.md` (lista completa e priorizada).
 
 ---
 
-*Última atualização: 2026-07-04 — Encerramento formal do ciclo de auditoria geral e planejamento; definição da ordem oficial das próximas sprints; nenhum código alterado.*
+*Última atualização: 2026-07-06 — Auditoria de preparação da próxima Sprint, pós-integração da Sprint 1b em `develop`; documentação sincronizada com o estado real do projeto; nenhum código alterado.*

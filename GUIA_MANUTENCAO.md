@@ -56,31 +56,43 @@ Regras que acompanham o processo:
 
 ## 5. Registro consolidado de dívida técnica conhecida
 
-Itens conhecidos, **não corrigidos**, com onde estão documentados. Nenhum deve ser "consertado de passagem" — cada um exige processo formal próprio.
+> Revisado em 2026-07-06 ([`plans/AUDITORIA_GERAL_20260706.md`](plans/AUDITORIA_GERAL_20260706.md)) — vários itens abaixo, mantidos aqui desde 2026-07-02/04, já foram corrigidos por sprints posteriores (Sprint 1a, Sprint 1b, migração Blaze, separação DEV/PROD); marcados explicitamente como ✅ **RESOLVIDO** em vez de removidos, para preservar o rastro histórico. Itens conhecidos **ainda não corrigidos** não devem ser "consertados de passagem" — cada um exige processo formal próprio.
+
+### 🔴 Crítico, ainda sem correção
+0. **Credencial administrativa (service account) vazada em commit antigo (2026-06-25), confirmada ainda ATIVA em produção** — repositório público, conhecida desde 2026-07-03, nunca rotacionada. Maior risco do projeto. Detalhe técnico e comando de remediação em `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (gitignored).
 
 ### Infraestrutura / ambientes
-1. **Backend único para MAIN e DEVELOP** — separação planejada e aguardando autorização ([`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](plans/SEPARACAO_AMBIENTES_DEV_PROD.md), incluindo os 6 adendos da auditoria de 2026-07-02: endpoints REST hardcoded em `analise.js` e `sw-alarme.js`, Anonymous/Google Auth necessários no DEV, config em contexto de Service Worker, `garantia.html` com credenciais de outro registro de app, `_BACKUPS` publicados com config de produção, rules/índices duplicados raiz × CRM).
-2. **Cota Firestore (Spark) estourando diariamente** por amplificação de leitura — recomendação: Blaze + alertas + auditoria de leituras por módulo ([`plans/RELATORIO_COTA_FIRESTORE_20260702.md`](plans/RELATORIO_COTA_FIRESTORE_20260702.md)).
-3. **`firestore.rules`/`firestore.indexes.json` da raiz desatualizados** (divergem da fonte oficial `CRM/…`) — remover/sincronizar exige processo formal.
-4. **`firebase.json` ainda contém seção `hosting`** apesar de o Hosting ser proibido — resquício; remoção pendente de autorização.
-5. **`_BACKUPS/` e `kernel-test/` publicados no GitHub Pages** (código antigo público apontando para o banco de produção).
-6. **Backup de dados com cobertura parcial**: `backup-dados.js` não exporta `usuarios`, `perfis_operacionais`, `auditoria_usuarios_permissoes` e outras coleções pós-RBAC.
-7. **74 arquivos com paths absolutos `/CRM/`** (+ `LOGIN_URL` no kernel): no ambiente `/dev`, navegação e SW podem apontar para a produção.
-8. **`localStorage` compartilhado entre `/` e `/dev`** (mesma origem) — estados de sessão/preferências vazam entre ambientes.
+1. ✅ **RESOLVIDO** ~~Backend único para MAIN e DEVELOP~~ — separado e em produção (`cellcity-crm` / `cellcity-crm-dev`, confirmado via `CRM/shared/env-config.js`).
+2. ✅ **RESOLVIDO** ~~Cota Firestore (Spark) estourando diariamente~~ — produção migrada para Blaze em 2026-07-04. Amplificação de leitura em si (item 16 abaixo) continua como dívida de performance, não de disponibilidade.
+3. **`firestore.rules`/`firestore.indexes.json` da raiz desatualizados** (divergem da fonte oficial `CRM/…`) — confirmado ainda presente em 2026-07-06; remover/sincronizar exige processo formal.
+4. **`firebase.json` ainda contém seção `hosting`** apesar de o Hosting ser proibido — confirmado ainda presente; remoção pendente de autorização.
+5. **`plans/`, `CLAUDE.md` e `CRM/pages/kernel-test/` publicados ao vivo no GitHub Pages** — confirmado ainda presente em 2026-07-06 (o workflow `deploy-pages.yml` não exclui esses caminhos do `rsync`). `_BACKUPS/` **não** é publicado (está gitignored, não chega a ser copiado no checkout do Actions) — parte deste item está resolvida, a outra não.
+6. **Backup de dados com cobertura parcial**: `backup-dados.js` não exporta `usuarios`, `perfis_operacionais`, `auditoria_usuarios_permissoes` e outras coleções pós-RBAC. Não reverificado em 2026-07-06.
+7. **74 arquivos com paths absolutos `/CRM/`** (+ `LOGIN_URL` no kernel): no ambiente `/dev`, navegação e SW podem apontar para a produção. Vários casos individuais já corrigidos (H-003 a H-009); não confirmado se a lista completa foi zerada.
+8. **`localStorage` compartilhado entre `/` e `/dev`** (mesma origem) — não reverificado em 2026-07-06.
 
 ### Aplicação
-9. **`kernel.js` assume `perfil='admin'` por padrão** para UID sem doc `usuarios/{uid}` — qualquer conta nova que logue sem passar pelo módulo de Usuários vira admin (TECHDOC §6.7).
-10. **Condição de corrida na coluna "Perfil"** da aba Usuários (TECHDOC §6.7; pendência oficial da Fase 2).
-11. **Iframe de fechamento do Caixa no Dashboard dispara sem efeito** a cada carga (orquestrador removido em 30/06; TECHDOC §7.3).
-12. **Card da Agenda no Dashboard não é ocultado** por `podeVisualizar('agenda')` (TECHDOC §7.2).
-13. **Sessões anônimas do Portal podem listar `avaliacoes`/`mensagens_portal` de outros clientes** (TECHDOC §3.8 — limitação conhecida das Rules públicas do Portal).
-14. **Módulo Análise possivelmente quebrado** (REST sem Authorization com Rules exigindo auth — achado da auditoria de 2026-07-02).
-15. **Doc `usuarios/{uid}` órfão do usuário de teste `eu@cellcity.com.br`** (Auth já deletado; limpeza do Firestore pendente por cota).
-16. **Amplificação de leitura nos módulos** (coleções inteiras recarregadas por navegação; cache local persistente e `limit()`/paginação não implementados).
+9. ✅ **RESOLVIDO** ~~`kernel.js` assume `perfil='admin'` por padrão~~ — corrigido em 2026-07-04; default atual é `'pendente'` (fail-closed), confirmado por leitura direta do código em 2026-07-06.
+10. **Condição de corrida na coluna "Perfil"** da aba Usuários — não reverificado em 2026-07-06 (TECHDOC §6.7; pendência oficial da Fase 2).
+11. **Iframe de fechamento do Caixa no Dashboard dispara sem efeito** a cada carga — não reverificado em 2026-07-06 (TECHDOC §7.3).
+12. **Card da Agenda no Dashboard não é ocultado** por `podeVisualizar('agenda')` — não reverificado em 2026-07-06 (TECHDOC §7.2).
+13. ✅ **RESOLVIDO** ~~Sessões anônimas do Portal podem listar `avaliacoes`/`mensagens_portal` de outros clientes~~ — corrigido pela Sprint 1b (Cloud Functions filtram por `phoneDigits`; Rules exigem `temAcessoLiberado()` para acesso direto).
+14. **Módulo Análise possivelmente quebrado** (REST sem Authorization) — confirmado em 2026-07-06 que `analise.js` não usa `initModulo()`/nenhum gate de auth (consistente com o achado original, mas causa raiz exata não reconfirmada).
+15. ✅ **RESOLVIDO** ~~Doc `usuarios/{uid}` órfão do usuário de teste~~ — confirmado removido do Firestore de produção em 2026-07-06.
+16. **Amplificação de leitura nos módulos** (coleções inteiras recarregadas por navegação; cache local persistente e `limit()`/paginação não implementados) — não reverificado em 2026-07-06; ver `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`.
+19. **NOVO (2026-07-06): 4 coleções sem nenhuma Firestore Rule** (`alertas_usuario`, `chips_cadastros`, `diario_eventos`, `contas_numeros`) — sem catch-all no arquivo, falham fechado (bug funcional, não vazamento).
+20. **NOVO (2026-07-06): 9 módulos sem nenhum gate de permissão no client** (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — não usam `initModulo()`/`kernel.js`. Risco real depende de verificação cruzada com as Rules dessas coleções (não feita ainda).
+21. **NOVO (2026-07-06): `dashboard-alarme-os.js`** (janela flutuante do alarme) tem a mesma classe de bug do H-009 (já corrigido no Caixa) — `window.open()` com path absoluto sem prefixo `/dev`.
+22. **NOVO (2026-07-06): Login sem suporte a return-URL** — qualquer perfil deslogado que acesse Portal Técnico cai no Dashboard após logar, não no Portal Técnico (achado original descrevia isso como específico de `master_admin`; na verdade é genérico, afeta qualquer perfil).
+23. **NOVO (2026-07-06): código morto confirmado** — `CRM/shared/tenant.js` e `CRM/shared/listener-manager.js` (zero importadores reais); diversos diretórios/arquivos `BACKUP_*` dentro de `CRM/pages/*/` e `CRM/shared/` (servidos no webroot por não haver build step).
+24. **NOVO (2026-07-06): zero cobertura de teste em 34 de 34 módulos** de `CRM/pages/` (só o backend do Portal do Cliente é testado); 3 de 15 Cloud Functions sem teste; 51 de 57 blocos de Firestore Rules sem teste; nenhuma CI executa os testes existentes.
 
 ### Pendências formais da Fase 2 (RBAC)
-17. Sprint 3 (Estoque+Caixa) aguardando **homologação manual e aprovação formal**; Sprints 4 (Financeiro) e 5 (OS) não iniciados.
-18. Rastreamento de último acesso; senha via Admin SDK; atualização de permissões em tempo real (pendências da Fase 1 → TECHDOC §6.8).
+17. Sprint 3 (Estoque+Caixa) **ainda** aguardando **homologação manual e aprovação formal** — parado desde 2026-07-02/03, sem progresso, sem bloqueio técnico real. Sprints 4 (Financeiro) e 5 (OS) não iniciados.
+18. Rastreamento de último acesso; senha via Admin SDK; atualização de permissões em tempo real (pendências da Fase 1 → TECHDOC §6.8) — não reverificado em 2026-07-06.
+
+### Pendência formal da Sprint 1b
+25. **`os.list` aberto a qualquer sessão autenticada** nas Firestore Rules (decisão deliberada, documentada em `CRM/TECHDOC.md` §19.5) — fechar exige migrar `doLogin()`/`_listenOS()` do Portal para um mecanismo sem dependência de `onSnapshot` direto no client; toca Login, exige autorização explícita.
 
 ## 6. Monitoramento periódico recomendado
 

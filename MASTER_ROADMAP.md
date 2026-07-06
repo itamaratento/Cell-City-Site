@@ -4,7 +4,7 @@
 > Referência estratégica para todas as decisões futuras de desenvolvimento, homologação e priorização.
 > Para o estado operacional imediato, ver [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md). Para o histórico técnico detalhado, ver [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) e [`CRM/TECHDOC.md`](CRM/TECHDOC.md).
 > Guias operacionais: [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md) · [`GUIA_ROLLBACK.md`](GUIA_ROLLBACK.md) · [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md).
-> **Atualizado em 2026-07-04** após o ciclo de auditoria geral do projeto — ver [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md), [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md) (roadmap detalhado item a item) e [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md) (encerramento formal do ciclo). A ordem oficial das próximas sprints, definida nesse encerramento, está resumida na seção "Situação em 2026-07-04" abaixo.
+> **Atualizado em 2026-07-06** após a integração da Sprint 1b e uma nova auditoria de preparação de sprint — ver [`plans/AUDITORIA_GERAL_20260706.md`](plans/AUDITORIA_GERAL_20260706.md) e a seção "Situação em 2026-07-06" abaixo. Ciclo anterior (2026-07-04): [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md), [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md), [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md).
 
 ---
 
@@ -93,6 +93,18 @@ A auditoria geral de 2026-07-04 (`plans/AUDITORIA_GERAL_20260704.md` + `_EXECUTI
 **Isso altera a ordem imediata de execução, sem alterar a estrutura de Fases abaixo:** a Fase 2 (RBAC) continua exatamente como estava — Sprint 3 pronto e aguardando homologação, Sprints 4/5 não iniciados — mas a correção do achado crítico do Portal/OS passa a ser o item 1 da fila, na frente até da homologação do Sprint 3, por se tratar de um incidente ativo (dado real exposto agora), não de uma pendência de processo. Ordem oficial completa, com critérios de aceite, em [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md) Etapa 3.
 
 A auditoria também confirmou que a produção migrou do plano Firebase Spark para Blaze em 2026-07-04 (junto com a criação das Cloud Functions) — o risco de cota diária esgotada, citado em versões anteriores de `PROXIMA_ETAPA.md`, não se aplica mais.
+
+---
+
+## Situação em 2026-07-06 — Sprints 1a e 1b concluídas; nova auditoria de preparação
+
+O achado crítico do parágrafo acima (Portal do Cliente/OS pública) foi corrigido pela **Sprint 1a** (2026-07-05, homologada e promovida a `main`) e sua continuação natural, a **Sprint 1b** (2026-07-06, migração das 7 funcionalidades restantes do Portal para Cloud Functions), foi concluída e integrada em `develop` — ambas fora da numeração de Fases deste documento por terem sido tratadas como incidente de segurança + fechamento direto, não como parte da Fase 2 (RBAC). Detalhe completo em `CRM/TECHDOC.md` §17-19 e `HISTORICO_PROJETO.md`.
+
+**A Fase 2 (RBAC) continua exatamente como estava em 2026-07-04**: Sprint 3 (Estoque+Caixa) implementado e verificado, ainda aguardando homologação manual e aprovação formal — nenhuma sprint de segurança bloqueou esse item, ele simplesmente não avançou.
+
+Uma nova auditoria de preparação de sprint (`plans/AUDITORIA_GERAL_20260706.md`) identificou um achado crítico **novo e não relacionado** ao Portal: uma credencial administrativa (service account) vazada em commit antigo do repositório (público), confirmada ainda ativa em produção — conhecida desde 2026-07-03, nunca rotacionada. Detalhe técnico em `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (interno, mesma política de segurança da Sprint 1). **Recomendação: tratar como item isolado e urgente, à frente de qualquer item de Fase abaixo** — é resposta a incidente ativo, não desenvolvimento de produto.
+
+A mesma auditoria consolidou uma lista priorizada de dívida técnica (código morto confirmado, 4 coleções sem Firestore Rule, 9 módulos sem gate de permissão no client, zero cobertura de teste fora do Portal do Cliente, ausência de CI) — ver o documento para o detalhamento completo e a ordem técnica recomendada entre esses itens e a continuação da Fase 2.
 
 ---
 
@@ -343,7 +355,7 @@ Ele não substitui os documentos operacionais existentes — [`PROXIMA_ETAPA.md`
 
 Nenhum código, banco de dados ou regra de Firestore foi alterado na elaboração deste roadmap. Ele é, por natureza, um documento de planejamento e arquitetura, e deve continuar sendo tratado como tal: atualizado ao fim de cada fase com o resultado real obtido, nunca reescrito para apagar decisões já tomadas.
 
-A partir daqui, a execução segue de forma controlada: **o próximo passo da fila oficial é a correção do achado crítico do Portal do Cliente/OS pública, seguida da homologação manual e aprovação do Sprint 3 (Estoque + Caixa) da Fase 2** *(atualizado em 2026-07-04 — ver "Situação em 2026-07-04" acima e a ordem completa em `plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`; a versão anterior, de 2026-07-02, apontava só o Sprint 3 como próximo passo, antes do achado crítico ser identificado)*, seguindo o processo de 8 etapas já validado, e nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede. A situação da cota do Firestore foi resolvida em 2026-07-04 (migração para o plano Blaze). Permanece pendente de decisão do proprietário: a autorização da separação de backend DEV/PROD.
+A partir daqui, a execução segue de forma controlada *(atualizado em 2026-07-06 — ver "Situação em 2026-07-06" acima e a ordem completa/priorizada em `plans/AUDITORIA_GERAL_20260706.md`)*: o achado crítico do Portal do Cliente/OS pública foi corrigido (Sprints 1a e 1b, concluídas). **Um novo achado crítico não relacionado (credencial vazada ainda ativa) passa a ser o item mais urgente**, à frente da homologação do Sprint 3 (Estoque + Caixa) da Fase 2 — que continua pronta e aguardando esse passo, sem bloqueio técnico. Nenhuma fase posterior deve ser iniciada antes da aprovação formal da fase que a precede. A situação da cota do Firestore foi resolvida em 2026-07-04 (migração para o plano Blaze); a separação de backend DEV/PROD foi autorizada e concluída.
 
 ---
 
