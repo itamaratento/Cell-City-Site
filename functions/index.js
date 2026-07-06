@@ -206,6 +206,23 @@ function validarPhoneDigitsServer(input) {
   return digits;
 }
 
+// ---- Nome do cliente (login) ----
+//
+// Fix definitivo do HOTFIX P0 (2026-07-06, ver CRM/TECHDOC.md): doLogin()
+// lia clientes/{phoneDigits} direto do Firestore para exibir o nome na
+// saudação — coleção protegida por temAcessoLiberado() (tem CPF/e-mail/
+// endereço, não pode reabrir para sessão anônima como as outras 6). O
+// hotfix isolou o getDoc em try/catch para não derrubar o login, aceitando
+// perder o nome real (fallback "Cliente"). Esta function fecha a lacuna
+// sem reabrir a Rule: mesmo padrão Admin SDK das demais, retornando só
+// `name` — nunca CPF/e-mail/endereço.
+exports.portalObterNomeCliente = onCall({ region: REGIAO }, async (request) => {
+  const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const db = admin.firestore();
+  const snap = await db.collection('clientes').doc(digits).get();
+  return { name: snap.exists ? (snap.data().name || '') : '' };
+});
+
 // ---- Mensagens ----
 
 exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {

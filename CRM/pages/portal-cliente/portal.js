@@ -392,29 +392,20 @@ window.Portal = {
 
       console.log('[Portal] Buscando cliente — raw:', raw, 'digits:', digits, 'formatted:', formatted);
 
-      // Busca em clientes: doc-ID é o próprio phoneDigits.
-      // HOTFIX P0 (2026-07-06): `clientes` exige temAcessoLiberado() nas Rules
-      // (nunca foi incluída na reconciliação de 2026-07-05 que cobriu os 6
-      // outras coleções do Portal) — sessão anônima nunca tem doc
-      // usuarios/{uid}, então este getDoc SEMPRE nega para cliente real,
-      // derrubando o login inteiro (estava no mesmo try/catch da busca de OS
-      // abaixo). Isolado em try/catch próprio: se falhar, login segue com
-      // clientName vazio (cai no fallback 'Cliente' mais abaixo) em vez de
-      // travar. Fix definitivo (Cloud Function dedicada, mesmo padrão de
-      // consultarOSPublica) fica para depois — `clientes` tem CPF/e-mail/
-      // endereço, então não deve simplesmente reabrir a Rule como as outras 6.
+      // Busca do nome em clientes: doc-ID é o próprio phoneDigits. `clientes`
+      // exige temAcessoLiberado() nas Rules (tem CPF/e-mail/endereço, não
+      // pode reabrir para sessão anônima como as outras 6 coleções do
+      // Portal) — sessão anônima nunca tem doc usuarios/{uid}, então um
+      // getDoc direto SEMPRE nega para cliente real. Fix definitivo do
+      // HOTFIX P0 (2026-07-06): mesmo padrão das demais Cloud Functions
+      // desta sprint — Admin SDK, retorna só `name`.
       let clientName = '';
       try {
-        const snapCliente = await getDoc(doc(db, 'clientes', digits));
-        if (snapCliente.exists()) {
-          const cl = snapCliente.data();
-          clientName = cl.name || '';
-          console.log('[Portal] Cliente encontrado:', clientName, '| phoneDigits:', digits);
-        } else {
-          console.log('[Portal] Cliente não encontrado para phoneDigits:', digits);
-        }
+        const resp = await window.PortalFunctions.obterNomeCliente({ phoneDigits: digits });
+        clientName = (resp.data && resp.data.name) || '';
+        console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
       } catch (errCliente) {
-        console.warn('[Portal] Não foi possível ler clientes/{phoneDigits} (Rules exigem temAcessoLiberado, ver HOTFIX P0 2026-07-06):', errCliente);
+        console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
       }
 
       // Busca OS do cliente pelo campo canônico

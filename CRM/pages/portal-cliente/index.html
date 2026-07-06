@@ -193,6 +193,7 @@
     // (ver CRM/TECHDOC.md, hotfix 60173b7 / Sprint 1a).
     const functionsApp = getFunctions(app, 'southamerica-east1');
     window.PortalFunctions = {
+      obterNomeCliente: httpsCallable(functionsApp, 'portalObterNomeCliente'),
       listarMensagens: httpsCallable(functionsApp, 'portalListarMensagens'),
       enviarMensagem: httpsCallable(functionsApp, 'portalEnviarMensagem'),
       marcarMensagemLida: httpsCallable(functionsApp, 'portalMarcarMensagemLida'),
