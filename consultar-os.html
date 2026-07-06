@@ -156,10 +156,11 @@ let html='<h3>OS Encontrada</h3>';lista.forEach(os=>{const statusLabel=getStatus
         function orcamentoBlocoConsulta(os){
             var v = os.valor ? ('R$ ' + Number(os.valor).toFixed(2)) : '';
             var dataLinha = os.orcamentoDataResposta ? ('<div style="font-size:12px;color:#a1a8b3;margin-top:4px;">📅 ' + os.orcamentoDataResposta + (os.orcamentoHoraResposta ? ' • ⏰ ' + os.orcamentoHoraResposta : '') + '</div>') : '';
-            // phoneDigits não está na whitelist pública de campos de `os` (Sprint 1a) —
-            // reconstrói a partir de `phone` (mesma origem canônica, ver
-            // shared/phone-utils.js::canonicalizePhone), evita expor um campo novo.
-            var digits = (os.phone || '').replace(/\D/g, '');
+            // phoneDigits agora está na whitelist pública de campos de `os`
+            // (Sprint 1b) — usa o campo canônico direto em vez de reconstruir
+            // via regex a partir de `phone` (que podia divergir para OS
+            // antigas, derrubando a aprovação de um cliente legítimo).
+            var digits = os.phoneDigits || '';
             if ((os.status === 'orcamento_enviado' || os.status === 'orcamento') && os.valor) {
                 var btn = 'padding:12px 18px;border:none;border-radius:6px;font-weight:700;font-size:14px;cursor:pointer;margin:6px;';
                 return '<div class="result-full" style="background:rgba(255,160,0,0.08);border:1px solid rgba(255,160,0,0.35);border-radius:8px;padding:18px;margin-top:8px;text-align:center;">'
