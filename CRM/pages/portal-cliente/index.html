@@ -165,8 +165,7 @@
     import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
     import {
       getFirestore,
-      collection, query, where, getDocs, getDoc, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion, limit
+      collection, query, where, getDocs, getDoc, doc, onSnapshot,
     } from 'firebase/firestore';
     import { getFunctions, httpsCallable } from 'firebase/functions';
     import * as PhoneUtils from '../../shared/phone-utils.js';
@@ -181,8 +180,7 @@
     // Expõe globais para portal.js (não-module)
     window.db = db;
     window.FirebaseModules = {
-      collection, query, where, getDocs, getDoc, onSnapshot,
-      addDoc, doc, updateDoc, deleteDoc, orderBy, serverTimestamp, arrayUnion, limit
+      collection, query, where, getDocs, getDoc, doc, onSnapshot,
     };
     window.PhoneUtils = PhoneUtils;
 

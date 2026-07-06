@@ -381,7 +381,7 @@ window.Portal = {
 
     try {
       const db = window.db;
-      const { collection, query, where, getDocs, getDoc, doc } = window.FirebaseModules;
+      const { collection, query, where, getDocs } = window.FirebaseModules;
 
       // ===== CAMPO CANÔNICO =====
       // `phoneDigits`/`telefoneDigits` é gravado por os.js e pelo próprio Portal
@@ -1444,8 +1444,15 @@ window.Portal = {
     } else {
       document.getElementById('avaliar-feedback').style.display = 'none';
       document.getElementById('avaliar-google').style.display = '';
-      // Verifica se já avaliou antes de salvar (evita duplicatas)
-      if (!this.currentAval && !sessionStorage.getItem('portal_avaliou')) {
+      // Verifica se já avaliou antes de salvar (evita duplicatas). Achado da
+      // homologação: _checkAvaliacaoExistente() é fire-and-forget (chamado
+      // sem await em renderAvaliar()) — sem o gate _avaliacaoCheckDone, um
+      // toque rápido em 4-5 estrelas antes da Cloud Function responder
+      // criava uma avaliação duplicada (this.currentAval ainda indefinido).
+      // Essa janela de corrida já existia antes desta sprint (mesmo desenho
+      // fire-and-forget), mas a Cloud Function é mais lenta que a leitura
+      // local de Firestore que existia antes, alargando a janela.
+      if (this._avaliacaoCheckDone && !this.currentAval && !sessionStorage.getItem('portal_avaliou')) {
         this._salvarAvaliacao(val, '');
         sessionStorage.setItem('portal_avaliou', '1');
       }
@@ -1453,23 +1460,30 @@ window.Portal = {
   },
 
   async _checkAvaliacaoExistente() {
+    this._avaliacaoCheckDone = false;
     try {
       const resp = await window.PortalFunctions.listarAvaliacoes({ phoneDigits: this.session.telefoneDigits });
       const lista = resp.data.lista || [];
       if (lista.length) {
         const av = lista[0];
         this.currentAval = av;
-        document.querySelectorAll('.star').forEach((s, i) => {
-          if (i < av.nota) { s.textContent = '★'; s.style.color = '#FFD700'; }
-        });
-        document.getElementById('avaliar-nota').textContent = `Você já nos avaliou com ${av.nota} ★`;
-        document.getElementById('avaliar-feedback').style.display = 'none';
-
-        if (av.nota >= 4) {
-          document.getElementById('avaliar-google').style.display = '';
+        // Refs consultadas só depois de confirmar que a tela ainda existe —
+        // o cliente pode ter navegado para outra rota enquanto a Cloud
+        // Function estava em voo (mesma classe de achado de enviarMensagem()).
+        const notaEl = document.getElementById('avaliar-nota');
+        const feedback = document.getElementById('avaliar-feedback');
+        const googleEl = document.getElementById('avaliar-google');
+        if (notaEl) {
+          document.querySelectorAll('.star').forEach((s, i) => {
+            if (i < av.nota) { s.textContent = '★'; s.style.color = '#FFD700'; }
+          });
+          notaEl.textContent = `Você já nos avaliou com ${av.nota} ★`;
+          if (feedback) feedback.style.display = 'none';
+          if (av.nota >= 4 && googleEl) googleEl.style.display = '';
         }
       }
     } catch (e) { /* ignora */ }
+    this._avaliacaoCheckDone = true;
   },
 
   async enviarAvaliacao() {
