@@ -92,6 +92,12 @@ test('portalEnviarMensagem + portalListarMensagens: fluxo feliz', async () => {
   assert.equal(lista[0].texto, 'Olá, tudo bem?');
   assert.equal(lista[0].telefoneDigits, PHONE);
   assert.equal(lista[0].lida, false);
+  // createdAt precisa sair como ISO string, não como Timestamp — o encoder
+  // do onCall achata um Timestamp em {_seconds,_nanoseconds} sem `.toDate()`
+  // e o client (_fmtDateTime) renderizava "Invalid Date" (achado da
+  // homologação do Lote 2).
+  assert.equal(typeof lista[0].createdAt, 'string');
+  assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
 });
 
 test('portalListarMensagens: não vaza mensagem de outro telefone', async () => {
@@ -142,6 +148,8 @@ test('portalCriarAvaliacao + portalListarAvaliacoes: fluxo feliz', async () => {
   const { lista } = await fns.portalListarAvaliacoes.run({ data: { phoneDigits: PHONE } });
   assert.equal(lista.length, 1);
   assert.equal(lista[0].nota, 5);
+  assert.equal(typeof lista[0].createdAt, 'string');
+  assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
 });
 
 test('portalCriarAvaliacao: rejeita nota fora do intervalo', async () => {
@@ -170,6 +178,8 @@ test('portalCriarAgendamento + portalListarAgendamentos: fluxo feliz', async () 
   assert.equal(lista.length, 1);
   assert.equal(lista[0].status, 'aguardando');
   assert.equal(lista[0].data, '2026-08-10');
+  assert.equal(typeof lista[0].createdAt, 'string');
+  assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
 });
 
 test('portalCriarAgendamento: rejeita data mal formatada', async () => {

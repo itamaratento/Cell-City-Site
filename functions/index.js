@@ -104,11 +104,16 @@ exports.excluirUsuarioAdmin = onCall({ region: REGIAO }, async (request) => {
 // o público sem login. NUNCA incluir aqui: password, patternSequence,
 // lockPhoto, endereço, imei1/imei2, technicalObservation.
 const OS_CAMPOS_PUBLICOS = [
-  'id', 'clientName', 'phone', 'cpf', 'model', 'category', 'defect', 'status',
+  'id', 'clientName', 'phone', 'phoneDigits', 'cpf', 'model', 'category', 'defect', 'status',
   'createdAt', 'updatedAt', 'deliveredAt', 'technician', 'garantiaId', 'prazoGarantia',
   'valor', 'valorCartao', 'observations', 'timeline',
   'orcamentoResposta', 'orcamentoDataResposta', 'orcamentoHoraResposta',
 ];
+// `phoneDigits` já é derivável de `phone` (ambos públicos, mesmo dado em dois
+// formatos) — expor o campo canônico direto evita que consumidores públicos
+// (consultar-os.html) precisem reconstruir os dígitos via regex a partir do
+// `phone` formatado, o que quebra silenciosamente para qualquer OS onde os
+// dois campos não fiquem 100% consistentes (achado da homologação do Lote 2).
 
 function projetarCamposPublicosOS(data) {
   const out = {};
@@ -206,6 +211,26 @@ function validarPhoneDigitsServer(input) {
   return digits;
 }
 
+// Achado da homologação do Lote 2: o encoder de resposta do onCall
+// (`encode()` em firebase-functions/lib/common/providers/https.js) achata
+// um Timestamp do Admin SDK em `{_seconds,_nanoseconds}` simples (perde
+// `.toDate()`) — o formatador do client (_fmtDate/_fmtDateTime em
+// portal.js) não reconhece esse formato e renderizava "Invalid Date" nas
+// telas de Mensagens/Avaliações/Agendamentos. Serializa para ISO string
+// antes de devolver — mesmo formato já usado em outras coleções do
+// projeto (ex. `os.createdAt`) — e centraliza a ordenação (antes
+// duplicada em 3 lugares) numa função só.
+function serializarCreatedAt(doc) {
+  if (doc.createdAt && typeof doc.createdAt.toDate === 'function') {
+    return { ...doc, createdAt: doc.createdAt.toDate().toISOString() };
+  }
+  return doc;
+}
+
+function ordenarPorCreatedAtDesc(lista) {
+  return lista.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+}
+
 // ---- Nome do cliente (login) ----
 //
 // Fix definitivo do HOTFIX P0 (2026-07-06, ver CRM/TECHDOC.md): doLogin()
@@ -236,13 +261,9 @@ exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
   // depender de criar/esperar build de um índice novo).
   const snap = await db.collection('mensagens_portal')
     .where('telefoneDigits', '==', digits)
+    .limit(200)
     .get();
-  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  lista.sort((a, b) => {
-    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
-    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
-    return tb - ta;
-  });
+  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
   return { lista };
 });
 
@@ -294,15 +315,10 @@ exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) =>
 exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const db = admin.firestore();
-  const snap = await db.collection('avaliacoes').where('telefoneDigits', '==', digits).get();
-  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const snap = await db.collection('avaliacoes').where('telefoneDigits', '==', digits).limit(200).get();
   // Ordena no servidor (sem orderBy na query) para não depender de um
   // índice composto extra — coleção pequena por telefone, custo desprezível.
-  lista.sort((a, b) => {
-    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
-    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
-    return tb - ta;
-  });
+  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
   return { lista };
 });
 
@@ -335,13 +351,8 @@ exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
 exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const db = admin.firestore();
-  const snap = await db.collection('agendamentos').where('telefoneDigits', '==', digits).get();
-  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  lista.sort((a, b) => {
-    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
-    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
-    return tb - ta;
-  });
+  const snap = await db.collection('agendamentos').where('telefoneDigits', '==', digits).limit(200).get();
+  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
   return { lista };
 });
 
@@ -510,9 +521,15 @@ exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) =>
     throw new HttpsError('failed-precondition', 'Este orçamento já foi respondido.');
   }
 
+  // Copiado do client original (que rodava no navegador do cliente, em
+  // horário de Brasília implícito) — achado da homologação: rodando numa
+  // Cloud Function (runtime em UTC por padrão), toLocaleDateString/
+  // toLocaleTimeString sem `timeZone` explícito gravavam data/hora 3h
+  // adiantadas (e possivelmente o dia errado perto da meia-noite).
   const now = new Date();
-  const dataResp = now.toLocaleDateString('pt-BR');
-  const horaResp = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const TZ = 'America/Sao_Paulo';
+  const dataResp = now.toLocaleDateString('pt-BR', { timeZone: TZ });
+  const horaResp = now.toLocaleTimeString('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' });
   const escNome = escolha === '1' ? 'Orçamento 1' : (escolha === '2' ? 'Orçamento 2' : 'o orçamento');
   const textoTimeline = resposta === 'aprovado'
     ? `Cliente aprovou ${escNome} em ${dataResp} às ${horaResp}.${obs ? `\n\nObservação:\n"${obs}"` : ''}`
