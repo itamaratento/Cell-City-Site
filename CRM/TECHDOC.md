@@ -1085,3 +1085,59 @@ Registradas ao encerrar formalmente a Sprint 1a, a partir de dois incidentes rea
 4. **Toda sprint de infraestrutura (Rules, Cloud Functions, mudança de ambiente) deve ter plano de rollback validado antes da execução**, não escrito depois de um incidente. Neste caso o rollback funcionou porque o ruleset anterior já estava salvo localmente e o método de publicação via API direta (contornando a falta de permissão `firebaserules.admin` da CLI) já tinha sido validado — se essas duas coisas não estivessem prontas, os ~2 minutos de indisponibilidade do item 1 poderiam ter sido bem maiores.
 
 **Achado operacional à parte, registrado por transparência:** durante o fechamento desta sprint, um commit de outra frente de trabalho (`Camada Repository`, não relacionada) foi encontrado misturado no mesmo checkout local compartilhado. Foi preservado intacto numa branch separada (`preserve-camada-repository-20260705`) e removido da documentação publicada (a seção que o descrevia tinha sido incluída em `main`/`develop` sem querer, junto de um commit de TECHDOC desta sprint, antes de o código correspondente existir). Lição operacional: ao commitar um arquivo compartilhado como `CRM/TECHDOC.md`, conferir o diff completo antes de commitar, não só a seção que se pretende alterar — `git add` captura o estado inteiro do arquivo no working tree, inclusive edições de terceiros ainda não commitadas.
+
+## 19. Sprint 1b — Portal do Cliente migrado para Cloud Functions (2026-07-06)
+
+Conclui o que a Sprint 1a deixou pendente (§17.3): as 7 funcionalidades do Portal do Cliente que ainda dependiam de acesso direto do cliente anônimo ao Firestore (mensagens, avaliações, agendamentos, solicitação de diagnóstico, eventos, aprovar/recusar orçamento) migraram para Cloud Functions, permitindo fechar de vez a brecha de conta `pendente` reaberta pela reconciliação de 2026-07-05 (hotfix P0, §17.7) nessas coleções — sem repetir o incidente de bloquear cliente anônimo legítimo.
+
+### 19.1 Reconciliação de um hotfix órfão
+
+Sessão anterior tinha deixado um hotfix commitado (`e2a17f9`, "login do Portal quebrado para clientes reais" — `doLogin()` lia `clientes/{phoneDigits}`, coleção que nunca entrou na reconciliação das outras 6) numa branch local isolada, nunca mesclada nem pushada. Reconciliado por cherry-pick nesta sessão; a branch órfã foi apagada depois.
+
+### 19.2 Fix definitivo do nome do cliente
+
+O hotfix aceitava perder o nome real do cliente na saudação (fallback "Cliente") para não travar o login. Fix definitivo: nova Cloud Function `portalObterNomeCliente` (mesmo padrão Admin SDK das demais, retorna só `name`) substitui o hotfix — `clientes` continua exigindo `temAcessoLiberado()` nas Rules (tem CPF/e-mail/endereço), sem reabrir para sessão anônima.
+
+### 19.3 Bugs achados na homologação com fluxo real de login
+
+A homologação anterior (Lote 2) usava um workaround — sessão injetada direto no `sessionStorage`, contornando `doLogin()` — porque `doLogin()` estava quebrado (§19.1). Retomada com o fluxo real (telefone + botão Entrar), a homologação (Puppeteer, `cellcity-crm-dev`) achou e corrigiu:
+
+1. `_carregarMensagens()` não normalizava hash com "/" inicial (`#/mensagens`), diferente da função irmã `_carregarAgendamentos()` — a tela nunca recarregava via essa rota.
+2. Link do WhatsApp (`target="_blank"`) abrindo aba real para domínio externo travava os comandos CDP seguintes no ambiente de teste (sandboxed, sem saída para `wa.me`) — trocado para disparo do evento via `dispatchEvent` não-confiável (executa o `onclick` sem seguir a navegação).
+3. `enviarMensagem()`/`enviarAvaliacao()` quebravam com `TypeError` se o cliente navegasse de rota enquanto a Cloud Function estava em voo (re-consulta de `document.getElementById()` depois do `await` retorna `null`) — refs passam a ser cacheadas antes do `await`, mesmo padrão já usado em `_enviarAgendamento()`/`_enviarSolicitacaoDiagnostico()`.
+4. `_listenOS()` (onSnapshot de `os`, não tocado por esta sprint) tinha o mesmo problema de normalização de hash do item 1 — a tela de detalhe da OS não recebia a atualização ao vivo do aprovar/recusar orçamento quando acessada via link com "/" inicial.
+5. `_checkAvaliacaoExistente()` (fire-and-forget) sem proteção contra o cliente tocar 4-5 estrelas antes da Cloud Function responder — podia salvar avaliação duplicada. Gate `_avaliacaoCheckDone` adicionado.
+
+### 19.4 Bugs achados no code-review pós-homologação (4 agentes, ângulos de correção/reuso/simplificação/convenções)
+
+1. **"Invalid Date" nas Mensagens**: o encoder de resposta do `onCall` achata um `Timestamp` do Admin SDK em `{_seconds,_nanoseconds}` (perde `.toDate()`) — `portalListarMensagens/Avaliacoes/Agendamentos` devolviam `createdAt` nesse formato, e o formatador do client não reconhecia. Serializado para ISO string no servidor (mesmo formato já usado em `os.createdAt`), com a ordenação (antes duplicada em 3 lugares) centralizada numa função só.
+2. **Fuso horário errado no orçamento**: `orcamentoDataResposta`/`orcamentoHoraResposta` usavam `toLocaleDateString('pt-BR')` sem `timeZone` — código copiado do client (implicitamente horário de Brasília no navegador) para uma Cloud Function (runtime em UTC), gravando até 3h adiantado. Fix: `timeZone: 'America/Sao_Paulo'` explícito.
+3. **CLAUDE.md §9** (consultas sem `limit()`): adicionado `limit(200)` em `portalListarMensagens/Avaliacoes/Agendamentos`.
+4. **`phoneDigits` reconstruído via regex**: `consultar-os.html` reconstruía `phoneDigits` a partir de `phone` (regex), quebrando silenciosamente para OS onde os dois campos divergissem. `phoneDigits` adicionado à whitelist pública de `os` (já é derivável do `phone` público) — usa o campo canônico direto.
+5. **Imports mortos**: `addDoc/updateDoc/deleteDoc/orderBy/serverTimestamp/arrayUnion/limit` sem nenhum uso real em `portal.js` depois da migração — removidos do módulo ES e de `window.FirebaseModules`.
+
+Todos os 5 itens confirmados por teste real (unitário via emulador e/ou Puppeteer contra `cellcity-crm-dev`) antes e depois do fix.
+
+### 19.5 Fechamento das Firestore Rules
+
+Com as 7 funcionalidades migradas e homologadas, as Rules voltaram a exigir `temAcessoLiberado()`:
+
+- **Fechadas por completo**: `avaliacoes`, `mensagens_portal`, `portal_eventos`, `agendamentos`, `solicitacoes_diagnostico`.
+- **`os` fechada parcialmente**: `create/update/delete` exigem `temAcessoLiberado()` (aprovar/recusar orçamento migrou para `portalResponderOrcamento`). **`list` fica de fora, de propósito** — `doLogin()`/`_listenOS()` ainda fazem `query(os).where(phoneDigits==...)` direto do client SDK, sempre com sessão anônima (sem doc `usuarios/{uid}`); fechar `list` quebrou o login de cliente real numa tentativa real desta sessão (revertido ao vivo depois de reproduzir o erro `Missing or insufficient permissions`). Não há equivalente de `onSnapshot` (push em tempo real) numa Cloud Function `onCall` (só request/response) — migrar login/listener para outro mecanismo fica para uma sprint futura.
+
+Deploy em `cellcity-crm-dev` via API REST direta (`firebaserules.googleapis.com` — Firebase CLI sem login interativo disponível neste ambiente: a troca de token OAuth falha de forma consistente com "Premature close"; `gcloud` com a mesma service account funciona normalmente e foi o caminho usado também para as 13 Cloud Functions desta sprint). Verificado por leitura do release ativo via API (não só CLI) e por homologação Puppeteer completa rodada de novo depois do deploy.
+
+### 19.6 Testes
+
+- `tests/functions/portal-cloud-functions.test.mjs`: 25/25 (Lote 1 + `portalObterNomeCliente` + asserts de `createdAt` ISO-string).
+- `tests/firestore-rules/os-publico.test.mjs`: 31/31 (atualizado para o novo estado das Rules — `list` de `os` continua aberto, as demais operações/coleções exigem `temAcessoLiberado()`).
+- Homologação Puppeteer (login real, `cellcity-crm-dev`): 12/12, 0 erro de console/página — cobre as 7 funcionalidades do Portal, a saudação com nome real, a data da mensagem (não "Invalid Date"), e as 3 regressões de Consulta de OS.
+
+### 19.7 Status
+
+**Sprint 1b concluída em `develop` (branch local `sprint-1b-portal-cloud-functions`, ainda não pushada nem mesclada — aguardando autorização).** Não promovida a `main`, sem deploy em produção (`cellcity-crm`), conforme escopo autorizado desta sessão.
+
+**Pendências registradas para sprints futuras:**
+- Migrar `doLogin()`/`_listenOS()` para um mecanismo que não exija `list` aberto em `os` (fecharia a última brecha de conta `pendente` nesta coleção).
+- `portalListarMensagens/Avaliacoes/Agendamentos` devolvem o documento inteiro (`{id, ...data()}`) sem whitelist de campos — risco baixo hoje (nenhum campo interno identificado nessas 3 coleções, confirmado por leitura do código que as escreve), mas quebraria a convenção de projeção segura já estabelecida em `projetarCamposPublicosOS` (Sprint 1a) se um campo interno for adicionado a essas coleções no futuro sem revisar isto.
+- Duplicação de padrão entre `enviarMensagem()`/`_enviarAgendamento()`/`_enviarSolicitacaoDiagnostico()`/`enviarAvaliacao()` (cache de refs antes do await, toggle de loading, toast de erro) — candidato a um helper único, não extraído nesta sessão para não arriscar regressão em código já homologado.
