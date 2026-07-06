@@ -385,6 +385,14 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
+    // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+    // usada por CRM/pages/diario/diario.js (COL_EVT) para o histórico da
+    // Linha do Tempo do Diário — não tinha nenhuma regra (falhava fechado).
+    // Mesmo padrão de diario_registros, seu par lógico.
+    match /diario_eventos/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
     match /estoque/{docId} {
       allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
@@ -414,6 +422,30 @@ service cloud.firestore {
     }
 
     match /catalogo_produtos/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    // ─────────────────────────────────────────────
+    // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+    // 3 coleções usadas por módulos internos ativos sem nenhuma regra —
+    // falhavam fechado (permission-denied), não expostas. Mesmo padrão
+    // já usado em todas as coleções de módulo interno acima. Preparado
+    // e testado via emulador nesta auditoria; deploy pendente de
+    // autorização explícita (Firestore Rules é componente crítico).
+    // ─────────────────────────────────────────────
+    match /alertas_usuario/{docId} {
+      // CRM/pages/os/os.js — alertas gerados a partir de OS.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /chips_cadastros/{docId} {
+      // CRM/pages/crm-comercial/chips.js, chips-entrada.js — módulo de
+      // Cadastro de Chip.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /contas_numeros/{docId} {
+      // CRM/pages/contas/contas.js — módulo de Contas e Pendências.
       allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 

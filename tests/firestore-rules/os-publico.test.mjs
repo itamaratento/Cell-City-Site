@@ -164,3 +164,26 @@ for (const colecao of ['avaliacoes', 'mensagens_portal', 'portal_eventos', 'agen
     await assertFails(db.collection(colecao).add({ teste: true }));
   });
 }
+
+// ── HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+// diario_eventos/alertas_usuario/chips_cadastros/contas_numeros eram usadas
+// por módulos internos ativos sem nenhuma regra — falhavam fechado. Mesmo
+// padrão de temAcessoLiberado() já usado nas demais coleções internas.
+for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', 'contas_numeros']) {
+  test(`read/write em ${colecao} com staff aprovado → permitido (hardening 2026-07-06)`, async () => {
+    await seedUsuario(`staff-hard-${colecao}`, 'admin');
+    const db = testEnv.authenticatedContext(`staff-hard-${colecao}`).firestore();
+    await assertSucceeds(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} com perfil pendente → negado (hardening 2026-07-06)`, async () => {
+    await seedUsuario(`pendente-hard-${colecao}`, 'pendente');
+    const db = testEnv.authenticatedContext(`pendente-hard-${colecao}`).firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} sem autenticação → negado (hardening 2026-07-06)`, async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+}

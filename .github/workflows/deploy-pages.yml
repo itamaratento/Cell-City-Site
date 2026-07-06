@@ -31,11 +31,22 @@ jobs:
           path: site-develop
 
       - name: Montar estrutura publicada (main na raiz, develop em /dev)
+        # HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+        # plans/, CLAUDE.md e CRM/pages/kernel-test/ eram publicados ao vivo
+        # sem intenção — são documentação interna (metodologia de auditoria,
+        # regras permanentes de desenvolvimento) e uma página de teste
+        # administrativa, não parte do produto. Exclusão é só do artefato de
+        # deploy — não altera nenhum arquivo do repositório nem comportamento
+        # da aplicação.
         run: |
           mkdir -p _site
-          rsync -a --exclude='.git' --exclude='.github' site-main/ _site/
+          rsync -a --exclude='.git' --exclude='.github' \
+            --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            site-main/ _site/
           mkdir -p _site/dev
-          rsync -a --exclude='.git' --exclude='.github' site-develop/ _site/dev/
+          rsync -a --exclude='.git' --exclude='.github' \
+            --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            site-develop/ _site/dev/
           touch _site/.nojekyll
 
       - name: Upload artifact
