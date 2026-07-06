@@ -427,11 +427,16 @@ service cloud.firestore {
 
     // ─────────────────────────────────────────────
     // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
-    // 3 coleções usadas por módulos internos ativos sem nenhuma regra —
+    // Coleções usadas por módulos internos ativos sem nenhuma regra —
     // falhavam fechado (permission-denied), não expostas. Mesmo padrão
     // já usado em todas as coleções de módulo interno acima. Preparado
     // e testado via emulador nesta auditoria; deploy pendente de
     // autorização explícita (Firestore Rules é componente crítico).
+    // notificacoes_saas/auditoria_saas (achado da mesma auditoria de
+    // 2026-07-02) ficaram de fora deliberadamente: só são referenciadas
+    // por CRM/shared/tenant.js, confirmado sem nenhum importador real
+    // (código morto) — nenhum caminho de execução vivo alcança essas 2
+    // coleções hoje.
     // ─────────────────────────────────────────────
     match /alertas_usuario/{docId} {
       // CRM/pages/os/os.js — alertas gerados a partir de OS.
@@ -447,6 +452,26 @@ service cloud.firestore {
     match /contas_numeros/{docId} {
       // CRM/pages/contas/contas.js — módulo de Contas e Pendências.
       allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /central_organizacao/{docId} {
+      // CRM/pages/central-organizacao/central.js.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /backup_logs/{docId} {
+      // CRM/pages/dashboard/index.html (script inline) — log de rotinas
+      // de backup/manutenção acionadas pelo Dashboard.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /catalogo_config/{docId} {
+      // CRM/pages/catalogo/catalogo.js (leitura/escrita da equipe) +
+      // CRM/pages/catalogo/public/catalogo-publico.js (leitura pública do
+      // doc único `geral`, catálogo público sem login) — mesmo padrão já
+      // usado em /config acima.
+      allow get:                           if true;
+      allow list, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────

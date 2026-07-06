@@ -169,7 +169,7 @@ for (const colecao of ['avaliacoes', 'mensagens_portal', 'portal_eventos', 'agen
 // diario_eventos/alertas_usuario/chips_cadastros/contas_numeros eram usadas
 // por módulos internos ativos sem nenhuma regra — falhavam fechado. Mesmo
 // padrão de temAcessoLiberado() já usado nas demais coleções internas.
-for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', 'contas_numeros']) {
+for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', 'contas_numeros', 'central_organizacao', 'backup_logs']) {
   test(`read/write em ${colecao} com staff aprovado → permitido (hardening 2026-07-06)`, async () => {
     await seedUsuario(`staff-hard-${colecao}`, 'admin');
     const db = testEnv.authenticatedContext(`staff-hard-${colecao}`).firestore();
@@ -187,3 +187,24 @@ for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', '
     await assertFails(db.collection(colecao).add({ teste: true }));
   });
 }
+
+// catalogo_config tem forma diferente (get público do doc `geral`, igual a
+// /config) — testes dedicados em vez do loop genérico acima.
+test('get de catalogo_config/geral sem autenticação → permitido (catálogo público)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('catalogo_config').doc('geral').set({ ativo: true });
+  });
+  const db = testEnv.unauthenticatedContext().firestore();
+  await assertSucceeds(db.collection('catalogo_config').doc('geral').get());
+});
+
+test('write em catalogo_config/geral sem autenticação → negado', async () => {
+  const db = testEnv.unauthenticatedContext().firestore();
+  await assertFails(db.collection('catalogo_config').doc('geral').set({ ativo: false }));
+});
+
+test('write em catalogo_config/geral com staff aprovado → permitido', async () => {
+  await seedUsuario('staff-catalogo-config', 'admin');
+  const db = testEnv.authenticatedContext('staff-catalogo-config').firestore();
+  await assertSucceeds(db.collection('catalogo_config').doc('geral').set({ ativo: true }));
+});

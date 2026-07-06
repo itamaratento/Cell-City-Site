@@ -138,7 +138,7 @@ Fonte cruzada: `AUDITORIA_GERAL_20260704.md` §4 (35 itens) + `GUIA_MANUTENCAO.m
 | `GUIA_OPERACAO_AMBIENTES.md`, `GUIA_ROLLBACK.md`, `GUIA_MANUTENCAO.md` | Guias operacionais | ✅ Válidos como referência; ver nota 2.3 sobre 1 item potencialmente superado |
 | `HISTORICO_PROJETO.md` | Histórico acumulativo | ✅ Referência histórica, manter — nunca sobrescrever, só adicionar |
 | `plans/BACKLOG.md` (BL-001 a BL-006) | Backlog formal | ✅ Ativo — BL-006 já corrigida/aceita; demais em aberto |
-| `plans/fase2-sprint1/2/3-*-rbac.md`, `PLANO_ACAO_RISCOS_CRITICOS.md`, `EXECUCAO_RISCOS_CRITICOS.md`, `VALIDACAO_FUNCIONAL_RISCOS.md`, `CONFERENCIA_FINAL_COLECOES.md`, `ENCERRAMENTO_AUDITORIA.md`, `SEPARACAO_AMBIENTES_DEV_PROD.md`, `HOMOLOGACAO_SEPARACAO_AMBIENTES.md`, `PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`, `RELATORIO_COTA_FIRESTORE_20260702.md`, `FASE_3_*`, `FASE_4_*` | Ciclo de segurança/ambientes/RBAC 2026-07-02/03 | ✅ Ainda válidos como registro histórico e plano em aberto — **manter como estão** |
+| `plans/fase2-sprint1/2/3-*-rbac.md`, `PLANO_ACAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)`, `EXECUCAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)`, `VALIDACAO_FUNCIONAL_RISCOS.md`, `CONFERENCIA_FINAL_COLECOES.md`, `ENCERRAMENTO_AUDITORIA.md`, `SEPARACAO_AMBIENTES_DEV_PROD.md`, `HOMOLOGACAO_SEPARACAO_AMBIENTES.md`, `PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`, `RELATORIO_COTA_FIRESTORE_20260702.md`, `FASE_3_*`, `FASE_4_*` | Ciclo de segurança/ambientes/RBAC 2026-07-02/03 | ✅ Ainda válidos como registro histórico e plano em aberto — **manter como estão** |
 
 ### 2.2 Documentos desatualizados — **recomendação, sem alteração nesta entrega**
 

@@ -54,7 +54,7 @@ Confirmado que as demais 5 coleções do mesmo array `COLECOES` do dashboard (`o
 - Nenhuma outra coleção foi encontrada em uso exclusivo de arquivos `.BACKUP*`/`.bak*` que não apareça também em código ativo — ou seja, não há "coleção fantasma" mantida só por causa de um arquivo de backup solto.
 
 ### 3.4 Consistência com os levantamentos anteriores
-`FASE_3_LEVANTAMENTO.md`, `FASE_3_VALIDACAO.md`, `PLANO_ACAO_RISCOS_CRITICOS.md`, `EXECUCAO_RISCOS_CRITICOS.md` e `VALIDACAO_FUNCIONAL_RISCOS.md` citam consistentemente as mesmas 9 coleções entre si (sem contradição interna) — a lacuna do `backup_logs` é uma omissão por cobertura incompleta de busca, não uma contradição entre os documentos.
+`FASE_3_LEVANTAMENTO.md`, `FASE_3_VALIDACAO.md`, `PLANO_ACAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)`, `EXECUCAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)` e `VALIDACAO_FUNCIONAL_RISCOS.md` citam consistentemente as mesmas 9 coleções entre si (sem contradição interna) — a lacuna do `backup_logs` é uma omissão por cobertura incompleta de busca, não uma contradição entre os documentos.
 
 ## 4. Confirmação da cobertura da auditoria
 

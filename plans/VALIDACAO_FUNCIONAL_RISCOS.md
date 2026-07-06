@@ -101,7 +101,7 @@ Sem nenhuma alteração de chave, reconfirmação e complemento do diagnóstico 
 
 ### 2.1 Onde a Service Account é utilizada
 
-Reconfirmado (sem mudanças em relação a `EXECUCAO_RISCOS_CRITICOS.md`): nenhum script do projeto usa `sa-key.json`; o único uso é manual, via `gcloud` local.
+Reconfirmado (sem mudanças em relação a `EXECUCAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)`): nenhum script do projeto usa `sa-key.json`; o único uso é manual, via `gcloud` local.
 
 ### 2.2 Dependência externa não identificada anteriormente?
 
@@ -141,7 +141,7 @@ Classificação final — **Válido / Precisa atualização / Deve ser arquivado
 | **`CRM/TECHDOC.md`** | **Válido** (divergência mínima) | Só a omissão de 3 módulos (`dashboard`, `central-modulos`, `estrategia`) na lista de catálogo — correção pontual de uma linha, não compromete a confiabilidade geral do documento. |
 | **`README.md`** (raiz e `CRM/`) | **Válido** (não aplicável) | Conteúdo trivial (`# cellcity-crm`), não há afirmação a validar. |
 | `plans/fase2-sprint1-dashboard-rbac.md` | **Válido** | Já contém as correções sobre `modulo-guard.js` e divergência de Rules. |
-| `plans/FASE_3_LEVANTAMENTO.md`, `FASE_3_VALIDACAO.md`, `PLANO_ACAO_RISCOS_CRITICOS.md`, `EXECUCAO_RISCOS_CRITICOS.md` | **Válido** | São as próprias auditorias corretivas recentes (2026-07-01) que este documento complementa. |
+| `plans/FASE_3_LEVANTAMENTO.md`, `FASE_3_VALIDACAO.md`, `PLANO_ACAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)`, `EXECUCAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)` | **Válido** | São as próprias auditorias corretivas recentes (2026-07-01) que este documento complementa. |
 
 ---
 
@@ -164,7 +164,7 @@ Classificação final — **Válido / Precisa atualização / Deve ser arquivado
 
 ## Recomendações
 
-1. **A correção das 9 Firestore Rules deixa de ser condicional** — a auditoria anterior recomendava confirmar o bloqueio antes de escrever a regra; isso já foi feito com evidência real. Pode seguir direto para a Fase C do `EXECUCAO_RISCOS_CRITICOS.md` (escrever as regras, testar via emulador — mesmo método usado aqui —, deploy, verificar via API).
+1. **A correção das 9 Firestore Rules deixa de ser condicional** — a auditoria anterior recomendava confirmar o bloqueio antes de escrever a regra; isso já foi feito com evidência real. Pode seguir direto para a Fase C do `EXECUCAO_RISCOS_CRITICOS_INTERNO.md (interno, não versionado desde 2026-07-06)` (escrever as regras, testar via emulador — mesmo método usado aqui —, deploy, verificar via API).
 2. **Priorizar a correção de `favoritos_usuarios`** entre as 9 — é a de maior superfície (usada por múltiplos módulos simultaneamente) e uma das 5 com evidência de que a regra existia antes (arquivo órfão da raiz).
 3. **Tratar `PROXIMA_ETAPA.md` como arquivamento, não só atualização** — dado o risco de reativação acidental do SaaS, uma correção pontual de trechos é mais arriscada (pode deixar outros trechos igualmente perigosos passarem despercebidos) do que arquivar o documento inteiro e, se necessário, recriar um "próxima etapa" novo e correto.
 4. Manter o script de teste (`/tmp/.../scratchpad/rules-test/test.cjs`) como referência — ele já está pronto para ser reaproveitado (com a nova versão das Rules) como parte do processo de homologação formal quando a correção for implementada.
