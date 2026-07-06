@@ -74,12 +74,10 @@ window.Portal = {
   session: null,       // { telefone, clientName, osCount, ... }
   loja: { ...LOJA_DEFAULT }, // dados da loja (carregados do Firestore em _boot)
   currentOS: [],       // OS do cliente logado
-  currentMsgs: [],     // Mensagens do cliente
+  currentMsgs: [],     // Mensagens do cliente (Sprint 1b: carregadas sob demanda via Cloud Function, não mais onSnapshot — ver _carregarMensagens())
   currentAval: null,   // Avaliação existente (se houver)
-  currentAgendamentos: [], // Agendamentos do cliente
-  unsubscribeOS: null, // Listener em tempo real das OS
-  unsubscribeMsgs: null, // Listener em tempo real das mensagens
-  unsubscribeAgendamentos: null, // Listener em tempo real dos agendamentos
+  currentAgendamentos: [], // Agendamentos do cliente (Sprint 1b: idem, ver _carregarAgendamentos())
+  unsubscribeOS: null, // Listener em tempo real das OS (fora de escopo da Sprint 1b — continua via Firestore direto)
 
   // Config de horários (fallback; sobrescrita ao carregar do Firestore config/horarios)
   _horariosConfig: {
@@ -141,10 +139,10 @@ window.Portal = {
         console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
 
         // Inicia listeners em tempo real para a sessão restaurada
-        console.log('[AUDIT:BOOT] Iniciando _listenOS() e _listenMensagens() para sessão restaurada');
+        console.log('[AUDIT:BOOT] Iniciando _listenOS() e _carregarMensagens() para sessão restaurada');
         this._listenOS();
-        this._listenMensagens();
-        this._listenAgendamentos();
+        this._carregarMensagens();
+        this._carregarAgendamentos();
       } catch {
         console.warn('[Portal] Erro ao fazer parse da sessão');
         this.session = null;
@@ -205,12 +203,12 @@ window.Portal = {
       // Navega
       switch (route) {
         case 'painel':      this.renderPainel(); break;
-        case 'agendar':     this.renderAgendar(); break;
+        case 'agendar':     this.renderAgendar(); this._carregarAgendamentos(); break;
         case 'os':          this.renderOSList(); break;
         case 'os-detalhe':  this.renderOSDetalhe(parts[1]); break;
         case 'garantias':   this.renderGarantias(); break;
         case 'avaliar':     this.renderAvaliar(); break;
-        case 'mensagens':   this.renderMensagens(); break;
+        case 'mensagens':   this.renderMensagens(); this._carregarMensagens(); break;
         case 'contato':     this.renderContato(); break;
         case 'como-chegar': this.renderComoChegar(); break;
         default:            location.hash = '#/painel';
@@ -445,8 +443,8 @@ window.Portal = {
 
       // Escuta OS em tempo real
       this._listenOS();
-      this._listenMensagens();
-      this._listenAgendamentos();
+      this._carregarMensagens();
+      this._carregarAgendamentos();
 
       // Vai para o painel
       location.hash = '#painel';
@@ -505,54 +503,41 @@ window.Portal = {
     }, (err) => console.warn('[Portal] Erro listener OS:', err));
   },
 
-  _listenMensagens() {
-    if (!this.session?.telefone) {
-      console.warn('[Portal] _listenMensagens() cancelado — sessão sem telefone');
+  // Sprint 1b: mensagens_portal fecha para acesso direto do cliente (Cloud
+  // Function é o único caminho — ver functions/index.js::portalListarMensagens).
+  // Sem onSnapshot possível nesse modelo (a Function não tem como "empurrar"
+  // atualização — o cliente não prova posse do telefone em tempo de Rules,
+  // só no payload de cada chamada). Busca ao entrar na tela e após enviar
+  // mensagem; não atualiza sozinho enquanto a tela fica aberta.
+  async _carregarMensagens() {
+    if (!this.session?.telefoneDigits) {
+      console.warn('[Portal] _carregarMensagens() cancelado — sessão sem telefone');
       return;
     }
-    if (this.unsubscribeMsgs) this.unsubscribeMsgs();
-    const db = window.db;
-    if (!db) { console.warn('[Portal] _listenMensagens() cancelado — db não disponível'); return; }
-    const { collection, query, where, onSnapshot, orderBy } = window.FirebaseModules;
-    const q = query(
-      collection(db, 'mensagens_portal'),
-      where('telefoneDigits', '==', this.session.telefoneDigits),
-      orderBy('createdAt', 'desc')
-    );
-    this.unsubscribeMsgs = onSnapshot(q, (snap) => {
-      this.currentMsgs = [];
-      snap.forEach(d => this.currentMsgs.push({ id: d.id, ...d.data() }));
-      const route = location.hash.slice(1);
-      if (route === 'mensagens') this.renderMensagens();
-    }, (err) => console.warn('[Portal] Erro listener msgs:', err));
+    try {
+      const resp = await window.PortalFunctions.listarMensagens({ phoneDigits: this.session.telefoneDigits });
+      this.currentMsgs = resp.data.lista || [];
+    } catch (err) {
+      console.warn('[Portal] Erro ao carregar mensagens:', err);
+    }
+    const route = location.hash.slice(1);
+    if (route === 'mensagens') this.renderMensagens();
   },
 
-  _listenAgendamentos() {
-    if (!this.session?.telefone) {
-      console.warn('[Portal] _listenAgendamentos() cancelado — sessão sem telefone');
+  // Sprint 1b: mesmo motivo de _carregarMensagens() acima.
+  async _carregarAgendamentos() {
+    if (!this.session?.telefoneDigits) {
+      console.warn('[Portal] _carregarAgendamentos() cancelado — sessão sem telefone');
       return;
     }
-    if (this.unsubscribeAgendamentos) this.unsubscribeAgendamentos();
-    const db = window.db;
-    if (!db) { console.warn('[Portal] _listenAgendamentos() cancelado — db não disponível'); return; }
-    const { collection, query, where, onSnapshot } = window.FirebaseModules;
-    // Filtra pelo telefone (gravado no formato canônico da sessão); ordena no cliente
-    // para não exigir índice composto no Firestore.
-    const q = query(
-      collection(db, 'agendamentos'),
-      where('telefoneDigits', '==', this.session.telefoneDigits)
-    );
-    this.unsubscribeAgendamentos = onSnapshot(q, (snap) => {
-      this.currentAgendamentos = [];
-      snap.forEach(d => this.currentAgendamentos.push({ id: d.id, ...d.data() }));
-      this.currentAgendamentos.sort((a, b) => {
-        const da = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : new Date(a.createdAt || 0).getTime();
-        const db_ = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : new Date(b.createdAt || 0).getTime();
-        return db_ - da;
-      });
-      const route = location.hash.replace(/^#\/?/, '').split('/')[0];
-      if (route === 'agendar') this.renderAgendar();
-    }, (err) => console.warn('[Portal] Erro listener agendamentos:', err));
+    try {
+      const resp = await window.PortalFunctions.listarAgendamentos({ phoneDigits: this.session.telefoneDigits });
+      this.currentAgendamentos = resp.data.lista || [];
+    } catch (err) {
+      console.warn('[Portal] Erro ao carregar agendamentos:', err);
+    }
+    const route = location.hash.replace(/^#\/?/, '').split('/')[0];
+    if (route === 'agendar') this.renderAgendar();
   },
 
   // ===== PAINEL PRINCIPAL =====
@@ -697,34 +682,12 @@ window.Portal = {
   // ===== BUSCAR ÚLTIMA AVALIAÇÃO =====
   async _buscarUltimaAvaliacao() {
     try {
-      const db = window.db;
-      const { collection, query, where, getDocs, orderBy, limit } = window.FirebaseModules;
-      const q = query(
-        collection(db, 'avaliacoes'),
-        where('telefoneDigits', '==', this.session.telefoneDigits),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        return snap.docs[0].data();
-      }
+      const resp = await window.PortalFunctions.listarAvaliacoes({ phoneDigits: this.session.telefoneDigits });
+      const lista = resp.data.lista || [];
+      return lista.length ? lista[0] : null;
     } catch (e) {
-      // Se não tiver índice, tenta sem orderBy
-      try {
-        const db = window.db;
-        const { collection, query, where, getDocs } = window.FirebaseModules;
-        const q = query(collection(db, 'avaliacoes'), where('telefoneDigits', '==', this.session.telefoneDigits));
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const docs = [];
-          snap.forEach(d => docs.push(d.data()));
-          docs.sort((a, b) => (b.createdAt || '').toString().localeCompare((a.createdAt || '').toString()));
-          return docs[0];
-        }
-      } catch (e2) { /* ignora */ }
+      return null;
     }
-    return null;
   },
 
   // ===== LISTA DE OS =====
@@ -1011,20 +974,6 @@ window.Portal = {
     return false;
   },
 
-  _orcamentoCampos(resposta, escolha, obs) {
-    const now = new Date();
-    const campos = {
-      orcamentoResposta: resposta, // 'aprovado' | 'recusado'
-      orcamentoOrigem: 'Portal do Cliente',
-      orcamentoDataResposta: now.toLocaleDateString('pt-BR'),
-      orcamentoHoraResposta: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      orcamentoTimestamp: now.toISOString()
-    };
-    if (escolha) campos.orcamentoEscolhido = escolha; // '1' ou '2'
-    if (obs) campos.orcamentoObs = obs;
-    return campos;
-  },
-
   async aprovarOrcamento(osId) {
     if (!this._orcamentoRespondivel(osId)) return;
     const o = (this.currentOS || []).find(x => x.id === osId || x.firestoreId === osId);
@@ -1062,32 +1011,23 @@ window.Portal = {
     body.innerHTML = '<div class="orc-modal-opcoes"><label class="orc-modal-opcao" data-opcao="1"><input type="radio" name="orc-escolha" value="1" checked><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opcao 1</div>' + desc1 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc1Valor).toFixed(2) + '</div></div></label><label class="orc-modal-opcao" data-opcao="2"><input type="radio" name="orc-escolha" value="2"><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opcao 2</div>' + desc2 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc2Valor).toFixed(2) + '</div></div></label></div><div style="margin-top:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Observacao <span style="color:#aaa;">(opcional)</span></label><textarea id="orc-obs-input" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Quero a peca original, Retiro amanha..."></textarea></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button onclick="Portal._executarAprovacao(\'' + osId + '\')" style="flex:1;padding:12px;background:#00C853;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Aprovacao</button></div>';
   },
 
-  _executarAprovacao(osId) {
+  async _executarAprovacao(osId) {
     const selectedRadio = document.querySelector('input[name="orc-escolha"]:checked');
     const escolha = selectedRadio ? selectedRadio.value : null;
     const obs = document.getElementById('orc-obs-input')?.value?.trim() || '';
     this._fecharModal();
-    const escNome = escolha === '1' ? 'Orcamento 1' : (escolha === '2' ? 'Orcamento 2' : 'o orcamento');
-    const obsTexto = obs ? '\n\nObservacao:\n"' + obs + '"' : '';
-    const now = new Date();
-    const dataHora = now.toLocaleDateString('pt-BR') + ' as ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     try {
-      const db = window.db;
-      const { doc, updateDoc, serverTimestamp, arrayUnion } = window.FirebaseModules;
-      const ref = doc(db, 'os', osId);
-      updateDoc(ref, {
-        status: 'orcamento_aprovado',
-        ...this._orcamentoCampos('aprovado', escolha, obs || null),
-        updatedAt: serverTimestamp(),
-        timeline: arrayUnion({
-          date: new Date().toISOString(),
-          text: 'Cliente aprovou ' + escNome + ' em ' + dataHora + '.' + obsTexto
-        })
+      // portalResponderOrcamento (Sprint 1b) substitui o updateDoc direto e
+      // adiciona a checagem que faltava: phoneDigits do payload precisa bater
+      // com o phoneDigits gravado na OS. _listenOS() (inalterado) recebe a
+      // atualização normalmente e re-renderiza a tela.
+      await window.PortalFunctions.responderOrcamento({
+        osId, phoneDigits: this.session.telefoneDigits, resposta: 'aprovado', escolha, obs: obs || undefined,
       });
       this._toast('Orcamento aprovado! Entraremos em contato.');
     } catch (err) {
       console.error('[Portal] Erro ao aprovar:', err);
-      this._toast('Erro ao aprovar. Tente novamente.');
+      this._toast(err.message || 'Erro ao aprovar. Tente novamente.');
     }
   },
 
@@ -1103,7 +1043,7 @@ window.Portal = {
     body.innerHTML = '<p style="margin-bottom:12px;color:#666;">Conte-nos o motivo da recusa:</p><div style="margin-bottom:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Motivo <span style="color:#ef4444;">*</span></label><textarea id="orc-recusa-motivo" rows="3" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Valor acima do esperado, Vou procurar outra assistencia..." oninput="document.getElementById(\'recusa-confirm-btn\').disabled = this.value.trim().length < 3"></textarea><div id="recusa-erro" style="color:#ef4444;font-size:12px;margin-top:4px;display:none;">Por favor, informe o motivo da recusa.</div></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button id="recusa-confirm-btn" onclick="Portal._executarRecusa(\'' + osId + '\')" style="flex:1;padding:12px;background:#ef4444;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;" disabled>Confirmar Recusa</button></div>';
   },
 
-  _executarRecusa(osId) {
+  async _executarRecusa(osId) {
     const motivo = document.getElementById('orc-recusa-motivo')?.value?.trim();
     if (!motivo || motivo.length < 3) {
       const erro = document.getElementById('recusa-erro');
@@ -1111,25 +1051,14 @@ window.Portal = {
       return;
     }
     this._fecharModal();
-    const now = new Date();
-    const dataHora = now.toLocaleDateString('pt-BR') + ' as ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     try {
-      const db = window.db;
-      const { doc, updateDoc, serverTimestamp, arrayUnion } = window.FirebaseModules;
-      const ref = doc(db, 'os', osId);
-      updateDoc(ref, {
-        status: 'orcamento_recusado',
-        ...this._orcamentoCampos('recusado'),
-        updatedAt: serverTimestamp(),
-        timeline: arrayUnion({
-          date: new Date().toISOString(),
-          text: 'Cliente recusou o orcamento em ' + dataHora + '.\n\nMotivo:\n"' + motivo + '"'
-        })
+      await window.PortalFunctions.responderOrcamento({
+        osId, phoneDigits: this.session.telefoneDigits, resposta: 'recusado', obs: motivo,
       });
       this._toast('Orcamento recusado. Seu aparelho sera devolvido.');
     } catch (err) {
       console.error('[Portal] Erro ao recusar:', err);
-      this._toast('Erro ao recusar. Tente novamente.');
+      this._toast(err.message || 'Erro ao recusar. Tente novamente.');
     }
   },
 
@@ -1510,12 +1439,10 @@ window.Portal = {
 
   async _checkAvaliacaoExistente() {
     try {
-      const db = window.db;
-      const { collection, query, where, getDocs } = window.FirebaseModules;
-      const q = query(collection(db, 'avaliacoes'), where('telefoneDigits', '==', this.session.telefoneDigits));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const av = snap.docs[0].data();
+      const resp = await window.PortalFunctions.listarAvaliacoes({ phoneDigits: this.session.telefoneDigits });
+      const lista = resp.data.lista || [];
+      if (lista.length) {
+        const av = lista[0];
         this.currentAval = av;
         document.querySelectorAll('.star').forEach((s, i) => {
           if (i < av.nota) { s.textContent = '★'; s.style.color = '#FFD700'; }
@@ -1560,16 +1487,11 @@ window.Portal = {
 
   async _salvarAvaliacao(nota, texto) {
     try {
-      const db = window.db;
-      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
-      await addDoc(collection(db, 'avaliacoes'), {
-        telefone: this.session.telefone,
-        telefoneDigits: this.session.telefoneDigits,
+      await window.PortalFunctions.criarAvaliacao({
+        phoneDigits: this.session.telefoneDigits,
         clientName: this.session.clientName,
         nota,
         texto,
-        origem: 'portal',
-        createdAt: serverTimestamp()
       });
     } catch (err) {
       console.error('[Portal] Erro ao salvar avaliação:', err);
@@ -1649,9 +1571,7 @@ window.Portal = {
 
   async _marcarMensagemLida(msgId) {
     try {
-      const db = window.db;
-      const { doc, updateDoc } = window.FirebaseModules;
-      await updateDoc(doc(db, 'mensagens_portal', msgId), { lida: true });
+      await window.PortalFunctions.marcarMensagemLida({ phoneDigits: this.session.telefoneDigits, msgId });
     } catch (err) {
       // Silencia erro se a mensagem já foi lida por outro meio
     }
@@ -1683,20 +1603,15 @@ window.Portal = {
     document.getElementById('btn-msg-loading').style.display = '';
 
     try {
-      const db = window.db;
-      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
-      await addDoc(collection(db, 'mensagens_portal'), {
-        telefone: this.session.telefone,
-        telefoneDigits: this.session.telefoneDigits,
+      await window.PortalFunctions.enviarMensagem({
+        phoneDigits: this.session.telefoneDigits,
         clientName: this.session.clientName,
         nome,
         texto,
-        lida: false,
-        origem: 'portal',
-        createdAt: serverTimestamp()
       });
       document.getElementById('msg-texto').value = '';
       this._toast('Mensagem enviada com sucesso!', 'success');
+      await this._carregarMensagens();
     } catch (err) {
       console.error('[Portal] Erro ao enviar mensagem:', err);
       errorEl.textContent = '❌ Erro ao enviar. Tente novamente.';
@@ -1808,20 +1723,8 @@ window.Portal = {
 
   async _buscarHorariosOcupados(dataISO) {
     try {
-      const db = window.db;
-      const { collection, query, where, getDocs } = window.FirebaseModules;
-      const q = query(
-        collection(db, 'agendamentos'),
-        where('data', '==', dataISO),
-        where('status', 'in', ['confirmado', 'aguardando'])
-      );
-      const snap = await getDocs(q);
-      const ocupados = [];
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (d.horario) ocupados.push(d.horario.slice(0, 5));
-      });
-      return ocupados;
+      const resp = await window.PortalFunctions.listarHorariosOcupados({ data: dataISO });
+      return resp.data.ocupados || [];
     } catch (e) {
       console.warn('[Portal] Erro ao buscar horários ocupados:', e);
       return [];
@@ -2084,12 +1987,8 @@ window.Portal = {
     if (loading) loading.style.display = '';
 
     try {
-      const db = window.db;
-      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
-      await addDoc(collection(db, 'agendamentos'), {
-        // telefone canônico da sessão garante que o listener do Portal encontre o doc.
-        telefone: this.session?.telefone || telefone,
-        telefoneDigits: this.session?.telefoneDigits || window.PhoneUtils.normalizePhoneDigits(telefone),
+      await window.PortalFunctions.criarAgendamento({
+        phoneDigits: this.session?.telefoneDigits || window.PhoneUtils.normalizePhoneDigits(telefone),
         telefoneInformado: telefone,
         clientName: this.session?.clientName || nome,
         nome,
@@ -2098,9 +1997,6 @@ window.Portal = {
         tipoEquipamento,
         motivo,
         observacoes: observacoes || '',
-        status: 'aguardando',
-        origem: 'portal',
-        createdAt: serverTimestamp()
       });
       this._toast('Agendamento solicitado! Aguarde a confirmação da loja.', 'success');
       // Limpa os campos editáveis (mantém nome/telefone da sessão)
@@ -2108,6 +2004,7 @@ window.Portal = {
       ['ag-equipamento', 'ag-motivo'].forEach(id => { const e = document.getElementById(id); if (e) e.value = ''; });
       const selHorario = document.getElementById('ag-horario-select');
       if (selHorario) { selHorario.innerHTML = '<option value="">Selecione uma data primeiro...</option>'; selHorario.disabled = true; }
+      await this._carregarAgendamentos();
     } catch (err) {
       console.error('[Portal] Erro ao enviar agendamento:', err);
       if (errorEl) errorEl.textContent = '❌ Erro ao enviar. Tente novamente.';
@@ -2205,8 +2102,6 @@ window.Portal = {
   logout() {
     if (!confirm('Deseja sair do Portal do Cliente?')) return;
     if (this.unsubscribeOS) this.unsubscribeOS();
-    if (this.unsubscribeMsgs) this.unsubscribeMsgs();
-    if (this.unsubscribeAgendamentos) this.unsubscribeAgendamentos();
     this.session = null;
     this.currentOS = [];
     this.currentMsgs = [];
@@ -2270,19 +2165,14 @@ window.Portal = {
 
   // ===== TRACKING DE EVENTOS (ETAPA 3) =====
   async _registrarEvento(tipo, dados = {}) {
+    if (!this.session?.telefoneDigits) return; // eventos só existem depois do login (mesmo comportamento de antes)
     try {
-      const db = window.db;
-      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
-      const payload = {
+      await window.PortalFunctions.registrarEvento({
+        phoneDigits: this.session.telefoneDigits,
+        clientName: this.session.clientName,
         tipo,
-        createdAt: serverTimestamp(),
-        ...dados
-      };
-      if (this.session) {
-        payload.telefone = this.session.telefone;
-        payload.clientName = this.session.clientName;
-      }
-      await addDoc(collection(db, 'portal_eventos'), payload);
+        dados,
+      });
       console.log('[Portal] Evento registrado:', tipo);
     } catch (err) {
       console.warn('[Portal] Erro ao registrar evento:', tipo, err.message);
@@ -2321,21 +2211,14 @@ window.Portal = {
     loading.style.display = '';
 
     try {
-      const db = window.db;
-      const { collection, addDoc, serverTimestamp } = window.FirebaseModules;
-      const payload = {
-        telefone: this.session?.telefone || '',
+      await window.PortalFunctions.criarSolicitacaoDiagnostico({
+        phoneDigits: this.session?.telefoneDigits || '',
         clientName: this.session?.clientName || '',
         tipoEquipamento: equip,
         marca: marca,
         modelo: modelo,
         descricao: desc,
-        status: 'pendente',
-        respondido: false,
-        origem: 'portal',
-        createdAt: serverTimestamp()
-      };
-      await addDoc(collection(db, 'solicitacoes_diagnostico'), payload);
+      });
       this._toast('Solicitação enviada com sucesso! Em breve entraremos em contato.', 'success');
       descInput.value = '';
       descInput.style.borderColor = '';
