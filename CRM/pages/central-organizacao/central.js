@@ -1,5 +1,6 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, doc, getDoc, setDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { CentralOrganizacaoRepository as CentralOrganizacao } from '../../repositories/central-organizacao.repository.js';
 
 const SECAO_DOC = 'central_organizacao';
 
@@ -185,13 +186,13 @@ function toast(msg) {
 
 // ── Firestore ─────────────────────────────────────────────────────────────────
 async function carregar(secao) {
-    const snap = await getDoc(doc(db, SECAO_DOC, secao));
-    estado[secao] = snap.exists() ? (snap.data().itens || []) : [];
+    const item = await CentralOrganizacao.getById(secao);
+    estado[secao] = item ? (item.itens || []) : [];
     renderLista(secao);
 }
 
 async function persistir(secao) {
-    await setDoc(doc(db, SECAO_DOC, secao), {
+    await CentralOrganizacao.set(secao, {
         itens:        estado[secao],
         atualizadoEm: serverTimestamp(),
     });

@@ -1,6 +1,6 @@
-import {
-    db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp
-} from "../../scripts/firebase.js";
+import { serverTimestamp } from '../../firebase/client.js';
+import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
+import { ProdutosRepository as Produtos } from '../../repositories/produtos.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
@@ -58,16 +58,13 @@ toggleListaBtn?.addEventListener('click', () => {
 // ── carregar ───────────────────────────────────────────────────────
 async function carregar() {
     try {
-        const snap = await getDocs(collection(db, COL));
-        produtos = [];
-        snap.forEach(d => produtos.push({ id: d.id, ...d.data() }));
+        produtos = await Estoque.list();
         // fallback: se coleção nova for vazia, tenta migrar da coleção antiga
         if (produtos.length === 0) {
-            const snap2 = await getDocs(collection(db, 'produtos'));
-            snap2.forEach(d => {
-                const p = d.data();
+            const lista2 = await Produtos.list();
+            lista2.forEach(p => {
                 produtos.push({
-                    id: d.id,
+                    id: p.id,
                     nome: p.description || p.nome || '—',
                     categoria: p.categoria || 'Outro',
                     quantidade: Number(p.quantidade || 0),
@@ -247,7 +244,7 @@ async function salvarProduto() {
 
     const id = editandoId || `prod_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL, id), dados);
+        await Estoque.set(id, dados);
         toast(editandoId ? '✏️ Produto atualizado!' : '✅ Produto adicionado!');
         fecharForm();
         await carregar();
@@ -259,7 +256,7 @@ async function salvarProduto() {
 async function excluir(id) {
     if (!confirm('Excluir este produto do estoque?')) return;
     try {
-        await deleteDoc(doc(db, COL, id));
+        await Estoque.remove(id);
         toast('🗑️ Produto removido.');
         await carregar();
     } catch {
@@ -294,7 +291,7 @@ async function confirmarModal() {
         : Math.max(prod.quantidade - qty, 0);
 
     try {
-        await setDoc(doc(db, COL, modalProdId), { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
+        await Estoque.set(modalProdId, { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
         fecharModal();
         toast(modalTipo === 'entrada' ? `+${qty} unidades adicionadas.` : `-${qty} unidades retiradas.`);
         await carregar();
@@ -353,21 +350,18 @@ if (document.readyState === 'loading') {
 // ── exporta função de desconto para Caixa ─────────────────────────
 export async function descontarEstoque(produtoId, quantidade = 1) {
     try {
-        const snap = await getDocs(collection(db, COL));
+        const lista = await Estoque.list();
         let prod = null;
-        snap.forEach(d => { if (d.id === produtoId) prod = { id: d.id, ...d.data() }; });
+        lista.forEach(p => { if (p.id === produtoId) prod = p; });
         if (!prod) return;
         const novaQty = Math.max((prod.quantidade || 0) - quantidade, 0);
-        await setDoc(doc(db, COL, produtoId), { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
+        await Estoque.set(produtoId, { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
     } catch {}
 }
 
 // Expõe lista de produtos do estoque para outros módulos (ex: Caixa)
 export async function listarProdutosEstoque() {
     try {
-        const snap = await getDocs(collection(db, COL));
-        const lista = [];
-        snap.forEach(d => lista.push({ id: d.id, ...d.data() }));
-        return lista;
+        return await Estoque.list();
     } catch { return []; }
 }

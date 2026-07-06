@@ -1,6 +1,6 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp }
-    from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { ContasNumerosRepository as Contas } from '../../repositories/crm.repository.js';
 
 const COL = 'contas_numeros';
 
@@ -38,8 +38,7 @@ function mostrarView(id) {
 
 // ── Firestore ─────────────────────────────────────────────────────────────────
 async function carregar() {
-    const snap = await getDocs(collection(db, COL));
-    _todas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _todas = await Contas.list();
     _todas.sort((a, b) => {
         const ta = a.criadoEm?.seconds || 0;
         const tb = b.criadoEm?.seconds || 0;
@@ -169,11 +168,11 @@ window.Contas = {
         const id = $('form-id').value;
         try {
             if (id) {
-                await updateDoc(doc(db, COL, id), dados);
+                await Contas.update(id, dados);
                 toast('✅ Atualizado');
             } else {
                 dados.criadoEm = serverTimestamp();
-                await addDoc(collection(db, COL), dados);
+                await Contas.create(dados);
                 toast('✅ Salvo');
             }
             await carregar();
@@ -188,7 +187,7 @@ window.Contas = {
         if (!_atual) return;
         if (!confirm(`Excluir "${_atual.nome}"?`)) return;
         try {
-            await deleteDoc(doc(db, COL, _atual.id));
+            await Contas.remove(_atual.id);
             toast('🗑 Excluído');
             await carregar();
             mostrarView('view-lista');

@@ -8,9 +8,8 @@
 //    Título → Busca inteligente → Novo Registro → Favoritos →
 //    Registros → [Resumo Geral / Estatísticas / Linha do Tempo] (recolhíveis)
 // ============================================
-import {
-    db, collection, getDocs, doc, setDoc, addDoc, deleteDoc, serverTimestamp
-} from "../../scripts/firebase.js";
+import { serverTimestamp } from "../../firebase/client.js";
+import { DiarioRegistrosRepository as DiarioRegistros, DiarioEventosRepository as DiarioEventos } from "../../repositories/diario.repository.js";
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
 import { excluirEmCascata, detectarAusentes, getApelido, setApelido } from "../../shared/cc-sync.js";
 
@@ -183,7 +182,7 @@ function contarRevisoes() {
 // ── Histórico (Linha do Tempo): registrar evento ──────────────────────
 async function logEvento(tipo, r, descricao = '') {
     try {
-        await addDoc(collection(db, COL_EVT), {
+        await DiarioEventos.create({
             registroId: r.id || '',
             registroTitulo: r.titulo || '(sem título)',
             categoria: r.categoria || '',
@@ -217,10 +216,9 @@ inpCat.addEventListener('change', () => atualizarSubcategorias());
 async function carregar() {
     const gen = ++_carregarGen;
     try {
-        const snap = await getDocs(collection(db, COL));
+        const lista = await DiarioRegistros.list();
         if (gen !== _carregarGen) return; // resultado obsoleto, ignorar
-        registros = [];
-        snap.forEach(d => registros.push({ id: d.id, ...d.data() }));
+        registros = lista;
     } catch (e) {
         if (gen !== _carregarGen) return;
         console.warn('Diário: erro ao carregar', e);
@@ -510,7 +508,7 @@ async function salvar() {
     try {
         if (editandoId) {
             const antigo = registros.find(r => r.id === editandoId) || {};
-            await setDoc(doc(db, COL, editandoId), { ...dados, criadoEm: antigo.criadoEm || serverTimestamp() }, { merge: true });
+            await DiarioRegistros.set(editandoId, { ...dados, criadoEm: antigo.criadoEm || serverTimestamp() }, { merge: true });
             const ref = { id: editandoId, ...dados };
             if ((antigo.status || 'pendente') !== dados.status) {
                 await logEvento('status', ref, `${STATUS_LABEL[antigo.status] || antigo.status || '—'} → ${STATUS_LABEL[dados.status]}`);
@@ -520,10 +518,10 @@ async function salvar() {
             toast('✓ Registro atualizado');
         } else {
             dados.criadoEm = serverTimestamp();
-            const novoRef = doc(collection(db, COL));
-            await setDoc(novoRef, dados);
-            await logEvento('criado', { id: novoRef.id, ...dados });
-            idSalvo = novoRef.id;
+            const novoId = DiarioRegistros.newId();
+            await DiarioRegistros.set(novoId, dados);
+            await logEvento('criado', { id: novoId, ...dados });
+            idSalvo = novoId;
             toast('✓ Registro criado');
         }
         fecharForm();
@@ -558,7 +556,7 @@ async function backupEAtualiza(reg) {
 
     if (res && res.ok) {
         try {
-            await setDoc(doc(db, COL, reg.id), {
+            await DiarioRegistros.set(reg.id, {
                 backupDriveId: res.fileId,
                 backupDriveLink: res.link || '',
                 backupSyncEm: serverTimestamp()
@@ -599,7 +597,7 @@ async function executarAutosave() {
     try {
         if (editandoId) {
             const antigo = registros.find(r => r.id === editandoId) || {};
-            await setDoc(doc(db, COL, editandoId), { ...persist, criadoEm: antigo.criadoEm || serverTimestamp() }, { merge: true });
+            await DiarioRegistros.set(editandoId, { ...persist, criadoEm: antigo.criadoEm || serverTimestamp() }, { merge: true });
             // Registra mudança de status no histórico (uma vez), sem poluir com cada tecla
             if ((antigo.status || 'pendente') !== campos.status) {
                 await logEvento('status', { id: editandoId, ...campos }, `${STATUS_LABEL[antigo.status] || antigo.status || '—'} → ${STATUS_LABEL[campos.status]}`);
@@ -607,12 +605,12 @@ async function executarAutosave() {
             Object.assign(antigo, { id: editandoId, ...campos, atualizadoEm: new Date() });
             if (!registros.includes(antigo)) registros.push(antigo);
         } else {
-            const novoRef = doc(collection(db, COL));
-            await setDoc(novoRef, { ...persist, criadoEm: serverTimestamp() });
-            await logEvento('criado', { id: novoRef.id, ...campos });
-            editandoId = novoRef.id;
+            const novoId = DiarioRegistros.newId();
+            await DiarioRegistros.set(novoId, { ...persist, criadoEm: serverTimestamp() });
+            await logEvento('criado', { id: novoId, ...campos });
+            editandoId = novoId;
             formTitulo.textContent = 'Editar Registro';
-            registros.push({ id: novoRef.id, ...campos, criadoEm: new Date(), atualizadoEm: new Date() });
+            registros.push({ id: novoId, ...campos, criadoEm: new Date(), atualizadoEm: new Date() });
         }
         render();                       // sincroniza lista/favoritos/resumo (sem rede)
         recarregarTimelineSeAberta();
@@ -658,7 +656,7 @@ async function toggleFavorito(id) {
     r.favorito = novo; // otimista
     render();
     try {
-        await setDoc(doc(db, COL, id), { favorito: novo, atualizadoEm: serverTimestamp() }, { merge: true });
+        await DiarioRegistros.set(id, { favorito: novo, atualizadoEm: serverTimestamp() }, { merge: true });
         await logEvento('favorito', r, novo ? 'Marcado como favorito' : 'Removido dos favoritos');
         recarregarTimelineSeAberta();
     } catch { toast('⚠ Erro ao favoritar'); r.favorito = !novo; render(); }
@@ -671,7 +669,7 @@ async function alternarArquivo(id) {
     const arquivando = r.status !== 'arquivado';
     const novoStatus = arquivando ? 'arquivado' : 'pendente';
     try {
-        await setDoc(doc(db, COL, id), { status: novoStatus, atualizadoEm: serverTimestamp() }, { merge: true });
+        await DiarioRegistros.set(id, { status: novoStatus, atualizadoEm: serverTimestamp() }, { merge: true });
         r.status = novoStatus;
         await logEvento(arquivando ? 'arquivado' : 'restaurado', r);
         toast(arquivando ? '🗄️ Arquivado' : '♻️ Restaurado');
@@ -691,7 +689,7 @@ async function excluir(id) {
             try { await excluirEmCascata({ backup: { excluirArquivo: excluirArquivoDrive }, modulo: 'diario', registro: r }); }
             catch (e) { console.warn('Diário: cascata de exclusão falhou', e); }
         }
-        await deleteDoc(doc(db, COL, id));
+        await DiarioRegistros.remove(id);
         if (r) await logEvento('excluido', r);
         registros = registros.filter(x => x.id !== id);
         toast('🗑️ Excluído');
@@ -711,9 +709,7 @@ async function carregarTimeline(forcar = false) {
     tlEl.innerHTML = '';
     $('dia-tl-empty').style.display = 'none';
     try {
-        const snap = await getDocs(collection(db, COL_EVT));
-        eventos = [];
-        snap.forEach(d => eventos.push({ id: d.id, ...d.data() }));
+        eventos = await DiarioEventos.list();
         eventos.sort((a, b) => tsToMillis(b.em) - tsToMillis(a.em));
         eventosCarregados = true;
     } catch (e) {

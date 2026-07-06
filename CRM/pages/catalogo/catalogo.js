@@ -3,11 +3,8 @@
    ============================================================ */
 
 import { initModulo } from '../../scripts/kernel.js';
-import { db } from '../../scripts/firebase.js';
-import {
-  collection, getDocs, doc, getDoc, setDoc, addDoc,
-  updateDoc, deleteDoc, query, orderBy, serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { CatalogoConfigRepository as CatalogoConfig, CatalogoProdutosRepository as CatalogoProdutos } from '../../repositories/produtos.repository.js';
 
 // ─── Estado ──────────────────────────────────────────────
 let _produtos = [];
@@ -39,9 +36,7 @@ async function init() {
 // ─── Produtos ─────────────────────────────────────────────
 async function carregarProdutos() {
   try {
-    const q = query(collection(db, 'catalogo_produtos'), orderBy('ordem', 'asc'));
-    const snap = await getDocs(q);
-    _produtos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    _produtos = await CatalogoProdutos.list({ orderByField: 'ordem', direction: 'asc' });
   } catch (_) {
     _produtos = [];
   }
@@ -163,10 +158,10 @@ window.admSalvar = async function() {
     if (!data.precoPromo) data.precoPromo = null;
 
     if (_produtoEditando) {
-      await updateDoc(doc(db, 'catalogo_produtos', _produtoEditando.id), data);
+      await CatalogoProdutos.update(_produtoEditando.id, data);
     } else {
       data.criadoEm = serverTimestamp();
-      await addDoc(collection(db, 'catalogo_produtos'), data);
+      await CatalogoProdutos.create(data);
     }
 
     admFecharForm();
@@ -192,7 +187,7 @@ window.admDuplicar = async function(id) {
   dados.atualizadoEm = serverTimestamp();
   dados.ordem = (_produtos.length + 1);
   try {
-    await addDoc(collection(db, 'catalogo_produtos'), dados);
+    await CatalogoProdutos.create(dados);
     await carregarProdutos();
     renderTabela();
   } catch (e) {
@@ -205,7 +200,7 @@ window.admToggleAtivo = async function(id) {
   const p = _produtos.find(x => x.id === id);
   if (!p) return;
   try {
-    await updateDoc(doc(db, 'catalogo_produtos', id), {
+    await CatalogoProdutos.update(id, {
       ativo: !(p.ativo !== false),
       atualizadoEm: serverTimestamp()
     });
@@ -222,7 +217,7 @@ window.admExcluir = async function(id) {
   if (!p) return;
   if (!confirm(`Excluir o produto "${p.nome}"? Esta ação não pode ser desfeita.`)) return;
   try {
-    await deleteDoc(doc(db, 'catalogo_produtos', id));
+    await CatalogoProdutos.remove(id);
     await carregarProdutos();
     renderTabela();
   } catch (e) {
@@ -254,8 +249,8 @@ window.admTab = function(tab) {
 // ─── CONFIG ──────────────────────────────────────────────
 async function carregarConfig() {
   try {
-    const snap = await getDoc(doc(db, 'catalogo_config', 'geral'));
-    if (snap.exists()) Object.assign(_config, snap.data());
+    const cfg = await CatalogoConfig.getById('geral');
+    if (cfg) { const { id, ...rest } = cfg; Object.assign(_config, rest); }
   } catch (_) {}
 }
 
@@ -272,7 +267,7 @@ window.admSalvarConfig = async function() {
       whatsapp: document.getElementById('cfg-wpp').value.trim(),
       mensagemTemplate: document.getElementById('cfg-msg').value.trim()
     };
-    await setDoc(doc(db, 'catalogo_config', 'geral'), data, { merge: true });
+    await CatalogoConfig.set('geral', data, { merge: true });
     Object.assign(_config, data);
     alert('Configurações salvas!');
   } catch (e) {

@@ -177,7 +177,7 @@
     </div>
 
     <script type="module">
-        import { db, collection, getDocs, doc, getDoc } from "../../scripts/firebase.js";
+        import { PosvendaMensagensRepository as PosvendaMensagens } from "../../repositories/posvenda.repository.js";
 
         const testes = [];
         const resultados = {
@@ -191,9 +191,9 @@
         async function teste1_carregarMensagens() {
             const nome = "Teste 1: Carregar Mensagens (5, 15, 30 dias)";
             try {
-                const snap = await getDocs(collection(db, "posvenda_mensagens"));
+                const snap = await PosvendaMensagens.list();
                 const mensagens = {};
-                snap.forEach(d => mensagens[d.id] = d.data());
+                snap.forEach(d => mensagens[d.id] = d);
 
                 const temTodas = mensagens[5] && mensagens[15] && mensagens[30];
                 const temTexto =
@@ -223,8 +223,8 @@
         async function teste2_copiarMensagem() {
             const nome = "Teste 2: Botão 'Copiar Mensagem' copia corretamente";
             try {
-                const snap = await getDoc(doc(db, "posvenda_mensagens", "5"));
-                const mensagemOriginal = snap.data()?.mensagem || "";
+                const snap = await PosvendaMensagens.getById("5");
+                const mensagemOriginal = snap?.mensagem || "";
 
                 if (!mensagemOriginal) {
                     registrarTeste(nome, 'fail', `❌ Mensagem não encontrada`);
@@ -324,8 +324,8 @@
             const nome = "Teste 5: Mensagem correta carregada conforme prazo";
             try {
                 const mensagensDb = {};
-                const snap = await getDocs(collection(db, "posvenda_mensagens"));
-                snap.forEach(d => mensagensDb[d.id] = d.data().mensagem);
+                const snap = await PosvendaMensagens.list();
+                snap.forEach(d => mensagensDb[d.id] = d.mensagem);
 
                 const testes = [
                     { prazo: 5, esperado: 'como está' },
@@ -379,17 +379,17 @@
             const nome = "Teste 7: Mensagens continuam salvas após reload";
             try {
                 // Carregar mensagens primeira vez
-                const snap1 = await getDocs(collection(db, "posvenda_mensagens"));
+                const snap1 = await PosvendaMensagens.list();
                 const msgs1 = {};
-                snap1.forEach(d => msgs1[d.id] = d.data().mensagem);
+                snap1.forEach(d => msgs1[d.id] = d.mensagem);
 
                 // Simular passar tempo
                 await new Promise(r => setTimeout(r, 500));
 
                 // Carregar mensagens segunda vez
-                const snap2 = await getDocs(collection(db, "posvenda_mensagens"));
+                const snap2 = await PosvendaMensagens.list();
                 const msgs2 = {};
-                snap2.forEach(d => msgs2[d.id] = d.data().mensagem);
+                snap2.forEach(d => msgs2[d.id] = d.mensagem);
 
                 // Comparar
                 const identicas =

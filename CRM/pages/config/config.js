@@ -1,4 +1,5 @@
-import { db, doc, getDoc, setDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { serverTimestamp } from "../../firebase/client.js";
+import { ConfigRepository as Config } from "../../repositories/sistema.repository.js";
 import { getCtxAsync, logout } from "../../scripts/kernel.js";
 
 window.pinPress          = pinPress;
@@ -8,7 +9,7 @@ window.pinNovoDelete     = pinNovoDelete;
 window.showScreen        = showScreen;
 window.sair              = sair;
 
-const PIN_DOC   = doc(db, "config", "pin");
+const PIN_DOC_ID = "pin";
 const PIN_CACHE = "cc_pin_hash";
 
 // H-005 (homologação 2026-07-03): era fixo, sem prefixo /dev — mesmo
@@ -33,11 +34,11 @@ async function init() {
     // Carrega o PIN salvo (cache local + Firestore, com fallback offline)
     try {
         const snap = await Promise.race([
-            getDoc(PIN_DOC),
+            Config.getById(PIN_DOC_ID),
             timeout(5000).then(() => { throw new Error('timeout'); })
         ]);
-        if (snap.exists() && snap.data().pin) {
-            pinSalvo = snap.data().pin;
+        if (snap && snap.pin) {
+            pinSalvo = snap.pin;
             localStorage.setItem(PIN_CACHE, pinSalvo);
         } else {
             localStorage.removeItem(PIN_CACHE);
@@ -161,7 +162,7 @@ async function processarNovo() {
 
 async function salvarPin(pin) {
     try {
-        await setDoc(PIN_DOC, { pin, updatedAt: serverTimestamp() });
+        await Config.set(PIN_DOC_ID, { pin, updatedAt: serverTimestamp() });
         localStorage.setItem(PIN_CACHE, pin);
         pinSalvo = pin;
         showScreen('logado');

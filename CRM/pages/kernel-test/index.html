@@ -163,6 +163,8 @@
       from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
   import { doc, setDoc, deleteDoc, serverTimestamp }
       from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+  import { ConfigRepository as Config }
+      from '../../repositories/sistema.repository.js';
 
   // ── Helpers de UI ──
   const $ = id => document.getElementById(id);
@@ -261,8 +263,7 @@
 
     // Leitura Firestore (coleção pública)
     try {
-      const { getDoc } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js');
-      await getDoc(doc(db, 'config', 'impressao'));
+      await Config.getById('impressao');
       status('s-read', 'OK', 'ok'); log('Leitura Firestore: OK', 'ok');
     } catch (e) {
       status('s-read', 'Falhou', 'erro');

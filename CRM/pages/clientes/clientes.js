@@ -1,4 +1,5 @@
-import { db, doc, getDoc, setDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { serverTimestamp } from "../../firebase/client.js";
+import { ConfigRepository as Config } from "../../repositories/sistema.repository.js";
 
 window.handleLogoUpload = handleLogoUpload;
 window.removeLogo = removeLogo;
@@ -6,7 +7,7 @@ window.addGarantia = addGarantia;
 window.removeGarantia = removeGarantia;
 window.saveConfig = saveConfig;
 
-const CONFIG_DOC = doc(db, "config", "impressao");
+const CONFIG_DOC_ID = "impressao";
 const CACHE_KEY = "cc_config_impressao";
 
 const DEFAULT_LOJA = {
@@ -30,9 +31,9 @@ let nextId = 200;
 
 async function init() {
     try {
-        const snap = await getDoc(CONFIG_DOC);
-        if (snap.exists()) {
-            config = snap.data();
+        const snap = await Config.getById(CONFIG_DOC_ID);
+        if (snap) {
+            config = snap;
         } else {
             config = { loja: DEFAULT_LOJA, logo: '', garantias: DEFAULT_GARANTIAS };
         }
@@ -152,7 +153,7 @@ async function saveConfig() {
     btn.disabled = true;
     try {
         const data = { loja: config.loja, logo: config.logo || '', garantias: config.garantias || [], updatedAt: serverTimestamp() };
-        await setDoc(CONFIG_DOC, data);
+        await Config.set(CONFIG_DOC_ID, data);
         localStorage.setItem(CACHE_KEY, JSON.stringify({ loja: data.loja, logo: data.logo, garantias: data.garantias }));
         showToast('✅ Configurações salvas!');
     } catch (err) {

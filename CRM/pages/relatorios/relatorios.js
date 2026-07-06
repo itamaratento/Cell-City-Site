@@ -4,7 +4,8 @@
    ============================================================ */
 
 import { initModulo } from '../../scripts/kernel.js';
-import { db, collection, onSnapshot } from '../../scripts/firebase.js';
+import { OSRepository as OS } from '../../repositories/os.repository.js';
+import { CaixaLancamentosRepository as CaixaLancamentos } from '../../repositories/caixa.repository.js';
 
 // ===== PALETA DE CORES POR ANO =====
 const PALETA = [
@@ -893,23 +894,23 @@ async function init() {
   const ctx = await initModulo();
   if (!ctx) return;
 
-  onSnapshot(collection(db, 'os'), snap => {
-    _os = snap.docs.map(d => d.data());
+  OS.onChange(list => {
+    _os = list;
     _osOk = true;
     if (_caixaOk) renderAll();
-  }, err => {
+  }, { onError: err => {
     console.error('OS snapshot:', err);
     mostrarErroLoading('Erro OS: ' + err.message);
-  });
+  } });
 
-  onSnapshot(collection(db, 'caixa_lancamentos'), snap => {
-    _caixa = snap.docs.map(d => d.data());
+  CaixaLancamentos.onChange(list => {
+    _caixa = list;
     _caixaOk = true;
     if (_osOk) renderAll();
-  }, err => {
+  }, { onError: err => {
     console.error('Caixa snapshot:', err);
     mostrarErroLoading('Erro Caixa: ' + err.message);
-  });
+  } });
 }
 
 // Timeout de segurança: se em 12s nada carregou, mostra mensagem

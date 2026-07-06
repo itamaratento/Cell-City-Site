@@ -1,9 +1,8 @@
 // ============================================
 // CENTRAL DE INFORMAÇÕES — Cell City CRM
 // ============================================
-import {
-    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, orderBy, onSnapshot, serverTimestamp
-} from "../../scripts/firebase.js";
+import { serverTimestamp } from '../../firebase/client.js';
+import { InformacoesRepository as Informacoes, CategoriasInformacoesRepository as CategoriasInformacoes } from '../../repositories/central.repository.js';
 import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const COL = 'informacoes';
@@ -166,29 +165,31 @@ function carregarCategorias() {
         if (cached) categorias = JSON.parse(cached);
     } catch {}
     if (_unsubCategorias) { _unsubCategorias(); _unsubCategorias = null; }
-    _unsubCategorias = onSnapshot(collection(db, CAT_COL), (snap) => {
-        const customizadas = snap.docs.map(d => d.data().nome).filter(Boolean);
+    _unsubCategorias = CategoriasInformacoes.onChange((lista) => {
+        const customizadas = lista.map(d => d.nome).filter(Boolean);
         categorias = customizadas.length > 0
             ? [...CATEGORIAS_PADRAO, ...customizadas]
             : [...CATEGORIAS_PADRAO];
         localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
         montarCategorias();
         montarSelectCategorias();
-    }, (e) => console.warn('⚠️ onSnapshot categorias:', e));
+    }, { onError: (e) => console.warn('⚠️ onSnapshot categorias:', e) });
 }
 
 function carregarInformacoes() {
     // Pinta imediatamente a partir do cache
     try { informacoes = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch { informacoes = []; }
     if (_unsubInformacoes) { _unsubInformacoes(); _unsubInformacoes = null; }
-    _unsubInformacoes = onSnapshot(query(collection(db, COL), orderBy('criadoEm', 'desc')), (snap) => {
-        informacoes = [];
-        snap.forEach(d => informacoes.push({ id: d.id, ...d.data() }));
+    _unsubInformacoes = Informacoes.onChange((lista) => {
+        informacoes = lista;
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
         render();
-    }, (e) => {
-        console.warn('⚠️ onSnapshot informações:', e);
-        render();
+    }, {
+        orderByField: 'criadoEm', direction: 'desc',
+        onError: (e) => {
+            console.warn('⚠️ onSnapshot informações:', e);
+            render();
+        }
     });
 }
 
@@ -727,9 +728,9 @@ async function duplicarComando(id) {
     if (!orig) return;
     try {
         const agoraISO = new Date().toISOString();
-        const novoRef = doc(collection(db, COL));
-        const dados = { ...orig, id: novoRef.id, titulo: 'Cópia de ' + orig.titulo, favorito: false, criadoEm: serverTimestamp(), criadoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO };
-        await setDoc(novoRef, dados);
+        const novoId = Informacoes.newId();
+        const dados = { ...orig, id: novoId, titulo: 'Cópia de ' + orig.titulo, favorito: false, criadoEm: serverTimestamp(), criadoEmISO: agoraISO, atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO };
+        await Informacoes.set(novoId, dados);
         toast('✅ Comando duplicado!');
         await carregarInformacoes();
     } catch (err) {
@@ -1325,14 +1326,14 @@ async function salvarInformacao() {
             // Editar
             const orig = informacoes.find(c => c.id === id) || {};
             const dadosFinais = { ...orig, ...dados };
-            await setDoc(doc(db, COL, id), dadosFinais, { merge: true });
+            await Informacoes.set(id, dadosFinais, { merge: true });
             toast('✅ Informação atualizada.');
         } else {
             // Novo
             dados.criadoEm = serverTimestamp();
             dados.criadoEmISO = agoraISO;
-            const ref = doc(collection(db, COL));
-            await setDoc(ref, { ...dados, id: ref.id });
+            const novoId = Informacoes.newId();
+            await Informacoes.set(novoId, { ...dados, id: novoId });
             toast('✅ Informação criada.');
         }
 
@@ -1359,7 +1360,7 @@ async function excluirInformacao(id) {
             }
         }
 
-        await deleteDoc(doc(db, COL, id));
+        await Informacoes.remove(id);
         informacoes = informacoes.filter(x => x.id !== id);
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
         render();
@@ -1376,7 +1377,7 @@ async function toggleFavorito(id) {
     info.favorito = !info.favorito;
     render();
     try {
-        await setDoc(doc(db, COL, id), { ...info, atualizadoEm: serverTimestamp() }, { merge: true });
+        await Informacoes.set(id, { ...info, atualizadoEm: serverTimestamp() }, { merge: true });
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
     } catch {
         localStorage.setItem(CACHE_KEY, JSON.stringify(informacoes));
@@ -1400,11 +1401,11 @@ async function salvarCategoria() {
     if (categorias.includes(nome)) return toast('⚠️ Esta categoria já existe.');
 
     const agoraISO = new Date().toISOString();
-    const ref = doc(collection(db, CAT_COL));
-    const dados = { id: ref.id, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
+    const novoId = CategoriasInformacoes.newId();
+    const dados = { id: novoId, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
 
     try {
-        await setDoc(ref, dados);
+        await CategoriasInformacoes.set(novoId, dados);
         toast('✅ Categoria criada.');
     } catch {
         toast('✅ Categoria criada (offline).');

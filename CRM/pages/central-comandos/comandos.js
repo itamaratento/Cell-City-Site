@@ -2,9 +2,9 @@
 // CENTRAL DE COMANDOS — Cell City CRM
 // Versão com blocos modulares de comando
 // ============================================
-import {
-    db, collection, getDocs, getDoc, doc, setDoc, updateDoc, deleteDoc, query, orderBy, where, serverTimestamp
-} from "../../scripts/firebase.js";
+import { serverTimestamp } from '../../firebase/client.js';
+import { ComandosRepository as Comandos, CategoriasComandosRepository as CategoriasComandos, InformacoesRepository as Informacoes } from '../../repositories/central.repository.js';
+import { ConfigRepository as Config } from '../../repositories/sistema.repository.js';
 
 const COL = 'comandos';
 const CAT_COL = 'categorias_comandos';
@@ -21,12 +21,12 @@ const VIEWMODE_KEY = 'cc_comandos_viewmode';
 // Os originais NÃO são apagados — recebem o campo `migracao:'comandos_v1'`
 // como marcador de soft-delete, garantindo rastreabilidade.
 async function executarMigracao() {
-    const flagDoc = doc(db, 'config', 'migracao_comandos_v1');
+    const FLAG_ID = 'migracao_comandos_v1';
 
     // Verifica se já foi executada
     try {
-        const snap = await getDoc(flagDoc);
-        if (snap.exists() && snap.data().concluida) return;
+        const flag = await Config.getById(FLAG_ID);
+        if (flag && flag.concluida) return;
     } catch {
         return; // offline: não tenta migrar agora
     }
@@ -37,17 +37,12 @@ async function executarMigracao() {
     const log = [];
 
     try {
-        const snap = await getDocs(query(
-            collection(db, 'informacoes'),
-            where('tipo', '==', 'comando')
-        ));
+        const lista = await Informacoes.list({ where: [['tipo', '==', 'comando']] });
 
-        if (!snap.empty) {
+        if (lista.length > 0) {
             const agora = new Date().toISOString();
 
-            for (const d of snap.docs) {
-                const orig = { id: d.id, ...d.data() };
-
+            for (const orig of lista) {
                 // Pula registros já migrados em execuções anteriores parciais
                 if (orig.migracao === 'comandos_v1') {
                     ignorados++;
@@ -56,9 +51,9 @@ async function executarMigracao() {
                 }
 
                 try {
-                    const novoRef = doc(collection(db, 'comandos'));
-                    await setDoc(novoRef, {
-                        id: novoRef.id,
+                    const novoId = Comandos.newId();
+                    await Comandos.set(novoId, {
+                        id: novoId,
                         titulo: orig.titulo || '(sem título)',
                         categoria: orig.categoria || 'Outros',
                         blocos: [orig.conteudo || ''],
@@ -71,14 +66,14 @@ async function executarMigracao() {
                         migradoDe: orig.id
                     });
 
-                    await updateDoc(doc(db, 'informacoes', orig.id), {
+                    await Informacoes.update(orig.id, {
                         migracao: 'comandos_v1',
-                        migracaoDestinoId: novoRef.id,
+                        migracaoDestinoId: novoId,
                         migracaoEm: serverTimestamp()
                     });
 
                     migrados++;
-                    log.push({ id: orig.id, novoId: novoRef.id, status: 'ok', titulo: orig.titulo || '' });
+                    log.push({ id: orig.id, novoId, status: 'ok', titulo: orig.titulo || '' });
                 } catch (e) {
                     erros++;
                     log.push({ id: orig.id, status: 'erro', titulo: orig.titulo || '', erro: e.message });
@@ -88,7 +83,7 @@ async function executarMigracao() {
         }
 
         // Grava relatório no Firestore
-        await setDoc(flagDoc, {
+        await Config.set(FLAG_ID, {
             concluida: true,
             executadaEm: serverTimestamp(),
             migrados,
@@ -175,8 +170,8 @@ function aplicarBotoesView() {
 // ===== CARREGAR =====
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(collection(db, CAT_COL));
-        const customizadas = snap.docs.map(d => d.data().nome).filter(Boolean);
+        const lista = await CategoriasComandos.list();
+        const customizadas = lista.map(d => d.nome).filter(Boolean);
         if (customizadas.length > 0) {
             categorias = [...CATEGORIAS_PADRAO, ...customizadas];
             localStorage.setItem(CACHE_CAT_KEY, JSON.stringify(categorias));
@@ -189,9 +184,7 @@ async function carregarCategorias() {
 
 async function carregarComandos() {
     try {
-        const snap = await getDocs(query(collection(db, COL), orderBy('criadoEm', 'desc')));
-        comandos = [];
-        snap.forEach(d => comandos.push({ id: d.id, ...d.data() }));
+        comandos = await Comandos.list({ orderByField: 'criadoEm', direction: 'desc' });
         localStorage.setItem(CACHE_KEY, JSON.stringify(comandos));
     } catch {
         comandos = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
@@ -479,7 +472,7 @@ async function toggleFavorito(id) {
     c.favorito = !c.favorito;
     render();
     try {
-        await setDoc(doc(db, COL, id), { ...c, atualizadoEm: serverTimestamp() }, { merge: true });
+        await Comandos.set(id, { ...c, atualizadoEm: serverTimestamp() }, { merge: true });
         localStorage.setItem(CACHE_KEY, JSON.stringify(comandos));
     } catch {
         localStorage.setItem(CACHE_KEY, JSON.stringify(comandos));
@@ -546,11 +539,11 @@ async function salvarCategoria() {
     if (categorias.includes(nome)) return toast('⚠️ Esta categoria já existe.');
 
     const agoraISO = new Date().toISOString();
-    const ref = doc(collection(db, CAT_COL));
-    const dados = { id: ref.id, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
+    const novoId = CategoriasComandos.newId();
+    const dados = { id: novoId, nome, criadoEm: serverTimestamp(), criadoEmISO: agoraISO };
 
     try {
-        await setDoc(ref, dados);
+        await CategoriasComandos.set(novoId, dados);
         toast('✅ Categoria criada.');
     } catch {
         toast('✅ Categoria criada (offline).');
@@ -586,7 +579,7 @@ async function salvarComando() {
             atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO
         };
         try {
-            await setDoc(doc(db, COL, id), dados, { merge: true });
+            await Comandos.set(id, dados, { merge: true });
             toast('✅ Comando atualizado.');
         } catch {
             toast('✅ Salvo localmente (offline).');
@@ -595,15 +588,15 @@ async function salvarComando() {
         if (idx >= 0) comandos[idx] = { ...dados, id };
     } else {
         // novo
-        const ref = doc(collection(db, COL));
+        const novoId = Comandos.newId();
         const dados = {
-            id: ref.id, titulo, categoria, blocos, favorito,
+            id: novoId, titulo, categoria, blocos, favorito,
             conteudo: blocos.join('\n\n---\n\n'), // mantém compatibilidade
             criadoEm: serverTimestamp(), criadoEmISO: agoraISO,
             atualizadoEm: serverTimestamp(), atualizadoEmISO: agoraISO
         };
         try {
-            await setDoc(ref, dados);
+            await Comandos.set(novoId, dados);
             toast('✅ Comando salvo.');
         } catch {
             toast('✅ Salvo localmente (offline).');
@@ -623,7 +616,7 @@ async function excluirComando(id) {
     if (!c) return;
     if (!confirm(`Excluir o comando "${c.titulo}"?\n\nEsta ação é permanente.`)) return;
     try {
-        await deleteDoc(doc(db, COL, id));
+        await Comandos.remove(id);
     } catch {}
     comandos = comandos.filter(x => x.id !== id);
     localStorage.setItem(CACHE_KEY, JSON.stringify(comandos));

@@ -9,3 +9,4 @@ export const HistoricoMensalRepository = createRepository('historico_mensal');
 export const HistoricoSemanalRepository = createRepository('historico_semanal');
 export const VendasImportadasRepository = createRepository('vendas_importadas');
 export const AlertasUsuarioRepository = createRepository('alertas_usuario');
+export const CentralAlertasStatusRepository = createRepository('central_alertas_status');

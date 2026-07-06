@@ -6,10 +6,12 @@
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
 import { initModulo } from '../../scripts/kernel.js';
-import {
-    db, collection, getDocs, query, where, orderBy, limit,
-    doc, setDoc, onSnapshot, serverTimestamp
-} from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { AgendaRepository as Agenda } from '../../repositories/diario.repository.js';
+import { AvaliacoesRepository as Avaliacoes, MensagensPortalRepository as MensagensPortal } from '../../repositories/portal.repository.js';
+import { OSRepository as OS } from '../../repositories/os.repository.js';
+import { PosvendaContatosRepository as PosvendaContatos } from '../../repositories/posvenda.repository.js';
+import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../repositories/sistema.repository.js';
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = 'cc_config_alertas';
@@ -79,7 +81,7 @@ function diasAtras(dias) {
 // ── Ação da Semana — leitura da coleção 'agenda' (mesma regra do Dashboard) ──
 async function lerAgenda() {
     try {
-        const snap = await getDocs(collection(db, 'agenda'));
+        const snap = await Agenda.list();
         const eventos = [];
         const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -101,7 +103,7 @@ async function lerAgenda() {
         };
 
         snap.forEach(d => {
-            const dados = d.data();
+            const dados = d;
             const dia = dados.data || d.id;
             const notas = notasDe(dados);
 
@@ -165,16 +167,15 @@ async function gerarAlertas() {
 
     // ── Carrega tudo em paralelo (1 única leitura de 'os', reaproveitada
     //    para pós-venda, prontos e orçamentos — evita 3 leituras repetidas) ──
-    const [eventos, osSnap, contatosSnap, portalSnap, avaliacoesSnap] = await Promise.all([
+    const [eventos, osDocs, contatosList, portalList, avaliacoesList] = await Promise.all([
         lerAgenda(),
-        getDocs(collection(db, 'os')),
-        getDocs(collection(db, 'posvenda_contatos')),
-        getDocs(query(collection(db, 'mensagens_portal'), where('lida', '==', false))).catch(e => { console.warn('Central de Alertas — mensagens_portal:', e); return null; }),
-        getDocs(query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(5))).catch(e => { console.warn('Central de Alertas — avaliacoes:', e); return null; })
+        OS.list(),
+        PosvendaContatos.list(),
+        MensagensPortal.list({ where: [['lida', '==', false]] }).catch(e => { console.warn('Central de Alertas — mensagens_portal:', e); return null; }),
+        Avaliacoes.list({ orderByField: 'createdAt', direction: 'desc', limitTo: 5 }).catch(e => { console.warn('Central de Alertas — avaliacoes:', e); return null; })
     ]);
 
-    const osList = [];
-    osSnap.forEach(d => osList.push({ firestoreId: d.id, ...d.data() }));
+    const osList = osDocs.map(d => ({ firestoreId: d.id, ...d }));
 
     // ===== AÇÃO DA SEMANA =====
     try {
@@ -259,7 +260,7 @@ async function gerarAlertas() {
     // ===== PÓS-VENDA =====
     try {
         const contatosFeitos = new Set();
-        contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
+        contatosList.forEach(c => { if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
 
         let pvPendentes = 0, pvVencidos = 0;
         const pvVencidosClientes = [];
@@ -347,9 +348,8 @@ async function gerarAlertas() {
 
     // ===== PORTAL DO CLIENTE =====
     try {
-        if (portalSnap) {
-            const msgsNaoLidas = [];
-            portalSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
+        if (portalList) {
+            const msgsNaoLidas = [...portalList];
             if (msgsNaoLidas.length > 0) {
                 out.push({
                     icon: '💬', cat: 'atencao',
@@ -373,9 +373,8 @@ async function gerarAlertas() {
 
     // ===== AVALIAÇÕES =====
     try {
-        if (avaliacoesSnap) {
-            const avaliacoesRecentes = [];
-            avaliacoesSnap.forEach(d => avaliacoesRecentes.push({ id: d.id, ...d.data() }));
+        if (avaliacoesList) {
+            const avaliacoesRecentes = [...avaliacoesList];
             if (avaliacoesRecentes.length > 0) {
                 const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
                 const avaliacoesHoje = avaliacoesRecentes.filter(a => {
@@ -457,10 +456,9 @@ async function gerarAlertas() {
 
 // ── Status (Firestore: central_alertas_status/{uid}) ──────────────────
 function iniciarStatusSync() {
-    const ref = doc(db, STATUS_COL, _uid);
     if (_unsubStatus) _unsubStatus();
-    _unsubStatus = onSnapshot(ref, snap => {
-        statusMap = (snap.exists() && snap.data().itens) || {};
+    _unsubStatus = CentralAlertasStatus.onDocChange(_uid, item => {
+        statusMap = (item && item.itens) || {};
         render();
     }, e => console.warn('Central de Alertas — status sync:', e));
 }
@@ -469,7 +467,7 @@ async function setStatus(id, status) {
     statusMap = { ...statusMap, [id]: { status, em: new Date().toISOString() } };
     render();
     try {
-        await setDoc(doc(db, STATUS_COL, _uid), { itens: statusMap, atualizadoEm: serverTimestamp() }, { merge: true });
+        await CentralAlertasStatus.set(_uid, { itens: statusMap, atualizadoEm: serverTimestamp() }, { merge: true });
     } catch (e) { console.warn('Central de Alertas — falha ao salvar status:', e); }
 }
 
@@ -637,7 +635,7 @@ async function marcarTodosComoLidos() {
     statusMap = novoMap;
     render();
     try {
-        await setDoc(doc(db, STATUS_COL, _uid), { itens: statusMap, atualizadoEm: serverTimestamp() }, { merge: true });
+        await CentralAlertasStatus.set(_uid, { itens: statusMap, atualizadoEm: serverTimestamp() }, { merge: true });
         toast('Todos os alertas foram marcados como lidos');
     } catch (e) { console.warn('Central de Alertas — falha ao marcar todos:', e); }
 }

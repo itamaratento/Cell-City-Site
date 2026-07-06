@@ -431,13 +431,8 @@
     </div>
 
     <script type="module">
-        import {
-            db,
-            collection,
-            doc,
-            setDoc,
-            serverTimestamp
-        } from "../scripts/firebase.js";
+        import { serverTimestamp } from "../firebase/client.js";
+        import { PreOSRepository as PreOS } from "../repositories/os.repository.js";
 
         const form = document.getElementById('formAutoatendimento');
         const btnSubmit = document.getElementById('btnSubmit');
@@ -548,9 +543,9 @@
 
             try {
                 const agoraISO = new Date().toISOString();
-                const docRef = doc(collection(db, 'pre_os'));
+                const novoId = PreOS.newId();
                 const dados = {
-                    id: docRef.id,
+                    id: novoId,
                     cliente: { nome, whatsapp, cpf: cpf || null },
                     aparelho: { marca, modelo },
                     problema,
@@ -567,7 +562,7 @@
                     osId: null
                 };
 
-                await setDoc(docRef, dados);
+                await PreOS.set(novoId, dados);
 
                 form.style.display = 'none';
                 loadingMsg.classList.remove('show');

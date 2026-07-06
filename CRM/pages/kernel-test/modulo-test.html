@@ -265,7 +265,8 @@
   // Sem session.js · sem tenant.js · sem config.js
   // ═══════════════════════════════════════════════════════
   import { initModulo, logout } from '../../scripts/kernel.js';
-  import { db, collection, query, where, getDocs, limit } from '/CRM/scripts/firebase.js';
+  import { CaixaLancamentosRepository as CaixaLancamentos } from '../../repositories/caixa.repository.js';
+  import { OSRepository as OS } from '../../repositories/os.repository.js';
 
   // ── helpers de UI ──────────────────────────────────────
   const $ = id => document.getElementById(id);
@@ -341,19 +342,16 @@
       $('s3-detalhe').textContent = `Consultando caixa_lancamentos where empresa_id = '${empresa}'...`;
 
       try {
-        const q3 = query(
-          collection(db, 'caixa_lancamentos'),
-          where('empresa_id', '==', empresa),
-          limit(5)
-        );
-        const snap3 = await getDocs(q3);
+        const docs3 = await CaixaLancamentos.list({
+          where: [['empresa_id', '==', empresa]],
+          limitTo: 5
+        });
         const t3end = Math.round(performance.now() - t3);
 
-        const docs3 = snap3.docs.map(d => d.data());
-        stepOk(3, `${snap3.size} doc(s) retornados em ${t3end}ms`, t3end);
+        stepOk(3, `${docs3.length} doc(s) retornados em ${t3end}ms`, t3end);
 
         $('painel-firestore').style.display = 'block';
-        $('v-total-caixa').textContent = snap3.size;
+        $('v-total-caixa').textContent = docs3.length;
 
         const empresasPresentes = [...new Set(docs3.map(d => d.empresa_id).filter(Boolean))];
         $('v-empresa-caixa').textContent = empresasPresentes.join(', ') || '(campo ausente nos docs)';
@@ -376,15 +374,13 @@
         $('s4-detalhe').textContent = 'Consultando coleção os (limit 5)...';
 
         try {
-          const q4 = query(collection(db, 'os'), limit(5));
-          const snap4 = await getDocs(q4);
+          const docs4 = await OS.list({ limitTo: 5 });
           const t4end = Math.round(performance.now() - t4);
 
-          const docs4 = snap4.docs.map(d => d.data());
-          stepOk(4, `${snap4.size} doc(s) retornados em ${t4end}ms`, t4end);
+          stepOk(4, `${docs4.length} doc(s) retornados em ${t4end}ms`, t4end);
 
           $('painel-os').style.display = 'block';
-          $('v-total-os').textContent = snap4.size;
+          $('v-total-os').textContent = docs4.length;
 
           const listaOS = $('lista-os');
           if (docs4.length === 0) {

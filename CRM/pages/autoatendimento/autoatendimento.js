@@ -1,9 +1,7 @@
 // ============================================
 // AUTOATENDIMENTO — Cell City CRM
 // ============================================
-import {
-    db, collection, getDocs, doc, setDoc, updateDoc, onSnapshot, query, orderBy, serverTimestamp
-} from "../../scripts/firebase.js";
+import { PreOSRepository as PreOS } from '../../repositories/os.repository.js';
 
 const COL = 'pre_os';
 const CACHE_KEY = 'cc_preos_cache';
@@ -34,9 +32,8 @@ function init() {
 // ===== CARREGAR PRÉ-OS =====
 async function carregarPreOS() {
     try {
-        const snap = await getDocs(query(collection(db, COL), orderBy('criadoEm', 'desc')));
-        preOSList = [];
-        snap.forEach(d => preOSList.push({ ...d.data(), id: d.id }));
+        const lista = await PreOS.list({ orderByField: 'criadoEm', direction: 'desc' });
+        preOSList = lista.map(d => ({ ...d, id: d.id }));
         localStorage.setItem(CACHE_KEY, JSON.stringify(preOSList));
     } catch {
         preOSList = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
@@ -48,12 +45,11 @@ async function carregarPreOS() {
 function setupListenerRealtime() {
     try {
         if (listenerPreOS) listenerPreOS(); // cancela listener anterior
-        listenerPreOS = onSnapshot(query(collection(db, COL), orderBy('criadoEm', 'desc')), snap => {
-            preOSList = [];
-            snap.forEach(d => preOSList.push({ ...d.data(), id: d.id }));
+        listenerPreOS = PreOS.onChange(lista => {
+            preOSList = lista.map(d => ({ ...d, id: d.id }));
             localStorage.setItem(CACHE_KEY, JSON.stringify(preOSList));
             render();
-        });
+        }, { orderByField: 'criadoEm', direction: 'desc' });
     } catch (e) {
         console.warn('Listener realtime:', e);
     }

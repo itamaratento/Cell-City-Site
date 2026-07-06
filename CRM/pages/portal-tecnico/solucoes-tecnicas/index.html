@@ -119,15 +119,14 @@
 
     <!-- Ponte com o Firestore: busca de OS e gravação do relatório no documento da OS -->
     <script type="module">
-    import { db, collection, getDocs, doc, updateDoc } from '../../../scripts/firebase.js';
+    import { OSRepository as OS } from '../../../repositories/os.repository.js';
     let _osCache = null;
     async function _loadOS() {
         if (_osCache) return _osCache;
-        const snap = await getDocs(collection(db, 'os'));
+        const list = await OS.list();
         _osCache = [];
-        snap.forEach(d => {
-            const x = d.data() || {};
-            _osCache.push({ id: x.id || d.id, clientName: x.clientName || '', model: x.model || '', brand: x.brand || '' });
+        list.forEach(x => {
+            _osCache.push({ id: x.id, clientName: x.clientName || '', model: x.model || '', brand: x.brand || '' });
         });
         return _osCache;
     }
@@ -149,7 +148,7 @@
         },
         async salvarNaOS(osId, payload) {
             try {
-                await updateDoc(doc(db, 'os', osId), { relatorioTecnico: payload, updatedAt: new Date().toISOString() });
+                await OS.update(osId, { relatorioTecnico: payload, updatedAt: new Date().toISOString() });
                 return true;
             } catch (e) {
                 console.warn('⚠️ Falha ao gravar relatório técnico na OS', osId, e);

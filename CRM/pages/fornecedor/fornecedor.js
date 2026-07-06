@@ -1,4 +1,6 @@
-import { db, collection, getDocs, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { FornecedorComprasRepository as FornecedorCompras, FornecedorTendenciasRepository as FornecedorTendencias } from '../../repositories/fornecedor.repository.js';
+import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 
 const COL_COMPRAS    = 'fornecedor_compras';
 const COL_TENDENCIAS = 'fornecedor_tendencias';
@@ -45,9 +47,7 @@ let todosItensCompra = []; // cache para busca
 async function carregarCompras() {
     document.getElementById('compras-loading').style.display = 'flex';
     try {
-        const snap = await getDocs(collection(db, COL_COMPRAS));
-        todosItensCompra = [];
-        snap.forEach(d => todosItensCompra.push({ id: d.id, ...d.data() }));
+        todosItensCompra = await FornecedorCompras.list();
         todosItensCompra.sort((a, b) => {
             const p = { alta: 0, media: 1, baixa: 2 };
             return (p[a.urgencia] ?? 1) - (p[b.urgencia] ?? 1);
@@ -149,7 +149,7 @@ async function salvarCompra() {
     };
     const id = editandoCompraId || `compra_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_COMPRAS, id), dados);
+        await FornecedorCompras.set(id, dados);
         toast(editandoCompraId ? '✏️ Item atualizado!' : '✅ Item adicionado!');
         fecharFormCompra();
         await carregarCompras();
@@ -158,7 +158,7 @@ async function salvarCompra() {
 
 async function excluirCompraById(id, mensagem = '🗑️ Item removido.') {
     try {
-        await deleteDoc(doc(db, COL_COMPRAS, id));
+        await FornecedorCompras.remove(id);
         toast(mensagem);
         await carregarCompras();
     } catch { toast('⚠ Erro ao excluir.'); }
@@ -171,7 +171,7 @@ async function excluirCompra(id) {
 
 async function concluirCompra(id, jaFeita) {
     try {
-        await updateDoc(doc(db, COL_COMPRAS, id), { status: jaFeita ? '' : 'feita' });
+        await FornecedorCompras.update(id, { status: jaFeita ? '' : 'feita' });
         toast(jaFeita ? '↩ Desmarcado.' : '✅ Tarefa marcada como feita!');
         await carregarCompras();
     } catch { toast('⚠ Erro ao marcar.'); }
@@ -181,10 +181,9 @@ async function concluirCompra(id, jaFeita) {
 async function carregarEstoqueBaixo() {
     document.getElementById('baixo-loading').style.display = 'flex';
     try {
-        const snap = await getDocs(collection(db, COL_ESTOQUE));
+        const lista = await Estoque.list();
         const baixo = [];
-        snap.forEach(d => {
-            const p = { id: d.id, ...d.data() };
+        lista.forEach(p => {
             if (p.quantidade <= p.quantidadeMinima) baixo.push(p);
         });
         renderEstoqueBaixo(baixo);
@@ -218,9 +217,7 @@ function renderEstoqueBaixo(itens) {
 // ── TENDÊNCIAS DE MERCADO ──────────────────────────────────────────
 async function carregarTendencias() {
     try {
-        const snap = await getDocs(collection(db, COL_TENDENCIAS));
-        const itens = [];
-        snap.forEach(d => itens.push({ id: d.id, ...d.data() }));
+        const itens = await FornecedorTendencias.list();
         renderTendencias(itens);
     } catch { renderTendencias([]); }
 }
@@ -250,7 +247,7 @@ function renderTendencias(itens) {
         btn.addEventListener('click', async () => {
             if (!confirm('Remover observação?')) return;
             try {
-                await deleteDoc(doc(db, COL_TENDENCIAS, btn.dataset.id));
+                await FornecedorTendencias.remove(btn.dataset.id);
                 toast('🗑️ Removido.');
                 await carregarTendencias();
             } catch { toast('⚠ Erro.'); }
@@ -269,7 +266,7 @@ async function salvarTendencia() {
         criadoEm:    serverTimestamp()
     };
     try {
-        await setDoc(doc(db, COL_TENDENCIAS, `tend_${Date.now()}`), dados);
+        await FornecedorTendencias.set(`tend_${Date.now()}`, dados);
         toast('✅ Observação salva!');
         fecharFormTendencia();
         await carregarTendencias();
@@ -305,7 +302,7 @@ document.getElementById('forn-btn-listar')?.addEventListener('click', async () =
     if (!todosItensCompra.length) { toast('⚠ Lista já está vazia.'); return; }
     if (!confirm(`Apagar todos os ${todosItensCompra.length} itens da lista de compras? Esta ação não pode ser desfeita.`)) return;
     try {
-        await Promise.all(todosItensCompra.map(item => deleteDoc(doc(db, COL_COMPRAS, item.id))));
+        await Promise.all(todosItensCompra.map(item => FornecedorCompras.remove(item.id)));
         toast('🗑️ Lista limpa com sucesso!');
         await carregarCompras();
     } catch { toast('⚠ Erro ao limpar a lista.'); }

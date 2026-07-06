@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, setDoc } from '../../scripts/firebase.js';
+import { ClientesRepository as Clientes } from '../../repositories/clientes.repository.js';
 
 const COL_CLIENTES = 'clientes';
 const DIAS_INATIVO = 90;
@@ -32,9 +32,7 @@ document.querySelectorAll('.camp-tab').forEach(btn => {
 // ── carregar clientes ──────────────────────────────────────────────
 async function carregar() {
     try {
-        const snap = await getDocs(collection(db, COL_CLIENTES));
-        todosClientes = [];
-        snap.forEach(d => todosClientes.push({ id: d.id, ...d.data() }));
+        todosClientes = await Clientes.list();
         todosClientes.sort((a, b) => (a.name || a.nome || '').localeCompare(b.name || b.nome || '', 'pt-BR'));
     } catch { todosClientes = []; }
 
@@ -203,7 +201,7 @@ async function marcarMensagem(clienteId) {
     const c = todosClientes.find(x => x.id === clienteId);
     if (!c) return;
     try {
-        await setDoc(doc(db, COL_CLIENTES, clienteId), { ...c, ultimaMensagemEm: hoje });
+        await Clientes.set(clienteId, { ...c, ultimaMensagemEm: hoje });
         c.ultimaMensagemEm = hoje;
         toast('✅ Mensagem marcada como enviada hoje!');
         renderAniversariantes();
@@ -236,7 +234,7 @@ async function salvarModal() {
     const ultimaMsg = document.getElementById('modal-ultima-msg').value || null;
     try {
         const atualizado = { ...c, dataNascimento: nasc, ultimaMensagemEm: ultimaMsg };
-        await setDoc(doc(db, COL_CLIENTES, modalClienteId), atualizado);
+        await Clientes.set(modalClienteId, atualizado);
         const idx = todosClientes.findIndex(x => x.id === modalClienteId);
         if (idx !== -1) todosClientes[idx] = atualizado;
         fecharModal();

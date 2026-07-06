@@ -21,6 +21,13 @@ export function createRepository(collectionName) {
   return {
     collectionName,
 
+    // Gera um novo ID de documento sem escrever nada ainda — para o padrão
+    // já usado em várias páginas (`doc(collection(db,'x'))` seguido de um
+    // `setDoc` posterior, quando o id precisa ser conhecido antes da escrita).
+    newId() {
+      return doc(col()).id;
+    },
+
     async getById(id) {
       const snap = await getDoc(ref(id));
       return snap.exists() ? { id: snap.id, ...snap.data() } : null;
@@ -51,6 +58,14 @@ export function createRepository(collectionName) {
       return onSnapshot(buildQuery(opts), snap => {
         callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       }, opts.onError || (() => {}));
+    },
+
+    // Observa um documento único (não uma query) — padrão já usado para
+    // status/preferências por uid (ex.: central_alertas_status/{uid}).
+    onDocChange(id, callback, onError) {
+      return onSnapshot(ref(id), snap => {
+        callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
+      }, onError || (() => {}));
     }
   };
 }

@@ -1,7 +1,13 @@
 import { initModulo } from '../../scripts/kernel.js';
+// db, doc, updateDoc do SDK direto seguem só para a escrita em "os" dentro de
+// salvarEdicaoAgendamento() — fora de escopo desta migração (ver relatório).
+import { db, doc, updateDoc } from "../../scripts/firebase.js";
+import { serverTimestamp } from '../../firebase/client.js';
+import { OSRepository as OS } from '../../repositories/os.repository.js';
 import {
-    db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp
-} from "../../scripts/firebase.js";
+    PosvendaContatosRepository as PosvendaContatos,
+    PosvendaMensagensRepository as PosvendaMensagens
+} from '../../repositories/posvenda.repository.js';
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem
@@ -82,16 +88,16 @@ async function loadData() {
     // CORREÇÃO: OS são salvas na coleção "os", não "orders"
     let ordersSnap;
     try {
-        ordersSnap = await getDocs(query(collection(db, "os"), orderBy("createdAt", "desc")));
+        ordersSnap = await OS.list({ orderByField: "createdAt", direction: "desc" });
     } catch {
         // orderBy pode falhar se não houver índice; tenta sem ordenação
-        ordersSnap = await getDocs(collection(db, "os"));
+        ordersSnap = await OS.list();
     }
-    const contatosSnap = await getDocs(collection(db, "posvenda_contatos"));
+    const contatosSnap = await PosvendaContatos.list();
 
     const contatos = [];
     contatosSnap.forEach(d => {
-        const data = d.data();
+        const data = d;
         // Filtra registros com soft delete — ativo: false são ocultados
         if (data.ativo === false) return;
         contatos.push({ id: d.id, ...data });
@@ -102,7 +108,7 @@ async function loadData() {
     pendentes = { futuros: [], 5: [], 15: [], 30: [] };
 
     ordersSnap.forEach(d => {
-        const os = { firestoreId: d.id, ...d.data() };
+        const os = { firestoreId: d.id, ...d };
         if (os.status !== 'entregue') return;
 
         const deliveryDate = getDeliveryDate(os);
@@ -141,10 +147,10 @@ async function carregarMensagensPosvenda() {
     // Sempre parte dos padrões — garante que nunca fica vazio
     mensagensPosvenda = { ...MENSAGENS_PADRAO };
     try {
-        const snap = await getDocs(collection(db, "posvenda_mensagens"));
+        const snap = await PosvendaMensagens.list();
         snap.forEach(d => {
             const prazo = d.id;
-            const data = d.data();
+            const data = d;
             // Só sobrescreve o padrão se o Firestore tiver mensagem com conteúdo real
             if (data.mensagem && data.mensagem.trim().length > 0) {
                 mensagensPosvenda[prazo] = data.mensagem;
@@ -513,7 +519,7 @@ async function registrarResultado(osId, os, prazo, emoji, resultado) {
     };
 
     try {
-        await setDoc(doc(db, "posvenda_contatos", key), data);
+        await PosvendaContatos.set(key, data);
         contatosFeitos.add(key);
         pendentes[prazo] = pendentes[prazo].filter(o => o.osId !== osId);
         historico.unshift({ ...data, id: key });
@@ -599,7 +605,7 @@ async function atualizarAvaliacao(contato, novoEmoji, novoResultado) {
     };
 
     try {
-        await updateDoc(doc(db, "posvenda_contatos", key), updates);
+        await PosvendaContatos.update(key, updates);
 
         // Atualizar in-memory
         const idx = historico.findIndex(c => (c.id || `${c.osId}_${c.prazo}`) === key);
@@ -660,7 +666,7 @@ function abrirModalExclusao(contato) {
 
 async function excluirContato(key, contato) {
     try {
-        await updateDoc(doc(db, "posvenda_contatos", key), {
+        await PosvendaContatos.update(key, {
             ativo: false,
             deletedAt: serverTimestamp()
         });
@@ -856,7 +862,7 @@ async function confirmarExclusaoPendente(os) {
 
     try {
         // Marca no Firestore como excluído (soft delete em posvenda_contatos)
-        await setDoc(doc(db, "posvenda_contatos", key), {
+        await PosvendaContatos.set(key, {
             osId: os.osId,
             clientName: os.clientName || '',
             phone: os.phone || '',
@@ -961,9 +967,9 @@ async function salvarConfiguracoes() {
     }
 
     try {
-        await setDoc(doc(db, "posvenda_mensagens", "5"), { mensagem: msg5, updatedAt: new Date() }, { merge: true });
-        await setDoc(doc(db, "posvenda_mensagens", "15"), { mensagem: msg15, updatedAt: new Date() }, { merge: true });
-        await setDoc(doc(db, "posvenda_mensagens", "30"), { mensagem: msg30, updatedAt: new Date() }, { merge: true });
+        await PosvendaMensagens.set("5", { mensagem: msg5, updatedAt: new Date() }, { merge: true });
+        await PosvendaMensagens.set("15", { mensagem: msg15, updatedAt: new Date() }, { merge: true });
+        await PosvendaMensagens.set("30", { mensagem: msg30, updatedAt: new Date() }, { merge: true });
 
         mensagensPosvenda[5] = msg5;
         mensagensPosvenda[15] = msg15;

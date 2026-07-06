@@ -1,4 +1,5 @@
-import { db, doc, getDoc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { TarefasSemanaRepository as TarefasSemana } from '../../repositories/diario.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
@@ -7,7 +8,6 @@ const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
 let _uid = null;
 let tarefas = [];
 let diaSelecionado = null;
-let docRef = null;
 
 const diasEl  = document.getElementById('ms-dias');
 const formEl  = document.getElementById('ms-form');
@@ -124,9 +124,9 @@ function adicionar() {
 
 // ── salvar no Firestore ────────────────────────────────────────────
 async function salvar() {
-  if (!docRef) return;
+  if (!_uid) return;
   try {
-    await setDoc(docRef, { tarefas, atualizadoEm: serverTimestamp() });
+    await TarefasSemana.set(_uid, { tarefas, atualizadoEm: serverTimestamp() });
   } catch {}
 }
 
@@ -134,9 +134,8 @@ async function salvar() {
 let unsub = null;
 function carregar() {
   if (unsub) { unsub(); unsub = null; }
-  docRef = doc(db, 'tarefas_semana', _uid);
-  unsub = onSnapshot(docRef, (snap) => {
-    tarefas = snap.exists() ? (snap.data().tarefas || []) : [];
+  unsub = TarefasSemana.onDocChange(_uid, (item) => {
+    tarefas = item ? (item.tarefas || []) : [];
     renderDias();
     renderLista();
   }, () => { tarefas = []; renderDias(); renderLista(); });

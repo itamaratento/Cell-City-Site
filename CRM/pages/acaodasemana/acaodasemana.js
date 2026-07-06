@@ -1,10 +1,8 @@
 // ===== AGENDA INTELIGENTE — Cell City (calendário com Sticky Notes) =====
 // 1 documento por DIA: { data, notas: [ {texto, cor}, ... ], atualizadoEm }
 // Cada anotação tem o horário no início do texto (ex.: "09:00 Buscar películas").
-import {
-  db, collection, doc, setDoc, deleteDoc,
-  onSnapshot, serverTimestamp
-} from '../../scripts/firebase.js';
+import { serverTimestamp } from '../../firebase/client.js';
+import { AgendaRepository as Agenda } from '../../repositories/diario.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar } from '../../shared/permissoes.js';
 
@@ -277,7 +275,7 @@ async function pararEstaOcorrencia() {
   try {
     for (const origem of origens) {
       const excluir = [...(recorrenciaExcluir[origem] || []), iso];
-      await setDoc(doc(db, 'agenda', origem), { recorrenciaExcluir: excluir }, { merge: true });
+      await Agenda.set(origem, { recorrenciaExcluir: excluir }, { merge: true });
     }
     toast('Ocorrência removida');
     fecharRecorrPop();
@@ -291,7 +289,7 @@ async function pararFuturas() {
   if (!iso || !origens.length) return;
   try {
     for (const origem of origens) {
-      await setDoc(doc(db, 'agenda', origem), { recorrenciaPararEm: iso }, { merge: true });
+      await Agenda.set(origem, { recorrenciaPararEm: iso }, { merge: true });
     }
     toast('Recorrência futura encerrada');
     fecharRecorrPop();
@@ -452,7 +450,7 @@ function flushSave() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = nul
 // ID aleatório (formato antigo) cujo campo `data` aponta para o mesmo dia.
 async function apagarDocsDoDia(data) {
   const ids = new Set([data, ...(docIds[data] || [])]);
-  await Promise.all([...ids].map(id => deleteDoc(doc(db, 'agenda', id)).catch(() => {})));
+  await Promise.all([...ids].map(id => Agenda.remove(id).catch(() => {})));
 }
 
 async function salvar() {
@@ -479,7 +477,7 @@ async function salvar() {
       const excluir = recorrenciaExcluir[data] || [];
       const pararEm = recorrenciaPararEm[data] || '';
       // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
-      await setDoc(doc(db, 'agenda', data), {
+      await Agenda.set(data, {
         data, notas: arr, cor: corDiaSel,
         alertaHora, alertaDashboard, recorrencia,
         recorrenciaExcluir: excluir.length ? excluir : [],
@@ -488,7 +486,7 @@ async function salvar() {
         atualizadoEm: serverTimestamp()
       });
       const orfaos = (docIds[data] || []).filter(id => id !== data);
-      await Promise.all(orfaos.map(id => deleteDoc(doc(db, 'agenda', id)).catch(() => {})));
+      await Promise.all(orfaos.map(id => Agenda.remove(id).catch(() => {})));
       notas[data] = arr;
       docIds[data] = [data];
       corPorDia[data] = corDiaSel;
@@ -592,8 +590,7 @@ function iniciar() {
   viewMes = hoje.getMonth();
   carregarEditor();
 
-  onSnapshot(collection(db, 'agenda'),
-    (snap) => {
+  Agenda.onChange((lista) => {
       notas = {};
       docIds = {};
       corPorDia = {};
@@ -602,9 +599,8 @@ function iniciar() {
       recorrenciaExcluir = {};
       recorrenciaPararEm = {};
       textoCorDia = {};
-      snap.forEach(d => {
-        const dados = d.data();
-        const data = dados.data || d.id;
+      lista.forEach(dados => {
+        const data = dados.data || dados.id;
         let arr = [];
         let corDoc = corValida(dados.cor);
         if (dados.alertaHora || dados.alertaDashboard) {
@@ -630,15 +626,13 @@ function iniciar() {
           arr = [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: corDoc }];
         }
         // Rastreia o ID real (corrige delete de órfãos/duplicados)
-        (docIds[data] = docIds[data] || []).push(d.id);
+        (docIds[data] = docIds[data] || []).push(dados.id);
         if (arr.length) { notas[data] = arr; corPorDia[data] = corDoc; }
       });
       $('ag-loading')?.remove();
       renderCalendario();
       if (!editando) carregarEditor();
-    },
-    (err) => { console.warn('⚠️ Agenda offline', err); statusEl.textContent = '⚠️ Sem conexão'; }
-  );
+    }, { onError: (err) => { console.warn('⚠️ Agenda offline', err); statusEl.textContent = '⚠️ Sem conexão'; } });
 
   // Atualiza o destaque de "hoje" à meia-noite (re-render leve)
   setInterval(() => renderCalendario(), 60000);
