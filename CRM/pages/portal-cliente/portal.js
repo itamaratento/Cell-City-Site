@@ -520,7 +520,11 @@ window.Portal = {
     } catch (err) {
       console.warn('[Portal] Erro ao carregar mensagens:', err);
     }
-    const route = location.hash.slice(1);
+    // Normaliza como _handleRoute() (aceita "#mensagens" e "#/mensagens") —
+    // a versão antiga (_listenMensagens(), location.hash.slice(1) sem
+    // remover a barra) só recarregava a tela certa quando o hash vinha sem
+    // "/" inicial (o caso comum via Portal.navegar(), mas não o único).
+    const route = location.hash.replace(/^#\/?/, '').split('/')[0];
     if (route === 'mensagens') this.renderMensagens();
   },
 
