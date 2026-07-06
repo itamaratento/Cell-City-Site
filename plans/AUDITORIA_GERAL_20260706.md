@@ -1,7 +1,7 @@
 # 🔍 Auditoria Geral — Preparação da Próxima Sprint (2026-07-06)
 
-> Realizada imediatamente após a integração da Sprint 1b em `develop` (commit `f0d2389`), como fase de encerramento técnico e preparação — **somente leitura, nenhum código/Rule/Cloud Function alterado nesta rodada.**
-> Detalhe técnico explorável de um achado crítico (item 1) está em `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (interno, não versionado, por política de segurança do projeto — mesma convenção de `plans/AUDITORIA_GERAL_20260704_INTERNO.md`).
+> Realizada imediatamente após a integração da Sprint 1b em `develop` (commit `f0d2389`). Começou como auditoria somente-leitura e evoluiu para resposta formal a um incidente de segurança confirmado (achado crítico abaixo) — as Fases 3-4 dessa resposta (auditoria de exposição + hardening) resultaram em correções **preparadas e commitadas localmente, ainda não deployadas/pushadas**, listadas na seção própria abaixo. Nenhuma promoção a produção, nenhum push e nenhuma rotação definitiva de credencial foram executados sem autorização.
+> Detalhe técnico explorável do achado crítico está em `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (interno, não versionado, mesma convenção de `plans/AUDITORIA_GERAL_20260704_INTERNO.md`).
 
 ## Visão geral do estado atual
 
@@ -14,21 +14,33 @@ Arquitetura: single-tenant, Firebase (Firestore + Auth + Cloud Functions), sem b
 - Primeira suíte de testes automatizados do projeto (Sprint 1a/1b) com convenção clara (emulador local, sem depender de login interativo do Firebase CLI).
 - Migração do Portal do Cliente para Cloud Functions fechou uma classe inteira de vulnerabilidade (acesso direto anônimo ao Firestore) de forma consistente e testada.
 
-## 🔴 Risco crítico — ação imediata recomendada, fora do escopo desta fase
+## 🔴 Risco crítico — resposta a incidente em andamento
 
-**Credencial administrativa (service account) vazada em commit antigo de um repositório público permanece ATIVA em produção — nunca rotacionada, conhecida desde 2026-07-03.** Concede acesso completo (bypass de Firestore Rules) ao projeto de produção. Detalhe técnico (ID da chave, commit, comando de remediação) em `plans/AUDITORIA_GERAL_20260706_INTERNO.md`. **Recomendação: tratar como Sprint 0, antes de qualquer outra prioridade abaixo — é uma exposição ativa, não uma dívida técnica.**
+**Credencial administrativa (service account) de PRODUÇÃO vazada em commit antigo de repositório público permanece ATIVA — nunca rotacionada, conhecida desde 2026-07-03.** Confirmado nesta sessão, com evidência fresca (a API IAM, inacessível numa tentativa de 2026-07-02, respondeu desta vez): são **2 chaves**, não 1 (uma vazada via git, outra gerada numa tentativa de rotação de 2026-06-29 e nunca concluída, exposta sem proteção em `~/Downloads/`), ambas ainda ativas e sem expiração. A service account tem papéis de administrador de Cloud Functions, Cloud Run, Firebase Auth e Admin SDK completo (bypass de todas as Firestore Rules) — nível de acesso mais amplo do que se sabia antes desta auditoria. Detalhe técnico completo (IDs das chaves, comando de remediação passo a passo) em `plans/AUDITORIA_GERAL_20260706_INTERNO.md`. **Plano de rotação está pronto para execução — falta só a autorização para a etapa de desativação/exclusão definitiva das chaves (rotação em si é reversível e de baixo risco, ver plano).**
+
+Agravante encontrado e já corrigido nesta sessão: os documentos que descreviam esse incidente desde 2026-07-02 (`plans/PLANO_ACAO_RISCOS_CRITICOS.md`, `plans/EXECUCAO_RISCOS_CRITICOS.md`) continham o ID exato da chave vazada em texto plano e estavam publicamente acessíveis via GitHub Pages (confirmado HTTP 200 antes da correção) — reclassificados para `_INTERNO.md` e desrastreados.
 
 ## Riscos identificados (por ordem de severidade)
 
 | # | Achado | Severidade | Status |
 |---|---|---|---|
-| 1 | Credencial admin vazada, ainda ativa | 🔴 Crítico | Ver INTERNO |
-| 2 | `plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages (workflow de deploy não exclui) | 🟠 Alto | Confirmado |
-| 3 | 4 coleções usadas no código sem nenhuma Firestore Rule (`alertas_usuario`, `chips_cadastros`, `diario_eventos`, `contas_numeros`) — falham fechado (bug funcional, não vazamento) | 🟠 Alto (funcional) | Confirmado |
+| 1 | Credencial admin vazada, ainda ativa (2 chaves, não 1) | 🔴 Crítico | Plano de rotação pronto — ver INTERNO |
+| 2 | `plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages (incluindo, até esta correção, o ID da chave vazada em texto plano) | 🟠 Alto | **Preparado, commitado localmente, não deployado** |
+| 3 | 7 coleções usadas no código sem nenhuma Firestore Rule (achado desta sessão + mapeamento exaustivo de 2026-07-02 nunca executado) — falhavam fechado (bug funcional, não vazamento) | 🟠 Alto (funcional) | **Preparado, testado (52/52), commitado localmente, não deployado** |
 | 4 | 9 módulos sem gate de permissão no client (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — precisa checar se a Rule correspondente cobre o gap | 🟡 Médio (investigar) | Confirmado, não aprofundado |
 | 5 | Login sem return-URL — qualquer perfil deslogado que acesse Portal Técnico cai no Dashboard após logar | 🟡 Médio | Confirmado (mais amplo que o achado original) |
 | 6 | `dashboard-alarme-os.js` (janela flutuante do alarme) — mesма classe do H-009 (já corrigido no Caixa), ainda sem prefixo `/dev` | 🟡 Médio | Confirmado, não corrigido |
 | 7 | `os.list` aberto a qualquer sessão autenticada nas Firestore Rules (decisão deliberada da Sprint 1b — ver TECHDOC §19.5) | 🟡 Médio, aceito | Documentado, pendente de sprint futura |
+
+## ✅ Hardening já preparado nesta sessão (commitado localmente, aguardando autorização para deploy/push)
+
+| Commit local | O quê | Testado |
+|---|---|---|
+| `bbafce6` | Sincronização de documentação (HISTORICO_PROJETO, PROXIMA_ETAPA, MASTER_ROADMAP, GUIA_MANUTENCAO) | N/A (doc) |
+| `4bc8f43` | Rules para 4 coleções órfãs + exclusão de `plans/`/`CLAUDE.md`/`kernel-test/` do GitHub Pages | 43/43 Rules |
+| `e6475fb` | Reclassificação dos 2 docs com key ID exposto + Rules para 3 coleções adicionais | 52/52 Rules |
+
+Nada disso foi deployado em DEV/PROD nem pushado para `origin` — são mudanças prontas para revisão e autorização.
 
 ## Dívida técnica
 
@@ -59,16 +71,15 @@ Arquitetura: single-tenant, Firebase (Firestore + Auth + Cloud Functions), sem b
 
 ## Prioridades recomendadas para a próxima Sprint
 
-1. **Sprint 0 (fora da numeração normal): rotacionar a credencial vazada** — bloqueia tudo o resto em termos de risco real, mas é puramente infraestrutura (não toca código de produto). Esforço: baixo. Risco de não fazer: crítico e crescente.
-2. **Homologação manual + aprovação formal do RBAC Sprint 3 (Estoque+Caixa)** — já implementado e verificado, só falta o passo formal. Esforço: baixo. Bloqueia RBAC Sprint 4/5.
-3. **Excluir `plans/`, `CLAUDE.md`, `kernel-test/` do deploy do GitHub Pages** — mudança de infraestrutura (CI), baixo esforço, fecha uma exposição de informação real.
-4. **Adicionar Firestore Rules para as 4 coleções sem regra** — baixo esforço, corrige bug funcional confirmado.
-5. **Investigar o gap de gate client-side vs. Rules reais nos 9 módulos sem `initModulo()`** — esforço médio (é investigação, não é fix ainda), risco potencialmente alto dependendo do resultado.
-6. **RBAC Sprint 4 (Financeiro) e Sprint 5 (OS)** — depende do item 2. Esforço alto (módulos sensíveis).
-7. **Limpeza de código morto** (`tenant.js`, `listener-manager.js`, diretórios `BACKUP_*`) — baixo esforço, baixo risco, alto ganho de clareza.
-8. **CI mínima**: rodar `npm test` (as 2 suítes existentes) automaticamente em push/PR — baixo esforço, previne regressão silenciosa.
-9. **Migrar `doLogin()`/`_listenOS()` do Portal para fechar `os.list`** — pendência formal da Sprint 1b, exige decisão de arquitetura (mecanismo substituto ao onSnapshot). Esforço médio-alto.
-10. **Revisão de escopo da Fase 3 do Master Roadmap** (empresa_id/multiempresa desatualizado) — pré-requisito antes de qualquer trabalho de "consolidação de arquitetura".
+1. **Autorizar a execução do plano de rotação da credencial** (Sprint 0) — plano pronto, só a decisão de executar falta. Esforço: baixo. Risco de não fazer: crítico e crescente.
+2. **Autorizar push/deploy do hardening já preparado** (GitHub Pages + Firestore Rules das 7 coleções) — commits locais prontos, testados, aguardando só autorização.
+3. **Homologação manual + aprovação formal do RBAC Sprint 3 (Estoque+Caixa)** — já implementado e verificado, só falta o passo formal. Esforço: baixo. Bloqueia RBAC Sprint 4/5.
+4. **Investigar o gap de gate client-side vs. Rules reais nos 9 módulos sem `initModulo()`** — esforço médio (é investigação, não é fix ainda), risco potencialmente alto dependendo do resultado.
+5. **RBAC Sprint 4 (Financeiro) e Sprint 5 (OS)** — depende do item 3. Esforço alto (módulos sensíveis).
+6. **Limpeza de código morto** (`tenant.js`, `listener-manager.js`, diretórios `BACKUP_*`) — baixo esforço, baixo risco, alto ganho de clareza.
+7. **CI mínima**: rodar `npm test` (as 2 suítes existentes) automaticamente em push/PR — baixo esforço, previne regressão silenciosa.
+8. **Migrar `doLogin()`/`_listenOS()` do Portal para fechar `os.list`** — pendência formal da Sprint 1b, exige decisão de arquitetura (mecanismo substituto ao onSnapshot). Esforço médio-alto.
+9. **Revisão de escopo da Fase 3 do Master Roadmap** (empresa_id/multiempresa desatualizado) — pré-requisito antes de qualquer trabalho de "consolidação de arquitetura".
 
 ## Ordem técnica sugerida (dependências)
 
@@ -83,7 +94,7 @@ Homologação RBAC Sprint 3      [independente, já pronto]
    │        │
    │        └── RBAC Sprint 5 (OS)
    │
-Rules das 4 coleções órfãs     [independente, rápido]
+Rules das 7 coleções órfãs — JÁ PREPARADO [aguarda autorização p/ deploy]
    │
 Investigação dos 9 módulos     [pode rodar em paralelo com RBAC]
 sem gate client-side
@@ -104,7 +115,7 @@ Revisão de escopo Fase 3        [pré-requisito para consolidação futura]
 | Rotacionar credencial | Baixo | Médio (pode quebrar consumidores da chave atual se não migrados primeiro) |
 | Excluir docs do Pages | Baixo | Baixo |
 | Homologação RBAC Sprint 3 | Baixo | Baixo |
-| Rules das 4 coleções órfãs | Baixo | Baixo |
+| Rules das 7 coleções órfãs (já preparado) | Baixo | Baixo |
 | Investigar gate dos 9 módulos | Médio (investigação) | Baixo |
 | RBAC Sprint 4 (Financeiro) | Alto | Médio-Alto (módulo sensível) |
 | RBAC Sprint 5 (OS) | Alto | Alto (maior dependência cruzada do sistema) |
