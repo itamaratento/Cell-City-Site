@@ -163,3 +163,357 @@ exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (reques
 
   return { lista: snap.docs.map((d) => projetarCamposPublicosOS(d.data())) };
 });
+
+/* ============================================================
+   PORTAL DO CLIENTE — Sprint 1b (2026-07-06)
+
+   As 5 coleções do Portal (avaliacoes, mensagens_portal, portal_eventos,
+   agendamentos, solicitacoes_diagnostico) e a resposta de orçamento em
+   `os` dependiam de acesso direto do cliente (sessão anônima) ao
+   Firestore, protegido só por `request.auth != null` — sem checar
+   perfil, porque o hotfix de 2026-07-05 (commit 60173b7) removeu
+   `temAcessoLiberado()` dessas coleções (bloqueava cliente anônimo
+   legítimo, que nunca tem doc usuarios/{uid}). Essas functions fecham
+   a brecha original (conta 'pendente' conseguia ler/escrever ali): o
+   cliente deixa de falar direto com o Firestore, então a Rule volta a
+   poder exigir temAcessoLiberado() sem quebrar o Portal.
+
+   Mesmo modelo de confiança da Sprint 1a (consultarOSPorTelefonePublica):
+   `phoneDigits` do payload é a única prova de identidade — não é prova
+   de posse do telefone (SMS OTP etc. é decisão de produto separada,
+   fora de escopo). Abuso automatizado (criar avaliação/mensagem falsa
+   em nome de outro telefone) já era possível hoje via Firestore direto;
+   não é uma regressão desta migração.
+   ============================================================ */
+
+// Duplicado deliberado de CRM/shared/phone-utils.js::maskPhone — mesmo
+// motivo de normalizePhoneDigitsServer acima (functions/ não importa
+// arquivos de fora do próprio diretório).
+function maskPhoneServer(digits) {
+  const d = String(digits == null ? '' : digits).replace(/\D/g, '').slice(0, 11);
+  if (d.length > 10) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  if (d.length > 6) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+  if (d.length > 2) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  if (d.length > 0) return `(${d}`;
+  return d;
+}
+
+function validarPhoneDigitsServer(input) {
+  const digits = normalizePhoneDigitsServer(input);
+  if (digits.length < 10) {
+    throw new HttpsError('invalid-argument', 'Informe um telefone válido.');
+  }
+  return digits;
+}
+
+// ---- Mensagens ----
+
+exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
+  const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const db = admin.firestore();
+  // Sem orderBy na query (achado da homologação em DEV: o único índice
+  // composto que existe de fato em mensagens_portal é telefone+createdAt,
+  // não telefoneDigits+createdAt — where+orderBy em campos diferentes
+  // sem o índice certo falha. Ordena no servidor, mesmo padrão usado em
+  // portalListarAvaliacoes/portalListarAgendamentos abaixo, para não
+  // depender de criar/esperar build de um índice novo).
+  const snap = await db.collection('mensagens_portal')
+    .where('telefoneDigits', '==', digits)
+    .get();
+  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  lista.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  });
+  return { lista };
+});
+
+exports.portalEnviarMensagem = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const nome = String(data.nome || '').trim();
+  const texto = String(data.texto || '').trim();
+  const clientName = String(data.clientName || '') || nome;
+
+  if (!nome) throw new HttpsError('invalid-argument', 'Informe seu nome.');
+  if (texto.length < 3) throw new HttpsError('invalid-argument', 'A mensagem deve ter pelo menos 3 caracteres.');
+  if (texto.length > 2000) throw new HttpsError('invalid-argument', 'Mensagem muito longa.');
+
+  const db = admin.firestore();
+  await db.collection('mensagens_portal').add({
+    telefone: maskPhoneServer(digits),
+    telefoneDigits: digits,
+    clientName,
+    nome,
+    texto,
+    lida: false,
+    origem: 'portal',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) => {
+  const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const msgId = request.data && request.data.msgId;
+  if (!msgId || typeof msgId !== 'string' || msgId.length > 200) {
+    throw new HttpsError('invalid-argument', 'Informe o id da mensagem.');
+  }
+
+  const db = admin.firestore();
+  const ref = db.collection('mensagens_portal').doc(msgId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'Mensagem não encontrada.');
+  if (snap.data().telefoneDigits !== digits) {
+    throw new HttpsError('permission-denied', 'Esta mensagem não pertence a este telefone.');
+  }
+  await ref.update({ lida: true });
+  return { ok: true };
+});
+
+// ---- Avaliações ----
+
+exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
+  const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const db = admin.firestore();
+  const snap = await db.collection('avaliacoes').where('telefoneDigits', '==', digits).get();
+  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Ordena no servidor (sem orderBy na query) para não depender de um
+  // índice composto extra — coleção pequena por telefone, custo desprezível.
+  lista.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : 0;
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0;
+    return tb - ta;
+  });
+  return { lista };
+});
+
+exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const nota = Number(data.nota);
+  const texto = String(data.texto || '').trim();
+  const clientName = String(data.clientName || '');
+
+  if (!Number.isInteger(nota) || nota < 1 || nota > 5) {
+    throw new HttpsError('invalid-argument', 'Nota inválida.');
+  }
+
+  const db = admin.firestore();
+  await db.collection('avaliacoes').add({
+    telefone: maskPhoneServer(digits),
+    telefoneDigits: digits,
+    clientName,
+    nota,
+    texto,
+    origem: 'portal',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+// ---- Agendamentos ----
+
+exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) => {
+  const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const db = admin.firestore();
+  const snap = await db.collection('agendamentos').where('telefoneDigits', '==', digits).get();
+  const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  lista.sort((a, b) => {
+    const ta = a.createdAt && a.createdAt.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
+    const tb = b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
+    return tb - ta;
+  });
+  return { lista };
+});
+
+exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const nome = String(data.nome || '').trim();
+  const telefoneInformado = String(data.telefoneInformado || '').trim();
+  const dataAgendamento = String(data.data || '');
+  const horario = String(data.horario || '');
+  const tipoEquipamento = String(data.tipoEquipamento || '');
+  const motivo = String(data.motivo || '');
+  const observacoes = String(data.observacoes || '').trim();
+  const clientName = String(data.clientName || '') || nome;
+
+  if (!nome) throw new HttpsError('invalid-argument', 'Informe seu nome.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAgendamento)) throw new HttpsError('invalid-argument', 'Data inválida.');
+  if (!/^\d{2}:\d{2}$/.test(horario)) throw new HttpsError('invalid-argument', 'Horário inválido.');
+  if (!tipoEquipamento) throw new HttpsError('invalid-argument', 'Selecione o tipo de equipamento.');
+  if (!motivo) throw new HttpsError('invalid-argument', 'Selecione o motivo do atendimento.');
+
+  const db = admin.firestore();
+  await db.collection('agendamentos').add({
+    telefone: maskPhoneServer(digits),
+    telefoneDigits: digits,
+    telefoneInformado,
+    clientName,
+    nome,
+    data: dataAgendamento,
+    horario,
+    tipoEquipamento,
+    motivo,
+    observacoes,
+    status: 'aguardando',
+    origem: 'portal',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+// Achado da Sprint 1b (não estava nos 7 itens originais do plano):
+// _buscarHorariosOcupados() no Portal consulta `agendamentos` por data,
+// sem filtrar por telefone — é checagem de disponibilidade de horário,
+// não dado de um cliente específico. Devolve só os horários ocupados,
+// nenhum dado de cliente.
+exports.portalListarHorariosOcupados = onCall({ region: REGIAO }, async (request) => {
+  const dataAgendamento = String((request.data && request.data.data) || '');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAgendamento)) {
+    throw new HttpsError('invalid-argument', 'Data inválida.');
+  }
+  const db = admin.firestore();
+  const snap = await db.collection('agendamentos')
+    .where('data', '==', dataAgendamento)
+    .where('status', 'in', ['confirmado', 'aguardando'])
+    .get();
+  const ocupados = snap.docs
+    .map((d) => d.data().horario)
+    .filter(Boolean)
+    .map((h) => String(h).slice(0, 5));
+  return { ocupados };
+});
+
+// ---- Solicitação de diagnóstico ----
+
+exports.portalCriarSolicitacaoDiagnostico = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const clientName = String(data.clientName || '');
+  const tipoEquipamento = String(data.tipoEquipamento || '').trim();
+  const marca = String(data.marca || '').trim();
+  const modelo = String(data.modelo || '').trim();
+  const descricao = String(data.descricao || '').trim();
+
+  if (!tipoEquipamento) throw new HttpsError('invalid-argument', 'Selecione o tipo de equipamento.');
+  if (descricao.length < 10) throw new HttpsError('invalid-argument', 'Descreva o problema (mínimo 10 caracteres).');
+
+  const db = admin.firestore();
+  // Schema idêntico ao que o client escrevia direto (sem telefoneDigits —
+  // este payload original nunca teve esse campo; mantido para não gerar
+  // deriva de schema sem necessidade real).
+  await db.collection('solicitacoes_diagnostico').add({
+    telefone: maskPhoneServer(digits),
+    clientName,
+    tipoEquipamento,
+    marca,
+    modelo,
+    descricao,
+    status: 'pendente',
+    respondido: false,
+    origem: 'portal',
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+// ---- Eventos (tracking) ----
+
+const PORTAL_EVENTO_TIPOS = ['acesso', 'clique_whatsapp', 'clique_maps'];
+const PORTAL_EVENTO_CAMPOS_EXTRA = ['pagina', 'origem'];
+
+exports.portalRegistrarEvento = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const tipo = String(data.tipo || '').trim();
+  if (!PORTAL_EVENTO_TIPOS.includes(tipo)) {
+    throw new HttpsError('invalid-argument', 'Tipo de evento inválido.');
+  }
+  const clientName = String(data.clientName || '');
+  const dadosOrigem = data.dados || {};
+  const dadosPermitidos = {};
+  for (const campo of PORTAL_EVENTO_CAMPOS_EXTRA) {
+    if (typeof dadosOrigem[campo] === 'string' && dadosOrigem[campo].length <= 40) {
+      dadosPermitidos[campo] = dadosOrigem[campo];
+    }
+  }
+
+  const db = admin.firestore();
+  await db.collection('portal_eventos').add({
+    tipo,
+    telefone: maskPhoneServer(digits),
+    clientName,
+    ...dadosPermitidos,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+// ---- Orçamento (aprovar/recusar) ----
+
+// Substitui 4 implementações (portal.js::_executarAprovacao/_executarRecusa,
+// consultar-os.html raiz::responderOrcamentoConsulta x2) por uma só.
+// Proteção que NÃO existia antes desta sprint: com Firestore Rules,
+// qualquer sessão anônima conseguia aprovar/recusar QUALQUER OS (a regra
+// só checava request.auth != null, nunca comparava telefone). Aqui a
+// Function é o único caminho e exige que o phoneDigits do payload bata
+// com o phoneDigits gravado na própria OS antes de aceitar.
+exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const osId = data.osId;
+  if (!osId || typeof osId !== 'string' || osId.length > 30) {
+    throw new HttpsError('invalid-argument', 'Informe o número da OS.');
+  }
+  const digits = validarPhoneDigitsServer(data.phoneDigits);
+  const resposta = data.resposta;
+  if (resposta !== 'aprovado' && resposta !== 'recusado') {
+    throw new HttpsError('invalid-argument', 'Resposta inválida.');
+  }
+  const escolha = (data.escolha === '1' || data.escolha === '2') ? data.escolha : null;
+  const obs = String(data.obs || '').trim().slice(0, 500) || null;
+  const origem = data.origem === 'consulta-os' ? 'Consulta OS' : 'Portal do Cliente';
+
+  if (resposta === 'recusado' && (!obs || obs.length < 3)) {
+    throw new HttpsError('invalid-argument', 'Informe o motivo da recusa.');
+  }
+
+  const db = admin.firestore();
+  const ref = db.collection('os').doc(osId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new HttpsError('not-found', 'OS não encontrada.');
+  const osData = snap.data();
+
+  if (osData.phoneDigits !== digits) {
+    throw new HttpsError('permission-denied', 'Este telefone não corresponde a esta OS.');
+  }
+  if (osData.status !== 'orcamento_enviado' && osData.status !== 'orcamento') {
+    throw new HttpsError('failed-precondition', 'Este orçamento já foi respondido.');
+  }
+
+  const now = new Date();
+  const dataResp = now.toLocaleDateString('pt-BR');
+  const horaResp = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const escNome = escolha === '1' ? 'Orçamento 1' : (escolha === '2' ? 'Orçamento 2' : 'o orçamento');
+  const textoTimeline = resposta === 'aprovado'
+    ? `Cliente aprovou ${escNome} em ${dataResp} às ${horaResp}.${obs ? `\n\nObservação:\n"${obs}"` : ''}`
+    : `Cliente recusou o orçamento em ${dataResp} às ${horaResp}.\n\nMotivo:\n"${obs}"`;
+
+  const campos = {
+    status: resposta === 'aprovado' ? 'orcamento_aprovado' : 'orcamento_recusado',
+    orcamentoResposta: resposta,
+    orcamentoOrigem: origem,
+    orcamentoDataResposta: dataResp,
+    orcamentoHoraResposta: horaResp,
+    orcamentoTimestamp: now.toISOString(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    timeline: admin.firestore.FieldValue.arrayUnion({ date: now.toISOString(), text: textoTimeline }),
+  };
+  if (escolha) campos.orcamentoEscolhido = escolha;
+  if (obs) campos.orcamentoObs = obs;
+
+  await ref.update(campos);
+  return { ok: true };
+});
