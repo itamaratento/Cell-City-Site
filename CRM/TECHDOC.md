@@ -1135,7 +1135,7 @@ Deploy em `cellcity-crm-dev` via API REST direta (`firebaserules.googleapis.com`
 
 ### 19.7 Status
 
-**Sprint 1b concluída em `develop` (branch local `sprint-1b-portal-cloud-functions`, ainda não pushada nem mesclada — aguardando autorização).** Não promovida a `main`, sem deploy em produção (`cellcity-crm`), conforme escopo autorizado desta sessão.
+**Sprint 1b concluída e pushada para `origin/develop`** (commit `f0d2389`, enviado em sessão de continuação em 2026-07-06 11:08 — ver §20 para o push subsequente do hardening da auditoria). Não promovida a `main`, sem deploy em produção (`cellcity-crm`), conforme escopo autorizado até aqui.
 
 ### 19.8 Whitelist de campos nas 3 functions de listagem (fechado em sessão de continuação)
 
@@ -1144,3 +1144,13 @@ Deploy em `cellcity-crm-dev` via API REST direta (`firebaserules.googleapis.com`
 **Pendências que permanecem para sprints futuras:**
 - **Migrar `doLogin()`/`_listenOS()` para fechar `os.list`** — não feito nesta sessão de propósito: `CRM/CLAUDE.md` §1 exige autorização explícita para qualquer alteração em Login/Autenticação; esta migração muda como o login funciona (não é um bug pontual, é uma mudança de arquitetura) e precisa de uma decisão de produto sobre o mecanismo de substituição (não há equivalente de `onSnapshot`/push numa Cloud Function `onCall`, só request/response — poll periódico ou outra abordagem).
 - **Duplicação de padrão entre `enviarMensagem()`/`_enviarAgendamento()`/`_enviarSolicitacaoDiagnostico()`/`enviarAvaliacao()`** (cache de refs antes do await, toggle de loading, toast de erro) — avaliado e decidido NÃO extrair um helper nesta sessão: as 4 funções têm validação e pós-processamento suficientemente diferentes entre si que um helper genérico exigiria vários parâmetros/callbacks, tornando o código mais difícil de ler sem eliminar duplicação de fato — nenhuma delas tem bug, então o risco de regressão em código já homologado não se justifica pelo ganho.
+
+## 20. Auditoria Geral 2026-07-06 e resposta a incidente de credencial — push do hardening (sem deploy)
+
+Detalhe completo em `plans/AUDITORIA_GERAL_20260706.md` (Fase 5) e `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (não versionado). Resumo operacional:
+
+- Auditoria pós-integração da Sprint 1b encontrou um achado crítico independente (credencial de service account de produção vazada em commit antigo, nunca rotacionada) e produziu hardening aditivo (Firestore Rules para 7 coleções internas sem regra + exclusão de `plans/`/`CLAUDE.md`/`kernel-test/` do GitHub Pages), preparado e testado (52/52) em commits locais.
+- Sessão de continuação: **push desses 4 commits para `origin/develop`** (fast-forward `f0d2389..7e269ef`, sem merge commit), autorizado explicitamente pelo dono. Nenhum deploy, merge para `main` ou rotação de credencial foi executado.
+- Revalidação completa das duas suítes de teste nesta sessão (ambiente com `node`/`npm`/`firebase` CLI disponíveis via `nvm`, fora do `PATH` padrão): **77/77** (52/52 Rules + 25/25 Cloud Functions).
+- Confirmado por leitura (GET, somente leitura) do release ativo em `cellcity-crm-dev` via `firebaserules.googleapis.com`: o hardening é puramente aditivo — nenhuma regra existente foi alterada.
+- Checklist de pré-deploy: 3 de 4 itens aprovados; **bloqueado** no item "nenhuma credencial comprometida permanece ativa" — as 2 chaves seguem ativas. Deploy não deve prosseguir até a rotação ser executada ou aceita como risco residual pelo dono.
