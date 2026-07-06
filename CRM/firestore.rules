@@ -34,16 +34,28 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /os/{osId} {
       allow get:                           if false;
-      // RECONCILIAÇÃO 2026-07-05 (plano de implantação da Sprint 1a, item 0):
-      // o HOTFIX P0 aplicado direto em produção (commit 60173b7) removeu
-      // `&& temAcessoLiberado()` daqui porque orçamento (aprovar/recusar,
-      // via update — não migrado para Cloud Function, é Sprint 1b) é
-      // operado por sessão anônima do cliente, que nunca tem doc
-      // usuarios/{uid}. Sprint 1a nunca tinha tocado esta linha (só a de
-      // `get`, acima) — promover sem reconciliar reabriria o incidente.
-      // Mantém a checagem de perfil desligada aqui até a Sprint 1b migrar
-      // aprovar/recusar orçamento para Cloud Function.
-      allow list, create, update, delete:  if request.auth != null;
+      // FECHAMENTO PARCIAL Sprint 1b (2026-07-06): aprovar/recusar orçamento
+      // (update) migrou para portalResponderOrcamento (Cloud Function, Admin
+      // SDK, ignora estas Rules) — não é mais o client SDK quem escreve em
+      // `os`, então create/update/delete voltam a exigir temAcessoLiberado(),
+      // fechando a brecha de conta 'pendente' nessas operações.
+      //
+      // `list`, porém, PRECISA continuar aberto só com request.auth != null
+      // (sem temAcessoLiberado): doLogin() e _listenOS() em
+      // CRM/pages/portal-cliente/portal.js fazem `query(os).where(phoneDigits==...)`
+      // direto do client SDK — ficaram FORA do escopo desta sprint de
+      // propósito (decisão registrada no plano técnico,
+      // plans/SPRINT_1B_PORTAL_CLOUD_FUNCTIONS.md), porque a sessão do
+      // cliente é sempre anônima (sem doc usuarios/{uid}) e o listener em
+      // tempo real (_listenOS/onSnapshot) não tem equivalente em Cloud
+      // Function onCall (só request/response, sem push). Fechar `list` aqui
+      // quebra o login de todo cliente real — confirmado ao vivo nesta
+      // homologação (tentativa revertida). Migrar login/listener para outro
+      // mecanismo seguro (ex. Cloud Function + polling, ou uma leitura
+      // pública dedicada como consultarOSPorTelefonePublica) fica para uma
+      // sprint futura.
+      allow list:                          if request.auth != null;
+      allow create, update, delete:        if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
@@ -364,11 +376,9 @@ service cloud.firestore {
     // PRIVADO: Dashboard — coleções de analytics e portal
     // ─────────────────────────────────────────────
     match /avaliacoes/{docId} {
-      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): cliente do
-      // Portal avalia via sessão anônima, sem doc usuarios/{uid}. Fix
-      // definitivo (fecha para conta 'pendente' sem bloquear anônimo real):
-      // Sprint 1b, migrar para Cloud Function.
-      allow read, write:                   if request.auth != null;
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalCriarAvaliacao/portalListarAvaliacoes.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /diario_registros/{docId} {
@@ -380,23 +390,27 @@ service cloud.firestore {
     }
 
     match /mensagens_portal/{docId} {
-      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
-      allow read, write:                   if request.auth != null;
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalListarMensagens/portalEnviarMensagem/portalMarcarMensagemLida.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /portal_eventos/{docId} {
-      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
-      allow read, write:                   if request.auth != null;
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalRegistrarEvento.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /agendamentos/{docId} {
-      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
-      allow read, write:                   if request.auth != null;
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalListarAgendamentos/portalCriarAgendamento/portalListarHorariosOcupados.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /solicitacoes_diagnostico/{docId} {
-      // RECONCILIAÇÃO 2026-07-05 (ver comentário em /os acima): mesmo motivo.
-      allow read, write:                   if request.auth != null;
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalCriarSolicitacaoDiagnostico.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /catalogo_produtos/{docId} {

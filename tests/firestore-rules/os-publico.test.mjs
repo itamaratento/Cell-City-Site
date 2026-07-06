@@ -1,18 +1,14 @@
 // Testes de Firestore Rules — Sprint 1a (achado crítico da auditoria de
 // 2026-07-04: `os/{osId}` tinha `allow get: if true`, expondo o documento
 // inteiro — senha/padrão/foto de desbloqueio, endereço, IMEI — para
-// qualquer visitante sem login). Cobre só o diff desta sprint (a regra
-// `get` de `os` e a não-regressão de `list`/`update`), não o resto de
-// `CRM/firestore.rules`.
-//
-// IMPORTANTE — não executado nesta sessão: este ambiente não tem
-// node/npm/firebase-tools instalados. Para rodar de verdade:
-//   cd tests/firestore-rules && npm install && npm test
-// (`npm test` já invoca `firebase emulators:exec --only firestore`, que
-// precisa do Firebase CLI autenticado — mesmo requisito dos testes de
-// Rules já usados na Fase 1 do projeto, 18/18 casos antes do primeiro
-// deploy de Usuários e Permissões). A homologação formal desta sprint
-// depende dessa execução real, não só da leitura deste arquivo.
+// qualquer visitante sem login) + FECHAMENTO Sprint 1b (2026-07-06):
+// `os` (list/create/update/delete) e as 5 coleções do Portal
+// (avaliacoes/mensagens_portal/portal_eventos/agendamentos/
+// solicitacoes_diagnostico) tiveram `temAcessoLiberado()` restaurado depois
+// que o cliente do Portal migrou para Cloud Functions (Admin SDK, ignora
+// estas Rules) — sessão anônima não precisa mais de acesso direto, e a
+// brecha de conta 'pendente' nessas 6 coleções (reaberta pela reconciliação
+// de 2026-07-05) está fechada de novo.
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -94,22 +90,21 @@ test('list de os com staff real (perfil != pendente) → permitido (não-regress
   await assertSucceeds(db.collection('os').get());
 });
 
-test('list de os com perfil pendente → permitido (reconciliação 2026-07-05, trade-off aceito até Sprint 1b)', async () => {
-  // Antes da reconciliação, esta checagem negava (temAcessoLiberado() barrava
-  // perfil 'pendente'). O HOTFIX P0 de produção (commit 60173b7) removeu essa
-  // checagem de list/create/update/delete em `os` porque aprovar/recusar
-  // orçamento (via update, sessão anônima do cliente) e a própria Consulta de
-  // OS pública (via list) dependem de request.auth != null, sem doc
-  // usuarios/{uid}. Reconciliar Sprint 1a com o hotfix significa aceitar,
-  // conscientemente, que uma conta 'pendente' também consegue `list` em `os`
-  // até a Sprint 1b migrar essas operações para Cloud Function.
+test('list de os com perfil pendente → permitido (list NÃO fechou nesta sprint — ver comentário em CRM/firestore.rules)', async () => {
+  // `list` em `os` fica de fora do FECHAMENTO Sprint 1b de propósito:
+  // doLogin()/_listenOS() (CRM/pages/portal-cliente/portal.js) ainda fazem
+  // `query(os).where(phoneDigits==...)` direto do client SDK, sempre com
+  // sessão anônima (sem doc usuarios/{uid}). Tentar fechar `list` aqui
+  // quebrou o login de todo cliente real numa homologação real desta sprint
+  // (revertido) — fica registrado como pendência para uma sprint futura que
+  // migre login/listener para outro mecanismo.
   await seedOS();
   await seedUsuario('pendente-uid', 'pendente');
   const db = testEnv.authenticatedContext('pendente-uid').firestore();
   await assertSucceeds(db.collection('os').get());
 });
 
-test('list de os com sessão anônima → permitido (Consulta de OS pública, produção usa este caminho hoje)', async () => {
+test('list de os com sessão anônima → permitido (doLogin()/_listenOS() dependem disto — não migrado nesta sprint)', async () => {
   await seedOS();
   const db = testEnv.authenticatedContext('anon-uid-2', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
   await assertSucceeds(db.collection('os').get());
@@ -121,20 +116,47 @@ test('update em os/{osId} sem autenticação → negado', async () => {
   await assertFails(db.collection('os').doc(OS_ID).update({ status: 'entregue' }));
 });
 
-test('update em os/{osId} com sessão anônima → permitido (aprovar/recusar orçamento, Consulta de OS e Portal)', async () => {
+test('update em os/{osId} com sessão anônima → negado (FECHAMENTO Sprint 1b — aprovar/recusar orçamento agora é portalResponderOrcamento)', async () => {
   await seedOS();
   const db = testEnv.authenticatedContext('anon-uid-3', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
-  await assertSucceeds(db.collection('os').doc(OS_ID).update({ status: 'orcamento_aprovado' }));
+  await assertFails(db.collection('os').doc(OS_ID).update({ status: 'orcamento_aprovado' }));
 });
 
-// ── Reconciliação 2026-07-05: as 5 coleções do Portal do Cliente também
-// tiveram `temAcessoLiberado()` removido pelo mesmo motivo do /os acima —
-// cliente usa sessão anônima, nunca tem doc usuarios/{uid}. Fix definitivo:
-// Sprint 1b (Cloud Functions).
+test('update em os/{osId} com perfil pendente → negado (FECHAMENTO Sprint 1b)', async () => {
+  await seedOS();
+  await seedUsuario('pendente-update-uid', 'pendente');
+  const db = testEnv.authenticatedContext('pendente-update-uid').firestore();
+  await assertFails(db.collection('os').doc(OS_ID).update({ status: 'orcamento_aprovado' }));
+});
+
+test('update em os/{osId} com staff aprovado → permitido (não-regressão — módulo de OS interno)', async () => {
+  await seedOS();
+  await seedUsuario('staff-aprovado', 'tecnico');
+  const db = testEnv.authenticatedContext('staff-aprovado').firestore();
+  await assertSucceeds(db.collection('os').doc(OS_ID).update({ status: 'em_reparo' }));
+});
+
+// ── FECHAMENTO Sprint 1b (2026-07-06): as 5 coleções do Portal do Cliente
+// migraram para Cloud Functions (functions/index.js, Admin SDK, ignoram
+// estas Rules) — a checagem de perfil volta a valer para qualquer acesso
+// direto via client SDK, fechando a brecha de conta 'pendente' reaberta
+// pela reconciliação de 2026-07-05.
 for (const colecao of ['avaliacoes', 'mensagens_portal', 'portal_eventos', 'agendamentos', 'solicitacoes_diagnostico']) {
-  test(`read/write em ${colecao} com sessão anônima → permitido (reconciliação 2026-07-05)`, async () => {
+  test(`read/write em ${colecao} com sessão anônima → negado (FECHAMENTO Sprint 1b — cliente do Portal usa só Cloud Function)`, async () => {
     const db = testEnv.authenticatedContext(`anon-${colecao}`, { firebase: { sign_in_provider: 'anonymous' } }).firestore();
-    await assertSucceeds(db.collection(colecao).add({ teste: true, criadoEm: new Date().toISOString() }));
+    await assertFails(db.collection(colecao).add({ teste: true, criadoEm: new Date().toISOString() }));
+  });
+
+  test(`read/write em ${colecao} com perfil pendente → negado (FECHAMENTO Sprint 1b)`, async () => {
+    await seedUsuario(`pendente-${colecao}`, 'pendente');
+    const db = testEnv.authenticatedContext(`pendente-${colecao}`).firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} com staff aprovado → permitido (não-regressão — dashboard/central de alertas ainda lê direto)`, async () => {
+    await seedUsuario(`staff-${colecao}`, 'admin');
+    const db = testEnv.authenticatedContext(`staff-${colecao}`).firestore();
+    await assertSucceeds(db.collection(colecao).add({ teste: true }));
   });
 
   test(`read/write em ${colecao} sem autenticação → negado (não-regressão)`, async () => {
