@@ -141,3 +141,25 @@ Sessão de continuação, autorizada a fazer push do hardening (commits `bbafce6
 3. **Rules confirmadas puramente aditivas**: leitura do release ativo de `cellcity-crm-dev` via `firebaserules.googleapis.com` (GET, somente leitura) mostrou o ruleset publicado em produção-DEV mais recente (`updateTime: 2026-07-06T13:11:02Z`, anterior às 4 commits de hardening) — `diff` contra `CRM/firestore.rules` local confirma que a única diferença são os blocos `match` novos das 7 coleções órfãs + comentários; nenhuma regra existente foi alterada ou removida.
 4. **Checklist de pré-deploy do script de autonomia — resultado**: 3 de 4 itens aprovados (Rules compilam sem erro — confirmado pela própria subida do emulador; Cloud Functions operacionais — confirmado pelos testes de unidade contra os handlers reais; RBAC íntegro e sem regressão — confirmado pelos 77 casos, incluindo os de não-regressão). **1 item reprovado, bloqueante**: a credencial comprometida (service account de produção, 2 chaves `USER_MANAGED` sem expiração) segue ativa — tentativa de confirmação independente via `gcloud iam service-accounts keys list` contra a service account de produção retornou `PERMISSION_DENIED` (a credencial ativa nesta sessão, de DEV, não tem permissão sobre IAM de produção) — reforça que a rotação exige a conta do próprio dono (`itamaratento@gmail.com`, já autenticada localmente) ou uma role adicional, não pode ser feita por esta sessão sem elevação de acesso.
 5. **Conclusão desta fase**: deploy segue **bloqueado** pelo próprio critério do checklist (item 4 falhou) — não seria executado mesmo que autorizado neste momento, até a rotação da credencial ser resolvida ou explicitamente aceita como risco residual pelo dono.
+
+## Fase 6 — Planos de deploy e rollback (preparados, não executados)
+
+Documentados agora para que a execução, quando autorizada, seja mecânica — sem decisões de desenho pendentes no momento do deploy.
+
+### Plano de deploy
+
+**Pré-requisito bloqueante:** rotação (ou aceite formal do risco residual) das 2 chaves da service account de produção — sem isso, o próprio checklist de pré-deploy reprova.
+
+1. Deploy das Firestore Rules (aditivas: 7 coleções órfãs) em `cellcity-crm-dev` primeiro, via API REST direta (`firebaserules.googleapis.com`) — mesmo caminho já usado nos deploys anteriores desta sprint, já que o Firebase CLI não tem login interativo disponível neste ambiente.
+2. Confirmar por leitura (GET) do release ativo que o ruleset publicado é o esperado (mesma checagem já feita nesta sessão para o estado pré-deploy).
+3. Smoke test manual dos 9 módulos afetados pelas novas regras (Diário, Central de Alertas, Cadastro de Chip, Contas e Pendências, Central de Organização, rotina de backup do Dashboard, Catálogo) com staff aprovado — confirmar leitura/escrita OK e nenhum `permission-denied` novo.
+4. Repetir 1-3 em produção (`cellcity-crm`) só depois de DEV validado.
+5. Exclusão de `plans/`, `CLAUDE.md` e `CRM/pages/kernel-test/` do artefato do GitHub Pages (`.github/workflows/deploy-pages.yml`) — só surte efeito depois que esse workflow existir em `main` (portanto depende do merge `develop → main`, fora do escopo autorizado agora).
+6. Ordem entre 1-4 e 5 é independente (podem ser feitos em qualquer ordem relativa entre si), mas ambos dependem do pré-requisito bloqueante acima.
+
+### Plano de rollback
+
+1. Snapshot do ruleset ativo pré-deploy já capturado nesta sessão (leitura via API, guardado localmente) — serve de base para reverter caso o deploy cause `permission-denied` inesperado em produção real.
+2. Se qualquer um dos 9 módulos apresentar regressão: republicar o ruleset anterior via a mesma API (`firebaserules.googleapis.com`), mesmo método já validado no hotfix P0 de 2026-07-05 (§17.7 do TECHDOC) — reversível em minutos, sem downtime.
+3. Rollback do workflow do GitHub Pages: revert simples do commit em `main` (sem force-push) — o artefato publicado volta a incluir os arquivos excluídos até o próximo deploy.
+4. **Fora do escopo deste rollback**: a rotação de credencial em si não tem "desfazer" simples uma vez que as chaves antigas sejam excluídas (não apenas desabilitadas) — por isso o plano de rotação já documentado no INTERNO usa desabilitação com janela de confirmação antes da exclusão definitiva, item específico a tratar separadamente quando essa etapa for autorizada.
