@@ -231,6 +231,29 @@ function ordenarPorCreatedAtDesc(lista) {
   return lista.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 }
 
+// Whitelist de campos por coleção do Portal — mesmo princípio de
+// OS_CAMPOS_PUBLICOS/projetarCamposPublicosOS (Sprint 1a): nunca devolver o
+// doc inteiro (`{id, ...data()}`) para o client. Risco de vazamento é baixo
+// hoje nestas 3 coleções (nenhum campo interno identificado por leitura do
+// código que as escreve — telefone/telefoneDigits/origem não são exibidos e
+// ficam de fora de propósito, já que o caller já sabe o próprio telefone),
+// mas a whitelist evita que um campo interno futuro (ex. nota do staff,
+// IP de origem) vaze automaticamente sem ninguém perceber.
+const CAMPOS_POR_COLECAO_PORTAL = {
+  mensagens_portal: ['id', 'clientName', 'nome', 'texto', 'mensagem', 'lida', 'resposta', 'respostaAt', 'respostaEm', 'createdAt'],
+  avaliacoes: ['id', 'nota', 'texto', 'createdAt'],
+  agendamentos: ['id', 'clientName', 'nome', 'data', 'horario', 'tipoEquipamento', 'motivo', 'observacoes', 'observacaoAdmin', 'status', 'createdAt', 'updatedAt'],
+};
+
+function projetarCamposPortal(colecao, doc) {
+  const campos = CAMPOS_POR_COLECAO_PORTAL[colecao];
+  const out = {};
+  for (const campo of campos) {
+    if (doc[campo] !== undefined) out[campo] = doc[campo];
+  }
+  return out;
+}
+
 // ---- Nome do cliente (login) ----
 //
 // Fix definitivo do HOTFIX P0 (2026-07-06, ver CRM/TECHDOC.md): doLogin()
@@ -263,7 +286,9 @@ exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
     .where('telefoneDigits', '==', digits)
     .limit(200)
     .get();
-  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
+  const lista = ordenarPorCreatedAtDesc(
+    snap.docs.map((d) => projetarCamposPortal('mensagens_portal', serializarCreatedAt({ id: d.id, ...d.data() })))
+  );
   return { lista };
 });
 
@@ -318,7 +343,9 @@ exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
   const snap = await db.collection('avaliacoes').where('telefoneDigits', '==', digits).limit(200).get();
   // Ordena no servidor (sem orderBy na query) para não depender de um
   // índice composto extra — coleção pequena por telefone, custo desprezível.
-  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
+  const lista = ordenarPorCreatedAtDesc(
+    snap.docs.map((d) => projetarCamposPortal('avaliacoes', serializarCreatedAt({ id: d.id, ...d.data() })))
+  );
   return { lista };
 });
 
@@ -352,7 +379,9 @@ exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) =>
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const db = admin.firestore();
   const snap = await db.collection('agendamentos').where('telefoneDigits', '==', digits).limit(200).get();
-  const lista = ordenarPorCreatedAtDesc(snap.docs.map((d) => serializarCreatedAt({ id: d.id, ...d.data() })));
+  const lista = ordenarPorCreatedAtDesc(
+    snap.docs.map((d) => projetarCamposPortal('agendamentos', serializarCreatedAt({ id: d.id, ...d.data() })))
+  );
   return { lista };
 });
 

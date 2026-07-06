@@ -90,7 +90,6 @@ test('portalEnviarMensagem + portalListarMensagens: fluxo feliz', async () => {
   const { lista } = await fns.portalListarMensagens.run({ data: { phoneDigits: PHONE } });
   assert.equal(lista.length, 1);
   assert.equal(lista[0].texto, 'Olá, tudo bem?');
-  assert.equal(lista[0].telefoneDigits, PHONE);
   assert.equal(lista[0].lida, false);
   // createdAt precisa sair como ISO string, não como Timestamp — o encoder
   // do onCall achata um Timestamp em {_seconds,_nanoseconds} sem `.toDate()`
@@ -98,6 +97,12 @@ test('portalEnviarMensagem + portalListarMensagens: fluxo feliz', async () => {
   // homologação do Lote 2).
   assert.equal(typeof lista[0].createdAt, 'string');
   assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
+  // Whitelist de campos (mesmo princípio de projetarCamposPublicosOS,
+  // Sprint 1a): telefoneDigits/telefone/origem nunca deviam sair — o
+  // client nunca lê esses campos de volta (usa this.session.telefoneDigits).
+  assert.equal(lista[0].telefoneDigits, undefined);
+  assert.equal(lista[0].telefone, undefined);
+  assert.equal(lista[0].origem, undefined);
 });
 
 test('portalListarMensagens: não vaza mensagem de outro telefone', async () => {
@@ -150,6 +155,8 @@ test('portalCriarAvaliacao + portalListarAvaliacoes: fluxo feliz', async () => {
   assert.equal(lista[0].nota, 5);
   assert.equal(typeof lista[0].createdAt, 'string');
   assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
+  assert.equal(lista[0].telefoneDigits, undefined);
+  assert.equal(lista[0].telefone, undefined);
 });
 
 test('portalCriarAvaliacao: rejeita nota fora do intervalo', async () => {
@@ -180,6 +187,9 @@ test('portalCriarAgendamento + portalListarAgendamentos: fluxo feliz', async () 
   assert.equal(lista[0].data, '2026-08-10');
   assert.equal(typeof lista[0].createdAt, 'string');
   assert.ok(!Number.isNaN(Date.parse(lista[0].createdAt)), 'createdAt deve ser uma data ISO válida');
+  assert.equal(lista[0].telefoneDigits, undefined);
+  assert.equal(lista[0].telefone, undefined);
+  assert.equal(lista[0].telefoneInformado, undefined);
 });
 
 test('portalCriarAgendamento: rejeita data mal formatada', async () => {
