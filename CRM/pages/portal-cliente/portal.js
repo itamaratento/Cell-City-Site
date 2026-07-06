@@ -495,12 +495,18 @@ window.Portal = {
         const db_ = b.createdAt || b.updatedAt || '';
         return db_ > da ? 1 : -1;
       });
-      // Se estiver em tela que mostra OS, atualiza
-      const route = location.hash.slice(1).split('/')[0];
+      // Se estiver em tela que mostra OS, atualiza. Mesma normalização de
+      // _handleRoute() (aceita "#rota" e "#/rota") — achado da homologação
+      // do Lote 2: com hash "/" inicial (ex. link direto "#/os-detalhe/OS-1234"),
+      // a leitura antiga (slice(1).split('/')[0]) resolvia para rota vazia e
+      // o "id" (split('/')[1]) pegava "os-detalhe" em vez do ID da OS — a
+      // tela nunca recebia a atualização ao vivo do aprovar/recusar orçamento.
+      const hashParts = location.hash.replace(/^#\/?/, '').split('/');
+      const route = hashParts[0];
       console.log('[AUDIT:LISTENER] Rota atual:', route, '| hash:', location.hash);
       if (route === 'os') this.renderOSList();
       else if (route === 'os-detalhe') {
-        const id = location.hash.split('/')[1];
+        const id = hashParts[1];
         if (id) this.renderOSDetalhe(id);
       }
       else if (route === 'painel') this.renderPainel();
@@ -1480,17 +1486,25 @@ window.Portal = {
       return;
     }
 
+    // Refs cacheadas antes do await — mesmo achado/fix de enviarMensagem()
+    // acima: re-consultar document.getElementById() depois do await quebra
+    // se o cliente já navegou para outra rota (tela de Avaliar não existe
+    // mais no DOM).
+    const btnLoading = document.getElementById('btn-avaliar-loading');
+    const feedback = document.getElementById('avaliar-feedback');
+    const notaEl = document.getElementById('avaliar-nota');
+
     document.getElementById('btn-avaliar').style.display = 'none';
-    document.getElementById('btn-avaliar-loading').style.display = '';
+    btnLoading.style.display = '';
 
     await this._salvarAvaliacao(val, texto);
 
     // Marca como já avaliou nesta sessão
     sessionStorage.setItem('portal_avaliou', '1');
 
-    document.getElementById('btn-avaliar-loading').style.display = 'none';
-    document.getElementById('avaliar-feedback').style.display = 'none';
-    document.getElementById('avaliar-nota').textContent = '✅ Obrigado pelo seu feedback!';
+    btnLoading.style.display = 'none';
+    feedback.style.display = 'none';
+    notaEl.textContent = '✅ Obrigado pelo seu feedback!';
     this._toast('Feedback enviado com sucesso!', 'success');
   },
 
@@ -1587,29 +1601,41 @@ window.Portal = {
   },
 
   async enviarMensagem() {
-    const nome = document.getElementById('msg-nome').value.trim();
-    const texto = document.getElementById('msg-texto').value.trim();
+    // Refs cacheadas antes do await (achado da homologação do Lote 2): se o
+    // cliente navegar para outra rota enquanto a Cloud Function está em voo,
+    // re-consultar document.getElementById() depois do await devolve null
+    // (a tela de Mensagens já não existe mais) — mesmo padrão defensivo já
+    // usado em _enviarAgendamento()/_enviarSolicitacaoDiagnostico(). Um
+    // elemento cacheado, mesmo destacado do DOM, aceita `.value`/`.style`
+    // sem lançar.
+    const nomeEl = document.getElementById('msg-nome');
+    const textoEl = document.getElementById('msg-texto');
     const errorEl = document.getElementById('msg-error');
+    const btn = document.getElementById('btn-msg');
+    const loading = document.getElementById('btn-msg-loading');
+
+    const nome = nomeEl.value.trim();
+    const texto = textoEl.value.trim();
 
     if (!nome) {
       errorEl.textContent = '📝 Digite seu nome';
-      document.getElementById('msg-nome')?.focus();
+      nomeEl.focus();
       return;
     }
     if (!texto) {
       errorEl.textContent = '💬 Digite sua mensagem';
-      document.getElementById('msg-texto')?.focus();
+      textoEl.focus();
       return;
     }
     if (texto.length < 3) {
       errorEl.textContent = '📝 A mensagem deve ter pelo menos 3 caracteres';
-      document.getElementById('msg-texto')?.focus();
+      textoEl.focus();
       return;
     }
 
     errorEl.textContent = '';
-    document.getElementById('btn-msg').style.display = 'none';
-    document.getElementById('btn-msg-loading').style.display = '';
+    btn.style.display = 'none';
+    loading.style.display = '';
 
     try {
       await window.PortalFunctions.enviarMensagem({
@@ -1618,7 +1644,7 @@ window.Portal = {
         nome,
         texto,
       });
-      document.getElementById('msg-texto').value = '';
+      textoEl.value = '';
       this._toast('Mensagem enviada com sucesso!', 'success');
       await this._carregarMensagens();
     } catch (err) {
@@ -1626,8 +1652,8 @@ window.Portal = {
       errorEl.textContent = '❌ Erro ao enviar. Tente novamente.';
       this._toast('Erro ao enviar mensagem', 'error');
     }
-    document.getElementById('btn-msg').style.display = '';
-    document.getElementById('btn-msg-loading').style.display = 'none';
+    btn.style.display = '';
+    loading.style.display = 'none';
   },
 
   // ===== CONTATO =====
