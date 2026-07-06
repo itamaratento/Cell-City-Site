@@ -41,6 +41,7 @@ beforeEach(async () => {
     limparColecao('solicitacoes_diagnostico'),
     limparColecao('portal_eventos'),
     limparColecao('os'),
+    limparColecao('clientes'),
   ]);
 });
 
@@ -53,6 +54,34 @@ const PHONE_OUTRO = '61988887777';
 function comCode(codeEsperado) {
   return (err) => err.code === codeEsperado;
 }
+
+// ===== Nome do cliente (login) =====
+// Fix definitivo do HOTFIX P0 (2026-07-06): substitui o getDoc direto de
+// clientes/{phoneDigits} no client (bloqueado por temAcessoLiberado() nas
+// Rules) por esta function — só devolve `name`, nunca CPF/e-mail/endereço.
+
+test('portalObterNomeCliente: devolve só o nome, nunca outros campos do cliente', async () => {
+  await db.collection('clientes').doc(PHONE).set({
+    name: 'Fulano de Tal',
+    cpf: '123.456.789-00',
+    email: 'fulano@example.com',
+    endereco: 'Rua Teste, 123',
+  });
+  const resp = await fns.portalObterNomeCliente.run({ data: { phoneDigits: PHONE } });
+  assert.deepEqual(resp, { name: 'Fulano de Tal' });
+});
+
+test('portalObterNomeCliente: telefone sem doc em clientes devolve nome vazio (sem erro)', async () => {
+  const resp = await fns.portalObterNomeCliente.run({ data: { phoneDigits: PHONE } });
+  assert.deepEqual(resp, { name: '' });
+});
+
+test('portalObterNomeCliente: rejeita telefone inválido', async () => {
+  await assert.rejects(
+    () => fns.portalObterNomeCliente.run({ data: { phoneDigits: '123' } }),
+    comCode('invalid-argument')
+  );
+});
 
 // ===== Mensagens =====
 
