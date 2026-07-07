@@ -260,6 +260,22 @@ Esta frente não é uma fase do roadmap — é infraestrutura transversal que su
 
 ---
 
+## Preparação para SQL (transversal às fases, planejamento — 2026-07-05/07)
+
+**Status: 🔵 Modelagem concluída (2026-07-07). Migração NÃO iniciada, NÃO recomendada nem agendada.**
+
+Assim como a Infraestrutura de Ambientes acima, esta não é uma fase do roadmap — é uma preparação de arquitetura em paralelo, que não bloqueia nem depende de nenhuma das Fases 1-6. Objetivo: reduzir o custo de uma eventual migração futura de banco de dados, sem migrar nada agora.
+
+**Já entregue:**
+- Camada Repository (`CRM/repositories/`) isolando o acesso ao Firestore atrás de uma interface uniforme, com piloto + Fase 0 + Fase 1 homologados (23 módulos migrados, 48/48 cenários funcionais — ver `CRM/TECHDOC.md` §22).
+- Modelagem relacional completa das 54 coleções ativas do Firestore: 75 tabelas, 62 relacionamentos, banco recomendado (PostgreSQL/Cloud SQL) com justificativa, DER, estratégia de migração em 7 ondas e plano de adaptação de cada Repository — tudo em `sql/` (novo diretório) e `CRM/TECHDOC.md` §23. Nenhum código, banco ou dado alterado para produzir isso.
+
+**Explicitamente não incluído nesta preparação** (mesma diretriz permanente desde 2026-07-05): instalar um banco SQL, adicionar um ORM, migrar um único registro de dado real, ou alterar qualquer módulo funcional do CRM. O Firestore continua sendo o banco oficial até uma decisão de negócio explícita em contrário.
+
+**Relação com as fases:** não bloqueia nenhuma Fase 1-6. Se uma migração futura vier a ser autorizada, a ordem recomendada (`sql/02_migracao_estrategia.md`) prioriza catálogos/domínios de baixo risco antes do núcleo (OS/Clientes) e da identidade/Auth — nunca antes das Fases de RBAC (2) estarem consolidadas, pelo mesmo motivo de sempre: não construir sobre uma base com dívida técnica ainda aberta.
+
+---
+
 ## Roadmap Geral
 
 ### Linha do tempo recomendada

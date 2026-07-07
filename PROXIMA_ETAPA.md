@@ -88,6 +88,11 @@ As 7 funcionalidades restantes do Portal (mensagens, avaliações, agendamentos,
 ### Auditoria de preparação da próxima Sprint (2026-07-06, pós-integração da 1b)
 Auditoria completa somente-leitura: `plans/AUDITORIA_GERAL_20260706.md` (público) + `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (achado explorável, gitignored). **Achado crítico novo, ainda sem correção:** credencial administrativa (service account) vazada em commit de 2026-06-25, confirmada ainda ativa em produção (conhecida desde 2026-07-03, nunca rotacionada) — ver "Riscos Atuais" abaixo. Documentação sincronizada nesta rodada: vários itens deste arquivo e de `GUIA_MANUTENCAO.md` estavam desatualizados desde 2026-07-04 (referenciavam riscos já corrigidos ou etapas já concluídas).
 
+> ⚠️ **Nota parcial (2026-07-07):** este bloco "Auditoria de preparação"/"Riscos Atuais" não foi revisado nesta rodada — a atualização de 07-07 tocou só a seção de Preparação SQL abaixo. Pode conter itens já resolvidos em sessões posteriores a 2026-07-06 (ex.: rotação de credencial, promoção a produção, hardening) — conferir `CRM/TECHDOC.md` §20-23 antes de agir sobre qualquer item deste bloco.
+
+### Preparação para SQL — modelagem relacional concluída (2026-07-07, planejamento, não migração)
+Modelagem relacional completa das 54 coleções ativas do Firestore em `sql/` (75 tabelas, 62 relacionamentos, banco recomendado PostgreSQL/Cloud SQL, DER, estratégia de migração em 7 ondas, plano de adaptação da Camada Repository) — ver `CRM/TECHDOC.md` §23 e `MASTER_ROADMAP.md` ("Preparação para SQL"). **Nenhum banco instalado, nenhum dado migrado, nenhuma migração agendada** — só planejamento, disponível para quando (e se) uma decisão de migração futura for tomada.
+
 ---
 
 ## 🎯 PRÓXIMAS TAREFAS (ordem recomendada, ver `plans/AUDITORIA_GERAL_20260706.md` para detalhe/esforço/risco de cada item)

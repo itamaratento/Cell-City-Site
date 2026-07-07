@@ -598,6 +598,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-05 | 🆕 Camada Repository (padrão de acesso a dados): esqueleto completo criado (`CRM/repositories/` com 17 arquivos cobrindo ~52 coleções, `CRM/firebase/client.js`, `CRM/services/README.md`), sem tocar `scripts/firebase.js` (protegido) nem qualquer outro módulo. Piloto migrado: `crm-comercial/chips.js` + `chips-entrada.js` passam a usar `ChipsRepository` em vez do SDK direto — zero mudança de comportamento (7 call sites, mapeamento 1:1). Homologado via jsdom (código real + mocks) — 20/20 casos aprovados. Commit original (`b0270b6`) foi temporariamente separado da `develop` por colisão de checkout com a Sprint 1a (ver achado em §18) e trazido de volta via cherry-pick (`91afeaf`) após confirmação de integridade. Ver §22. |
 | 2026-07-05 | Camada Repository — Fase 0 (`4a0ab9d`): fecha o gap de coleções sem repository (`agenda`, `agendamentos`, `central_organizacao`). Fase 1 (`76344d7`): 22 módulos de baixo risco migrados do SDK direto (Contas, Campanhas, Autoatendimento, Central de Comandos/Informações/Organização/Alertas, Diário, Minha Semana, Ação da Semana, Estoque, Fornecedor, Catálogo, Pós-venda, Relatórios, Portal Técnico, Clientes, Config, páginas de teste do kernel), mesmo padrão 1:1 do piloto. Duas extensões aditivas ao `base.repository.js` (`newId()`, `onDocChange()`). Homologação funcional ficou pendente neste commit. Ver §22.10. |
 | 2026-07-07 | Camada Repository — homologação funcional da Fase 1 concluída: auditoria estática dos 22 arquivos (0 divergência), `node --check` 22/22, resolução de imports 22/22, e 48/48 cenários de execução real (código dos repositories sem alteração + Firestore fake) cobrindo CRUD, `where`/`orderBy`/`limitTo`, `newId()` e `onDocChange()`. Nenhuma correção de código necessária. Duas observações arquiteturais não-bloqueantes registradas (ordem de merge do campo `id`, listener sem `onError` explícito silencioso) — pré-existentes desde o piloto Chips, não introduzidas por esta fase. `develop` local segue não pushada/não mesclada — reconciliação com produção fica para decisão separada. Ver §22.10. |
+| 2026-07-07 | 🆕 Preparação para SQL — modelagem relacional completa (`sql/`, novo diretório): 54 coleções ativas convertidas em 75 tabelas + 62 relacionamentos (FK), DER mestre em Mermaid, banco recomendado (PostgreSQL/Cloud SQL, com justificativa), estratégia de migração em 7 ondas (não executada) e plano de adaptação de cada Repository ao SQL sem alterar páginas consumidoras. Puramente planejamento — nenhum banco instalado, nenhum dado migrado, nenhum código funcional alterado. Ver §23. |
 
 ---
 
@@ -1265,3 +1266,33 @@ Antes desta entrega, uma troca de banco exigiria caçar chamadas cruas do SDK es
 5. **Observações registradas, não bloqueantes** (arquitetura pré-existente do `base.repository.js` desde o piloto Chips, não introduzida pela Fase 1): (a) `list()`/`getById()`/`onChange()`/`onDocChange()` fazem `{ id: d.id, ...d.data() }` — se o dado gravado já tiver seu próprio campo `id` (ex.: `Comandos.set(novoId, { id: novoId, ... })`, padrão usado nesta fase), o `id` da entidade prevalece sobre o `id` do documento Firestore; como todo escritor desta fase grava os dois iguais, não há divergência prática hoje, mas é um risco latente se algum dado legado tiver `id` interno diferente do doc id. (b) chamadas a `.onChange()`/`.onDocChange()` sem `onError` explícito (ex. `autoatendimento.js`) recebem um no-op silencioso do `base.repository.js`, diferente do comportamento padrão do SDK quando o 3º argumento do `onSnapshot` é omitido — erro de listener passa a não aparecer no console.
 
 **Resultado: Fase 1 homologada — 48/48 cenários funcionais + 22/22 sintaxe + 100% dos imports resolvidos.** Nenhuma alteração de código foi necessária. `develop` local segue 4 commits à frente de `origin/develop` (não pushado, não mesclado) — reconciliação com produção é decisão separada, fora do escopo desta homologação.
+
+## 23. Preparação para SQL — modelagem relacional completa (2026-07-07)
+
+> **Natureza:** planejamento e documentação, não migração. Segue a mesma diretriz permanente já registrada para a Camada Repository (§22.1, memória do projeto `feedback-escopo-preparacao-arquitetura`): "preparar não é migrar". **Nenhum banco SQL foi instalado, nenhum ORM foi adicionado, nenhum dado foi migrado, nenhum código funcional do CRM foi alterado.** O Firestore continua sendo o banco oficial do projeto.
+
+### 23.1 O que foi entregue
+
+Todo o material vive em `sql/` (novo diretório na raiz do repositório):
+
+- **`sql/00_visao_geral.md`** — motivação, banco recomendado (**PostgreSQL 15+ / Cloud SQL for PostgreSQL**, com justificativa comparativa contra MySQL/BigQuery/SQLite/bancos distribuídos), decisões de modelagem (quando um array do Firestore vira tabela-filha vs. quando permanece JSONB), e o que o modelo deliberadamente não assume (não reabre a decisão de multiempresa, não modela coleções legadas sem consumidor).
+- **`sql/01_der_mestre.md`** — diagrama entidade-relacionamento (Mermaid) das entidades centrais e relações entre domínios.
+- **`sql/02_migracao_estrategia.md`** — estratégia completa (não executada): 7 ondas por risco crescente (catálogos → domínios isolados → operacionais → financeiro → núcleo OS/Clientes → identidade/Auth → Portal do Cliente), rollback por onda, coexistência via shadow-read/shadow-write, sincronização via Cloud Function de gatilho (mesmo padrão já usado em `functions/index.js`), testes e homologação reaproveitando o processo formal já em vigor no projeto.
+- **`sql/03_repository_adapter.md`** — como cada `CRM/repositories/*.repository.js` existente se conectaria a uma implementação SQL (`createSqlRepository()`, mesma assinatura de `createRepository()`) sem alterar nenhuma página consumidora; identifica `onChange`/tempo real como o único gap de paridade sem solução trivial (`LISTEN/NOTIFY` do Postgres como candidato, não testado).
+- **`sql/schema/*.sql`** (8 arquivos, um por domínio, mesma divisão de `COLECOES_FIRESTORE.md`) — DDL completo: **75 tabelas**, **62 relacionamentos (FK)**, 31 tabelas com `CHECK` de enum (paridade com validações hoje só client-side), 21 tabelas-filhas para campos repetidos do Firestore.
+
+### 23.2 Cobertura
+
+54 coleções ativas de `COLECOES_FIRESTORE.md` modeladas (todas, exceto a seção de legado/em-desuso — modelar coleção sem consumidor seria trabalho morto). Fonte única: o próprio catálogo, revisado nesta mesma sessão (ver §22.4).
+
+### 23.3 Validação cruzada realizada
+
+- Conferência de paridade entre todas as 54 coleções documentadas e as tabelas correspondentes (nenhuma ficou de fora sem justificativa registrada).
+- Revisão de balanceamento de parênteses e de nomes de tabela duplicados em todos os 8 arquivos `.sql` (não há acesso a um servidor Postgres real nesta sessão para um parse completo — ver pendência em §23.4).
+- **Erro de ordem de carga encontrado e corrigido durante a própria revisão**: a documentação inicial recomendava carregar `06_usuarios_empresas_alertas.sql` antes de `05_posvenda_agenda_portal.sql` (para a FK de `tarefas_semana` → `usuarios`); na revisão, confirmou-se que essa FK é adicionada via `ALTER TABLE` **em** `06` (não uma dependência de `05` sobre `06`) — a ordem correta é a puramente numérica (`01` a `08`), já corrigida no `README.md` e nos comentários dos dois arquivos afetados antes de qualquer commit.
+
+### 23.4 Pendências para uma eventual migração futura (não bloqueantes desta entrega)
+
+- Nenhum teste de execução real do DDL contra um Postgres de verdade (exigiria instalar um banco, fora do escopo autorizado desta tarefa).
+- `LISTEN/NOTIFY` como estratégia de tempo real (§23.1) não foi validado na prática — maior incógnita técnica do plano.
+- Modelagem assume PostgreSQL; se uma decisão de negócio futura escolher outro banco, os arquivos de domínio precisariam de nova revisão de tipos/sintaxe (JSONB, `GENERATED ALWAYS AS`, `gen_random_uuid()` são específicos do Postgres).

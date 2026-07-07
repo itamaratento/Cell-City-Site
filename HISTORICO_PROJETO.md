@@ -1101,4 +1101,18 @@ Pendente: teste visual no navegador.
 
 ---
 
+### 07/07/2026 — Preparação para SQL: modelagem relacional completa — CONCLUÍDA (só planejamento)
+
+**Tarefa:** fechar a lacuna de 0% em modelagem relacional/SQL registrada desde a criação da Camada Repository (2026-07-05) — produzir um destino relacional completo e documentado para uma eventual migração futura, sem migrar nada agora.
+
+**Entregue:** novo diretório `sql/` — `00_visao_geral.md` (motivação, banco recomendado PostgreSQL/Cloud SQL com justificativa comparativa, decisões de modelagem array-vs-JSONB), `01_der_mestre.md` (DER em Mermaid), `02_migracao_estrategia.md` (7 ondas por risco crescente, rollback por onda, coexistência, sincronização, testes, homologação — nada executado), `03_repository_adapter.md` (como cada `*.repository.js` se conectaria ao SQL sem alterar páginas consumidoras), `schema/*.sql` (8 arquivos por domínio, 75 tabelas, 62 relacionamentos, cobrindo as 54 coleções ativas de `COLECOES_FIRESTORE.md`). `CRM/TECHDOC.md` (§23, nova seção + linha na tabela de histórico) e `MASTER_ROADMAP.md` (nova seção transversal, mesmo padrão da Infraestrutura de Ambientes DEV/PROD) atualizados.
+
+**Erro encontrado e corrigido na própria revisão:** a ordem de carga dos arquivos `.sql` recomendada inicialmente estava invertida entre os domínios 05 e 06 (uma FK via `ALTER TABLE` foi confundida com uma dependência de criação de tabela) — corrigido antes de qualquer commit, ordem final é puramente numérica (01 a 08).
+
+**Nenhum banco SQL instalado, nenhum ORM adicionado, nenhum dado migrado, nenhum código funcional do CRM alterado.** O Firestore continua sendo o banco oficial do projeto — mesma diretriz permanente desde a criação da Camada Repository.
+
+**Pendências registradas para uma eventual migração futura:** nenhum teste de execução real do DDL contra um Postgres de verdade (exigiria instalar um banco, fora do escopo autorizado); `LISTEN/NOTIFY` como estratégia de tempo real não validado na prática.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*
