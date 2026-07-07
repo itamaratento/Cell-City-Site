@@ -9,10 +9,31 @@ import { readFileSync } from 'node:fs';
 // loop de animação (ex.: acaodasemana.js) continuam rodando indefinidamente
 // e travam a próxima suíte quando vários arquivos *.test.mjs rodam juntos.
 const activeDoms = [];
+
+// Páginas com refresh periódico (ex.: `setInterval(renderCalendario, 60000)`
+// em acaodasemana.js) chamam o setInterval solto, que resolve para o do
+// Node (não o do jsdom) — dom.window.close() não tem como cancelá-lo.
+// Interceptamos só o global.setInterval (mantendo o setTimeout do Node
+// intocado — sobrescrevê-lo quebra os internals do jsdom, que dependem da
+// referência solta de setTimeout e entram em recursão infinita) para
+// rastrear e limpar manualmente os handles no cleanup.
+const realSetInterval = globalThis.setInterval.bind(globalThis);
+const realClearInterval = globalThis.clearInterval.bind(globalThis);
+const activeIntervals = [];
+global.setInterval = (...args) => {
+    const id = realSetInterval(...args);
+    activeIntervals.push(id);
+    return id;
+};
+global.clearInterval = (id) => realClearInterval(id);
+
 export function closeAllMounted() {
     while (activeDoms.length) {
         const dom = activeDoms.pop();
         try { dom.window.close(); } catch { /* já fechado */ }
+    }
+    while (activeIntervals.length) {
+        realClearInterval(activeIntervals.pop());
     }
 }
 
@@ -32,14 +53,9 @@ export function mountPage(htmlPath, urlPath) {
     global.localStorage = dom.window.localStorage;
     global.requestAnimationFrame = dom.window.requestAnimationFrame.bind(dom.window);
     global.cancelAnimationFrame = dom.window.cancelAnimationFrame.bind(dom.window);
-    // Páginas com refresh periódico (ex.: `setInterval(renderCalendario, 60000)`
-    // em acaodasemana.js) chamam o timer solto — sem isto, a referência solta
-    // resolve para o setInterval do Node (não do jsdom) e o timer nunca é
-    // cancelado por dom.window.close(), travando o processo indefinidamente.
-    global.setInterval = dom.window.setInterval.bind(dom.window);
-    global.clearInterval = dom.window.clearInterval.bind(dom.window);
-    global.setTimeout = dom.window.setTimeout.bind(dom.window);
-    global.clearTimeout = dom.window.clearTimeout.bind(dom.window);
+    // jsdom não implementa layout/scroll — stub inofensivo (usado por
+    // abrirDetalhe() em crm.js/chips.js só para UX, não afeta o RBAC testado).
+    dom.window.Element.prototype.scrollIntoView = () => {};
     dom.window.confirm = () => true;
     dom.window.alert = () => {};
 
