@@ -1156,3 +1156,43 @@ Detalhe completo em `plans/AUDITORIA_GERAL_20260706.md` (Fase 5) e `plans/AUDITO
 - Checklist de pré-deploy: 3 de 4 itens aprovados; **bloqueado** no item "nenhuma credencial comprometida permanece ativa" — as 2 chaves seguem ativas. Deploy não deve prosseguir até a rotação ser executada ou aceita como risco residual pelo dono.
 
 **Atualização — rotação executada e incidente encerrado (mesmo dia, autorizado explicitamente pelo dono em duas etapas):** as 2 chaves comprometidas foram desabilitadas e, em seguida, **excluídas definitivamente** do IAM de produção, com uma 3ª chave nova gerada e validada antes e depois de cada etapa. Confirmado por inventário pós-exclusão (só a chave nova existe) e reconfirmação funcional real contra produção. Suítes revalidadas pós-rotação: 77/77, sem regressão. Detalhe completo nas Fases 7-8 de `plans/AUDITORIA_GERAL_20260706.md`. **Nenhuma credencial comprometida permanece ativa — incidente encerrado.** O checklist de pré-deploy passa a ter os 4 itens aprovados.
+
+## 21. Promoção final `develop` → `main`, deploy do hardening e quase-incidente das Cloud Functions do Portal (2026-07-06)
+
+Autorizada explicitamente pelo dono, em sequência (Fase 1: exclusão de credencial — ver §20; Fase 2: deploy do hardening; Fase 3: promoção; Fase 4: validação pós-publicação).
+
+### 21.1 Deploy do hardening
+
+- **Firestore Rules**: deployadas via API REST (`firebaserules.googleapis.com`) primeiro em `cellcity-crm-dev`, depois em `cellcity-crm` — confirmado por leitura do release ativo em ambos, idêntico ao arquivo local (`_runtime_audit/verify-firestore-rules.mjs`).
+- **GitHub Pages**: achado durante a execução — o workflow `deploy-pages.yml` dispara em push tanto para `main` quanto para `develop`, e a cada disparo reconstrói e republica o site inteiro (produção a partir de `main` + `/dev` a partir de `develop`). Isso significa que os pushes de documentação para `develop` ao longo desta resposta ao incidente **já haviam publicado automaticamente** as exclusões (`plans/`, `CLAUDE.md`, `kernel-test/`) em produção, sem uma ação de deploy manual separada — confirmado por HTTP real (404 nos 3 caminhos, 200 no restante do site).
+
+### 21.2 Bug encontrado no `subir-ok` (versionamento semântico)
+
+A função `subir-ok` (`~/.bashrc`) tenta interpretar a última tag `v[0-9]*.[0-9]*.[0-9]*` como semver (`vMAJOR.MINOR.PATCH`) para calcular a próxima versão — mas todas as tags reais já existentes seguem o formato data (`vYYYY.MM.DD-HHMM`, ex. `v2026.07.04-1931`), que também casa com esse glob. Rodar a lógica de bump nessa tag geraria aritmética inválida (`$((vpat+1))` sobre `"04-1931"`) e uma tag quebrada. Contornado nesta promoção: passos seguros do `subir-ok` replicados manualmente (backup, `checkout main`, `git pull`, `merge --ff-only origin/develop`, tag no formato data já usado de fato em todas as promoções, `push origin main <tag>` sem `--follow-tags`), sem acionar o bloco de versionamento semântico. **Bug real do script, registrado para correção futura, fora do escopo desta sessão.**
+
+### 21.3 Efeito colateral do backup automático (encontrado e corrigido na mesma sessão)
+
+Rodar `backup-manual.sh` (chamado pelo `subir-ok`) com o working tree contendo arquivos não commitados (`.claude/worktrees/` — 6 worktrees de agentes antigos, `COLECOES_FIRESTORE.md`, `ventoy-1.1.12-linux.tar.gz`) fez `git add .` capturar e commitar/pushar tudo isso na branch `sprint-1b-portal-cloud-functions` (commit `74bfa39`), incluindo os 6 diretórios de worktree como gitlinks quebrados. **Corrigido na mesma sessão** via `git revert` (commit `1066a5a`) — mas o revert também **apagou fisicamente** `COLECOES_FIRESTORE.md` e o `.tar.gz` do disco (reverter uma adição remove o arquivo), exigindo recuperação manual (`git show 74bfa39:<arquivo> > <arquivo>`) para restaurá-los sem perda de dado. Nenhum dado foi perdido, mas registra uma lição: `backup-manual.sh` não deveria ser chamado com untracked files não intencionais no working tree sem revisão prévia — o script já avisa da adição de git embutido, mas não bloqueia.
+
+### 21.4 Promoção `develop` → `main`
+
+Fast-forward limpo `09b861a..cbe68c6` (22 commits: Sprint 1b completa + hardening + documentação da rotação de credencial). Sem merge commit — compatível com a regra de histórico linear do GitHub em `main`. Tag `v2026.07.06-2226` criada e publicada (`git push origin main <tag>`, sem `--follow-tags`).
+
+**Checklist manual do CLAUDE.md §5 (Login, Dashboard, CRM, OS, Caixa, Estoque, Financeiro, Portal do Cliente) dispensado explicitamente pelo dono nesta promoção** — ambiente desta sessão não tem navegador/Puppeteer disponível; cobertura substituta: 77/77 testes automatizados + confirmações reais via API/HTTP contra produção (ver 21.5).
+
+### 21.5 Quase-incidente: Cloud Functions do Portal não estavam em produção
+
+**Achado crítico durante a validação pós-publicação** (Fase 4, antes de declarar sucesso): o site de produção, recém-publicado, já servia o `portal.js` novo (que chama `portalResponderOrcamento`, `portalListarMensagens` etc.), mas `gcloud functions list --project=cellcity-crm` mostrou só as 3 Cloud Functions de Sprint 1a/backlog (`excluirUsuarioAdmin`, `consultarOSPublica`, `consultarOSPorTelefonePublica`) — **nenhuma das 12 Cloud Functions do Portal (Sprint 1b) tinha sido deployada em produção**, só em `cellcity-crm-dev` em sessões anteriores. O Portal do Cliente real (login, mensagens, avaliações, agendamentos, aprovar/recusar orçamento) estaria quebrado para clientes reais no intervalo entre a publicação do site e a correção.
+
+**Corrigido na mesma sessão**, antes de declarar a promoção concluída: `firebase deploy --only functions --project cellcity-crm` (autenticado via `GOOGLE_APPLICATION_CREDENTIALS` apontando para o `sa-key.json` já rotacionado — funcionou de primeira, diferente do obstáculo de OAuth interativo registrado em sessões anteriores). 12 funções criadas, 3 atualizadas (idempotente, sem mudança de comportamento). Validado por chamada HTTP real: `portalObterNomeCliente` e `portalListarHorariosOcupados` (novas) responderam corretamente; `consultarOSPublica` (pré-existente) sem regressão.
+
+**Lição para promoções futuras que envolvam Cloud Functions**: `git merge --ff-only` + push de `main` publica o **site estático** (GitHub Pages) automaticamente, mas **nunca** deploya Cloud Functions — são sistemas totalmente independentes. Checklist de promoção deve incluir explicitamente "Cloud Functions de produção sincronizadas com o código do site" como item verificado antes de declarar a promoção concluída, não depois.
+
+### 21.6 Validação operacional final
+
+- Firestore Rules de produção: idênticas ao arquivo local (confirmado via API, antes e depois do deploy de Functions).
+- GitHub Pages: exclusões ativas (`plans/`, `CLAUDE.md`, `kernel-test/` → 404); `index.html`, `consultar-os.html` → 200.
+- Cloud Functions: 15/15 ativas; 3 chamadas reais confirmadas (2 novas + 1 pré-existente, sem regressão).
+- **Não verificado nesta sessão** (sem navegador): login real de cliente pela tela, fluxo completo do Portal via UI. Cobertura substituta: 77/77 testes automatizados + chamadas HTTP diretas às Cloud Functions.
+
+**Status final: Sprint 1b promovida e publicada em produção (`main` == `develop` == `cbe68c6`, tag `v2026.07.06-2226`). Incidente de credencial encerrado. Quase-incidente de Cloud Functions ausentes identificado e corrigido antes de declarar sucesso.**

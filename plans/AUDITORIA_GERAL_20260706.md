@@ -25,8 +25,8 @@ Agravante encontrado e já corrigido nesta sessão: os documentos que descreviam
 | # | Achado | Severidade | Status |
 |---|---|---|---|
 | 1 | Credencial admin vazada | 🔴 Crítico → ✅ Resolvido | **Excluída definitivamente (Fase 8)** — incidente encerrado |
-| 2 | `plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages (incluindo, até esta correção, o ID da chave vazada em texto plano) | 🟠 Alto | **Preparado, commitado localmente, não deployado** |
-| 3 | 7 coleções usadas no código sem nenhuma Firestore Rule (achado desta sessão + mapeamento exaustivo de 2026-07-02 nunca executado) — falhavam fechado (bug funcional, não vazamento) | 🟠 Alto (funcional) | **Preparado, testado (52/52), commitado localmente, não deployado** |
+| 2 | `plans/` e `CLAUDE.md` publicados ao vivo no GitHub Pages (incluindo, até esta correção, o ID da chave vazada em texto plano) | 🟠 Alto → ✅ Resolvido | **Publicado em produção (Fase 9)** — confirmado 404 via HTTP real |
+| 3 | 7 coleções usadas no código sem nenhuma Firestore Rule (achado desta sessão + mapeamento exaustivo de 2026-07-02 nunca executado) — falhavam fechado (bug funcional, não vazamento) | 🟠 Alto (funcional) → ✅ Resolvido | **Deployado em DEV e PROD (Fase 9)** — confirmado via API |
 | 4 | 9 módulos sem gate de permissão no client (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — precisa checar se a Rule correspondente cobre o gap | 🟡 Médio (investigar) | Confirmado, não aprofundado |
 | 5 | Login sem return-URL — qualquer perfil deslogado que acesse Portal Técnico cai no Dashboard após logar | 🟡 Médio | Confirmado (mais amplo que o achado original) |
 | 6 | `dashboard-alarme-os.js` (janela flutuante do alarme) — mesма classe do H-009 (já corrigido no Caixa), ainda sem prefixo `/dev` | 🟡 Médio | Confirmado, não corrigido |
@@ -190,3 +190,15 @@ Autorizada explicitamente pelo dono como continuação da Fase 7, com pré-checa
 4. **Chave nova reconfirmada funcional** depois da exclusão (nova leitura real contra produção, HTTP 200).
 
 **Encerramento técnico da rotação**: o incidente de credencial vazada (conhecido desde 2026-07-03, achado crítico desta auditoria) está **resolvido de forma definitiva e irreversível** — não existe mais nenhuma chave comprometida ativa, desabilitada ou de qualquer forma presente no IAM do projeto de produção. Pendência remanescente, de baixo risco e puramente cosmética (as chaves em si não têm mais validade): limpeza física das cópias locais residuais (`TesteBackup/`, `_BACKUPS/` antigos, `~/Downloads/`) — registrada como item de backlog, não bloqueia o encerramento do incidente.
+
+## Fase 9 — Deploy do hardening, promoção para main e encerramento da Sprint (2026-07-06)
+
+Detalhe operacional completo em `CRM/TECHDOC.md` §21. Resumo:
+
+1. Firestore Rules (7 coleções órfãs) deployadas em `cellcity-crm-dev` e `cellcity-crm`, confirmadas idênticas ao arquivo local via API.
+2. GitHub Pages: achado que os pushes de documentação para `develop` já vinham publicando automaticamente as exclusões em produção (o workflow reconstrói o site inteiro a cada push, em qualquer um dos 2 branches) — confirmado 404 real em `plans/`, `CLAUDE.md`, `kernel-test/`.
+3. Promoção `develop → main`: fast-forward limpo `09b861a..cbe68c6`, tag `v2026.07.06-2226`. Checklist manual do CLAUDE.md §5 dispensado explicitamente pelo dono (sem navegador disponível nesta sessão).
+4. **Quase-incidente identificado e corrigido antes de declarar sucesso**: as 12 Cloud Functions do Portal (Sprint 1b) nunca tinham sido deployadas em produção (só em DEV) — o site novo já as chamava. Corrigido com `firebase deploy --only functions --project cellcity-crm`; validado por 3 chamadas HTTP reais (2 novas + 1 pré-existente, sem regressão).
+5. Efeitos colaterais encontrados e corrigidos na própria sessão: bug de versionamento no `subir-ok` (contornado manualmente) e uma captura acidental de arquivos não relacionados pelo `backup-manual.sh` (revertida; 2 arquivos apagados fisicamente pelo revert foram recuperados do histórico do git sem perda de dado).
+
+**Status final da Sprint 1b: promovida e publicada em produção com sucesso.** Incidente de credencial encerrado. Hardening ativo em DEV e PROD. Nenhuma pendência crítica de segurança em aberto. Pendências não-críticas remanescentes: exposição de `CRM/TECHDOC.md` no GitHub Pages (achado novo, backlog), limpeza de cópias residuais de chave (cosmético), commits órfãos de "Camada Repository" em `develop` local (fora do escopo desta Sprint), bug de versionamento do `subir-ok` (fora do escopo desta Sprint).
