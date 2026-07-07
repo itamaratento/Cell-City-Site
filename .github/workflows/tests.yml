@@ -1,0 +1,56 @@
+name: Testes automatizados
+
+# Roda as 2 suítes de teste já existentes no repositório (Firestore Rules e
+# Cloud Functions do Portal do Cliente) a cada push/PR — até agora essas
+# suítes só eram executadas manualmente (GUIA_MANUTENCAO.md registra como
+# dívida técnica: "nenhuma CI executa os testes existentes"; PROXIMA_ETAPA.md
+# item 10: "CI mínima (rodar as 2 suítes de teste existentes em push/PR)").
+#
+# Ambas rodam 100% contra o emulador local do Firestore — nenhuma chamada
+# sai para um projeto Firebase real, nenhuma credencial de produção é usada.
+# Não bloqueia merge (não há proteção de branch configurada), só dá
+# visibilidade — mas já é melhor do que zero verificação automática.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testes-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Instalar dependências (raiz — inclui firebase-tools)
+        run: npm ci
+
+      - name: Disponibilizar o CLI do Firebase no PATH
+        run: echo "$GITHUB_WORKSPACE/node_modules/.bin" >> "$GITHUB_PATH"
+
+      - name: Instalar dependências (functions/)
+        run: npm ci
+        working-directory: functions
+
+      - name: Instalar dependências (tests/firestore-rules/)
+        run: npm ci
+        working-directory: tests/firestore-rules
+
+      - name: Testes de Firestore Rules
+        run: npm test
+        working-directory: tests/firestore-rules
+
+      - name: Testes das Cloud Functions do Portal do Cliente
+        run: firebase emulators:exec --only firestore --project cellcity-rules-test "node --test"
+        working-directory: tests/functions
