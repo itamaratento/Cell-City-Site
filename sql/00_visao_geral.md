@@ -65,7 +65,7 @@ Critério inverso: estrutura **sem identidade própria, sem necessidade de consu
 ## 4. O que este modelo NÃO assume
 
 - **Não assume que o sistema virou multiempresa de verdade.** `empresas`/`usuarios.empresa_id` foram modelados porque o campo existe no Firestore hoje (vestígio do SaaS revertido em 2026-06-27, ver `COLECOES_FIRESTORE.md` §13), não porque a modelagem esteja reabrindo essa decisão de produto. Nenhuma FK aqui é `NOT NULL` por causa disso.
-- **Não assume que toda coleção documentada em `COLECOES_FIRESTORE.md` precisa de tabela.** As coleções da seção "Legadas/Em Desuso" (§21 — `estoque`, `historico_diario`, `historico_semanal`, `historico_mensal`, `resumo_live`, `acoes_semana`, `posvenda_rastreamento`, `produtos`, mais `clients`/`orders`) **não foram modeladas** — não têm consumidor de código hoje, modelar seria trabalho morto. Se algum dia ganharem consumidor real, entram numa revisão futura deste modelo.
+- **Não assume que toda coleção legada precisa de modelagem completa.** Das coleções da seção "Legadas/Em Desuso" (`COLECOES_FIRESTORE.md` §21), 7 têm `createRepository()` na Camada Repository mesmo sem consumidor de código (`historico_diario`, `historico_semanal`, `historico_mensal`, `resumo_live`, `acoes_semana`, `posvenda_rastreamento`, `produtos`) — receberam uma tabela **mínima** (só PK, sem campos, sem FK) na auditoria final de 2026-07-07, só para fechar a paridade 1:1 com os 58 repositories existentes (ver `sql/04_auditoria_final.md`). Não foi feito trabalho de modelagem de campos para elas — se algum dia ganharem consumidor real, a tabela mínima é só um ponto de partida, não um schema completo. `estoque` (bare) e `clients`/`orders` **continuam fora do modelo** — não têm nenhum repository na Camada Repository, então não há paridade 1:1 a fechar para eles.
 - **Não decide a favor da migração.** Esta entrega não recomenda migrar agora — só garante que, se a decisão vier a ser tomada, o "quanto vai custar" deixa de ser uma incógnita.
 
 ---
@@ -74,11 +74,13 @@ Critério inverso: estrutura **sem identidade própria, sem necessidade de consu
 
 | Métrica | Valor |
 |---|---|
-| Coleções Firestore ativas modeladas | 54 (todas as ativas de `COLECOES_FIRESTORE.md`, exceto a seção de legado) |
-| Tabelas SQL resultantes | 75 |
+| Coleções Firestore ativas modeladas | 54 (todas as ativas de `COLECOES_FIRESTORE.md`) |
+| Coleções legadas modeladas (mínimo, para paridade com a Camada Repository) | 7 (`acoes_semana`, `historico_diario/semanal/mensal`, `resumo_live`, `posvenda_rastreamento`, `produtos`) |
+| Tabelas SQL resultantes | 82 (75 do modelo ativo + 7 tabelas-placeholder legadas) |
 | Tabelas-filhas de array/lista | 21 |
-| Relacionamentos (FK) totais | 62 |
+| Relacionamentos (FK) totais | 62 (nenhum nas 7 tabelas legadas) |
 | Tabelas com CHECK de enum (paridade com validação hoje só no client) | 31 |
 | Arquivos de schema (`sql/schema/*.sql`) | 8, organizados por domínio (mesma divisão de `COLECOES_FIRESTORE.md`) |
+| Cobertura da Camada Repository (`CRM/repositories/*.repository.js`) | 58/58 coleções mapeadas (100%) — ver `sql/04_auditoria_final.md` |
 
-Ver `sql/01_der_mestre.md` para o diagrama, `sql/02_migracao_estrategia.md` para a estratégia de execução (não executada) e `sql/03_repository_adapter.md` para como cada `*.repository.js` se conectaria ao SQL no futuro.
+Ver `sql/01_der_mestre.md` para o diagrama, `sql/02_migracao_estrategia.md` para a estratégia de execução (não executada), `sql/03_repository_adapter.md` para como cada `*.repository.js` se conectaria ao SQL no futuro, e `sql/04_auditoria_final.md` para o aceite técnico da preparação (2026-07-07).

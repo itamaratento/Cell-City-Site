@@ -61,5 +61,20 @@ CREATE TABLE fornecedor_tendencias (
 );
 
 -- ============================================================
--- Resumo: 6 entidades Firestore → 6 tabelas SQL.
+-- Legado com repository preparado, mantido só para paridade 1:1 com a
+-- Camada Repository (ver COLECOES_FIRESTORE.md §21.1) — sem consumidor
+-- de código hoje. Campos conhecidos só pelo fallback de leitura em
+-- estoque.js (mapeia description→nome); resto não documentado, por não
+-- haver escrita ativa a auditar.
+-- ============================================================
+CREATE TABLE produtos (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome       TEXT,                 -- Firestore: campo `description`, renomeado no fallback de estoque.js
+  categoria  TEXT,
+  quantidade INTEGER DEFAULT 0
+);
+
+-- ============================================================
+-- Resumo: 6 entidades Firestore ativas → 6 tabelas SQL + 1 legada
+-- (`produtos`, fallback) → 7 tabelas no total.
 -- ============================================================

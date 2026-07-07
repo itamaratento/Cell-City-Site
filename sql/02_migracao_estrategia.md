@@ -8,6 +8,8 @@
 
 Em nenhum momento da migração o Firestore deixa de ser a fonte de verdade sem que o SQL já tenha sido validado como espelho fiel por um período de observação. A migração é dividida em **ondas por domínio** (mesma divisão de `sql/schema/*.sql`), nunca todas as 54 coleções de uma vez — o mesmo princípio de "um módulo por vez" já em vigor no projeto (`feedback-metodologia-um-modulo-por-vez`).
 
+**As 7 tabelas legadas mínimas** (`acoes_semana`, `historico_diario/semanal/mensal`, `resumo_live`, `posvenda_rastreamento`, `produtos` — adicionadas na auditoria final de 2026-07-07 só para fechar paridade 1:1 com a Camada Repository, ver `sql/04_auditoria_final.md`) **ficam fora de todas as ondas abaixo** — não têm consumidor de código, não têm dado real a migrar (ou, no caso de `produtos`, só um fallback de leitura já coberto indiretamente pela migração de `estoque_produtos`). Só entrariam numa onda própria se algum dia ganhassem um consumidor real — nesse momento, precisariam primeiro de modelagem de campos completa (hoje são só PK).
+
 ## 2. Ordem das ondas (por risco crescente, não por domínio)
 
 | Onda | Coleções | Por que nessa posição |

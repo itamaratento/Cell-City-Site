@@ -2,7 +2,7 @@
 
 > Diagrama de navegação de alto nível: as entidades centrais e os relacionamentos que atravessam domínios. Para o detalhe completo de cada domínio (colunas, tipos, CHECK, índices, tabelas-filhas de arrays), ver os arquivos em `sql/schema/*.sql` — este diagrama não repete o que já está no DDL, só situa como as peças se encaixam.
 >
-> 75 tabelas no total (54 entidades Firestore documentadas em `COLECOES_FIRESTORE.md` → 75 tabelas SQL, a diferença são as tabelas-filhas criadas para os campos repetidos/array do Firestore). 62 relacionamentos (FK) no total; este diagrama mostra os ~30 que cruzam domínio — o resto (tabela-filha → tabela-mãe dentro do mesmo domínio, ex. `os_fotos → os`) está nos arquivos de schema.
+> 82 tabelas no total: 54 coleções ativas de `COLECOES_FIRESTORE.md` → 75 tabelas SQL (a diferença são as tabelas-filhas criadas para os campos repetidos/array do Firestore) + 7 tabelas legadas mínimas (`acoes_semana`, `historico_diario/semanal/mensal`, `resumo_live`, `posvenda_rastreamento`, `produtos`) adicionadas na auditoria final de 2026-07-07 para fechar a paridade 1:1 com os 58 repositories da Camada Repository (ver auditoria em `sql/04_auditoria_final.md`). 62 relacionamentos (FK) no total — as 7 tabelas legadas não têm nenhum, por não terem consumidor de código; este diagrama mostra os ~30 relacionamentos que cruzam domínio — o resto (tabela-filha → tabela-mãe dentro do mesmo domínio, ex. `os_fotos → os`) está nos arquivos de schema.
 
 ```mermaid
 erDiagram
@@ -16,7 +16,7 @@ erDiagram
     OS ||--o{ FINANCEIRO_RECEBER : "gera"
     OS ||--o{ ALERTAS_USUARIO : "referencia"
     OS ||--o{ AVALIACOES : "recebe"
-    OS }o--|| CRM_LEADS : "convertida de"
+    OS ||--o| CRM_LEADS : "convertida de"
 
     CRM_LEADS ||--o| PRE_OS : "gera"
     CRM_LEADS ||--o{ ALERTAS_USUARIO : "referencia"
@@ -24,7 +24,6 @@ erDiagram
     POSVENDA_CONTATOS }o--|| POSVENDA_MENSAGENS : "usa template de"
 
     USUARIOS }o--|| PERFIS_OPERACIONAIS : "tem"
-    USUARIOS }o--|| EMPRESAS : "pertence a (single-tenant hoje)"
     USUARIOS ||--o| FAVORITOS_USUARIOS : "tem"
     USUARIOS ||--o| NOTAS_USUARIOS : "tem"
     USUARIOS ||--o| TAREFAS_SEMANA : "tem"
@@ -68,4 +67,5 @@ erDiagram
 | 1:N obrigatória (FK NOT NULL) | 8 | `os_fotos.os_id`, `diario_eventos.registro_id` |
 | 1:N opcional (FK nullable) | ~40 | `os.cliente_phone_digits`, `caixa_lancamentos.categoria_id` |
 | 1:1 (PK = FK, tabela satélite) | 6 | `favoritos_usuarios`, `notas_usuarios`, `tarefas_semana`, `central_alertas_status`, `alarme_config`, `catalogo_config` |
+| 1:1 (FK com UNIQUE, "conversão"/"migração") | 5 | `os.crm_lead_id`, `os.pre_os_id`, `os.solicitacao_id`, `crm_leads.pre_os_id`, `informacoes.migracao_destino_id` (+ `comandos.migrado_de`, mesmo par). **Corrigido na auditoria final de 2026-07-07**: a `UNIQUE` estava faltando nessas colunas (FK sem `UNIQUE` só garantiria N:1, não o 1:1 que o próprio diagrama já declarava) — ver `sql/04_auditoria_final.md` |
 | N:M | 0 | Nenhuma relação N:M verdadeira foi encontrada nos dados atuais — o mais próximo (`perfis_operacionais` × módulos) já é modelado como tabela de associação (`perfis_operacionais_permissoes`), não uma N:M pura, porque carrega atributos próprios (visualizar/criar/editar/excluir/aprovar) |

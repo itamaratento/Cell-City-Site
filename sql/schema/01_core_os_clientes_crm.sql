@@ -184,6 +184,10 @@ CREATE TABLE crm_leads_pattern_sequence (
 );
 -- FK adicionada depois que os/pre_os existem (evita ciclo de criação):
 ALTER TABLE os ADD CONSTRAINT fk_os_crm_lead FOREIGN KEY (crm_lead_id) REFERENCES crm_leads (id);
+-- UNIQUE: cada lead converte em no máximo 1 OS (Firestore: crm_leads.osConvertido
+-- é booleano, um evento único) — sem isso, a cardinalidade 1:1 documentada no
+-- DER mestre (§"convertida de") não seria realmente aplicada pelo schema.
+ALTER TABLE os ADD CONSTRAINT uq_os_crm_lead UNIQUE (crm_lead_id);
 
 CREATE TABLE chips_cadastros (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),

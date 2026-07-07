@@ -36,7 +36,7 @@ CREATE TABLE comandos (
   favorito          BOOLEAN DEFAULT false,
   criado_em         TIMESTAMPTZ NOT NULL DEFAULT now(),
   atualizado_em     TIMESTAMPTZ NOT NULL DEFAULT now(),
-  migrado_de        UUID REFERENCES informacoes (id)  -- rastreia a migração v1 (informacoes → comandos)
+  migrado_de        UUID REFERENCES informacoes (id) UNIQUE  -- rastreia a migração v1 (informacoes → comandos); UNIQUE = cada informação migra para no máximo 1 comando, mesma cardinalidade 1:1 já declarada no DER mestre
 );
 
 -- blocos: array<string> de `comandos` — tabela filha em vez de array/JSONB
@@ -52,6 +52,8 @@ CREATE TABLE comandos_blocos (
 
 ALTER TABLE informacoes ADD CONSTRAINT fk_informacoes_migracao_destino
   FOREIGN KEY (migracao_destino_id) REFERENCES comandos (id);
+-- UNIQUE: cada comando é destino de migração de no máximo 1 informação.
+ALTER TABLE informacoes ADD CONSTRAINT uq_informacoes_migracao_destino UNIQUE (migracao_destino_id);
 
 -- ============================================================
 -- Central de Organização — um "documento" por seção, com lista ordenável

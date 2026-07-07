@@ -120,6 +120,10 @@ CREATE TABLE solicitacoes_diagnostico (
   atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE os ADD CONSTRAINT fk_os_solicitacao FOREIGN KEY (solicitacao_id) REFERENCES solicitacoes_diagnostico (id);
+-- UNIQUE: cada solicitação de diagnóstico converte em no máximo 1 OS
+-- (Firestore: solicitacoes_diagnostico.status vira 'convertido' uma vez) —
+-- enforce real da cardinalidade 1:1 já documentada no DER mestre.
+ALTER TABLE os ADD CONSTRAINT uq_os_solicitacao UNIQUE (solicitacao_id);
 
 CREATE TABLE portal_eventos (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -131,6 +135,21 @@ CREATE TABLE portal_eventos (
 CREATE INDEX idx_portal_eventos_tipo ON portal_eventos (tipo, criado_em DESC);
 
 -- ============================================================
--- Resumo: 9 entidades Firestore → 14 tabelas SQL (5 filhas de arrays:
--- agenda_notas, agenda_recorrencia_excluir, tarefas_semana_itens).
+-- Legado com repository preparado, sem consumidor de código hoje (ver
+-- COLECOES_FIRESTORE.md §21.1) — mantidas só para paridade 1:1 com a
+-- Camada Repository. Campos não documentados (zero escrita ativa a
+-- auditar); estrutura mínima, a expandir se algum dia ganharem consumidor.
+-- ============================================================
+CREATE TABLE acoes_semana (
+  id BIGSERIAL PRIMARY KEY
+);
+
+CREATE TABLE posvenda_rastreamento (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+);
+
+-- ============================================================
+-- Resumo: 9 entidades Firestore ativas → 14 tabelas SQL (5 filhas de
+-- arrays: agenda_notas, agenda_recorrencia_excluir, tarefas_semana_itens)
+-- + 2 legadas (`acoes_semana`, `posvenda_rastreamento`) → 16 no total.
 -- ============================================================

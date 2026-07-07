@@ -97,8 +97,31 @@ CREATE TABLE backup_logs (
 );
 
 -- ============================================================
+-- Legado com repository preparado, sem consumidor de código hoje (ver
+-- COLECOES_FIRESTORE.md §21.1) — mantidas só para paridade 1:1 com a
+-- Camada Repository. Campos não documentados (zero escrita ativa a
+-- auditar); estrutura mínima, a expandir se algum dia ganharem consumidor.
+-- ============================================================
+CREATE TABLE historico_diario (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  data_ref  DATE
+);
+CREATE TABLE historico_semanal (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  semana_ref    DATE
+);
+CREATE TABLE historico_mensal (
+  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  mes_ref   DATE
+);
+CREATE TABLE resumo_live (
+  id  SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1)
+);
+
+-- ============================================================
 -- Resumo: `config` (1 coleção Firestore, propósito misto) → 5 tabelas
 -- tipadas + 1 fallback genérico. `metadata`, `auditoria_usuarios_permissoes`,
--- `auditoria_saas`, `notificacoes_saas`, `backup_logs` → 1:1.
--- Total do domínio: 5 entidades Firestore → 10 tabelas SQL.
+-- `auditoria_saas`, `notificacoes_saas`, `backup_logs` → 1:1. 4 legadas
+-- (`historico_diario`, `historico_semanal`, `historico_mensal`, `resumo_live`).
+-- Total do domínio: 5 entidades Firestore ativas + 4 legadas → 14 tabelas SQL.
 -- ============================================================

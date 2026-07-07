@@ -39,6 +39,11 @@ CREATE TABLE pre_os (
 );
 ALTER TABLE os ADD CONSTRAINT fk_os_pre_os FOREIGN KEY (pre_os_id) REFERENCES pre_os (id);
 ALTER TABLE crm_leads ADD CONSTRAINT fk_crm_leads_pre_os FOREIGN KEY (pre_os_id) REFERENCES pre_os (id);
+-- UNIQUE em ambas: cada pre_os é gerada por no máximo 1 lead e convertida em
+-- no máximo 1 OS (eventos únicos no Firestore: pre_os.status vira 'CONVERTIDA'
+-- uma vez) — enforce real da cardinalidade 1:1 já documentada no DER mestre.
+ALTER TABLE os ADD CONSTRAINT uq_os_pre_os UNIQUE (pre_os_id);
+ALTER TABLE crm_leads ADD CONSTRAINT uq_crm_leads_pre_os UNIQUE (pre_os_id);
 
 CREATE TABLE vendas_importadas (
   id             TEXT PRIMARY KEY,             -- Firestore: `beep_<idOriginal>` — preservado como PK natural

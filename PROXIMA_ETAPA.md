@@ -91,8 +91,8 @@ Preparação arquitetural (Firestore continua oficial, sem troca de banco). Fase
 - Sprint 3 (Estoque + Caixa): 🔵 **implementado (02/07) e re-homologado tecnicamente em 07/07 (34/34 cenários, código atual pós H-006 e pós Camada Repository, zero regressão) — aguardando aprovação formal do usuário** (ver `CRM/TECHDOC.md` §7.3). Nenhum bloqueio técnico real; só falta a decisão do dono do projeto.
 - Sprints 4 (Financeiro) e 5 (OS): ⚪ não iniciados — Sprint 4 só pode começar após a aprovação formal do Sprint 3.
 
-### Preparação para SQL — modelagem relacional concluída (2026-07-07, planejamento, não migração)
-Modelagem relacional completa das 54 coleções ativas do Firestore em `sql/` (75 tabelas, 62 relacionamentos, banco recomendado PostgreSQL/Cloud SQL, DER, estratégia de migração em 7 ondas, plano de adaptação da Camada Repository) — ver `CRM/TECHDOC.md` §23 e `MASTER_ROADMAP.md` ("Preparação para SQL"). **Nenhum banco instalado, nenhum dado migrado, nenhuma migração agendada** — só planejamento, disponível para quando (e se) uma decisão de migração futura for tomada.
+### Preparação para SQL — modelagem relacional concluída e auditada (2026-07-07, planejamento, não migração)
+Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas legadas mínimas em `sql/` (82 tabelas, 62 relacionamentos, banco recomendado PostgreSQL/Cloud SQL, DER, estratégia de migração em 7 ondas, plano de adaptação da Camada Repository — 100% de cobertura dos 58 repositories) — ver `CRM/TECHDOC.md` §23, `MASTER_ROADMAP.md` ("Preparação para SQL") e `sql/04_auditoria_final.md` (aceite técnico). **Nenhum banco instalado, nenhum dado migrado, nenhuma migração agendada** — só planejamento, disponível para quando (e se) uma decisão de migração futura for tomada.
 
 ---
 
