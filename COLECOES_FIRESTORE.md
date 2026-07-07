@@ -4,7 +4,9 @@
 > **Propósito:** Documento mestre de todas as coleções do Firestore usadas no sistema Cell City CRM.
 > **Convenção:** Nomes em `código` são os literais usados nas chamadas `collection(db, '...')` / `doc(db, '...', id)`, seja o literal inline ou por meio de uma constante local (ex.: `const COL = 'comandos'`).
 
-> **Nota da revisão de 2026-07-07:** o documento (criado em julho/2026, autoria não registrada) cobria 29 coleções ativas. Uma auditoria cruzando `CRM/repositories/*.repository.js` (58 coleções mapeadas na camada Repository, incluindo Fase 0/1 ainda só em `develop`), `firestore.rules` (79 caminhos com regra), `functions/*.js` (Cloud Functions) e busca por literais/constantes em todo o código-fonte (`main` + `develop`, excluindo `_BACKUPS/` e pastas `BACKUP_*`) encontrou **24 coleções ativas não documentadas** e **26 regras do Firestore sem nenhum código ativo correspondente** (além das 8 já listadas na seção de legado). Nenhum código ou regra foi alterado nesta revisão — só a documentação. Seções novas ou com adições estão marcadas com 🆕.
+> **Nota da revisão de 2026-07-07:** o documento (criado em julho/2026, autoria não registrada) cobria 29 coleções ativas. Uma auditoria cruzando `CRM/repositories/*.repository.js` (58 coleções mapeadas na camada Repository, incluindo Fase 0/1 ainda só em `develop`), `firestore.rules` e busca por literais/constantes em todo o código-fonte (`main` + `develop`, excluindo `_BACKUPS/` e pastas `BACKUP_*`) encontrou **25 coleções ativas não documentadas** (24 na primeira passada + `gdrive_backup`, reclassificada de "órfã" para "ativa" numa segunda passada — ver §18 e §21.2). Nenhum código ou regra foi alterado nesta revisão — só a documentação. Seções novas ou com adições estão marcadas com 🆕.
+>
+> **Correção de 2026-07-07 (mesmo dia, sessão de continuação):** a primeira passada desta revisão tinha analisado o `firestore.rules` da **raiz** do repositório (arquivo duplicado, nunca deployado, abandonado desde 2026-07-01 — ver `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md`) para a seção de "regras órfãs", em vez do arquivo real (`CRM/firestore.rules`). Corrigido: só **2 coleções** (`clients`, `orders`) são órfãs de fato no arquivo deployado — ver §21.2.
 
 ---
 
@@ -829,6 +831,17 @@ Log de auditoria das operações de sincronização com o Drive.
 | `acao` | `string` | `exclusao`, `exclusao_definitiva`, `restauracao`, `reenvio`, entre outros |
 | `modulo` | `string?` | Módulo relacionado |
 
+### 🆕 `gdrive_backup`
+**Document ID:** `_credenciais` (global) ou `{moduleKey}` (um por módulo)
+
+Credenciais OAuth do Google Drive (documento global `_credenciais`) e configuração de sincronização por módulo. Implementado em `CRM/shared/gdrive-backup.js`, consumido por `CRM/pages/diario/diario-gdrive.js` → `diario.js` (Diário). Corrigido nesta revisão (2026-07-07) — auditorias anteriores tinham classificado esta coleção como órfã por engano: o acesso usa `doc(db, ...CREDS_DOC)` com um array (`['gdrive_backup', '_credenciais']`), padrão que não aparece em buscas por `collection(db,'gdrive_backup')`/`doc(db,'gdrive_backup',...)` como as demais coleções deste catálogo. Ver `plans/AUDITORIA_FIRESTORE_RULES_ORFAS_20260707.md` §2.3 para o diagnóstico completo.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `clientId` | `string` | ID do cliente OAuth (documento `_credenciais`) |
+| `atualizadoEm` | `timestamp` | Última atualização das credenciais |
+| `ultimaSync` | `string?` | Última sincronização (documento por módulo) |
+
 ---
 
 ## 19. Configurações do Sistema
@@ -920,23 +933,24 @@ Estas têm um `createRepository(...)` já escrito (preparação para fases futur
 | `posvenda_rastreamento` | ❌ Inativa | Nenhuma ocorrência em código ativo |
 | `produtos` | ⚠️ Fallback | Usada como fallback em `dashboard-busca.js` **e** em `estoque.js` (Fase 1) se `estoque_produtos` estiver vazia |
 
-### 🆕 21.2 Regra do Firestore existe, mas **sem nenhum código correspondente** (não migrado nem legado com repository)
+### 21.2 Regras realmente órfãs no arquivo deployado (`CRM/firestore.rules`)
 
-Encontradas cruzando `firestore.rules` (79 caminhos) contra todo o código-fonte ativo (`main`+`develop`, excluindo `_BACKUPS/`). Nenhuma tem repository nem chamada SDK direta hoje. Origem não confirmada para todas nesta revisão — as marcadas com 🔎 foram rastreadas a um arquivo de backup específico; as demais não tiveram a origem investigada a fundo (recomenda-se checar antes de remover a regra).
+> **Correção (2026-07-07):** a versão original desta seção (mesmo dia, revisão anterior) tinha sido montada cruzando o `firestore.rules` da **raiz** do repositório — um arquivo duplicado, nunca deployado, abandonado desde 2026-07-01 (ver `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md` para o diagnóstico completo). Isso produziu uma lista de "26 regras órfãs" que na verdade não existem no arquivo real (`CRM/firestore.rules`, o único referenciado por `firebase.json` e usado em todo deploy). A tabela abaixo substitui a anterior.
 
-| Coleção | Origem rastreada nesta revisão |
-|---------|------|
-| `assinaturas` | 🔎 `_BACKUPS/.../pages/saas/saas.js` (SaaS Multiempresa revertido) |
-| `empresas_arquivadas` | 🔎 `_BACKUPS/.../pages/saas/saas.js` (idem) |
-| `robo_atividade` | 🔎 `_BACKUPS/.../pages/central-organizacao/central.js` (versão antiga, pré-refatoração) |
-| `sistema_logs` | 🔎 `_BACKUPS/.../shared/alertas-auto.js` |
-| `metas` | 🔎 `_BACKUPS/.../shared/alertas-auto.js` |
-| `configuracoes` | 🔎 `_BACKUPS/.../shared/home-prefs.js` (nome antigo — hoje é `config`, singular) |
-| `dispositivos` | 🔎 `_BACKUPS/01-DIARIO/.../config/config.js` |
-| `auditoria_logs`, `compras_financeiras`, `financeiro_cat_despesas`, `financeiro_despesas`, `lixeira`, `relatorio_mensal` | 🔎 `_BACKUPS/.../pages/homologacao/homologacao.js` (página interna de auto-teste antiga) |
-| `automacao_execucoes`, `automacao_logs`, `backup_historico`, `categorias_wpp`, `chat_historico`, `clients`, `encomendas`, `estoque_config`, `estoque_movimentacoes`, `fornecedores`, `gdrive_backup`, `historico_alertas`, `lancamentos_caixa`, `monitoramento`, `orders`, `pendencias`, `preferencias_sistema`, `tarefas_robo`, `teste_caixa`, `diario_metas` | Origem não investigada nesta revisão — sem ocorrência em nenhum arquivo de código ativo ou de backup rastreado. |
+Cruzando `CRM/firestore.rules` (63 caminhos) contra todo o código-fonte ativo (`main`+`develop`, excluindo `_BACKUPS/`, incluindo padrões indiretos como constantes locais e `doc(db, ...array)`), só **2 coleções** têm regra real e nenhum código consumidor:
 
-**Nenhuma alteração foi feita em `firestore.rules` nesta revisão** — a lista acima é só um levantamento para uma limpeza futura de regras órfãs, que exige autorização e alteração de Firestore Rules (fora do escopo documental desta tarefa).
+| Coleção | Regra | Origem | Risco de remoção | Recomendação |
+|---------|-------|--------|-------------------|--------------|
+| `clients` | `allow read, write: if false;` (bloco "BLOQUEADO: Coleções legadas") | Presente desde o primeiro commit do projeto (2026-06-10); comentário em `CRM/scripts/firebase.js` confirma "coleção legada que nenhuma página usa" | Baixo — já é `if false`, remover a regra não muda nenhum comportamento | Segura para remover (requer autorização de alteração de Firestore Rules) |
+| `orders` | `allow read, write: if false;` (idem) | Idem — nome anterior a `os` | Baixo | Idem |
+
+Detalhamento completo (caminho exato da rule, confiança da origem, dependências) em `plans/AUDITORIA_FIRESTORE_RULES_ORFAS_20260707.md`.
+
+**`gdrive_backup` foi removida desta lista** — investigação mais profunda encontrou consumidor real (`CRM/shared/gdrive-backup.js`, via padrão `doc(db, ...array)`); documentada agora em §18.
+
+**As demais 23 coleções da lista anterior** (`assinaturas`, `auditoria_logs`, `automacao_execucoes`, `automacao_logs`, `backup_historico`, `categorias_wpp`, `chat_historico`, `configuracoes`, `diario_metas`, `encomendas`, `estoque_config`, `estoque_movimentacoes`, `financeiro_cat_despesas`, `fornecedores`, `historico_alertas`, `lancamentos_caixa`, `lixeira`, `monitoramento`, `pendencias`, `preferencias_sistema`, `robo_atividade`, `tarefas_robo`, `teste_caixa`) **não têm regra nenhuma no arquivo deployado** — só existiam no `firestore.rules` da raiz (duplicado, não usado). Não são risco de segurança nem pendência de limpeza de regras; a pendência real é decidir o destino do arquivo duplicado da raiz (ver `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md` §5-6 para o plano de remoção preparado, ainda não executado).
+
+**Nenhuma alteração foi feita em `firestore.rules` (nenhum dos dois arquivos) nesta revisão.**
 
 ---
 

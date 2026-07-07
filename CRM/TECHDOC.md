@@ -1228,7 +1228,7 @@ página (CRM/pages/**)
 
 **Gap conhecido, encontrado numa auditoria posterior (2026-07-05):** 3 coleções em uso real ainda sem repository — `agenda`, `agendamentos`, `central_organizacao`. Fecho previsto para a Fase 0 da expansão módulo a módulo, antes de migrar qualquer módulo que dependa delas.
 
-**Catálogo de coleções:** [`COLECOES_FIRESTORE.md`](../COLECOES_FIRESTORE.md) (raiz do repositório) documenta campos e relacionamentos de todas as coleções do Firestore, ativas ou legadas — revisado e expandido em 2026-07-07 (de 29 para ~53 coleções ativas documentadas, mais 26 regras órfãs do Firestore mapeadas). Use-o como referência ao expandir a Camada Repository para módulos ainda não migrados.
+**Catálogo de coleções:** [`COLECOES_FIRESTORE.md`](../COLECOES_FIRESTORE.md) (raiz do repositório) documenta campos e relacionamentos de todas as coleções do Firestore, ativas ou legadas — revisado e expandido em 2026-07-07 (de 29 para ~54 coleções ativas documentadas). Uma revisão inicial no mesmo dia analisou o `firestore.rules` errado (duplicado da raiz, não deployado) para a seção de regras órfãs — corrigido na mesma sessão: só `clients`/`orders` são órfãs reais no arquivo deployado (`CRM/firestore.rules`), ver [`plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md`](../plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md). Use `COLECOES_FIRESTORE.md` como referência ao expandir a Camada Repository para módulos ainda não migrados.
 
 ### 22.5 Template padrão (`createRepository`)
 
