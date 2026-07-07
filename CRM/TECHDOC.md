@@ -1228,6 +1228,8 @@ página (CRM/pages/**)
 
 **Gap conhecido, encontrado numa auditoria posterior (2026-07-05):** 3 coleções em uso real ainda sem repository — `agenda`, `agendamentos`, `central_organizacao`. Fecho previsto para a Fase 0 da expansão módulo a módulo, antes de migrar qualquer módulo que dependa delas.
 
+**Catálogo de coleções:** [`COLECOES_FIRESTORE.md`](../COLECOES_FIRESTORE.md) (raiz do repositório) documenta campos e relacionamentos de todas as coleções do Firestore, ativas ou legadas — revisado e expandido em 2026-07-07 (de 29 para ~53 coleções ativas documentadas, mais 26 regras órfãs do Firestore mapeadas). Use-o como referência ao expandir a Camada Repository para módulos ainda não migrados.
+
 ### 22.5 Template padrão (`createRepository`)
 
 Factory reaproveitável em `base.repository.js` — `getById`, `list`, `create`, `set`, `update`, `remove`, `onChange`. Cada `*.repository.js` só instancia a factory por entidade. Entidades com subcoleção (ex. `usuarios/{uid}/preferencias/*`) recebem métodos escritos à mão ao lado do repositório principal, mesma convenção de nomes.
