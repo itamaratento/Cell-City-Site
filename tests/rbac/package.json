@@ -1,0 +1,12 @@
+{
+  "name": "cellcity-rbac-tests",
+  "private": true,
+  "description": "Testes persistidos de gates RBAC (Fase 2) — Node + jsdom, código real das páginas importado direto via loader (tests/rbac/loader.mjs), sem cópia. Substitui os harnesses ad-hoc descartados nos sprints anteriores (Sprint 2, Sprint 3, re-homologação de 2026-07-07).",
+  "type": "module",
+  "scripts": {
+    "test": "node --import ./register-loader.mjs --test *.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}
