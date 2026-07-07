@@ -103,9 +103,10 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 3. **Sprint 5 do RBAC — OS** — só após o item 2.
 4. **Investigar o gap de gate client-side nos 9 módulos sem `initModulo()`** (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — checar se a Rule correspondente cobre o gap real de acesso.
 5. **Migrar `doLogin()`/`_listenOS()` do Portal** para poder fechar `os.list` — toca Login, exige autorização explícita (`CLAUDE.md` §1) e decisão de arquitetura própria.
-6. **Limpeza de código morto** (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`) — baixo risco, a qualquer momento.
-7. **CI mínima** (rodar as suítes de teste existentes em push/PR) — baixo esforço, previne regressão silenciosa.
+6. **Limpeza de código morto** (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`) — baixo risco, a qualquer momento. Parcial: `estoque.js::descontarEstoque()` (código morto, achado na auditoria de performance de 2026-07-07) já removido.
+7. ✅ **RESOLVIDO** ~~CI mínima (rodar as suítes de teste existentes em push/PR)~~ — `.github/workflows/tests.yml` criado e rodando em push/PR (Firestore Rules 52/52 + Cloud Functions 25/25 + RBAC persistido 34/34 = 111/111).
 8. **Resolver a duplicidade do `firestore.rules`** (raiz vs. `CRM/firestore.rules`, o arquivo real deployado) — achado de 2026-07-07, plano de remoção preparado em `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md`, ainda não executado.
+9. **Executar as fases pendentes do plano de performance** (`plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8) — 19 dos 20 hotspots seguem pendentes, a maioria como sprints próprias com autorização explícita nomeando o módulo (Dashboard: Fases 1/4; Financeiro: H11/H12, sem cobertura de teste ainda; `scripts/firebase.js`: Fase 2, arquivo protegido).
 
 ---
 

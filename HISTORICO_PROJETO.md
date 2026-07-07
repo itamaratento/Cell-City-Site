@@ -1165,4 +1165,20 @@ Pendente: teste visual no navegador.
 
 ---
 
+### 07/07/2026 — Auditoria de performance: validação item a item do plano de 03/07
+
+**Escopo:** revisão completa de `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` — os 20 hotspots (H1-H20), os 4 padrões estruturais e as 7 fases, um a um, por leitura direta do código vigente (não só releitura do plano). Módulos refatorados desde 03/07 (Dashboard → 10 arquivos mixin; CRM/Entrada/Chips/Estoque/OS/Posvenda/Autoatendimento migrados para a Camada Repository) foram relocalizados antes de classificar. Resultado completo em `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8.
+
+**Achado principal:** o hotspot H13 (`estoque.js::descontarEstoque()`, descrito como "chamado pelo Caixa a cada venda, varre a coleção inteira") tinha premissa desatualizada — a função **não tinha nenhum chamador real** em todo o código vivo (confirmado por `grep` cruzado). O Caixa usa sua própria função local (`descontarEstoqueLocal`, `caixa.js:699`), que já lia com `getDoc` direto desde antes desta auditoria — ou seja, esse hotspot nunca custou uma leitura sequer em produção; era um caminho de código morto, não um caminho quente. Função removida de `estoque.js` (única alteração de código desta rodada) — não elimina custo real (já era zero), mas fecha uma armadilha de manutenção (reimportar essa função reintroduziria a leitura de coleção inteira por venda).
+
+**Demais 19 hotspots:** classificados como **pendentes**, cada um com justificativa própria — a maioria exige mudança real de comportamento (cadência de atualização, o que aparece na tela, tempo real vs. sob demanda), o que está fora de "não alterar comportamento funcional" desta rodada; ou toca arquivo/módulo protegido (Dashboard, `scripts/firebase.js`) sem autorização nomeada; ou depende de medição contra Firestore ao vivo (fora do escopo de trabalho em git/develop). Nenhum foi classificado como "obsoleto" além do H13.
+
+**Validação:** RBAC completo 34/34 (2 execuções, incluindo o teste de integração Estoque↔Caixa que exercita exatamente `descontarEstoqueLocal`), Firestore Rules 52/52, Cloud Functions 25/25 — **111/111, zero regressão**.
+
+**Arquivos alterados:** `CRM/pages/estoque/estoque.js` (código morto removido), `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` (§8 classificação completa, §9 registro da execução), `CRM/TECHDOC.md` (nota em §7.3).
+**Nenhuma Firestore Rule, Cloud Function, arquivo da Camada Repository ou SQL alterado.**
+**Pendente:** os 19 hotspots restantes — a maioria recomendada como sprints próprias (Dashboard, Financeiro, paginação) com autorização explícita nomeando o módulo, seguindo o processo já estabelecido nas Sprints de RBAC. Push/merge/deploy aguardando autorização explícita.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

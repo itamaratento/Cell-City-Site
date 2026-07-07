@@ -152,3 +152,62 @@ Reconfirmado por leitura direta do código (não só do plano): o hotspot princi
 **Fase 0 (medição):** o censo de dados do §2 já tinha sido feito em 03/07 (Admin SDK, leitura única contra o backup). A parte pendente — medir o tamanho real de `agenda`/`portal_eventos`/etc. ("fora do backup") — exigiria uma nova consulta ao Firestore real (DEV ou produção); não executada nesta sessão por estar fora do escopo autorizado (o escopo desta rodada é trabalho em `develop`/git, não acesso a banco de dados ao vivo).
 
 **Fase 1 (estancar pollers):** **não executada.** Os 3 hotspots (H1/H2/H3) exigem alterar `dashboard-alertas.js` e módulos do Dashboard — `CLAUDE.md` §1 exige autorização explícita e específica para qualquer alteração em Dashboard, e as mudanças propostas (subir `REFRESH_MS` de 30s→300s, pausar com aba oculta, trocar `getDocs` por `onSnapshot`) são mudanças reais de comportamento de atualização de dados, não puramente estruturais — não se enquadram no "não modificar comportamento funcional" desta rodada. Recomendação: tratar a Fase 1 como sua própria sprint, com autorização explícita nomeando o Dashboard, seguindo o processo de 8 etapas já usado nas Sprints de RBAC.
+
+## 8. Classificação item a item (2026-07-07, 2ª rodada) — validação completa contra o código atual
+
+Revalidação de **todos** os 20 hotspots e das 7 fases, um a um, por leitura direta do código vigente (não só releitura do plano). Módulos com refatoração desde 03/07 (Dashboard → 10 arquivos mixin, vários módulos migrados para a Camada Repository) foram relocalizados antes de classificar.
+
+### Padrões estruturais (§1)
+
+| # | Padrão | Classificação | Evidência atual |
+|---|---|---|---|
+| 1 | Polling agressivo (30s/180s) | **Pendente** | Confirmado: `central-alertas.js:781`, `dashboard-alertas.js:247,875`. Requer autorização nomeando Dashboard (Fase 1, sprint própria). |
+| 2 | Cache Firestore só em memória (`scripts/firebase.js`) | **Pendente** | Arquivo protegido (CLAUDE.md §1); sem `persistentLocalCache`. Fora do escopo desta rodada (Fase 2 exige autorização própria). |
+| 3 | Leituras de coleção inteira sem `limit()` | **Pendente (maioria) / parcialmente resolvido (H13)** | Ver hotspots abaixo — 18 de 20 ainda presentes exatamente como descrito. |
+| 4 | `listener-manager.js` sem uso | **Pendente** | Reconfirmado: 0 importadores reais no código vivo (só a própria doc do arquivo se auto-referencia). |
+
+### Hotspots (H1–H20)
+
+| # | Item | Classificação | Nota |
+|---|---|---|---|
+| H1 | central-alertas.js poller 30s | Pendente | Fora do Dashboard, mas mudança de comportamento real (cadência/mecanismo) — não se enquadra em "sem alteração funcional" desta rodada. |
+| H2 | Dashboard agenda 30s | Pendente | Dashboard protegido (agora `dashboard-alertas.js`, arquivos mixin). |
+| H3 | Dashboard alertas 180s | Pendente | Dashboard protegido. |
+| H4 | `sw-alarme.js` sync 5min | Sem ação necessária | Custo baixo (1 doc), conforme avaliação original. |
+| H5 | Dashboard soma `caixa_lancamentos` inteira | Pendente | Agora em `dashboard-caixa.js:66`; Dashboard protegido. |
+| H6 | Dashboard `onSnapshot(os)` inteira p/ alarme | Pendente | Agora em `dashboard-alarme-os.js:616`; Dashboard protegido. |
+| H7 | Dashboard `onSnapshot(diario_registros)` | Pendente | Agora em `dashboard-alertas.js:45`; Dashboard protegido. |
+| H8 | `os.js` lê os+clientes+metadata inteiras | Pendente | Confirmado presente, linhas 443-447 (mesmas do plano original). Filtrar por status/data muda o que a tela mostra — mudança funcional, não estrutural. |
+| H9 | `relatorios.js` listeners permanentes de coleção inteira | Pendente | Migrado para Camada Repository (`OS.onChange()`, `CaixaLancamentos.onChange()`), mas sem `where`/`limit` — mesmo custo, API diferente. Trocar por `getDocs` por intervalo elimina o tempo real — mudança funcional. |
+| H10 | `analise.js` REST hardcoded | Pendente | Módulo já sinalizado em auditoria anterior como possivelmente quebrado (sem Authorization) — risco cruzado fora do escopo desta rodada. |
+| H11 | `financeiro.js` `recarregar()` relê coleção inteira | Pendente | Confirmado (`recarregar(col)` linha 372). Financeiro é o único módulo de negócio sem nenhuma cobertura de teste automatizado (Sprint 4 do RBAC não iniciado) — sem rede de segurança para regressão, não implementado nesta rodada. |
+| H12 | `financeiro.js` N+1 categorias→itens | Pendente | Confirmado presente (linhas 484-485, 646). Mesma razão de H11 (zero cobertura de teste). |
+| **H13** | `estoque.js` `descontarEstoque()` varre coleção inteira p/ achar 1 produto | **✅ Resolvido nesta rodada (era código morto)** | **Achado principal desta auditoria: a premissa do plano estava desatualizada.** `grep` confirmou **zero chamadores reais** de `descontarEstoque()`/`listarProdutosEstoque()` em todo o código vivo — o Caixa não importa `estoque.js`, tem sua própria função local (`descontarEstoqueLocal`, `caixa.js:699`) que já usa `getDoc` direto (1 leitura) desde antes desta auditoria. `descontarEstoque()` era função morta, nunca custou leitura nenhuma em produção. Removida (ver §9). `listarProdutosEstoque()` também está sem chamador real hoje, mas mantida — comentário do próprio código ("expõe... para outros módulos") indica intenção de uso futuro, fora do escopo de remoção desta rodada. |
+| H14 | `caixa.js` picker lê `estoque_produtos` inteira | Pendente | Confirmado (linha 616). Leitura íntegra é inerente a um seletor de produtos — otimizar exigiria busca/paginação (mudança de UX, Fase 5). |
+| H15 | `caixa.js` período "todos" sem paginação | Pendente | Confirmado (linha 123). Fase 5 (paginação), não estrutural. |
+| H16 | `posvenda.js` lê os+contatos+mensagens inteiras | Pendente | Migrado para Camada Repository (`OS.list()`, `PosvendaContatos.list()`, `PosvendaMensagens.list()`), todas sem filtro — mesmo custo, API diferente. Filtrar por status/data muda o que aparece — mudança funcional. |
+| H17 | Portal Admin `portal_eventos` sem limite | Pendente | Confirmado (`admin.js:462-484,1263-1335`). Requer agregados/contadores — mudança de arquitetura (Fase 6), não cabe nesta rodada. |
+| H18 | `autoatendimento.js` `pre_os` sem `limit` | Pendente | Migrado para Camada Repository (`PreOS.list()`/`onChange()`), ainda sem `limit`. Adicionar `limit` pode ocultar itens além do corte — mudança funcional, requer decisão de produto sobre o corte. |
+| H19 | `catalogo-publico.js` lê catálogo inteiro por visita anônima | Pendente | Confirmado (linha 61). Adicionar `limit()` seguro exige saber o tamanho real do catálogo hoje — medição contra Firestore ao vivo, fora do escopo desta rodada (trabalho em git/develop). |
+| H20 | Dashboard busca global | Pendente | Já tem cache de 60s (mitigado); Dashboard protegido para qualquer mudança adicional. |
+
+### Fases (síntese)
+
+| Fase | Classificação |
+|---|---|
+| 0 — Medição | Parcialmente concluído (censo de 03/07 válido; medição ao vivo pendente, fora do escopo de trabalho em git) |
+| 1 — Estancar pollers | Pendente (Dashboard protegido, mudança funcional) |
+| 2 — Cache persistente (`firebase.js`) | Pendente (arquivo protegido, autorização própria) |
+| 3 — Escopo de queries | Pendente, exceto H13 (resolvido por ser código morto) |
+| 4 — Higiene de listeners (`ListenerManager`) | Pendente (touca Dashboard/relatorios.js, mudança de ciclo de vida) |
+| 5 — Paginação | Pendente |
+| 6 — Agregados e contadores | Pendente |
+| 7 — Infraestrutura (Blaze, DEV/PROD, alertas) | Decisão do proprietário, fora do escopo técnico desta rodada — DEV/PROD já implementado em sessão anterior |
+
+## 9. Execução desta rodada (2026-07-07, 3ª sessão de continuação)
+
+**Único código alterado:** `CRM/pages/estoque/estoque.js` — removida a função `descontarEstoque(produtoId, quantidade)` (14 linhas), código morto confirmado (zero chamadores reais no código vivo; a função equivalente realmente usada pelo Caixa, `descontarEstoqueLocal` em `caixa.js:699`, já era eficiente). Nenhuma leitura de produção é eliminada por esta mudança (a função nunca era chamada), mas remove uma armadilha de manutenção: qualquer integração futura que reimportasse essa função reintroduziria a leitura de coleção inteira por venda.
+
+**Todos os outros 19 hotspots seguem pendentes**, cada um com justificativa específica acima — a maioria exige mudança de comportamento funcional (fora do "não alterar comportamento funcional" desta rodada) ou toca arquivo/módulo protegido (Dashboard, `firebase.js`) sem autorização nomeada.
+
+**Validação:** suíte RBAC completa 34/34 (incluindo o teste de integração Estoque↔Caixa que exercita exatamente o caminho de desconto de estoque), Firestore Rules 52/52, Cloud Functions 25/25 — 111/111, sem regressão.

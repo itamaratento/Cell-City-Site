@@ -347,18 +347,6 @@ if (document.readyState === 'loading') {
     _boot();
 }
 
-// ── exporta função de desconto para Caixa ─────────────────────────
-export async function descontarEstoque(produtoId, quantidade = 1) {
-    try {
-        const lista = await Estoque.list();
-        let prod = null;
-        lista.forEach(p => { if (p.id === produtoId) prod = p; });
-        if (!prod) return;
-        const novaQty = Math.max((prod.quantidade || 0) - quantidade, 0);
-        await Estoque.set(produtoId, { ...prod, quantidade: novaQty, atualizadoEm: serverTimestamp() });
-    } catch {}
-}
-
 // Expõe lista de produtos do estoque para outros módulos (ex: Caixa)
 export async function listarProdutosEstoque() {
     try {
