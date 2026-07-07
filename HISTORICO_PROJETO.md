@@ -1139,4 +1139,30 @@ Pendente: teste visual no navegador.
 
 ---
 
+---
+
+### 07/07/2026 — Auditoria de Prontidão da Plataforma + eliminação dos bloqueadores técnicos (Fases 1-2)
+
+**Tarefa:** auditoria somente-leitura de 40 itens de infraestrutura respondendo "a plataforma está pronta para novos módulos?" (entregue como artifact), seguida — em nova rodada autorizada — da eliminação dos bloqueadores identificados, mantendo tudo em `develop` (sem push/merge/deploy).
+
+**Auditoria (resumo):** maturidade geral 68%, 3 itens críticos (zero teste persistido para os 34 módulos de UI, nenhuma CI executando os testes existentes, nenhum monitoramento de erro em produção). Parecer: "não ainda, mas a poucos passos de um sim" — bloqueantes de esforço baixo, já reconhecidos nos próprios documentos do projeto.
+
+**Fase 1 — Testes persistidos:** o harness jsdom descartável (reconstruído 4 vezes em sessões anteriores) foi definitivamente persistido em `tests/rbac/`. Arquitetura: um loader ESM (`tests/rbac/loader.mjs`, via `node:module.register`) redireciona só as importações de infraestrutura (`scripts/firebase.js`, `scripts/kernel.js`, `shared/permissoes.js`, `firebase/client.js`, CDN do Firestore) para mocks — o código real das páginas é importado **sem cópia**, eliminando o risco de a evidência ficar obsoleta (o que já tinha acontecido com Estoque entre 02/07 e 07/07). Persistidos os 34 cenários das Sprints 2 e 3 do RBAC (`crm`, `entrada`, `chips`, `chips-entrada`, `agenda`, `estoque`, `caixa`), convertidos para `node:test`. Dashboard (Sprint 1) ficou fora do escopo desta rodada — arquitetura de mixins bem mais complexa, recomendado como próximo passo dedicado.
+
+**Bugs encontrados e corrigidos no próprio harness durante a construção:** `sessionStorage`/`localStorage`/`requestAnimationFrame` não expostos como globais (o código de página os referencia soltos, não via `window.`); `window.foo = function(){}` seguido de chamada solta `foo()` quebra quando `window` não é o mesmo objeto que `globalThis` do processo (corrigido com um `Proxy` cujo `set` espelha no `globalThis` real); `jsdom` não implementa `Element.prototype.scrollIntoView`; e o mais sério — `setInterval(renderCalendario, 60000)` em `acaodasemana.js` nunca limpo, resolvendo para o `setInterval` real do Node (não o do jsdom), travando o processo indefinidamente ao rodar múltiplos arquivos de teste juntos (corrigido rastreando e limpando os handles manualmente no cleanup — tentar redirecionar `setInterval`/`setTimeout` para o jsdom quebrou os internals do próprio jsdom em recursão infinita).
+
+**Concorrência de sessão (evento novo):** enquanto este trabalho estava em andamento, outra sessão neste mesmo checkout (a) criou de forma independente um workflow de CI (`'.github/workflows/tests.yml`, commit `05eacf3`) cobrindo as 2 suítes pré-existentes — tarefa que coincidia com a Fase 2 deste escopo — e (b) rodou o backup automático do dono (`subir()`), cujo `git add .` capturou todos os arquivos de `tests/rbac/` ainda não commitados por esta sessão (commit `aacadb0`, mesma classe de efeito colateral já documentada em `CRM/TECHDOC.md` §21.3). Nenhum dado foi perdido — os arquivos capturados eram idênticos ao trabalho em andamento, só commitados antes da hora por um processo externo.
+
+**Fase 2 — CI:** em vez de duplicar o workflow já criado pela outra sessão, foi **estendido** para incluir `tests/rbac/` ao lado das suítes de Rules e Functions. Validado localmente com a mesma invocação da CI: 52/52 (Rules) + 25/25 (Functions) + 34/34 (RBAC) = **111/111 testes automatizados**.
+
+**Fase 3 — Homologação:** lint não existe no projeto (nenhuma configuração ESLint encontrada) — etapa não aplicável. `node --check` limpo em todos os arquivos novos. Confirmado via `git diff` que nenhum arquivo de código de produto, Repository, Firestore Rules ou Cloud Function foi alterado nesta rodada. `CRM/TECHDOC.md` §7.2 e §7.3 atualizados registrando a persistência.
+
+**Arquivos criados:** `tests/rbac/` completo (`loader.mjs`, `register-loader.mjs`, `package.json`, `helpers/dom-harness.mjs`, `mocks/{firestore-mock,permissoes,kernel,firebase-client,firebase-scripts}.js`, 7 arquivos `*.test.mjs`).
+**Arquivos alterados:** `.github/workflows/tests.yml` (estendido), `CRM/TECHDOC.md`.
+**Nenhum arquivo de código de produto alterado.**
+**Validação:** `git fsck --full` sem erro; histórico linear preservado; 111/111 testes passando localmente com a mesma invocação da CI.
+**Pendente:** Fase 4 (performance) e Fase 5 (re-auditoria) desta mesma rodada; push/merge/deploy aguardando autorização explícita.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

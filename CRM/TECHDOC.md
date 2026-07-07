@@ -561,6 +561,8 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 **Marco de restauração**: tag git `sprint2-rbac-crm-agenda-aprovado` (branch `develop`).
 
+**Atualização (2026-07-07):** a homologação dos 5 arquivos, originalmente rodada num harness descartável, foi persistida em `tests/rbac/` (`crm.test.mjs`, `crm-entrada.test.mjs`, `chips.test.mjs`, `chips-entrada.test.mjs`, `agenda.test.mjs`) — ver §7.3 para o método completo. Reexecutada contra o código atual: 20/20 cenários (redirect por `visualizar`, botões por `criar`/`editar`/`excluir`, fail-open, admin legado, e o AND-gate de `agenda`) continuam corretos, zero regressão.
+
 ### 7.3 Sprint 3 — Estoque + Caixa
 
 **Status: implementado (2026-07-02) e re-homologado tecnicamente em 2026-07-07 contra o código atual — aguardando aprovação formal do usuário.** Documentação completa: `plans/fase2-sprint3-estoque-caixa-rbac.md`.
@@ -580,6 +582,8 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 - **Não coberto por esta sessão**: o roteiro manual em navegador real (§8 do plano) — sem navegador disponível neste ambiente, como em sessões anteriores do projeto (mesma limitação já registrada para Sprint 1b/Fase 9). A verificação automatizada acima é o substituto já estabelecido neste projeto para esse cenário.
 
 **Critério de aprovação (§9 do plano) parcialmente cumprido**: evidência técnica completa e sem regressão; falta a aprovação formal do usuário antes de iniciar o Sprint 4 (Financeiro) — não concedida nesta sessão, pendente de decisão do dono do projeto.
+
+**Atualização (2026-07-07, sessão de continuação — eliminação do bloqueio nº1 da Auditoria de Prontidão da Plataforma):** o harness acima, que rodava isolado num scratchpad temporário e era descartado a cada uso, foi **persistido definitivamente** em `tests/rbac/`. Os 12 cenários de Estoque+Caixa foram portados para `node:test` e passaram a importar o código real das páginas **sem cópia**, via um loader ESM (`tests/rbac/loader.mjs`, `node:module.register`) que redireciona só as importações de infraestrutura (`scripts/firebase.js`, `scripts/kernel.js`, `shared/permissoes.js`, `firebase/client.js`, e a URL do CDN do Firestore usada por `caixa.js`) para mocks — eliminando o risco de a evidência ficar obsoleta quando o código muda (exatamente o que aconteceu entre 02/07 e hoje). A mesma infraestrutura foi estendida para persistir também a homologação da Sprint 2 do RBAC (§7.2 — `crm.js`, `entrada.js`, `chips.js`, `chips-entrada.js`, `acaodasemana.js`), nunca antes persistida. Suíte completa: **34/34 testes aprovados** (`npm test` em `tests/rbac/`), incluída no workflow de CI (`.github/workflows/tests.yml`) ao lado das suítes de Firestore Rules e Cloud Functions — 111/111 testes automatizados do repositório passam hoje em CI a cada push/PR.
 
 ---
 
