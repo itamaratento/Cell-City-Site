@@ -59,7 +59,7 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Módulos envolvidos e ordem oficial dos sprints:**
 1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar) — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.1, `plans/fase2-sprint1-dashboard-rbac.md`)
 2. **Sprint 2 — CRM, Agenda** — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.2, `plans/fase2-sprint2-crm-agenda-rbac.md`; tag de restauração `sprint2-rbac-crm-agenda-aprovado`)
-3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **implementado e verificado automaticamente (12/12 cenários jsdom) em 2026-07-02 — aguardando homologação manual e aprovação formal** (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
+3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **implementado (2026-07-02) e re-homologado tecnicamente em 2026-07-07 (34/34 cenários, código atual, zero regressão) — aguardando aprovação formal do usuário** (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
 4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria)
 5. **Sprint 5 — OS** (por último — maior dependência cruzada com os demais módulos; tratar como integração crítica)
 
@@ -105,6 +105,20 @@ O achado crítico do parágrafo acima (Portal do Cliente/OS pública) foi corrig
 Uma nova auditoria de preparação de sprint (`plans/AUDITORIA_GERAL_20260706.md`) identificou um achado crítico **novo e não relacionado** ao Portal: uma credencial administrativa (service account) vazada em commit antigo do repositório (público), confirmada ainda ativa em produção — conhecida desde 2026-07-03, nunca rotacionada. Detalhe técnico em `plans/AUDITORIA_GERAL_20260706_INTERNO.md` (interno, mesma política de segurança da Sprint 1). **Recomendação: tratar como item isolado e urgente, à frente de qualquer item de Fase abaixo** — é resposta a incidente ativo, não desenvolvimento de produto.
 
 A mesma auditoria consolidou uma lista priorizada de dívida técnica (código morto confirmado, 4 coleções sem Firestore Rule, 9 módulos sem gate de permissão no client, zero cobertura de teste fora do Portal do Cliente, ausência de CI) — ver o documento para o detalhamento completo e a ordem técnica recomendada entre esses itens e a continuação da Fase 2.
+
+---
+
+## Situação em 2026-07-07 — Sprint 1b promovida a produção; hardening concluído; Camada Repository Fase 0+1; Sprint 3 RBAC re-homologada
+
+Desde a situação de 2026-07-06 acima, os seguintes itens foram concluídos (detalhe completo em `CRM/TECHDOC.md` §20-22 e `HISTORICO_PROJETO.md`):
+
+- **Credencial vazada (item urgente do parágrafo anterior): rotacionada e o incidente encerrado** — as 2 chaves comprometidas foram desabilitadas e excluídas definitivamente do IAM de produção; nenhuma credencial comprometida permanece ativa.
+- **Hardening pós-auditoria**: Firestore Rules adicionadas para as coleções internas sem regra; `plans/`, `CLAUDE.md` e `kernel-test/` excluídos do deploy do GitHub Pages.
+- **Sprint 1b promovida a `main`** (fast-forward `09b861a..cbe68c6`, tag `v2026.07.06-2226`) — Portal do Cliente 100% migrado para Cloud Functions, em produção real. Um quase-incidente (12 Cloud Functions do Portal ausentes em produção) foi encontrado e corrigido antes de declarar a promoção concluída.
+- **Camada Repository — Fase 0 + Fase 1** (preparação arquitetural para uma eventual migração de banco futura, Firestore continua oficial): gap de 3 coleções sem repository fechado (Fase 0); 22 módulos de baixo risco migrados para o padrão Repository (Fase 1), incluindo `estoque.js`. Homologação funcional concluída (48/48 cenários). Integrado em `develop` via rebase (`origin/develop` estava 25 commits à frente devido à Sprint 1b/hardening) e publicado.
+- **Sprint 3 do RBAC (Estoque+Caixa) re-homologada tecnicamente**: os 2 arquivos sofreram mudanças desde a verificação original de 02/07 (H-006: fix do prefixo `/dev`; Camada Repository: `estoque.js` migrado). Os 12 cenários do plano original foram re-executados contra o código atual — 34/34 asserções aprovadas, zero regressão. Aprovação formal do usuário continua pendente (ver `CRM/TECHDOC.md` §7.3).
+
+**A Fase 2 (RBAC) permanece exatamente no mesmo ponto de decisão**: Sprint 3 tecnicamente pronta duas vezes (02/07 e 07/07), aguardando só a aprovação formal do dono do projeto para liberar o Sprint 4 (Financeiro).
 
 ---
 

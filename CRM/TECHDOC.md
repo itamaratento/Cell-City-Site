@@ -563,13 +563,23 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 ### 7.3 Sprint 3 — Estoque + Caixa
 
-**Status: implementado e verificado automaticamente em 2026-07-02 (12/12 cenários) — aguardando homologação manual e aprovação formal.** Documentação completa: `plans/fase2-sprint3-estoque-caixa-rbac.md`.
+**Status: implementado (2026-07-02) e re-homologado tecnicamente em 2026-07-07 contra o código atual — aguardando aprovação formal do usuário.** Documentação completa: `plans/fase2-sprint3-estoque-caixa-rbac.md`.
 
 **Arquivos alterados** (backups `.BACKUP_2026-07-02.js` nas mesmas pastas): `pages/estoque/estoque.js` (moduloId `estoque`; boot reestruturado — não chamava `initModulo()`) e `pages/caixa/caixa.js` (moduloId `caixa`; já chamava `initModulo()`, ganhou `carregarPermissoes` + gates). Verbos aplicados: visualizar (redirect), criar, editar, excluir — nos botões/forms de produto, movimentação ±, lançamento, lembretes e nova categoria.
 
 **Pontos de atenção resolvidos**: (a) integração Estoque↔Caixa preservada — a baixa/entrada automática de estoque na venda é executada por funções locais do Caixa e não recebe nenhum gate (testado: venda com `estoque.*` 100% negado ainda baixa estoque); (b) **guarda de iframe** no gate de `visualizar` do Caixa — o Dashboard carrega o Caixa em iframe invisível a cada abertura (`_verificarFechamentoCaixa`); o redirect só ocorre em `window.self === window.top`, eliminando risco de loop (testado em cenário automatizado com iframe simulado); (c) `aprovar` do Caixa **sem efeito nesta sprint** por decisão do usuário — o fluxo de fechamento (semântica original) foi removido em 30/06; quando reintroduzido (Fase 4), gatear por `podeAprovar('caixa')`.
 
 **Pendência pré-existente registrada (não corrigida — fora de escopo)**: o iframe de fechamento do Dashboard dispara a cada carga sem efeito (orquestrador não existe mais no Caixa; cache `caixa_ultimo_fechamento` nunca é gravado). Correção exige autorização própria (módulo Dashboard).
+
+**Re-homologação técnica (2026-07-07, sessão de continuação):** os 12 cenários originais (§6 do plano) foram re-executados — não só relidos — porque os dois arquivos sofreram mudanças desde a verificação de 02/07: `estoque.js` foi migrado para a Camada Repository (`86e0000`, troca 1:1 de `getDocs/setDoc/deleteDoc` por `EstoqueRepository.list/set/remove`, lógica de RBAC intocada) e ambos os arquivos tiveram o destino do redirect corrigido para respeitar o prefixo `/dev` (`H-006`, 1 linha cada). A evidência de 12/12 de 02/07 tecnicamente não cobria mais o código vigente.
+
+- **Método**: mesmo padrão já validado no projeto (Node + jsdom, código real sem alteração, só a borda do SDK mockada) — desta vez isolado 100% em diretório de scratchpad (`jsdom` instalado só ali via `npm install --no-save`), sem tocar `package.json`/`node_modules` do repositório. HTML real das duas páginas (`estoque/index.html`, `caixa/index.html`) carregado no jsdom para garantir presença fiel de todos os elementos.
+- **Estoque**: 5 cenários (restrito, matriz total, não migrado, `visualizar:false`→redirect, admin legado) — **16/16 asserções aprovadas**.
+- **Caixa**: 7 cenários (restrito — form + lembrete + botões de card/lembrete ocultos, matriz total, não migrado, `visualizar:false` em janela principal→redirect, admin legado, **venda com `estoque.*` 100% negado** confirmando lançamento criado E baixa de estoque 5→4, `visualizar:false` **dentro de iframe simulado**→sem redirect e boot abortado) — **18/18 asserções aprovadas**.
+- **Total: 34/34 — zero regressão** encontrada nas duas mudanças subsequentes (H-006, Camada Repository). Nenhuma correção de código foi necessária.
+- **Não coberto por esta sessão**: o roteiro manual em navegador real (§8 do plano) — sem navegador disponível neste ambiente, como em sessões anteriores do projeto (mesma limitação já registrada para Sprint 1b/Fase 9). A verificação automatizada acima é o substituto já estabelecido neste projeto para esse cenário.
+
+**Critério de aprovação (§9 do plano) parcialmente cumprido**: evidência técnica completa e sem regressão; falta a aprovação formal do usuário antes de iniciar o Sprint 4 (Financeiro) — não concedida nesta sessão, pendente de decisão do dono do projeto.
 
 ---
 

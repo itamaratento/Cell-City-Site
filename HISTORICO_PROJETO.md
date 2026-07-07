@@ -1115,4 +1115,28 @@ Pendente: teste visual no navegador.
 
 ---
 
+### 07/07/2026 — Reconciliação `develop`↔`origin/develop` (Camada Repository) + Re-homologação técnica do Sprint 3 RBAC
+
+**Tarefa 1 — Divergência de branch:** `develop` local estava 6 commits à frente (Camada Repository Fase 0+1, órfã desde 2026-07-05) e 25 atrás (Sprint 1b + hardening + promoção, já publicados em `origin/develop`) — divergência legítima (reset+cherry-pick anterior), não reescrita de histórico. Diagnóstico completo (merge-base, arquivos tocados por cada lado, `git cherry`) confirmou zero sobreposição de arquivo entre os dois conjuntos de commits.
+
+**Resolução:** branch de backup (`backup-develop-local-20260707-1019`) criada antes de qualquer operação; `git rebase origin/develop` executado. Único ponto de conflito real: numeração de seção duplicada no `CRM/TECHDOC.md` (ambos os lados usaram "§19" para conteúdo diferente — Sprint 1b/Hardening de um lado, Camada Repository do outro). Resolvido renumerando a seção da Camada Repository para §22 (nenhum conteúdo removido de nenhum dos dois lados). Commit final revisado item a item (`COLECOES_FIRESTORE.md` novo + 2 linhas de TECHDOC — sem artefato acidental, sem segredo/credencial). Publicado em `origin/develop` via fast-forward simples (sem `--force`), autorizado explicitamente pelo dono em duas etapas (rebase e push separados).
+
+**Tarefa 2 — Sprint 3 do RBAC (Estoque+Caixa):** re-homologação técnica solicitada como "próxima fase" (escolhida pelo dono entre as frentes candidatas, após eu sinalizar que o modo de execução autônoma proposto conflitava com o congelamento de escopo/produção em vigor desde 2026-07-03). Motivo da re-verificação: os 2 arquivos mudaram desde a evidência original de 02/07 (`H-006`: fix do prefixo `/dev` no redirect; Camada Repository: `estoque.js` migrado para o padrão Repository) — a evidência antiga tecnicamente não cobria mais o código vigente.
+
+**Concorrência de sessão detectada durante o trabalho:** outra sessão Claude Code, no mesmo checkout, commitou (`c3510af`, correção de análise de Firestore Rules órfãs) e trocou o branch em checkout enquanto esta sessão trabalhava — identificado via `git reflog` antes de qualquer escrita, sem colisão de arquivo (commit deles não tocou `estoque.js`/`caixa.js`/roadmap). Registrado como risco já conhecido do projeto (múltiplas sessões simultâneas no mesmo checkout).
+
+**Método de verificação:** Node + jsdom (mesmo padrão já validado no projeto), desta vez isolado 100% em scratchpad — `jsdom` nunca entrou no `package.json`/`node_modules` do repositório. HTML real das duas páginas carregado no jsdom; código de `estoque.js`/`caixa.js` copiado sem alteração, só a borda do SDK (Firestore, `kernel.js`, `shared/permissoes.js`) mockada. Os 12 cenários do plano original (`plans/fase2-sprint3-estoque-caixa-rbac.md` §6) foram reproduzidos e ampliados (cobertura extra de botões de card/lembrete) — **34/34 asserções aprovadas (16 Estoque + 18 Caixa), zero regressão**.
+
+**Não coberto:** o roteiro de homologação manual em navegador real (§8 do plano) — sem navegador disponível neste ambiente, mesma limitação já registrada em sessões anteriores do projeto.
+
+**Documentação sincronizada nesta rodada** (estava desatualizada desde 2026-07-06, não refletia a promoção da Sprint 1b a produção, o encerramento do incidente de credencial, o hardening, nem a Camada Repository): `CRM/TECHDOC.md` §7.3 (resultado da re-homologação) e §22 (renumeração), `MASTER_ROADMAP.md` (nova seção "Situação em 2026-07-07"), `PROXIMA_ETAPA.md` (estado atual, próximas tarefas e riscos realinhados).
+
+**Resultado:** `develop` publicada e sincronizada com `origin/develop`. Sprint 3 do RBAC com evidência técnica completa e sem regressão — **aprovação formal do usuário continua pendente** (não é uma decisão que esta sessão pode tomar sozinha; Sprint 4 do RBAC só inicia depois dela, por processo já estabelecido nas Sprints 1 e 2).
+
+**Arquivos alterados:** `CRM/TECHDOC.md`, `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md`, `HISTORICO_PROJETO.md`. Nenhum código de produto (`CRM/pages/estoque/estoque.js`, `CRM/pages/caixa/caixa.js`) foi alterado — a re-homologação não encontrou necessidade de correção.
+**Validação:** `git fsck --full` sem erro/corrupção; histórico linear preservado; branch de backup mantida.
+**Pendente:** aprovação formal do Sprint 3 do RBAC pelo dono do projeto.
+
+---
+
 *Fim do histórico — novos registros serão adicionados abaixo.*
