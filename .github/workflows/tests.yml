@@ -1,13 +1,18 @@
 name: Testes automatizados
 
-# Roda as 2 suítes de teste já existentes no repositório (Firestore Rules e
-# Cloud Functions do Portal do Cliente) a cada push/PR — até agora essas
+# Roda as 3 suítes de teste do repositório a cada push/PR — até agora essas
 # suítes só eram executadas manualmente (GUIA_MANUTENCAO.md registra como
 # dívida técnica: "nenhuma CI executa os testes existentes"; PROXIMA_ETAPA.md
-# item 10: "CI mínima (rodar as 2 suítes de teste existentes em push/PR)").
+# item 10: "CI mínima"). Firestore Rules e Cloud Functions do Portal rodam
+# 100% contra o emulador local do Firestore — nenhuma chamada sai para um
+# projeto Firebase real, nenhuma credencial de produção é usada. Os testes
+# de RBAC (tests/rbac/) não usam Firestore nem emulador — importam o código
+# real das páginas via loader ESM (tests/rbac/loader.mjs) com só a borda do
+# SDK mockada em memória (mesmo princípio da homologação da Camada
+# Repository); substituem os harnesses ad-hoc descartados nos sprints
+# anteriores (Sprint 2, Sprint 3, re-homologação de 2026-07-07 — ver
+# CRM/TECHDOC.md §7.3).
 #
-# Ambas rodam 100% contra o emulador local do Firestore — nenhuma chamada
-# sai para um projeto Firebase real, nenhuma credencial de produção é usada.
 # Não bloqueia merge (não há proteção de branch configurada), só dá
 # visibilidade — mas já é melhor do que zero verificação automática.
 
@@ -54,3 +59,11 @@ jobs:
       - name: Testes das Cloud Functions do Portal do Cliente
         run: firebase emulators:exec --only firestore --project cellcity-rules-test "node --test"
         working-directory: tests/functions
+
+      - name: Instalar dependências (tests/rbac/)
+        run: npm ci
+        working-directory: tests/rbac
+
+      - name: Testes de RBAC (Fase 2 — CRM/Entrada/Chips/Agenda/Estoque/Caixa)
+        run: npm test
+        working-directory: tests/rbac
