@@ -144,3 +144,11 @@ Meta do plano: sair de 50–250k leituras/dia para **~3–8k/dia** (folga de ~10
 - Persistência IndexedDB exige teste multi-abas (o CRM abre módulos em abas/iframes).
 - Novas queries por data/status exigem índices compostos novos — criar e publicar junto (verificar release via API, conforme processo já validado).
 - Nenhum código foi alterado nesta auditoria.
+
+## 7. Atualização (2026-07-07) — tentativa de execução da Fase 0/Fase 1
+
+Reconfirmado por leitura direta do código (não só do plano): o hotspot principal segue presente e intocado — `CRM/pages/dashboard/dashboard-alertas.js:247` ainda tem `setInterval(verificar, 30000)`; `shared/listener-manager.js` segue com 0 importadores reais. Nenhuma das duas mudou desde 03/07.
+
+**Fase 0 (medição):** o censo de dados do §2 já tinha sido feito em 03/07 (Admin SDK, leitura única contra o backup). A parte pendente — medir o tamanho real de `agenda`/`portal_eventos`/etc. ("fora do backup") — exigiria uma nova consulta ao Firestore real (DEV ou produção); não executada nesta sessão por estar fora do escopo autorizado (o escopo desta rodada é trabalho em `develop`/git, não acesso a banco de dados ao vivo).
+
+**Fase 1 (estancar pollers):** **não executada.** Os 3 hotspots (H1/H2/H3) exigem alterar `dashboard-alertas.js` e módulos do Dashboard — `CLAUDE.md` §1 exige autorização explícita e específica para qualquer alteração em Dashboard, e as mudanças propostas (subir `REFRESH_MS` de 30s→300s, pausar com aba oculta, trocar `getDocs` por `onSnapshot`) são mudanças reais de comportamento de atualização de dados, não puramente estruturais — não se enquadram no "não modificar comportamento funcional" desta rodada. Recomendação: tratar a Fase 1 como sua própria sprint, com autorização explícita nomeando o Dashboard, seguindo o processo de 8 etapas já usado nas Sprints de RBAC.
