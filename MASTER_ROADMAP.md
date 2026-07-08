@@ -59,8 +59,8 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 **Módulos envolvidos e ordem oficial dos sprints:**
 1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar) — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.1, `plans/fase2-sprint1-dashboard-rbac.md`)
 2. **Sprint 2 — CRM, Agenda** — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.2, `plans/fase2-sprint2-crm-agenda-rbac.md`; tag de restauração `sprint2-rbac-crm-agenda-aprovado`)
-3. **Sprint 3 — Estoque, Caixa** (atenção especial à integração entre os dois — movimentação de estoque via Caixa) — 🔵 **implementado (2026-07-02) e re-homologado tecnicamente em 2026-07-07 (34/34 cenários, código atual, zero regressão) — aguardando aprovação formal do usuário** (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
-4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria)
+3. **Sprint 3 — Estoque, Caixa** — ✅ **aprovado formalmente em 2026-07-08** (implementado 2026-07-02, re-homologado tecnicamente em 2026-07-07 com 34/34 cenários, zero regressão) (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
+4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria) — 🔵 **autorizado e em andamento desde 2026-07-08**
 5. **Sprint 5 — OS** (por último — maior dependência cruzada com os demais módulos; tratar como integração crítica)
 
 **Estratégia de integração:** um módulo piloto por vez; cada sprint só inicia após aprovação formal do sprint anterior. Processo obrigatório de 8 etapas por módulo: Planejamento → Implementação → Testes unitários → Homologação → Correções → Atualização do TECHDOC → Aprovação formal → Liberação do módulo.
@@ -118,7 +118,7 @@ Desde a situação de 2026-07-06 acima, os seguintes itens foram concluídos (de
 - **Camada Repository — Fase 0 + Fase 1** (preparação arquitetural para uma eventual migração de banco futura, Firestore continua oficial): gap de 3 coleções sem repository fechado (Fase 0); 22 módulos de baixo risco migrados para o padrão Repository (Fase 1), incluindo `estoque.js`. Homologação funcional concluída (48/48 cenários). Integrado em `develop` via rebase (`origin/develop` estava 25 commits à frente devido à Sprint 1b/hardening) e publicado.
 - **Sprint 3 do RBAC (Estoque+Caixa) re-homologada tecnicamente**: os 2 arquivos sofreram mudanças desde a verificação original de 02/07 (H-006: fix do prefixo `/dev`; Camada Repository: `estoque.js` migrado). Os 12 cenários do plano original foram re-executados contra o código atual — 34/34 asserções aprovadas, zero regressão. Aprovação formal do usuário continua pendente (ver `CRM/TECHDOC.md` §7.3).
 
-**A Fase 2 (RBAC) permanece exatamente no mesmo ponto de decisão**: Sprint 3 tecnicamente pronta duas vezes (02/07 e 07/07), aguardando só a aprovação formal do dono do projeto para liberar o Sprint 4 (Financeiro).
+**A Fase 2 (RBAC) permanece exatamente no mesmo ponto de decisão**: Sprint 3 tecnicamente pronta duas vezes (02/07 e 07/07), aguardando só a aprovação formal do dono do projeto para liberar o Sprint 4 (Financeiro). *(Atualização 2026-07-08: aprovação formal concedida — ver "Situação em 2026-07-08" acima.)*
 
 ---
 
@@ -129,7 +129,7 @@ Desde a situação de 2026-07-06 acima, os seguintes itens foram concluídos (de
 Concluído desde a situação de 2026-07-07: **Performance — Fase 1 (pollers espaçados + pausa por aba oculta) e Fase 2 (cache persistente do Firestore)**, homologadas em navegador real (Chrome, login e dados reais do DEV) e enviadas a `origin/develop` (`CRM/TECHDOC.md` §24-25). Processo de homologação de performance automatizado num comando único (`npm run homologar-performance`).
 
 **A partir de agora, o esforço se concentra no desenvolvimento dos módulos** — dois fluxos, detalhados em `plans/ENCERRAMENTO_PREPARACAO_20260708.md` Etapa 5:
-- **Fluxo A (continuação, já em andamento):** Fase 2 deste roadmap — Sprint 3 (Estoque+Caixa) aguardando só aprovação formal → Sprint 4 (Financeiro) → Sprint 5 (OS).
+- **Fluxo A (continuação, já em andamento):** Fase 2 deste roadmap — Sprint 3 (Estoque+Caixa) ✅ **aprovado formalmente em 2026-07-08**, integrado à baseline técnica → **Sprint 4 (Financeiro) autorizada e em execução desde 2026-07-08, sob o Modo Acelerado Autônomo** (`feedback-modo-acelerado-autonomo` na memória do projeto) → Sprint 5 (OS).
 - **Fluxo B (novo desenvolvimento):** Fase 4 deste roadmap (Evolução Funcional) — Financeiro (Fase 9/10) → Usuários e Permissões → Portal do Cliente/WhatsApp → Central de Módulos/Dashboards. *Nota: a Fase 4 lista a Fase 3 (Consolidação da Arquitetura/multiempresa) como pré-requisito formal; como o multiempresa foi revertido e o sistema é single-tenant definitivo, essa dependência provavelmente não se aplica mais tal como escrita — recomendação registrada em `plans/ENCERRAMENTO_PREPARACAO_20260708.md`, decisão formal cabe ao dono do projeto.*
 
 Ver "Critérios Permanentes para Sprints" logo abaixo — obrigatórios para toda entrega de módulo a partir de agora.

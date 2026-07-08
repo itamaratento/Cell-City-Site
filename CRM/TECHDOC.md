@@ -565,7 +565,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 ### 7.3 Sprint 3 — Estoque + Caixa
 
-**Status: implementado (2026-07-02) e re-homologado tecnicamente em 2026-07-07 contra o código atual — aguardando aprovação formal do usuário.** Documentação completa: `plans/fase2-sprint3-estoque-caixa-rbac.md`.
+**Status: ✅ aprovado formalmente em 2026-07-08** (implementado 2026-07-02, re-homologado tecnicamente em 2026-07-07 — 34/34, zero regressão). Integrado à baseline técnica do projeto (`plans/ENCERRAMENTO_PREPARACAO_20260708.md`). Documentação completa: `plans/fase2-sprint3-estoque-caixa-rbac.md`.
 
 **Arquivos alterados** (backups `.BACKUP_2026-07-02.js` nas mesmas pastas): `pages/estoque/estoque.js` (moduloId `estoque`; boot reestruturado — não chamava `initModulo()`) e `pages/caixa/caixa.js` (moduloId `caixa`; já chamava `initModulo()`, ganhou `carregarPermissoes` + gates). Verbos aplicados: visualizar (redirect), criar, editar, excluir — nos botões/forms de produto, movimentação ±, lançamento, lembretes e nova categoria.
 
