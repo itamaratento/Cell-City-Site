@@ -72,6 +72,8 @@ Auditoria final de prontidão concluída com veredito **GO**: nenhum bloqueador 
 ### Arquitetura de ambientes
 - 🟢 **MAIN** (produção): branch `main` → `https://www.cellcityinformatica.com.br/` — commit `cbe68c6`, tag `v2026.07.06-2226`.
 - 🟠 **DEVELOP**: branch `develop` → `https://www.cellcityinformatica.com.br/dev/` — sincronizada com `origin/develop` (Camada Repository Fase 0+1 integrada via rebase e publicada), 6 commits à frente de `main`.
+- 🟢 **`onDocChange` do `onSnapshot` mock em testes** — `snap.exists is not a function` no `base.repository.js` quando o mock retorna snapshot de query em vez de doc. Sintomático benigno, não afeta os testes (alertas gerados corretamente). Correção possível: ajustar o mock `onSnapshot` para retornar doc snapshot quando ref tem `__id`.
+
 - Publicação exclusivamente via `git push` (workflow GitHub Pages). **Firebase Hosting proibido.**
 - ✅ **Backend Firebase separado por ambiente** (`cellcity-crm` produção / `cellcity-crm-dev` DEV) — concluído e promovido a produção.
 - Produção no plano Firebase **Blaze** desde 2026-07-04 — sem trava de cota diária.
@@ -112,7 +114,7 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 1. ✅ **RESOLVIDO** ~~Aprovação formal do Sprint 3 RBAC (Estoque + Caixa)~~ — aprovado formalmente em 2026-07-08.
 2. **Sprint 4 do RBAC — Financeiro** — só após o item 1 aprovado; atenção redobrada a aprovações, exclusões e trilha de auditoria.
-3. **Sprint 5 do RBAC — OS** — só após o item 2.
+3. ✅ **Sprint 5 do RBAC — OS** — implementada, homologada, commitada. Aguardando aprovação formal para fechar a Fase 2.
 4. **Investigar o gap de gate client-side nos 9 módulos sem `initModulo()`** (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — checar se a Rule correspondente cobre o gap real de acesso.
 5. **Migrar `doLogin()`/`_listenOS()` do Portal** para poder fechar `os.list` — toca Login, exige autorização explícita (`CLAUDE.md` §1) e decisão de arquitetura própria.
 6. ✅ **RESOLVIDO (2026-07-08)** ~~Limpeza de código morto (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`)~~ — os 2 arquivos (0 importadores reais confirmados) e as 7 pastas `BACKUP_*` removidos, zero regressão (39/40 RBAC, mesma falha pré-existente do Caixa). `estoque.js::descontarEstoque()` já removido em 2026-07-07. **Ainda pendente, fora de escopo desta limpeza**: os arquivos individuais `.BACKUP_*.js`/`.backup-*` (não diretórios) espalhados em vários módulos — alguns são o mecanismo de rollback ainda relevante das Sprints de RBAC recentes, não removidos por precaução.
@@ -122,17 +124,19 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ---
 
+4. ✅ **Sprint 6 — Central de Alertas (Financeiro)** — concluída em 2026-07-08. Integração completa dos 3 repositórios financeiros (Pagar, Receber, Fixas) com 5 alertas novos. 7/7 testes automáticos passando. Working tree limpo.
+
 ## ⚠️ RISCOS ATUAIS
 
 - ✅ ~~Sprint 3 do RBAC publicado no `develop` sem aprovação formal~~ — **aprovado formalmente em 2026-07-08**, integrado à baseline técnica.
 - 🟡 **9 módulos sem gate de permissão no client** — risco real depende de verificação cruzada com as Rules (não feita ainda).
 - 🟡 **`os.list` aberto a qualquer sessão autenticada** (decisão deliberada da Sprint 1b, documentada) — pendente de sprint futura para fechar via migração do login/listener.
 - 🟡 **Dois arquivos `firestore.rules` paralelos no repositório** (raiz, duplicado e nunca deployado, vs. `CRM/firestore.rules`, o real) desde o primeiro commit do projeto — sem risco de segurança confirmado, mas gera confusão em auditorias (já causou uma análise equivocada em 2026-07-07, corrigida no mesmo dia).
-- 🟡 **Falha pré-existente em `tests/rbac/caixa.test.mjs`** ("Caixa matriz total: tudo visível") — achada em 2026-07-08 durante a regularização da Fase 1/2 de performance, reproduzida também no `HEAD` sem essas mudanças (não é regressão desta entrega). Não investigada/corrigida ainda — pendência nova, sem sprint própria definida.
+- 🟡 **Falha pré-existente em `tests/rbac/caixa.test.mjs`** ("Caixa matriz total: tudo visível") — 1/53 falha, pré-existente (não regressão desta sprint). Não investigada/corrigida.
 - ✅ ~~Cache persistente do Firestore (Fase 2) sem validação em navegador real~~ — **resolvido em 2026-07-08**: homologado em Chrome real (login via custom token, dados do DEV) — cache offline, multiaba e boot visual de Dashboard/Central de Alertas confirmados sem erro. Ver `CRM/TECHDOC.md` §24.6.
 - 🟡 **Supressão do polling durante aba oculta (300s/600s) sem prova direta por instrumentação de rede** — o teste de 305s com a aba oculta capturou também o tráfego do listener em tempo real pré-existente (`iniciarStatusSync()`), não isolando só o timer novo. Risco baixo: a mudança de constante (`30000`→`300000`/`600000`) é determinística e o padrão de gating foi validado isoladamente (4/4). Não bloqueia o push; reavaliar só se surgir evidência de leitura excessiva em produção.
 - Dívida técnica consolidada: ver [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) §5.
 
 ---
 
-*Última atualização: 2026-07-08 — Preparação encerrada (GO); Sprints 3 e 4 do RBAC aprovadas formalmente; Sprint 5 (OS) implementada e homologada sob o Modo Acelerado Autônomo, aguardando aprovação formal — com ela, a Fase 2 do RBAC fica tecnicamente completa. Limpeza de código morto confirmado concluída. Ver §7.4, §7.5, §24-§27 do TECHDOC.*
+*Última atualização: 2026-07-08 — Sprint 5 (OS) implementada, homologada e aguardando aprovação formal. Sprint 6 (Central de Alertas Financeiro) concluída: 5 alertas financeiros integrados à Central de Alertas (pagar vencido/próximo, receber vencido/previsto, fluxo de caixa projetado), 7/7 testes automáticos, zero regressão (52/53, falha pré-existente Caixa não relacionada). Working tree limpo, commitado localmente. Fase 2 (RBAC) completa aguardando aprovação do Sprint 5. Próximo: iniciar evolução funcional prevista no roadmap.*

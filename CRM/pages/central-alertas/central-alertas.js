@@ -12,6 +12,7 @@ import { AvaliacoesRepository as Avaliacoes, MensagensPortalRepository as Mensag
 import { OSRepository as OS } from '../../repositories/os.repository.js';
 import { PosvendaContatosRepository as PosvendaContatos } from '../../repositories/posvenda.repository.js';
 import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../repositories/sistema.repository.js';
+import { FinanceiroPagarRepository as FinanceiroPagar, FinanceiroReceberRepository as FinanceiroReceber, FinanceiroFixasRepository as FinanceiroFixas } from '../../repositories/financeiro.repository.js';
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = 'cc_config_alertas';
@@ -167,12 +168,15 @@ async function gerarAlertas() {
 
     // ── Carrega tudo em paralelo (1 única leitura de 'os', reaproveitada
     //    para pós-venda, prontos e orçamentos — evita 3 leituras repetidas) ──
-    const [eventos, osDocs, contatosList, portalList, avaliacoesList] = await Promise.all([
+    const [eventos, osDocs, contatosList, portalList, avaliacoesList, financeiroPagarList, financeiroReceberList, financeiroFixasList] = await Promise.all([
         lerAgenda(),
         OS.list(),
         PosvendaContatos.list(),
         MensagensPortal.list({ where: [['lida', '==', false]] }).catch(e => { console.warn('Central de Alertas — mensagens_portal:', e); return null; }),
-        Avaliacoes.list({ orderByField: 'createdAt', direction: 'desc', limitTo: 5 }).catch(e => { console.warn('Central de Alertas — avaliacoes:', e); return null; })
+        Avaliacoes.list({ orderByField: 'createdAt', direction: 'desc', limitTo: 5 }).catch(e => { console.warn('Central de Alertas — avaliacoes:', e); return null; }),
+        FinanceiroPagar.list().catch(e => { console.warn('Central de Alertas — financeiro_pagar:', e); return []; }),
+        FinanceiroReceber.list().catch(e => { console.warn('Central de Alertas — financeiro_receber:', e); return []; }),
+        FinanceiroFixas.list().catch(e => { console.warn('Central de Alertas — financeiro_fixas:', e); return []; })
     ]);
 
     const osList = osDocs.map(d => ({ firestoreId: d.id, ...d }));
@@ -451,6 +455,83 @@ async function gerarAlertas() {
         }
     } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
 
+    // ===== FINANCEIRO (Fase 4 — Fase 9: Central de Alertas Inteligentes) =====
+    try {
+        const hojeISO = new Date().toISOString().slice(0, 10);
+        const em7diasISO = new Date(now.getTime() + 7 * 86400000).toISOString().slice(0, 10);
+        const em3diasISO = new Date(now.getTime() + 3 * 86400000).toISOString().slice(0, 10);
+
+        const pagarPendente = (financeiroPagarList || []).filter(c => c.status !== 'pago');
+        const receberPendente = (financeiroReceberList || []).filter(c => c.status !== 'recebido');
+
+        const pagarVencido = pagarPendente.filter(c => c.vencimento && c.vencimento < hojeISO);
+        const pagarProximo = pagarPendente.filter(c => c.vencimento && c.vencimento >= hojeISO && c.vencimento <= em3diasISO);
+        const receberVencido = receberPendente.filter(c => c.vencimento && c.vencimento < hojeISO);
+
+        if (pagarVencido.length > 0) {
+            const totalVencido = pagarVencido.reduce((s, c) => s + Number(c.valor || 0), 0);
+            const maisAntiga = [...pagarVencido].sort((a, b) => a.vencimento.localeCompare(b.vencimento))[0];
+            out.push({
+                icon: '💰', cat: 'critico',
+                title: `FINANCEIRO · ${pagarVencido.length} conta(s) a pagar vencida(s)`,
+                sub: `Total vencido: R$ ${totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                detail: `${pagarVencido.length} conta(s) a pagar vencida(s), somando R$ ${totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Vencimento mais antigo: ${maisAntiga.vencimento} (${escapeHtml(maisAntiga.descricao || '')}).`,
+                som: true, pulsar: true, tipo: 'financeiroPagarVencido',
+                quando: new Date(maisAntiga.vencimento + 'T00:00:00'), link: '../financeiro/index.html'
+            });
+        }
+        if (pagarProximo.length > 0) {
+            const totalProximo = pagarProximo.reduce((s, c) => s + Number(c.valor || 0), 0);
+            out.push({
+                icon: '💰', cat: 'atencao',
+                title: `FINANCEIRO · ${pagarProximo.length} conta(s) a pagar vencendo em breve`,
+                sub: `Total: R$ ${totalProximo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} nos próximos 3 dias`,
+                detail: `${pagarProximo.length} conta(s) a pagar vencem nos próximos 3 dias, somando R$ ${totalProximo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                quando: now, link: '../financeiro/index.html'
+            });
+        }
+        if (receberVencido.length > 0) {
+            const totalReceber = receberVencido.reduce((s, c) => s + Number(c.valor || 0), 0);
+            out.push({
+                icon: '💰', cat: 'atencao',
+                title: `FINANCEIRO · ${receberVencido.length} conta(s) a receber vencida(s)`,
+                sub: `Total: R$ ${totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                detail: `${receberVencido.length} cliente(s) com conta a receber vencida, somando R$ ${totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Considere cobrar.`,
+                quando: now, link: '../financeiro/index.html'
+            });
+        }
+
+        const receberProximo = receberPendente.filter(c => c.vencimento && c.vencimento >= hojeISO && c.vencimento <= em3diasISO);
+        if (receberProximo.length > 0) {
+            const totalReceberProx = receberProximo.reduce((s, c) => s + Number(c.valor || 0), 0);
+            out.push({
+                icon: '📈', cat: 'crm',
+                title: `FINANCEIRO · ${receberProximo.length} recebimento(s) previsto(s)`,
+                sub: `Total: R$ ${totalReceberProx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} nos próximos 3 dias`,
+                detail: `${receberProximo.length} recebimento(s) previsto(s) nos próximos 3 dias, totalizando R$ ${totalReceberProx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                quando: now, link: '../financeiro/index.html'
+            });
+        }
+
+        // Fluxo de caixa projetado (7 dias): a receber - a pagar - fixas do período, tudo com vencimento até em7diasISO.
+        const aReceber7d = receberPendente.filter(c => c.vencimento && c.vencimento <= em7diasISO).reduce((s, c) => s + Number(c.valor || 0), 0);
+        const aPagar7d = pagarPendente.filter(c => c.vencimento && c.vencimento <= em7diasISO).reduce((s, c) => s + Number(c.valor || 0), 0);
+        const fixasMes = (financeiroFixasList || []).reduce((s, c) => s + Number(c.valor || 0), 0);
+        const fixas7d = fixasMes * (7 / 30); // proporção simples do período de 7 dias sobre o mês
+        const projecao7d = aReceber7d - aPagar7d - fixas7d;
+
+        if (projecao7d < 0) {
+            out.push({
+                icon: '📉', cat: 'critico',
+                title: 'FLUXO DE CAIXA PROJETADO NEGATIVO (7 dias)',
+                sub: `Projeção: R$ ${projecao7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                detail: `Considerando contas a pagar/receber com vencimento nos próximos 7 dias e a proporção de despesas fixas do período, o caixa projetado é negativo (R$ ${projecao7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}). A receber: R$ ${aReceber7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · A pagar: R$ ${aPagar7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · Fixas (proporcional): R$ ${fixas7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                som: true, pulsar: true, tipo: 'financeiroFluxoCaixaNegativo',
+                quando: now, link: '../financeiro/index.html'
+            });
+        }
+    } catch (e) { console.warn('Central de Alertas — financeiro:', e); }
+
     return out;
 }
 
@@ -650,7 +731,8 @@ function configPadrao() {
         },
         alertasComSom: {
             acaoSemanaVencidas: true, acaoSemanaAgora: false, acaoSemanaProximas: false,
-            posVendaCritico: false, osAguardandoCliente: false, avaliacoesCriticas: false
+            posVendaCritico: false, osAguardandoCliente: false, avaliacoesCriticas: false,
+            financeiroPagarVencido: true, financeiroFluxoCaixaNegativo: true
         },
         pulsacao: { critico: true, atencao: false }
     };
@@ -787,4 +869,8 @@ async function init() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+} else {
+    init();
+}

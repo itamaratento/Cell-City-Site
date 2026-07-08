@@ -105,6 +105,13 @@ Idênticas às que existiam em `dashboard.js::gerarAlertas()` antes da reconstru
 7. **Orçamentos sem resposta** (`status` orçamento há >2 dias) → atenção, com lista detalhada.
 
 **Otimização introduzida na reconstrução:** a coleção `os` antes era lida 3× (pós-venda, prontos, orçamentos) dentro de `dashboard.js`; agora é lida 1× e o resultado é reaproveisado nas três regras — reduz leituras Firestore por carregamento.
+8. **Financeiro** (via `FinanceiroPagarRepository`, `FinanceiroReceberRepository`, `FinanceiroFixasRepository`):
+   - Contas a pagar vencidas (`vencimento < hoje`, `status !== "pago"`) → crítico, som, pulsar, tipo `financeiroPagarVencido`
+   - Contas a pagar próximas (vencimento em ≤3 dias, `status !== "pago"`) → atenção, tipo `financeiroPagarProximo`
+   - Contas a receber vencidas (`vencimento < hoje`, `status !== "recebido"`) → atenção, tipo `financeiroReceberVencido`
+   - Recebimentos previstos (vencimento em ≤3 dias, `status !== "recebido"`) → informativo (crm), tipo `financeiroReceberProximo`
+   - Fluxo de caixa projetado 7 dias negativo (receber − pagar − fixas(7/30) < 0) → crítico, som, pulsar, tipo `financeiroFluxoCaixaNegativo`
+   - Link dos alertas: `../financeiro/index.html`
 
 ### 3.5 Coleções Firestore utilizadas
 
