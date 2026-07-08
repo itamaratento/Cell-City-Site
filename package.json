@@ -1,10 +1,15 @@
 {
   "type": "module",
+  "scripts": {
+    "homologar-performance": "node scripts/homologacao/index.mjs"
+  },
   "dependencies": {
     "firebase": "^12.14.0"
   },
   "devDependencies": {
     "firebase-admin": "^14.1.0",
-    "firebase-tools": "^15.22.4"
+    "firebase-tools": "^15.22.4",
+    "http-server": "^14.1.1",
+    "puppeteer-core": "^24.43.1"
   }
 }

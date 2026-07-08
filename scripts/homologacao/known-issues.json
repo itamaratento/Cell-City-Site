@@ -1,0 +1,9 @@
+[
+  {
+    "suite": "rbac",
+    "test": "Caixa matriz total: tudo visível",
+    "reason": "Falha pré-existente, não relacionada às entregas de performance. Reproduzida no HEAD sem as mudanças de Fase 1/2 (git stash). Não corrigida — fora do escopo das entregas que a acharam.",
+    "since": "2026-07-08",
+    "ref": "CRM/TECHDOC.md §24.4"
+  }
+]

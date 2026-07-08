@@ -1,6 +1,6 @@
 name: Testes automatizados
 
-# Roda as 3 suítes de teste do repositório a cada push/PR — até agora essas
+# Roda as suítes de teste do repositório a cada push/PR — até agora essas
 # suítes só eram executadas manualmente (GUIA_MANUTENCAO.md registra como
 # dívida técnica: "nenhuma CI executa os testes existentes"; PROXIMA_ETAPA.md
 # item 10: "CI mínima"). Firestore Rules e Cloud Functions do Portal rodam
@@ -11,7 +11,14 @@ name: Testes automatizados
 # SDK mockada em memória (mesmo princípio da homologação da Camada
 # Repository); substituem os harnesses ad-hoc descartados nos sprints
 # anteriores (Sprint 2, Sprint 3, re-homologação de 2026-07-07 — ver
-# CRM/TECHDOC.md §7.3).
+# CRM/TECHDOC.md §7.3). tests/performance/ (padrão de gating polling/aba
+# oculta, Fase 1 do plano de performance) não usa Firestore nem DOM real —
+# só Node puro, mesmo princípio do RBAC.
+#
+# A homologação em navegador real (Fase 3 de scripts/homologacao/) NÃO roda
+# aqui — exige credencial do DEV e Chrome real, fora do escopo de uma CI que
+# roda em qualquer PR de qualquer colaborador. Continua manual, sob demanda
+# (`npm run homologar-performance`).
 #
 # Não bloqueia merge (não há proteção de branch configurada), só dá
 # visibilidade — mas já é melhor do que zero verificação automática.
@@ -67,3 +74,6 @@ jobs:
       - name: Testes de RBAC (Fase 2 — CRM/Entrada/Chips/Agenda/Estoque/Caixa)
         run: npm test
         working-directory: tests/rbac
+
+      - name: Testes de performance (padrão de gating polling/aba oculta)
+        run: node --test tests/performance/polling-gating.test.mjs
