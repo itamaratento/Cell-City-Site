@@ -587,6 +587,27 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 **Atualização (2026-07-07, auditoria de performance — `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8/§9):** o hotspot H13 do plano de performance ("`estoque.js::descontarEstoque()` varre a coleção inteira para achar 1 produto, chamado pelo Caixa a cada venda") tinha premissa desatualizada — `descontarEstoque()` **não tinha nenhum chamador real** no código vivo; o Caixa usa sua própria função local (`descontarEstoqueLocal`, `caixa.js:699`), que já lia com `getDoc` direto. Função morta removida de `estoque.js`. Nenhuma leitura de produção é eliminada por esta mudança (a função nunca era executada), mas fecha uma armadilha de manutenção. Validado: RBAC 34/34 (incluindo o teste de integração Estoque↔Caixa que exercita `descontarEstoqueLocal`), Firestore Rules 52/52, Cloud Functions 25/25.
 
+**Aprovação formal (2026-07-08):** Sprint 3 aprovada formalmente pelo dono do projeto, integrada à baseline técnica (`plans/ENCERRAMENTO_PREPARACAO_20260708.md`). Libera o Sprint 4 (Financeiro), ver §7.4.
+
+### 7.4 Sprint 4 — Financeiro
+
+**Status: implementado e homologado (2026-07-08), sob o Modo Acelerado Autônomo — aguardando aprovação formal do usuário antes de promover para `main`.**
+
+**Contexto:** `financeiro.js` era um dos 9 módulos sem nenhum gate client-side (achado da auditoria Go/No-Go, `plans/AUDITORIA_GO_NOGO_20260708.md`) — não chamava `initModulo()` nem `carregarPermissoes()`, diferente de Caixa (que já tinha `initModulo()` antes do Sprint 3). Mesma situação que `estoque.js` teve no Sprint 3: exigiu reestruturar o boot, não só acrescentar gates.
+
+**Arquivo alterado** (backup `financeiro.js.BACKUP_2026-07-08.js` na mesma pasta): `pages/financeiro/financeiro.js` (moduloId `financeiro`). Verbos aplicados:
+- **visualizar**: redirect para o Dashboard se `!podeVisualizar('financeiro')`, antes de qualquer carregamento de dado.
+- **criar**: oculta os 3 botões "Nova Conta/Despesa" (Pagar/Fixas/Receber), o botão "+" de nova categoria personalizada, e o botão "Novo Item" dentro de cada categoria personalizada (este último gated no próprio template, porque é recriado a cada render — gate único no boot não seria suficiente).
+- **editar**: oculta os botões "✏️ Editar" (Pagar/Fixas/Receber) e o botão "✓ Pago"/"✓ Recebido" (marca status — é uma atualização do documento existente, não uma criação; diferente do precedente do Caixa, onde "pagar lembrete" gerava um lançamento novo e por isso foi gated por `criar`).
+- **excluir**: oculta os botões "🗑️ Excluir" (Pagar/Fixas/Receber/item personalizado) e "🗑 Excluir categoria".
+- **aprovar**: não existe workflow de aprovação no código atual do Financeiro (só status pago/pendente/vencido) — nenhum gate aplicado, mesma situação do `aprovar` no Caixa (Sprint 3).
+
+**Botões condicionais e binding de evento:** dois pontos (`.fin-btn-nova` e `.fin-custom-del-tab` dentro do painel de categoria personalizada) usam `querySelector` (singular) para amarrar o clique — como esses elementos agora só existem no DOM quando a permissão permite, as duas linhas de binding ganharam `?.` (optional chaining) para não lançar exceção quando o botão está oculto.
+
+**Testes automatizados** (`tests/rbac/financeiro.test.mjs`, mesmo padrão de `estoque.test.mjs`/`caixa.test.mjs` — código real via `tests/rbac/loader.mjs`, sem cópia): 6 cenários — restrito (criar/editar/excluir false), matriz total, não migrado (fail-open), `visualizar:false` (redirect), admin legado (bypass), e um cenário extra confirmando que um item já pago não reexibe o botão "marcar" mesmo com `editar:true`. **6/6 aprovados.** Suíte completa de RBAC do projeto: **39/40** (a única falha é a pré-existente do Caixa, não relacionada — ver `scripts/homologacao/known-issues.json`). Firestore Rules 52/52, Cloud Functions 25/25, `node --check` OK — zero regressão.
+
+**Não coberto nesta sessão:** homologação em navegador real com login de um perfil operacional restrito de verdade (exigiria escrever uma matriz de teste em `perfis_operacionais` no Firestore do DEV). Mesmo padrão de decisão já registrado nos Sprints 1-3: a suíte automatizada com código real (jsdom) é o substituto já estabelecido e aceito neste projeto para esse cenário.
+
 ---
 
 ## 8. Histórico de Entregas
@@ -620,6 +641,8 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-08 | 🟢 Performance — homologação em navegador real (sessão de continuação, mesmo dia): login via `signInWithCustomToken` (conta `cellcityadmin@gmail.com`, DEV), Chrome headless real. Dashboard e Central de Alertas renderizados com dados reais, sem erro. Cache offline confirmado (`usuarios/{uid}` servido do IndexedDB, `fromCache:true`, sem erro). Multiaba confirmado sem `failed-precondition`. Regressão das 3 suítes reconfirmada. Único ponto sem prova direta: supressão do polling especificamente durante os 300s/600s de aba oculta (limitação de instrumentação — tráfego do listener em tempo real pré-existente confundiu a contagem), mitigado pela constante determinística + teste de padrão isolado. **Aprovado para push.** Ver §24.6. |
 | 2026-07-08 | 🆕 Automação da homologação de performance (`scripts/homologacao/`, comando `npm run homologar-performance`): transforma o processo manual do §24.6 num pipeline repetível de 7 fases (auditoria → testes → navegador real → relatório com veredito automático), com registro de pendências conhecidas (`known-issues.json`) e evidências versionadas por execução (`evidencias/<timestamp>/`, gitignored). Achado real durante a própria construção: a primeira versão do teste de offline testava só 1 aba, mascarando que o cache não estava realmente sendo servido offline — corrigido aplicando offline a todas as abas simultaneamente. Teste de polling promovido a permanente (`tests/performance/`) e incluído na CI. Nenhuma funcionalidade do sistema alterada. Ver §25. |
 | 2026-07-08 | 🏁 Auditoria Go/No-Go de prontidão da plataforma (12 etapas, 5 subagentes em paralelo) — veredito **GO**, sem bloqueador técnico. Encerramento formal da fase de preparação, com baseline técnica e planejamento dos módulos em 2 fluxos (`plans/ENCERRAMENTO_PREPARACAO_20260708.md`). `MASTER_ROADMAP.md` sincronizado (seção de ambientes DEV/PROD estava desatualizada desde 02/07). Novo modo de operação "Acelerado Autônomo" adotado a partir de agora. Só inspeção/organização — nenhum código ou regra de negócio alterado. Ver §26. |
+| 2026-07-08 | ✅ Sprint 3 RBAC (Estoque+Caixa) **aprovada formalmente** pelo dono do projeto, integrada à baseline técnica. Libera o Sprint 4. |
+| 2026-07-08 | 🔵 Sprint 4 RBAC — Financeiro (moduloId `financeiro`): `financeiro.js` não tinha nenhum gate client-side (achado da auditoria Go/No-Go) — boot reestruturado (mesmo padrão do `estoque.js` no Sprint 3) para chamar `initModulo()`+`carregarPermissoes()`. Gates de visualizar (redirect)/criar/editar/excluir aplicados às 3 listas (Pagar/Fixas/Receber) e às categorias personalizadas; "aprovar" não se aplica (sem workflow de aprovação no código atual). 6 testes novos (`tests/rbac/financeiro.test.mjs`, 6/6), suíte completa 39/40 (única falha é a pré-existente do Caixa), Rules 52/52, Functions 25/25, zero regressão. Implementado sob o Modo Acelerado Autônomo — aguardando aprovação formal antes de promover a `main`. Ver §7.4. |
 
 ---
 

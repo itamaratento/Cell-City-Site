@@ -92,8 +92,8 @@ Preparação arquitetural (Firestore continua oficial, sem troca de banco). Fase
 - Sprint 1 (Dashboard): ✅ aprovado
 - Sprint 2 (CRM + Agenda): ✅ aprovado (tag `sprint2-rbac-crm-agenda-aprovado`)
 - Sprint 3 (Estoque + Caixa): ✅ **aprovado formalmente em 2026-07-08** (implementado 02/07, re-homologado tecnicamente em 07/07, 34/34 cenários, zero regressão) — integrado à baseline técnica (ver `CRM/TECHDOC.md` §7.3).
-- Sprint 4 (Financeiro): 🔵 **autorizada e em execução desde 2026-07-08**, sob o Modo Acelerado Autônomo.
-- Sprint 5 (OS): ⚪ não iniciada — só após Sprint 4 concluída e aprovada.
+- Sprint 4 (Financeiro): 🔵 **implementada e homologada em 2026-07-08** (`financeiro.js` reestruturado com `initModulo()`+RBAC, 6 testes novos, suíte completa 39/40, zero regressão) — aguardando aprovação formal antes de promover a `main` (ver `CRM/TECHDOC.md` §7.4).
+- Sprint 5 (OS): ⚪ não iniciada — só após Sprint 4 aprovada.
 
 ### Performance — Fases 1 e 2 do plano de otimização — ✅ REGULARIZADAS e HOMOLOGADAS EM NAVEGADOR REAL (2026-07-08)
 Código (escrito em 2026-07-07, sem commit) auditado, com backup do arquivo protegido, validado item a item contra `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`, testado (Rules 52/52, Functions 25/25, RBAC 33/34 — falha pré-existente não relacionada) e commitado em `develop` (`40fdb89`). Na mesma data, homologação em navegador real (Chrome headless, login via `signInWithCustomToken` com a conta `cellcityadmin@gmail.com` do DEV): Dashboard e Central de Alertas renderizados com dados reais sem erro, cache offline confirmado (documento real servido do IndexedDB sem erro), multiaba confirmado sem `failed-precondition`. Único ponto sem prova direta: supressão do polling durante os 300s/600s de aba oculta (limitação de instrumentação do teste, não dúvida sobre o código — mitigada pela constante determinística `REFRESH_MS` + teste de padrão isolado 4/4). **Aprovado para push a `origin/develop`.** Ver `CRM/TECHDOC.md` §24 e §24.6.
@@ -135,4 +135,4 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ---
 
-*Última atualização: 2026-07-08 — Fases 1+2 do plano de performance regularizadas e homologadas em navegador real; processo de homologação automatizado; auditoria Go/No-Go concluída (GO); preparação da plataforma encerrada formalmente e MASTER_ROADMAP.md sincronizado. Ver §24, §24.6, §25 e §26 do TECHDOC, e `plans/AUDITORIA_GO_NOGO_20260708.md`/`plans/ENCERRAMENTO_PREPARACAO_20260708.md`.*
+*Última atualização: 2026-07-08 — Preparação da plataforma encerrada (GO); Sprint 3 RBAC aprovada formalmente; Sprint 4 RBAC (Financeiro) implementada e homologada sob o Modo Acelerado Autônomo, aguardando aprovação formal. Ver §7.4, §24, §24.6, §25 e §26 do TECHDOC.*

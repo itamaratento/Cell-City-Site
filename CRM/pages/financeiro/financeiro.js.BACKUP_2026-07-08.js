@@ -1,6 +1,4 @@
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
-import { initModulo } from '../../scripts/kernel.js';
-import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
 const COL_PAGAR   = 'financeiro_pagar';
 const COL_FIXAS   = 'financeiro_fixas';
@@ -141,9 +139,9 @@ function renderPagar(lista) {
                 <div class="fin-card-valor">${fmt(c.valor)}</div>
                 ${statusBadge(c.status)}
                 <div class="fin-card-acoes">
-                    ${c.status !== 'pago' && podeEditar('financeiro') ? `<button class="fin-btn-marcar" data-id="${c.id}" data-col="pagar" data-novo="pago" title="Marcar como pago">✓ Pago</button>` : ''}
-                    ${podeEditar('financeiro')  ? `<button class="fin-card-edit-btn" data-id="${c.id}" data-col="pagar" title="Editar">✏️</button>` : ''}
-                    ${podeExcluir('financeiro') ? `<button class="fin-card-del-btn" data-id="${c.id}" data-col="pagar" title="Excluir">🗑️</button>` : ''}
+                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-id="${c.id}" data-col="pagar" data-novo="pago" title="Marcar como pago">✓ Pago</button>` : ''}
+                    <button class="fin-card-edit-btn" data-id="${c.id}" data-col="pagar" title="Editar">✏️</button>
+                    <button class="fin-card-del-btn" data-id="${c.id}" data-col="pagar" title="Excluir">🗑️</button>
                 </div>
             </div>
         </div>`).join('');
@@ -168,8 +166,8 @@ function renderFixas(lista) {
             <div class="fin-card-right">
                 <div class="fin-card-valor">${fmt(c.valor)}/mês</div>
                 <div class="fin-card-acoes">
-                    ${podeEditar('financeiro')  ? `<button class="fin-card-edit-btn" data-id="${c.id}" data-col="fixa" title="Editar">✏️</button>` : ''}
-                    ${podeExcluir('financeiro') ? `<button class="fin-card-del-btn" data-id="${c.id}" data-col="fixa" title="Excluir">🗑️</button>` : ''}
+                    <button class="fin-card-edit-btn" data-id="${c.id}" data-col="fixa" title="Editar">✏️</button>
+                    <button class="fin-card-del-btn" data-id="${c.id}" data-col="fixa" title="Excluir">🗑️</button>
                 </div>
             </div>
         </div>`).join('');
@@ -201,9 +199,9 @@ function renderReceber(lista) {
                 <div class="fin-card-valor fin-verde">${fmt(c.valor)}</div>
                 ${statusBadge(c.status)}
                 <div class="fin-card-acoes">
-                    ${c.status !== 'recebido' && podeEditar('financeiro') ? `<button class="fin-btn-marcar fin-btn-receber" data-id="${c.id}" data-col="receber" data-novo="recebido" title="Marcar como recebido">✓ Recebido</button>` : ''}
-                    ${podeEditar('financeiro')  ? `<button class="fin-card-edit-btn" data-id="${c.id}" data-col="receber" title="Editar">✏️</button>` : ''}
-                    ${podeExcluir('financeiro') ? `<button class="fin-card-del-btn" data-id="${c.id}" data-col="receber" title="Excluir">🗑️</button>` : ''}
+                    ${c.status !== 'recebido' ? `<button class="fin-btn-marcar fin-btn-receber" data-id="${c.id}" data-col="receber" data-novo="recebido" title="Marcar como recebido">✓ Recebido</button>` : ''}
+                    <button class="fin-card-edit-btn" data-id="${c.id}" data-col="receber" title="Editar">✏️</button>
+                    <button class="fin-card-del-btn" data-id="${c.id}" data-col="receber" title="Excluir">🗑️</button>
                 </div>
             </div>
         </div>`).join('');
@@ -519,9 +517,9 @@ function renderPainéisCustom() {
         panel.innerHTML = `
             <div class="fin-panel-header-custom">
                 <div class="fin-toolbar">
-                    ${podeCriar('financeiro') ? `<button class="fin-btn-nova" data-catid="${cat.id}">＋ Novo Item</button>` : ''}
+                    <button class="fin-btn-nova" data-catid="${cat.id}">＋ Novo Item</button>
                 </div>
-                ${podeExcluir('financeiro') ? `<button class="fin-custom-del-tab" data-catid="${cat.id}">🗑 Excluir categoria</button>` : ''}
+                <button class="fin-custom-del-tab" data-catid="${cat.id}">🗑 Excluir categoria</button>
             </div>
             <div class="fin-form" id="form-custom-${cat.id}" style="display:none">
                 <div class="fin-form-titulo">Novo Item — ${escHtml(cat.nome)}</div>
@@ -545,8 +543,8 @@ function renderPainéisCustom() {
         container.appendChild(panel);
         renderCustomLista(cat.id, itens);
 
-        // eventos do painel (botões condicionais ao RBAC podem não existir no DOM)
-        panel.querySelector('[data-catid="' + cat.id + '"].fin-btn-nova')?.addEventListener('click', () => {
+        // eventos do painel
+        panel.querySelector('[data-catid="' + cat.id + '"].fin-btn-nova').addEventListener('click', () => {
             panel.querySelector(`#form-custom-${cat.id}`).style.display = 'flex';
             panel.querySelector(`.fin-btn-nova`).style.display = 'none';
             panel.querySelector(`#cx-desc-${cat.id}`).focus();
@@ -556,7 +554,7 @@ function renderPainéisCustom() {
             panel.querySelector(`#form-custom-${cat.id}`).style.display = 'none';
             panel.querySelector(`.fin-btn-nova`).style.display = '';
         });
-        panel.querySelector('.fin-custom-del-tab')?.addEventListener('click', () => excluirCategoria(cat.id, cat.nome));
+        panel.querySelector('.fin-custom-del-tab').addEventListener('click', () => excluirCategoria(cat.id, cat.nome));
     });
 }
 
@@ -579,8 +577,8 @@ function renderCustomLista(catId, itens) {
                 <div class="fin-card-valor">${fmt(c.valor)}</div>
                 ${statusBadge(c.status)}
                 <div class="fin-card-acoes">
-                    ${c.status !== 'pago' && podeEditar('financeiro') ? `<button class="fin-btn-marcar" data-cid="${c.id}" data-catid="${catId}" title="Marcar pago">✓ Pago</button>` : ''}
-                    ${podeExcluir('financeiro') ? `<button class="fin-card-del-btn" data-cid="${c.id}" data-catid="${catId}" title="Excluir">🗑️</button>` : ''}
+                    ${c.status !== 'pago' ? `<button class="fin-btn-marcar" data-cid="${c.id}" data-catid="${catId}" title="Marcar pago">✓ Pago</button>` : ''}
+                    <button class="fin-card-del-btn" data-cid="${c.id}" data-catid="${catId}" title="Excluir">🗑️</button>
                 </div>
             </div>
         </div>`).join('');
@@ -703,24 +701,7 @@ document.querySelectorAll('.fin-tab').forEach(btn => {
     btn.addEventListener('click', () => ativarTab(btn.dataset.tab));
 });
 
-// ── boot (RBAC Fase 2, Sprint 4 — moduloId 'financeiro') ────────────
-async function _boot() {
-    const ctx = await initModulo();
-    if (!ctx) return; // kernel.js já redirecionou para login
-    await carregarPermissoes(ctx);
-    if (!podeVisualizar('financeiro')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
-    if (!podeCriar('financeiro')) {
-        document.getElementById('btn-nova-pagar').style.display = 'none';
-        document.getElementById('btn-nova-fixa').style.display = 'none';
-        document.getElementById('btn-nova-receber').style.display = 'none';
-        document.getElementById('fin-tab-add').style.display = 'none';
-    }
-
+document.addEventListener('DOMContentLoaded', async () => {
     await carregar();
     await carregarCategorias();
-}
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _boot);
-} else {
-    _boot();
-}
+});

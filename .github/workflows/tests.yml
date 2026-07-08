@@ -71,7 +71,7 @@ jobs:
         run: npm ci
         working-directory: tests/rbac
 
-      - name: Testes de RBAC (Fase 2 — CRM/Entrada/Chips/Agenda/Estoque/Caixa)
+      - name: Testes de RBAC (Fase 2 — CRM/Entrada/Chips/Agenda/Estoque/Caixa/Financeiro)
         run: npm test
         working-directory: tests/rbac
 

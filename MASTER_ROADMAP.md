@@ -60,7 +60,7 @@ Consolidar em um único documento a evolução completa prevista do Cell City Ge
 1. **Sprint 1 — Dashboard** (piloto; valida o padrão de integração antes de propagar) — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.1, `plans/fase2-sprint1-dashboard-rbac.md`)
 2. **Sprint 2 — CRM, Agenda** — ✅ **aprovado em 2026-07-02** (`CRM/TECHDOC.md` §7.2, `plans/fase2-sprint2-crm-agenda-rbac.md`; tag de restauração `sprint2-rbac-crm-agenda-aprovado`)
 3. **Sprint 3 — Estoque, Caixa** — ✅ **aprovado formalmente em 2026-07-08** (implementado 2026-07-02, re-homologado tecnicamente em 2026-07-07 com 34/34 cenários, zero regressão) (`CRM/TECHDOC.md` §7.3, `plans/fase2-sprint3-estoque-caixa-rbac.md`)
-4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria) — 🔵 **autorizado e em andamento desde 2026-07-08**
+4. **Sprint 4 — Financeiro** (atenção redobrada a aprovações, exclusões e trilha de auditoria) — 🔵 **implementado e homologado em 2026-07-08** (testes automatizados 6/6 + suíte completa 39/40, zero regressão) — aguardando aprovação formal do usuário antes de promover a `main` (`CRM/TECHDOC.md` §7.4)
 5. **Sprint 5 — OS** (por último — maior dependência cruzada com os demais módulos; tratar como integração crítica)
 
 **Estratégia de integração:** um módulo piloto por vez; cada sprint só inicia após aprovação formal do sprint anterior. Processo obrigatório de 8 etapas por módulo: Planejamento → Implementação → Testes unitários → Homologação → Correções → Atualização do TECHDOC → Aprovação formal → Liberação do módulo.
