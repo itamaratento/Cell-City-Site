@@ -608,6 +608,27 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 **Não coberto nesta sessão:** homologação em navegador real com login de um perfil operacional restrito de verdade (exigiria escrever uma matriz de teste em `perfis_operacionais` no Firestore do DEV). Mesmo padrão de decisão já registrado nos Sprints 1-3: a suíte automatizada com código real (jsdom) é o substituto já estabelecido e aceito neste projeto para esse cenário.
 
+**Aprovação formal (2026-07-08):** Sprint 4 aprovada formalmente pelo dono do projeto, integrada à baseline técnica. Libera o Sprint 5 (OS), ver §7.5.
+
+### 7.5 Sprint 5 — OS (Ordem de Serviço)
+
+**Status: implementado e homologado (2026-07-08), sob o Modo Acelerado Autônomo — aguardando aprovação formal do usuário antes de promover para `main`.**
+
+**Contexto:** `os.js` (2442 linhas — o módulo mais extenso já integrado ao RBAC) já chamava `initModulo()` (diferente de Financeiro/Estoque, que não tinham nenhum gate), mas nunca tinha `carregarPermissoes()`/`podeVisualizar()`/etc. Sinalizado no roadmap como "maior dependência cruzada com os demais módulos — tratar como integração crítica".
+
+**Arquivo alterado** (backup `os.js.BACKUP_2026-07-08.js` na mesma pasta): `pages/os/os.js` (moduloId `os`). Verbos aplicados:
+- **visualizar**: redirect para o Dashboard em `init()`, antes de qualquer carregamento.
+- **criar**: oculta os 3 cards de categoria ("Nova OS" celular/notebook/impressora) na tela inicial; oculta o botão "🔔" de criar lembrete no detalhe da OS.
+- **editar**: oculta/desabilita — botão "✏️ Editar O.S."; seletor de status (`changeStatus`); botões "📦 Entregue"/"📋 Devolver Aparelho"; salvar observação/observação técnica/observação interna (com os `<textarea>` correspondentes marcados `readonly`); campo de observação rápida (`readonly`); checklist de saída (`disabled`, reaproveitando o parâmetro `readonly` que `renderChecklistHTML` já aceitava); botão "➕ Adicionar mais fotos"; painel de Retorno (marcar retorno, próximo retorno, editar mensagens de retorno — as mensagens prontas para copiar, que só leem dado, continuam disponíveis); edição de cliente (✏️ na listagem e na ficha).
+- **excluir**: oculta "🗑️ Excluir OS" e "🗑️" de excluir cliente na listagem.
+- **aprovar**: não se aplica — não existe workflow de aprovação interno no módulo (a aprovação de orçamento é feita pelo cliente via Portal/Cloud Function, um fluxo já separado e não tocado por este RBAC de UI).
+
+**Deliberadamente fora do escopo desta sprint** (ações que só leem dado ou só compartilham, sem escrever no Firestore): imprimir OS, gerar/copiar/enviar link e mensagem de garantia, compartilhar por WhatsApp, copiar mensagens prontas de retorno, ver relatório técnico (preenchido por outro módulo, Portal Técnico), ver histórico/timeline, ver cliente.
+
+**Testes automatizados** (`tests/rbac/os.test.mjs`, mesmo padrão dos demais): 6 cenários — restrito (com asserção positiva extra confirmando que o detalhe realmente renderizou, para não mascarar um conteúdo vazio como "aprovado" por engano), matriz total, não migrado (fail-open), `visualizar:false` (redirect), admin legado (bypass), e listagem de clientes restrita. **6/6 aprovados.** Suíte completa do projeto: **45/46** (única falha é a pré-existente do Caixa). Firestore Rules 52/52, Cloud Functions 25/25, zero regressão.
+
+**Achado durante a construção dos testes:** a mock `tests/rbac/mocks/firebase-scripts.js` não exportava `getFirebaseStorage` (usado por `os.js` para upload/exclusão de foto, fora do escopo do RBAC) — adicionado um stub mínimo, aditivo, sem afetar nenhum teste existente.
+
 ---
 
 ## 8. Histórico de Entregas
@@ -643,6 +664,9 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-08 | 🏁 Auditoria Go/No-Go de prontidão da plataforma (12 etapas, 5 subagentes em paralelo) — veredito **GO**, sem bloqueador técnico. Encerramento formal da fase de preparação, com baseline técnica e planejamento dos módulos em 2 fluxos (`plans/ENCERRAMENTO_PREPARACAO_20260708.md`). `MASTER_ROADMAP.md` sincronizado (seção de ambientes DEV/PROD estava desatualizada desde 02/07). Novo modo de operação "Acelerado Autônomo" adotado a partir de agora. Só inspeção/organização — nenhum código ou regra de negócio alterado. Ver §26. |
 | 2026-07-08 | ✅ Sprint 3 RBAC (Estoque+Caixa) **aprovada formalmente** pelo dono do projeto, integrada à baseline técnica. Libera o Sprint 4. |
 | 2026-07-08 | 🔵 Sprint 4 RBAC — Financeiro (moduloId `financeiro`): `financeiro.js` não tinha nenhum gate client-side (achado da auditoria Go/No-Go) — boot reestruturado (mesmo padrão do `estoque.js` no Sprint 3) para chamar `initModulo()`+`carregarPermissoes()`. Gates de visualizar (redirect)/criar/editar/excluir aplicados às 3 listas (Pagar/Fixas/Receber) e às categorias personalizadas; "aprovar" não se aplica (sem workflow de aprovação no código atual). 6 testes novos (`tests/rbac/financeiro.test.mjs`, 6/6), suíte completa 39/40 (única falha é a pré-existente do Caixa), Rules 52/52, Functions 25/25, zero regressão. Implementado sob o Modo Acelerado Autônomo — aguardando aprovação formal antes de promover a `main`. Ver §7.4. |
+| 2026-07-08 | 🧹 Limpeza de código morto confirmado (item 6 do `PROXIMA_ETAPA.md`, pendente desde 2026-07-06): `shared/tenant.js`, `shared/listener-manager.js` (0 importadores reais) e 7 diretórios `BACKUP_*` dentro de `CRM/pages/*/` removidos. Deixado de propósito fora do escopo: arquivos individuais `.BACKUP_*.js`/`.backup-*` (mecanismo de rollback ainda ativo de Sprints RBAC recentes). Zero regressão (RBAC 39/40, Rules 52/52, Functions 25/25). Ver §27. |
+| 2026-07-08 | ✅ Sprint 4 RBAC (Financeiro) **aprovada formalmente** pelo dono do projeto, integrada à baseline técnica. Libera o Sprint 5. |
+| 2026-07-08 | 🔵 Sprint 5 RBAC — OS (moduloId `os`, 2442 linhas — o módulo mais extenso já integrado): já tinha `initModulo()` mas nenhuma integração com `permissoes.js`. Gates de visualizar (redirect)/criar (categorias/lembrete)/editar (edição, status, entregar/devolver, observações, checklist de saída, fotos, painel de retorno, edição de cliente)/excluir (excluir OS, excluir cliente) aplicados; "aprovar" não se aplica (aprovação de orçamento é fluxo separado do cliente via Portal). Deixado fora do escopo, de propósito: ações só-leitura/compartilhamento (imprimir, garantia, WhatsApp, relatório técnico). 6 testes novos (`tests/rbac/os.test.mjs`, 6/6), suíte completa 45/46 (única falha é a pré-existente do Caixa), Rules 52/52, Functions 25/25, zero regressão. Achado incidental: mock `getFirebaseStorage` ausente, adicionado (aditivo). Implementado sob o Modo Acelerado Autônomo — aguardando aprovação formal antes de promover a `main`. Ver §7.5. |
 
 ---
 
@@ -1470,3 +1494,15 @@ A seção "Infraestrutura de Ambientes DEV/PROD" estava desatualizada desde 2026
 ### 26.4 Novo modo de operação — "Acelerado Autônomo"
 
 A pedido do dono, a partir de 2026-07-08 a colaboração muda de um modelo de aprovação prévia por etapa para um modelo de autonomia ampla dentro de limites explícitos: implementação de funcionalidades do roadmap, criação/alteração de arquivos, remoção de código morto comprovado, refatoração local, otimização, correção de bugs, testes e documentação podem ser feitos sem pedir autorização antes. Continuam exigindo parar e perguntar: mudança de arquitetura, mudança de banco de dados, alteração de segurança/Firestore Rules/RBAC, Cloud Functions críticas, infraestrutura, custos, deploy para produção, exclusão de funcionalidades, e mudanças que afetem outros módulos. Substitui o modo de "Congelamento de Escopo" vigente desde 2026-07-03 (que era específico da fase de preparação/separação de ambientes, agora encerrada). Detalhe completo na memória do projeto (`feedback-modo-acelerado-autonomo`).
+
+## 27. Limpeza de código morto confirmado (2026-07-08)
+
+Item 6 de `PROXIMA_ETAPA.md` (pendência de baixo risco, registrada desde 2026-07-06), executado sob o Modo Acelerado Autônomo — nenhuma autorização adicional pedida, por já estar pré-aprovado como "código morto comprovado".
+
+**Removido, com confirmação de zero importador real** (verificado por `grep` de `import...from` real, não por menção em comentário — `shared/tenant.js` tinha 2 falsos-positivos que eram só texto de comentário documentando a ausência do import, não o import em si):
+- `CRM/shared/tenant.js` e `CRM/shared/listener-manager.js`.
+- 7 diretórios `BACKUP_*` dentro de `CRM/pages/*/` (snapshots de páginas antigas, o mais recente de 2026-07-01): `caixa/BACKUP_FILTRO_SEMANA_2026-06-14`, `dashboard/BACKUP_ENV_INDICATOR_2026-07-01`, `dashboard/BACKUP_RBAC_DASHBOARD_2026-07-01`, `dashboard/BACKUP_REDESIGN_PAINEL_2026-06-14` (com um `BACKUP_UNIF_ALERTAS_2026-06-14` aninhado dentro), `dashboard/BACKUP_SITE_BTN_2026-06-14`, `dashboard/BACKUP_SITE_BTN_ICONE_2026-06-14`, `dashboard/BACKUP_UNIF_ALERTAS_2026-06-14`.
+
+**Fora do escopo desta limpeza, de propósito:** os arquivos individuais `*.BACKUP_*.js`/`*.backup-*` (não diretórios) espalhados em vários módulos — vários deles (`caixa.BACKUP_2026-07-02.js`, `estoque.BACKUP_2026-07-02.js`, `chips.BACKUP_2026-07-02.js`, `crm.BACKUP_2026-07-02.js`, `entrada.BACKUP_*.js`, `financeiro.js.BACKUP_2026-07-08.js`) são o mecanismo de rollback ainda ativo dos Sprints de RBAC recentes, alguns ainda não promovidos a `main`. A pendência registrada falava só em "diretórios BACKUP_*", não nesses arquivos — removê-los agora seria além do que foi pré-aprovado.
+
+**Validação:** suíte completa reexecutada — Firestore Rules 52/52, Cloud Functions 25/25, RBAC 39/40 (mesma falha pré-existente do Caixa, não relacionada), `node --check` OK. Zero regressão.

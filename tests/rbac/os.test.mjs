@@ -1,0 +1,119 @@
+// Testes de RBAC (Fase 2, Sprint 5 — moduloId 'os') — ver CRM/TECHDOC.md §7.5.
+// Importa CRM/pages/os/os.js REAL (não uma cópia) via tests/rbac/loader.mjs —
+// se o código mudar, este teste roda contra a mudança na próxima execução.
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import { mountPage, importFresh, closeAllMounted } from './helpers/dom-harness.mjs';
+import * as fsMock from './mocks/firestore-mock.js';
+import * as perm from './mocks/permissoes.js';
+
+after(closeAllMounted);
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const REPO_ROOT = join(__dirname, '../..');
+const HTML_PATH = join(REPO_ROOT, 'CRM/pages/os/index.html');
+const MOD_URL = new URL('file://' + join(REPO_ROOT, 'CRM/pages/os/os.js')).href;
+
+function setup({ matriz = null, adminLegado = false } = {}) {
+    fsMock.__reset();
+    perm.__reset();
+    fsMock.__seed('os', 'os_1', {
+        id: 'os_1', clientName: 'João Teste', phone: '11999998888', phoneDigits: '11999998888',
+        category: 'celular', brand: 'Samsung', model: 'Galaxy S21', defect: 'Tela quebrada',
+        status: 'em_reparo', createdAt: new Date().toISOString(), timeline: [],
+    });
+    fsMock.__seed('clientes', '11999998888', { name: 'João Teste', phone: '11999998888', phoneDigits: '11999998888', history: ['os_1'] });
+    perm.__setMatriz(matriz);
+    perm.__setAdminLegado(adminLegado);
+    return mountPage(HTML_PATH, '/CRM/pages/os/index.html');
+}
+
+// openDetail é exposta em window pelo próprio módulo — chamamos direto (mais
+// confiável no harness do que depender de location.hash, que o dom-harness
+// não simula por completo) e aguardamos o próximo microtask/render.
+async function abrirDetalhe(window) {
+    window.openDetail('os_1');
+    await new Promise(r => setTimeout(r, 30));
+}
+
+test('OS restrito (visualizar✔ criar✘ editar✘ excluir✘): categorias ocultas; detalhe sem editar/excluir/lembrete', async () => {
+    const { document, window } = setup({ matriz: { os: { visualizar: true, criar: false, editar: false, excluir: false } } });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    document.querySelectorAll('.category-card').forEach(el => assert.equal(el.style.display, 'none'));
+
+    const content = document.getElementById('detail-content').innerHTML;
+    assert.match(content, /Galaxy S21/); // confirma que o detalhe realmente renderizou (não é falso-positivo de conteúdo vazio)
+    assert.doesNotMatch(content, /toggleOSEdit\(\)/);
+    assert.doesNotMatch(content, /abrirLembreteOS\(\)/);
+    assert.doesNotMatch(content, /deleteOS\(/);
+    assert.doesNotMatch(content, /saveInternalObservation\(\)/);
+    assert.doesNotMatch(content, /saveObservation\(\)/);
+    assert.doesNotMatch(content, /saveTechObservation\(\)/);
+    assert.doesNotMatch(content, /markDelivered\(\)|markOrcamentoDevolvido\(\)/);
+    // status-option não deve ter onclick de changeStatus quando sem editar
+    assert.doesNotMatch(content, /onclick="changeStatus/);
+});
+
+test('OS matriz total (tudo true): categorias visíveis; detalhe com editar/excluir/lembrete', async () => {
+    const { document, window } = setup({ matriz: { os: { visualizar: true, criar: true, editar: true, excluir: true } } });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    document.querySelectorAll('.category-card').forEach(el => assert.notEqual(el.style.display, 'none'));
+
+    const content = document.getElementById('detail-content').innerHTML;
+    assert.match(content, /toggleOSEdit\(\)/);
+    assert.match(content, /abrirLembreteOS\(\)/);
+    assert.match(content, /deleteOS\(/);
+    assert.match(content, /saveInternalObservation\(\)/);
+    assert.match(content, /saveObservation\(\)/);
+    assert.match(content, /saveTechObservation\(\)/);
+    assert.match(content, /markDelivered\(\)/); // status 'em_reparo' não é terminal
+    assert.match(content, /onclick="changeStatus/);
+});
+
+test('OS não migrado (matriz null): fail-open total', async () => {
+    const { document, window } = setup({ matriz: null });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    document.querySelectorAll('.category-card').forEach(el => assert.notEqual(el.style.display, 'none'));
+    const content = document.getElementById('detail-content').innerHTML;
+    assert.match(content, /toggleOSEdit\(\)/);
+    assert.match(content, /deleteOS\(/);
+});
+
+test('OS visualizar:false: redirect para o Dashboard antes de renderizar', async () => {
+    const harness = setup({ matriz: { os: { visualizar: false, criar: false, editar: false, excluir: false } } });
+    await importFresh(MOD_URL);
+
+    assert.match(harness.getCapturedHref(), /dashboard\/index\.html/);
+    assert.equal(harness.document.getElementById('detail-content').innerHTML, '');
+});
+
+test('OS admin legado: bypass total independente da matriz', async () => {
+    const { document, window } = setup({ matriz: { os: { visualizar: false, criar: false, editar: false, excluir: false } }, adminLegado: true });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    document.querySelectorAll('.category-card').forEach(el => assert.notEqual(el.style.display, 'none'));
+    const content = document.getElementById('detail-content').innerHTML;
+    assert.match(content, /toggleOSEdit\(\)/);
+    assert.match(content, /deleteOS\(/);
+});
+
+test('OS: cliente restrito sem editar/excluir na listagem', async () => {
+    const { document, window } = setup({ matriz: { os: { visualizar: true, criar: false, editar: false, excluir: false } } });
+    await importFresh(MOD_URL);
+    // renderClients() só popula ao navegar até a tela de clientes — dispara via
+    // showScreen (exposta em window pelo próprio módulo), mesmo caminho da UI real.
+    window.showScreen('clientes');
+    await new Promise(r => setTimeout(r, 30));
+    const content = document.getElementById('client-list').innerHTML;
+    assert.doesNotMatch(content, /editClient\(/);
+    assert.doesNotMatch(content, /deleteClient\(/);
+});
