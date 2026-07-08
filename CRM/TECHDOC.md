@@ -616,6 +616,7 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 | 2026-07-07 | Camada Repository — homologação funcional da Fase 1 concluída: auditoria estática dos 22 arquivos (0 divergência), `node --check` 22/22, resolução de imports 22/22, e 48/48 cenários de execução real (código dos repositories sem alteração + Firestore fake) cobrindo CRUD, `where`/`orderBy`/`limitTo`, `newId()` e `onDocChange()`. Nenhuma correção de código necessária. Duas observações arquiteturais não-bloqueantes registradas (ordem de merge do campo `id`, listener sem `onError` explícito silencioso) — pré-existentes desde o piloto Chips, não introduzidas por esta fase. `develop` local segue não pushada/não mesclada — reconciliação com produção fica para decisão separada. Ver §22.10. |
 | 2026-07-07 | 🆕 Preparação para SQL — modelagem relacional completa (`sql/`, novo diretório): 54 coleções ativas convertidas em 75 tabelas + 62 relacionamentos (FK), DER mestre em Mermaid, banco recomendado (PostgreSQL/Cloud SQL, com justificativa), estratégia de migração em 7 ondas (não executada) e plano de adaptação de cada Repository ao SQL sem alterar páginas consumidoras. Puramente planejamento — nenhum banco instalado, nenhum dado migrado, nenhum código funcional alterado. Ver §23. |
 | 2026-07-07 | Preparação para SQL — auditoria final e aceite técnico: cross-check completo DER↔DDL↔Repository Layer↔`COLECOES_FIRESTORE.md`↔documentação. Achado real corrigido: 7 das 58 coleções da Camada Repository (legadas, sem consumidor de código) não tinham tabela — adicionadas como tabelas mínimas (só PK), fechando 100% de paridade Repository→SQL. Total revisado: 82 tabelas, 62 relacionamentos (inalterado — as 7 novas não têm FK). Todas as menções de contagem em `sql/`, `MASTER_ROADMAP.md`, `PROXIMA_ETAPA.md` e `HISTORICO_PROJETO.md` sincronizadas. Ver §23.2 e `sql/04_auditoria_final.md` para o parecer completo. |
+| 2026-07-08 | 🟢 Performance — regularização das Fases 1 (pollers) e 2 (cache persistente do Firestore) do `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`: código já existia sem commit desde 2026-07-07, foi auditado, backup do arquivo protegido (`firebase.js.bak-pre-fase2-cache-2026-07-08`) criado, validado item a item contra o plano (nenhum item fora do escopo), testado (Firestore Rules 52/52, Cloud Functions 25/25, RBAC 33/34 — a falha é pré-existente e não relacionada, reproduzida também no `HEAD` sem estas mudanças). Cache/multi-tab/offline aprovados por revisão de API, não por navegador real (sem credencial de teste disponível). Ver §24. |
 
 ---
 
@@ -1314,3 +1315,56 @@ Todo o material vive em `sql/` (novo diretório na raiz do repositório):
 - Nenhum teste de execução real do DDL contra um Postgres de verdade (exigiria instalar um banco, fora do escopo autorizado desta tarefa).
 - `LISTEN/NOTIFY` como estratégia de tempo real (§23.1) não foi validado na prática — maior incógnita técnica do plano.
 - Modelagem assume PostgreSQL; se uma decisão de negócio futura escolher outro banco, os arquivos de domínio precisariam de nova revisão de tipos/sintaxe (JSONB, `GENERATED ALWAYS AS`, `gen_random_uuid()` são específicos do Postgres).
+
+## 24. Performance — Regularização da Fase 1 (pollers) e Fase 2 (cache persistente do Firestore) (2026-07-08)
+
+> **Contexto:** o código desta seção já existia, escrito e não commitado, no working tree de `develop` desde 2026-07-07 (mesma sessão que fechou o item H13 do `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md`, commit `b413b1f`). Ficou parado sem commit, sem backup do arquivo protegido e sem homologação registrada — o próprio plano (§6/§8) classificava Fase 1 e Fase 2 como "Pendente", cada uma exigindo autorização explícita própria. Esta seção documenta a regularização desse estado: auditoria, backup, validação técnica, testes e homologação, seguindo script de 8 etapas fornecido explicitamente pelo dono do projeto (autorização nomeada para `firebase.js` e para os módulos Dashboard/Central de Alertas).
+
+### 24.1 O que foi encontrado (auditoria)
+
+3 arquivos modificados no working tree, nenhum commitado, nenhum untracked além do próprio código, sem stash pré-existente:
+- `CRM/pages/central-alertas/central-alertas.js` — `REFRESH_MS` 30000→300000 + pausa do polling quando `document.hidden`.
+- `CRM/pages/dashboard/dashboard-alertas.js` — dois timers ajustados (30000→300000 e 180000→600000), ambos com pausa por `document.hidden`, e um `visibilitychange` novo que atualiza imediatamente ao voltar à aba.
+- `CRM/scripts/firebase.js` (**protegido**) — troca de `getFirestore(app)` por `initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) })`, com fallback em `try/catch` para o cache em memória se o navegador não suportar.
+
+### 24.2 Backup do arquivo protegido
+
+`CRM/scripts/firebase.js.bak-pre-fase2-cache-2026-07-08` — cópia exata do `HEAD` commitado (`b413b1f`, anterior às mudanças), no mesmo diretório do original, seguindo a convenção já usada no projeto (`.bak-<contexto>-<data>`, ex. `favoritos.js.bak-fixar-direita-2026-06-13`). Confirmado byte-a-byte idêntico ao `git show HEAD:CRM/scripts/firebase.js` antes de prosseguir.
+
+### 24.3 Validação técnica contra o plano
+
+| Mudança | Item do plano | Classificação |
+|---|---|---|
+| `central-alertas.js`: `REFRESH_MS` 30s→300s | H1-b | ✓ previsto (valor exato) |
+| `central-alertas.js`: pausa com `document.hidden` | H1-a | ✓ previsto |
+| `dashboard-alertas.js`: timer de `verificar()` 30s→300s + pausa | H3 ("mesmo tratamento… ≥10 min") | ⚠ parcialmente previsto — direção e mecanismo corretos, mas o intervalo (5 min) é mais agressivo que o piso de "≥10 min" redigido no plano para H3. Risco baixo: ainda é 10× mais espaçado que o original (30s) e o outro timer do mesmo arquivo (abaixo) já cumpre os 10 min. |
+| `dashboard-alertas.js`: timer de `atualizarAlertas()` 180s→600s + pausa + `visibilitychange` | H3 | ✓ previsto (600000ms = exatamente os "≥10 min"); o refresh imediato via `visibilitychange` é aditivo, mesmo padrão do `focus` já usado no projeto — não é funcionalidade nova, é reaproveitamento de um padrão existente. |
+| `firebase.js`: `initializeFirestore` + `persistentLocalCache` + `persistentMultipleTabManager` | Fase 2 (§4) | ✓ previsto — sintaxe idêntica à prescrita no plano e à API oficial do SDK 10.8.0 (`initializeFirestore`, `persistentLocalCache`, `persistentMultipleTabManager` fazem parte do `firebase-firestore.js` importado). |
+| `firebase.js`: `try/catch` com fallback para `getFirestore(app)` | Não redigido explicitamente no plano | ✓ dentro do espírito do plano — mitigação defensiva, mantém a garantia "nunca deixar o app sem Firestore"; não é escopo novo, é tratamento de erro no mesmo ponto já alterado. |
+
+Nenhum trecho classificado como fora do escopo.
+
+### 24.4 Testes executados
+
+Ambiente: Node v24.17.0 (via `nvm`; CI usa Node 20 — mesma major line de ESM/`node --test`, sem incompatibilidade observada).
+
+| Suíte | Resultado | Tempo |
+|---|---|---|
+| `node --check` nos 3 arquivos alterados | 3/3 OK (sintaxe) | < 1s |
+| `tests/firestore-rules` (`npm test`, emulador Firestore) | 52/52 | ~10,2s |
+| `tests/functions` (`firebase emulators:exec … node --test`) | 25/25 | ~8,0s |
+| `tests/rbac` (`npm test`, código real via loader + mocks) | 33/34 | ~4,6s |
+| Padrão isolado de gating (`document.hidden` + `visibilitychange`), 4 cenários em Node puro | 4/4 | < 1s |
+
+**Falha em `tests/rbac`** (`caixa.test.mjs:44` — "Caixa matriz total: tudo visível", `0 !== 1`): reproduzida **também no `HEAD` commitado, com as 3 alterações removidas via `git stash`** (suíte completa e o arquivo isolado, duas vezes) — confirma que é uma falha pré-existente, não relacionada a esta regularização. Não corrigida aqui (fora do escopo desta tarefa, que é só regularizar Fase 1/2 de performance); fica registrada como pendência separada.
+
+**Não verificável nesta sessão (sem navegador logado):** persistência real em IndexedDB, coordenação `persistentMultipleTabManager` entre abas de verdade, comportamento offline, e o boot visual completo de Dashboard/Central de Alertas. Chrome/Chromium estão instalados no ambiente, mas não há credencial de teste disponível para autenticar no app real (Login é módulo crítico — não se tenta login sem credencial explicitamente fornecida). Cobertura substituta: revisão de código confirmando que a API usada é exatamente a documentada pelo SDK, que a interface pública exportada (`db`) não muda de forma, e o teste de padrão isolado acima. Mesma limitação e mesmo tratamento já registrados em sessões anteriores deste projeto (ver §21.6, §22.7).
+
+### 24.5 Homologação
+
+- Nenhuma mudança de comportamento fora do previsto no plano (ver §24.3).
+- Sem regressão nas 3 suítes automatizadas frente ao `HEAD` anterior (a única falha é idêntica, antes e depois, isolada por `git stash`).
+- Interface pública de `firebase.js` (export `db`) inalterada — nenhum consumidor (incluindo `CRM/firebase/client.js` e os 19 repositories da Camada Repository) precisa mudar.
+- Cache/offline/multi-tab: aprovado por revisão de API + fallback defensivo, não por execução real em navegador (ver ressalva em §24.4). Recomendação: validar visualmente (multi-aba real, DevTools offline) na próxima vez que uma sessão com navegador autenticado estiver disponível, antes de promover para `main`.
+
+**Resultado: aprovado para commit em `develop`, com as duas ressalvas registradas (falha pré-existente do Caixa, não corrigida aqui; validação de navegador pendente).**

@@ -244,7 +244,8 @@ export const dashboardAlertasMixin = {
       card.classList.toggle('acao-vencida', temVencidas);
     };
     verificar();
-    setInterval(verificar, 30000);
+    // Não relê com a aba oculta — o refresh ao voltar o foco (abaixo) já cobre esse caso.
+    setInterval(() => { if (!document.hidden) verificar(); }, 300000);
     window.addEventListener('focus', verificar);
   },
 
@@ -871,7 +872,9 @@ export const dashboardAlertasMixin = {
       }
     }, 30000);
 
-    // Re-verifica os módulos a cada 3 minutos
-    setInterval(atualizarAlertas, 180000);
+    // Re-verifica os módulos a cada 10 minutos — não relê com a aba oculta.
+    setInterval(() => { if (!document.hidden) atualizarAlertas(); }, 600000);
+    // Ao voltar para a aba, atualiza na hora (mesmo padrão de 'focus' já usado no Dashboard/Agenda).
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) atualizarAlertas(); });
   }
 };

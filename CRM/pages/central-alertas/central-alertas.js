@@ -15,7 +15,7 @@ import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../re
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = 'cc_config_alertas';
-const REFRESH_MS = 30000;
+const REFRESH_MS = 300000;
 
 const PRIORIDADE_ORDEM = { critico: 0, atencao: 1, crm: 2 };
 const STATUS_LABEL = { novo: '🆕 Novo', lido: '👁️ Lido', resolvido: '✅ Resolvido' };
@@ -778,7 +778,8 @@ async function init() {
     iniciarStatusSync();
     await carregar();
 
-    refreshTimer = setInterval(carregar, REFRESH_MS);
+    // Não relê com a aba oculta — o refresh ao voltar o foco (abaixo) já cobre esse caso.
+    refreshTimer = setInterval(() => { if (!document.hidden) carregar(); }, REFRESH_MS);
     window.addEventListener('focus', carregar);
     window.addEventListener('beforeunload', () => {
         if (refreshTimer) clearInterval(refreshTimer);

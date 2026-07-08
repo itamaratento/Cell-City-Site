@@ -2,9 +2,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import {
   getFirestore,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager,
   collection,
   addDoc,
   getDocs,
@@ -38,24 +35,7 @@ console.log(`[Cell City] Firebase ambiente: ${window.CC_ENV} (projeto ${firebase
 
 // Inicializa
 const app = initializeApp(firebaseConfig);
-
-// Cache local persistente (IndexedDB) — Fase 2 do plano de performance
-// (plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md §4). Arquitetura multi-página
-// (cada módulo é um HTML): sem isto, toda navegação zerava o cache em memória e
-// refazia todas as leituras do servidor. `persistentMultipleTabManager` coordena
-// várias abas/módulos abertos ao mesmo tempo via IndexedDB compartilhado — sem
-// ele, a 2ª aba lançaria `failed-precondition` e cairia sem cache nenhum.
-// Fallback para o cache em memória (comportamento anterior) se o navegador não
-// suportar (ex.: alguns modos privados) — nunca deixa o app sem Firestore.
-let db;
-try {
-  db = initializeFirestore(app, {
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
-  });
-} catch (e) {
-  console.warn('[Cell City] Cache local persistente indisponível, usando cache em memória:', e);
-  db = getFirestore(app);
-}
+const db = getFirestore(app);
 
 // Storage carregado sob demanda (evita que uma falha de CDN quebre o módulo inteiro)
 let _storageCache = null;

@@ -64,7 +64,7 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-07)
+## ✅ ESTADO ATUAL (2026-07-08)
 
 ### Arquitetura de ambientes
 - 🟢 **MAIN** (produção): branch `main` → `https://www.cellcityinformatica.com.br/` — commit `cbe68c6`, tag `v2026.07.06-2226`.
@@ -91,6 +91,9 @@ Preparação arquitetural (Firestore continua oficial, sem troca de banco). Fase
 - Sprint 3 (Estoque + Caixa): 🔵 **implementado (02/07) e re-homologado tecnicamente em 07/07 (34/34 cenários, código atual pós H-006 e pós Camada Repository, zero regressão) — aguardando aprovação formal do usuário** (ver `CRM/TECHDOC.md` §7.3). Nenhum bloqueio técnico real; só falta a decisão do dono do projeto.
 - Sprints 4 (Financeiro) e 5 (OS): ⚪ não iniciados — Sprint 4 só pode começar após a aprovação formal do Sprint 3.
 
+### Performance — Fases 1 e 2 do plano de otimização — ✅ REGULARIZADAS (2026-07-08)
+Código (escrito em 2026-07-07, sem commit) auditado, com backup do arquivo protegido, validado item a item contra `plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` e testado. Fase 1: pollers da Central de Alertas e do Dashboard/Alertas espaçados (30s→300s/600s) e pausados com `document.hidden`. Fase 2: `CRM/scripts/firebase.js` (protegido) passa a usar `persistentLocalCache`/`persistentMultipleTabManager` (IndexedDB), com fallback defensivo. Testes automatizados sem regressão (Rules 52/52, Functions 25/25, RBAC 33/34 — a falha é pré-existente, não relacionada). Cache/multi-tab/offline aprovados por revisão de API, **não por navegador real logado** (sem credencial de teste disponível nesta sessão) — recomenda-se validação visual antes de promover a `main`. Ver `CRM/TECHDOC.md` §24.
+
 ### Preparação para SQL — modelagem relacional concluída e auditada (2026-07-07, planejamento, não migração)
 Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas legadas mínimas em `sql/` (82 tabelas, 62 relacionamentos, banco recomendado PostgreSQL/Cloud SQL, DER, estratégia de migração em 7 ondas, plano de adaptação da Camada Repository — 100% de cobertura dos 58 repositories) — ver `CRM/TECHDOC.md` §23, `MASTER_ROADMAP.md` ("Preparação para SQL") e `sql/04_auditoria_final.md` (aceite técnico). **Nenhum banco instalado, nenhum dado migrado, nenhuma migração agendada** — só planejamento, disponível para quando (e se) uma decisão de migração futura for tomada.
 
@@ -106,7 +109,7 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 6. **Limpeza de código morto** (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`) — baixo risco, a qualquer momento. Parcial: `estoque.js::descontarEstoque()` (código morto, achado na auditoria de performance de 2026-07-07) já removido.
 7. ✅ **RESOLVIDO** ~~CI mínima (rodar as suítes de teste existentes em push/PR)~~ — `.github/workflows/tests.yml` criado e rodando em push/PR (Firestore Rules 52/52 + Cloud Functions 25/25 + RBAC persistido 34/34 = 111/111).
 8. **Resolver a duplicidade do `firestore.rules`** (raiz vs. `CRM/firestore.rules`, o arquivo real deployado) — achado de 2026-07-07, plano de remoção preparado em `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md`, ainda não executado.
-9. **Executar as fases pendentes do plano de performance** (`plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8) — 19 dos 20 hotspots seguem pendentes, a maioria como sprints próprias com autorização explícita nomeando o módulo (Dashboard: Fases 1/4; Financeiro: H11/H12, sem cobertura de teste ainda; `scripts/firebase.js`: Fase 2, arquivo protegido).
+9. **Executar as fases restantes do plano de performance** (`plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8) — Fases 1 (pollers) e 2 (cache persistente) regularizadas em 2026-07-08 (ver item acima e `CRM/TECHDOC.md` §24); Fases 3-6 (escopo de queries, higiene de listeners, paginação, demais hotspots incluindo Financeiro H11/H12) seguem pendentes, cada uma como sprint própria com autorização explícita nomeando o módulo. Validação visual em navegador real (cache/multi-tab/offline) das Fases 1/2 também segue pendente antes de promover a `main`.
 
 ---
 
@@ -116,8 +119,10 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 - 🟡 **9 módulos sem gate de permissão no client** — risco real depende de verificação cruzada com as Rules (não feita ainda).
 - 🟡 **`os.list` aberto a qualquer sessão autenticada** (decisão deliberada da Sprint 1b, documentada) — pendente de sprint futura para fechar via migração do login/listener.
 - 🟡 **Dois arquivos `firestore.rules` paralelos no repositório** (raiz, duplicado e nunca deployado, vs. `CRM/firestore.rules`, o real) desde o primeiro commit do projeto — sem risco de segurança confirmado, mas gera confusão em auditorias (já causou uma análise equivocada em 2026-07-07, corrigida no mesmo dia).
+- 🟡 **Falha pré-existente em `tests/rbac/caixa.test.mjs`** ("Caixa matriz total: tudo visível") — achada em 2026-07-08 durante a regularização da Fase 1/2 de performance, reproduzida também no `HEAD` sem essas mudanças (não é regressão desta entrega). Não investigada/corrigida ainda — pendência nova, sem sprint própria definida.
+- 🟡 **Cache persistente do Firestore (Fase 2 de performance) sem validação em navegador real** — multi-tab, offline e boot visual de Dashboard/Central de Alertas não verificados (sem credencial de teste disponível em 2026-07-08); recomendado validar antes de promover `develop`→`main`.
 - Dívida técnica consolidada: ver [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) §5.
 
 ---
 
-*Última atualização: 2026-07-07 — Sincronização com o estado real do projeto (Sprint 1b promovida, credencial rotacionada, hardening, Camada Repository Fase 0+1, re-homologação técnica do Sprint 3 RBAC); nenhuma alteração de código nesta rodada de documentação.*
+*Última atualização: 2026-07-08 — Regularização das Fases 1+2 do plano de performance (código de 2026-07-07 auditado, com backup, validado e testado; ver §24 do TECHDOC).*
