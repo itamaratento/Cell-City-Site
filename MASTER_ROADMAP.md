@@ -4,7 +4,7 @@
 > Referência estratégica para todas as decisões futuras de desenvolvimento, homologação e priorização.
 > Para o estado operacional imediato, ver [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md). Para o histórico técnico detalhado, ver [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) e [`CRM/TECHDOC.md`](CRM/TECHDOC.md).
 > Guias operacionais: [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md) · [`GUIA_ROLLBACK.md`](GUIA_ROLLBACK.md) · [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md).
-> **Atualizado em 2026-07-06** após a integração da Sprint 1b e uma nova auditoria de preparação de sprint — ver [`plans/AUDITORIA_GERAL_20260706.md`](plans/AUDITORIA_GERAL_20260706.md) e a seção "Situação em 2026-07-06" abaixo. Ciclo anterior (2026-07-04): [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md), [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md), [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md).
+> **Atualizado em 2026-07-08** — preparação da plataforma encerrada formalmente (auditoria Go/No-Go, veredito **GO**) e infraestrutura de ambientes DEV/PROD corrigida de "parcial" para "concluída" (estava desatualizada). Ver [`plans/AUDITORIA_GO_NOGO_20260708.md`](plans/AUDITORIA_GO_NOGO_20260708.md), [`plans/ENCERRAMENTO_PREPARACAO_20260708.md`](plans/ENCERRAMENTO_PREPARACAO_20260708.md) e a seção "Situação em 2026-07-08" abaixo. Ciclos anteriores: [`plans/AUDITORIA_GERAL_20260706.md`](plans/AUDITORIA_GERAL_20260706.md), [`plans/AUDITORIA_GERAL_20260704.md`](plans/AUDITORIA_GERAL_20260704.md), [`plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md`](plans/PLANO_DIRETOR_PROXIMA_FASE_20260704.md), [`plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md`](plans/ENCERRAMENTO_AUDITORIA_PLANEJAMENTO_20260704.md).
 
 ---
 
@@ -119,6 +119,34 @@ Desde a situação de 2026-07-06 acima, os seguintes itens foram concluídos (de
 - **Sprint 3 do RBAC (Estoque+Caixa) re-homologada tecnicamente**: os 2 arquivos sofreram mudanças desde a verificação original de 02/07 (H-006: fix do prefixo `/dev`; Camada Repository: `estoque.js` migrado). Os 12 cenários do plano original foram re-executados contra o código atual — 34/34 asserções aprovadas, zero regressão. Aprovação formal do usuário continua pendente (ver `CRM/TECHDOC.md` §7.3).
 
 **A Fase 2 (RBAC) permanece exatamente no mesmo ponto de decisão**: Sprint 3 tecnicamente pronta duas vezes (02/07 e 07/07), aguardando só a aprovação formal do dono do projeto para liberar o Sprint 4 (Financeiro).
+
+---
+
+## Situação em 2026-07-08 — Preparação encerrada; ✅ **PREPARAÇÃO CONCLUÍDA — GO**
+
+**A fase de preparação da plataforma está formalmente encerrada.** Auditoria final de prontidão (`plans/AUDITORIA_GO_NOGO_20260708.md`) concluiu **GO** — nenhum bloqueador técnico para iniciar o desenvolvimento funcional dos módulos, ~85% de prontidão estimada (o restante é dívida operacional não bloqueadora: monitoramento, billing, backup de dados, cobertura de teste — ver detalhe no relatório e em `plans/ENCERRAMENTO_PREPARACAO_20260708.md`).
+
+Concluído desde a situação de 2026-07-07: **Performance — Fase 1 (pollers espaçados + pausa por aba oculta) e Fase 2 (cache persistente do Firestore)**, homologadas em navegador real (Chrome, login e dados reais do DEV) e enviadas a `origin/develop` (`CRM/TECHDOC.md` §24-25). Processo de homologação de performance automatizado num comando único (`npm run homologar-performance`).
+
+**A partir de agora, o esforço se concentra no desenvolvimento dos módulos** — dois fluxos, detalhados em `plans/ENCERRAMENTO_PREPARACAO_20260708.md` Etapa 5:
+- **Fluxo A (continuação, já em andamento):** Fase 2 deste roadmap — Sprint 3 (Estoque+Caixa) aguardando só aprovação formal → Sprint 4 (Financeiro) → Sprint 5 (OS).
+- **Fluxo B (novo desenvolvimento):** Fase 4 deste roadmap (Evolução Funcional) — Financeiro (Fase 9/10) → Usuários e Permissões → Portal do Cliente/WhatsApp → Central de Módulos/Dashboards. *Nota: a Fase 4 lista a Fase 3 (Consolidação da Arquitetura/multiempresa) como pré-requisito formal; como o multiempresa foi revertido e o sistema é single-tenant definitivo, essa dependência provavelmente não se aplica mais tal como escrita — recomendação registrada em `plans/ENCERRAMENTO_PREPARACAO_20260708.md`, decisão formal cabe ao dono do projeto.*
+
+Ver "Critérios Permanentes para Sprints" logo abaixo — obrigatórios para toda entrega de módulo a partir de agora.
+
+---
+
+## Critérios Permanentes para Sprints (a partir de 2026-07-08)
+
+Nenhum módulo — do Fluxo A ou do Fluxo B acima — será considerado concluído sem:
+
+1. **Testes automatizados** cobrindo o que foi alterado (mínimo: sintaxe + o gate de RBAC quando aplicável).
+2. **Homologação** — funcional (jsdom ou equivalente) e, quando o módulo tocar UI crítica, em navegador real.
+3. **Documentação** — `CRM/TECHDOC.md` atualizado com a entrega; `PROXIMA_ETAPA.md` refletindo o estado real ao fim da sessão.
+4. **Backup**, quando a entrega tocar arquivo protegido ou crítico (`CLAUDE.md` §1).
+5. **Atualização do histórico técnico** (`HISTORICO_PROJETO.md` e/ou tabela de `CRM/TECHDOC.md` §8).
+
+Isso complementa, não substitui, as regras permanentes já em vigor no `CLAUDE.md` (1 módulo por vez, arquivos protegidos, checklist de testes manuais §5).
 
 ---
 
@@ -254,23 +282,20 @@ Desde a situação de 2026-07-06 acima, os seguintes itens foram concluídos (de
 
 ## Infraestrutura de Ambientes DEV/PROD (transversal às fases)
 
-**Status: 🔵 Parcial — frontend implementado em 2026-07-01; separação de backend planejada, aguardando autorização (freeze de infraestrutura em vigor desde 2026-07-02)**
+**Status: ✅ Concluída e em produção — backend separado desde 2026-07-03/04.** *(Corrigido em 2026-07-08 — esta seção ficou desatualizada por vários dias descrevendo um freeze que já havia sido superado; ver `plans/AUDITORIA_GO_NOGO_20260708.md` Etapa 8.)*
 
-Esta frente não é uma fase do roadmap — é infraestrutura transversal que sustenta a homologação segura de todas as fases. Estado em 2026-07-02:
+Esta frente não é uma fase do roadmap — é infraestrutura transversal que sustenta a homologação segura de todas as fases.
 
-**Já implementado (frontend):**
+**Entregue:**
 - Dois ambientes publicados a partir do mesmo GitHub Pages: 🟢 **MAIN** (branch `main` → raiz do domínio) e 🟠 **DEVELOP** (branch `develop` → `/dev`), montados pelo workflow `.github/workflows/deploy-pages.yml` a cada push em qualquer dos dois branches.
 - Indicador/seletor de ambiente no cabeçalho padrão (`CRM/shared/brand-header.js`), com detecção pela URL e navegação bidirecional.
-- Documentação: `CRM/TECHDOC.md` §9 e [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md).
+- **Backend separado por ambiente**: projeto `cellcity-crm-dev` exclusivo de desenvolvimento, seleção de config em runtime (`CRM/shared/env-config.js`, regra fail-safe: em dúvida, DEV, nunca produção). Testes no DEVELOP não tocam mais dados nem cota de produção.
+- Produção migrada do plano Spark para Blaze (2026-07-04) — sem trava de cota diária.
+- Documentação: `CRM/TECHDOC.md` §9 e [`GUIA_OPERACAO_AMBIENTES.md`](GUIA_OPERACAO_AMBIENTES.md), [`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](plans/SEPARACAO_AMBIENTES_DEV_PROD.md) (plano original executado).
 
-**Limitação conhecida (defeito de arquitetura reconhecido em 2026-07-02):**
-- Os dois ambientes compartilham o **mesmo projeto Firebase** (`cellcity-crm`) — Auth, Firestore e Storage únicos. Testes no DEVELOP gravam na produção e consomem a cota Spark da produção.
+**Pendência remanescente (não bloqueadora, ver `plans/AUDITORIA_GO_NOGO_20260708.md`):** billing do plano Blaze sem teto/alerta de gasto confirmado como configurado.
 
-**Planejado (backend):**
-- Projeto `cellcity-crm-dev` exclusivo de desenvolvimento + seleção de config em runtime (`CRM/shared/env-config.js`, regra fail-safe: em dúvida, DEV). Plano completo com 6 fases, riscos e critérios de aceite: [`plans/SEPARACAO_AMBIENTES_DEV_PROD.md`](plans/SEPARACAO_AMBIENTES_DEV_PROD.md), incluindo os adendos da auditoria pré-separação de 2026-07-02.
-- Execução **somente com autorização formal do proprietário** — prioridades definidas em 2026-07-02: (1) homologação do Sprint 3, (2) limpeza do Firestore, (3) decisão sobre a cota/plano Blaze, (4) separação de ambientes.
-
-**Relação com as fases:** a separação de backend não bloqueia a Fase 2, mas é fortemente recomendada antes das Fases 3+ (consolidação e evolução envolvem testes cada vez mais intensos, que hoje consomem cota e tocam dados de produção). Itens de segurança/backup da Fase 6 já se beneficiam dela.
+**Relação com as fases:** já não é mais pré-condição de nada — está concluída e disponível para todas as fases atuais e futuras.
 
 ---
 

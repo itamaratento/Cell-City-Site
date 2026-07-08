@@ -66,6 +66,9 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ## ✅ ESTADO ATUAL (2026-07-08)
 
+### 🏁 Preparação da plataforma ENCERRADA — GO (2026-07-08)
+Auditoria final de prontidão concluída com veredito **GO**: nenhum bloqueador técnico para iniciar o desenvolvimento funcional dos módulos, ~85% de prontidão estimada. Relatório completo em `plans/AUDITORIA_GO_NOGO_20260708.md`; fechamento formal e baseline técnica em `plans/ENCERRAMENTO_PREPARACAO_20260708.md`; critérios permanentes para as próximas sprints registrados em `MASTER_ROADMAP.md` ("Situação em 2026-07-08"). A partir de agora, o esforço se concentra no desenvolvimento dos módulos (Fluxo A: conclusão da Fase 2/RBAC; Fluxo B: Fase 4/Evolução Funcional) — modo de operação atualizado para "Acelerado Autônomo" a pedido do dono, ver `MASTER_ROADMAP.md` e memória do projeto.
+
 ### Arquitetura de ambientes
 - 🟢 **MAIN** (produção): branch `main` → `https://www.cellcityinformatica.com.br/` — commit `cbe68c6`, tag `v2026.07.06-2226`.
 - 🟠 **DEVELOP**: branch `develop` → `https://www.cellcityinformatica.com.br/dev/` — sincronizada com `origin/develop` (Camada Repository Fase 0+1 integrada via rebase e publicada), 6 commits à frente de `main`.
@@ -104,6 +107,8 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ## 🎯 PRÓXIMAS TAREFAS (ordem recomendada)
 
+> Itens 1-3 são o "Fluxo A" (conclusão da Fase 2/RBAC) do planejamento de módulos pós-encerramento da preparação — ver `plans/ENCERRAMENTO_PREPARACAO_20260708.md` Etapa 5 para o "Fluxo B" (Fase 4 — Evolução Funcional, novo desenvolvimento de produto).
+
 1. **Aprovação formal do Sprint 3 RBAC (Estoque + Caixa)** — evidência técnica completa (34/34, sem regressão); decisão do dono do projeto é o único item pendente antes de liberar o Sprint 4.
 2. **Sprint 4 do RBAC — Financeiro** — só após o item 1 aprovado; atenção redobrada a aprovações, exclusões e trilha de auditoria.
 3. **Sprint 5 do RBAC — OS** — só após o item 2.
@@ -129,4 +134,4 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ---
 
-*Última atualização: 2026-07-08 — Fases 1+2 do plano de performance regularizadas, commitadas (`40fdb89`+`f3c3232`) e homologadas em navegador real; enviado a `origin/develop`. Na sequência, o processo de homologação foi automatizado num comando único (`npm run homologar-performance`). Ver §24, §24.6 e §25 do TECHDOC.*
+*Última atualização: 2026-07-08 — Fases 1+2 do plano de performance regularizadas e homologadas em navegador real; processo de homologação automatizado; auditoria Go/No-Go concluída (GO); preparação da plataforma encerrada formalmente e MASTER_ROADMAP.md sincronizado. Ver §24, §24.6, §25 e §26 do TECHDOC, e `plans/AUDITORIA_GO_NOGO_20260708.md`/`plans/ENCERRAMENTO_PREPARACAO_20260708.md`.*
