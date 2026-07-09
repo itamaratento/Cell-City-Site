@@ -1,3 +1,5 @@
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { ClientesRepository as Clientes } from '../../repositories/clientes.repository.js';
 
 const COL_CLIENTES = 'clientes';
@@ -284,4 +286,10 @@ function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-document.addEventListener('DOMContentLoaded', carregar);
+document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('campanhas')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+    carregar();
+});

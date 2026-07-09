@@ -140,6 +140,10 @@ window.removerBloco        = removerBloco;
 
 // ===== INIT =====
 async function init() {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('central-comandos')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
     await carregarCategorias();
     montarCategorias();
     montarSelectCategorias();

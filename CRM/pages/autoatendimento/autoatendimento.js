@@ -1,6 +1,8 @@
 // ============================================
 // AUTOATENDIMENTO — Cell City CRM
 // ============================================
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { PreOSRepository as PreOS } from '../../repositories/os.repository.js';
 
 const COL = 'pre_os';
@@ -21,7 +23,11 @@ window.fecharModalAutoatendimento = fecharModalAutoatendimento;
 window.converterEmOS = converterEmOS;
 
 // ===== INIT =====
-function init() {
+async function init() {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('autoatendimento')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
     carregarPreOS();
     setupListenerRealtime();
     document.getElementById('auto-modal')?.addEventListener('click', e => {
