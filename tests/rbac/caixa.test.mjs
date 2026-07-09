@@ -17,11 +17,12 @@ const HTML_PATH = join(REPO_ROOT, 'CRM/pages/caixa/index.html');
 const MOD_URL = new URL('file://' + join(REPO_ROOT, 'CRM/pages/caixa/caixa.js')).href;
 
 function setup({ matriz = null, adminLegado = false, iframe = false } = {}) {
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     fsMock.__reset();
     perm.__reset();
     fsMock.__seed('estoque_produtos', 'prod_1', { nome: 'Capinha Teste', categoria: 'Capinha', quantidade: 5, quantidadeMinima: 1, venda: 30, custo: 10 });
-    fsMock.__seed('caixa_lancamentos', 'lanc_1', { tipo: 'entrada', descricao: 'Venda teste', categoria: 'Vendas', valor: 100, custo: 40, lucro: 60, data: '2026-07-07', dataISO: '2026-07-07T12:00:00.000Z', ano: 2026, empresa_id: 'empresa_teste' });
-    fsMock.__seed('lembretes_pagamento', 'lemb_1', { fornecedor: 'Fornecedor X', descricao: 'Conta teste', valor: 80, vencimento: '2026-07-10', empresa_id: 'empresa_teste' });
+    fsMock.__seed('caixa_lancamentos', 'lanc_1', { tipo: 'entrada', descricao: 'Venda teste', categoria: 'Vendas', valor: 100, custo: 40, lucro: 60, data: hoje, dataISO: hoje + 'T12:00:00.000Z', ano: 2026, empresa_id: 'empresa_teste' });
+    fsMock.__seed('lembretes_pagamento', 'lemb_1', { fornecedor: 'Fornecedor X', descricao: 'Conta teste', valor: 80, vencimento: hoje, empresa_id: 'empresa_teste' });
     perm.__setMatriz(matriz);
     perm.__setAdminLegado(adminLegado);
     const harness = mountPage(HTML_PATH, '/CRM/pages/caixa/index.html');
