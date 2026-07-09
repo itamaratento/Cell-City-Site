@@ -80,7 +80,7 @@ export const dashboardBuscaMixin = {
             id: String(id),
             title: `${o.clientName || 'Cliente'} — ${aparelho}`,
             sub: `#${id}${o.defect ? ' · ' + o.defect : ''}`,
-            search: `${id} ${o.clientName || ''} ${o.phone || ''} ${o.brand || ''} ${o.model || ''} ${o.defect || ''}`.toLowerCase(),
+            search: `${id} ${o.clientName || ''} ${o.phone || ''} ${o.brand || ''} ${o.model || ''} ${o.defect || ''} ${o.imei || ''} ${o.imei1 || ''} ${o.imei2 || ''}`.toLowerCase(),
             url: `../../pages/os/index.html#os-${encodeURIComponent(id)}`
           });
         });
