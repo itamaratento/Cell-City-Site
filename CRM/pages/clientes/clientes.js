@@ -1,3 +1,5 @@
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
 import { ConfigRepository as Config } from "../../repositories/sistema.repository.js";
 
@@ -30,6 +32,10 @@ let config = { loja: DEFAULT_LOJA, logo: '', garantias: [] };
 let nextId = 200;
 
 async function init() {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('config')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
     try {
         const snap = await Config.getById(CONFIG_DOC_ID);
         if (snap) {
