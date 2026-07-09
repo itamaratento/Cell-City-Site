@@ -796,7 +796,7 @@ function renderList() {
     c.innerHTML = filtered.map(os => {
         const d = os.defect || '';
         const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
-        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
+        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">📞 ${os.phone||''}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
     }).join('');
 }
 
