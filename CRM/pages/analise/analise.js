@@ -1,6 +1,5 @@
-import { db, doc, getDoc } from "../../scripts/firebase.js";
-// firebase.js já importou env-config.js e populou window.CC_FIREBASE_CONFIG.
-const CC_PROJECT_ID = window.CC_FIREBASE_CONFIG.projectId;
+import { db, collection, getDocs } from "../../scripts/firebase.js";
+import { initModulo } from '../../scripts/kernel.js';
 
 // ── Estado
 let todos       = [];
@@ -15,25 +14,16 @@ const fmtK    = v => { const n=Number(v||0); return Math.abs(n)>=1000?`R$ ${(n/1
 
 // ── Firestore: lê todos os lançamentos
 async function carregar() {
-    let token = '';
-    do {
-        const r = await fetch(
-            `https://firestore.googleapis.com/v1/projects/${CC_PROJECT_ID}/databases/(default)/documents/caixa_lancamentos?pageSize=300${token?'&pageToken='+token:''}`
-        );
-        const d = await r.json();
-        if (!d.documents) break;
-        for (const doc of d.documents) {
-            const f = doc.fields;
-            const fv = k => { const x=f[k]; if(!x) return null; return x.stringValue??Number(x.integerValue??x.doubleValue??0); };
-            todos.push({
-                ano:     Number(fv('ano')    || 0),
-                mes:     String(fv('mes')    || ''),
-                dataISO: String(fv('dataISO')|| ''),
-                lucro:   Number(fv('lucro')  || 0),
-            });
-        }
-        token = d.nextPageToken || '';
-    } while (token);
+    const snap = await getDocs(collection(db, 'caixa_lancamentos'));
+    todos = snap.docs.map(d => {
+        const data = d.data();
+        return {
+            ano:     Number(data.ano || 0),
+            mes:     String(data.mes || ''),
+            dataISO: String(data.dataISO || ''),
+            lucro:   Number(data.lucro || 0),
+        };
+    });
 }
 
 // ── Semana ISO
@@ -334,6 +324,9 @@ function setupPeriodoTabs() {
 // ══════════════════════════════════════
 async function init() {
     try {
+        const ctx = await initModulo();
+        if (!ctx) return;
+
         await carregar();
         anoTopo = new Date().getFullYear();
 
