@@ -1,3 +1,5 @@
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
 import { ConfigRepository as Config } from "../../repositories/sistema.repository.js";
 import { getCtxAsync, logout } from "../../scripts/kernel.js";
