@@ -8,6 +8,8 @@
 //    Título → Busca inteligente → Novo Registro → Favoritos →
 //    Registros → [Resumo Geral / Estatísticas / Linha do Tempo] (recolhíveis)
 // ============================================
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
 import { DiarioRegistrosRepository as DiarioRegistros, DiarioEventosRepository as DiarioEventos } from "../../repositories/diario.repository.js";
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
@@ -532,7 +534,13 @@ async function salvar() {
         filtroCat.value = '';
         filtroStatus.value = '';
         filtroPrio.value = '';
-        await carregar();
+        await (async function() {
+  const ctx = await initModulo();
+  if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('diario')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+  carregar();
+})();
         recarregarTimelineSeAberta();
         // Backup automático no Drive — nunca bloqueia o salvamento local
         if (backupConfigurado()) {
