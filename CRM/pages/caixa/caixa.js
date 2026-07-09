@@ -53,7 +53,7 @@ async function init() {
         document.querySelector('.btn-novo-lembrete')?.style.setProperty('display', 'none');
     }
 
-    document.getElementById('data').value = hoje();
+    try { document.getElementById('data').value = hoje(); } catch {}
     await carregarCategorias();
     assinarLancamentos();
     assinarLembretes();

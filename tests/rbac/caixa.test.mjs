@@ -32,6 +32,7 @@ function setup({ matriz = null, adminLegado = false, iframe = false } = {}) {
 test('Caixa restrito: form + novo-lembrete ocultos, cards sem editar/excluir, lembretes sem Pagar/excluir', async () => {
     const { document } = setup({ matriz: { caixa: { visualizar: true, criar: false, editar: false, excluir: false } } });
     await importFresh(MOD_URL);
+    await new Promise(r => setTimeout(r, 150));
 
     assert.equal(document.getElementById('bloco-padrao-2').style.display, 'none');
     assert.equal(document.querySelector('.btn-novo-lembrete')?.style.display, 'none');
@@ -45,7 +46,16 @@ test('Caixa matriz total: tudo visível', async () => {
     const { document } = setup({ matriz: { caixa: { visualizar: true, criar: true, editar: true, excluir: true } } });
     await importFresh(MOD_URL);
 
+    // Aguarda até que os lançamentos sejam carregados e renderizados
+    let lancCards;
+    for (let i = 0; i < 20; i++) {
+        await new Promise(r => setTimeout(r, 100));
+        lancCards = document.querySelectorAll('.lancamento-card');
+        if (lancCards.length > 0) break;
+    }
+
     assert.notEqual(document.getElementById('bloco-padrao-2').style.display, 'none');
+    assert.ok(lancCards.length >= 1, 'pelo menos 1 card de lançamento');
     assert.equal(document.querySelectorAll('.lancamento-card button[onclick^="editarLancamento"]').length, 1);
     assert.equal(document.querySelectorAll('.lancamento-card .btn-excluir').length, 1);
     assert.equal(document.querySelectorAll('.btn-pagar-lembrete').length, 1);
