@@ -683,7 +683,7 @@ async function saveOS() {
     }
 }
 
-async function updateClientHistory(phone, name, osId, phoneDigits) { phoneDigits = phoneDigits || normalizePhoneDigits(phone); let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; c.phone = phone; c.phoneDigits = phoneDigits; } else { c = { name, phone, phoneDigits, history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
+async function updateClientHistory(phone, name, osId, phoneDigits, origem) { phoneDigits = phoneDigits || normalizePhoneDigits(phone); let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; c.phone = phone; c.phoneDigits = phoneDigits; } else { c = { name, phone, phoneDigits, origem: origem || 'presencial', history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
 
 // ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
 async function runAutomacoesOS(os) {
@@ -1998,21 +1998,25 @@ function showClientDetail(phone) {
                 <div class="detail-client" style="font-size:18px;">${client.name || ''}</div>
                 <div class="client-rating-display">${renderStarsHTML(client.rating || 0)}</div>
             </div>
-            <div style="font-size:13px;color:var(--text2);margin-top:8px;">📞 ${client.phone || ''} ${client.phone2 ? `<span style="margin-left:10px;">📱 ${client.phone2}</span>` : ''}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:8px;">📞 ${client.phone || ''} ${client.phone2 ? `<span style="margin-left:10px;">📱 ${client.phone2}</span>` : ''} ${client.whatsapp && client.whatsapp !== client.phone ? `<span style="margin-left:8px;"><a href="https://wa.me/${client.whatsapp.replace(/\D/g,'')}" target="_blank" style="color:#25D366;text-decoration:none;" title="WhatsApp">💬 ${client.whatsapp}</a></span>` : ''}</div>
             ${client.email ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">📧 ${client.email}</div>` : ''}
             ${client.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🆔 CPF: ${client.cpf}</div>` : ''}
+            ${client.rg ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🪪 RG: ${client.rg}</div>` : ''}
             ${client.birthDate ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🎂 ${client.birthDate}</div>` : ''}
+            ${client.origem ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">📋 Origem: ${client.origem}</div>` : ''}
         </div>`;
 
         if (client.tags && client.tags.length > 0) {
             html += `<div class="client-tags-container" style="margin-bottom:16px;">${client.tags.map(t => `<span class="client-tag">🏷️ ${t}</span>`).join('')}</div>`;
         }
 
+        const nivel = totalSpent >= 5000 ? '💎 VIP' : totalSpent >= 2000 ? '🥇 Ouro' : totalSpent >= 500 ? '🥈 Prata' : '🥉 Bronze';
         html += `<div class="client-stats-grid">
             <div class="client-stat-card"><div class="stat-num">${totalOS}</div><div class="stat-lbl">Total OS</div></div>
             <div class="client-stat-card"><div class="stat-num">R$ ${totalSpent.toFixed(2)}</div><div class="stat-lbl">Total Gasto</div></div>
             <div class="client-stat-card"><div class="stat-num">${lastAttendance}</div><div class="stat-lbl">Último Atendimento</div></div>
             <div class="client-stat-card"><div class="stat-num">${activeWarranties}</div><div class="stat-lbl">Garantias Ativas</div></div>
+            <div class="client-stat-card"><div class="stat-num">${nivel}</div><div class="stat-lbl">Nível</div></div>
         </div>`;
 
         if (devices.length > 0) {
@@ -2125,13 +2129,15 @@ function renderClientForm(client) {
     const area = document.getElementById('client-management-area');
     if (!area) return;
 
-    const c = client || {};
-    
-    let html = `<div class="client-form-container">
-        <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>${client ? '✏️ Editando Ficha Completa' : '➕ Novo Cadastro Completo'}</span>
-            <button onclick="toggleClientManagement()" style="background:var(--surface3);border:1px solid var(--border);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text2);">✕ Fechar</button>
-        </div>
+        const c = client || {};
+        const niv = client ? (() => { const ords = DB.getOS().filter(o => o.phone === client.phone); const gasto = ords.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0); return gasto >= 5000 ? '💎 VIP' : gasto >= 2000 ? '🥇 Ouro' : gasto >= 500 ? '🥈 Prata' : '🥉 Bronze'; })() : '🥉 Bronze';
+        
+        let html = `<div class="client-form-container">
+            <div class="form-section-title" style="display:flex;justify-content:space-between;align-items:center;">
+                <span>${client ? '✏️ Editando Ficha Completa' : '➕ Novo Cadastro Completo'}</span>
+                <span style="font-size:12px;">${niv}</span>
+                <button onclick="toggleClientManagement()" style="background:var(--surface3);border:1px solid var(--border);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text2);">✕ Fechar</button>
+            </div>
 
         <div class="client-form-header">
             <div class="form-group" style="flex:1;">
@@ -2147,6 +2153,7 @@ function renderClientForm(client) {
         <div class="form-row">
             <div class="form-group"><label>Data de Nascimento</label><input type="date" id="cf-birth" value="${c.birthDate || ''}"></div>
             <div class="form-group"><label>CPF</label><input type="text" id="cf-cpf" value="${c.cpf || ''}" placeholder="000.000.000-00"></div>
+            <div class="form-group"><label>RG</label><input type="text" id="cf-rg" value="${c.rg || ''}" placeholder="RG"></div>
         </div>
 
         <div class="form-section-title">📞 Contatos</div>
@@ -2167,6 +2174,13 @@ function renderClientForm(client) {
             </div>
         </div>
         <div class="form-row">
+            <div class="form-group" style="flex:0 0 200px;">
+                <label>WhatsApp</label>
+                <div style="display:flex;gap:6px;">
+                    <input type="tel" id="cf-whatsapp" value="${c.whatsapp || c.phone || ''}" placeholder="(00) 00000-0000" style="flex:1;">
+                    <button type="button" class="icon-btn" onclick="openWhatsApp(document.getElementById('cf-whatsapp').value)">💬</button>
+                </div>
+            </div>
             <div class="form-group"><label>E-mail Principal</label><input type="email" id="cf-email1" value="${c.email || ''}" placeholder="email@exemplo.com"></div>
             <div class="form-group"><label>E-mail Secundário</label><input type="email" id="cf-email2" value="${c.email2 || ''}" placeholder="email2@exemplo.com"></div>
         </div>
@@ -2357,6 +2371,8 @@ async function saveFullClient() {
         name: name,
         birthDate: document.getElementById('cf-birth').value,
         cpf: document.getElementById('cf-cpf').value,
+        rg: document.getElementById('cf-rg').value,
+        whatsapp: document.getElementById('cf-whatsapp').value,
         phone2: document.getElementById('cf-phone2').value,
         email: document.getElementById('cf-email1').value,
         email2: document.getElementById('cf-email2').value,
@@ -2376,6 +2392,7 @@ async function saveFullClient() {
         appleId: document.getElementById('cf-appleId').value,
         appleIdPass: document.getElementById('cf-appleIdPass').value,
         freeObservations: document.getElementById('cf-observations').value,
+        origem: currentEditingClient ? (currentEditingClient.origem || 'presencial') : 'presencial',
         history: currentEditingClient ? (currentEditingClient.history || []) : [],
         createdAt: currentEditingClient ? (currentEditingClient.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt: new Date().toISOString()
