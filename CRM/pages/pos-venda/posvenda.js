@@ -1,4 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar, podeEditar } from '../../shared/permissoes.js';
 // db, doc, updateDoc do SDK direto seguem só para a escrita em "os" dentro de
 // salvarEdicaoAgendamento() — fora de escopo desta migração (ver relatório).
 import { db, doc, updateDoc } from "../../scripts/firebase.js";
@@ -665,6 +666,7 @@ function abrirModalExclusao(contato) {
 }
 
 async function excluirContato(key, contato) {
+    if (!podeEditar('pos-venda')) { alert('Acesso negado'); return; }
     try {
         await PosvendaContatos.update(key, {
             ativo: false,
@@ -957,6 +959,7 @@ function fecharConfiguracoes(event) {
 }
 
 async function salvarConfiguracoes() {
+    if (!podeEditar('pos-venda')) { alert('Acesso negado'); return; }
     const msg5 = document.getElementById('msg-5').value.trim();
     const msg15 = document.getElementById('msg-15').value.trim();
     const msg30 = document.getElementById('msg-30').value.trim();
@@ -1064,5 +1067,10 @@ document.addEventListener('keydown', atalhos);
 document.addEventListener('DOMContentLoaded', async () => {
     const ctx = await initModulo();
     if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('pos-venda')) {
+        document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+        return;
+    }
     await init();
 });
