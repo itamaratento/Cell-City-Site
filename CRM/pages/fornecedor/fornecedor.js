@@ -214,7 +214,10 @@ function renderEstoqueBaixo(itens) {
                     Mín: ${p.quantidadeMinima}
                 </div>
             </div>
-            <span class="forn-badge-alerta">⚠ Baixo</span>
+            <div style="display:flex;align-items:center;gap:8px">
+                <button class="forn-card-compras" data-nome="${escHtml(p.nome || '')}" data-qtd="${Math.max((p.quantidadeMinima||1) * 2 - p.quantidade, 1)}" title="Adicionar à lista de compras" style="background:var(--yellow,#f59e0b);border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700;color:#000;">➕ Comprar</button>
+                <span class="forn-badge-alerta">⚠ Baixo</span>
+            </div>
         </div>
     `).join('');
 }
@@ -366,6 +369,19 @@ document.getElementById('btn-nova-tendencia').addEventListener('click', () => {
 });
 document.getElementById('ft-salvar').addEventListener('click', salvarTendencia);
 document.getElementById('ft-cancelar').addEventListener('click', fecharFormTendencia);
+
+// Event delegation for "Comprar" buttons in low stock
+document.getElementById('baixo-lista')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.forn-card-compras');
+    if (!btn) return;
+    const nome = btn.dataset.nome;
+    const qtd = parseInt(btn.dataset.qtd) || 1;
+    try {
+        await FornecedorCompras.set('compra_' + Date.now(), { nome, quantidade: qtd, urgencia: 'alta', obs: 'Auto: estoque baixo', atualizadoEm: serverTimestamp() });
+        toast('✅ Adicionado à lista de compras!');
+        await carregarCompras();
+    } catch { toast('⚠ Erro.'); }
+});
 
 // busca global
 document.getElementById('forn-busca-global')?.addEventListener('input', filtrarCompras);
