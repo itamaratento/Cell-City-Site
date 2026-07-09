@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-fav-key="chat" data-fav-label="Chat" data-fav-icon="💬" data-fav-url="/CRM/pages/chat/index.html">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>var _h=location.hostname;var _p=location.pathname;var _dev=(_p==='/dev'||_p.indexOf('/dev/')===0);if(_h!=='127.0.0.1'&&_h!=='localhost'&&localStorage.getItem('cc_kernel_v1')!=='1')window.location.replace((_dev?'/dev':'')+'/CRM/login.html');</script>
+<title>Cell City — Chat</title>
+<link rel="stylesheet" href="chat.css">
+<link rel="stylesheet" href="../../shared/dock.css">
+</head>
+<body>
+
+<header class="ch-header"><h1>💬 Chat</h1></header>
+
+<div class="ch-layout">
+  <div class="ch-sidebar" id="ch-sidebar">
+    <div style="padding:24px;text-align:center;color:var(--text3);font-size:13px">Carregando...</div>
+  </div>
+
+  <div class="ch-main">
+    <div class="ch-main-placeholder" id="ch-placeholder">
+      <div>Selecione uma conversa ao lado para começar.</div>
+    </div>
+    <div class="ch-main-header" id="ch-main-header" style="display:none"></div>
+    <div class="ch-messages" id="ch-messages" style="display:none"></div>
+    <div class="ch-input-bar" id="ch-input-bar" style="display:none">
+      <input type="text" class="ch-input" id="ch-input" placeholder="Digite sua mensagem..." autocomplete="off">
+      <button class="ch-send-btn" id="ch-send">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="cr-toast" id="ch-toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1d23;border:1px solid rgba(0,200,83,0.3);border-radius:100px;padding:10px 22px;color:#fff;font-size:14px;opacity:0;transition:all 300ms;pointer-events:none;white-space:nowrap;z-index:9500"></div>
+
+<script src="../../shared/brand-header.js"></script>
+<script type="module" src="chat.js"></script>
+<script type="module" src="../../shared/dock.js"></script>
+</body>
+</html>
