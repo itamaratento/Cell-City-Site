@@ -1342,4 +1342,13 @@ Pendente: teste visual no navegador.
 
 **Validação:** RBAC completo 85/86 (única falha é a pré-existente do Caixa, inalterada). 10/10 testes novos.
 
+### 09/07/2026 — Sprint 16-19: Consolidação + Fornecedores + RBAC + firestore.rules — CONCLUÍDAS
+
+Sprints 16-18: OS templates configuráveis, wppHistorico, 14 mensagens prontas.
+Sprint 19: Fornecedores — nova aba cadastro (10 campos, CRUD), initModulo+RBAC.
+firestore.rules: cópia raiz sincronizada com CRM/ (493 linhas).
+Config page: initModulo+RBAC.
+
+Testes: 97/97.
+
 *Fim do histórico — novos registros serão adicionados abaixo.*
