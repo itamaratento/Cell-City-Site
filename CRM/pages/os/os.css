@@ -719,3 +719,13 @@ body {
     line-height: 1.5;
 }
 .retorno-hist-item:last-child { border-bottom: none; }
+
+.wpp-historico { display: flex; flex-direction: column; gap: 4px; }
+.wpp-hist-item {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text2);
+    padding: 6px 8px; background: rgba(255,255,255,0.03);
+    border-radius: 6px; gap: 8px;
+}
+.wpp-hist-tipo { font-weight: 600; white-space: nowrap; }
+.wpp-hist-meta { font-size: 11px; color: var(--text3); white-space: nowrap; }

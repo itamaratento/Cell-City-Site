@@ -1292,34 +1292,37 @@ async function salvarLembreteOS() {
 function copiarMensagemFinalizado() {
     if (!currentOS) return;
     const os = currentOS;
-    const firstName = (os.clientName || '').split(' ')[0] || 'Cliente';
-    const garantiaModelo = _getSelectedWarranty(os);
-    const garantiaDias = os.prazoGarantia ?? 90;
-    const garantiaStr = garantiaModelo ? garantiaDias + ' dias — ' + garantiaModelo.nome : garantiaDias + ' dias';
-    let dataGarantiaStr = '';
-    if (os.createdAt) {
-        const d = new Date(os.createdAt);
-        d.setDate(d.getDate() + garantiaDias);
-        dataGarantiaStr = d.toLocaleDateString('pt-BR');
-    }
-    const linkAvaliacao = localStorage.getItem('cc_link_avaliacao_google') || '';
-    const message =
-        'Olá, ' + firstName + '! 👋\n\n' +
+    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const msg = (retornoMensagens.finalizado || _msgFinalizadoPadrao())
+        .replace(/\{nome\}/g, nome)
+        .replace(/\{os\}/g, os.id)
+        .replace(/\{garantia\}/g, _garantiaStr(os))
+        .replace(/\{validade\}/g, _validadeGarantiaStr(os))
+        .replace(/\{avaliacao\}/g, localStorage.getItem('cc_link_avaliacao_google') || '');
+    _copiarComHistorico(msg, 'finalizado', '✅ Finalizado');
+}
+
+function _garantiaStr(os) {
+    const m = _getSelectedWarranty(os);
+    const d = os.prazoGarantia ?? 90;
+    return m ? d + ' dias — ' + m.nome : d + ' dias';
+}
+function _validadeGarantiaStr(os) {
+    if (!os.createdAt) return '';
+    const d = new Date(os.createdAt);
+    d.setDate(d.getDate() + (os.prazoGarantia ?? 90));
+    return d.toLocaleDateString('pt-BR');
+}
+
+function _msgFinalizadoPadrao() {
+    const link = localStorage.getItem('cc_link_avaliacao_google') || '';
+    return 'Olá, {nome}! 👋\n\n' +
         'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
-        '📋 OS Nº ' + os.id + '\n\n' +
-        'Você pode consultar as informações da sua ordem de serviço através do Portal do Cliente Cell City.\n\n' +
-        '🔗 ' + LINK_PORTAL_WPP + '\n\n' +
-        '📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n' +
-        '🛡 Garantia: ' + garantiaStr + '\n' +
-        (dataGarantiaStr ? '📅 Válida até: ' + dataGarantiaStr + '\n\n' : '\n') +
-        'Agradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.' +
-        (linkAvaliacao ? '\n\n⭐ Avalie nosso atendimento:\n' + linkAvaliacao : '') +
-        '\n\nCell City Informática';
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(message).then(() => showToast('✅ Mensagem Finalizado copiada!')).catch(() => fallbackCopyMessage(message));
-    } else {
-        fallbackCopyMessage(message);
-    }
+        '📋 OS Nº {os}\n\n' +
+        '🛡 Garantia: {garantia}\n' +
+        '{validade ? \'📅 Válida até: \' + {validade} : \'\n\n' +
+        'Cell City Informática' +
+        (link ? '\n\n⭐ Avalie nosso atendimento:\n' + link : '');
 }
 
 /**
@@ -1436,59 +1439,87 @@ async function copyWarrantyToClipboard() {
 function copyMessageToClipboard() {
     if (!currentOS) return;
     const os = currentOS;
-    
-    // Extrai o primeiro nome do cliente
-    const fullName = os.clientName || '';
-    const firstName = fullName.split(' ')[0] || 'Cliente';
-    
-    // Monta a mensagem conforme especificação
-    const message = 'Olá, ' + firstName + '! 👋\n\n' +
+    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const message = (retornoMensagens.cliente || _msgClientePadrao())
+        .replace(/\{nome\}/g, nome).replace(/\{os\}/g, os.id);
+
+    _copiarComHistorico(message, 'cliente', '👤 Cliente');
+}
+
+function _msgClientePadrao() {
+    return 'Olá, {nome}! 👋\n\n' +
         'Sua Ordem de Serviço já foi aberta e está disponível para acompanhamento.\n\n' +
-        '📋 OS Nº ' + os.id + '\n\n' +
-        'Você pode acompanhar o andamento do serviço, consultar informações e verificar atualizações através do Portal do Cliente da Cell City.\n\n' +
+        '📋 OS Nº {os}\n\n' +
+        'Você pode acompanhar pelo Portal do Cliente:\n' +
         '🔗 https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html\n\n' +
-        '📱 Utilize o número de telefone cadastrado na ordem de serviço para acessar o portal.\n\n' +
-        'Agradecemos pela confiança em nosso trabalho. Qualquer dúvida, estamos à disposição.\n\n' +
+        '📱 Use o telefone cadastrado na OS para acessar.\n\n' +
         'Cell City Informática';
-    
-    // Copia para a área de transferência
+}
+
+function _copiarComHistorico(texto, tipo, label) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(message).then(function () {
-            showToast('✅ Mensagem copiada com sucesso!');
-        }).catch(function () {
-            fallbackCopyMessage(message);
+        navigator.clipboard.writeText(texto).then(() => {
+            showToast('✅ Mensagem copiada!');
+            registrarWppHistorico(tipo, label, texto);
+        }).catch(() => {
+            fallbackCopyMessage(texto);
+            registrarWppHistorico(tipo, label, texto);
         });
     } else {
-        fallbackCopyMessage(message);
+        fallbackCopyMessage(texto);
+        registrarWppHistorico(tipo, label, texto);
     }
 }
 
 function copySupplierMessage() {
     if (!currentOS) return;
     const os = currentOS;
+    const msg = (retornoMensagens.fornecedor || _msgFornecedorPadrao())
+        .replace(/\{modelo\}/g, [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho')
+        .replace(/\{defeito\}/g, (os.defect || '').replace(/^trocar\s+/i, '').replace(/\s+e\s+/gi, ' + '))
+        .replace(/\{os\}/g, os.id);
+    _copiarComHistorico(msg, 'fornecedor', '🏭 Fornecedor');
+}
 
+function _msgFornecedorPadrao() {
     const h = new Date().getHours();
-    const greeting = h >= 5 && h < 12 ? 'Bom dia!' : h >= 12 && h < 18 ? 'Boa tarde!' : 'Boa noite!';
-
-    const device = [os.brand, os.model].filter(Boolean).join(' ') || 'Aparelho';
-
-    let defect = (os.defect || '').trim();
-    defect = defect.replace(/^trocar\s+/i, '');
-    defect = defect.replace(/\s+e\s+/gi, ' + ');
-
-    const message = greeting + '\n\n' + device + '\n\nPreço ' + defect + '?\n\nCell City Informática';
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(message).then(function () {
-            showToast('✅ Mensagem para fornecedor copiada!');
-        }).catch(function () {
-            fallbackCopyMessage(message);
-        });
-    } else {
-        fallbackCopyMessage(message);
-    }
+    const g = h >= 5 && h < 12 ? 'Bom dia!' : h >= 12 && h < 18 ? 'Boa tarde!' : 'Boa noite!';
+    return g + '\n\n{modelo}\n\nPreço {defeito}?\n\nCell City Informática';
 }
 window.copySupplierMessage = copySupplierMessage;
+
+// ===== WPP HISTÓRICO — registro de todas as comunicações =====
+async function registrarWppHistorico(tipo, label, preview) {
+    if (!currentOS || !currentOS.id) return;
+    const now = new Date();
+    const historico = currentOS.wppHistorico || [];
+    historico.push({
+        tipo,
+        label: label || tipo,
+        preview: (preview || '').substring(0, 100),
+        data: now.toLocaleDateString('pt-BR'),
+        hora: now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        operador: getOperadorNome(),
+        ts: now.toISOString()
+    });
+    currentOS.wppHistorico = historico;
+    try {
+        await updateDoc(doc(db, 'os', currentOS.id), { wppHistorico: historico });
+    } catch(e) { console.warn('Erro ao registrar wppHistorico:', e); }
+}
+
+function renderWppHistoricoPanel() {
+    if (!currentOS) return '';
+    const historico = currentOS.wppHistorico || [];
+    if (!historico.length) return '';
+    const maxExibir = 10;
+    const itens = historico.slice(-maxExibir).reverse();
+    return `<div class="retorno-section-label" style="margin-top:16px;">📋 ÚLTIMAS COMUNICAÇÕES</div>
+        <div class="wpp-historico">${itens.map(h => `<div class="wpp-hist-item">
+            <span class="wpp-hist-tipo">${h.label || h.tipo}</span>
+            <span class="wpp-hist-meta">${h.data} ${h.hora} — ${h.operador}</span>
+        </div>`).join('')}</div>`;
+}
 
 // ===== CENTRAL DE RETORNO =====
 
@@ -1512,6 +1543,9 @@ async function loadRetornoMensagens() {
 
 function _retornoMensagensPadrao() {
     return {
+        cliente: 'Olá, {nome}! 👋\n\nSua Ordem de Serviço já foi aberta e está disponível para acompanhamento.\n\n📋 OS Nº {os}\n\n🔗 https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html\n\n📱 Use o telefone cadastrado na OS para acessar.\n\nCell City Informática',
+        fornecedor: _msgFornecedorPadrao(),
+        finalizado: _msgFinalizadoPadrao(),
         orcamento: 'Olá, {nome}! 👋\n\nO orçamento do seu {aparelho} está pronto para sua avaliação.\n\nQualquer dúvida, estamos à disposição!\nCell City Informática',
         retorno1:  'Olá, {nome}! 👋\n\nPassando para verificar se você teve a oportunidade de avaliar o orçamento do seu {aparelho}.\n\nEstamos à disposição!\nCell City Informática',
         retorno2:  'Olá, {nome}! 👋\n\nEste é nosso segundo contato sobre o orçamento do seu {aparelho}.\n\nPor favor, nos informe se deseja prosseguir com o serviço.\nCell City Informática',
@@ -1551,6 +1585,7 @@ function renderRetornoPanelHTML(os) {
         ? historico.map(h => `<div class="retorno-hist-item"><strong>${h.data}</strong> — ${h.label || h.tipo}</div>`).join('')
         : `<div style="font-size:12px;color:var(--text3);padding:4px 0;">Nenhum retorno registrado ainda.</div>`;
 
+    const wppHistHtml = renderWppHistoricoPanel();
     return `<div id="retorno-panel" class="retorno-panel" style="display:none;">
         <div class="retorno-panel-title">🔔 CENTRAL DE RETORNO</div>
         <div class="retorno-section-label">STATUS DE RETORNO</div>
@@ -1656,12 +1691,10 @@ async function copiarMensagemRetorno(chave) {
     const os = currentOS;
     const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
     const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho';
-    let msg = (retornoMensagens[chave] || `Retorno — OS ${os.id} — ${os.clientName}`)
+    const msg = (retornoMensagens[chave] || `Retorno — OS ${os.id} — ${os.clientName}`)
         .replace(/\{nome\}/g, nome).replace(/\{aparelho\}/g, aparelho).replace(/\{os\}/g, os.id);
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(msg).then(() => showToast('✅ Mensagem copiada!')).catch(() => fallbackCopyMessage(msg));
-    } else { fallbackCopyMessage(msg); }
+    _copiarComHistorico(msg, 'retorno_' + chave, '🔔 ' + (chave === 'orcamento' ? 'Orçamento' : 'Retorno ' + chave.replace('retorno', '')));
 
     const MAPA = { orcamento: 'orcamentoEnviado', retorno1: 'retorno1', retorno2: 'retorno2', retorno3: 'retorno3', retorno4: 'retorno4' };
     const tipoStatus = MAPA[chave];
@@ -1690,18 +1723,26 @@ async function copiarMensagemRetorno(chave) {
 async function abrirEditarMensagensRetorno() {
     if (!Object.keys(retornoMensagens).length) await loadRetornoMensagens();
     const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const CHAVES = ['orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
-    const NOMES  = { orcamento: '📋 Mensagem de Orçamento', retorno1: '🔄 Retorno 1', retorno2: '🔄 Retorno 2', retorno3: '🔄 Retorno 3', retorno4: '🔄 Retorno 4' };
+    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
+    const NOMES  = {
+        cliente: '👤 Mensagem p/ Cliente',
+        fornecedor: '🏭 Mensagem p/ Fornecedor',
+        finalizado: '✅ Serviço Finalizado',
+        orcamento: '📋 Orçamento',
+        retorno1: '🔄 Retorno 1', retorno2: '🔄 Retorno 2',
+        retorno3: '🔄 Retorno 3', retorno4: '🔄 Retorno 4'
+    };
+    const VARIAVEIS = '<strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{modelo}</strong>, <strong>{defeito}</strong>, <strong>{os}</strong>, <strong>{garantia}</strong>, <strong>{validade}</strong>, <strong>{avaliacao}</strong>';
     const campos = CHAVES.map(k => `<div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${NOMES[k]}</label><textarea id="rm-${k}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${esc(retornoMensagens[k] || '')}</textarea></div>`).join('');
     openModal(`<div class="modal-handle"></div>
-        <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">⚙️ Editar Mensagens de Retorno</h3>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis: <strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{os}</strong></div>
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">⚙️ Editar Mensagens da OS</h3>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:14px;">Variáveis disponíveis: ${VARIAVEIS}</div>
         ${campos}
         <button onclick="salvarMensagensRetorno()" style="width:100%;padding:12px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">💾 Salvar Mensagens</button>`);
 }
 
 async function salvarMensagensRetorno() {
-    const CHAVES = ['orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
+    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
     const msgs = {};
     for (const k of CHAVES) { const el = document.getElementById(`rm-${k}`); if (el) msgs[k] = el.value; }
     try {
