@@ -856,17 +856,156 @@ function ocultarLookupBanner() {
   if (b) b.style.display = 'none';
 }
 
-// ── WhatsApp ─────────────────────────────────────────────────
+// ── WhatsApp Templates ────────────────────────────────────────
+const TEMPLATES_COL = 'crm_templates';
+let templatesCache = [];
+window.__templatesCache = () => templatesCache;
+
+async function carregarTemplates() {
+  try {
+    const snap = await getDocs(collection(db, TEMPLATES_COL));
+    templatesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch { templatesCache = []; }
+}
+window.carregarTemplates = carregarTemplates;
+
+function substituirVars(template, lead) {
+  return template
+    .replace(/\{nome\}/g,     lead.nome || '')
+    .replace(/\{aparelho\}/g, lead.aparelho || '')
+    .replace(/\{servico\}/g,  lead.servico || '')
+    .replace(/\{valor\}/g,    lead.valor ? fmtValor(lead.valor) : '')
+    .replace(/\{tel\}/g,      lead.telefone ? lead.telefone.replace(/\D/g, '') : '')
+    .replace(/\{obs\}/g,      lead.obs || '');
+}
+window.substituirVars = substituirVars;
+
+function abrirTemplatePicker(lead) {
+  if (!templatesCache.length) {
+    const tel = (lead.telefone || '').replace(/\D/g, '');
+    const msg = `Olá, ${lead.nome || ''}! 👋\n\nEntrando em contato sobre o serviço do ${lead.aparelho || 'aparelho'}${lead.servico ? ` — ${lead.servico}` : ''}.${lead.valor ? `\n💰 Valor: ${fmtValor(lead.valor)}` : ''}\n\nCell City Informática`;
+    window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    return;
+  }
+  const podeGerenciar = podeEditar('crm');
+  const html = `<div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">💬 Template WhatsApp</h3>
+    <p style="font-size:12px;color:var(--text-tertiary);margin-bottom:12px;">Escolha um template para <strong>${esc(lead.nome || '')}</strong>:</p>
+    ${templatesCache.map(t => {
+      const leadIdSafe = lead.id.replace(/'/g, "\\'");
+      const tplIdSafe = t.id.replace(/'/g, "\\'");
+      return `<div class="crm-tpl-card" onclick="enviarWhatsAppComTemplate('${leadIdSafe}','${tplIdSafe}')" style="padding:10px 12px;margin-bottom:8px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:0.15s;" onmouseover="this.style.borderColor='var(--green-primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="font-weight:700;font-size:13px;">${esc(t.nome || '')}</div>
+        <div style="font-size:11px;color:var(--text-tertiary);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(t.texto || '')}</div>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      ${podeGerenciar ? `<button onclick="abrirGerenciarTemplates()" style="flex:1;padding:10px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text-secondary);">⚙️ Gerenciar Templates</button>` : ''}
+      <button onclick="fecharModal()" style="flex:1;padding:10px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">Cancelar</button>
+    </div>`;
+  abrirModalCRM(html);
+}
+
+window.enviarWhatsAppComTemplate = function(leadId, templateId) {
+  const lead = leads.find(l => l.id === leadId);
+  const tpl = templatesCache.find(t => t.id === templateId);
+  if (!lead?.telefone || !tpl) return;
+  const tel = lead.telefone.replace(/\D/g, '');
+  const msg = substituirVars(tpl.texto || '', lead);
+  fecharModal();
+  window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+};
+
 window.abrirWhatsApp = function(id) {
   const lead = leads.find(l => l.id === id);
   if (!lead?.telefone) { showToast('Telefone não cadastrado'); return; }
+  if (templatesCache.length) { abrirTemplatePicker(lead); return; }
   const tel = lead.telefone.replace(/\D/g, '');
-  const ap  = lead.aparelho ? ` do ${lead.aparelho}` : '';
-  const sv  = lead.servico  ? ` — ${lead.servico}`   : '';
-  const vl  = lead.valor    ? `\n💰 Valor informado: ${fmtValor(lead.valor)}` : '';
-  const msg = `Olá, ${lead.nome}! 👋\n\nEntrando em contato sobre o serviço${ap}${sv}.${vl}\n\nCell City Informática`;
+  const msg = `Olá, ${lead.nome || ''}! 👋\n\nEntrando em contato sobre o serviço do ${lead.aparelho || 'aparelho'}${lead.servico ? ` — ${lead.servico}` : ''}.${lead.valor ? `\n💰 Valor: ${fmtValor(lead.valor)}` : ''}\n\nCell City Informática`;
   window.open(`https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`, '_blank');
 };
+
+// ── Gerenciamento de Templates ─────────────────────────────────
+window.abrirGerenciarTemplates = async function() {
+  if (!podeEditar('crm')) { showToast('❌ Sem permissão para gerenciar templates'); return; }
+  const snap = await getDocs(collection(db, TEMPLATES_COL));
+  const templates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  let html = `<div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">⚙️ Gerenciar Templates WhatsApp</h3>
+    <p style="font-size:11px;color:var(--text-tertiary);margin-bottom:12px;">Variáveis disponíveis: <code>{nome}</code> <code>{aparelho}</code> <code>{servico}</code> <code>{valor}</code> <code>{tel}</code> <code>{obs}</code></p>
+    <div id="crm-tpl-lista" style="max-height:300px;overflow-y:auto;margin-bottom:12px;">
+    ${templates.map(t => `
+      <div style="padding:8px 10px;margin-bottom:6px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <strong style="font-size:13px;">${esc(t.nome || '')}</strong>
+          <div style="display:flex;gap:4px;">
+            <button onclick="abrirFormTemplate('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;">✏️</button>
+            <button onclick="excluirTemplate('${t.id}')" style="background:none;border:none;cursor:pointer;font-size:14px;">🗑️</button>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-tertiary);white-space:pre-wrap;max-height:40px;overflow:hidden;">${esc(t.texto || '')}</div>
+      </div>`).join('')}
+    </div>
+    <button onclick="abrirFormTemplate()" style="width:100%;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">➕ Novo Template</button>
+    <div style="margin-top:8px;"><button onclick="fecharModal()" style="width:100%;padding:8px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">Fechar</button></div>`;
+  abrirModalCRM(html);
+};
+
+window.abrirFormTemplate = function(editId) {
+  const tpl = editId ? templatesCache.find(t => t.id === editId) : null;
+  const html = `<div class="modal-handle"></div>
+    <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">${tpl ? '✏️' : '➕'} ${tpl ? 'Editar' : 'Novo'} Template</h3>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-secondary);">Nome do Template</label>
+      <input id="crm-tpl-nome" value="${esc(tpl?.nome || '')}" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-secondary);color:var(--text);font-size:13px;">
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:700;display:block;margin-bottom:4px;color:var(--text-secondary);">Mensagem</label>
+      <p style="font-size:10px;color:var(--text-tertiary);margin-bottom:6px;">Use {nome}, {aparelho}, {servico}, {valor}, {tel}, {obs}</p>
+      <textarea id="crm-tpl-texto" rows="6" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-secondary);color:var(--text);font-size:13px;resize:vertical;font-family:inherit;">${esc(tpl?.texto || '')}</textarea>
+    </div>
+    <button onclick="salvarTemplate('${editId || ''}')" style="width:100%;padding:10px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;font-weight:700;color:#000;">💾 Salvar</button>
+    <div style="margin-top:8px;"><button onclick="abrirGerenciarTemplates()" style="width:100%;padding:8px;background:var(--surface-secondary);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">↩️ Voltar</button></div>`;
+  abrirModalCRM(html);
+};
+
+window.salvarTemplate = async function(editId) {
+  if (!podeEditar('crm')) { showToast('❌ Sem permissão'); return; }
+  const nome = document.getElementById('crm-tpl-nome')?.value?.trim();
+  const texto = document.getElementById('crm-tpl-texto')?.value?.trim();
+  if (!nome || !texto) { showToast('⚠️ Preencha nome e mensagem'); return; }
+  try {
+    if (editId) {
+      await updateDoc(doc(db, TEMPLATES_COL, editId), { nome, texto, atualizadoEm: serverTimestamp() });
+      showToast('✅ Template atualizado');
+    } else {
+      await addDoc(collection(db, TEMPLATES_COL), { nome, texto, criadoEm: serverTimestamp() });
+      showToast('✅ Template criado');
+    }
+    await carregarTemplates();
+    abrirGerenciarTemplates();
+  } catch(e) { console.error(e); showToast('❌ Erro ao salvar template'); }
+};
+
+window.excluirTemplate = async function(id) {
+  if (!podeEditar('crm')) { showToast('❌ Sem permissão'); return; }
+  if (!confirm('Excluir este template?')) return;
+  try {
+    await deleteDoc(doc(db, TEMPLATES_COL, id));
+    await carregarTemplates();
+    abrirGerenciarTemplates();
+    showToast('🗑️ Template excluído');
+  } catch(e) { console.error(e); showToast('❌ Erro ao excluir'); }
+};
+
+// ── Modal CRM ──────────────────────────────────────────────────
+function abrirModalCRM(html) {
+  const overlay = document.getElementById('crm-modal');
+  const body = document.getElementById('crm-modal-body');
+  if (!overlay || !body) return;
+  body.innerHTML = html;
+  overlay.classList.add('open');
+}
 
 // ── Converter em O.S. ────────────────────────────────────────
 window.converterEmOS = async function(id) {
@@ -974,6 +1113,7 @@ async function _boot() {
   if (!podeVisualizar('crm')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
 
   startListener();
+  carregarTemplates();
   document.getElementById('crm-sb-overlay')?.addEventListener('click', () => {
     document.getElementById('crm-sb')?.classList.remove('open');
     document.getElementById('crm-sb-overlay')?.classList.remove('open');

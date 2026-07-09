@@ -1181,4 +1181,42 @@ Pendente: teste visual no navegador.
 
 ---
 
+---
+
+### 09/07/2026 — Sprint 8: WhatsApp Templates (CRM Comercial) — CONCLUÍDA
+
+**Tarefa:** Implementar sistema de templates de mensagens WhatsApp no módulo CRM Comercial, com CRUD completo, variáveis dinâmicas e seletor de templates ao enviar WhatsApp para um lead.
+
+**O que foi feito:**
+- Coleção `crm_templates` no Firestore com regra de segurança (leitura: auth, escrita: temAcessoLiberado)
+- Função `carregarTemplates()` carrega templates no cache ao iniciar o módulo
+- Função `substituirVars()` substitui variáveis `{nome}`, `{aparelho}`, `{servico}`, `{valor}`, `{tel}`, `{obs}` nos templates
+- `abrirWhatsApp()` reformulado: se há templates, abre seletor modal; senão, envia mensagem padrão direto
+- Modal `abrirTemplatePicker()` com cards de templates clicáveis e botão "Gerenciar Templates" (visível só com permissão)
+- `abrirGerenciarTemplates()` — listagem, edição e exclusão de templates em modal dedicado
+- `abrirFormTemplate()` — formulário de criação/edição com preview das variáveis disponíveis
+- `salvarTemplate()` — integração Firestore com feedback toast
+- Fallback para mensagem padrão quando não há templates cadastrados
+- Segurança por escopo de edição corrigido: de `podeCriar('crm')` para `podeEditar('crm')` por decisão explícita
+
+**Arquivos alterados:**
+- `CRM/pages/crm-comercial/crm.js` — +130 linhas de templates + gate RBAC + segurança de XSS em IDs
+- `CRM/firestore.rules` — regra para coleção `crm_templates` (leitura: auth, escrita: temAcessoLiberado)
+- `tests/rbac/crm-templates.test.mjs` — NOVO: 10 testes (substituirVars, carregarTemplates, picker, RBAC gates, adminLegado)
+- `PROXIMA_ETAPA.md` — estado atual atualizado
+
+**Problemas encontrados:**
+- Função `editarTemplate()` referenciada no HTML inline mas nunca definida — corrigido para `abrirFormTemplate()`
+- `substituirVars()` e `templatesCache` não expostos ao window — expostos para testabilidade via `window.substituirVars` e `window.__templatesCache`
+- Gate RBAC inicial usava `podeCriar('crm')` — substituído por `podeEditar('crm')` conforme especificação do usuário
+
+**RBAC implementado:**
+- `abrirTemplatePicker()`: só exibe botão "⚙️ Gerenciar Templates" se `podeEditar('crm')`
+- `abrirGerenciarTemplates()`: bloqueia início com toast se sem permissão
+- `salvarTemplate()`: bloqueia execução se sem permissão
+- `excluirTemplate()`: bloqueia execução se sem permissão
+- Usuários com `podeVisualizar('crm')` podem usar templates normalmente via `abrirWhatsApp()`
+
+**Validação:** RBAC completo 67/68 (única falha é a pré-existente do Caixa, inalterada). 10/10 testes novos.
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

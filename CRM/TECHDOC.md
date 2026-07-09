@@ -1552,3 +1552,90 @@ Item 6 de `PROXIMA_ETAPA.md` (pendência de baixo risco, registrada desde 2026-0
 **Fora do escopo desta limpeza, de propósito:** os arquivos individuais `*.BACKUP_*.js`/`*.backup-*` (não diretórios) espalhados em vários módulos — vários deles (`caixa.BACKUP_2026-07-02.js`, `estoque.BACKUP_2026-07-02.js`, `chips.BACKUP_2026-07-02.js`, `crm.BACKUP_2026-07-02.js`, `entrada.BACKUP_*.js`, `financeiro.js.BACKUP_2026-07-08.js`) são o mecanismo de rollback ainda ativo dos Sprints de RBAC recentes, alguns ainda não promovidos a `main`. A pendência registrada falava só em "diretórios BACKUP_*", não nesses arquivos — removê-los agora seria além do que foi pré-aprovado.
 
 **Validação:** suíte completa reexecutada — Firestore Rules 52/52, Cloud Functions 25/25, RBAC 39/40 (mesma falha pré-existente do Caixa, não relacionada), `node --check` OK. Zero regressão.
+
+---
+
+## 28. WhatsApp Templates — CRM Comercial (2026-07-09)
+
+### 28.1 Visão geral
+
+O módulo CRM Comercial (`CRM/pages/crm-comercial/crm.js`) ganhou um sistema de templates de mensagens WhatsApp, permitindo que a equipe crie, edite e exclua modelos de mensagem com variáveis dinâmicas, que são substituídas pelos dados do lead no momento do envio.
+
+### 28.2 Coleção Firestore
+
+```
+crm_templates/{id}
+├── nome           String   — Nome do template (ex.: "Orçamento", "Pronto")
+├── texto          String   — Corpo da mensagem com variáveis {var}
+├── criadoEm       Timestamp
+└── atualizadoEm   Timestamp
+```
+
+### 28.3 Firestore Rules
+
+```javascript
+match /crm_templates/{docId} {
+  allow read:                          if request.auth != null;
+  allow create, update, delete:        if request.auth != null && temAcessoLiberado();
+}
+```
+
+Leitura liberada para qualquer usuário autenticado (necessário para o seletor de templates funcionar). Escrita (CRUD) restrita a usuários com `temAcessoLiberado()` (perfil diferente de `pendente`).
+
+### 28.4 RBAC
+
+O gate de gerenciamento de templates usa `podeEditar('crm')` da matriz de permissões operacionais:
+- **Usuários com `podeVisualizar('crm')`**: podem usar templates existentes (selecionar e enviar WhatsApp). O botão "⚙️ Gerenciar Templates" não aparece no seletor.
+- **Usuários com `podeEditar('crm')`**: podem criar, editar e excluir templates. O gate é aplicado em 4 pontos: UI (botão oculto no seletor), `abrirGerenciarTemplates()`, `salvarTemplate()`, `excluirTemplate()`.
+
+### 28.5 Arquivos
+
+| Arquivo | Papel |
+|---|---|
+| `CRM/pages/crm-comercial/crm.js` | Funções de template no módulo existente (carregar, substituir vars, picker, CRUD) |
+| `CRM/firestore.rules` | Regra para coleção `crm_templates` |
+| `tests/rbac/crm-templates.test.mjs` | 10 testes: substituirVars (3), carregarTemplates (1), fallback sem templates (1), gates RBAC (4), abrirWhatsApp (1) |
+
+### 28.6 Funções públicas
+
+| Função | Visibilidade | Descrição |
+|---|---|---|
+| `carregarTemplates()` | `window.carregarTemplates` | Carrega todos os templates do Firestore no cache |
+| `substituirVars(template, lead)` | `window.substituirVars` | Substitui `{var}` por dados do lead |
+| `abrirWhatsApp(id)` | `window.abrirWhatsApp` | Se houver templates, abre seletor; senão envia direto |
+| `abrirGerenciarTemplates()` | `window.abrirGerenciarTemplates` | Abre modal de gerenciamento (gate RBAC) |
+| `salvarTemplate(editId)` | `window.salvarTemplate` | Cria/atualiza template (gate RBAC) |
+| `excluirTemplate(id)` | `window.excluirTemplate` | Exclui template (gate RBAC) |
+
+### 28.7 Variáveis disponíveis
+
+| Variável | Origem | Exemplo |
+|---|---|---|
+| `{nome}` | `lead.nome` | João Silva |
+| `{aparelho}` | `lead.aparelho` | Samsung A15 |
+| `{servico}` | `lead.servico` | Troca de Tela |
+| `{valor}` | `lead.valor` → `fmtValor()` | R$ 180,00 |
+| `{tel}` | `lead.telefone` → dígitos | 62999990001 |
+| `{obs}` | `lead.obs` | Chegar após 14h |
+
+### 28.8 Fluxo de uso
+
+```
+Usuário abre detalhe de um lead
+  → clica 💬 WhatsApp
+    → Se há templates: exibe modal de seleção
+      → Usuário escolhe template (ou clica ⚙️ Gerenciar)
+        → WhatsApp abre com mensagem preenchida
+    → Se não há templates: envia mensagem padrão direto
+```
+
+### 28.9 Testes
+
+10 testes em `tests/rbac/crm-templates.test.mjs`:
+- `substituirVars`: substituição completa, variáveis ausentes, valor zero
+- `carregarTemplates`: carga do Firestore no cache
+- `abrirTemplatePicker`: fallback sem templates (envio direto)
+- RBAC: sem `podeEditar` (botão oculto, bloqueado), com `podeEditar` (modal abre), admin legado
+- `abrirWhatsApp`: lead sem telefone (toast de erro)
+
+**Resultado:** 10/10, zero regressão (67/68, única falha = pré-existente do Caixa).

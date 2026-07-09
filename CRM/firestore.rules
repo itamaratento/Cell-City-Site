@@ -365,6 +365,11 @@ service cloud.firestore {
       allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
+    match /crm_templates/{docId} {
+      allow read:                          if request.auth != null;
+      allow create, update, delete:        if request.auth != null && temAcessoLiberado();
+    }
+
     // ─────────────────────────────────────────────
     // DIAGNÓSTICO: Documento temporário do kernel-test
     // ─────────────────────────────────────────────
