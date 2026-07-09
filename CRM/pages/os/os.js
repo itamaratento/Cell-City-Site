@@ -795,7 +795,6 @@ function openDetail(osId) { currentOS = DB.getOS().find(o => o.id === osId); if 
 function renderDetail() {
     const os = currentOS; const c = document.getElementById('detail-content'); if (!os) return;
     hasUnsavedChanges = false;
-    const statuses = STATUS_FLOW;
     const clients = DB.getClients(); const client = clients.find(cl => cl.phone === os.phone);
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     const garantiaModelo = _getSelectedWarranty(os);
@@ -860,7 +859,7 @@ function renderDetail() {
         html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📱 Senha Padrão Android</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div></div></div>`;
     }
     
-    html += `<div class="form-section accordion"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>🔄 Alterar Status</span><span class="accordion-arrow">▼</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="status-selector">${statuses.map(s => `<div class="status-option ${os.status === s.key ? 'selected' : ''}" ${podeEditar('os') ? `onclick="changeStatus('${s.key}')"` : 'style="opacity:0.6;cursor:default;"'}><span class="dot" style="background:${s.color}"></span>${s.label}</div>`).join('')}</div></div></div></div>`;
+
     
     html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Checklists</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="checklist-section"><div class="checklist-title">📋 Checklist de Entrada</div>${renderChecklistHTML('entry', getChecklistTemplate(os.category), os.entryChecklist||[], true)}</div><div class="checklist-section"><div class="checklist-title">✅ Checklist de Saída</div>${renderChecklistHTML('exit', getChecklistTemplate(os.category), os.exitChecklist||[], !podeEditar('os'))}</div></div></div></div>`;
     
