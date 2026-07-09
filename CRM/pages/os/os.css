@@ -247,6 +247,8 @@ body {
 .status-entregue { background: rgba(107,114,128,0.15); color: #9ca3af; }
 /* Fluxo oficial de 8 status (Cell City) */
 .status-recebido { background: rgba(33,150,243,0.15); color: #60a5fa; }
+.quick-status-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 8px; align-items: center; }
+.quick-status-bar .quick-status-btn { white-space: nowrap; }
 .status-aguardando_aprovacao { background: rgba(245,158,11,0.15); color: #fbbf24; }
 .status-orcamento_enviado { background: rgba(245,158,11,0.15); color: #fbbf24; }
 .status-orcamento_aprovado { background: rgba(76,175,80,0.15); color: #66bb6a; }
