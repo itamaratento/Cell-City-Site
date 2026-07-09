@@ -3,12 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Auditoria de segurança 2026-07-04 (TECHDOC §6.14): contas com
+    // perfil 'pendente' (autocadastradas, ver kernel.js::_buildContext()
+    // e a regra `create` de usuarios/{uid} mais abaixo) liam e escreviam
+    // livremente em clientes/os/caixa/estoque/financeiro/etc., porque
+    // essas coleções só exigiam request.auth != null — sem checar perfil
+    // nenhum. Helper usado em toda coleção de dados de negócio: nega
+    // quem ainda não foi aprovado por um admin. Falha FECHADO (nega) se
+    // o doc usuarios/{uid} do próprio requisitante nem existir ainda —
+    // evita que alguém contorne a checagem só não deixando o kernel.js
+    // rodar. Custo: +1 leitura de usuarios/{uid} por operação nas
+    // coleções que passam a chamar isto — aceito conscientemente (ver
+    // TECHDOC §6.14) apesar do histórico de estouro de cota do projeto.
+    function temAcessoLiberado() {
+      return exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil != 'pendente';
+    }
+
     // ─────────────────────────────────────────────
-    // PÚBLICO: OS — leitura de doc único (garantia.html)
+    // OS — Sprint 1a (2026-07-05): `allow get: if true` fechado. Antes,
+    // qualquer visitante sem login lia o documento INTEIRO de qualquer OS
+    // por ID (sequencial/previsível, ex. OS-0001) — incluindo senha/padrão/
+    // foto de desbloqueio do aparelho, endereço e IMEI (achado crítico da
+    // auditoria 2026-07-04). garantia.html e os dois consultar-os.html
+    // (públicos, sem login) agora usam as Cloud Functions
+    // consultarOSPublica/consultarOSPorTelefonePublica (functions/index.js,
+    // Admin SDK, ignoram estas Rules), que devolvem só um subconjunto seguro
+    // de campos. Nenhum código de equipe usa `get` de doc único em `os`
+    // (confirmado por grep — só `list`/query, inalterado abaixo).
     // ─────────────────────────────────────────────
     match /os/{osId} {
-      allow get:                           if true;
-      allow list, create, update, delete:  if request.auth != null;
+      allow get:                           if false;
+      // FECHAMENTO PARCIAL Sprint 1b (2026-07-06): aprovar/recusar orçamento
+      // (update) migrou para portalResponderOrcamento (Cloud Function, Admin
+      // SDK, ignora estas Rules) — não é mais o client SDK quem escreve em
+      // `os`, então create/update/delete voltam a exigir temAcessoLiberado(),
+      // fechando a brecha de conta 'pendente' nessas operações.
+      //
+      // `list`, porém, PRECISA continuar aberto só com request.auth != null
+      // (sem temAcessoLiberado): doLogin() e _listenOS() em
+      // CRM/pages/portal-cliente/portal.js fazem `query(os).where(phoneDigits==...)`
+      // direto do client SDK — ficaram FORA do escopo desta sprint de
+      // propósito (decisão registrada no plano técnico,
+      // plans/SPRINT_1B_PORTAL_CLOUD_FUNCTIONS.md), porque a sessão do
+      // cliente é sempre anônima (sem doc usuarios/{uid}) e o listener em
+      // tempo real (_listenOS/onSnapshot) não tem equivalente em Cloud
+      // Function onCall (só request/response, sem push). Fechar `list` aqui
+      // quebra o login de todo cliente real — confirmado ao vivo nesta
+      // homologação (tentativa revertida). Migrar login/listener para outro
+      // mecanismo seguro (ex. Cloud Function + polling, ou uma leitura
+      // pública dedicada como consultarOSPorTelefonePublica) fica para uma
+      // sprint futura.
+      allow list:                          if request.auth != null;
+      allow create, update, delete:        if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
@@ -16,7 +63,7 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /config/{docId} {
       allow get:                           if true;
-      allow list, write:                   if request.auth != null;
+      allow list, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
@@ -24,372 +71,416 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /pre_os/{docId} {
       allow create:                        if true;
-      allow read, update, delete:          if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PÚBLICO: Portal — cliente lê eventos e mensagens
-    // ─────────────────────────────────────────────
-    match /portal_eventos/{docId} {
-      allow create:                        if true;
-      allow read, update, delete:          if request.auth != null;
-    }
-
-    match /mensagens_portal/{docId} {
-      allow create:                        if true;
-      allow read, update, delete:          if request.auth != null;
-    }
-
-    match /solicitacoes_diagnostico/{docId} {
-      allow create:                        if true;
-      allow read, update, delete:          if request.auth != null;
-    }
-
-    // Avaliações enviadas pelo cliente no Portal (sessão anônima via
-    // signInAnonymously) — mesma convenção das demais coleções públicas
-    // do portal: criação livre, leitura/edição restrita a autenticados
-    // (inclui a própria sessão anônima do cliente, que já satisfaz
-    // request.auth != null, e as contas reais da equipe).
-    match /avaliacoes/{docId} {
-      allow create:                        if true;
-      allow read, update, delete:          if request.auth != null;
+      allow read, update, delete:          if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Clientes e OS
     // ─────────────────────────────────────────────
     match /clientes/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /crm_leads/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /metadata/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Caixa e financeiro
     // ─────────────────────────────────────────────
     match /caixa_lancamentos/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /lancamentos_caixa/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /categorias_caixa/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /historico_diario/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /historico_semanal/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /historico_mensal/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /resumo_live/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /financeiro_pagar/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /financeiro_fixas/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /financeiro_receber/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /financeiro_categorias/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /financeiro_cat_despesas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /pendencias/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Estoque e fornecedores
     // ─────────────────────────────────────────────
     match /estoque_produtos/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /estoque_config/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /estoque_movimentacoes/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /produtos/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /categorias_produtos/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /fornecedor_compras/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /fornecedor_tendencias/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /fornecedores/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /encomendas/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Produtividade pessoal
     // ─────────────────────────────────────────────
     match /acoes_semana/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
+    // Agenda Inteligente — um documento por evento (calendário permanente)
     match /agenda/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /tarefas_semana/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /notas_usuarios/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /alarme_config/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
-    match /alertas_usuario/{docId} {
-      allow read, write:                   if request.auth != null;
+    // Status (novo/lido/resolvido) dos alertas da Central de Alertas,
+    // por usuário. O id do documento é sempre o próprio uid
+    // (central-alertas.js usa doc(db, 'central_alertas_status', ctx.uid)) —
+    // cada usuário só pode ler/escrever o seu próprio documento.
+    match /central_alertas_status/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
-    match /historico_alertas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // Status (novo/lido/resolvido) dos alertas, por usuário. O id do
-    // documento é sempre o próprio uid (central-alertas.js usa
-    // doc(db, 'central_alertas_status', ctx.uid)) — cada usuário só
-    // pode ler/escrever o seu próprio documento, nunca o de outro.
-    match /central_alertas_status/{docId} {
-      allow read, write:                   if request.auth != null && request.auth.uid == docId;
-    }
-
-    match /central_organizacao/{docId} {
-      allow read, write:                   if request.auth != null;
+    // Barra de Favoritos (shared/favoritos.js). O id do documento é sempre
+    // o próprio uid (favDocRef() -> doc(db, 'favoritos_usuarios', _uid)) —
+    // cada usuário só pode ler/escrever o seu próprio documento.
+    // H-002 (homologação 2026-07-03): coleção não tinha rule própria,
+    // caía no deny-by-default do Firestore ("Missing or insufficient
+    // permissions"). Pré-existente em produção, não introduzido pela
+    // separação de ambientes.
+    match /favoritos_usuarios/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Base de conhecimento
     // ─────────────────────────────────────────────
     match /comandos/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /categorias_comandos/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /informacoes/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /categorias_informacoes/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Pós-venda e campanhas
     // ─────────────────────────────────────────────
     match /lembretes_pagamento/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /posvenda_contatos/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /posvenda_mensagens/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /posvenda_rastreamento/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /categorias_wpp/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: Diário técnico
-    // ─────────────────────────────────────────────
-    match /diario_registros/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /diario_eventos/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /diario_metas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: Chat interno
-    // ─────────────────────────────────────────────
-    match /chat_historico/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Importações
     // ─────────────────────────────────────────────
     match /vendas_importadas/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Sincronização CRM ↔ Google Drive
+    // Coleções usadas pelos módulos Tutoriais, Soluções Técnicas,
+    // Diário Técnico. Operações via cc-sync.js / gdrive-backup.js.
     // ─────────────────────────────────────────────
     match /cc_lixeira/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /cc_gdrive_logs/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /gdrive_backup/{docId} {
-      allow read, write:                   if request.auth != null;
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
-    // PRIVADO: Backup e auditoria
+    // KERNEL: Perfis de usuário e empresas
+    // kernel.js lê/cria usuarios/{uid} em _buildContext()
+    // Exceção aditiva (módulo Usuários e Permissões, 2026-07-01):
+    // admin/master_admin também podem ler/escrever o doc de outros
+    // usuários. A regra original (dono do próprio doc) continua intacta.
     // ─────────────────────────────────────────────
-    match /backup_historico/{docId} {
-      allow read, write:                   if request.auth != null;
+    match /usuarios/{uid} {
+      allow read: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+      );
+
+      // BL-006 (homologação 2026-07-03): a regra antiga permitia que o
+      // dono escrevesse QUALQUER campo do próprio doc, inclusive `perfil`
+      // — o mesmo campo que todas as outras rules consultam para
+      // autorizar admin. Isso permitia auto-escalação de privilégio
+      // (comprovado: usuário comum virava master_admin com um PATCH
+      // direto no Firestore, sem passar pela UI). Correção: criação do
+      // próprio doc continua livre (auto-provisionamento do kernel.js
+      // no primeiro login, _buildContext()); admin/master_admin mantêm
+      // escrita total; o próprio dono só pode escrever campos NÃO
+      // sensíveis — perfil, perfil_operacional_id, empresa_id e status
+      // ficam congelados fora de admin.
+      //
+      // Homologação 2026-07-04 (módulo Usuários e Permissões): o rewrite
+      // acima corrigiu o `update`/`delete` com a exceção de admin, mas
+      // esqueceu o `create` — nenhum admin conseguia mais criar um usuário
+      // NOVO (uid diferente do próprio), porque só request.auth.uid==uid
+      // era aceito. Restaurada a mesma exceção de admin/master_admin já
+      // usada em update/delete logo abaixo. Não reabre o BL-006: aquele
+      // exploit era sobre um usuário comum ALTERAR o próprio doc já
+      // existente (update); aqui é sobre um admin CRIAR o doc de outro —
+      // operações e regras distintas. Um usuário comum continua podendo
+      // criar só o próprio doc (auto-provisionamento), nunca o de outro.
+      //
+      // 🔴 Auditoria de segurança 2026-07-04 (TECHDOC §6.12/§6.13): a
+      // linha acima permitia auto-provisionamento com QUALQUER `perfil`,
+      // inclusive 'master_admin' — comprovado explorável de ponta a ponta
+      // (signup público via API do Firebase Auth, só com a apiKey já
+      // pública, seguido de PATCH direto gravando perfil:'master_admin').
+      // Corrigido: auto-provisionamento só é aceito com perfil EXATAMENTE
+      // 'pendente' (o único valor que kernel.js::_buildContext() grava no
+      // primeiro acesso — ver kernel.js). Qualquer outro valor no create
+      // do próprio uid cai fora das duas condições e é negado. Contas
+      // pendentes não passam em nenhum temPermissao() (fora da hierarquia
+      // master_admin/admin/gerente/tecnico/atendente) — só um admin,
+      // pelo módulo Usuários e Permissões, pode atribuir um perfil real.
+      allow create: if request.auth != null && (
+        (request.auth.uid == uid && request.resource.data.perfil == 'pendente') ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+      );
+
+      allow update: if request.auth != null && (
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'] ||
+        (request.auth.uid == uid &&
+         request.resource.data.get('perfil', null) == resource.data.get('perfil', null) &&
+         request.resource.data.get('perfil_operacional_id', null) == resource.data.get('perfil_operacional_id', null) &&
+         request.resource.data.get('empresa_id', null) == resource.data.get('empresa_id', null) &&
+         request.resource.data.get('status', null) == resource.data.get('status', null))
+      );
+
+      allow delete: if request.auth != null && (
+        request.auth.uid == uid ||
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+      );
+    }
+
+    match /empresas/{empId} {
+      allow read: if request.auth != null && temAcessoLiberado();
+      allow write: if false; // escrita apenas via Admin SDK / console
+    }
+
+    // Preferências por usuário (ex.: usuarios/{uid}/preferencias/modulos —
+    // favoritos da Central de Módulos; usuarios/{uid}/preferencias/layout —
+    // modoHome/sidebarCompacta). Cada usuário só acessa a própria subcoleção.
+    match /usuarios/{uid}/preferencias/{prefId} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ─────────────────────────────────────────────
+    // MÓDULO: Usuários e Permissões (2026-07-01)
+    // Catálogo de perfis operacionais (RBAC interno da empresa,
+    // independente do 'perfil' de licenciamento SaaS do kernel.js/tenant.js).
+    // Leitura liberada a qualquer autenticado (necessário para fases
+    // futuras de checagem de permissão dentro dos módulos); escrita
+    // restrita a admin/master_admin.
+    // ─────────────────────────────────────────────
+    match /perfis_operacionais/{perfilId} {
+      allow read: if request.auth != null && temAcessoLiberado();
+      allow write: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+    }
+
+    // Log de auditoria do módulo — imutável (nunca editado/apagado),
+    // leitura e criação restritas a admin/master_admin.
+    match /auditoria_usuarios_permissoes/{logId} {
+      allow read, create: if request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+      allow update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: CRM Comercial — leads/pré-orçamentos
+    // ─────────────────────────────────────────────
+    match /crm_leads/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /crm_templates/{docId} {
+      allow read:                          if request.auth != null;
+      allow create, update, delete:        if request.auth != null && temAcessoLiberado();
+    }
+
+    // ─────────────────────────────────────────────
+    // DIAGNÓSTICO: Documento temporário do kernel-test
+    // ─────────────────────────────────────────────
+    match /_diagnostico_temp/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ─────────────────────────────────────────────
+    // PRIVADO: Dashboard — coleções de analytics e portal
+    // ─────────────────────────────────────────────
+    match /avaliacoes/{docId} {
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalCriarAvaliacao/portalListarAvaliacoes.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /diario_registros/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+    // usada por CRM/pages/diario/diario.js (COL_EVT) para o histórico da
+    // Linha do Tempo do Diário — não tinha nenhuma regra (falhava fechado).
+    // Mesmo padrão de diario_registros, seu par lógico.
+    match /diario_eventos/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /estoque/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /mensagens_portal/{docId} {
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalListarMensagens/portalEnviarMensagem/portalMarcarMensagemLida.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /portal_eventos/{docId} {
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalRegistrarEvento.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /agendamentos/{docId} {
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalListarAgendamentos/portalCriarAgendamento/portalListarHorariosOcupados.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /solicitacoes_diagnostico/{docId} {
+      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
+      // migrado para portalCriarSolicitacaoDiagnostico.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /catalogo_produtos/{docId} {
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    // ─────────────────────────────────────────────
+    // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
+    // Coleções usadas por módulos internos ativos sem nenhuma regra —
+    // falhavam fechado (permission-denied), não expostas. Mesmo padrão
+    // já usado em todas as coleções de módulo interno acima. Preparado
+    // e testado via emulador nesta auditoria; deploy pendente de
+    // autorização explícita (Firestore Rules é componente crítico).
+    // notificacoes_saas/auditoria_saas (achado da mesma auditoria de
+    // 2026-07-02) ficaram de fora deliberadamente: só são referenciadas
+    // por CRM/shared/tenant.js, confirmado sem nenhum importador real
+    // (código morto) — nenhum caminho de execução vivo alcança essas 2
+    // coleções hoje.
+    // ─────────────────────────────────────────────
+    match /alertas_usuario/{docId} {
+      // CRM/pages/os/os.js — alertas gerados a partir de OS.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /chips_cadastros/{docId} {
+      // CRM/pages/crm-comercial/chips.js, chips-entrada.js — módulo de
+      // Cadastro de Chip.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /contas_numeros/{docId} {
+      // CRM/pages/contas/contas.js — módulo de Contas e Pendências.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
+    }
+
+    match /central_organizacao/{docId} {
+      // CRM/pages/central-organizacao/central.js.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     match /backup_logs/{docId} {
-      allow read, write:                   if request.auth != null;
+      // CRM/pages/dashboard/index.html (script inline) — log de rotinas
+      // de backup/manutenção acionadas pelo Dashboard.
+      allow read, write:                   if request.auth != null && temAcessoLiberado();
     }
 
-    match /auditoria_logs/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /lixeira/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: Automação
-    // ─────────────────────────────────────────────
-    match /automacao_execucoes/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /automacao_logs/{docId} {
-      allow read, write:                   if request.auth != null;
+    match /catalogo_config/{docId} {
+      // CRM/pages/catalogo/catalogo.js (leitura/escrita da equipe) +
+      // CRM/pages/catalogo/public/catalogo-publico.js (leitura pública do
+      // doc único `geral`, catálogo público sem login) — mesmo padrão já
+      // usado em /config acima.
+      allow get:                           if true;
+      allow list, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
-    // PRIVADO: Robô WhatsApp
-    // ─────────────────────────────────────────────
-    match /robo_atividade/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /tarefas_robo/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: Monitoramento e configurações gerais
-    // ─────────────────────────────────────────────
-    match /monitoramento/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /configuracoes/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /preferencias_sistema/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /favoritos_usuarios/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // Preferências por usuário (ex.: favoritos da Central de Módulos → menu principal)
-    match /usuarios/{uid}/preferencias/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: SaaS residual (dados existentes, sem uso ativo)
-    // ─────────────────────────────────────────────
-    match /usuarios/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /empresas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /assinaturas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /auditoria_saas/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // PRIVADO: Temporários / debug
-    // ─────────────────────────────────────────────
-    match /teste_caixa/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    match /_diagnostico_temp/{docId} {
-      allow read, write:                   if request.auth != null;
-    }
-
-    // ─────────────────────────────────────────────
-    // BLOQUEADO: Coleções legadas
+    // BLOQUEADO: Coleções legadas — nunca usadas pelos módulos
     // ─────────────────────────────────────────────
     match /orders/{docId} {
       allow read, write:                   if false;
