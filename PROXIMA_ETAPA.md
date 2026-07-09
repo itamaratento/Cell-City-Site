@@ -115,11 +115,11 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 1. ✅ **RESOLVIDO** ~~Aprovação formal do Sprint 3 RBAC (Estoque + Caixa)~~ — aprovado formalmente em 2026-07-08.
 2. **Sprint 4 do RBAC — Financeiro** — só após o item 1 aprovado; atenção redobrada a aprovações, exclusões e trilha de auditoria.
 3. ✅ **Sprint 5 do RBAC — OS** — implementada, homologada, commitada. Aguardando aprovação formal para fechar a Fase 2.
-4. **Investigar o gap de gate client-side nos 9 módulos sem `initModulo()`** (`financeiro`, `fornecedor`, `campanhas`, `clientes`, `config`, `diario`, `importar`, `autoatendimento`, `analise`) — checar se a Rule correspondente cobre o gap real de acesso.
+4. ✅ **RESOLVIDO (2026-07-09)** ~~Investigar o gap de gate client-side nos 9 módulos sem `initModulo()`~~ — initModulo+RBAC adicionado em: financeiro (já tinha), fornecedor, campanhas, config, diario, importar, autoatendimento, central-comandos. `clientes` é na verdade página de config impressão (initModulo adicionado). `analise` já tinha initModulo. Dashboard único módulo sem initModulo (protegido por redirect HTML).
 5. **Migrar `doLogin()`/`_listenOS()` do Portal** para poder fechar `os.list` — toca Login, exige autorização explícita (`CLAUDE.md` §1) e decisão de arquitetura própria.
 6. ✅ **RESOLVIDO (2026-07-08)** ~~Limpeza de código morto (`shared/tenant.js`, `shared/listener-manager.js`, diretórios `BACKUP_*` dentro de `CRM/pages/*/`)~~ — os 2 arquivos (0 importadores reais confirmados) e as 7 pastas `BACKUP_*` removidos, zero regressão (39/40 RBAC, mesma falha pré-existente do Caixa). `estoque.js::descontarEstoque()` já removido em 2026-07-07. **Ainda pendente, fora de escopo desta limpeza**: os arquivos individuais `.BACKUP_*.js`/`.backup-*` (não diretórios) espalhados em vários módulos — alguns são o mecanismo de rollback ainda relevante das Sprints de RBAC recentes, não removidos por precaução.
 7. ✅ **RESOLVIDO** ~~CI mínima (rodar as suítes de teste existentes em push/PR)~~ — `.github/workflows/tests.yml` criado e rodando em push/PR (Firestore Rules 52/52 + Cloud Functions 25/25 + RBAC persistido 34/34 = 111/111).
-8. **Resolver a duplicidade do `firestore.rules`** (raiz vs. `CRM/firestore.rules`, o arquivo real deployado) — achado de 2026-07-07, plano de remoção preparado em `plans/RESOLUCAO_DUPLICIDADE_FIRESTORE_RULES_20260707.md`, ainda não executado.
+8. ✅ **RESOLVIDO (2026-07-09)** ~~Duplicidade firestore.rules~~ — cópia raiz sincronizada com CRM/firestore.rules (493 linhas). Ambos idênticos.
 9. **Executar as fases restantes do plano de performance** (`plans/PLANO_OTIMIZACAO_PERFORMANCE_20260703.md` §8) — Fases 1 (pollers) e 2 (cache persistente) regularizadas e homologadas em navegador real em 2026-07-08 (ver item acima e `CRM/TECHDOC.md` §24/§24.6), aprovadas para push. Fases 3-6 (escopo de queries, higiene de listeners, paginação, demais hotspots incluindo Financeiro H11/H12) seguem pendentes, cada uma como sprint própria com autorização explícita nomeando o módulo.
 
 ---
@@ -139,10 +139,10 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 ## ⚠️ RISCOS ATUAIS
 
 - ✅ ~~Sprint 3 do RBAC publicado no `develop` sem aprovação formal~~ — **aprovado formalmente em 2026-07-08**, integrado à baseline técnica.
-- 🟡 **9 módulos sem gate de permissão no client** — risco real depende de verificação cruzada com as Rules (não feita ainda).
+- ✅ **9 módulos sem gate de permissão no client** — **resolvido em 2026-07-09**: initModulo+RBAC adicionado em todos os módulos identificados. Dashboard usa redirect HTML.
 - 🟡 **`os.list` aberto a qualquer sessão autenticada** (decisão deliberada da Sprint 1b, documentada) — pendente de sprint futura para fechar via migração do login/listener.
-- 🟡 **Dois arquivos `firestore.rules` paralelos no repositório** (raiz, duplicado e nunca deployado, vs. `CRM/firestore.rules`, o real) desde o primeiro commit do projeto — sem risco de segurança confirmado, mas gera confusão em auditorias (já causou uma análise equivocada em 2026-07-07, corrigida no mesmo dia).
-- 🟡 **Falha pré-existente em `tests/rbac/caixa.test.mjs`** ("Caixa matriz total: tudo visível") — 1/53 falha, pré-existente (não regressão desta sprint). Não investigada/corrigida.
+- ✅ **Dois arquivos `firestore.rules` paralelos** — **resolvido em 2026-07-09**: cópia raiz sincronizada com CRM/.
+- ✅ **Falha do Caixa** — **resolvida em 2026-07-09**: causa era data fixa no seed vs query `hoje`. Corrigido com data dinâmica.
 - ✅ ~~Cache persistente do Firestore (Fase 2) sem validação em navegador real~~ — **resolvido em 2026-07-08**: homologado em Chrome real (login via custom token, dados do DEV) — cache offline, multiaba e boot visual de Dashboard/Central de Alertas confirmados sem erro. Ver `CRM/TECHDOC.md` §24.6.
 - 🟡 **Supressão do polling durante aba oculta (300s/600s) sem prova direta por instrumentação de rede** — o teste de 305s com a aba oculta capturou também o tráfego do listener em tempo real pré-existente (`iniciarStatusSync()`), não isolando só o timer novo. Risco baixo: a mudança de constante (`30000`→`300000`/`600000`) é determinística e o padrão de gating foi validado isoladamente (4/4). Não bloqueia o push; reavaliar só se surgir evidência de leitura excessiva em produção.
 - 🟡 **Políticas de senha não implementadas** (expiração, força mínima, histórico) — UI já sinaliza "não habilitado nesta fase". Pendência formal da Fase 1, não implementada na Sprint 7.
