@@ -53,7 +53,7 @@
                 </div>
             </div>
             <div class="premium-cards">
-                <div class="home-card card-nova-os" onclick="showScreen('category')">
+                <div class="home-card card-nova-os" onclick="startOS('celular')">
                     <span class="icon">🔧</span>
                     <div class="label">Nova O.S.</div>
                 </div>
@@ -111,6 +111,14 @@
         <!-- TELA FORMULÁRIO NOVA OS -->
         <div id="screen-form" class="screen">
             <!-- ===== Accordion (Nova OS) — abertos por padrão ===== -->
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:0 4px;">
+                <label style="font-size:13px;font-weight:600;color:var(--text2);">Categoria:</label>
+                <select id="f-category-select" onchange="if(this.value)startOS(this.value)" style="flex:1;max-width:220px;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">
+                    <option value="celular">📱 Celular</option>
+                    <option value="notebook">💻 Notebook</option>
+                    <option value="impressora">🖨️ Impressora</option>
+                </select>
+            </div>
             <div class="form-section accordion">
                 <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>👤 Dados do Cliente</span><span class="accordion-arrow">▼</span></button>
                 <div class="accordion-content"><div class="accordion-content-inner">
