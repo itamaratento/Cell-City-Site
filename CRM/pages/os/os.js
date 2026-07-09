@@ -683,7 +683,31 @@ async function saveOS() {
     }
 }
 
-async function updateClientHistory(phone, name, osId, phoneDigits, origem) { phoneDigits = phoneDigits || normalizePhoneDigits(phone); let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits); if (c) { !c.history.includes(osId) && c.history.push(osId); c.name = name; c.phone = phone; c.phoneDigits = phoneDigits; } else { c = { name, phone, phoneDigits, origem: origem || 'presencial', history: [osId], createdAt: new Date().toISOString() }; } await DB.saveClient(c); }
+function enrichClientData(phone, base) {
+    const orders = DB.getOS().filter(o => o.phone === phone || (o.phoneDigits || normalizePhoneDigits(o.phone)) === normalizePhoneDigits(phone));
+    const totalOs = orders.length;
+    const totalGasto = orders.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
+    const datas = orders.map(o => o.createdAt).filter(Boolean).sort();
+    const ultimoAtendimento = datas.length ? datas[datas.length - 1] : null;
+    const nivel = totalGasto >= 5000 ? 'VIP' : totalGasto >= 2000 ? 'Ouro' : totalGasto >= 500 ? 'Prata' : 'Bronze';
+    return { ...base, totalOs, totalGasto, ultimoAtendimento, nivel };
+}
+
+async function updateClientHistory(phone, name, osId, phoneDigits, origem, crmLeadId) {
+    phoneDigits = phoneDigits || normalizePhoneDigits(phone);
+    let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits);
+    const crmLeads = c ? (c.crmLeads || []) : (crmLeadId ? [crmLeadId] : []);
+    if (c) {
+        if (!c.history.includes(osId)) c.history.push(osId);
+        c.name = name; c.phone = phone; c.phoneDigits = phoneDigits;
+    } else {
+        c = { name, phone, phoneDigits, origem: origem || 'presencial', crmLeads, history: [osId], createdAt: new Date().toISOString() };
+    }
+    if (crmLeadId && !c.crmLeads?.includes(crmLeadId)) {
+        c.crmLeads = [...(c.crmLeads || []), crmLeadId];
+    }
+    await DB.saveClient(enrichClientData(phone, c));
+}
 
 // ===== ENTRADA DE OS: AGENDA + FINANCEIRO =====
 async function runAutomacoesOS(os) {
@@ -2011,12 +2035,14 @@ function showClientDetail(phone) {
         }
 
         const nivel = totalSpent >= 5000 ? '💎 VIP' : totalSpent >= 2000 ? '🥇 Ouro' : totalSpent >= 500 ? '🥈 Prata' : '🥉 Bronze';
+        const crmCount = (client.crmLeads || []).length;
         html += `<div class="client-stats-grid">
             <div class="client-stat-card"><div class="stat-num">${totalOS}</div><div class="stat-lbl">Total OS</div></div>
             <div class="client-stat-card"><div class="stat-num">R$ ${totalSpent.toFixed(2)}</div><div class="stat-lbl">Total Gasto</div></div>
             <div class="client-stat-card"><div class="stat-num">${lastAttendance}</div><div class="stat-lbl">Último Atendimento</div></div>
             <div class="client-stat-card"><div class="stat-num">${activeWarranties}</div><div class="stat-lbl">Garantias Ativas</div></div>
             <div class="client-stat-card"><div class="stat-num">${nivel}</div><div class="stat-lbl">Nível</div></div>
+            ${crmCount ? `<div class="client-stat-card"><div class="stat-num">${crmCount}</div><div class="stat-lbl">Leads CRM</div></div>` : ''}
         </div>`;
 
         if (devices.length > 0) {
@@ -2393,13 +2419,14 @@ async function saveFullClient() {
         appleIdPass: document.getElementById('cf-appleIdPass').value,
         freeObservations: document.getElementById('cf-observations').value,
         origem: currentEditingClient ? (currentEditingClient.origem || 'presencial') : 'presencial',
+        crmLeads: currentEditingClient ? (currentEditingClient.crmLeads || []) : [],
         history: currentEditingClient ? (currentEditingClient.history || []) : [],
         createdAt: currentEditingClient ? (currentEditingClient.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt: new Date().toISOString()
     };
 
     try {
-        await DB.saveClient(clientData);
+        await DB.saveClient(enrichClientData(phone1Canon, clientData));
         showToast('✅ Ficha do cliente salva!');
         toggleClientManagement();
         renderClients();
