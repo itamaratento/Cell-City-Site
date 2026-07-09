@@ -1255,4 +1255,45 @@ Pendente: teste visual no navegador.
 
 **Validação:** RBAC completo 71/72 (única falha é a pré-existente do Caixa, inalterada). 4/4 testes novos.
 
+---
+
+### 09/07/2026 — Sprint 10: Financeiro — Fechamento Mensal Automático + Análise por Categoria — CONCLUÍDA
+
+**Tarefa:** Implementar fechamento mensal automático, análise de despesas por categoria e histórico de fechamentos no módulo Financeiro. Conclui o ÉPICO Financeiro (Fase 9+10 do roadmap).
+
+**O que foi feito:**
+
+1. **Fechamento Mensal Automático** (`financeiro_fechamentos`):
+   - Nova coleção Firestore: `financeiro_fechamentos/{mes}`
+   - Botão 🔒 Fechar Mês na aba Relatório (gate RBAC: `podeEditar('financeiro')`)
+   - Calcula receita total, despesa total, saldo final do mês selecionado
+   - Gera automaticamente despesas do próximo mês a partir das fixas
+   - Verifica se mês já foi fechado antes de criar duplicata
+   - Indicador visual na aba: "📂 Mês aberto" / "🔒 Fechado — Saldo: R$ X"
+   - Botão desaparece após fechamento
+
+2. **Análise por Categoria**:
+   - Barras de distribuição de despesas por categoria no relatório mensal
+   - Cada categoria exibe: ícone, nome, valor total e percentual do total
+   - Barra visual com preenchimento proporcional (`fin-analise-bar-fill`)
+   - Receitas mostradas como total consolidado
+
+3. **Histórico de Fechamentos**:
+   - Grid de cards com meses fechados, ordenados do mais recente
+   - Cada card: mês, receita, despesa, saldo (verde/vermelho), contagem de itens
+   - Clique no card navega para o mês correspondente no relatório
+
+**Arquivos alterados:**
+- `CRM/pages/financeiro/financeiro.js` — +150 linhas (carregarFechamentos, fecharMes, renderAnaliseCategoria, renderHistoricoFechamentos; exports globais; integração com boot e renderRelatorio)
+- `CRM/pages/financeiro/index.html` — status bar, análise por categoria, histórico de fechamentos
+- `CRM/pages/financeiro/financeiro.css` — estilos .fin-rel-status-*, .fin-analise-*, .fin-hist-*
+- `tests/rbac/financeiro-relatorio.test.mjs` — +4 testes (fecharMes, renderHistoricoFechamentos, renderAnaliseCategoria, carregarFechamentos)
+- `PROXIMA_ETAPA.md` — estado atual atualizado
+
+**Coleção nova:** `financeiro_fechamentos` — `{mes, label, receitaTotal, despesaTotal, saldoFinal, totalRecebido, totalAReceber, totalPago, totalAPagar, totalFixas, qtdPagar, qtdReceber, qtdFixas, fechadoEm}`
+
+**Firestore Rules:** Nenhuma alteração — todas as coleções de negócio já usam `temAcessoLiberado()`.
+
+**Validação:** RBAC completo 75/76 (única falha é a pré-existente do Caixa, inalterada). 8/8 testes.
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

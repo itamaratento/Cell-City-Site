@@ -108,3 +108,68 @@ describe('Relatório Mensal — atualizarResumoCompleto', () => {
         assert.match(elVencido.textContent, /1\.499/);
     });
 });
+
+describe('Fechamento Mensal — fecharMes', () => {
+    test('fecharMes calcula saldo corretamente e cria fechamento', async () => {
+        const { document, window } = setup();
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 100));
+
+        const mes = ymKey(new Date());
+        await window.fecharMes(mes);
+        await new Promise(r => setTimeout(r, 100));
+
+        // Verifica que o fechamento foi criado no mock
+        const fechamentos = fsMock.__all('financeiro_fechamentos');
+        assert.equal(fechamentos.length, 1);
+        assert.equal(fechamentos[0].id, mes);
+        assert.ok(fechamentos[0].receitaTotal > 0);
+        assert.ok(fechamentos[0].saldoFinal !== undefined);
+    });
+
+    test('renderHistoricoFechamentos exibe mês fechado', async () => {
+        const { document, window } = setup();
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 100));
+
+        const mes = ymKey(new Date());
+        await window.fecharMes(mes);
+        await new Promise(r => setTimeout(r, 100));
+
+        window.renderHistoricoFechamentos();
+        const container = document.getElementById('fin-historico-fechamentos');
+        assert.ok(container);
+        assert.ok(container.innerHTML.includes('Fechado') || container.querySelector('.fin-hist-card'));
+    });
+});
+
+describe('Análise por Categoria — renderAnaliseCategoria', () => {
+    test('renderiza barras de categoria para despesas do mês', async () => {
+        const { document, window } = setup();
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 100));
+        window.renderAnaliseCategoria();
+
+        const container = document.getElementById('fin-analise-categoria');
+        assert.ok(container);
+        // Deve conter categorias com barras
+        assert.ok(container.innerHTML.includes('Aluguel') || container.innerHTML.includes('Serviços'));
+    });
+});
+
+describe('Fechamento Mensal — carregarFechamentos', () => {
+    test('carrega fechamentos existentes do Firestore', async () => {
+        const { document, window } = setup();
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 100));
+
+        // Seed após setup (setup reseta o mock)
+        fsMock.__seed('financeiro_fechamentos', '2026-06', { mes: '2026-06', label: 'Junho de 2026', receitaTotal: 5000, despesaTotal: 3000, saldoFinal: 2000 });
+        await window.carregarFechamentos();
+        window.renderHistoricoFechamentos();
+
+        const container = document.getElementById('fin-historico-fechamentos');
+        assert.ok(container);
+        assert.ok(container.innerHTML.includes('2026-06') || container.innerHTML.includes('Junho'));
+    });
+});

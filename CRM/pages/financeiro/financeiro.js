@@ -419,6 +419,26 @@ function renderRelatorio() {
     const mes = sel?.value || ymKey(new Date());
     const [ano, mesNum] = mes.split('-').map(Number);
 
+    // Status de fechamento
+    const fechado = dadosFechamentos[mes];
+    const fechadoEl = document.getElementById('fin-rel-status');
+    if (fechadoEl) {
+        if (fechado) {
+            fechadoEl.className = 'fin-rel-status-fechado';
+            fechadoEl.innerHTML = `🔒 Fechado — Saldo: ${fmt(fechado.saldoFinal)}`;
+        } else {
+            fechadoEl.className = 'fin-rel-status-aberto';
+            fechadoEl.innerHTML = '📂 Mês aberto — ainda não fechado';
+        }
+    }
+
+    // Botão fechar (controle de visibilidade)
+    const btnFechar = document.getElementById('btn-fechar-mes');
+    if (btnFechar) {
+        btnFechar.style.display = fechado ? 'none' : '';
+        btnFechar.disabled = false;
+    }
+
     const itemsPagar   = dadosPagar.filter(c => diaKey(c.vencimento) === mes);
     const itemsReceber = dadosReceber.filter(c => diaKey(c.vencimento) === mes);
     const totalFixas   = dadosFixas.reduce((s,c) => s + Number(c.valor||0), 0);
@@ -898,14 +918,197 @@ document.querySelectorAll('.fin-tab').forEach(btn => {
         if (btn.dataset.tab === 'relatorio') {
             renderRelatorio();
             renderFluxoCaixa();
+            renderAnaliseCategoria();
+            renderHistoricoFechamentos();
         }
     });
 });
+
+// ── Coleção de Fechamentos ─────────────────────────────────────────
+const COL_FECHAMENTOS = 'financeiro_fechamentos';
+let dadosFechamentos = {}; // {mesKey: {receita, despesa, saldo, ...}}
+
+async function carregarFechamentos() {
+    try {
+        const snap = await getDocs(collection(db, COL_FECHAMENTOS));
+        dadosFechamentos = {};
+        snap.forEach(d => { dadosFechamentos[d.id] = { id: d.id, ...d.data() }; });
+    } catch { dadosFechamentos = {}; }
+}
+
+// ── Fechamento Mensal ──────────────────────────────────────────────
+async function fecharMes(mesKey) {
+    if (!podeEditar('financeiro')) { toast('❌ Sem permissão'); return; }
+    if (!mesKey) mesKey = document.getElementById('fin-rel-mes')?.value || ymKey(new Date());
+
+    // Verifica se mês já foi fechado
+    if (dadosFechamentos[mesKey]) {
+        if (!confirm(`Mês ${mesKey} já foi fechado. Refazer fechamento?`)) return;
+    }
+
+    const [ano, mes] = mesKey.split('-').map(Number);
+    const dataRef = new Date(ano, mes - 1, 1);
+    const label = dataRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    // Calcula totais do mês
+    const itemsPagar   = dadosPagar.filter(c => diaKey(c.vencimento) === mesKey);
+    const itemsReceber = dadosReceber.filter(c => diaKey(c.vencimento) === mesKey);
+
+    const totalRecebido = itemsReceber.filter(c => c.status === 'recebido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalAReceber = itemsReceber.filter(c => c.status !== 'recebido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalPago     = itemsPagar.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalAPagar   = itemsPagar.filter(c => c.status !== 'pago').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalFixas    = dadosFixas.reduce((s,c) => s + Number(c.valor||0), 0);
+
+    const receitaTotal = totalRecebido + totalAReceber;
+    const despesaTotal = totalPago + totalAPagar + totalFixas;
+    const saldoFinal   = receitaTotal - despesaTotal;
+
+    const fechamento = {
+        mes: mesKey,
+        label,
+        receitaTotal,
+        despesaTotal,
+        saldoFinal,
+        totalRecebido,
+        totalAReceber,
+        totalPago,
+        totalAPagar,
+        totalFixas,
+        qtdPagar: itemsPagar.length,
+        qtdReceber: itemsReceber.length,
+        qtdFixas: dadosFixas.length,
+        fechadoEm: serverTimestamp()
+    };
+
+    try {
+        await setDoc(doc(db, COL_FECHAMENTOS, mesKey), fechamento);
+        dadosFechamentos[mesKey] = { id: mesKey, ...fechamento };
+        toast(`✅ Mês ${label} fechado! Saldo: ${fmt(saldoFinal)}`);
+
+        // Gera despesas do próximo mês automaticamente
+        const proxMes = new Date(ano, mes, 1); // mês seguinte
+        const proxKey = ymKey(proxMes);
+        let countFixas = 0;
+        for (const fixa of dadosFixas) {
+            const dia = fixa.dia || 1;
+            const vencISO = `${proxKey}-${String(dia).padStart(2, '0')}`;
+            const desc = `${fixa.descricao} (Fixa)`;
+            if (dadosPagar.some(c => c.descricao === desc && diaKey(c.vencimento) === proxKey)) continue;
+            try {
+                await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${proxKey}`), {
+                    descricao: desc, categoria: fixa.categoria || 'Outro',
+                    vencimento: vencISO, valor: Number(fixa.valor) || 0,
+                    status: 'pendente', obs: `Gerado no fechamento de ${mesKey}`,
+                    criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
+                });
+                countFixas++;
+            } catch(e) { console.warn('Erro ao gerar fixa pós-fechamento:', e); }
+        }
+
+        await recarregar('pagar');
+        renderRelatorio();
+        renderFluxoCaixa();
+        renderHistoricoFechamentos();
+        if (countFixas > 0) toast(`📌 ${countFixas} despesa(s) gerada(s) para ${ymKey(proxMes)}`);
+    } catch(e) {
+        console.error('Erro ao fechar mês:', e);
+        toast('❌ Erro ao fechar mês');
+    }
+}
+
+// ── Histórico de Fechamentos ───────────────────────────────────────
+function renderHistoricoFechamentos() {
+    const container = document.getElementById('fin-historico-fechamentos');
+    if (!container) return;
+
+    const keys = Object.keys(dadosFechamentos).sort().reverse();
+    if (!keys.length) {
+        container.innerHTML = '<div class="fin-empty" style="display:flex;padding:16px"><div class="fin-empty-icon">🔒</div><div class="fin-empty-title">Nenhum mês fechado ainda</div></div>';
+        return;
+    }
+
+    container.innerHTML = keys.map(key => {
+        const f = dadosFechamentos[key];
+        const className = f.saldoFinal >= 0 ? 'fin-verde' : 'fin-vermelho';
+        return `<div class="fin-hist-card" onclick="document.getElementById('fin-rel-mes').value='${key}';renderRelatorio();renderFluxoCaixa();">
+            <div class="fin-hist-mes">${f.label || key}</div>
+            <div class="fin-hist-valores">
+                <span>📥 ${fmt(f.receitaTotal)}</span>
+                <span>📤 ${fmt(f.despesaTotal)}</span>
+            </div>
+            <div class="fin-hist-saldo ${className}">${fmt(f.saldoFinal)}</div>
+            <div class="fin-hist-sub">${f.qtdPagar || 0} contas · ${f.qtdFixas || 0} fixas</div>
+        </div>`;
+    }).join('');
+}
+
+// ── Análise por Categoria ──────────────────────────────────────────
+function renderAnaliseCategoria() {
+    const container = document.getElementById('fin-analise-categoria');
+    if (!container) return;
+
+    const sel = document.getElementById('fin-rel-mes');
+    const mes = sel?.value || ymKey(new Date());
+
+    const itemsPagar = dadosPagar.filter(c => diaKey(c.vencimento) === mes && c.status !== 'pago');
+    const itemsReceber = dadosReceber.filter(c => diaKey(c.vencimento) === mes && c.status !== 'recebido');
+
+    if (!itemsPagar.length && !itemsReceber.length) {
+        container.innerHTML = '<div class="fin-empty" style="display:flex;padding:16px"><div class="fin-empty-icon">📊</div><div class="fin-empty-title">Nenhum dado para análise</div></div>';
+        return;
+    }
+
+    // Agrupa pagar por categoria
+    const catsPagar = {};
+    itemsPagar.forEach(c => {
+        const cat = c.categoria || 'Outro';
+        catsPagar[cat] = (catsPagar[cat] || 0) + Number(c.valor || 0);
+    });
+    const totalPagar = Object.values(catsPagar).reduce((s, v) => s + v, 0);
+
+    // Agrupa receber por descrição (já que receber não tem categoria)
+    const totalReceber = itemsReceber.reduce((s, c) => s + Number(c.valor || 0), 0);
+
+    let html = '';
+
+    if (totalPagar > 0) {
+        html += `<div class="fin-analise-subtitle">💸 Despesas por Categoria</div>`;
+        html += `<div class="fin-analise-bars">`;
+        const sorted = Object.entries(catsPagar).sort((a, b) => b[1] - a[1]);
+        sorted.forEach(([cat, valor]) => {
+            const pct = (valor / totalPagar * 100).toFixed(1);
+            const icon = CAT_ICON[cat] || '📌';
+            html += `<div class="fin-analise-item">
+                <div class="fin-analise-header">
+                    <span>${icon} ${cat}</span>
+                    <span><strong>${fmt(valor)}</strong> (${pct}%)</span>
+                </div>
+                <div class="fin-analise-bar-track">
+                    <div class="fin-analise-bar-fill" style="width:${pct}%"></div>
+                </div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (totalReceber > 0) {
+        html += `<div class="fin-analise-subtitle" style="margin-top:16px">💰 Receitas</div>`;
+        html += `<div class="fin-analise-total">Total a receber: <strong class="fin-verde">${fmt(totalReceber)}</strong></div>`;
+    }
+
+    container.innerHTML = html || '<div class="fin-empty" style="display:flex;padding:16px"><div class="fin-empty-icon">📊</div><div class="fin-empty-title">Nenhum dado para análise</div></div>';
+}
 
 // ── exports globais ────────────────────────────────────────────────
 window.renderRelatorio = renderRelatorio;
 window.renderFluxoCaixa = renderFluxoCaixa;
 window.gerarDespesasDoMes = gerarDespesasDoMes;
+window.fecharMes = fecharMes;
+window.renderAnaliseCategoria = renderAnaliseCategoria;
+window.carregarFechamentos = carregarFechamentos;
+window.renderHistoricoFechamentos = renderHistoricoFechamentos;
+window.ymKey = ymKey;
 
 // ── boot (RBAC Fase 2, Sprint 4 — moduloId 'financeiro') ────────────
 async function _boot() {
@@ -922,6 +1125,7 @@ async function _boot() {
 
     await carregar();
     await carregarCategorias();
+    await carregarFechamentos();
     gerarMesesOption();
 }
 if (document.readyState === 'loading') {

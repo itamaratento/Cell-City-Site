@@ -367,7 +367,62 @@ h1 { font-size:18px; font-weight:800; text-align:center; flex: 1; }
 .fin-fluxo-detalhes { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text3); }
 .fin-fluxo-detalhes strong { color: var(--text2); }
 
+/* ======== STATUS DO MÊS + BOTÃO FECHAR ======== */
+.fin-rel-status-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px; padding: 10px 14px;
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 10px;
+}
+.fin-rel-status-aberto { font-size: 13px; color: var(--text3); font-weight: 600; }
+.fin-rel-status-fechado { font-size: 13px; color: var(--green-light); font-weight: 700; }
+.fin-btn-fechar-mes {
+    padding: 8px 16px; border: none; border-radius: 8px;
+    font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+    background: var(--yellow); color: #000; transition: background 200ms;
+}
+.fin-btn-fechar-mes:hover { background: #fcd34d; }
+
+/* ======== ANÁLISE POR CATEGORIA ======== */
+.fin-analise-bars { display: flex; flex-direction: column; gap: 10px; }
+.fin-analise-subtitle {
+    font-size: 12px; font-weight: 700; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px;
+}
+.fin-analise-item { display: flex; flex-direction: column; gap: 4px; }
+.fin-analise-header {
+    display: flex; justify-content: space-between; font-size: 13px;
+    color: var(--text2);
+}
+.fin-analise-bar-track {
+    height: 8px; background: rgba(255,255,255,0.08); border-radius: 100px;
+    overflow: hidden;
+}
+.fin-analise-bar-fill {
+    height: 100%; background: var(--green-light); border-radius: 100px;
+    transition: width 400ms ease;
+}
+.fin-analise-total { font-size: 14px; color: var(--text2); margin-top: 4px; }
+
+/* ======== HISTÓRICO DE FECHAMENTOS ======== */
+#fin-historico-fechamentos {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px; margin-bottom: 16px;
+}
+.fin-hist-card {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px; cursor: pointer;
+    transition: background 200ms, border-color 200ms;
+}
+.fin-hist-card:hover { background: rgba(255,255,255,0.08); border-color: var(--green); }
+.fin-hist-mes { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.fin-hist-valores { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--text3); }
+.fin-hist-saldo { font-size: 18px; font-weight: 800; margin: 6px 0 2px; }
+.fin-hist-sub { font-size: 11px; color: var(--text3); }
+
 @media (max-width: 600px) {
     .fin-rel-cards { grid-template-columns: 1fr; }
     .fin-fluxo-grid { grid-template-columns: 1fr; }
+    #fin-historico-fechamentos { grid-template-columns: 1fr; }
+    .fin-rel-status-bar { flex-direction: column; align-items: stretch; text-align: center; }
 }

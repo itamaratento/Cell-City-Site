@@ -241,7 +241,13 @@
     <div class="fin-panel" id="tab-relatorio">
         <div class="fin-rel-mes-selector">
             <label>Mês: </label>
-            <select id="fin-rel-mes" onchange="if(window.renderRelatorio){renderRelatorio();renderFluxoCaixa();}"></select>
+            <select id="fin-rel-mes" onchange="if(window.renderRelatorio){renderRelatorio();renderFluxoCaixa();renderAnaliseCategoria();}"></select>
+        </div>
+
+        <!-- Status do mês + Botão Fechar -->
+        <div class="fin-rel-status-bar">
+            <span id="fin-rel-status" class="fin-rel-status-aberto">📂 Mês aberto</span>
+            <button class="fin-btn-fechar-mes" id="btn-fechar-mes" onclick="fecharMes()">🔒 Fechar Mês</button>
         </div>
 
         <div class="fin-rel-cards">
@@ -272,6 +278,10 @@
             <span class="fin-rel-valor-grande" id="rel-saldo">R$ 0</span>
         </div>
 
+        <!-- Análise por Categoria -->
+        <div class="fin-rel-section-title">📊 Despesas por Categoria</div>
+        <div id="fin-analise-categoria"></div>
+
         <!-- Fluxo de Caixa Projetado -->
         <div class="fin-rel-section-title">📈 Fluxo de Caixa Projetado</div>
         <div class="fin-fluxo-grid">
@@ -279,6 +289,10 @@
             <div class="fin-fluxo-card" id="fluxo-60"></div>
             <div class="fin-fluxo-card" id="fluxo-90"></div>
         </div>
+
+        <!-- Histórico de Fechamentos -->
+        <div class="fin-rel-section-title">🔒 Histórico de Fechamentos</div>
+        <div id="fin-historico-fechamentos"></div>
 
         <!-- Lançamentos do Mês -->
         <div class="fin-rel-section-title">📋 Lançamentos do Mês</div>
