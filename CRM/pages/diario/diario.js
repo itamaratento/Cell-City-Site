@@ -867,4 +867,10 @@ initGDrive();
     inp.value = getApelido();
     inp.addEventListener('change', () => setApelido(inp.value));
 })();
-carregar();
+(async function boot() {
+  const ctx = await initModulo();
+  if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('diario')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+  carregar();
+})();
