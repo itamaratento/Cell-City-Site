@@ -1,5 +1,6 @@
 import { db, collection, getDocs } from "../../scripts/firebase.js";
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 
 // ── Estado
 let todos       = [];
@@ -326,6 +327,11 @@ async function init() {
     try {
         const ctx = await initModulo();
         if (!ctx) return;
+        await carregarPermissoes(ctx);
+        if (!podeVisualizar('analise')) {
+            document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+            return;
+        }
 
         await carregar();
         anoTopo = new Date().getFullYear();
