@@ -1550,7 +1550,13 @@ function _retornoMensagensPadrao() {
         retorno1:  'Olá, {nome}! 👋\n\nPassando para verificar se você teve a oportunidade de avaliar o orçamento do seu {aparelho}.\n\nEstamos à disposição!\nCell City Informática',
         retorno2:  'Olá, {nome}! 👋\n\nEste é nosso segundo contato sobre o orçamento do seu {aparelho}.\n\nPor favor, nos informe se deseja prosseguir com o serviço.\nCell City Informática',
         retorno3:  'Olá, {nome}! 👋\n\nTerceiro contato sobre o orçamento do seu {aparelho}.\n\nAguardamos seu retorno para darmos continuidade ao serviço.\nCell City Informática',
-        retorno4:  'Olá, {nome}! 👋\n\nEste é nosso último contato sobre o orçamento do seu {aparelho}.\n\nCaso não haja retorno, o aparelho ficará disponível para retirada.\nCell City Informática'
+        retorno4:  'Olá, {nome}! 👋\n\nEste é nosso último contato sobre o orçamento do seu {aparelho}.\n\nCaso não haja retorno, o aparelho ficará disponível para retirada.\nCell City Informática',
+        aguardando_peca: 'Olá, {nome}! 👋\n\nEstamos aguardando a chegada da peça para o seu {modelo}.\n\n📋 OS Nº {os}\n\nAssim que a peça chegar, iniciaremos o reparo!\nCell City Informática',
+        em_reparo: 'Olá, {nome}! 👋\n\nSeu {modelo} está em reparo.\n\n📋 OS Nº {os}\n\nEstamos trabalhando para finalizar o mais rápido possível!\nCell City Informática',
+        pronto_retirada: 'Olá, {nome}! 👋\n\nSeu {modelo} está pronto para retirada!\n\n📋 OS Nº {os}\n\nEstamos aguardando sua visita.\nCell City Informática',
+        lembrete_retirada: 'Olá, {nome}! 👋\n\nSeu {modelo} está aguardando retirada há alguns dias.\n\n📋 OS Nº {os}\n\nQualquer dúvida, estamos à disposição!\nCell City Informática',
+        orcamento_aprovado: 'Olá, {nome}! 👋\n\nÓtimo! O orçamento do seu {modelo} foi aprovado.\n\nJá iniciamos o serviço e avisaremos assim que estiver concluído.\nCell City Informática',
+        orcamento_recusado: 'Olá, {nome}! 👋\n\nEntendemos sua decisão.\n\nSeu {modelo} está disponível para retirada quando preferir.\n\n📋 OS Nº {os}\n\nCell City Informática'
     };
 }
 
@@ -1597,6 +1603,15 @@ function renderRetornoPanelHTML(os) {
             <button onclick="copiarMensagemRetorno('retorno2')" class="retorno-msg-btn">🔄 Retorno 2</button>
             <button onclick="copiarMensagemRetorno('retorno3')" class="retorno-msg-btn">🔄 Retorno 3</button>
             <button onclick="copiarMensagemRetorno('retorno4')" class="retorno-msg-btn">🔄 Retorno 4</button>
+        </div>
+        <div class="retorno-section-label" style="margin-top:14px;">📱 POR STATUS DA OS</div>
+        <div class="retorno-msg-btns">
+            <button onclick="copiarMensagemRetorno('aguardando_peca')" class="retorno-msg-btn">⏳ Aguardando Peça</button>
+            <button onclick="copiarMensagemRetorno('em_reparo')" class="retorno-msg-btn">🔧 Em Reparo</button>
+            <button onclick="copiarMensagemRetorno('pronto_retirada')" class="retorno-msg-btn">📦 Pronto Retirada</button>
+            <button onclick="copiarMensagemRetorno('lembrete_retirada')" class="retorno-msg-btn">🔔 Lembrete</button>
+            <button onclick="copiarMensagemRetorno('orcamento_aprovado')" class="retorno-msg-btn">✅ Orç. Aprovado</button>
+            <button onclick="copiarMensagemRetorno('orcamento_recusado')" class="retorno-msg-btn">❌ Orç. Recusado</button>
         </div>
         ${_podeEditarOs ? `<div class="retorno-section-label" style="margin-top:14px;">PRÓXIMO RETORNO</div>
         <div class="retorno-proximo">
@@ -1723,14 +1738,17 @@ async function copiarMensagemRetorno(chave) {
 async function abrirEditarMensagensRetorno() {
     if (!Object.keys(retornoMensagens).length) await loadRetornoMensagens();
     const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
+    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4', 'aguardando_peca', 'em_reparo', 'pronto_retirada', 'lembrete_retirada', 'orcamento_aprovado', 'orcamento_recusado'];
     const NOMES  = {
         cliente: '👤 Mensagem p/ Cliente',
         fornecedor: '🏭 Mensagem p/ Fornecedor',
         finalizado: '✅ Serviço Finalizado',
         orcamento: '📋 Orçamento',
         retorno1: '🔄 Retorno 1', retorno2: '🔄 Retorno 2',
-        retorno3: '🔄 Retorno 3', retorno4: '🔄 Retorno 4'
+        retorno3: '🔄 Retorno 3', retorno4: '🔄 Retorno 4',
+        aguardando_peca: '⏳ Aguardando Peça', em_reparo: '🔧 Em Reparo',
+        pronto_retirada: '📦 Pronto Retirada', lembrete_retirada: '🔔 Lembrete Retirada',
+        orcamento_aprovado: '✅ Orçamento Aprovado', orcamento_recusado: '❌ Orçamento Recusado'
     };
     const VARIAVEIS = '<strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{modelo}</strong>, <strong>{defeito}</strong>, <strong>{os}</strong>, <strong>{garantia}</strong>, <strong>{validade}</strong>, <strong>{avaliacao}</strong>';
     const campos = CHAVES.map(k => `<div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${NOMES[k]}</label><textarea id="rm-${k}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${esc(retornoMensagens[k] || '')}</textarea></div>`).join('');
@@ -1742,7 +1760,7 @@ async function abrirEditarMensagensRetorno() {
 }
 
 async function salvarMensagensRetorno() {
-    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4'];
+    const CHAVES = ['cliente', 'fornecedor', 'finalizado', 'orcamento', 'retorno1', 'retorno2', 'retorno3', 'retorno4', 'aguardando_peca', 'em_reparo', 'pronto_retirada', 'lembrete_retirada', 'orcamento_aprovado', 'orcamento_recusado'];
     const msgs = {};
     for (const k of CHAVES) { const el = document.getElementById(`rm-${k}`); if (el) msgs[k] = el.value; }
     try {
