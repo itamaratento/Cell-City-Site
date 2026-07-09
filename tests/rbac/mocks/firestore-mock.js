@@ -20,6 +20,15 @@ export function query(ref, ...clauses) { return { __col: ref.__col, __clauses: c
 export function where(field, op, value) { return { type: 'where', field, op, value }; }
 export function orderBy(field, dir) { return { type: 'orderBy', field, dir }; }
 export function limit(n) { return { type: 'limit', n }; }
+
+// Mock mínimo de Storage para módulos que importam firebase-storage.js do CDN.
+// As funções retornam valores dummy — testes de upload/download de arquivos
+// (ex.: fotos em central-informacoes) precisariam de mock específico.
+export function getStorage() { return { __mock: true }; }
+export function ref() { return { __mock: true }; }
+export async function uploadBytes() { return { ref: { __mock: true } }; }
+export async function getBytes() { return new ArrayBuffer(0); }
+export async function deleteObject() {}
 export function serverTimestamp() { return new Date().toISOString(); }
 
 function applyClauses(entries, clauses = []) {
