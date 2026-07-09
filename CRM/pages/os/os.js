@@ -704,7 +704,7 @@ function salvarUltimaTela(view, label, sub, hash) {
     try {
         localStorage.setItem(ULTIMA_TELA_KEY, JSON.stringify({
             modulo: 'os', view, label, sub: sub || '', hash,
-            url: '/CRM/pages/os/index.html' + hash, ts: Date.now()
+            url: (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/os/index.html' + hash, ts: Date.now()
         }));
     } catch {}
 }
@@ -1741,7 +1741,7 @@ async function generateWarrantyLink() {
     if (garantias.length === 0) { showToast('⚠️ Nenhuma garantia disponível'); return; }
     const garantia = garantias.find(g => g.id == os.garantiaId) || garantias.find(g => g.padrao) || garantias[0];
     if (!garantia) { showToast('⚠️ Nenhuma garantia disponível'); return; }
-    const baseUrl = window.location.origin + '/CRM/garantia?id=' + os.id;
+    const baseUrl = window.location.origin + (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/garantia?id=' + os.id;
     navigator.clipboard.writeText(baseUrl).then(() => {
         showToast('✅ Link copiado para compartilhar!');
     }).catch(() => {
@@ -2408,7 +2408,7 @@ async function init() {
     if (!ctx) return;
     // RBAC (Fase 2, Sprint 5 — moduloId 'os').
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('os')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('os')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
     if (!podeCriar('os')) {
         document.querySelectorAll('.category-card').forEach(el => el.style.display = 'none');
     }

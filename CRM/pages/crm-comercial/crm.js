@@ -304,7 +304,8 @@ function renderHomeGrid() {
   if (!grid) return;
 
   // Card destacado: Novo Cliente (só quando o perfil pode criar no CRM)
-  const novoCard = podeCriar('crm') ? `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
+  const _devpfx = location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'';
+  const novoCard = podeCriar('crm') ? `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='${_devpfx}/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
     <span class="crm-home-icon">👤</span>
     <span class="crm-home-nome">Novo Cliente</span>
     <span class="crm-home-count" style="color:var(--cell-green);background:rgba(0,200,83,0.15);font-size:20px;font-weight:900">＋</span>
@@ -895,7 +896,7 @@ window.converterEmOS = async function(id) {
   } catch(e) { console.warn('Não foi possível marcar lead:', e); }
 
   showToast('🔧 Abrindo O.S...');
-  setTimeout(() => { window.location.href = '/CRM/pages/os/index.html'; }, 600);
+  setTimeout(() => { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/os/index.html'; }, 600);
 };
 
 // ── Excluir ──────────────────────────────────────────────────

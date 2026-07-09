@@ -386,12 +386,12 @@ window.submitEntrada = async function(e) {
         preOsId
       }));
       showToast('🔧 Abrindo O.S...');
-      setTimeout(() => { window.location.href = '/CRM/pages/os/index.html'; }, 600);
+      setTimeout(() => { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/os/index.html'; }, 600);
       return;
     }
 
     sessionStorage.setItem('cc_crm_msg', `✅ Cliente cadastrado — ${nome}`);
-    window.location.href = '/CRM/pages/crm-comercial/index.html';
+    window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/crm-comercial/index.html';
 
   } catch(err) {
     console.error('Erro ao salvar:', err);
@@ -402,7 +402,7 @@ window.submitEntrada = async function(e) {
 
 // ── Voltar ────────────────────────────────────────────────────
 window.voltarCRM = function() {
-  window.location.href = '/CRM/pages/crm-comercial/index.html';
+  window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/crm-comercial/index.html';
 };
 
 // ── Init ─────────────────────────────────────────────────────
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
   await carregarPermissoes(ctx);
-  if (!podeCriar('crm')) { window.location.href = '/CRM/pages/crm-comercial/index.html'; return; }
+  if (!podeCriar('crm')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/crm-comercial/index.html'; return; }
 
   renderChips();
   // Foco automático no telefone ao abrir

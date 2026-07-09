@@ -32,7 +32,7 @@ import {
     browserSessionPersistence
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
 import {
-    doc, getDoc, setDoc, serverTimestamp
+    doc, getDoc, setDoc, updateDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // ── Configuração ──────────────────────────────────────────────
@@ -189,6 +189,10 @@ export async function login(email, senha, lembrar = false) {
     _log(`Login iniciado: ${email} | lembrar=${lembrar}`);
     const cred = await signInWithEmailAndPassword(auth, email, senha);
     _log(`Login bem-sucedido: ${cred.user.uid}`);
+    // Registra o timestamp deste login (ignora falha — não bloqueia o login)
+    try {
+        await updateDoc(doc(db, 'usuarios', cred.user.uid), { ultimo_acesso: serverTimestamp() });
+    } catch (_) { /* */ }
     return cred.user;
 }
 

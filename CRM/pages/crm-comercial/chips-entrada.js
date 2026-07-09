@@ -311,7 +311,7 @@ async function _boot() {
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
   await carregarPermissoes(ctx);
-  if (!podeCriar('crm')) { window.location.href = '/CRM/pages/crm-comercial/chips.html'; return; }
+  if (!podeCriar('crm')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/crm-comercial/chips.html'; return; }
 
   renderOperadoras();
   renderStatus();

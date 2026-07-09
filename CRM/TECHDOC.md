@@ -638,6 +638,45 @@ Em `_bootDashboard()`, logo após `initModulo()`, chama `carregarPermissoes(ctx)
 
 ---
 
+## 28. Sprint 7 — Rastreamento de Último Acesso (2026-07-08)
+
+**Objetivo:** implementar rastreamento do timestamp do último login de cada usuário, registrado no Firestore e exibido na tabela do módulo Usuários e Permissões. Pendência formal da Fase 1 (MASTER_ROADMAP.md §"Usuários e Permissões").
+
+### 28.1 Componentes alterados
+
+| Arquivo | Mudança |
+|---------|---------|
+| `CRM/scripts/kernel.js` | Adicionado `updateDoc` ao import do Firestore; na função `login()`, após autenticação bem-sucedida, grava `ultimo_acesso: serverTimestamp()` no documento `usuarios/{uid}` do Firestore. Falha de escrita é silenciosamente ignorada (não bloqueia o login). |
+| `CRM/pages/usuarios-permissoes/index.html` | Adicionada coluna `<th>Último acesso</th>` no cabeçalho da tabela, antes da coluna "Última alteração". |
+| `CRM/pages/usuarios-permissoes/usuarios-permissoes.js` | Em `renderUsuarios()`, adicionado `<td>${fmtData(u.ultimo_acesso)}</td>` entre as colunas "Status" e "Última alteração". A função `fmtData()` já trata Timestamps do Firestore (converte via `.toDate()`) e exibe "—" para valores nulos/ausentes. |
+
+### 28.2 Lógica de registro
+
+O registro do `ultimo_acesso` ocorre exclusivamente na função `login()` do `kernel.js`, não no `onAuthStateChanged`/`_buildContext()`. Isso evita:
+
+- Escrita no Firestore a cada refresh de página (o `onAuthStateChanged` dispara em toda navegação com sessão ativa).
+- Escrita para contas pendentes/auto-provisionadas (antes de qualquer login bem-sucedido).
+- Degradação de performance por writes excessivos (o login é um evento relativamente raro por usuário).
+
+### 28.3 Segurança (Firestore Rules)
+
+A regra de `update` para `usuarios/{uid}` (BL-006, TECHDOC §6.12-6.14) já permite que o próprio dono do documento adicione campos não-sensíveis. O campo `ultimo_acesso` não está na lista de campos congelados (`perfil`, `perfil_operacional_id`, `empresa_id`, `status`), portanto a escrita é naturalmente autorizada — nenhuma alteração nas Firestore Rules foi necessária.
+
+### 28.4 Testes automatizados
+
+| Arquivo | Testes | Resultado |
+|---------|--------|-----------|
+| `tests/rbac/usuarios-ultimo-acesso.test.mjs` (novo) | 5 cenários: coluna no HTML, formatação do timestamp, presença da lógica no kernel.js, template no JS, regra Firestore | 5/5 OK |
+
+### 28.5 Regressão
+
+Suíte RBAC completa: **57/58** (1 falha pré-existente do Caixa — "Caixa matriz total: tudo visível", não relacionada). Zero regressão introduzida.
+
+### 28.6 Pendências futuras
+
+- **Políticas de senha** (expiração, força mínima, histórico) — segunda parte da pendência formal da Fase 1, UI já existe com sinalização "não habilitado nesta fase". Não implementado nesta sprint.
+- **Último acesso no card do Dashboard** — exibir o timestamp no card de boas-vindas ou em um indicador rápido para administradores.
+
 ## 8. Histórico de Entregas
 
 | Data | Funcionalidade |

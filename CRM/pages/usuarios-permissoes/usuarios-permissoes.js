@@ -334,6 +334,7 @@ function renderUsuarios() {
       <td>${esc(perfil ? perfil.nome : '—')}</td>
       <td>${esc(u.setor || '—')}</td>
       <td><span class="up-badge ${inativo ? 'up-badge-inativo' : 'up-badge-ativo'}">${inativo ? 'Inativo' : 'Ativo'}</span></td>
+      <td>${fmtData(u.ultimo_acesso)}</td>
       <td>${fmtData(u.ultima_alteracao)}</td>
       <td class="up-td-acoes">
         <div class="up-acoes">

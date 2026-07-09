@@ -126,6 +126,8 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 4. ✅ **Sprint 6 — Central de Alertas (Financeiro)** — concluída em 2026-07-08. Integração completa dos 3 repositórios financeiros (Pagar, Receber, Fixas) com 5 alertas novos. 7/7 testes automáticos passando. Working tree limpo.
 
+5. ✅ **Sprint 7 — Rastreamento de Último Acesso** — concluída em 2026-07-08. Implementação do registro de `ultimo_acesso` no login (kernel.js), exibição na tabela do módulo Usuários e Permissões. 5/5 testes automáticos (novo arquivo: `tests/rbac/usuarios-ultimo-acesso.test.mjs`). Regressão: 57/58 (falha pré-existente Caixa). Pendência formal da Fase 1 atendida. Políticas de senha (expiração/força mínima) não implementadas nesta sprint — segunda parte pendente.
+
 ## ⚠️ RISCOS ATUAIS
 
 - ✅ ~~Sprint 3 do RBAC publicado no `develop` sem aprovação formal~~ — **aprovado formalmente em 2026-07-08**, integrado à baseline técnica.
@@ -135,8 +137,9 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 - 🟡 **Falha pré-existente em `tests/rbac/caixa.test.mjs`** ("Caixa matriz total: tudo visível") — 1/53 falha, pré-existente (não regressão desta sprint). Não investigada/corrigida.
 - ✅ ~~Cache persistente do Firestore (Fase 2) sem validação em navegador real~~ — **resolvido em 2026-07-08**: homologado em Chrome real (login via custom token, dados do DEV) — cache offline, multiaba e boot visual de Dashboard/Central de Alertas confirmados sem erro. Ver `CRM/TECHDOC.md` §24.6.
 - 🟡 **Supressão do polling durante aba oculta (300s/600s) sem prova direta por instrumentação de rede** — o teste de 305s com a aba oculta capturou também o tráfego do listener em tempo real pré-existente (`iniciarStatusSync()`), não isolando só o timer novo. Risco baixo: a mudança de constante (`30000`→`300000`/`600000`) é determinística e o padrão de gating foi validado isoladamente (4/4). Não bloqueia o push; reavaliar só se surgir evidência de leitura excessiva em produção.
+- 🟡 **Políticas de senha não implementadas** (expiração, força mínima, histórico) — UI já sinaliza "não habilitado nesta fase". Pendência formal da Fase 1, não implementada na Sprint 7.
 - Dívida técnica consolidada: ver [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) §5.
 
 ---
 
-*Última atualização: 2026-07-08 — Sprint 5 (OS) implementada, homologada e aguardando aprovação formal. Sprint 6 (Central de Alertas Financeiro) concluída: 5 alertas financeiros integrados à Central de Alertas (pagar vencido/próximo, receber vencido/previsto, fluxo de caixa projetado), 7/7 testes automáticos, zero regressão (52/53, falha pré-existente Caixa não relacionada). Working tree limpo, commitado localmente. Fase 2 (RBAC) completa aguardando aprovação do Sprint 5. Próximo: iniciar evolução funcional prevista no roadmap.*
+*Última atualização: 2026-07-08 — Sprint 7 (Rastreamento de Último Acesso) concluída. Pendência formal da Fase 1 (último acesso) atendida. 5/5 testes novos, 57/58 regressão (falha pré-existente Caixa). Sprint 5 (OS) e Sprint 6 (Central de Alertas Financeiro) concluídas anteriormente. Fase 2 (RBAC) completa aguardando aprovação do Sprint 5. Próximo: Políticas de senha (segunda parte pendente da Fase 1) ou evolução funcional Fase 4 (Evolução Funcional).*
