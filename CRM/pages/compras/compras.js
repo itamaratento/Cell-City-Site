@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
@@ -23,12 +23,12 @@ function toast(msg) {
 // ── Carregar ───────────────────────────────────────────────────────
 async function carregar() {
   try {
-    const snap = await getDocs(collection(db, COL_COMPRAS));
+    const snap = await getDocs(query(collection(db, COL_COMPRAS), limit(500)));
     dados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { dados = []; }
 
   try {
-    const snap = await getDocs(collection(db, 'fornecedor_compras'));
+    const snap = await getDocs(query(collection(db, 'fornecedor_compras'), limit(200)));
     fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { fornecedores = []; }
 

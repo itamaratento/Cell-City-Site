@@ -373,21 +373,22 @@ async function salvarReceber() {
 // ── recarregar parcial ─────────────────────────────────────────────
 async function recarregar(col) {
     try {
-        if (col === 'pagar') {
-            const sp = await getDocs(collection(db, COL_PAGAR));
-            dadosPagar = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
-            dadosPagar = dadosPagar.map(c => calcStatus(c, 'pago'));
-            renderPagar(dadosPagar);
-        } else if (col === 'fixa') {
-            const sf = await getDocs(collection(db, COL_FIXAS));
-            dadosFixas = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
-            renderFixas(dadosFixas);
-        } else if (col === 'receber') {
-            const sr = await getDocs(collection(db, COL_RECEBER));
-            dadosReceber = []; sr.forEach(d => dadosReceber.push({ id: d.id, ...d.data() }));
-            dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
-            renderReceber(dadosReceber);
-        }
+        const colMap = {
+            pagar:   { col: COL_PAGAR,   arr: () => dadosPagar,   render: renderPagar,   calc: 'pago' },
+            fixa:    { col: COL_FIXAS,   arr: () => dadosFixas,   render: renderFixas },
+            receber: { col: COL_RECEBER, arr: () => dadosReceber, render: renderReceber, calc: 'recebido' }
+        };
+        const m = colMap[col];
+        if (!m) return;
+        // Otimização: reler apenas a coleção afetada (não todas as 3)
+        const sp = await getDocs(collection(db, m.col));
+        const arr = [];
+        sp.forEach(d => arr.push({ id: d.id, ...d.data() }));
+        if (m.calc) arr.forEach((c, i) => { arr[i] = calcStatus(c, m.calc); });
+        if (col === 'pagar') dadosPagar = arr;
+        else if (col === 'fixa') dadosFixas = arr;
+        else if (col === 'receber') dadosReceber = arr;
+        m.render(arr);
         atualizarResumoCompleto();
     } catch {}
 }
