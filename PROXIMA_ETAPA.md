@@ -130,6 +130,8 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 6. ✅ **Sprint 8 — WhatsApp Templates (CRM Comercial)** — concluída em 2026-07-09. Sistema de templates de mensagens WhatsApp no módulo CRM Comercial. Funcionalidades: CRUD de templates com variáveis `{nome}`, `{aparelho}`, `{servico}`, `{valor}`, `{tel}`, `{obs}`; seletor de template ao clicar em WhatsApp em um lead; fallback para mensagem padrão quando não há templates. Segurança: gate RBAC via `podeEditar('crm')` — somente usuários com permissão de editar podem criar/editar/excluir templates; usuários com visualização podem usar templates existentes. Firestore Rules: coleção `crm_templates` com leitura liberada para autenticados e escrita restrita a `temAcessoLiberado()`. 10/10 testes automáticos (novo arquivo: `tests/rbac/crm-templates.test.mjs`). Regressão: 67/68 (falha pré-existente Caixa inalterada).
 
+7. ✅ **Sprint 9 — Financeiro: Relatório Mensal + Fluxo de Caixa Projetado** — concluída em 2026-07-09. Funcionalidades: (1) Relatório Mensal com demonstrativo receita/despesa/saldo por mês, cards financeiros, lista de lançamentos; (2) Fluxo de Caixa Projetado 30/60/90 dias baseado em contas pendentes + fixas; (3) Geração Automática de Despesas Recorrentes a partir de despesas fixas; (4) Resumo estendido com vencidos e pendentes no topo. 4/4 testes automáticos (novo arquivo: `tests/rbac/financeiro-relatorio.test.mjs`). Regressão: 71/72 (falha pré-existente Caixa inalterada).
+
 ## ⚠️ RISCOS ATUAIS
 
 - ✅ ~~Sprint 3 do RBAC publicado no `develop` sem aprovação formal~~ — **aprovado formalmente em 2026-07-08**, integrado à baseline técnica.
@@ -144,4 +146,4 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ---
 
-*Última atualização: 2026-07-09 — Sprint 8 (WhatsApp Templates CRM Comercial) concluída. Sistema CRUD de templates WhatsApp com variáveis, seletor no lead, gate RBAC via podeEditar('crm'). 10/10 testes novos, 67/68 regressão (falha pré-existente Caixa inalterada). Working tree com 2 arquivos modificados (crm.js, firestore.rules). Próximo: Políticas de senha (segunda parte pendente da Fase 1) ou evolução funcional Fase 4 (Evolução Funcional).*
+*Última atualização: 2026-07-09 — Sprint 9 (Financeiro: Relatório Mensal + Fluxo de Caixa) concluída. Relatório mensal com receita/despesa/saldo, fluxo de caixa projetado 30/60/90 dias, geração automática de despesas recorrentes. 4/4 testes novos, 71/72 regressão (falha pré-existente Caixa inalterada). Working tree com 4 arquivos modificados (financeiro.js, index.html, financeiro.css, PROXIMA_ETAPA.md) + 1 novo (tests). Próximo: Políticas de senha (segunda parte pendente da Fase 1) ou próxima evolução funcional.*

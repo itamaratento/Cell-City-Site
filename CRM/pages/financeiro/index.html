@@ -28,6 +28,16 @@
         </div>
         <div class="fin-resumo-div"></div>
         <div class="fin-resumo-item">
+            <span class="fin-resumo-num fin-vermelho" id="res-vencido" style="font-size:12px">R$ 0</span>
+            <span class="fin-resumo-label">Vencidos</span>
+        </div>
+        <div class="fin-resumo-div"></div>
+        <div class="fin-resumo-item">
+            <span class="fin-resumo-num fin-vermelho" id="res-pendente" style="font-size:12px">R$ 0</span>
+            <span class="fin-resumo-label">Pendentes</span>
+        </div>
+        <div class="fin-resumo-div"></div>
+        <div class="fin-resumo-item">
             <span class="fin-resumo-num fin-amarelo" id="res-fixas">R$ 0</span>
             <span class="fin-resumo-label">Fixas/mês</span>
         </div>
@@ -48,6 +58,7 @@
         <button class="fin-tab" data-tab="fixas">📌 Despesas Fixas</button>
         <button class="fin-tab" data-tab="receber">💰 Contas a Receber</button>
         <!-- abas custom injetadas pelo JS -->
+        <button class="fin-tab" data-tab="relatorio">📊 Relatório Mensal</button>
         <button class="fin-tab-add" id="fin-tab-add" title="Nova categoria">＋</button>
     </div>
 
@@ -225,6 +236,62 @@
 
     <!-- PAINÉIS CUSTOM (injetados pelo JS) -->
     <div id="fin-custom-panels"></div>
+
+    <!-- ====== ABA: RELATÓRIO MENSAL ====== -->
+    <div class="fin-panel" id="tab-relatorio">
+        <div class="fin-rel-mes-selector">
+            <label>Mês: </label>
+            <select id="fin-rel-mes" onchange="if(window.renderRelatorio){renderRelatorio();renderFluxoCaixa();}"></select>
+        </div>
+
+        <div class="fin-rel-cards">
+            <div class="fin-rel-card fin-rel-card-rec">
+                <div class="fin-rel-card-label">📥 Receita Total</div>
+                <div class="fin-rel-card-val" id="rel-rec-total">R$ 0</div>
+                <div class="fin-rel-card-sub">
+                    <span>Recebido: <strong id="rel-rec-recebido">R$ 0</strong></span>
+                    <span>Pendente: <strong id="rel-rec-pendente">R$ 0</strong></span>
+                </div>
+            </div>
+            <div class="fin-rel-card fin-rel-card-desp">
+                <div class="fin-rel-card-label">📤 Despesa Total</div>
+                <div class="fin-rel-card-val" id="rel-desp-total">R$ 0</div>
+                <div class="fin-rel-card-sub">
+                    <span>Pago: <strong id="rel-desp-pago">R$ 0</strong></span>
+                    <span>Pendente: <strong id="rel-desp-pendente">R$ 0</strong></span>
+                </div>
+            </div>
+            <div class="fin-rel-card">
+                <div class="fin-rel-card-label">📌 Fixas/mês</div>
+                <div class="fin-rel-card-val" id="rel-fixas-total">R$ 0</div>
+            </div>
+        </div>
+
+        <div class="fin-rel-saldo-wrap">
+            <span class="fin-rel-saldo-label">💰 Saldo do Mês</span>
+            <span class="fin-rel-valor-grande" id="rel-saldo">R$ 0</span>
+        </div>
+
+        <!-- Fluxo de Caixa Projetado -->
+        <div class="fin-rel-section-title">📈 Fluxo de Caixa Projetado</div>
+        <div class="fin-fluxo-grid">
+            <div class="fin-fluxo-card" id="fluxo-30"></div>
+            <div class="fin-fluxo-card" id="fluxo-60"></div>
+            <div class="fin-fluxo-card" id="fluxo-90"></div>
+        </div>
+
+        <!-- Lançamentos do Mês -->
+        <div class="fin-rel-section-title">📋 Lançamentos do Mês</div>
+        <div id="fin-rel-lista">
+            <div class="fin-loading"><div class="fin-spinner"></div><span>Carregando...</span></div>
+        </div>
+
+        <!-- Geração de Despesas Recorrentes -->
+        <div class="fin-rel-gerar-wrap">
+            <button class="fin-btn-gerar-fixas" id="btn-gerar-fixas" onclick="gerarDespesasDoMes()">📌 Gerar Despesas do Mês (Fixas)</button>
+            <span class="fin-rel-gerar-sub">Cria contas a pagar para este mês baseado nas despesas fixas cadastradas.</span>
+        </div>
+    </div>
 
 </div>
 </main>

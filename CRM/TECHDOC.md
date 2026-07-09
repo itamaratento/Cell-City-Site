@@ -1639,3 +1639,85 @@ Usuário abre detalhe de um lead
 - `abrirWhatsApp`: lead sem telefone (toast de erro)
 
 **Resultado:** 10/10, zero regressão (67/68, única falha = pré-existente do Caixa).
+
+---
+
+## 29. Financeiro — Relatório Mensal + Fluxo de Caixa Projetado (2026-07-09)
+
+### 29.1 Visão geral
+
+Módulo Financeiro (`CRM/pages/financeiro/`) ganhou três funcionalidades de gestão financeira: relatório mensal completo, fluxo de caixa projetado e geração automática de despesas recorrentes. Toda a lógica está dentro do `financeiro.js` existente, sem novas coleções, Cloud Functions ou Firestore Rules.
+
+### 29.2 Relatório Mensal
+
+Nova aba `📊 Relatório Mensal` com:
+
+- **Seletor de mês**: dropdown com os últimos 12 meses + mês atual + próximo mês
+- **Cards financeiros**: Receita Total (recebido + pendente), Despesa Total (pago + pendente), Fixas/mês
+- **Saldo do mês**: receita - despesa, com destaque verde (positivo) ou vermelho (negativo)
+- **Lista de lançamentos**: receitas e despesas do mês em ordem cronológica
+
+Dados agregados em memória a partir das 3 coleções existentes (`financeiro_pagar`, `financeiro_receber`, `financeiro_fixas`), filtrados pelo mês selecionado.
+
+### 29.3 Fluxo de Caixa Projetado
+
+Três cards de projeção: **30 dias**, **60 dias**, **90 dias**.
+
+Cada card calcula:
+- **A receber**: contas `financeiro_receber` com vencimento no período e status não recebido
+- **A pagar**: contas `financeiro_pagar` com vencimento no período e status não pago
+- **Fixas**: `financeiro_fixas` × número de meses no período (arredondado)
+- **Saldo projetado**: a receber − a pagar − fixas
+
+Período calculado a partir da data atual (`hoje` + N dias).
+
+### 29.4 Geração Automática de Despesas Recorrentes
+
+Botão `📌 Gerar Despesas do Mês (Fixas)` na parte inferior do relatório.
+
+Para cada despesa fixa (`financeiro_fixas`), cria um documento em `financeiro_pagar`:
+- `descricao`: `"{descricao original} (Fixa)"`
+- `vencimento`: `{ano-mês}-{dia da fixa}`
+- `valor`, `categoria`: copiados da fixa
+- `status`: `pendente`
+
+**Proteção contra duplicidade:** verifica se já existe conta a pagar com a mesma descrição e mês antes de criar. Se o mês já foi gerado, exibe confirmação antes de gerar novamente.
+
+Gate RBAC: `podeCriar('financeiro')`.
+
+### 29.5 Resumo Expandido
+
+A barra de resumo no topo (`atualizarResumoCompleto()`) agora exibe também:
+- **Vencidos**: soma de contas a pagar vencidas + contas a receber vencidas
+- **Pendentes**: soma de contas a pagar pendentes (não vencidas)
+
+As funções originais que chamavam `atualizarResumo()` foram todas substituídas por `atualizarResumoCompleto()`.
+
+### 29.6 Arquivos
+
+| Arquivo | Alteração |
+|---|---|
+| `CRM/pages/financeiro/financeiro.js` | +110 linhas (renderRelatorio, renderFluxoCaixa, gerarDespesasDoMes, atualizarResumoCompleto, gerarMesesOption) |
+| `CRM/pages/financeiro/index.html` | Nova aba `📊 Relatório Mensal`, painel relatório, resumo expandido |
+| `CRM/pages/financeiro/financeiro.css` | Estilos `.fin-rel-*`, `.fin-fluxo-*`, `.fin-btn-gerar-fixas`, responsivo |
+| `tests/rbac/financeiro-relatorio.test.mjs` | **Novo**: 4 testes |
+
+### 29.7 Funções novas
+
+| Função | Visibilidade | Descrição |
+|---|---|---|
+| `renderRelatorio()` | `window.renderRelatorio` | Renderiza cards + saldo + lista do mês selecionado |
+| `renderFluxoCaixa()` | `window.renderFluxoCaixa` | Renderiza projeções 30/60/90 dias |
+| `gerarDespesasDoMes()` | `window.gerarDespesasDoMes` | Gera contas a pagar a partir de fixas (gate RBAC) |
+| `atualizarResumoCompleto()` | local | Resumo estendido com vencidos/pendentes |
+| `gerarMesesOption()` | local | Popula dropdown de seleção de mês |
+
+### 29.8 Testes
+
+4 testes em `tests/rbac/financeiro-relatorio.test.mjs`:
+- `renderRelatorio`: cálculo correto de receita/despesa/saldo
+- `renderFluxoCaixa`: 3 cards de projeção criados
+- `gerarMesesOption`: dropdown com 14 opções
+- `atualizarResumoCompleto`: resumo expandido com vencidos
+
+**Resultado:** 4/4, zero regressão (71/72, única falha = pré-existente do Caixa).

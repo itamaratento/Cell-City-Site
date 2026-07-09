@@ -299,3 +299,75 @@ h1 { font-size:18px; font-weight:800; text-align:center; flex: 1; }
 }
 .fin-modal input:focus { border-color: rgba(0,200,83,0.4); }
 .fin-modal-btns { display: flex; gap: 10px; }
+
+/* ======== RELATÓRIO MENSAL ======== */
+.fin-rel-mes-selector {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; font-size: 14px; color: var(--text2);
+}
+.fin-rel-mes-selector select {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; color: var(--text);
+    font-size: 14px; font-family: inherit; outline: none; cursor: pointer;
+    flex: 1; max-width: 260px;
+}
+.fin-rel-mes-selector select:focus { border-color: rgba(0,200,83,0.4); }
+.fin-rel-mes-selector select option { background: #1a1d23; }
+
+.fin-rel-cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.fin-rel-card {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px; text-align: center;
+}
+.fin-rel-card-rec { border-color: rgba(0,200,83,0.2); background: rgba(0,200,83,0.04); }
+.fin-rel-card-desp { border-color: rgba(248,113,113,0.2); background: rgba(248,113,113,0.04); }
+.fin-rel-card-label { font-size: 12px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+.fin-rel-card-val { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+.fin-rel-card-sub { display: flex; justify-content: center; gap: 14px; font-size: 11px; color: var(--text3); }
+.fin-rel-card-sub strong { color: var(--text2); }
+
+.fin-rel-saldo-wrap {
+    display: flex; align-items: center; justify-content: center; gap: 16px;
+    background: rgba(0,200,83,0.06); border: 1px solid rgba(0,200,83,0.2);
+    border-radius: 14px; padding: 18px; margin-bottom: 20px;
+}
+.fin-rel-saldo-label { font-size: 14px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
+.fin-rel-valor-grande { font-size: 28px; font-weight: 900; }
+.fin-rel-valor-grande.fin-verde { color: var(--green-light); }
+.fin-rel-valor-grande.fin-vermelho { color: var(--red); }
+
+.fin-rel-section-title {
+    font-size: 13px; font-weight: 700; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .6px;
+    margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+
+.fin-rel-gerar-wrap {
+    margin-top: 20px; padding: 16px;
+    background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2);
+    border-radius: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+}
+.fin-btn-gerar-fixas {
+    padding: 10px 20px; background: var(--yellow); border: none; border-radius: 10px;
+    color: #000; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: background 200ms;
+}
+.fin-btn-gerar-fixas:hover { background: #fcd34d; }
+.fin-rel-gerar-sub { font-size: 12px; color: var(--text3); }
+
+/* ======== FLUXO DE CAIXA ======== */
+.fin-fluxo-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.fin-fluxo-card {
+    background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px;
+}
+.fin-fluxo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.fin-fluxo-label { font-size: 13px; font-weight: 600; color: var(--text2); }
+.fin-fluxo-saldo { font-size: 18px; font-weight: 800; }
+.fin-fluxo-detalhes { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text3); }
+.fin-fluxo-detalhes strong { color: var(--text2); }
+
+@media (max-width: 600px) {
+    .fin-rel-cards { grid-template-columns: 1fr; }
+    .fin-fluxo-grid { grid-template-columns: 1fr; }
+}

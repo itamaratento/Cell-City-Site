@@ -1219,4 +1219,40 @@ Pendente: teste visual no navegador.
 
 **Validação:** RBAC completo 67/68 (única falha é a pré-existente do Caixa, inalterada). 10/10 testes novos.
 
+---
+
+### 09/07/2026 — Sprint 9: Financeiro — Relatório Mensal + Fluxo de Caixa Projetado — CONCLUÍDA
+
+**Tarefa:** Implementar relatório mensal financeiro com demonstrativo receita/despesa/saldo, fluxo de caixa projetado 30/60/90 dias, geração automática de despesas recorrentes e resumo expandido no módulo Financeiro.
+
+**O que foi feito:**
+1. **Relatório Mensal** — Nova aba "📊 Relatório Mensal" com:
+   - Seletor de mês (últimos 12 meses + próximo)
+   - Cards de Receita Total (recebido/pendente), Despesa Total (pago/pendente), Fixas/mês
+   - Saldo do mês com indicador positivo/negativo
+   - Lista de lançamentos do mês (receber + pagar em ordem cronológica)
+2. **Fluxo de Caixa Projetado** — Três cards de projeção 30/60/90 dias com base em contas pendentes + despesas fixas
+3. **Geração Automática de Despesas Recorrentes** — Botão "Gerar Despesas do Mês (Fixas)" que cria contas a pagar a partir das despesas fixas, com verificação de duplicidade por mês
+4. **Resumo Expandido** — Barra de resumo no topo agora inclui vencidos e pendentes, além dos totais anteriores
+
+**Arquivos alterados:**
+- `CRM/pages/financeiro/financeiro.js` — +~110 linhas: renderRelatorio, renderFluxoCaixa, gerarDespesasDoMes, atualizarResumoCompleto, gerarMesesOption; exports globais
+- `CRM/pages/financeiro/index.html` — nova aba "📊 Relatório Mensal", painel com cards/seletor/fluxo/geração, resumo expandido com vencidos/pendentes
+- `CRM/pages/financeiro/financeiro.css` — estilos para relatório (.fin-rel-*), fluxo de caixa (.fin-fluxo-*), botão de geração (.fin-btn-gerar-fixas)
+- `tests/rbac/financeiro-relatorio.test.mjs` — NOVO: 4 testes (cálculo receita/despesa, fluxo de caixa, meses option, resumo expandido)
+- `PROXIMA_ETAPA.md` — estado atual atualizado
+
+**Problemas encontrados:**
+- Duplicidade de `fmt()`: já existia como const arrow function no topo do módulo; a nova implementação tentou redefinir como function — removido, todas as funções novas usam a `fmt` global existente
+- `limit` importado de firebase.js mas não exportado pelo mock de testes — removido do import por não ser usado na implementação atual
+- Testes do relatório exigem chamada explícita a `renderRelatorio()` e `renderFluxoCaixa()` pois o módulo não ativa a aba de relatório automaticamente no boot (só sob demanda ao clicar na aba)
+
+**Arquitetura:**
+- Toda lógica nova está dentro do módulo `financeiro.js` existente, sem dependências externas
+- Reaproveita as estruturas de dados existentes (`dadosPagar`, `dadosReceber`, `dadosFixas`)
+- Nenhuma nova coleção Firestore, nenhuma Firestore Rule alterada, nenhuma Cloud Function
+- RBAC: `gerarDespesasDoMes()` verifica `podeCriar('financeiro')`
+
+**Validação:** RBAC completo 71/72 (única falha é a pré-existente do Caixa, inalterada). 4/4 testes novos.
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

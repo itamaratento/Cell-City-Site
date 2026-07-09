@@ -82,7 +82,7 @@ async function carregar() {
     renderPagar(dadosPagar);
     renderFixas(dadosFixas);
     renderReceber(dadosReceber);
-    atualizarResumo();
+    atualizarResumoCompleto();
 }
 
 function calcStatus(item, pago) {
@@ -239,7 +239,7 @@ async function marcarStatus(id, col, novoStatus) {
             dadosReceber = dadosReceber.map(c => c.id === id ? atualizado : c);
             renderReceber(dadosReceber);
         }
-        atualizarResumo();
+        atualizarResumoCompleto();
         toast(novoStatus === 'pago' ? '✅ Marcado como pago!' : '✅ Recebimento confirmado!');
     } catch { toast('⚠ Erro ao atualizar.'); }
 }
@@ -254,7 +254,7 @@ async function excluir(id, col) {
         if (col === 'fixa')    dadosFixas   = dadosFixas.filter(c => c.id !== id);
         if (col === 'receber') dadosReceber = dadosReceber.filter(c => c.id !== id);
         renderPagar(dadosPagar); renderFixas(dadosFixas); renderReceber(dadosReceber);
-        atualizarResumo();
+        atualizarResumoCompleto();
         toast('🗑️ Removido.');
     } catch { toast('⚠ Erro ao excluir.'); }
 }
@@ -388,7 +388,7 @@ async function recarregar(col) {
             dadosReceber = dadosReceber.map(c => calcStatus(c, 'recebido'));
             renderReceber(dadosReceber);
         }
-        atualizarResumo();
+        atualizarResumoCompleto();
     } catch {}
 }
 
@@ -407,6 +407,199 @@ function buscarGlobal() {
     renderPagar(filtrarLista(dadosPagar));
     renderFixas(filtrarLista(dadosFixas));
     renderReceber(filtrarLista(dadosReceber));
+}
+
+// ── Relatório Mensal ───────────────────────────────────────────────
+function fmtDataRel(iso) { if (!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function ymKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function diaKey(iso) { return (iso||'').substring(0,7); }
+
+function renderRelatorio() {
+    const sel = document.getElementById('fin-rel-mes');
+    const mes = sel?.value || ymKey(new Date());
+    const [ano, mesNum] = mes.split('-').map(Number);
+
+    const itemsPagar   = dadosPagar.filter(c => diaKey(c.vencimento) === mes);
+    const itemsReceber = dadosReceber.filter(c => diaKey(c.vencimento) === mes);
+    const totalFixas   = dadosFixas.reduce((s,c) => s + Number(c.valor||0), 0);
+
+    const totalRecebido = itemsReceber.filter(c => c.status === 'recebido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalAReceber = itemsReceber.filter(c => c.status !== 'recebido' && c.status !== 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalPago     = itemsPagar.filter(c => c.status === 'pago').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalAPagar   = itemsPagar.filter(c => c.status !== 'pago' && c.status !== 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalVencido  = itemsPagar.filter(c => c.status === 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalVencidoRec = itemsReceber.filter(c => c.status === 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+
+    const receitaTotal = totalRecebido + totalAReceber;
+    const despesaTotal = totalPago + totalAPagar + totalVencido + totalFixas;
+    const saldo = receitaTotal - despesaTotal;
+
+    document.getElementById('rel-rec-total').textContent   = fmt(totalRecebido + totalAReceber);
+    document.getElementById('rel-rec-recebido').textContent = fmt(totalRecebido);
+    document.getElementById('rel-rec-pendente').textContent = fmt(totalAReceber + totalVencidoRec);
+    document.getElementById('rel-desp-total').textContent   = fmt(totalPago + totalAPagar + totalVencido + totalFixas);
+    document.getElementById('rel-desp-pago').textContent    = fmt(totalPago);
+    document.getElementById('rel-desp-pendente').textContent = fmt(totalAPagar + totalVencido);
+    document.getElementById('rel-fixas-total').textContent  = fmt(totalFixas);
+    document.getElementById('rel-saldo').textContent       = fmt(saldo);
+    document.getElementById('rel-saldo').className         = `fin-rel-valor-grande ${saldo >= 0 ? 'fin-verde' : 'fin-vermelho'}`;
+
+    // Lista de lançamentos do mês
+    const todos = [
+        ...itemsReceber.map(c => ({ ...c, tipo: 'receber', icon: '💰' })),
+        ...itemsPagar.map(c => ({ ...c, tipo: 'pagar', icon: '💸' }))
+    ].sort((a,b) => (a.vencimento||'').localeCompare(b.vencimento||''));
+
+    const container = document.getElementById('fin-rel-lista');
+    if (!todos.length) {
+        container.innerHTML = '<div class="fin-empty" style="display:flex"><div class="fin-empty-icon">📊</div><div class="fin-empty-title">Nenhum lançamento neste mês</div></div>';
+        return;
+    }
+    container.innerHTML = todos.map(c => {
+        const isReceita = c.tipo === 'receber';
+        const statusOk  = c.status === 'recebido' || c.status === 'pago';
+        return `<div class="fin-card ${statusOk ? 'fin-card-pago' : c.status === 'vencido' ? 'fin-card-vencido' : ''}">
+            <div class="fin-card-left">
+                <span class="fin-cat-icon">${isReceita ? '💰' : '💸'}</span>
+                <div class="fin-card-info">
+                    <div class="fin-card-desc">${escHtml(c.descricao)}</div>
+                    <div class="fin-card-sub">📅 ${fmtDataRel(c.vencimento)} · ${isReceita ? 'Receber' : 'Pagar'} · ${statusBadge(c.status)}</div>
+                </div>
+            </div>
+            <div class="fin-card-right">
+                <div class="fin-card-valor ${isReceita ? 'fin-verde' : ''}">${fmt(c.valor)}</div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function gerarMesesOption() {
+    const sel = document.getElementById('fin-rel-mes');
+    if (!sel) return;
+    const hoje = new Date();
+    const atual = ymKey(hoje);
+    let opts = '';
+    for (let i = -12; i <= 1; i++) {
+        const d = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+        const key = ymKey(d);
+        const label = d.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        opts += `<option value="${key}" ${key === atual ? 'selected' : ''}>${label.charAt(0).toUpperCase() + label.slice(1)}</option>`;
+    }
+    sel.innerHTML = opts;
+}
+
+// ── Fluxo de Caixa Projetado ──────────────────────────────────────
+function renderFluxoCaixa() {
+    const hoje = new Date();
+    const hojeISO = hoje.toISOString().slice(0, 10);
+
+    const periodos = [
+        { label: '30 dias', dias: 30, id: 'fluxo-30' },
+        { label: '60 dias', dias: 60, id: 'fluxo-60' },
+        { label: '90 dias', dias: 90, id: 'fluxo-90' }
+    ];
+
+    for (const p of periodos) {
+        const limite = new Date(hoje);
+        limite.setDate(limite.getDate() + p.dias);
+        const limiteISO = limite.toISOString().slice(0, 10);
+
+        const aPagar   = dadosPagar.filter(c =>
+            c.status !== 'pago' && c.vencimento && c.vencimento >= hojeISO && c.vencimento <= limiteISO
+        ).reduce((s,c) => s + Number(c.valor||0), 0);
+
+        const fixasNoPeriodo = dadosFixas.reduce((s,c) => s + Number(c.valor||0), 0);
+        const mesesNoPeriodo = Math.max(1, Math.round(p.dias / 30));
+        const totalFixas     = fixasNoPeriodo * mesesNoPeriodo;
+
+        const aReceber = dadosReceber.filter(c =>
+            c.status !== 'recebido' && c.vencimento && c.vencimento >= hojeISO && c.vencimento <= limiteISO
+        ).reduce((s,c) => s + Number(c.valor||0), 0);
+
+        const saldoProjetado = aReceber - aPagar - totalFixas;
+
+        const el = document.getElementById(p.id);
+        if (!el) continue;
+        el.innerHTML = `
+            <div class="fin-fluxo-header">
+                <span class="fin-fluxo-label">${p.label}</span>
+                <span class="fin-fluxo-saldo ${saldoProjetado >= 0 ? 'fin-verde' : 'fin-vermelho'}">${fmt(saldoProjetado)}</span>
+            </div>
+            <div class="fin-fluxo-detalhes">
+                <span>📥 Receber: <strong>${fmt(aReceber)}</strong></span>
+                <span>📤 Pagar: <strong>${fmt(aPagar)}</strong></span>
+                <span>📌 Fixas: <strong>${fmt(totalFixas)}</strong></span>
+            </div>`;
+    }
+}
+
+// ── Geração Automática de Despesas Recorrentes ────────────────────
+async function gerarDespesasDoMes() {
+    if (!podeCriar('financeiro')) { toast('❌ Sem permissão'); return; }
+
+    const hoje = new Date();
+    const mesKey = ymKey(hoje);
+    const mesAno = hoje.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    // Verifica se já gerou para este mês
+    const jaGerado = dadosPagar.some(c =>
+        c.descricao && c.descricao.includes('(Fixa)') && diaKey(c.vencimento) === mesKey
+    );
+    if (jaGerado) {
+        if (!confirm(`Despesas de ${mesAno} já foram geradas. Gerar novamente?`)) return;
+    }
+
+    let count = 0;
+    for (const fixa of dadosFixas) {
+        const dia = fixa.dia || 1;
+        const vencISO = `${mesKey}-${String(dia).padStart(2, '0')}`;
+        const descricao = `${fixa.descricao} (Fixa)`;
+
+        // Evita duplicata exata
+        if (dadosPagar.some(c => c.descricao === descricao && diaKey(c.vencimento) === mesKey)) continue;
+
+        try {
+            await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${mesKey}`), {
+                descricao,
+                categoria: fixa.categoria || 'Outro',
+                vencimento: vencISO,
+                valor: Number(fixa.valor) || 0,
+                status: 'pendente',
+                obs: `Gerado automaticamente de "${fixa.descricao}"`,
+                criadoEm: serverTimestamp(),
+                atualizadoEm: serverTimestamp()
+            });
+            count++;
+        } catch(e) { console.warn('Erro ao gerar despesa fixa:', e); }
+    }
+
+    if (count > 0) {
+        toast(`✅ ${count} despesa(s) gerada(s) para ${mesAno}`);
+        await recarregar('pagar');
+    } else {
+        toast('📌 Nenhuma nova despesa para gerar');
+    }
+}
+
+// ── Dashboard / Resumo Aprimorado ─────────────────────────────────
+function atualizarResumoCompleto() {
+    atualizarResumo();
+
+    const aPagarVencido = dadosPagar.filter(c => c.status === 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const aReceberVencido = dadosReceber.filter(c => c.status === 'vencido').reduce((s,c) => s + Number(c.valor||0), 0);
+    const aPagarPendente = dadosPagar.filter(c => c.status === 'pendente').reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalGeralPagar = dadosPagar.reduce((s,c) => s + Number(c.valor||0), 0);
+    const totalGeralReceber = dadosReceber.reduce((s,c) => s + Number(c.valor||0), 0);
+
+    const elVencido = document.getElementById('res-vencido');
+    const elPendente = document.getElementById('res-pendente');
+    const elTotalPagar = document.getElementById('res-total-pagar');
+    const elTotalReceber = document.getElementById('res-total-receber');
+
+    if (elVencido) elVencido.textContent = fmt(aPagarVencido + aReceberVencido);
+    if (elPendente) elPendente.textContent = fmt(aPagarPendente);
+    if (elTotalPagar) elTotalPagar.textContent = fmt(totalGeralPagar);
+    if (elTotalReceber) elTotalReceber.textContent = fmt(totalGeralReceber);
 }
 
 // ── utilitários ────────────────────────────────────────────────────
@@ -698,10 +891,21 @@ document.getElementById('fin-modal-cat').addEventListener('click', e => {
     if (e.target === e.currentTarget) document.getElementById('fin-modal-cat').style.display = 'none';
 });
 
-// sobrescreve a função de tabs para incluir custom
+// sobrescreve a função de tabs para incluir custom + relatório
 document.querySelectorAll('.fin-tab').forEach(btn => {
-    btn.addEventListener('click', () => ativarTab(btn.dataset.tab));
+    btn.addEventListener('click', () => {
+        ativarTab(btn.dataset.tab);
+        if (btn.dataset.tab === 'relatorio') {
+            renderRelatorio();
+            renderFluxoCaixa();
+        }
+    });
 });
+
+// ── exports globais ────────────────────────────────────────────────
+window.renderRelatorio = renderRelatorio;
+window.renderFluxoCaixa = renderFluxoCaixa;
+window.gerarDespesasDoMes = gerarDespesasDoMes;
 
 // ── boot (RBAC Fase 2, Sprint 4 — moduloId 'financeiro') ────────────
 async function _boot() {
@@ -718,6 +922,7 @@ async function _boot() {
 
     await carregar();
     await carregarCategorias();
+    gerarMesesOption();
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', _boot);
