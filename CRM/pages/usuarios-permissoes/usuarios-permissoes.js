@@ -35,7 +35,7 @@
    ============================================================ */
 import { initModulo, temPermissao, getUid, getNome } from '../../scripts/kernel.js';
 import {
-  db, collection, addDoc, doc, setDoc, updateDoc,
+  db, collection, addDoc, doc, setDoc, updateDoc, getDoc, getDocs,
   query, orderBy, onSnapshot, serverTimestamp, limit
 } from '../../scripts/firebase.js';
 import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
@@ -205,6 +205,123 @@ async function comCarregamento(btn, textoCarregando, fn) {
 }
 
 // =================================================================
+// ABA POLÍTICAS DE SENHA
+// =================================================================
+const COL_POLITICAS = 'config';
+const DOC_POLITICAS = 'politicas_senha';
+
+let politicasCache = {
+  expiracao_dias: 90,
+  forca_minima: { min_length: 8,ExigeMaiuscula: true, ExigeMinuscula: true, ExigeDigito: true, ExigeEspecial: false },
+  historico_qtd: 5
+};
+
+async function carregarPoliticas() {
+  try {
+    const snap = await getDoc(doc(db, COL_POLITICAS, DOC_POLITICAS));
+    if (snap.exists()) politicasCache = { ...politicasCache, ...snap.data() };
+  } catch {}
+  renderPoliticas();
+}
+
+function renderPoliticas() {
+  const p = politicasCache;
+  const f = p.forca_minima || {};
+  document.getElementById('pol-expiracao').value = p.expiracao_dias || 90;
+  document.getElementById('pol-min-length').value = f.min_length || 8;
+  document.getElementById('pol-maiuscula').checked = f.ExigeMaiuscula !== false;
+  document.getElementById('pol-minuscula').checked = f.ExigeMinuscula !== false;
+  document.getElementById('pol-digito').checked = f.ExigeDigito !== false;
+  document.getElementById('pol-especial').checked = f.ExigeEspecial === true;
+  document.getElementById('pol-historico').value = p.historico_qtd || 5;
+  document.getElementById('pol-teste-senha').value = '';
+  document.getElementById('pol-teste-resultado').innerHTML = '';
+}
+
+// ── Exports para testes ──────────────────────────────────────────
+window.validarSenhaPoliticas = validarSenhaPoliticas;
+window.calcularForcaSenha = calcularForcaSenha;
+window.salvarPoliticas = async function() {
+  const p = {
+    expiracao_dias: parseInt(document.getElementById('pol-expiracao').value) || 90,
+    forca_minima: {
+      min_length: parseInt(document.getElementById('pol-min-length').value) || 8,
+      ExigeMaiuscula: document.getElementById('pol-maiuscula').checked,
+      ExigeMinuscula: document.getElementById('pol-minuscula').checked,
+      ExigeDigito: document.getElementById('pol-digito').checked,
+      ExigeEspecial: document.getElementById('pol-especial').checked
+    },
+    historico_qtd: parseInt(document.getElementById('pol-historico').value) || 5,
+    atualizadoEm: serverTimestamp(),
+    atualizadoPor: getUid()
+  };
+  try {
+    await setDoc(doc(db, COL_POLITICAS, DOC_POLITICAS), p);
+    politicasCache = { ...politicasCache, ...p };
+    toast('✅ Políticas de senha salvas!');
+  } catch(e) {
+    console.error(e);
+    toast('❌ Erro ao salvar políticas');
+  }
+};
+
+window.testarSenha = function() {
+  const senha = document.getElementById('pol-teste-senha')?.value || '';
+  const resultado = document.getElementById('pol-teste-resultado');
+  if (!resultado) return;
+  if (!senha) { resultado.innerHTML = ''; return; }
+
+  const f = politicasCache.forca_minima || {};
+  const erros = [];
+  if (senha.length < (f.min_length || 8)) erros.push(`Mínimo de ${f.min_length || 8} caracteres`);
+  if (f.ExigeMaiuscula !== false && !/[A-Z]/.test(senha)) erros.push('Letra maiúscula');
+  if (f.ExigeMinuscula !== false && !/[a-z]/.test(senha)) erros.push('Letra minúscula');
+  if (f.ExigeDigito !== false && !/\d/.test(senha)) erros.push('Número');
+  if (f.ExigeEspecial === true && !/[^a-zA-Z0-9]/.test(senha)) erros.push('Caractere especial');
+
+  const forca = calcularForcaSenha(senha);
+  const nivel = forca >= 80 ? 'forte' : forca >= 50 ? 'media' : 'fraca';
+  const cores = { forte: 'var(--green-light)', media: 'var(--yellow)', fraca: 'var(--red)' };
+
+  resultado.innerHTML = `
+    <div class="pol-teste-bar"><div class="pol-teste-fill" style="width:${forca}%;background:${cores[nivel]}"></div></div>
+    <div style="font-size:13px;font-weight:700;color:${cores[nivel]};margin-bottom:6px">${nivel.toUpperCase()} (${forca}%)</div>
+    ${erros.length ? '<div style="font-size:12px;color:var(--text3)">❌ Requisitos não atendidos:<br>' + erros.map(e => '&nbsp;· ' + e).join('<br>') + '</div>' : '<div style="font-size:12px;color:var(--green-light)">✅ Todos os requisitos atendidos</div>'}
+  `;
+};
+
+function calcularForcaSenha(s) {
+  let score = 0;
+  if (s.length >= 8) score += 25;
+  if (s.length >= 12) score += 10;
+  if (s.length >= 16) score += 5;
+  if (/[a-z]/.test(s) && /[A-Z]/.test(s)) score += 20;
+  if (/\d/.test(s)) score += 15;
+  if (/[^a-zA-Z0-9]/.test(s)) score += 15;
+  if (s.length > 20) score += 10;
+  return Math.min(100, score);
+}
+
+function validarSenhaPoliticas(senha) {
+  const f = politicasCache.forca_minima || {};
+  const erros = [];
+  if (senha.length < (f.min_length || 8)) erros.push(`Mínimo ${f.min_length || 8} caracteres`);
+  if (f.ExigeMaiuscula !== false && !/[A-Z]/.test(senha)) erros.push('maiúscula');
+  if (f.ExigeMinuscula !== false && !/[a-z]/.test(senha)) erros.push('minúscula');
+  if (f.ExigeDigito !== false && !/\d/.test(senha)) erros.push('número');
+  if (f.ExigeEspecial === true && !/[^a-zA-Z0-9]/.test(senha)) erros.push('caractere especial');
+  return erros;
+}
+
+// ── Adiciona aba de políticas ───────────────────────────────────
+function setupPoliticasUI() {
+  const btnSalvar = document.getElementById('pol-btn-salvar');
+  if (btnSalvar) btnSalvar.addEventListener('click', salvarPoliticas);
+  const testeInput = document.getElementById('pol-teste-senha');
+  if (testeInput) testeInput.addEventListener('input', testarSenha);
+}
+
+// =================================================================
 // BOOT
 // =================================================================
 (async function boot() {
@@ -222,6 +339,8 @@ async function comCarregamento(btn, textoCarregando, fn) {
   setupPerfisUI();
   setupPermissoesUI();
   setupLogsUI();
+  setupPoliticasUI();
+  await carregarPoliticas();
   iniciarListeners();
 })();
 
@@ -380,7 +499,12 @@ function abrirFormUsuario(usuarioExistente) {
     const telefone = $('uf-telefone').value.trim();
     const observacao = $('uf-obs').value.trim();
     if (!nome || !email || !perfilId) { toast('Preencha nome, e-mail e perfil.'); return; }
-    if (!editando && $('uf-senha').value.length < 6) { toast('Senha temporária deve ter ao menos 6 caracteres.'); return; }
+    if (!editando) {
+      const senha = $('uf-senha').value;
+      if (senha.length < 6) { toast('Senha temporária deve ter ao menos 6 caracteres.'); return; }
+      const errosSenha = validarSenhaPoliticas(senha);
+      if (errosSenha.length) { toast('❌ Senha não atende às políticas: ' + errosSenha.join(', ')); return; }
+    }
 
     comCarregamento(e.currentTarget, 'Salvando...', async () => {
       if (editando) {
@@ -452,6 +576,8 @@ function abrirRedefinirSenha(u) {
     const atual = $('rs-atual').value;
     const nova = $('rs-nova').value;
     if (!atual || nova.length < 6) { toast('Informe a senha atual e uma nova senha com 6+ caracteres.'); return; }
+    const errosSenha = validarSenhaPoliticas(nova);
+    if (errosSenha.length) { toast('❌ Senha não atende às políticas: ' + errosSenha.join(', ')); return; }
     comCarregamento(e.currentTarget, 'Redefinindo...', async () => {
       await redefinirSenhaSecundaria(u.email, atual, nova);
       await registrarAuditoria('senha_redefinida', u.id, u.nome_exibicao, { via: 'senha_atual' });

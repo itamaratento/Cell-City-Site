@@ -33,6 +33,7 @@
         <button class="up-tab" data-tab="perfis">🗂️ Perfis</button>
         <button class="up-tab" data-tab="permissoes">🛡️ Permissões</button>
         <button class="up-tab" data-tab="logs">📜 Logs</button>
+        <button class="up-tab" data-tab="politicas">🔑 Políticas de Senha</button>
       </nav>
 
       <!-- ===== DASHBOARD ===== -->
@@ -103,6 +104,67 @@
             </thead>
             <tbody id="up-perm-tbody"></tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- ===== POLÍTICAS DE SENHA ===== -->
+      <section class="up-panel" id="up-panel-politicas">
+        <div class="pol-section">
+          <div class="pol-section-title">⏰ Expiração</div>
+          <div class="pol-field">
+            <label class="pol-label">As senhas expiram a cada</label>
+            <select class="up-input pol-select" id="pol-expiracao">
+              <option value="30">30 dias</option>
+              <option value="60">60 dias</option>
+              <option value="90" selected>90 dias</option>
+              <option value="180">180 dias</option>
+              <option value="0">Nunca expiram</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pol-section">
+          <div class="pol-section-title">🔒 Força mínima da senha</div>
+          <div class="pol-field">
+            <label class="pol-label">Comprimento mínimo</label>
+            <select class="up-input pol-select" id="pol-min-length">
+              <option value="6">6 caracteres</option>
+              <option value="8" selected>8 caracteres</option>
+              <option value="10">10 caracteres</option>
+              <option value="12">12 caracteres</option>
+            </select>
+          </div>
+          <div class="pol-check-group">
+            <label class="pol-check"><input type="checkbox" id="pol-maiuscula" checked> Exigir letra maiúscula (A-Z)</label>
+            <label class="pol-check"><input type="checkbox" id="pol-minuscula" checked> Exigir letra minúscula (a-z)</label>
+            <label class="pol-check"><input type="checkbox" id="pol-digito" checked> Exigir número (0-9)</label>
+            <label class="pol-check"><input type="checkbox" id="pol-especial"> Exigir caractere especial (!@#$%^&*)</label>
+          </div>
+        </div>
+
+        <div class="pol-section">
+          <div class="pol-section-title">📋 Histórico</div>
+          <div class="pol-field">
+            <label class="pol-label">Impedir reuso das últimas</label>
+            <select class="up-input pol-select" id="pol-historico">
+              <option value="3">3 senhas</option>
+              <option value="5" selected>5 senhas</option>
+              <option value="10">10 senhas</option>
+              <option value="0">Não impedir reuso</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pol-section">
+          <div class="pol-section-title">🧪 Testar senha</div>
+          <div class="pol-field">
+            <input type="text" class="up-input" id="pol-teste-senha" placeholder="Digite uma senha para testar..." autocomplete="off">
+            <div id="pol-teste-resultado"></div>
+          </div>
+        </div>
+
+        <div class="pol-actions">
+          <button class="up-btn up-btn-primary" id="pol-btn-salvar">💾 Salvar Políticas</button>
         </div>
       </section>
 

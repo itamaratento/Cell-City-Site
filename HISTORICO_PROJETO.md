@@ -1296,4 +1296,50 @@ Pendente: teste visual no navegador.
 
 **Validação:** RBAC completo 75/76 (única falha é a pré-existente do Caixa, inalterada). 8/8 testes.
 
+---
+
+### 09/07/2026 — Sprint 11: Usuários e Permissões — Políticas de Senha — CONCLUÍDA
+
+**Tarefa:** Implementar políticas de senha no módulo Usuários e Permissões — pendência formal da Fase 1 (UI já sinalizava "não habilitado nesta fase"). Conclui o ÉPICO Segurança de Senhas.
+
+**O que foi feito:**
+
+1. **Nova aba 🔑 Políticas de Senha** no módulo Usuários e Permissões com:
+   - Seleção de expiração (30/60/90/180 dias ou nunca)
+   - Configuração de força mínima (comprimento 6/8/10/12, maiúscula, minúscula, dígito, especial)
+   - Configuração de histórico (3/5/10 senhas anteriores ou não impedir reuso)
+   - Teste de senha em tempo real com barra de força (score 0-100%)
+   - Botão "💾 Salvar Políticas"
+
+2. **Funções de validação:**
+   - `validarSenhaPoliticas(senha)` — retorna array de erros baseado nas políticas configuradas
+   - `calcularForcaSenha(s)` — score de 0 a 100 baseado em comprimento, variedade de caracteres
+
+3. **Integração com formulários existentes:**
+   - Criação de novo usuário: senha temporária validada contra políticas
+   - Redefinição de senha: nova senha validada contra políticas
+   - `abrirFormUsuario()` e `abrirRedefinirSenha()` estendidos
+
+4. **Persistência:** Documento `config/politicas_senha` no Firestore (já coberto por regras existentes)
+
+**Arquivos alterados:**
+- `CRM/pages/usuarios-permissoes/usuarios-permissoes.js` — +110 linhas (carregarPoliticas, renderPoliticas, salvarPoliticas, testarSenha, calcularForcaSenha, validarSenhaPoliticas, setupPoliticasUI; integração boot)
+- `CRM/pages/usuarios-permissoes/index.html` — nova aba + panel com configurações
+- `CRM/pages/usuarios-permissoes/usuarios-permissoes.css` — estilos .pol-*
+- `tests/rbac/usuarios-politicas-senha.test.mjs` — NOVO: 10 testes
+- `tests/rbac/loader.mjs` — redirecionamento de firebase-auth.js/firebase-functions.js para mocks
+- `tests/rbac/mocks/firestore-mock.js` — add getApp/initializeApp/getApps exports
+- `tests/rbac/mocks/firebase-auth-mock.js` — NOVO: mock de Auth
+- `tests/rbac/mocks/firebase-functions-mock.js` — NOVO: mock de Functions
+- `tests/rbac/mocks/firebase-scripts.js` — add limit ao re-export
+- `tests/rbac/mocks/kernel.js` — add getUid/getNome/temPermissao
+- `PROXIMA_ETAPA.md` — estado atual atualizado
+
+**Problemas encontrados:**
+- `firebase-secondary.js` importa do CDN (firebase-auth.js) — não coberto pelos mocks existentes; criado mock de Auth e de Functions, ajustado loader para rotear corretamente
+- `validarSenhaPoliticas` e `calcularForcaSenha` não expostos ao window — exportados para testabilidade
+- `limit` importado em usuarios-permissoes.js mas mock de firebase-scripts.js não o re-exportava — adicionado ao re-export
+
+**Validação:** RBAC completo 85/86 (única falha é a pré-existente do Caixa, inalterada). 10/10 testes novos.
+
 *Fim do histórico — novos registros serão adicionados abaixo.*

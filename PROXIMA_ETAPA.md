@@ -134,6 +134,8 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 8. ✅ **Sprint 10 — Financeiro: Fechamento Mensal Automático + Análise por Categoria** — concluída em 2026-07-09. Funcionalidades: (1) Fechamento Mensal: botão 🔒 Fechar Mês que calcula saldo final, persiste em `financeiro_fechamentos`, gera despesas do próximo mês automaticamente a partir de fixas; (2) Análise por Categoria: barras de distribuição de despesas por categoria com percentual; (3) Histórico de Fechamentos: grid de meses fechados com saldos, clicável para navegação; (4) Status do mês: indicador visual de mês aberto/fechado. Coleção nova: `financeiro_fechamentos`. 8/8 testes (4 novos + 4 existentes). Regressão: 75/76 (falha pré-existente Caixa inalterada). **ÉPICO Financeiro concluído.**
 
+9. ✅ **Sprint 11 — Usuários e Permissões: Políticas de Senha** — concluída em 2026-07-09. Funcionalidades: (1) Nova aba 🔑 Políticas de Senha com UI de configuração de expiração, força mínima e histórico; (2) `validarSenhaPoliticas()` com verificação de comprimento, maiúscula, minúscula, dígito, especial; (3) `calcularForcaSenha()` com score 0-100 e barra visual; (4) Teste de senha em tempo real; (5) Validação integrada aos formulários de criação e redefinição de senha; (6) Persistência em `config/politicas_senha`. 10/10 testes (novo arquivo: `tests/rbac/usuarios-politicas-senha.test.mjs`). Regressão: 85/86 (falha pré-existente Caixa inalterada). **ÉPICO Segurança de Senhas concluído.**
+
 ## ⚠️ RISCOS ATUAIS
 
 - ✅ ~~Sprint 3 do RBAC publicado no `develop` sem aprovação formal~~ — **aprovado formalmente em 2026-07-08**, integrado à baseline técnica.
@@ -148,4 +150,4 @@ Modelagem relacional completa das 54 coleções ativas do Firestore + 7 tabelas 
 
 ---
 
-*Última atualização: 2026-07-09 — Sprint 10 (Financeiro: Fechamento Mensal + Análise por Categoria) concluída. Fechamento mensal com salvamento em financeiro_fechamentos, geração automática de fixas do próximo mês, análise de despesas por categoria com barras percentuais, histórico de fechamentos navegável. 8/8 testes, 75/76 regressão. **ÉPICO Financeiro concluído.** Próximo ÉPICO: Usuários e Permissões — Segurança de Senhas (pendência formal Fase 1).*
+*Última atualização: 2026-07-09 — Sprint 11 (Usuários: Políticas de Senha) concluída. UI de configuração de expiração/força/histórico, validação integrada, teste de senha em tempo real, persistência em config/politicas_senha. 10/10 testes, 85/86 regressão. **ÉPICO Segurança de Senhas concluído.** Próximo: Pendências técnicas (initModulo gap, duplicidade firestore.rules, performance) ou evolução funcional (Portal Cliente, Auditoria).*

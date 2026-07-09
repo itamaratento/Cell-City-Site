@@ -104,6 +104,13 @@ export async function runTransaction(_db, updateFn) {
     return updateFn(tx);
 }
 
+// ── Utilitários do Firebase App ─────────────────────────────────────
+// Usados por firebase-secondary.js e usuarios-permissoes.js.
+// Mock mínimo: não executa inicialização real.
+export function getApp() { return { __mock: true }; }
+export function initializeApp() { return { __mock: true }; }
+export function getApps() { return []; }
+
 // ── controles de teste (não fazem parte do SDK real) ────────────────
 export function __reset() { store.clear(); }
 export function __seed(name, id, data) { col(name).set(id, { ...data }); }

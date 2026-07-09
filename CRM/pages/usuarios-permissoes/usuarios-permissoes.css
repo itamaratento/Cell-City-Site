@@ -262,3 +262,35 @@ body {
 @media (max-width: 900px) {
   .up-toast { bottom: calc(90px + env(safe-area-inset-bottom, 0px)); }
 }
+
+/* ============================================================
+   POLÍTICAS DE SENHA
+   ============================================================ */
+.pol-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+.pol-section-title {
+  font-size: 14px; font-weight: 700; margin-bottom: 12px;
+  color: var(--cell-green-light);
+}
+.pol-field { margin-bottom: 10px; }
+.pol-label { font-size: 13px; color: var(--text-secondary); display: block; margin-bottom: 6px; }
+.pol-select { max-width: 220px; }
+.pol-check-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.pol-check {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-secondary); cursor: pointer;
+}
+.pol-check input[type=checkbox] {
+  width: 17px; height: 17px; accent-color: var(--cell-green); cursor: pointer;
+}
+.pol-teste-bar {
+  height: 8px; background: rgba(255,255,255,0.08); border-radius: 100px;
+  overflow: hidden; margin: 8px 0 4px;
+}
+.pol-teste-fill { height: 100%; border-radius: 100px; transition: width 200ms; }
+.pol-actions { margin-top: 16px; }
