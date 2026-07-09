@@ -3,6 +3,7 @@
    ============================================================ */
 
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { CatalogoConfigRepository as CatalogoConfig, CatalogoProdutosRepository as CatalogoProdutos } from '../../repositories/produtos.repository.js';
 
@@ -24,8 +25,16 @@ const URL_PUBLICA = 'https://www.cellcityinformatica.com.br/catalogo.html';
 async function init() {
   const ctx = await initModulo();
   if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('catalogo')) {
+    document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+    return;
+  }
   document.getElementById('link-publico-url').textContent = URL_PUBLICA;
   document.getElementById('link-publico-href').href = URL_PUBLICA;
+
+  const addBtn = document.querySelector('[onclick*="admAbrirForm()"]');
+  if (addBtn) addBtn.style.display = podeCriar('catalogo') ? '' : 'none';
 
   await Promise.all([carregarConfig(), carregarProdutos()]);
   renderTabela();
@@ -90,10 +99,10 @@ function renderTabela() {
       <td>${p.ordem ?? '—'}</td>
       <td class="td-acoes">
         <div class="acoes-wrap">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admEditar('${p.id}')" title="Editar">✏️</button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admDuplicar('${p.id}')" title="Duplicar">📋</button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="admToggleAtivo('${p.id}')" title="${p.ativo !== false ? 'Ocultar' : 'Mostrar'}">${p.ativo !== false ? '🙈' : '👁️'}</button>
-          <button class="btn btn-danger btn-sm btn-icon" onclick="admExcluir('${p.id}')" title="Excluir">🗑️</button>
+          ${podeEditar('catalogo') ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="admEditar('${p.id}')" title="Editar">✏️</button>` : ''}
+          ${podeCriar('catalogo') ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="admDuplicar('${p.id}')" title="Duplicar">📋</button>` : ''}
+          ${podeEditar('catalogo') ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="admToggleAtivo('${p.id}')" title="${p.ativo !== false ? 'Ocultar' : 'Mostrar'}">${p.ativo !== false ? '🙈' : '👁️'}</button>` : ''}
+          ${podeExcluir('catalogo') ? `<button class="btn btn-danger btn-sm btn-icon" onclick="admExcluir('${p.id}')" title="Excluir">🗑️</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -102,6 +111,8 @@ function renderTabela() {
 
 // ─── ADICIONAR / EDITAR ────────────────────────────────────
 window.admAbrirForm = function(id = null) {
+  if (id && !podeEditar('catalogo')) { alert('Acesso negado'); return; }
+  if (!id && !podeCriar('catalogo')) { alert('Acesso negado'); return; }
   _produtoEditando = id ? _produtos.find(p => p.id === id) || null : null;
 
   document.getElementById('form-modal-title').textContent = id ? 'Editar Produto' : 'Novo Produto';
@@ -179,6 +190,7 @@ window.admSalvar = async function() {
 
 // ─── DUPLICAR ─────────────────────────────────────────────
 window.admDuplicar = async function(id) {
+  if (!podeCriar('catalogo')) { alert('Acesso negado'); return; }
   const p = _produtos.find(x => x.id === id);
   if (!p) return;
   const { id: _, criadoEm: __, atualizadoEm: ___, ...dados } = p;
@@ -213,6 +225,7 @@ window.admToggleAtivo = async function(id) {
 
 // ─── EXCLUIR ──────────────────────────────────────────────
 window.admExcluir = async function(id) {
+  if (!podeExcluir('catalogo')) { alert('Acesso negado'); return; }
   const p = _produtos.find(x => x.id === id);
   if (!p) return;
   if (!confirm(`Excluir o produto "${p.nome}"? Esta ação não pode ser desfeita.`)) return;
