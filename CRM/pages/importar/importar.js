@@ -1,3 +1,5 @@
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
     db, collection, doc, setDoc, getDocs, serverTimestamp
 } from "../../scripts/firebase.js";
@@ -400,4 +402,9 @@ function mostrarErros() {
     document.getElementById('imp-errors').style.display = 'block';
 }
 
-document.addEventListener('DOMContentLoaded', () => {});
+document.addEventListener('DOMContentLoaded', async () => {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('importar')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+});
