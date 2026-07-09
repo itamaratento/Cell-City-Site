@@ -1,10 +1,12 @@
 import { serverTimestamp } from '../../firebase/client.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../../scripts/firebase.js';
 import { FornecedorComprasRepository as FornecedorCompras, FornecedorTendenciasRepository as FornecedorTendencias } from '../../repositories/fornecedor.repository.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 
 const COL_COMPRAS    = 'fornecedor_compras';
 const COL_TENDENCIAS = 'fornecedor_tendencias';
 const COL_ESTOQUE    = 'estoque_produtos';
+const COL_FORN       = 'fornecedores_cadastro';
 
 const URGENCIA_ICON = { alta: '🔴', media: '🟡', baixa: '🟢' };
 const TEND_ICON     = { crescendo: '📈', estavel: '➡️', caindo: '📉' };
@@ -38,6 +40,7 @@ document.querySelectorAll('.forn-tab').forEach(btn => {
         document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab === 'estoque-baixo') carregarEstoqueBaixo();
         if (btn.dataset.tab === 'mercado') carregarTendencias();
+        if (btn.dataset.tab === 'fornecedores') carregarFornecedores();
     });
 });
 
@@ -282,6 +285,72 @@ function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ── FORNECEDORES (cadastro) ────────────────────────────────────────
+let fornecedoresCache = [];
+async function carregarFornecedores() {
+    try {
+        const snap = await getDocs(collection(db, COL_FORN));
+        fornecedoresCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderFornecedores(fornecedoresCache);
+    } catch { fornecedoresCache = []; renderFornecedores([]); }
+}
+function renderFornecedores(lista) {
+    const el = document.getElementById('forn-lista');
+    const empty = document.getElementById('forn-empty');
+    if (!lista.length) { el.innerHTML = ''; empty.style.display = 'flex'; return; }
+    empty.style.display = 'none';
+    el.innerHTML = lista.map(f => `<div class="forn-card" style="cursor:default">
+        <div class="forn-card-info">
+            <div class="forn-card-nome">${escHtml(f.nome || '—')}</div>
+            <div class="forn-card-sub">
+                ${f.contato ? `👤 ${escHtml(f.contato)}` : ''}
+                ${f.telefone1 ? ` · 📞 ${escHtml(f.telefone1)}` : ''}
+                ${f.email ? ` · ✉️ ${escHtml(f.email)}` : ''}
+                ${f.cnpj ? `<br>🏛️ CNPJ: ${escHtml(f.cnpj)}` : ''}
+            </div>
+        </div>
+        <div class="forn-card-dir">
+            <button class="forn-card-edit" data-id="${f.id}" title="Editar">✏️</button>
+            <button class="forn-card-del" data-id="${f.id}" title="Excluir">✕</button>
+        </div>
+    </div>`).join('');
+    el.querySelectorAll('.forn-card-edit').forEach(b => b.addEventListener('click', () => abrirFormFornecedor(b.dataset.id)));
+    el.querySelectorAll('.forn-card-del').forEach(b => b.addEventListener('click', async () => {
+        if (!confirm('Excluir fornecedor?')) return;
+        await deleteDoc(doc(db, COL_FORN, b.dataset.id));
+        toast('🗑️ Removido.');
+        await carregarFornecedores();
+    }));
+}
+function abrirFormFornecedor(id) {
+    const f = id ? fornecedoresCache.find(x => x.id === id) : null;
+    document.getElementById('ff-titulo').textContent = f ? 'Editar Fornecedor' : 'Novo Fornecedor';
+    ['nome','contato','telefone1','telefone2','email','cnpj','endereco','cidade','estado','obs'].forEach(campo => {
+        document.getElementById('ff-' + campo).value = f?.[campo] || '';
+    });
+    document.getElementById('ff-salvar').dataset.id = id || '';
+    document.getElementById('form-fornecedor').style.display = 'flex';
+    document.getElementById('btn-nova-fornecedor').style.display = 'none';
+}
+function fecharFormFornecedor() {
+    document.getElementById('form-fornecedor').style.display = 'none';
+    document.getElementById('btn-nova-fornecedor').style.display = '';
+}
+async function salvarFornecedor() {
+    const dados = {};
+    ['nome','contato','telefone1','telefone2','email','cnpj','endereco','cidade','estado','obs'].forEach(campo => {
+        dados[campo] = document.getElementById('ff-' + campo).value.trim();
+    });
+    if (!dados.nome) { toast('⚠ Informe o nome do fornecedor'); return; }
+    const id = document.getElementById('ff-salvar').dataset.id || `forn_${Date.now()}`;
+    try {
+        await setDoc(doc(db, COL_FORN, id), { ...dados, atualizadoEm: serverTimestamp() });
+        toast(id ? '✏️ Fornecedor atualizado!' : '✅ Fornecedor salvo!');
+        fecharFormFornecedor();
+        await carregarFornecedores();
+    } catch { toast('⚠ Erro ao salvar.'); }
+}
+
 // ── eventos ────────────────────────────────────────────────────────
 document.getElementById('btn-nova-compra').addEventListener('click', abrirFormCompra);
 document.getElementById('fc-salvar').addEventListener('click', salvarCompra);
@@ -298,6 +367,9 @@ document.getElementById('ft-cancelar').addEventListener('click', fecharFormTende
 
 // busca global
 document.getElementById('forn-busca-global')?.addEventListener('input', filtrarCompras);
+document.getElementById('btn-nova-fornecedor')?.addEventListener('click', () => abrirFormFornecedor(null));
+document.getElementById('ff-salvar')?.addEventListener('click', salvarFornecedor);
+document.getElementById('ff-cancelar')?.addEventListener('click', fecharFormFornecedor);
 document.getElementById('forn-btn-listar')?.addEventListener('click', async () => {
     if (!todosItensCompra.length) { toast('⚠ Lista já está vazia.'); return; }
     if (!confirm(`Apagar todos os ${todosItensCompra.length} itens da lista de compras? Esta ação não pode ser desfeita.`)) return;

@@ -28,6 +28,7 @@
             <!-- ABAS -->
             <div class="forn-tabs">
                 <button class="forn-tab active" data-tab="compras">🛒 Lista de Compras</button>
+                <button class="forn-tab" data-tab="fornecedores">🏭 Fornecedores</button>
                 <button class="forn-tab" data-tab="estoque-baixo">⚠️ Estoque Baixo</button>
                 <button class="forn-tab" data-tab="mercado">📈 Mercado</button>
             </div>
@@ -79,6 +80,68 @@
                     <div class="forn-empty-icon">🛒</div>
                     <div class="forn-empty-title">Nenhum item na lista</div>
                     <div class="forn-empty-sub">Adicione itens que precisa comprar.</div>
+                </div>
+            </div>
+
+            <!-- ====== ABA: FORNECEDORES ====== -->
+            <div class="forn-panel" id="tab-fornecedores">
+                <div class="forn-toolbar">
+                    <button class="forn-btn-nova" id="btn-nova-fornecedor">＋ Novo Fornecedor</button>
+                </div>
+                <div class="forn-form" id="form-fornecedor" style="display:none">
+                    <div class="forn-form-titulo" id="ff-titulo">Novo Fornecedor</div>
+                    <div class="forn-form-grid">
+                        <div class="forn-form-group forn-span2">
+                            <label>Nome *</label>
+                            <input type="text" id="ff-nome" placeholder="Nome do fornecedor" maxlength="120">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Contato</label>
+                            <input type="text" id="ff-contato" placeholder="Nome da pessoa" maxlength="80">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>CNPJ</label>
+                            <input type="text" id="ff-cnpj" placeholder="00.000.000/0001-00" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Telefone 1</label>
+                            <input type="text" id="ff-telefone1" placeholder="(62) 9xxxx-xxxx" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Telefone 2</label>
+                            <input type="text" id="ff-telefone2" placeholder="(62) xxxx-xxxx" maxlength="20">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Email</label>
+                            <input type="email" id="ff-email" placeholder="fornecedor@email.com" maxlength="100">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Endereço</label>
+                            <input type="text" id="ff-endereco" placeholder="Rua, nº, bairro" maxlength="150">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Cidade</label>
+                            <input type="text" id="ff-cidade" placeholder="Goiânia" maxlength="50">
+                        </div>
+                        <div class="forn-form-group">
+                            <label>Estado</label>
+                            <input type="text" id="ff-estado" placeholder="GO" maxlength="2">
+                        </div>
+                        <div class="forn-form-group forn-span2">
+                            <label>Observação</label>
+                            <input type="text" id="ff-obs" placeholder="Opcional..." maxlength="200">
+                        </div>
+                    </div>
+                    <div class="forn-form-btns">
+                        <button class="forn-btn-salvar" id="ff-salvar">💾 Salvar</button>
+                        <button class="forn-btn-cancelar" id="ff-cancelar">Cancelar</button>
+                    </div>
+                </div>
+                <div id="forn-lista"></div>
+                <div class="forn-empty" id="forn-empty" style="display:none">
+                    <div class="forn-empty-icon">🏭</div>
+                    <div class="forn-empty-title">Nenhum fornecedor cadastrado</div>
+                    <div class="forn-empty-sub">Adicione os fornecedores de peças e serviços.</div>
                 </div>
             </div>
 
