@@ -594,7 +594,7 @@ function removePhoto(i) { tempPhotos.splice(i, 1); renderPhotoPreview(); }
 function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="${src}" style="width:100%;border-radius:8px;">`); }
 
 // ===== CREATE OS =====
-function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); }
+function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100); }
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
@@ -2511,7 +2511,19 @@ async function init() {
     }
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
-    const phoneInput = document.getElementById('f-telefone'); if (phoneInput) phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
+    const phoneInput = document.getElementById('f-telefone'); if (phoneInput) {
+        phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
+        phoneInput.addEventListener('blur', function() {
+            const raw = this.value.replace(/\D/g, '');
+            if (raw.length < 10) return;
+            const match = DB.getOS().find(o => o.phoneDigits === raw || normalizePhoneDigits(o.phone) === raw);
+            if (match && match.clientName) {
+                const nomeEl = document.getElementById('f-nome');
+                if (nomeEl && !nomeEl.value) nomeEl.value = match.clientName;
+                showToast('📋 Cliente encontrado: ' + match.clientName);
+            }
+        });
+    }
     const logoEl = document.querySelector('.header-logo');
     if (logoEl && !logoEl.dataset.logoHandler) {
         logoEl.addEventListener('click', () => showScreen('home'));
