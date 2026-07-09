@@ -1351,4 +1351,47 @@ Config page: initModulo+RBAC.
 
 Testes: 97/97.
 
+---
+
+### 09/07/2026 — MARCO: Desenvolvimento Principal Concluído — Entrada em Modo Estabilidade
+
+**Tarefa:** Reconhecer formalmente a conclusão do desenvolvimento principal do Cell City CRM. Após 22+ sprints consecutivas, a plataforma atinge maturidade operacional e entra em modo de estabilidade.
+
+**O que foi reconhecido:**
+
+1. **Arquitetura consolidada:** MPA + ES Modules + Repository Layer (20 repositórios) + Firebase (Auth/Firestore/Storage/Cloud Functions) + GitHub Pages. Zero build step, zero bundler.
+
+2. **34 módulos:** 32 operacionais, 2 placeholders mantidos como espaço reservado (Estratégia, Em Breve).
+
+3. **RBAC duas camadas** integrado em todos os módulos ativos.
+
+4. **Firestore Rules** com `temAcessoLiberado()` bloqueando contas pendentes.
+
+5. **25 arquivos de teste RBAC** + 52 Firestore Rules + 25 Cloud Functions.
+
+6. **CI/CD** com GitHub Actions (deploy, testes, backup semanal).
+
+7. **Ambientes separados** MAIN/DEVELOP com backends Firebase independentes.
+
+8. **Incidente de credencial** encerrado com rotação de chaves e hardening.
+
+9. **Modelagem SQL** concluída (planejamento, sem migração).
+
+**Documentos criados:**
+- `plans/PORTAL_TECNICO_PLANEJAMENTO.md` — Planejamento estratégico para futura implementação de conteúdo técnico, condicionado a processo de curadoria e engajamento da equipe.
+
+**Política de novos desenvolvimentos:**
+Novas sprints serão abertas apenas por:
+- Problemas encontrados durante uso diário
+- Novos requisitos de negócio
+- Funcionalidades aprovadas no roadmap
+
+Não serão criadas sprints para preencher placeholders, adicionar conteúdo ao Portal Técnico sem curadoria, ou manter "desenvolvimento contínuo" sem entrega de valor.
+
+**Status formal do projeto:**
+- ✅ Arquitetura consolidada
+- ✅ Desenvolvimento principal concluído
+- 🟡 Plataforma em fase de homologação funcional e estabilização
+- 🟡 `develop` 45 commits à frente de `origin/develop` — push pendente
+
 *Fim do histórico — novos registros serão adicionados abaixo.*
