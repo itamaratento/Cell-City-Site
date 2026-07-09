@@ -2516,12 +2516,14 @@ async function init() {
         phoneInput.addEventListener('blur', function() {
             const raw = this.value.replace(/\D/g, '');
             if (raw.length < 10) return;
-            const match = DB.getOS().find(o => o.phoneDigits === raw || normalizePhoneDigits(o.phone) === raw);
-            if (match && match.clientName) {
-                const nomeEl = document.getElementById('f-nome');
-                if (nomeEl && !nomeEl.value) nomeEl.value = match.clientName;
-                showToast('📋 Cliente encontrado: ' + match.clientName);
-            }
+            const historico = DB.getOS().filter(o => o.phoneDigits === raw || normalizePhoneDigits(o.phone) === raw);
+            if (!historico.length) return;
+            const ultima = historico.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+            const nomeEl = document.getElementById('f-nome');
+            if (nomeEl && !nomeEl.value && ultima.clientName) nomeEl.value = ultima.clientName;
+            if (ultima.brand) { const el = document.getElementById('f-marca'); if (el && !el.value) el.value = ultima.brand; }
+            if (ultima.model) { const el = document.getElementById('f-modelo'); if (el && !el.value) el.value = ultima.model; }
+            showToast('📋 Cliente encontrado: ' + (ultima.clientName || '') + ' — último OS: ' + (ultima.id || ''));
         });
     }
     const logoEl = document.querySelector('.header-logo');
