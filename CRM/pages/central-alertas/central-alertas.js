@@ -6,6 +6,7 @@
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { AgendaRepository as Agenda } from '../../repositories/diario.repository.js';
 import { AvaliacoesRepository as Avaliacoes, MensagensPortalRepository as MensagensPortal } from '../../repositories/portal.repository.js';
@@ -854,6 +855,11 @@ function setupEventos() {
 async function init() {
     const ctx = await initModulo();
     if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('central-alertas')) {
+        document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+        return;
+    }
     _uid = ctx.uid;
 
     setupEventos();
