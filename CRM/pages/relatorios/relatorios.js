@@ -4,6 +4,7 @@
    ============================================================ */
 
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { OSRepository as OS } from '../../repositories/os.repository.js';
 import { CaixaLancamentosRepository as CaixaLancamentos } from '../../repositories/caixa.repository.js';
 
@@ -893,6 +894,11 @@ function mostrarErroLoading(msg) {
 async function init() {
   const ctx = await initModulo();
   if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('relatorios')) {
+    document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+    return;
+  }
 
   OS.onChange(list => {
     _os = list;
