@@ -1,6 +1,8 @@
 // ============================================
 // CENTRAL DE INFORMAÇÕES — Cell City CRM
 // ============================================
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { InformacoesRepository as Informacoes, CategoriasInformacoesRepository as CategoriasInformacoes } from '../../repositories/central.repository.js';
 import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
@@ -92,6 +94,10 @@ window.imprimirTelaCheiaInfo = imprimirTelaCheiaInfo;
 
 // ===== INIT =====
 async function init() {
+    const ctx = await initModulo();
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('central-informacoes')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
     await carregarCategorias();
     montarCategorias();
     montarSelectCategorias();
