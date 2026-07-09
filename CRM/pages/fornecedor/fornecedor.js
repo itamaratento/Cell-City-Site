@@ -1,3 +1,5 @@
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar, podeCriar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../../scripts/firebase.js';
 import { FornecedorComprasRepository as FornecedorCompras, FornecedorTendenciasRepository as FornecedorTendencias } from '../../repositories/fornecedor.repository.js';
@@ -380,4 +382,11 @@ document.getElementById('forn-btn-listar')?.addEventListener('click', async () =
     } catch { toast('⚠ Erro ao limpar a lista.'); }
 });
 
-document.addEventListener('DOMContentLoaded', carregarCompras);
+(async function boot() {
+  const ctx = await initModulo();
+  if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('fornecedor')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeCriar('fornecedor')) document.getElementById('btn-nova-compra').style.display = 'none';
+  carregarCompras();
+})();
