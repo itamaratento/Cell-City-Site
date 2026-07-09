@@ -387,6 +387,29 @@
     siteBtn.title = 'Abrir Site da Cell City';
     siteBtn.innerHTML = '<span class="crm-site-cc-icon">🌐</span><span class="crm-site-cc-label">Site</span>';
     bar.appendChild(siteBtn);
+
+    var userBadge = document.createElement('span');
+    userBadge.className = 'crm-user-badge';
+    userBadge.style.cssText = 'font-size:12px;color:var(--text2,#a1a8b3);margin-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    userBadge.textContent = '👤 ...';
+    bar.insertBefore(userBadge, siteBtn);
+
+    function updateUserBadge(ctx) {
+      if (!ctx) { userBadge.textContent = ''; userBadge.style.display = 'none'; return; }
+      var nome = ctx.nome || '';
+      var perfil = ctx.perfil_operacional_nome || ctx.perfil || '';
+      userBadge.textContent = '👤 ' + nome + (perfil ? ' | ' + perfil : '');
+      userBadge.style.display = '';
+    }
+    if (window._ccUid) {
+      setTimeout(function() {
+        import('../../scripts/kernel.js').then(function(k) {
+          var ctx = k.getCtx();
+          if (ctx) updateUserBadge(ctx);
+        }).catch(function(){});
+      }, 0);
+    }
+    window.addEventListener('kernel-ready', function(e) { updateUserBadge(e.detail); });
     bar.appendChild(buildEnvPill());
 
     // Migra todos os filhos do header existente para dentro do brand bar.
