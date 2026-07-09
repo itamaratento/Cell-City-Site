@@ -1,4 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ContasNumerosRepository as Contas } from '../../repositories/crm.repository.js';
 
@@ -112,6 +113,7 @@ window.Contas = {
     },
 
     abrirNovo() {
+        if (!podeCriar('contas')) { toast('Acesso negado'); return; }
         _atual = null;
         $('form-titulo').textContent = 'Nova Conta';
         $('form-id').value = '';
@@ -128,10 +130,15 @@ window.Contas = {
         if (!c) return;
         _atual = c;
         renderDetalhe(c);
+        const editBtn = document.querySelector('.edit-btn');
+        const exclBtn = document.querySelector('.btn-excluir');
+        if (editBtn) editBtn.style.display = podeEditar('contas') ? '' : 'none';
+        if (exclBtn) exclBtn.style.display = podeExcluir('contas') ? '' : 'none';
         mostrarView('view-detalhe');
     },
 
     abrirEdicao() {
+        if (!podeEditar('contas')) { toast('Acesso negado'); return; }
         if (!_atual) return;
         $('form-titulo').textContent = 'Editar';
         $('form-id').value       = _atual.id;
@@ -149,6 +156,9 @@ window.Contas = {
     },
 
     async salvar() {
+        const id = $('form-id').value;
+        if (id && !podeEditar('contas')) { toast('Acesso negado'); return; }
+        if (!id && !podeCriar('contas')) { toast('Acesso negado'); return; }
         const nome = $('f-nome').value.trim();
         if (!nome) { toast('⚠️ Preencha o nome.'); return; }
 
@@ -165,7 +175,6 @@ window.Contas = {
             atualizadoEm: serverTimestamp(),
         };
 
-        const id = $('form-id').value;
         try {
             if (id) {
                 await Contas.update(id, dados);
@@ -184,6 +193,7 @@ window.Contas = {
     },
 
     async excluir() {
+        if (!podeExcluir('contas')) { toast('Acesso negado'); return; }
         if (!_atual) return;
         if (!confirm(`Excluir "${_atual.nome}"?`)) return;
         try {
@@ -199,4 +209,14 @@ window.Contas = {
 };
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-initModulo().then(ctx => { if (ctx) carregar().catch(console.error); });
+initModulo().then(async (ctx) => {
+    if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('contas')) {
+        document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+        return;
+    }
+    const addBtn = document.querySelector('.add-btn');
+    if (addBtn) addBtn.style.display = podeCriar('contas') ? '' : 'none';
+    carregar().catch(console.error);
+});
