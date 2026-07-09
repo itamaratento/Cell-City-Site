@@ -1,6 +1,7 @@
 import { serverTimestamp } from '../../firebase/client.js';
 import { TarefasSemanaRepository as TarefasSemana } from '../../repositories/diario.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar, podeCriar, podeExcluir } from '../../shared/permissoes.js';
 
 const DIAS = ['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 const PRIO = { alta: '🔴', media: '🟡', baixa: '🟢' };
@@ -89,6 +90,7 @@ function renderLista() {
 
       const del = document.createElement('button');
       del.className = 'ms-tarefa-del'; del.textContent = '✕';
+      if (!podeExcluir('minha-semana')) del.style.display = 'none';
       del.addEventListener('click', () => {
         tarefas = tarefas.filter(x => x.id !== t.id);
         salvar();
@@ -106,6 +108,7 @@ function renderLista() {
 
 // ── adicionar tarefa ───────────────────────────────────────────────
 function adicionar() {
+  if (!podeCriar('minha-semana')) { alert('Acesso negado'); return; }
   const desc = descEl.value.trim();
   if (!desc || !diaSelecionado) return;
   tarefas.push({
@@ -150,8 +153,15 @@ document.getElementById('ms-cancelar').addEventListener('click', () => {
   renderDias();
 });
 
-initModulo().then(ctx => {
+initModulo().then(async (ctx) => {
   if (!ctx) return;
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('minha-semana')) {
+    document.body.innerHTML = '<h2 style="text-align:center;margin-top:4rem;color:#ef4444">Acesso negado</h2>';
+    return;
+  }
   _uid = ctx.uid;
+  const addBtn = document.querySelector('.add-tarefa-btn');
+  if (addBtn) addBtn.style.display = podeCriar('minha-semana') ? '' : 'none';
   carregar();
 });
