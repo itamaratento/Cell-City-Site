@@ -5,6 +5,12 @@
 import { serverTimestamp } from '../../firebase/client.js';
 import { ComandosRepository as Comandos, CategoriasComandosRepository as CategoriasComandos, InformacoesRepository as Informacoes } from '../../repositories/central.repository.js';
 import { ConfigRepository as Config } from '../../repositories/sistema.repository.js';
+// Fix 2026-07-10: init() usa initModulo()/carregarPermissoes()/podeVisualizar()
+// (linhas ~148-151) mas os imports estavam ausentes — a página quebrava no
+// boot com ReferenceError (gate RBAC nunca rodava, comandos não carregavam).
+// Detectado pela nova suíte central-comandos.test.mjs.
+import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 
 const COL = 'comandos';
 const CAT_COL = 'categorias_comandos';
