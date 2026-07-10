@@ -38,14 +38,24 @@ jobs:
         # administrativa, não parte do produto. Exclusão é só do artefato de
         # deploy — não altera nenhum arquivo do repositório nem comportamento
         # da aplicação.
+        #
+        # FECHAMENTO v2026.07.10: _BACKUPS/ (2.263 arquivos rastreados,
+        # snapshots internos com rules antigas) e backups avulsos da raiz
+        # (BACKUP_POSVENDA_*, firestore.rules.backup*, firebase.json.bak*)
+        # também eram publicados — apontado nas auditorias de 2026-07-03
+        # e nunca mitigado. Mesma técnica: exclusão só do artefato.
         run: |
           mkdir -p _site
           rsync -a --exclude='.git' --exclude='.github' \
             --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            --exclude='_BACKUPS/' --exclude='BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
+            --exclude='firestore.rules.backup*' --exclude='firebase.json.bak*' \
             site-main/ _site/
           mkdir -p _site/dev
           rsync -a --exclude='.git' --exclude='.github' \
             --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            --exclude='_BACKUPS/' --exclude='BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
+            --exclude='firestore.rules.backup*' --exclude='firebase.json.bak*' \
             site-develop/ _site/dev/
           touch _site/.nojekyll
 

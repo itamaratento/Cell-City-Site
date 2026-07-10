@@ -1039,3 +1039,34 @@ Ao analisar código ou adicionar novas funcionalidades:
 4. **Verifique as Cloud Functions**: `grep -rn "\.collection(" functions/*.js` — algumas coleções (ex.: `portal_eventos`) só são escritas hoje pelo backend (Admin SDK), não pelo cliente.
 5. **Evite duplicação**: verifique neste documento se a coleção já existe antes de criar uma nova.
 6. **Padrão de nome**: use `snake_case` e prefixo do módulo (ex: `fornecedor_`, `caixa_`, `estoque_`).
+
+---
+
+## 22. Adendo — Revisão 2026-07-10 (release v2026.07.10) 🆕
+
+Quatro coleções entraram com as Sprints 10/13/15 e a aba Cadastro do
+Fornecedor, todas **sem rule** até a revisão técnica de 2026-07-10
+(TECHDOC §30.1), que adicionou o padrão `temAcessoLiberado()`.
+⚠️ Deploy das rules nos projetos `cellcity-crm` (PROD) e
+`cellcity-crm-dev` (DEV) ainda pendente.
+
+### `chat_mensagens`
+**Document ID:** Auto-generated · **Módulo:** Chat interno (Sprint 15) — **DESATIVADO em 2026-07-10** (TECHDOC §31; código/rules/coleção preservados)
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `de` / `para` | `string` | UIDs remetente/destinatário |
+| `participantes` | `array<string>` | UIDs para query com `array-contains` |
+| `texto` | `string` | Conteúdo da mensagem |
+| `criadoEm` | `timestamp` | Envio (serverTimestamp) |
+
+Rule: leitura/criação com `temAcessoLiberado()`; `update`/`delete` negados (mensagens imutáveis).
+
+### `compras_pedidos`
+**Document ID:** Auto-generated · **Módulo:** Compras (Sprint 13) + botão "estoque baixo → compras" do Fornecedor. Pedidos de compra (item, quantidade, fornecedor, status).
+
+### `financeiro_fechamentos`
+**Document ID:** `AAAA-MM` (um doc por mês) · **Módulo:** Financeiro — Fechamento Mensal Automático (Sprint 10). Snapshot mensal de receitas/despesas/saldo.
+
+### `fornecedores_cadastro`
+**Document ID:** Auto-generated · **Módulo:** Fornecedor, aba Cadastro (CRUD completo). Dados cadastrais de fornecedores (nome, contato, observações).

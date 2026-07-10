@@ -112,6 +112,18 @@ A partir deste marco, novas Sprints serão abertas **apenas** quando atenderem a
 
 ---
 
+## 🚦 PRÓXIMA TAREFA — Homologação da release v2026.07.10
+
+**Deploy das Firestore Rules corrigidas** (TECHDOC §30.1) em
+`cellcity-crm-dev` (DEV) e `cellcity-crm` (PROD), seguindo
+`plans/CHECKLIST_DEPLOY_RULES_20260710.md`. Até esse deploy, os módulos
+**Compras**, **Fechamento Mensal (Financeiro)** e **Cadastro de
+Fornecedores** continuam indisponíveis em runtime (deny-by-default).
+Verificar o release ativo via API após publicar (nunca confiar só no
+console — ver GUIA_MANUTENCAO).
+
+---
+
 ## ⚠️ ITENS PENDENTES (sem previsão)
 
 | Item | Motivo | Desbloqueio |
@@ -121,16 +133,19 @@ A partir deste marco, novas Sprints serão abertas **apenas** quando atenderem a
 | Portal Técnico (conteúdo) | FRP, firmwares, soluções técnicas | Planejamento estratégico + aprovação |
 | 17 módulos sem testes RBAC | Cobertura adicional não crítica | Roadmap futuro |
 | Políticas de senha (server-side) | Expiração/força validadas no backend | Cloud Function + decisão de negócio |
+| IDs de gate fora da matriz RBAC | Gates novos (`analise`, `compras`, `chat`...) fail-open — a UI só gerencia 9 IDs | Sprint p/ ampliar `MODULOS` em usuarios-permissoes.js + homologação |
+| Módulo Chat DESATIVADO | Sem uso operacional (TECHDOC §31) | Reativação em minutos: `CHAT_ENABLED=true` |
 
 ---
 
 ## ⚠️ RISCOS ATUAIS
 
-- 🟡 `develop` **45 commits à frente de `origin/develop`** — risco de divergência. Push pendente.
+- 🔴 Rules corrigidas **ainda não deployadas** — 3 módulos da release quebrados em runtime até o deploy (ver Próxima Tarefa).
 - 🟡 `os.list` aberto a qualquer sessão autenticada (decisão deliberada, documentada).
-- 🟡 Falha no teste `caixa.test.mjs` (`0 !== 1`) — pré-existente, não investigada.
+- 🟢 `develop` == `main` == `origin` — push e promoção concluídos em 2026-07-10.
+- 🟢 Suítes verdes: RBAC 149/149 · Rules 73/73 · Functions 25/25 · Performance 4/4 (falha antiga do caixa.test corrigida em 3ca6763).
 - 🟢 Sem trava de cota (Blaze), sem chave comprometida, sem autoprovisionamento.
 
 ---
 
-*Última atualização: 2026-07-09 — Declaração de modo estabilidade. Desenvolvimento principal concluído. Próximas sprints sob demanda.*
+*Última atualização: 2026-07-10 — Release v2026.07.10 fechada (revisão técnica + promoção + Chat desativado). Aguarda homologação: deploy das Rules.*

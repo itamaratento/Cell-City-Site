@@ -1395,3 +1395,15 @@ Não serão criadas sprints para preencher placeholders, adicionar conteúdo ao 
 - 🟡 `develop` 45 commits à frente de `origin/develop` — push pendente
 
 *Fim do histórico — novos registros serão adicionados abaixo.*
+
+---
+
+## 2026-07-10 — Release v2026.07.10: revisão técnica, promoção e desativação do Chat
+
+- **Revisão técnica pré-promoção** (Revisor Principal, TECHDOC §30) dos 92 commits das Sprints 5–19: 7 grupos de problemas encontrados e corrigidos — 4 coleções sem rule (Chat/Compras/Fechamento/Fornecedores quebrados por deny-by-default), `garantia.html`+`catalogo.html` deletados mas ainda linkados (restaurados), 8 redirects RBAC sem prefixo `/dev`, links `wa.me` sem DDI 55, import errado no `brand-header.js`, gate ausente na Auditoria, e **12 testes RBAC commitados vermelhos** (reescritos).
+- **Promoção**: `develop`→`main` por fast-forward (histórico linear — regra GH013 só proíbe merge commits), `main`=`0860d91`, tag `v2026.07.10-1253`. Push de develop+main+tags.
+- **Sprint Desativação do Chat** (`b6c1122`, TECHDOC §31): `CHAT_ENABLED=false`, acesso direto mostra "Módulo desativado." sem tocar Firestore; código/testes/rules/coleção 100% preservados; nunca houve entrada de menu a remover.
+- **Fechamento da release**: `_BACKUPS/` e backups avulsos excluídos do artefato do GitHub Pages (estavam sendo publicados — 2.263 arquivos); COLECOES_FIRESTORE §22; checklist de deploy das rules em `plans/CHECKLIST_DEPLOY_RULES_20260710.md`.
+- **Pendência para homologação**: deploy das Firestore Rules corrigidas em `cellcity-crm-dev` (DEV) e `cellcity-crm` (PROD) — até lá, Compras, Fechamento Mensal e Cadastro de Fornecedores continuam indisponíveis em runtime.
+
+**Suítes:** RBAC 149/149 · Rules 73/73 · Functions 25/25 · Performance 4/4.
