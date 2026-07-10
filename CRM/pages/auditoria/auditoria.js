@@ -1,4 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
   db, collection, getDocs, query, orderBy, limit, onSnapshot
 } from '../../scripts/firebase.js';
@@ -44,6 +45,11 @@ window.metaAcao = metaAcao;
 (async function boot() {
   const ctx = await initModulo();
   if (!ctx) return;
+  // Revisão 2026-07-10: o commit da Sprint 12 declarava RBAC mas o gate
+  // não existia — qualquer usuário aprovado via logs de auditoria e a
+  // lista completa de usuários. Mesmo padrão dos demais módulos.
+  await carregarPermissoes(ctx);
+  if (!podeVisualizar('auditoria')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
 
   try {
     const snap = await getDocs(collection(db, 'perfis_operacionais'));

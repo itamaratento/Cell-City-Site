@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo de Produtos — Cell City Informática</title>
+  <link rel="icon" href="/favicon.ico" type="image/png">
+  <meta name="description" content="Catálogo de produtos Cell City Informática — Carregadores, Cabos, Fones, Power Banks, Películas, Capinhas e muito mais em Goiânia.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/CRM/pages/catalogo/public/catalogo-publico.css">
+  <script src="/js/header-component.js" defer></script>
+</head>
+<body>
+
+<!-- Header injetado por /js/header-component.js -->
+
+<!-- ===== HERO compacto ===== -->
+<section class="cat-hero">
+  <span class="cat-hero-badge">🛍️ Loja Virtual</span>
+</section>
+
+<!-- ===== CATEGORIAS ===== -->
+<nav class="cat-categorias" aria-label="Filtrar por categoria">
+  <div class="cat-cats-wrap" id="cat-cats">
+    <!-- preenchido por JS -->
+  </div>
+</nav>
+
+<!-- ===== MAIS VENDIDOS ===== -->
+<div class="cat-secao" id="cat-destaques-sec" style="display:none;">
+  <div class="cat-wrap">
+    <h2 class="cat-secao-titulo">⭐ Mais Vendidos</h2>
+    <div class="cat-grid" id="cat-grid-destaques"></div>
+  </div>
+</div>
+
+<!-- ===== TODOS OS PRODUTOS ===== -->
+<div class="cat-secao">
+  <div class="cat-wrap">
+    <div class="cat-secao-header">
+      <h2 class="cat-secao-titulo">Produtos</h2>
+      <span class="cat-produtos-count" id="cat-count">—</span>
+    </div>
+    <div class="cat-grid" id="cat-grid">
+      <div class="cat-loading">
+        <div class="cat-spinner"></div>
+        Carregando produtos...
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL DETALHES ===== -->
+<div class="cat-modal-overlay" id="cat-modal" onclick="if(event.target===this)catFecharModal()">
+  <div class="cat-modal">
+    <div class="cat-modal-fechar">
+      <button onclick="catFecharModal()" title="Fechar">✕</button>
+    </div>
+    <div id="cat-modal-body"></div>
+  </div>
+</div>
+
+<!-- ===== FOOTER ===== -->
+<footer class="cat-footer">
+  <div class="cat-footer-inner">
+    <div class="cat-footer-logo">Cell City Informática</div>
+    <div class="cat-footer-addr">Rua 6, nº 455 – Setor Central · Goiânia – GO</div>
+    <div class="cat-footer-links">
+      <a class="cat-footer-btn" id="cat-footer-wpp" href="https://wa.me/5562981605863" target="_blank" rel="noopener">📱 WhatsApp</a>
+      <a class="cat-footer-btn" href="https://www.google.com/maps/search/?api=1&query=Cell+City+Informática+Goiânia+GO" target="_blank" rel="noopener">📍 Google Maps</a>
+      <a class="cat-footer-btn" href="https://www.instagram.com/cellcityinformatica/" target="_blank" rel="noopener">📸 Instagram</a>
+    </div>
+    <div class="cat-footer-copy">© 2026 Cell City Informática · Todos os direitos reservados.</div>
+  </div>
+</footer>
+
+<script type="module" src="/CRM/pages/catalogo/public/catalogo-publico.js"></script>
+</body>
+</html>

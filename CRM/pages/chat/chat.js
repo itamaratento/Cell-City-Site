@@ -19,7 +19,7 @@ let unsubscribeMsgs = null;
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('chat')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('chat')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
   meuUid = getUid();
   meuNome = getNome() || 'Você';
 

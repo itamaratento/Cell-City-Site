@@ -163,7 +163,7 @@ document.querySelectorAll('[data-cr-status]')?.forEach(btn => {
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('compras')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('compras')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
   if (!podeCriar('compras')) document.getElementById('cr-btn-nova').style.display = 'none';
   await carregar();
 })();

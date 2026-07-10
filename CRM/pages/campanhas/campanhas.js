@@ -290,6 +290,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('campanhas')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('campanhas')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
     carregar();
 });

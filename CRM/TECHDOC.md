@@ -1721,3 +1721,121 @@ As funções originais que chamavam `atualizarResumo()` foram todas substituída
 - `atualizarResumoCompleto`: resumo expandido com vencidos
 
 **Resultado:** 4/4, zero regressão (71/72, única falha = pré-existente do Caixa).
+
+## 30. Revisão técnica pré-promoção develop→main (2026-07-10)
+
+Code review completo dos 92 commits desde a última promoção (`main` =
+cbe68c6, tag v2026.07.06-2226), cobrindo as Sprints 5–19, Camada
+Repository F0+F1, performance F3, RBAC em ~20 módulos e limpezas.
+Todos os problemas abaixo foram **encontrados e corrigidos nesta revisão**,
+antes da promoção.
+
+### 30.1 Módulos quebrados por deny-by-default (Firestore Rules)
+
+Quatro módulos novos foram commitados usando coleções **sem nenhuma rule**
+— o Firestore nega por padrão, então quebravam 100% em runtime (os testes
+de RBAC passavam porque o SDK é mockado):
+
+| Coleção | Módulo afetado | Sprint |
+|---|---|---|
+| `chat_mensagens` | Chat interno | 15 |
+| `compras_pedidos` | Compras (+ botão "estoque baixo→compras" do Fornecedor) | 13 |
+| `financeiro_fechamentos` | Fechamento Mensal Automático | 10 |
+| `fornecedores_cadastro` | Fornecedor, aba Cadastro | — |
+
+Rules adicionadas com o padrão `request.auth != null && temAcessoLiberado()`
+nas duas cópias (`CRM/firestore.rules` e `firestore.rules`, mantidas
+idênticas). `chat_mensagens` nega `update/delete` (mensagens imutáveis —
+chat.js só usa addDoc/onSnapshot). `crm_templates` teve a leitura apertada
+de `auth != null` para o mesmo padrão (o `auth != null` sozinho incluía a
+sessão anônima do Portal e contas 'pendente'; o único consumidor é crm.js).
+Cobertura: +21 testes em `tests/firestore-rules/os-publico.test.mjs`.
+
+⚠️ **Deploy pendente**: as rules corrigidas precisam ser publicadas no(s)
+projeto(s) Firebase (processo manual via REST/console — fora do escopo
+desta revisão). Até lá, os 4 módulos continuam indisponíveis em runtime.
+
+### 30.2 Regressão: páginas públicas deletadas ainda referenciadas
+
+O commit de limpeza 72bde1e/4a99872 removeu `CRM/garantia.html` e
+`catalogo.html` (raiz) como "páginas antigas", mas:
+
+- `portal.js` linka `/CRM/garantia.html?id=...` em 3 pontos (documento da
+  OS no Portal do Cliente) e `os.js::generateWarrantyLink()` gera
+  `/CRM/garantia?id=...` — link enviado a clientes por WhatsApp;
+- `catalogo.js` (admin) exibe `URL_PUBLICA` apontando para
+  `cellcityinformatica.com.br/catalogo.html` (link público compartilhado).
+
+Ambas restauradas de `main` sem modificação (garantia.html continua usando
+a Cloud Function `consultarOSPublica` do Sprint 1a; catalogo.html usa o
+mesmo `catalogo-publico.js` corrigido em 0bca817, com guard null-safe).
+
+### 30.3 Redirects RBAC sem prefixo /dev (regressão do padrão H-005)
+
+8 gates novos redirecionavam para `/CRM/pages/dashboard/index.html` fixo —
+no ambiente DEV (`/dev/...`) isso derruba o usuário no ambiente de
+produção. Corrigido com o mesmo padrão dos demais módulos em:
+`autoatendimento.js`, `campanhas.js`, `diario.js` (×2), `compras.js`,
+`importar.js`, `chat.js`, `central-comandos/comandos.js`.
+
+### 30.4 Links WhatsApp sem DDI 55 (os.js)
+
+`wa.me/${digits}` sem `55` → o WhatsApp interpreta o DDD como código de
+país e o link não abre a conversa. Corrigido para
+`wa.me/55${normalizePhoneDigits(...)}` (padrão dominante no projeto) em 4
+pontos: link do telefone no detalhe da OS (novo, 7517406), telefone do
+cliente (WhatsApp do cadastro), `shareWhatsApp()` e
+`sendWarrantyWhatsApp()` (pré-existentes).
+
+### 30.5 Outras correções
+
+- **brand-header.js (BL-001)**: `import('../../scripts/kernel.js')`
+  resolvia para `/scripts/kernel.js` (não existe — mesma classe do H-008);
+  corrigido para `../scripts/kernel.js`.
+- **auditoria.js (Sprint 12)**: o commit declarava RBAC mas não havia gate
+  — qualquer usuário aprovado via os logs e a lista de usuários. Gate
+  `podeVisualizar('auditoria')` adicionado (mesmo padrão dos demais).
+- **os.js `markDelivered()`**: a escrita no Caixa agora força
+  `parseFloat(currentOS.valor)||0` — OS legadas com `valor` string
+  corromperiam as somas do Caixa (que concatenam em vez de somar).
+
+### 30.6 Testes: 12 falhas commitadas + mock desatualizado
+
+A suíte RBAC estava **vermelha no momento da revisão (135/147)** — os 12
+testes commitados nas Sprints 16–19 nunca passaram:
+
+- `mocks/kernel.js` não exportava `getCtxAsync`/`logout` (usados por
+  config.js) — o import do módulo inteiro falhava (3 testes);
+- testes de Agenda/Autoatendimento/Clientes esperavam "Acesso negado" no
+  body, mas esses módulos **redirecionam**; Agenda ainda procurava um
+  elemento inexistente (`cal-calendario` vs `ag-cal-grade` real);
+- Analise/PosVenda inicializam via `DOMContentLoaded` e os testes não
+  passavam `{ document }` ao `importFresh()` — o init nunca rodava;
+- PosVenda procurava `.posv-tabs` (classe real: `.pv-tabs`);
+- `pages/clientes/` é a tela de **Config de Impressão** (gate no módulo
+  'config', com redirect) — teste reescrito para o comportamento real.
+
+Todos reescritos para asseverar o comportamento real (redirect via
+`getCapturedHref()` + conteúdo renderizado pelo boot). +2 testes de RBAC
+para o gate novo da Auditoria.
+
+**Resultado final: RBAC 149/149 · Rules 73/73 · Functions 25/25 ·
+Performance 4/4.**
+
+### 30.7 Pendências registradas (sem ação nesta revisão)
+
+- **IDs de gate fora da matriz**: a tela Usuários e Permissões só gerencia
+  9 módulos (`dashboard/os/caixa/estoque/financeiro/crm/agenda/relatorios/
+  configuracoes`); os gates novos usam IDs próprios (`analise`, `compras`,
+  `chat`, `auditoria`, `pos-venda`, `config`...) que **não existem na
+  matriz** → fail-open permanente (comportamento atual preservado de
+  propósito). Para ativá-los, adicionar os IDs ao catálogo `MODULOS` de
+  `usuarios-permissoes.js` em sprint própria, com homologação.
+- **config.js é arquivo protegido** (CLAUDE.md §1) e foi alterado nas
+  sprints revisadas (initModulo + Repository) sem registro de autorização;
+  funcionalmente OK (import não usado de `permissoes.js` permanece).
+- **saas.repository.js** referencia `auditoria_saas`/`notificacoes_saas`
+  (sem rules) — arquivo órfão da iniciativa multiempresa obsoleta; nenhum
+  módulo o importa, sem impacto em runtime.
+- Brecha documentada de `list` em `os` para conta 'pendente'/anônima
+  (Sprint 1b) permanece — fora do escopo, já registrada em §6.

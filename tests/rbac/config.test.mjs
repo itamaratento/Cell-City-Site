@@ -36,5 +36,5 @@ test('Config admin legado: carrega', async () => {
     const { document } = setup({ config: { visualizar: false } });
     await importFresh(MOD_URL);
     await new Promise(r => setTimeout(r, 150));
-    assert.ok(document.getElementById('pin-wrapper'));
+    assert.ok(document.getElementById('screen-pin') || document.getElementById('pin-wrapper'));
 });

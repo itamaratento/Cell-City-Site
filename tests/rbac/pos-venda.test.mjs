@@ -21,24 +21,26 @@ function setup({ matriz = null } = {}) {
 
 test('PosVenda sem permissao: body mostra Acesso negado', async () => {
     const { document } = setup({ matriz: { 'pos-venda': { visualizar: false } } });
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
     assert.ok(document.body.innerHTML.includes('Acesso negado'));
 });
 
-test('PosVenda com visualizar: tabs carregam', async () => {
+test('PosVenda com visualizar: tabs e lista carregam', async () => {
     const { document } = setup({ matriz: { 'pos-venda': { visualizar: true } } });
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
-    const tabs = document.querySelector('.posv-tabs');
-    assert.ok(tabs, 'tabs de pos-venda devem existir');
+    assert.ok(document.querySelector('.pv-tabs'), 'tabs de pos-venda devem existir');
+    const container = document.getElementById('pendentes-container');
+    assert.ok(container && container.innerHTML.trim() !== '', 'init renderizou a lista de pendentes');
+    assert.ok(!document.body.innerHTML.includes('Acesso negado'));
 });
 
 test('PosVenda admin legado: acesso liberado', async () => {
     const { document } = setup();
     perm.__setAdminLegado(true);
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
-    const tabs = document.querySelector('.posv-tabs');
-    assert.ok(tabs, 'admin legado ve as tabs');
+    assert.ok(document.querySelector('.pv-tabs'), 'admin legado ve as tabs');
+    assert.ok(!document.body.innerHTML.includes('Acesso negado'));
 });

@@ -19,11 +19,13 @@ function setup({ matriz = null } = {}) {
     return mountPage(HTML_PATH, '/CRM/pages/autoatendimento/index.html');
 }
 
-test('Autoatendimento sem permissao: body mostra Acesso negado', async () => {
-    const { document } = setup({ matriz: { autoatendimento: { visualizar: false } } });
+// O gate (autoatendimento.js::init) REDIRECIONA para o Dashboard quando
+// visualizar=false — não escreve "Acesso negado" no body.
+test('Autoatendimento sem permissao: redirect para Dashboard', async () => {
+    const harness = setup({ matriz: { autoatendimento: { visualizar: false } } });
     await importFresh(MOD_URL);
     await new Promise(r => setTimeout(r, 150));
-    assert.ok(document.body.innerHTML.includes('Acesso negado'));
+    assert.match(harness.getCapturedHref(), /dashboard\/index\.html/);
 });
 
 test('Autoatendimento com visualizar: lista carrega', async () => {

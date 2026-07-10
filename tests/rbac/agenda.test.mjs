@@ -19,26 +19,31 @@ function setup({ matriz = null } = {}) {
     return mountPage(HTML_PATH, '/CRM/pages/acaodasemana/index.html');
 }
 
-test('Agenda sem permissao: body mostra Acesso negado', async () => {
-    const { document } = setup({ matriz: { agenda: { visualizar: false } } });
+// O gate da Agenda (acaodasemana.js::_boot) REDIRECIONA para o Dashboard
+// quando visualizar=false — não escreve "Acesso negado" no body.
+test('Agenda sem permissao: redirect para Dashboard', async () => {
+    const harness = setup({ matriz: { agenda: { visualizar: false } } });
     await importFresh(MOD_URL);
     await new Promise(r => setTimeout(r, 150));
-    assert.ok(document.body.innerHTML.includes('Acesso negado'));
+    assert.match(harness.getCapturedHref(), /dashboard\/index\.html/);
 });
 
 test('Agenda com visualizar: calendario carrega', async () => {
-    const { document } = setup({ matriz: { agenda: { visualizar: true } } });
+    const harness = setup({ matriz: { agenda: { visualizar: true } } });
     await importFresh(MOD_URL);
     await new Promise(r => setTimeout(r, 150));
-    const cal = document.getElementById('cal-calendario');
-    assert.ok(cal);
+    assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+    const grade = harness.document.getElementById('ag-cal-grade');
+    assert.ok(grade, 'grade do calendario deve existir');
+    assert.ok(grade.children.length > 0, 'calendario renderizado pelo boot');
 });
 
 test('Agenda admin legado: acesso liberado', async () => {
-    const { document } = setup();
+    const harness = setup();
     perm.__setAdminLegado(true);
     await importFresh(MOD_URL);
     await new Promise(r => setTimeout(r, 150));
-    const cal = document.getElementById('cal-calendario');
-    assert.ok(cal, 'admin legado ve calendario');
+    assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+    const grade = harness.document.getElementById('ag-cal-grade');
+    assert.ok(grade && grade.children.length > 0, 'admin legado ve calendario');
 });

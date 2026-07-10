@@ -21,14 +21,14 @@ function setup({ matriz = null } = {}) {
 
 test('Analise sem permissao: body mostra Acesso negado', async () => {
     const { document } = setup({ matriz: { analise: { visualizar: false } } });
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
     assert.ok(document.body.innerHTML.includes('Acesso negado'));
 });
 
 test('Analise com permissao: init carrega', async () => {
     const { document } = setup({ matriz: { analise: { visualizar: true } } });
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
     const body = document.getElementById('an-body');
     assert.ok(body, 'an-body deve existir');
@@ -37,7 +37,7 @@ test('Analise com permissao: init carrega', async () => {
 test('Analise admin legado: acesso liberado', async () => {
     const { document } = setup();
     perm.__setAdminLegado(true);
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document });
     await new Promise(r => setTimeout(r, 150));
     const body = document.getElementById('an-body');
     assert.ok(body, 'admin legado deve ver o painel');

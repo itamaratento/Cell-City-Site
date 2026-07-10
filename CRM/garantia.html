@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="color-scheme" content="light only">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Garantia Cell City">
+    <title>Documentação do Serviço - Cell City Informática</title>
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+        import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+        import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
+        import './shared/env-config.js'; // seleção DEV/PROD → window.CC_FIREBASE_CONFIG
+        // NOTA: esta página usava um registro de app distinto (senderId 1068710301995);
+        // unificada com o app oficial do ambiente via env-config.js (lacuna 4 da auditoria).
+
+        const firebaseConfig = window.CC_FIREBASE_CONFIG;
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        // Sprint 1a (2026-07-05): a leitura de `os/{osId}` deixou de ser um
+        // `getDoc` direto — a Rule pública foi fechada (achado crítico da
+        // auditoria: o documento inteiro, incluindo senha/padrão/foto de
+        // desbloqueio, endereço e IMEI, ficava exposto a qualquer visitante).
+        // Esta function (Admin SDK, ignora Rules) devolve só os campos que
+        // esta página realmente usa — ver functions/index.js::consultarOSPublica.
+        const consultarOSPublica = httpsCallable(getFunctions(app, 'southamerica-east1'), 'consultarOSPublica');
+
+        window.loadGarantia = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const osId = urlParams.get('id');
+            const docMode = urlParams.get('doc') || '';   // '' = documento completo | 'relatorio' = só relatório
+            const ehRelatorioMode = docMode === 'relatorio';
+
+            if (!osId) {
+                document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não especificada na URL</div>';
+                return;
+            }
+
+            try {
+                let osData;
+                try {
+                    const result = await consultarOSPublica({ osId });
+                    osData = result.data.os;
+                } catch (fnErr) {
+                    if (fnErr.code === 'functions/not-found') {
+                        document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ OS não encontrada no banco de dados</div>';
+                        return;
+                    }
+                    throw fnErr;
+                }
+
+                const configDocRef = doc(db, "config", "impressao");
+                const configDoc = await getDoc(configDocRef);
+
+                let cfg = { logo: '', garantias: [], loja: {} };
+
+                if (configDoc.exists()) {
+                    cfg = configDoc.data() || { logo: '', garantias: [], loja: {} };
+                } else {
+                    try {
+                        const c = localStorage.getItem('cc_config_impressao');
+                        if (c) cfg = JSON.parse(c);
+                    } catch (e) {}
+                }
+
+                const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+                // No modo "relatório" os termos de garantia não são necessários, então não bloqueamos.
+                if (garantias.length === 0 && !ehRelatorioMode) {
+                    document.getElementById('conteudo').innerHTML = '<div class="erro">⚠️ Nenhuma garantia configurada no sistema. Configure as garantias no módulo de impressão do CRM.</div>';
+                    return;
+                }
+
+                // Tenta encontrar a garantia vinculada à OS (pelo garantiaId).
+                // Se não houver vínculo, usa a garantia padrão configurada.
+                const garantia = (osData.garantiaId && garantias.find(g => String(g.id) === String(osData.garantiaId)))
+                    || garantias.find(g => g.padrao)
+                    || garantias[0]
+                    || { texto: '' };
+
+                const dados = {
+                    os: osData,
+                    garantia: garantia,
+                    loja: cfg.loja || {},
+                    logo: cfg.logo || '',
+                    modo: docMode
+                };
+
+                renderGarantiaHTML(dados);
+                document.title = `${ehRelatorioMode ? 'Relatório Técnico' : 'Documentação do Serviço'} ${osId} - Cell City`;
+                window.garantiaData = dados;
+
+            } catch (error) {
+                console.error('Erro ao carregar garantia:', error);
+                document.getElementById('conteudo').innerHTML = '<div class="erro">❌ Erro ao carregar garantia: ' + error.message + '</div>';
+            }
+        };
+
+        window.addEventListener('load', loadGarantia);
+    </script>
+    <style>
+        * {
+            color-scheme: light;
+        }
+
+        html, body {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            color: #000000 !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 12px;
+            background: #ffffff;
+            color: #000000;
+        }
+
+        .garantia-container {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #ffffff;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 32px 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .garantia-header {
+            text-align: center;
+            margin-bottom: 32px;
+            border-bottom: 3px solid #1f2937;
+            padding-bottom: 24px;
+        }
+
+        .garantia-header img {
+            max-height: 80px;
+            max-width: 220px;
+            object-fit: contain;
+            margin-bottom: 12px;
+        }
+
+        .garantia-logo {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+
+        .garantia-titulo {
+            font-size: 26px;
+            font-weight: 900;
+            color: #000000;
+            margin: 12px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .garantia-subtitulo {
+            font-size: 14px;
+            color: #374151;
+            margin: 8px 0 0 0;
+        }
+
+        .cliente-info {
+            text-align: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #d1d5db;
+        }
+
+        .cliente-nome {
+            font-size: 20px;
+            font-weight: 700;
+            color: #000000;
+            margin-bottom: 6px;
+        }
+
+        .cliente-telefone {
+            font-size: 13px;
+            color: #4b5563;
+        }
+
+        .garantia-info {
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 28px;
+            border-left: 5px solid #1f2937;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .info-value {
+            color: #1f2937;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .garantia-secao-titulo {
+            font-size: 15px;
+            font-weight: 900;
+            margin: 28px 0 16px 0;
+            color: #000000;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 2px solid #1f2937;
+            padding-bottom: 8px;
+        }
+
+        .garantia-texto {
+            background: #FFFDF2;
+            padding: 20px;
+            border-radius: 6px;
+            line-height: 1.6;
+            margin-bottom: 28px;
+            border: 1px solid #d1d5db;
+            font-size: 14px;
+            white-space: pre-wrap;
+            color: #1f2937;
+        }
+
+        .garantia-rodape {
+            text-align: center;
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 2px dashed #d1d5db;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            position: sticky;
+            top: 0;
+            background: #ffffff;
+            padding: 12px 0;
+            z-index: 10;
+        }
+
+        .btn-acao {
+            flex: 1;
+            padding: 12px;
+            background: #1f2937;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .btn-acao:active {
+            transform: scale(0.98);
+            background: #111827;
+        }
+
+        .btn-acao.secundario {
+            background: #e5e7eb;
+            color: #1f2937;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-acao.secundario:active {
+            background: #d1d5db;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #4b5563;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #1f2937;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .erro {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 16px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+            .garantia-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                margin: 0;
+                max-width: 100%;
+            }
+            .acoes, .garantia-rodape {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+            .garantia-container {
+                padding: 20px 16px;
+                border-radius: 4px;
+            }
+            .garantia-titulo {
+                font-size: 22px;
+            }
+            .cliente-nome {
+                font-size: 18px;
+            }
+            .acoes {
+                gap: 8px;
+            }
+            .btn-acao {
+                font-size: 12px;
+                padding: 10px;
+            }
+        }
+
+        /* === Destaque automático de termos críticos de garantia === */
+        /* Prioridade Máxima: fundo amarelo + negrito */
+        .warranty-highlight {
+            background: #FFD700;
+            color: #000000;
+            font-weight: 700;
+            padding: 0 3px;
+            border-radius: 2px;
+        }
+        /* Prioridade Secundária: apenas negrito, sem fundo */
+        .warranty-bold {
+            font-weight: 700;
+            color: #1f2937;
+        }
+        @media print {
+            .warranty-highlight {
+                background: #FFD700 !important;
+                color: #000000 !important;
+                font-weight: 700 !important;
+                padding: 0 2px !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .warranty-bold {
+                font-weight: 700 !important;
+                color: #000000 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="garantia-container">
+        <div id="conteudo">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p style="margin-top: 20px;">Carregando garantia do banco de dados...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatDate(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+            });
+        }
+
+        function escHTML(s) {
+            const d = document.createElement('div');
+            d.textContent = (s == null ? '' : s);
+            return d.innerHTML;
+        }
+
+        // ===== Cálculo da garantia (mesma regra do Portal do Cliente) =====
+        const PRAZO_GARANTIA_PADRAO = 90;
+        function _toDate(v) {
+            if (!v) return null;
+            if (typeof v === 'object' && v.toDate) return v.toDate();
+            return new Date(v);
+        }
+        function getDeliveryDate(os) {
+            if (Array.isArray(os.timeline)) {
+                const entry = [...os.timeline].reverse().find(t => t.text && t.text.includes('Entregue'));
+                if (entry && entry.date) return new Date(entry.date);
+            }
+            if (os.status === 'entregue' && os.updatedAt) return _toDate(os.updatedAt);
+            return null;
+        }
+        function calcGarantia(os) {
+            const prazo = os.prazoGarantia || PRAZO_GARANTIA_PADRAO;
+            const dd = getDeliveryDate(os);
+            let inicio = null;
+            if (dd) inicio = dd;
+            else if (os.garantiaId && os.createdAt) inicio = _toDate(os.createdAt);
+            if (!inicio) return { prazo, ativa: false, dias: 0, dataFinal: null, pendente: true };
+            const limite = new Date(inicio);
+            limite.setDate(limite.getDate() + prazo);
+            const dias = Math.ceil((limite - new Date()) / 86400000);
+            return { prazo, ativa: dias >= 0, dias: Math.max(dias, 0), dataFinal: limite, pendente: false };
+        }
+        function fmtDataFinal(d) {
+            return d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+        }
+
+        /**
+         * Destaca automaticamente termos críticos em textos de garantia.
+         *
+         * Prioridade Máxima (fundo amarelo + negrito):
+         *   MAU USO, NÃO COBRE, 72 HORAS, R$ 80,00
+         * Prioridade Secundária (apenas negrito):
+         *   QUEDA, QUEDAS, IMPACTO, IMPACTOS,
+         *   LÍQUIDOS, OXIDAÇÃO, PRESSÃO,
+         *   TRINCA, TRINCAS, QUEBRA, QUEBRAS
+         */
+        function highlightWarrantyTerms(text) {
+            if (!text) return text;
+            // Escapa HTML antes para evitar injeção nos spans
+            const esc = (s) => {
+                const d = document.createElement('div');
+                d.textContent = s;
+                return d.innerHTML;
+            };
+            const safeText = esc(text);
+
+            // 1° Prioridade Máxima: fundo amarelo + negrito
+            const primary = ['MAU USO', 'NÃO COBRE', '72 HORAS', 'R\\$ 80,00'];
+            const rePrimary = new RegExp(`(${primary.join('|')})`, 'gi');
+            let result = safeText.replace(rePrimary, '<span class="warranty-highlight">$1</span>');
+
+            // 2° Prioridade Secundária: apenas negrito (sem fundo)
+            // Como os termos secundários são palavras diferentes dos primários,
+            // não há risco de substituir dentro dos spans já inseridos.
+            const secondary = [
+                'QUEDA', 'QUEDAS', 'IMPACTO', 'IMPACTOS',
+                'LÍQUIDOS', 'OXIDAÇÃO', 'PRESSÃO',
+                'TRINCA', 'TRINCAS', 'QUEBRA', 'QUEBRAS'
+            ];
+            const reSecondary = new RegExp(`(${secondary.join('|')})`, 'gi');
+            result = result.replace(reSecondary, '<span class="warranty-bold">$1</span>');
+
+            return result;
+        }
+
+        function renderGarantiaHTML(dados) {
+            const { os, garantia, loja, logo } = dados;
+            const createdDate = formatDate(os.createdAt);
+            const createdDateOnly = createdDate.split(' ')[0];
+
+            let logoHtml = '';
+            if (logo) {
+                logoHtml = `<div style="text-align:center;margin-bottom:16px;">
+                    <img src="${logo}"
+                         style="max-height:80px;max-width:220px;object-fit:contain;"
+                         alt="Logo Cell City"
+                         onerror="this.style.display='none'"
+                    >
+                </div>`;
+            } else if (loja.logo) {
+                logoHtml = `<div style="text-align:center;margin-bottom:16px;">
+                    <img src="${loja.logo}"
+                         style="max-height:80px;max-width:220px;object-fit:contain;"
+                         alt="Logo Cell City"
+                         onerror="this.style.display='none'"
+                    >
+                </div>`;
+            }
+
+            const cabecalhoHtml = `
+                <div style="text-align:center;margin-bottom:20px;">
+                    <h1 style="text-align:center;font-size:20px;border-bottom:2px solid #000;padding-bottom:12px;margin:0 0 12px 0;">${loja.nome || 'CELL CITY INFORMÁTICA'}</h1>
+                    ${loja.endereco ? `<p style="text-align:center;font-size:12px;margin:6px 0;color:#1f2937;">${loja.endereco}</p>` : ''}
+                    ${loja.whatsapp ? `<p style="text-align:center;font-size:12px;margin:4px 0;color:#1f2937;">WhatsApp: ${loja.whatsapp}</p>` : ''}
+                    ${loja.cnpj ? `<p style="text-align:center;font-size:12px;margin:4px 0 0 0;color:#1f2937;">CNPJ: ${loja.cnpj}</p>` : ''}
+                </div>
+            `;
+
+            const STATUS_LABELS = {
+                recebido: 'Recebido', em_analise: 'Em análise', aguardando_aprovacao: 'Aguardando aprovação',
+                aprovado: 'Aprovado', em_reparo: 'Em reparo', testes_finais: 'Testes finais',
+                concluido: 'Concluído', entregue: 'ENTREGUE',
+                aguardando_peca: 'Aguardando peça', orcamento: 'Aguardando aprovação', pronto: 'Concluído', devolvido_orcamento: 'Não aprovado'
+            };
+            const statusTexto = STATUS_LABELS[os.status] || os.status || 'Em processamento';
+            const statusStyle = os.status === 'entregue' ? 'style="font-weight:bold;"' : '';
+
+            // ===== Garantia computada =====
+            const g = calcGarantia(os);
+            const garStatusTexto = g.pendente ? '🔗 Vinculada (aguardando entrega)' : (g.ativa ? '✅ Garantia Válida' : '⛔ Garantia Expirada');
+            const garStatusCor = g.pendente ? '#42A5F5' : (g.ativa ? '#16a34a' : '#b91c1c');
+
+            // ===== Relatório técnico (só se o técnico autorizou exibição ao cliente) =====
+            const rel = os.relatorioTecnico;
+            const relVisivel = rel && rel.exibirPortal && (rel.defeitoInformado || rel.diagnostico || rel.solucaoAplicada || rel.observacoes);
+            const relSecoesHtml = relVisivel ? [
+                ['Defeito informado pelo cliente', rel.defeitoInformado],
+                ['Diagnóstico técnico', rel.diagnostico],
+                ['Solução aplicada', rel.solucaoAplicada],
+                ['Observações', rel.observacoes]
+            ].filter(s => s[1]).map(s => `
+                <div style="margin-bottom:16px;">
+                    <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:#374151;margin-bottom:5px;">${escHTML(s[0])}</div>
+                    <div style="font-size:14px;color:#1f2937;line-height:1.6;white-space:pre-wrap;">${escHTML(s[1])}</div>
+                </div>`).join('') : '';
+
+            // ===== Histórico do serviço (timeline) =====
+            const historicoHtml = Array.isArray(os.timeline) && os.timeline.length
+                ? os.timeline.map(t => `
+                    <div style="display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #e5e7eb;">
+                        <span style="color:#1f2937;font-weight:700;flex:0 0 auto;">•</span>
+                        <div style="flex:1;">
+                            <div style="font-size:13px;color:#1f2937;">${escHTML(t.text || '')}</div>
+                            <div style="font-size:11px;color:#6b7280;margin-top:2px;">${t.date ? new Date(t.date).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</div>
+                        </div>
+                    </div>`).join('')
+                : '';
+
+            const ehRelatorio = (dados.modo || '') === 'relatorio';
+
+            const acoesBlock = `
+                <div class="acoes">
+                    ${ehRelatorio ? '' : '<button class="btn-acao" onclick="copiarGarantia()">📋 Copiar Texto</button>'}
+                    <button class="btn-acao secundario" onclick="window.print()">🖨️ Imprimir</button>
+                </div>`;
+
+            const headerBlock = `
+                <div class="garantia-header" style="border-bottom: none; padding-bottom: 0;">
+                    ${logoHtml}
+                    ${cabecalhoHtml}
+                </div>
+                <div style="text-align:center;margin:0 0 20px;">
+                    <span style="display:inline-block;font-size:13px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#1f2937;border:2px solid #1f2937;border-radius:100px;padding:6px 18px;">${ehRelatorio ? '📋 Relatório Técnico' : '🛡️ Documentação do Serviço'}</span>
+                </div>`;
+
+            const osInfoBlock = `
+                <div class="garantia-info" style="border-left: none; background: #ffffff; border: 1px solid #d1d5db; padding: 16px;">
+                    <div class="info-row"><span class="info-label">O.S.:</span><span class="info-value">${os.id}</span></div>
+                    <div class="info-row"><span class="info-label">Data:</span><span class="info-value">${createdDateOnly}</span></div>
+                </div>`;
+
+            const clienteBlock = `
+                <div class="cliente-info" style="text-align: left; border: none; padding: 16px; background: #ffffff; margin-bottom: 16px; border: 1px solid #d1d5db;">
+                    <div style="font-size: 14px; color: #4b5563;"><strong>Cliente:</strong> ${os.clientName || 'Não informado'}</div>
+                    ${os.phone ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>Telefone:</strong> ${os.phone}</div>` : ''}
+                    ${os.cpf ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>CPF:</strong> ${os.cpf}</div>` : ''}
+                </div>`;
+
+            const dadosServicoBlock = `
+                <div class="garantia-secao-titulo">Dados do Serviço</div>
+                <div class="garantia-info" style="border-left: 4px solid #1f2937; background: #f9fafb; padding: 16px;">
+                    <div class="info-row"><span class="info-label">Equipamento:</span><span class="info-value">${os.model || 'Não especificado'}</span></div>
+                    <div class="info-row"><span class="info-label">Serviço:</span><span class="info-value">${os.defect || 'Não especificado'}</span></div>
+                    ${os.technician ? `<div class="info-row"><span class="info-label">Técnico responsável:</span><span class="info-value">${escHTML(os.technician)}</span></div>` : ''}
+                    <div class="info-row"><span class="info-label">Status:</span><span class="info-value" ${statusStyle}>${statusTexto}</span></div>
+                </div>`;
+
+            const garantiaBlock = `
+                <div class="garantia-secao-titulo">Garantia</div>
+                <div class="garantia-info" style="border-left: 4px solid ${garStatusCor}; background: #f9fafb; padding: 16px;">
+                    <div class="info-row"><span class="info-label">Situação:</span><span class="info-value" style="color:${garStatusCor};font-weight:800;">${garStatusTexto}</span></div>
+                    <div class="info-row"><span class="info-label">Prazo:</span><span class="info-value">${g.prazo} dias</span></div>
+                    ${!g.pendente && g.ativa ? `<div class="info-row"><span class="info-label">Dias restantes:</span><span class="info-value">${g.dias} dia(s)</span></div>` : ''}
+                    ${!g.pendente ? `<div class="info-row"><span class="info-label">Válida até:</span><span class="info-value">${fmtDataFinal(g.dataFinal)}</span></div>` : ''}
+                </div>`;
+
+            const condicoesBlock = `
+                <div class="garantia-secao-titulo">Condições da Garantia</div>
+                <div class="garantia-texto">${highlightWarrantyTerms(garantia.texto)}</div>`;
+
+            const relatorioBlock = relVisivel ? `
+                <div class="garantia-secao-titulo">Relatório Técnico</div>
+                <div class="garantia-info" style="border-left: 4px solid #1f2937; background: #ffffff; border: 1px solid #d1d5db; padding: 20px;">
+                    ${relSecoesHtml}
+                </div>` : '';
+
+            const historicoBlock = historicoHtml ? `
+                <div class="garantia-secao-titulo">Histórico do Serviço</div>
+                <div class="garantia-info" style="border-left: 4px solid #1f2937; background: #f9fafb; padding: 16px;">
+                    ${historicoHtml}
+                </div>` : '';
+
+            const assinaturaBlock = `
+                <div style="text-align: center; margin-bottom: 28px; padding: 20px; border-top: 2px solid #d1d5db; border-bottom: 2px solid #d1d5db;">
+                    <p style="color: #1f2937; font-size: 13px; margin: 0; line-height: 1.6;">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p>
+                    <div style="margin-top: 20px; border-top: 1px solid #000; min-height: 60px; padding-top: 8px;">
+                        <p style="margin: 0; color: #1f2937; font-size: 12px; font-weight: 600;">Assinatura do Cliente</p>
+                    </div>
+                    <p style="color: #4b5563; font-size: 12px; margin-top: 16px;">Data da entrega: ___/___/____</p>
+                </div>
+                <div style="text-align: center; margin-bottom: 0; padding: 16px; border-top: 1px dashed #d1d5db; background: #f9fafb;">
+                    <p style="color: #4b5563; font-size: 12px; margin: 0; font-style: italic;">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p>
+                </div>`;
+
+            const rodapeBlock = `
+                <div class="garantia-rodape" style="border-top: none; margin-top: 20px; padding-top: 0;">
+                    <p style="margin: 0; font-weight: 600; color: #1f2937;">Cell City Informática</p>
+                    <p style="margin: 8px 0 0 0; font-size: 11px; color: #6b7280;">${ehRelatorio ? 'Relatório técnico do serviço' : 'Este é um documento de garantia compartilhado'}</p>
+                </div>`;
+
+            let html;
+            if (ehRelatorio) {
+                const corpoRel = relVisivel
+                    ? `${dadosServicoBlock}${relatorioBlock}${historicoBlock}`
+                    : `<div class="erro" style="margin-top:16px;">📋 Nenhum relatório técnico disponível para esta OS.</div>`;
+                html = `${acoesBlock}${headerBlock}${osInfoBlock}${clienteBlock}${corpoRel}${rodapeBlock}`;
+            } else {
+                html = `${acoesBlock}${headerBlock}${osInfoBlock}${clienteBlock}${dadosServicoBlock}${garantiaBlock}${condicoesBlock}${relatorioBlock}${historicoBlock}${assinaturaBlock}${rodapeBlock}`;
+            }
+
+            document.getElementById('conteudo').innerHTML = html;
+        }
+
+        window.copiarGarantia = function() {
+            if (!window.garantiaData) {
+                alert('Erro ao copiar garantia');
+                return;
+            }
+
+            const { os, garantia, loja } = window.garantiaData;
+            const createdDate = formatDate(os.createdAt);
+
+            const texto = `${loja.nome || 'CELL CITY'}\n\nOS: ${os.id}\nData: ${createdDate}\nEquipamento: ${os.model}\nServiço: ${os.defect || 'Não especificado'}\n\nGARANTIA\n\n${garantia.texto}\n\nObrigado pela preferência.`;
+
+            navigator.clipboard.writeText(texto).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copiado!';
+                setTimeout(() => { btn.textContent = originalText; }, 2000);
+            });
+        };
+    </script>
+</body>
+</html>

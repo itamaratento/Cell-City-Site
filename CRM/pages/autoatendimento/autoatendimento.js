@@ -27,7 +27,7 @@ async function init() {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('autoatendimento')) { window.location.href = '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('autoatendimento')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
     carregarPreOS();
     setupListenerRealtime();
     document.getElementById('auto-modal')?.addEventListener('click', e => {

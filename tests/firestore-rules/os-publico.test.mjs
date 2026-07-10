@@ -208,3 +208,44 @@ test('write em catalogo_config/geral com staff aprovado → permitido', async ()
   const db = testEnv.authenticatedContext('staff-catalogo-config').firestore();
   await assertSucceeds(db.collection('catalogo_config').doc('geral').set({ ativo: true }));
 });
+
+// ── REVISÃO 2026-07-10: os módulos Chat (Sprint 15), Compras (Sprint 13),
+// Fechamento Mensal (Sprint 10) e Cadastro de Fornecedores (2026-07-09)
+// foram commitados sem rule para as suas coleções — caíam no deny-by-default
+// e quebravam em runtime. Mesmo padrão de temAcessoLiberado() das demais
+// coleções internas; crm_templates teve a leitura apertada para o mesmo
+// padrão (era `auth != null`, incluía sessão anônima do Portal).
+for (const colecao of ['chat_mensagens', 'compras_pedidos', 'financeiro_fechamentos', 'fornecedores_cadastro', 'crm_templates']) {
+  test(`read/write em ${colecao} com staff aprovado → permitido (revisão 2026-07-10)`, async () => {
+    await seedUsuario(`staff-rev-${colecao}`, 'admin');
+    const db = testEnv.authenticatedContext(`staff-rev-${colecao}`).firestore();
+    await assertSucceeds(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} com perfil pendente → negado (revisão 2026-07-10)`, async () => {
+    await seedUsuario(`pendente-rev-${colecao}`, 'pendente');
+    const db = testEnv.authenticatedContext(`pendente-rev-${colecao}`).firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} com sessão anônima → negado (revisão 2026-07-10)`, async () => {
+    const db = testEnv.authenticatedContext(`anon-rev-${colecao}`, { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+
+  test(`read/write em ${colecao} sem autenticação → negado (revisão 2026-07-10)`, async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(db.collection(colecao).add({ teste: true }));
+  });
+}
+
+// Mensagens do Chat são imutáveis por Rule (update/delete: false) — o
+// módulo só lê e adiciona (chat.js usa addDoc/onSnapshot, nunca edita).
+test('update em chat_mensagens com staff aprovado → negado (mensagens imutáveis)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('chat_mensagens').doc('msg1').set({ texto: 'oi' });
+  });
+  await seedUsuario('staff-chat-upd', 'admin');
+  const db = testEnv.authenticatedContext('staff-chat-upd').firestore();
+  await assertFails(db.collection('chat_mensagens').doc('msg1').update({ texto: 'editado' }));
+});

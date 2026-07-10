@@ -77,6 +77,25 @@ describe('Auditoria — metaAcao', () => {
     });
 });
 
+describe('Auditoria — RBAC', () => {
+    test('visualizar:false: redirect para Dashboard', async () => {
+        const harness = setup();
+        perm.__setMatriz({ auditoria: { visualizar: false } });
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 150));
+        assert.match(harness.getCapturedHref(), /dashboard\/index\.html/);
+    });
+
+    test('admin legado: acesso liberado', async () => {
+        const harness = setup();
+        perm.__setAdminLegado(true);
+        await importFresh(MOD_URL);
+        await new Promise(r => setTimeout(r, 200));
+        assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+        assert.ok(harness.document.getElementById('au-cards').innerHTML.trim() !== '');
+    });
+});
+
 describe('Auditoria — HTML structure', () => {
     test('index.html contém elementos essenciais', async () => {
         const { document } = setup();

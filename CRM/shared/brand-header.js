@@ -403,7 +403,7 @@
     }
     if (window._ccUid) {
       setTimeout(function() {
-        import('../../scripts/kernel.js').then(function(k) {
+        import('../scripts/kernel.js').then(function(k) {
           var ctx = k.getCtx();
           if (ctx) updateUserBadge(ctx);
         }).catch(function(){});

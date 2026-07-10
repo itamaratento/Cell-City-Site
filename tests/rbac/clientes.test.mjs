@@ -1,4 +1,8 @@
-// Testes de RBAC — Clientes (Config Impressão)
+// Testes de RBAC — pages/clientes/ (Config de Impressão: loja/logo/garantias)
+// Apesar do nome do diretório, o módulo é a tela de configuração de
+// impressão e faz gate no módulo 'config' (clientes.js::init), com
+// REDIRECT para o Dashboard — não com "Acesso negado" no body.
+// O boot é via DOMContentLoaded, então importFresh recebe { document }.
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
@@ -19,26 +23,26 @@ function setup({ matriz = null } = {}) {
     return mountPage(HTML_PATH, '/CRM/pages/clientes/index.html');
 }
 
-test('Clientes sem permissao: body mostra Acesso negado', async () => {
-    const { document } = setup({ matriz: { clientes: { visualizar: false } } });
-    await importFresh(MOD_URL);
+test('Config Impressão sem permissao (config.visualizar=false): redirect para Dashboard', async () => {
+    const harness = setup({ matriz: { config: { visualizar: false } } });
+    await importFresh(MOD_URL, { document: harness.document });
     await new Promise(r => setTimeout(r, 150));
-    assert.ok(document.body.innerHTML.includes('Acesso negado'));
+    assert.match(harness.getCapturedHref(), /dashboard\/index\.html/);
 });
 
-test('Clientes com visualizar: form carrega', async () => {
-    const { document } = setup({ matriz: { clientes: { visualizar: true } } });
-    await importFresh(MOD_URL);
+test('Config Impressão com visualizar: form carrega', async () => {
+    const harness = setup({ matriz: { config: { visualizar: true } } });
+    await importFresh(MOD_URL, { document: harness.document });
     await new Promise(r => setTimeout(r, 150));
-    const nome = document.getElementById('loja-nome');
-    assert.ok(nome, 'loja-nome deve existir');
+    assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+    assert.ok(harness.document.getElementById('loja-nome'), 'loja-nome deve existir');
 });
 
-test('Clientes admin legado: acesso liberado', async () => {
-    const { document } = setup();
+test('Config Impressão admin legado: acesso liberado', async () => {
+    const harness = setup();
     perm.__setAdminLegado(true);
-    await importFresh(MOD_URL);
+    await importFresh(MOD_URL, { document: harness.document });
     await new Promise(r => setTimeout(r, 150));
-    const nome = document.getElementById('loja-nome');
-    assert.ok(nome, 'admin legado ve form');
+    assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+    assert.ok(harness.document.getElementById('loja-nome'), 'admin legado ve form');
 });
