@@ -1839,3 +1839,31 @@ Performance 4/4.**
   módulo o importa, sem impacto em runtime.
 - Brecha documentada de `list` em `os` para conta 'pendente'/anônima
   (Sprint 1b) permanece — fora do escopo, já registrada em §6.
+
+## 31. Módulo Chat — DESATIVADO (2026-07-10)
+
+Decisão do dono: o Chat interno (Sprint 15) não tem uso operacional na
+Cell City no momento. Desativado para reduzir complexidade visual,
+**preservando 100% do trabalho** — código, testes, Firestore Rules e a
+coleção `chat_mensagens` permanecem intactos.
+
+**Como foi desativado:**
+- `CRM/pages/chat/chat.js`: constante `CHAT_ENABLED = false` + gate no
+  boot que renderiza "Módulo desativado." (com link de volta ao
+  Dashboard) **antes** de qualquer acesso a kernel/Firestore — acesso
+  direto por URL não gera leitura nenhuma.
+- Menu/sidebar/Central de Módulos/Dashboard: **nenhuma remoção
+  necessária** — auditoria confirmou que o Sprint 15 nunca registrou o
+  Chat em menu algum (zero referências a `pages/chat` fora do próprio
+  módulo).
+- `tests/rbac/chat.test.mjs`: asserts adaptados ao estado desativado
+  (3/3); o bloco de asserts do comportamento ativo está comentado no fim
+  do próprio arquivo, pronto para restaurar.
+
+**Como reativar (poucos minutos):**
+1. Em `CRM/pages/chat/chat.js`, trocar `CHAT_ENABLED` para `true`.
+2. Em `tests/rbac/chat.test.mjs`, restaurar o bloco "COMPORTAMENTO
+   ATIVO" comentado (e remover os 3 testes de desativado).
+3. (Opcional) Adicionar entrada na Central de Módulos/sidebar para
+   expor o módulo no menu — nunca existiu, criar se desejado.
+4. Garantir que a rule de `chat_mensagens` (§30.1) esteja deployada.

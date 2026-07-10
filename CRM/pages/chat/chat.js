@@ -2,6 +2,20 @@ import { db, collection, getDocs, addDoc, query, orderBy, where, onSnapshot, ser
 import { initModulo, getUid, getNome } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO DESATIVADO (2026-07-10) — sem uso operacional na Cell City.
+// Decisão do dono: reduzir complexidade visual preservando 100% do
+// trabalho (código, testes, Firestore Rules e coleção chat_mensagens
+// permanecem intactos). O módulo nunca teve entrada em menu/sidebar/
+// Central de Módulos, então a desativação é só este gate de boot.
+//
+// COMO REATIVAR: trocar CHAT_ENABLED para true (e, se quiser expor no
+// menu, adicionar a entrada na Central de Módulos/sidebar). Reverter
+// também os asserts de tests/rbac/chat.test.mjs para o bloco
+// "comportamento ativo" indicado no próprio arquivo de teste.
+// ═══════════════════════════════════════════════════════════════════
+const CHAT_ENABLED = false;
+
 const COL_MSGS = 'chat_mensagens';
 const $ = id => document.getElementById(id);
 
@@ -16,6 +30,10 @@ let unsubscribeMsgs = null;
 
 // ── Boot ───────────────────────────────────────────────────────────
 (async function boot() {
+  if (!CHAT_ENABLED) {
+    document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:12px;color:var(--text2,#a1a8b3);font-family:inherit;"><div style="font-size:42px;">💬</div><h2 style="margin:0;color:var(--text,#e5e7eb);">Módulo desativado.</h2><p style="margin:0;font-size:14px;">O Chat interno foi desativado. O código foi preservado para reativação futura.</p><a href="../dashboard/index.html" style="margin-top:8px;color:#22C55E;text-decoration:none;font-weight:700;">← Voltar ao Dashboard</a></div>';
+    return; // não inicializa kernel/Firestore — zero leituras
+  }
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);

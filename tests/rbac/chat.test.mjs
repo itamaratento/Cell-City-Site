@@ -1,5 +1,10 @@
 // Testes do módulo Chat — CRM/pages/chat/chat.js.
-import { test, describe, after } from 'node:test';
+//
+// ⚠️ MÓDULO DESATIVADO (2026-07-10): chat.js tem CHAT_ENABLED=false e o
+// boot mostra "Módulo desativado." sem tocar kernel/Firestore. Os testes
+// abaixo asseveram ESSE estado. Ao reativar (CHAT_ENABLED=true), restaurar
+// o bloco "comportamento ativo" comentado no fim deste arquivo.
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -23,6 +28,34 @@ function setup(matriz) {
     return mountPage(HTML_PATH, '/CRM/pages/chat/index.html');
 }
 
+test('Chat desativado: acesso direto mostra "Módulo desativado." mesmo com permissão total', async () => {
+    const { document } = setup({ chat: { visualizar: true, criar: true } });
+    await importFresh(MOD_URL);
+    await new Promise(r => setTimeout(r, 100));
+    assert.ok(document.body.innerHTML.includes('Módulo desativado.'));
+});
+
+test('Chat desativado: não redireciona nem renderiza a UI do chat', async () => {
+    const harness = setup({ chat: { visualizar: false } });
+    await importFresh(MOD_URL);
+    await new Promise(r => setTimeout(r, 100));
+    // O gate de desativação roda ANTES do gate RBAC — sem redirect
+    assert.doesNotMatch(harness.getCapturedHref(), /dashboard\/index\.html/);
+    assert.equal(harness.document.getElementById('ch-input'), null, 'UI do chat não deve existir');
+    assert.ok(harness.document.body.innerHTML.includes('Módulo desativado.'));
+});
+
+test('Chat desativado: dados de conversa não são carregados nem exibidos', async () => {
+    const { document } = setup({ chat: { visualizar: true, criar: true } });
+    await importFresh(MOD_URL);
+    await new Promise(r => setTimeout(r, 100));
+    // A mensagem seedada em chat_mensagens não pode aparecer — o boot
+    // desativado retorna antes de qualquer acesso a dados.
+    assert.ok(!document.body.innerHTML.includes('Olá!'), 'mensagem do Firestore não deve ser renderizada');
+    assert.ok(document.body.innerHTML.includes('Voltar ao Dashboard'));
+});
+
+/* ── COMPORTAMENTO ATIVO (restaurar ao reativar com CHAT_ENABLED=true) ──
 test('Chat: elementos essenciais no HTML', async () => {
     const { document } = setup({ chat: { visualizar: true, criar: true } });
     await importFresh(MOD_URL);
@@ -39,3 +72,4 @@ test('Chat visualizar:false: redirect para Dashboard', async () => {
     await new Promise(r => setTimeout(r, 100));
     assert.match(harness.getCapturedHref(), /dashboard/);
 });
+──────────────────────────────────────────────────────────────────── */
