@@ -117,3 +117,50 @@ test('OS: cliente restrito sem editar/excluir na listagem', async () => {
     assert.doesNotMatch(content, /editClient\(/);
     assert.doesNotMatch(content, /deleteClient\(/);
 });
+
+// ── Hardening XSS (Certificação v1.0) — campos que podem vir do formulário
+// PÚBLICO de pré-OS (clientName/model/defect) não podem injetar HTML no
+// console da equipe. Ver escHtml() em CRM/pages/os/os.js.
+function setupComPayload(campo, payload) {
+    fsMock.__reset();
+    perm.__reset();
+    fsMock.__seed('os', 'os_x', {
+        id: 'os_x', clientName: 'Cliente', phone: '11999998888', phoneDigits: '11999998888',
+        category: 'celular', brand: 'Marca', model: 'Modelo', defect: 'Defeito',
+        status: 'em_reparo', createdAt: new Date().toISOString(), timeline: [],
+        [campo]: payload,
+    });
+    perm.__setMatriz(null); // fail-open: renderiza tudo
+    return mountPage(HTML_PATH, '/CRM/pages/os/index.html');
+}
+
+test('OS XSS: payload em clientName é escapado no detalhe (não vira nó DOM)', async () => {
+    const { document, window } = setupComPayload('clientName', '<img src=x onerror="window.__xss=1">');
+    await importFresh(MOD_URL);
+    window.openDetail('os_x');
+    await new Promise(r => setTimeout(r, 30));
+    const container = document.getElementById('detail-content');
+    // A tag não pode existir como elemento real; o texto escapado sim.
+    assert.equal(container.querySelector('img'), null, 'payload não pode virar <img> real');
+    assert.match(container.innerHTML, /&lt;img/, 'deve aparecer escapado como texto');
+});
+
+test('OS XSS: payload em defect é escapado na lista de OS', async () => {
+    const { document, window } = setupComPayload('defect', '<script>window.__xss=1</script>');
+    await importFresh(MOD_URL);
+    window.showScreen('list');
+    if (typeof window.renderList === 'function') window.renderList();
+    await new Promise(r => setTimeout(r, 30));
+    const list = document.getElementById('os-list');
+    assert.equal(list.querySelector('script'), null, 'payload não pode virar <script> real');
+});
+
+test('OS render intacto: dados normais aparecem sem entidades', async () => {
+    const { document, window } = setupComPayload('clientName', 'Maria & João');
+    await importFresh(MOD_URL);
+    window.openDetail('os_x');
+    await new Promise(r => setTimeout(r, 30));
+    const container = document.getElementById('detail-content');
+    assert.match(container.innerHTML, /Modelo/); // detalhe renderizou
+    assert.match(container.textContent, /Maria & João/); // texto legível preservado
+});

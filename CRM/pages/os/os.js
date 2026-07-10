@@ -3,6 +3,19 @@ import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, delet
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 
+// ===== ESCAPE DE SAÍDA (hardening XSS — Certificação v1.0, 2026-07-10) =====
+// Campos como clientName/brand/model/defect podem se originar do formulário
+// PÚBLICO de pré-OS (CRM/public/abrir-atendimento.html → coleção pre_os →
+// conversão em autoatendimento.js → OS). Um visitante não autenticado
+// conseguia gravar `<img src=x onerror=...>` nesses campos e o payload
+// executava no console da EQUIPE ao abrir a OS (stored XSS). Toda
+// interpolação de campo controlável pelo cliente passa por escHtml().
+function escHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
 window.removeLockPhoto = removeLockPhoto;
@@ -820,7 +833,7 @@ function renderList() {
     c.innerHTML = filtered.map(os => {
         const d = os.defect || '';
         const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
-        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''} — ${d.substring(0, 45)}${d.length > 45 ? '...' : ''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">📞 ${os.phone||''}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
+        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${escHtml(os.clientName)}</div><div class="os-card-info">${escHtml(os.model)} — ${escHtml(d.substring(0, 45))}${d.length > 45 ? '...' : ''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;">📞 ${escHtml(os.phone)}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
     }).join('');
 }
 
@@ -839,7 +852,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${os.clientName} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${os.password}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 <a href="https://wa.me/55${normalizePhoneDigits(os.phone)}" target="_blank" style="color:#25D366;text-decoration:none;font-weight:600;" title="Abrir WhatsApp">${os.phone} 💬</a></div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${os.cpf}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${[os.endereco, os.numero].filter(Boolean).join(', ')}${os.complemento ? ` - ${os.complemento}` : ''}${os.bairro ? `<br>${os.bairro}` : ''}${os.cidade || os.estado ? `<br>${[os.cidade, os.estado].filter(Boolean).join(' - ')}` : ''}${os.cep ? `<br>CEP: ${os.cep}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${[os.brand, os.model].filter(Boolean).join(' ')}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${os.imei}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${os.imei1}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${os.imei2}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${os.defect || ''}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${os.technician}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 <a href="https://wa.me/55${normalizePhoneDigits(os.phone)}" target="_blank" style="color:#25D366;text-decoration:none;font-weight:600;" title="Abrir WhatsApp">${escHtml(os.phone)} 💬</a></div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -890,7 +903,7 @@ function renderDetail() {
     }
     html += `</div></div></div>`;
 
-    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Observação Interna</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.internalObservation || ''}</textarea></div>${podeEditar('os') ? `<div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div>` : ''}</div></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📋 Observação Interna</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div class="form-group"><textarea id="internal-observation" rows="5" oninput="window.markUnsaved()" placeholder="Digite observações internas da assistência técnica..." ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;min-height:120px;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${escHtml(os.internalObservation)}</textarea></div>${podeEditar('os') ? `<div class="detail-actions" style="margin-top:8px;"><button class="btn btn-success" onclick="saveInternalObservation()">💾 Salvar Observação</button></div>` : ''}</div></div></div>`;
 
     if (os.patternSequence && os.patternSequence.length > 0) {
         html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📱 Senha Padrão Android</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="background:var(--surface2);padding:14px;border:1px solid var(--border);border-radius:var(--radius);"><div style="font-size:12px;color:var(--text2);margin-bottom:10px;"><strong>✅ Padrão registrado</strong> (${os.patternSequence.length} pontos)</div><div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="showOSPatternDrawing('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">👁️ Ver desenho</button><button onclick="showOSPatternSequence('${os.id}')" style="flex:1;padding:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;color:var(--text);">🔢 Ver sequência</button></div></div></div></div></div>`;
@@ -911,9 +924,9 @@ function renderDetail() {
     
     if (os.photos?.length > 0) html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📷 Fotos (${os.photos.length})</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">${os.photos.map(p => `<img src="${p}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);cursor:pointer;" onclick="viewPhoto('${p}')">`).join('')}</div>${podeEditar('os') ? `<div class="premium-upload" onclick="addPhotoToOS()" style="margin-top:8px"><div class="icon">➕</div><p>Adicionar mais fotos</p></div>` : ''}</div></div></div>`;
     
-    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📝 Observações</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-observations" rows="4" oninput="window.markUnsaved()" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.observations || ''}</textarea>${podeEditar('os') ? `<div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveObservation()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button></div>` : ''}</div></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>📝 Observações</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-observations" rows="4" oninput="window.markUnsaved()" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${escHtml(os.observations)}</textarea>${podeEditar('os') ? `<div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveObservation()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button></div>` : ''}</div></div></div>`;
 
-    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛠️ Obs. Técnica (Interna)</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-tech-obs" rows="3" oninput="window.markUnsaved()" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">${os.technicalObservation || ''}</textarea>${podeEditar('os') ? `<div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveTechObservation()" style="flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Técnica</button></div>` : ''}</div></div></div>`;
+    html += `<div class="form-section accordion collapsed"><button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛠️ Obs. Técnica (Interna)</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner"><textarea id="os-tech-obs" rows="3" oninput="window.markUnsaved()" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">${escHtml(os.technicalObservation)}</textarea>${podeEditar('os') ? `<div style="display:flex;gap:8px;margin-top:8px;"><button onclick="saveTechObservation()" style="flex:1;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar Técnica</button></div>` : ''}</div></div></div>`;
     
     // ===== RELATÓRIO TÉCNICO (vinculado pela tela Soluções Técnicas — somente leitura) =====
     const rel = os.relatorioTecnico;
@@ -962,13 +975,13 @@ async function toggleOSEdit() {
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Nome do Cliente</label>
-<input id="edit-os-name" value="${os.clientName||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-name" value="${escHtml(os.clientName)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">Telefone</label>
-<input id="edit-os-phone" value="${os.phone||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-phone" value="${escHtml(os.phone)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">CPF <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
-<input id="edit-os-cpf" value="${os.cpf||''}" maxlength="14" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="cpfMask(this);window.markUnsaved()">
+<input id="edit-os-cpf" value="${escHtml(os.cpf)}" maxlength="14" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="cpfMask(this);window.markUnsaved()">
 
     </div>
   </div></div>
@@ -981,16 +994,16 @@ async function toggleOSEdit() {
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Marca</label>
-<input id="edit-os-brand" value="${os.brand||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-brand" value="${escHtml(os.brand)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">Modelo do Aparelho</label>
-<input id="edit-os-model" value="${os.model||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-model" value="${escHtml(os.model)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">IMEI 1</label>
-<input id="edit-os-imei1" maxlength="15" inputmode="numeric" value="${os.imei1||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-imei1" maxlength="15" inputmode="numeric" value="${escHtml(os.imei1)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">IMEI 2</label>
-<input id="edit-os-imei2" maxlength="15" inputmode="numeric" value="${os.imei2||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-imei2" maxlength="15" inputmode="numeric" value="${escHtml(os.imei2)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
     </div>
   </div></div>
@@ -1012,7 +1025,7 @@ async function toggleOSEdit() {
 <input id="edit-os-valor-cartao" type="number" step="0.01" min="0" value="${os.valorCartao||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
 <label style="font-size:12px;color:var(--text2);">Técnico responsável</label>
-<input id="edit-os-tecnico" value="${os.technician||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-tecnico" value="${escHtml(os.technician)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
     </div>
   </div></div>
@@ -1041,7 +1054,7 @@ async function toggleOSEdit() {
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Senha do aparelho</label>
-<input id="edit-os-password" value="${os.password||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<input id="edit-os-password" value="${escHtml(os.password)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
     </div>
   </div></div>
@@ -1054,7 +1067,7 @@ async function toggleOSEdit() {
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
 
 <label style="font-size:12px;color:var(--text2);">Observações</label>
-<textarea id="edit-os-observations" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${os.observations||''}</textarea>
+<textarea id="edit-os-observations" rows="3" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:14px;resize:vertical;" oninput="window.markUnsaved()">${escHtml(os.observations)}</textarea>
 
     </div>
   </div></div>
@@ -1088,33 +1101,33 @@ async function toggleOSEdit() {
   <div class="accordion-content"><div class="accordion-content-inner">
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
       <label style="font-size:12px;color:var(--text2);">CEP <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
-      <input id="edit-os-cep" value="${os.cep||''}" maxlength="9" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="cepMask(this);window.markUnsaved()" onblur="buscarCEP(this.value)">
+      <input id="edit-os-cep" value="${escHtml(os.cep)}" maxlength="9" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="cepMask(this);window.markUnsaved()" onblur="buscarCEP(this.value)">
 
       <label style="font-size:12px;color:var(--text2);">Endereço <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
-      <input id="edit-os-endereco" value="${os.endereco||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+      <input id="edit-os-endereco" value="${escHtml(os.endereco)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
       <div style="display:flex;gap:8px;">
         <div style="flex:2;">
           <label style="font-size:12px;color:var(--text2);">Número</label>
-          <input id="edit-os-numero" value="${os.numero||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
+          <input id="edit-os-numero" value="${escHtml(os.numero)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
         </div>
         <div style="flex:1;">
           <label style="font-size:12px;color:var(--text2);">Complemento</label>
-          <input id="edit-os-complemento" value="${os.complemento||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
+          <input id="edit-os-complemento" value="${escHtml(os.complemento)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
         </div>
       </div>
 
       <label style="font-size:12px;color:var(--text2);">Bairro <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
-      <input id="edit-os-bairro" value="${os.bairro||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+      <input id="edit-os-bairro" value="${escHtml(os.bairro)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
       <div style="display:flex;gap:8px;">
         <div style="flex:1;">
           <label style="font-size:12px;color:var(--text2);">Cidade <span style="color:var(--text3);font-weight:400;">(opcional)</span></label>
-          <input id="edit-os-cidade" value="${os.cidade||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
+          <input id="edit-os-cidade" value="${escHtml(os.cidade)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
         </div>
         <div style="flex:0 0 70px;">
           <label style="font-size:12px;color:var(--text2);">UF</label>
-          <input id="edit-os-estado" value="${os.estado||''}" maxlength="2" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
+          <input id="edit-os-estado" value="${escHtml(os.estado)}" maxlength="2" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);width:100%;box-sizing:border-box;" oninput="window.markUnsaved()">
         </div>
       </div>
     </div>
@@ -1127,7 +1140,7 @@ async function toggleOSEdit() {
   <div class="accordion-content"><div class="accordion-content-inner">
     <div style="display:flex;flex-direction:column;gap:10px;padding-top:4px;">
       <label style="font-size:12px;color:var(--text2);">IMEI / Nº de série</label>
-      <input id="edit-os-imei" value="${os.imei||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+      <input id="edit-os-imei" value="${escHtml(os.imei)}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
     </div>
   </div></div>
 </div>
@@ -2465,7 +2478,7 @@ function globalSearch() {
     if (orders.length > 0) {
         const orderCards = orders.map(os => {
             const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
-            return `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.clientName||''}</div><div class="os-card-info">${os.model||''}</div>${entregaInfo}</div>`;
+            return `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${escHtml(os.clientName)}</div><div class="os-card-info">${escHtml(os.model)}</div>${entregaInfo}</div>`;
         }).join('');
         h += `<div class="form-section"><div class="form-section-title">Ordens</div><div class="premium-list">${orderCards}</div></div>`;
     }
