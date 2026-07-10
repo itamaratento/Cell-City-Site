@@ -21,6 +21,18 @@ let _filtroBusca = '';
 let _produtoModal = null;
 let _fotoModalIdx = 0;
 
+// Dígitos do WhatsApp configurado, garantindo o DDI 55 (Brasil) — mesmo
+// padrão de portal.js::_waDigits(). O campo admin (cfg-wpp) só instrui a
+// incluir o código do país no placeholder, sem validar: se o número for
+// salvo sem o 55, wa.me interpreta o DDD como país e o link de venda
+// quebra silenciosamente. Normalizar aqui torna o botão robusto à
+// configuração. Retorna '' se não houver número (mantém o guard atual).
+function _waDigits() {
+  let d = (_config.whatsapp || '').replace(/\D/g, '');
+  if (d && !d.startsWith('55')) d = '55' + d;
+  return d;
+}
+
 // ─── Inicialização ────────────────────────────────────────
 async function init() {
   try {
@@ -46,7 +58,7 @@ async function carregarConfig() {
 }
 
 function atualizarWppHeader() {
-  const n = (_config.whatsapp || '').replace(/\D/g, '');
+  const n = _waDigits();
   if (!n) return;
   ['cat-wpp-header'].forEach(id => {
     const el = document.getElementById(id);
@@ -185,7 +197,7 @@ function renderModal(p) {
        <span class="cat-modal-preco-original">${fmtPreco(p.preco)}</span>`
     : `<span class="cat-modal-preco-normal">${fmtPreco(p.preco)}</span>`;
 
-  const n = (_config.whatsapp || '').replace(/\D/g, '');
+  const n = _waDigits();
   const msg = (_config.mensagemTemplate || 'Olá! Interesse no produto: {produto}')
     .replace('{produto}', p.nome || '');
   const wppHref = n ? `https://wa.me/${n}?text=${encodeURIComponent(msg)}` : '#';
@@ -216,7 +228,7 @@ window.catTrocarFoto = function(idx) {
 window.catComprarWpp = function(id) {
   const p = _produtos.find(x => x.id === id);
   if (!p) return;
-  const n = (_config.whatsapp || '').replace(/\D/g, '');
+  const n = _waDigits();
   if (!n) { alert('Número de WhatsApp não configurado.'); return; }
   const msg = (_config.mensagemTemplate || 'Olá! Interesse no produto: {produto}')
     .replace('{produto}', p.nome || '');
