@@ -1,6 +1,6 @@
-import { initModulo, getUid } from '../../scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js';
 import {
-  db, collection, getDocs, getDoc, doc, query, orderBy, where, limit, onSnapshot, serverTimestamp
+  db, collection, getDocs, query, orderBy, limit, onSnapshot
 } from '../../scripts/firebase.js';
 
 const $ = id => document.getElementById(id);

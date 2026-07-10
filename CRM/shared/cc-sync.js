@@ -12,7 +12,7 @@
 //   • cc_lixeira      — itens excluídos (retenção 30 dias)
 //   • cc_gdrive_logs  — auditoria (ação, módulo, apelido, data/hora)
 // ============================================================
-import { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp }
+import { db, collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp }
     from "../scripts/firebase.js";
 
 export const COL_LIXEIRA = 'cc_lixeira';

@@ -48,7 +48,7 @@ async function carregarConfig() {
 function atualizarWppHeader() {
   const n = (_config.whatsapp || '').replace(/\D/g, '');
   if (!n) return;
-  ['cat-wpp-hero', 'cat-footer-wpp'].forEach(id => {
+  ['cat-wpp-header'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.href = `https://wa.me/${n}`;
   });

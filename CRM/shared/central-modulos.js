@@ -38,7 +38,7 @@ const RAW_MODULOS = [
   { id: 'compras',             nome: 'Compras',                 icone: '🛒', url: '/CRM/pages/compras/index.html' },
   { id: 'fornecedor',          nome: 'Fornecedor',              icone: '🏭', url: '/CRM/pages/fornecedor/index.html' },
   { id: 'pos-venda',           nome: 'Pós-venda',               icone: '💝', url: '/CRM/pages/pos-venda/index.html' },
-  { id: 'impressora',          nome: 'Impressora',              icone: '🖨️', url: '/CRM/pages/config/index.html' },
+  { id: 'config',              nome: 'Configurações',           icone: '⚙️', url: '/CRM/pages/config/index.html' },
   { id: 'contas',              nome: 'Contas & Números',        icone: '📇', url: '/CRM/pages/contas/index.html' },
   { id: 'agenda',              nome: 'Agenda',                  icone: '📅', url: '/CRM/pages/acaodasemana/index.html' },
   { id: 'portal-cliente',      nome: 'Portal do Cliente',       icone: '🔷', url: '/CRM/pages/portal-cliente/admin.html' },

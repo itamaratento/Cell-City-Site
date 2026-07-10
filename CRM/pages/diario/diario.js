@@ -13,7 +13,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
 import { DiarioRegistrosRepository as DiarioRegistros, DiarioEventosRepository as DiarioEventos } from "../../repositories/diario.repository.js";
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
-import { excluirEmCascata, detectarAusentes, getApelido, setApelido } from "../../shared/cc-sync.js";
+import { excluirEmCascata, getApelido, setApelido } from "../../shared/cc-sync.js";
 
 const COL = 'diario_registros';
 const COL_EVT = 'diario_eventos';
