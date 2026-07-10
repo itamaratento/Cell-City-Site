@@ -1407,3 +1407,45 @@ Não serão criadas sprints para preencher placeholders, adicionar conteúdo ao 
 - **Pendência para homologação**: deploy das Firestore Rules corrigidas em `cellcity-crm-dev` (DEV) e `cellcity-crm` (PROD) — até lá, Compras, Fechamento Mensal e Cadastro de Fornecedores continuam indisponíveis em runtime.
 
 **Suítes:** RBAC 149/149 · Rules 73/73 · Functions 25/25 · Performance 4/4.
+
+---
+
+## 2026-07-10 — Engenharia Principal: correção de path absoluto + remoção de código morto
+
+- **Bug fix — path absoluto no `dashboard-alarme-os.js`** (GUIA_MANUTENCAO.md item 21): `window.open()` para janela flutuante do alarme usava `/CRM/...` sem prefixo `/dev`, mesma classe do bug H-009 já corrigido no Caixa. Adicionado `prefix` dinâmico com o mesmo padrão usado em `dashboard-caixa.js:32`.
+- **Dead code removal** (GUIA_MANUTENCAO.md item 23): `CRM/repositories/saas.repository.js` — 4 exports com zero imports no código atual. Sobrevivente do multiempresa revertido.
+- **Arquivos alterados:** `CRM/pages/dashboard/dashboard-alarme-os.js`, `CRM/repositories/saas.repository.js` (removido).
+- **Suítes:** RBAC 153/153 · Performance 4/4.
+
+---
+
+## 2026-07-10 — Engenharia Principal: card da Agenda adicionado ao Dashboard + hardening do deploy
+
+- **Bug fix — card da Agenda ausente no Dashboard** (GUIA_MANUTENCAO.md item 12, TECHDOC §7.2): CSS e JS do Dashboard referenciavam `.module-card[data-module="acaodasemana"]` mas o card não existia no HTML. `atualizarCardAcaoSemana()` retornava sem efeito e CSS de pulsação ficava inativo. Card adicionado ao grid + entrada `'acaodasemana': 'agenda'` em `RBAC_CARD_PARA_MODULO_ID` para ocultação por RBAC.
+- **Hardening do artefato Pages** (GUIA item 5): `_runtime_audit/`, `sql/`, `pages/`, `scripts/`, `sistema/` eram publicados no GitHub Pages sem intenção. Adicionados ao `--exclude` do `deploy-pages.yml`.
+- **Arquivos alterados:** `CRM/pages/dashboard/index.html`, `CRM/pages/dashboard/dashboard-state.js`, `.github/workflows/deploy-pages.yml`.
+- **Suítes:** RBAC 153/153 · Performance 4/4.
+
+---
+
+## 2026-07-10 — Modo evolução contínua (Engenheiro Principal): correções pós-certificação
+
+Sprints de qualidade após a Certificação v1.0, ordem de prioridade bug→segurança:
+
+- **`3bc4a4f` — WhatsApp do catálogo público sem DDI 55:** os 3 links `wa.me`
+  do catálogo público (header, card, botão comprar) quebravam se o número
+  fosse salvo sem o `55` (o campo admin só instrui no placeholder, não valida).
+  Canal de venda direto ao cliente. Helper `_waDigits()` (mesmo padrão do
+  `portal.js`), lógica validada em 5 casos.
+- **`d8dec82` — Central de Comandos quebrada no boot (P0):** `comandos.js`
+  usava `initModulo()`/`carregarPermissoes()`/`podeVisualizar()` desde
+  `7e5d224` mas **não importava nenhum** — a página quebrava com
+  `ReferenceError`, o gate RBAC nunca rodava e os comandos não carregavam.
+  Único módulo com o defeito (varredura confirmou os demais OK). Escapou das
+  auditorias porque `node --check` só valida sintaxe e não havia teste.
+  Corrigido + nova suíte `central-comandos.test.mjs` (3 testes) que reproduz
+  o bug e trava regressão.
+
+Método que achou o P0: escrever teste para módulo gated sem cobertura →
+regra reforçada de que `node --check` verde ≠ módulo funcional. Suítes: RBAC
+156/156 · Rules 73/73 · Functions 25/25 · Performance 4/4.
