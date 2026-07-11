@@ -81,3 +81,7 @@ evidencias/
 # nunca publicar (plans/ é servido ao vivo no site via GitHub Pages).
 # Convenção: sufixo _INTERNO.md em plans/ = não versionar.
 plans/*_INTERNO.md
+
+# Artefatos de teste/debug na raiz
+teste*.txt
+how*
