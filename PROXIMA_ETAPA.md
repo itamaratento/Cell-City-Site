@@ -133,6 +133,8 @@ console — ver GUIA_MANUTENCAO).
 | Card da Agenda ausente no Dashboard (GUIA item 12, TECHDOC §7.2) | Card `data-module="acaodasemana"` adicionado ao grid + RBAC mapping `'acaodasemana': 'agenda'` |
 | `_runtime_audit/`, `sql/`, `pages/`, `scripts/`, `sistema/` publicados no Pages (item 5) | Adicionados ao `--exclude` do `deploy-pages.yml` |
 | Matriz RBAC com apenas 9 gates gerenciáveis (16 gates fail-open) | `MODULOS` em usuarios-permissoes.js ampliado de 9 → 25 entries, incluindo `analise`, `compras`, `chat`, `central-alertas`, `diario`, `fornecedor`, `pos-venda`, `minha-semana`, etc. `configuracoes` renomeado para `config` (alinhado com IDs reais). |
+| Link 'Ver todas as mensagens' no Portal — dead-end que só exibia `alert()` | Removido — todo histórico já é exibido na tela, link não levava a lugar nenhum |
+| Textos do Portal do Cliente com acentos faltando (orcamento, aprovacao, observacao, opcao, urgencia, peca, amanha, sera) | 8 correções em modais e toasts de orçamento + mensagem 'OS não encontrada' → 'Ordem de serviço não encontrada.' |
 
 ## ⚠️ ITENS PENDENTES (sem previsão)
 

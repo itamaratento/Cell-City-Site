@@ -1472,3 +1472,27 @@ regra reforçada de que `node --check` verde ≠ módulo funcional. Suítes: RBA
 **Como validar:** Abrir módulo Usuários e Permissões → aba Permissões → tabela agora exibe 25 linhas (vs. 9 anteriores). Perfis existentes mantêm fail-open para os novos módulos até que o admin edite as permissões.
 
 **Pendências:** Perfis operacionais existentes no Firestore não têm entrada na matriz para os 16 novos módulos — continuam fail-open até que o admin ajuste manualmente as permissões de cada perfil. Isto é esperado e seguro (fail-open é o comportamento conservador).
+
+---
+
+## 2026-07-11 — Sprint UX: Melhorias no Portal do Cliente (textos + dead-end)
+
+**Evidência:** Auditoria completa do Portal do Cliente — 7 telas analisadas (Início, OS, Garantias, Agendamentos, Avaliações, Mensagens, Contato).
+
+**Problemas encontrados:**
+1. **Dead-end UX** — Link "📚 Ver todas as mensagens" na tela de Mensagens exibia apenas `alert('Em breve: histórico completo.')`. O histórico completo já é exibido na tela desde o carregamento — o link não levava a lugar nenhum e frustrava o cliente.
+2. **Mensagem técnica** — Fallback de OS não encontrada exibia "OS não encontrada na lista local" (jargão técnico interno) em vez de um texto amigável.
+3. **Acentos/cedilhas ausentes** — 8 ocorrências em modais e toasts de orçamento: `orcamento`→`orçamento`, `aprovacao`→`aprovação`, `observacao`→`observação`, `opcao`→`opção`, `urgencia`→`urgência`, `peca`→`peça`, `amanha`→`amanhã`, `sera`→`será`.
+
+**Solução aplicada** (commit `c319551`):
+- Removido link "Ver todas as mensagens" (comentário explicativo no lugar)
+- "OS não encontrada na lista local" → "Ordem de serviço não encontrada."
+- Correção de acentos/cedilhas nos modais `_confirmarAprovacaoDireta()`, `_exibirModalEscolhaOrcamento()`, toasts `_executarAprovacao()` e `recusarOrcamento()`
+
+**Arquivo alterado:** `CRM/pages/portal-cliente/portal.js`
+
+**Testes:** Nenhum teste quebra — alterações exclusivamente em strings de UI.
+
+**Como validar:** Abrir Portal do Cliente → OS Detalhe de orçamento pendente → clicar Aprovar → textos do modal agora com acentos corretos. Abrir link direto de OS inválida → mensagem "Ordem de serviço não encontrada." Abrir Mensagens → link "Ver todas" não existe mais.
+
+**Pendências:** Nenhuma.
