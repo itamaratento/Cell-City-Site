@@ -171,3 +171,16 @@ test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.
     assert.match(src, /function abrirPortalCliente\(osId, phoneDigits\)/);
     assert.match(src, /portal-cliente\/index\.html\?tel=\$\{phoneDigits\}&os=/);
 });
+
+// Achado de 2026-07-11 (mesmo dia da Sprint de Nota Fiscal): o link colado
+// manualmente pela equipe (Google Drive, campo os.nfLink) era exibido no
+// Portal do Cliente abaixo de Garantias antes do rollback do SaaS de 27/06 —
+// perdido no rollback, restaurado nesta Sprint. Checagem estrutural evita
+// que suma de novo silenciosamente (sem harness jsdom+Firebase pra
+// portal.js — mesma limitação já registrada acima).
+test('portal.js: link da Nota Fiscal (os.nfLink) exibido em renderOSDetalhe e renderGarantias', () => {
+    const src = read('CRM/pages/portal-cliente/portal.js');
+    const ocorrencias = [...src.matchAll(/o\.nfLink/g)];
+    assert.ok(ocorrencias.length >= 2, `esperava pelo menos 2 usos de o.nfLink (detalhe da OS + lista de garantias), achou ${ocorrencias.length}`);
+    assert.match(src, /Visualizar Nota Fiscal/);
+});

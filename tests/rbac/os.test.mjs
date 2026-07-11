@@ -175,6 +175,33 @@ test('NF: salvarDadosNotaFiscal grava na própria OS (não em clientes) e valida
     assert.equal(fsMock.__raw('clientes', '11999998888').razaoSocial, undefined, 'não pode vazar pro documento do cliente');
 });
 
+test('NF: campo Link da Nota Fiscal existe, pré-carrega e salva; pasta Drive tem botão fixo', async () => {
+    fsMock.__reset(); perm.__reset();
+    fsMock.__seed('os', 'os_1', {
+        id: 'os_1', clientName: 'João Teste', phone: '11999998888', phoneDigits: '11999998888',
+        category: 'celular', brand: 'Samsung', model: 'Galaxy S21', defect: 'Tela quebrada',
+        status: 'em_reparo', createdAt: new Date().toISOString(), timeline: [],
+        nfLink: 'https://drive.google.com/file/d/existente',
+    });
+    fsMock.__seed('clientes', '11999998888', { name: 'João Teste', phone: '11999998888', phoneDigits: '11999998888', history: ['os_1'] });
+    perm.__setMatriz(null);
+    const { document, window } = mountPage(HTML_PATH, '/CRM/pages/os/index.html');
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+    window.navigator.clipboard = { writeText: () => Promise.resolve() };
+
+    // campo fixo da pasta do Drive — mesmo link pra qualquer OS, com botão de abrir
+    const pasta = document.getElementById('nf-pasta-drive');
+    assert.equal(pasta.value, 'https://drive.google.com/drive/folders/1hKQFo43o_4U4NsY7gARxOaYVWajkKtGn');
+    assert.equal(pasta.readOnly, true);
+
+    // link da nota fiscal desta OS específica pré-carrega e é salvo junto com o resto
+    assert.equal(document.getElementById('nf-link').value, 'https://drive.google.com/file/d/existente');
+    document.getElementById('nf-link').value = 'https://drive.google.com/file/d/novo-link';
+    await window.salvarDadosNotaFiscal();
+    assert.equal(fsMock.__raw('os', 'os_1').nfLink, 'https://drive.google.com/file/d/novo-link');
+});
+
 test('NF: CNPJ com dígito verificador errado é rejeitado', async () => {
     const { document, window } = setup();
     await importFresh(MOD_URL);

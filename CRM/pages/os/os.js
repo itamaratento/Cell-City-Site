@@ -1314,10 +1314,12 @@ function abrirPortalCliente(osId, phoneDigits) {
 // ===== DADOS PARA EMISSÃO DA NOTA FISCAL =====
 // Cadastro auxiliar simples (achado em backup pré-rollback SaaS: campos
 // razaoSocial/cnpjEmpresa/nfEmail/nfTelefone já existiam na OS antes do
-// rollback de 27/06 — reaproveitados aqui; nfNumero/nfData/nfLink (controle
-// de nota emitida + link de arquivo) ficam de fora por decisão explícita
-// desta Sprint: não há emissão, upload nem controle de notas no CRM, só
-// consulta/cópia manual dos dados para emitir em outro sistema).
+// rollback de 27/06 — reaproveitados aqui). nfLink (link do PDF no Google
+// Drive, colado manualmente pela equipe após o upload) também é reaproveitado
+// — não é upload pelo CRM, é só um campo de texto/URL; o Portal do Cliente
+// exibe esse link automaticamente abaixo de Garantias (ver portal.js). Fora
+// do escopo: nfNumero/nfData (controle de numeração de nota emitida) e
+// qualquer geração/emissão de nota dentro do CRM.
 const NF_CAMPOS = [
   ['razaoSocial',   'nf-razao',       'Razão Social / Nome da Empresa'],
   ['cnpjEmpresa',   'nf-cnpj',        'CNPJ'],
@@ -1326,7 +1328,10 @@ const NF_CAMPOS = [
   ['nfTelefone2',   'nf-tel2',        'Telefone 2 / WhatsApp'],
   ['nfResponsavel', 'nf-responsavel', 'Responsável pelo Recebimento da Nota Fiscal'],
   ['nfObservacoes', 'nf-obs',         'Observações'],
+  ['nfLink',        'nf-link',        'Link da Nota Fiscal (Google Drive)'],
 ];
+
+const NF_PASTA_DRIVE_URL = 'https://drive.google.com/drive/folders/1hKQFo43o_4U4NsY7gARxOaYVWajkKtGn';
 
 function maskCnpj(el) {
   let v = el.value.replace(/\D/g, '').slice(0, 14);
@@ -1377,6 +1382,12 @@ ${campo('nfTelefone2', 'nf-tel2', 'Telefone 2 / WhatsApp', 'type="tel" oninput="
 <input id="nf-responsavel" value="${escHtml(os.nfResponsavel)}" ${ro} style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 <label style="font-size:12px;color:var(--text2);">Observações</label>
 <textarea id="nf-obs" rows="2" ${ro} style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);resize:vertical;font-family:inherit;" oninput="window.markUnsaved()">${escHtml(os.nfObservacoes)}</textarea>
+<label style="font-size:12px;color:var(--text2);">Pasta Google Drive — Notas Fiscais</label>
+<div style="display:flex;gap:6px;">
+<input id="nf-pasta-drive" value="${NF_PASTA_DRIVE_URL}" readonly style="flex:1;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text2);">
+<button type="button" class="icon-btn" onclick="window.open('${NF_PASTA_DRIVE_URL}','_blank')" title="Abrir Pasta">🌐 Abrir Pasta</button>
+</div>
+${campo('nfLink', 'nf-link', 'Link da Nota Fiscal (Google Drive)', 'type="url" placeholder="https://drive.google.com/..."')}
 <div style="display:flex;gap:8px;margin-top:4px;">
 ${editavel ? `<button onclick="salvarDadosNotaFiscal()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button>` : ''}
 <button onclick="copiarTodosDadosNF()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);font-weight:700;cursor:pointer;">📋 Copiar Todos os Dados</button>
@@ -1393,7 +1404,7 @@ function copiarCampoNF(inputId) {
 
 function copiarTodosDadosNF() {
   const v = (id) => (document.getElementById(id)?.value || '').trim();
-  const texto = `Razão Social: ${v('nf-razao')}\nCNPJ: ${v('nf-cnpj')}\nE-mail: ${v('nf-email')}\nTelefone 1: ${v('nf-tel1')}\nTelefone 2: ${v('nf-tel2')}\nResponsável: ${v('nf-responsavel')}\nObservações: ${v('nf-obs')}`;
+  const texto = `Razão Social: ${v('nf-razao')}\nCNPJ: ${v('nf-cnpj')}\nE-mail: ${v('nf-email')}\nTelefone 1: ${v('nf-tel1')}\nTelefone 2: ${v('nf-tel2')}\nResponsável: ${v('nf-responsavel')}\nObservações: ${v('nf-obs')}${v('nf-link') ? `\nLink da Nota Fiscal: ${v('nf-link')}` : ''}`;
   navigator.clipboard.writeText(texto).then(() => showToast('📋 Todos os dados copiados!'));
 }
 
