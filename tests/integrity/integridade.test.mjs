@@ -206,3 +206,18 @@ test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () =
     assert.match(src, /if \(o\.nfLink && this\._emGarantia\(o\)\)/,
         'bloco de Nota Fiscal dentro de acoesDoc() precisa exigir _emGarantia(o), não só nfLink');
 });
+
+// Sprint 2026-07-11: "Garantias Expiradas" não gera benefício operacional
+// pro cliente — dados continuam computados/armazenados, só a renderização
+// foi retirada. O estado vazio ("nenhum serviço encontrado") não pode mais
+// depender de `expiradas` (cliente só com garantias expiradas deve ver o
+// estado vazio, já que nenhuma delas aparece de qualquer forma).
+test('portal.js: seção de Garantias Expiradas não é renderizada ao cliente', () => {
+    const src = read('CRM/pages/portal-cliente/portal.js');
+    assert.doesNotMatch(src, /Garantias Expiradas \(\$\{expiradas\.length\}\)/,
+        'o cabeçalho "Garantias Expiradas" não pode mais ser renderizado');
+    assert.doesNotMatch(src, /expiradas\.slice\(0, 5\)\.forEach/,
+        'o loop que renderizava cards de garantia expirada precisa estar removido');
+    assert.match(src, /if \(pendentes\.length === 0 && ativas\.length === 0\) {/,
+        'estado vazio não pode mais exigir expiradas.length === 0 (cliente só com expiradas deve ver a tela vazia)');
+});

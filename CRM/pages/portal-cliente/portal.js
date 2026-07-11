@@ -1246,7 +1246,11 @@ window.Portal = {
 
       let html = `<div class="garantias-container"><h2 class="screen-title">🛡️ Minhas Garantias</h2>`;
 
-      if (pendentes.length === 0 && ativas.length === 0 && expiradas.length === 0) {
+      // Garantias expiradas não são exibidas ao cliente (Sprint 2026-07-11) —
+      // não contam pra decidir se a tela deve mostrar o estado vazio. Um
+      // cliente com só garantias expiradas vê "nenhum serviço encontrado",
+      // já que nenhuma delas seria mostrada de qualquer forma.
+      if (pendentes.length === 0 && ativas.length === 0) {
         html += `<div class="empty-state"><div class="empty-icon">🛡️</div><p>Nenhum serviço com garantia encontrado.</p><button class="login-btn" onclick="Portal.navegar('painel')">Voltar</button></div></div>`;
         el.innerHTML = html;
         return;
@@ -1398,38 +1402,12 @@ window.Portal = {
       }
 
       // ===== 3. Garantias Expiradas =====
-      if (expiradas.length > 0) {
-        html += `<h3 class="garantias-subtitle" style="color:#78909C;">⌛ Garantias Expiradas (${expiradas.length})</h3>`;
-        expiradas.slice(0, 5).forEach(o => {
-          try {
-            const dd = this._getDeliveryDate(o);
-            const prazo = o.prazoGarantia || PRAZO_GARANTIA_DIAS;
-            const dataFim = new Date(dd);
-            dataFim.setDate(dataFim.getDate() + prazo);
-            const dataFimStr = dataFim.toLocaleDateString('pt-BR');
-            const nomeGarantia = getGarantiaNome(o);
-
-            html += `
-              <div class="garantia-card" style="border-left: 4px solid #78909C;opacity:0.7;">
-                <div class="garantia-card-top">
-                  <span class="garantia-card-model">📱 ${this._esc(o.model || '')}</span>
-                  <span class="garantia-card-status-badge" style="background:#78909C20;color:#78909C;border:1px solid #78909C40;">
-                    🔴 Expirada
-                  </span>
-                </div>
-                <div class="garantia-card-info">
-                  ${nomeGarantia ? `<span>🛡️ Garantia: <strong>${this._esc(nomeGarantia)}</strong></span>` : ''}
-                  <span>📅 Vencida em: <strong>${dataFimStr}</strong></span>
-                  <span class="garantia-card-id">OS #${this._esc(o.firestoreId || o.id || '')}</span>
-                </div>
-                ${acoesDoc(o)}
-              </div>
-            `;
-          } catch (err) {
-            console.warn('[Portal] Erro ao renderizar garantia expirada:', err, o);
-          }
-        });
-      }
+      // Sprint 2026-07-11: não gera benefício operacional pro cliente e passa
+      // impressão negativa — removida da exibição. Os dados continuam
+      // armazenados/computados normalmente (variável `expiradas` acima,
+      // Firestore e regras intocados); só a renderização foi retirada.
+      // Não remover o cálculo de `expiradas` — outras telas podem vir a
+      // precisar dele, e o custo de mantê-lo é zero (não é mais lido aqui).
 
       html += `</div>`;
       el.innerHTML = html;
