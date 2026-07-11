@@ -826,7 +826,7 @@ window.Portal = {
 
     const o = this.currentOS.find(x => x.id === osId || x.firestoreId === osId);
     if (!o) {
-      el.innerHTML = `<div class="os-container"><div class="empty-state"><p>OS não encontrada na lista local</p><button class="login-btn" onclick="Portal.navegar('os')">Voltar</button></div></div>`;
+      el.innerHTML = `<div class="os-container"><div class="empty-state"><p>Ordem de serviço não encontrada.</p><button class="login-btn" onclick="Portal.navegar('os')">Voltar</button></div></div>`;
       return;
     }
 
@@ -1055,7 +1055,7 @@ window.Portal = {
     if (!body || !title) return;
     overlay.style.display = 'flex';
     title.textContent = 'Confirmar Aprovação';
-    body.innerHTML = '<p style="margin-bottom:12px;color:#666;">Deseja aprovar este orcamento?</p><div style="margin-bottom:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Observacao <span style="color:#aaa;">(opcional)</span></label><textarea id="orc-obs-input" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Pode prosseguir, Tenho urgencia..."></textarea></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button onclick="Portal._executarAprovacao(\'' + osId + '\')" style="flex:1;padding:12px;background:#00C853;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Aprovacao</button></div>';
+    body.innerHTML = '<p style="margin-bottom:12px;color:#666;">Deseja aprovar este orçamento?</p><div style="margin-bottom:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Observação <span style="color:#aaa;">(opcional)</span></label><textarea id="orc-obs-input" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Pode prosseguir, tenho urgência..."></textarea></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button onclick="Portal._executarAprovacao(\'' + osId + '\')" style="flex:1;padding:12px;background:#00C853;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Aprovação</button></div>';
   },
 
   _exibirModalEscolhaOrcamento(osId, o) {
@@ -1065,10 +1065,10 @@ window.Portal = {
     const title = document.getElementById('orc-modal-title');
     if (!body || !title) return;
     overlay.style.display = 'flex';
-    title.textContent = 'Selecione a opcao desejada';
+    title.textContent = 'Selecione a opção desejada';
     const desc1 = o.orc1Desc ? '<div class="orc-modal-opcao-desc">' + this._esc(o.orc1Desc) + '</div>' : '';
     const desc2 = o.orc2Desc ? '<div class="orc-modal-opcao-desc">' + this._esc(o.orc2Desc) + '</div>' : '';
-    body.innerHTML = '<div class="orc-modal-opcoes"><label class="orc-modal-opcao" data-opcao="1"><input type="radio" name="orc-escolha" value="1" checked><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opcao 1</div>' + desc1 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc1Valor).toFixed(2) + '</div></div></label><label class="orc-modal-opcao" data-opcao="2"><input type="radio" name="orc-escolha" value="2"><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opcao 2</div>' + desc2 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc2Valor).toFixed(2) + '</div></div></label></div><div style="margin-top:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Observacao <span style="color:#aaa;">(opcional)</span></label><textarea id="orc-obs-input" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Quero a peca original, Retiro amanha..."></textarea></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button onclick="Portal._executarAprovacao(\'' + osId + '\')" style="flex:1;padding:12px;background:#00C853;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Aprovacao</button></div>';
+    body.innerHTML = '<div class="orc-modal-opcoes"><label class="orc-modal-opcao" data-opcao="1"><input type="radio" name="orc-escolha" value="1" checked><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opção 1</div>' + desc1 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc1Valor).toFixed(2) + '</div></div></label><label class="orc-modal-opcao" data-opcao="2"><input type="radio" name="orc-escolha" value="2"><div class="orc-modal-opcao-content"><div class="orc-modal-opcao-titulo">Opção 2</div>' + desc2 + '<div class="orc-modal-opcao-valor">R$ ' + Number(o.orc2Valor).toFixed(2) + '</div></div></label></div><div style="margin-top:12px;"><label style="font-size:13px;color:#888;display:block;margin-bottom:4px;">Observação <span style="color:#aaa;">(opcional)</span></label><textarea id="orc-obs-input" rows="2" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-family:inherit;font-size:14px;resize:vertical;" placeholder="Ex.: Quero a peça original, retiro amanhã..."></textarea></div><div style="display:flex;gap:8px;margin-top:16px;"><button onclick="Portal._fecharModal();" style="flex:1;padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-weight:600;">Cancelar</button><button onclick="Portal._executarAprovacao(\'' + osId + '\')" style="flex:1;padding:12px;background:#00C853;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Confirmar Aprovação</button></div>';
   },
 
   async _executarAprovacao(osId) {
@@ -1084,7 +1084,7 @@ window.Portal = {
       await window.PortalFunctions.responderOrcamento({
         osId, phoneDigits: this.session.telefoneDigits, resposta: 'aprovado', escolha, obs: obs || undefined,
       });
-      this._toast('Orcamento aprovado! Entraremos em contato.');
+      this._toast('Orçamento aprovado! Entraremos em contato.');
     } catch (err) {
       console.error('[Portal] Erro ao aprovar:', err);
       this._toast(err.message || 'Erro ao aprovar. Tente novamente.');
@@ -1115,7 +1115,7 @@ window.Portal = {
       await window.PortalFunctions.responderOrcamento({
         osId, phoneDigits: this.session.telefoneDigits, resposta: 'recusado', obs: motivo,
       });
-      this._toast('Orcamento recusado. Seu aparelho sera devolvido.');
+      this._toast('Orçamento recusado. Seu aparelho será devolvido.');
     } catch (err) {
       console.error('[Portal] Erro ao recusar:', err);
       this._toast(err.message || 'Erro ao recusar. Tente novamente.');
@@ -1642,7 +1642,7 @@ window.Portal = {
     }
 
     if (msgs.length > 10) {
-      html += `<div class="msg-archive-link" onclick="alert('Em breve: histórico completo.')">📚 Ver todas as mensagens</div>`;
+      /* O link 'Ver todas' foi removido — o histórico já é exibido completo na tela */
     }
 
     html += `</div></div>`;
