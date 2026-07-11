@@ -29,11 +29,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..');
 const CC = join(ROOT, 'scripts/control-center');
 
-const MODULOS = [
-    'desenvolvimento', 'release', 'backup-recuperacao', 'banco-dados',
-    'branches-sincronizacao', 'diagnostico', 'ferramentas', 'central-ias',
-    'configuracoes',
-];
+// Derivado do Manifesto real (config/modules.conf), não hardcoded: outras
+// Sprints/sessões adicionam módulos novos o tempo todo (ver README.md,
+// "Como adicionar um novo módulo") — travar esta lista quebraria a suíte
+// a cada módulo novo sem ligação nenhuma com o que esta suíte realmente
+// precisa garantir (ver teste "Manifesto ... é internamente consistente").
+const MODULOS = lerManifesto().map(m => m.slug);
 
 const ESTADOS = ['release', 'backup', 'homologacao', 'restauracao', 'health-check', 'sincronizacao'];
 
@@ -137,14 +138,22 @@ test('config/control-center.conf define CC_FASE (versão não mora mais aqui)', 
     assert.doesNotMatch(src, /CC_VERSION=/, 'CC_VERSION não deve mais estar em control-center.conf — fonte única é VERSION');
 });
 
-test('Manifesto (config/modules.conf) tem as 9 entradas esperadas, na ordem', () => {
+test('Manifesto (config/modules.conf) é internamente consistente: ordem sequencial, slugs existentes, rótulos preenchidos', () => {
+    // Não trava um total nem uma lista fixa de slugs — o Manifesto cresce
+    // por Sprint (ver README.md, "Como adicionar um novo módulo") e mais de
+    // uma sessão pode adicionar módulo aqui na mesma janela de tempo. O que
+    // importa é que ele continue bem formado, não que tenha um tamanho
+    // específico.
     const manifesto = lerManifesto();
-    assert.equal(manifesto.length, 9, `esperava 9 entradas no manifesto, achou ${manifesto.length}`);
+    assert.ok(manifesto.length >= 10, `esperava pelo menos 10 entradas (as da Fase 1-3), achou ${manifesto.length}`);
     manifesto.forEach((m, i) => {
-        assert.equal(m.ordem, String(i + 1), `entrada ${i} do manifesto tem ordem "${m.ordem}", esperava "${i + 1}"`);
-        assert.equal(m.slug, MODULOS[i], `entrada ${i} do manifesto tem slug "${m.slug}", esperava "${MODULOS[i]}"`);
-        assert.ok(m.rotulo && m.rotulo.trim().length > 0, `entrada ${i} do manifesto sem rótulo`);
+        assert.equal(m.ordem, String(i + 1), `entrada ${i} do manifesto tem ordem "${m.ordem}", esperava "${i + 1}" (sequência quebrada)`);
+        assert.ok(m.rotulo && m.rotulo.trim().length > 0, `entrada ${i} (slug "${m.slug}") sem rótulo`);
+        const menuPath = join(CC, 'modules', m.slug, 'menu.sh');
+        assert.ok(existsSync(menuPath), `entrada ${i} do manifesto aponta pro slug "${m.slug}", mas modules/${m.slug}/menu.sh não existe`);
     });
+    const slugsUnicos = new Set(manifesto.map(m => m.slug));
+    assert.equal(slugsUnicos.size, manifesto.length, 'há slug duplicado no Manifesto');
 });
 
 test('core/menu.sh não hardcoda nenhum módulo — só lê o Manifesto', () => {
@@ -215,7 +224,7 @@ test('Plugin Loader roda sem nenhum plugin instalado e não quebra', () => {
 });
 
 test('toda tela usa a moldura padrão (lib/ui-box.sh) — bordas presentes, sem cabeçalho antigo', () => {
-    const stdin = '3\n\n0\n'; // 3 = Backup e Recuperação, ainda placeholder na Fase 2
+    const stdin = '4\n\n0\n'; // 4 = Banco de Dados, ainda placeholder na Fase 3
     const saida = rodarMenu(stdin);
     assert.ok(saida.includes('╔') && saida.includes('║') && saida.includes('╚'),
         'saída não contém moldura em caixa (╔/║/╚) — todo menu/submenu precisa usar lib/ui-box.sh');
@@ -282,14 +291,14 @@ test('menu principal exibe o bloco Projeto/Branch/Status com dados reais do Git'
 });
 
 test('telas de módulo exibem breadcrumb (localização atual)', () => {
-    const saida = rodarMenu('3\n\n0\n'); // 3 = Backup e Recuperação (placeholder)
-    assert.match(saida, /Control Center › Backup e Recuperação/);
+    const saida = rodarMenu('4\n\n0\n'); // 4 = Banco de Dados (placeholder)
+    assert.match(saida, /Control Center › Banco de Dados/);
 });
 
 test('toda tela tem rodapé com mensagem de ajuda antes da borda final', () => {
     const principal = rodarMenu('0\n');
     assert.match(principal, /Use os números para navegar/);
-    const placeholder = rodarMenu('3\n\n0\n');
+    const placeholder = rodarMenu('4\n\n0\n');
     assert.match(placeholder, /volta ao menu principal/);
     const submenuReal = rodarMenu('1\n14\n0\n');
     assert.match(submenuReal, /volta · 0 sai do Control Center/);
@@ -484,4 +493,101 @@ test('lib/svc-git.sh: funções de serviço retornam dados consistentes com o es
     }
     const esperado = /^(develop|main)$/.test(branchReal) ? 0 : 1;
     assert.equal(reconhecida, esperado, `_cc_svc_git_branch_reconhecida deveria refletir a branch real (${branchReal})`);
+});
+
+// ── Fase 3 — "Backup e Recuperação" ──────────────────────────────────
+//
+// Cuidado deliberado nesta seção: o Sistema Oficial de Backup publica de
+// verdade no repositório remoto Cell-City-Backup (push de tags/branches).
+// Esta suíte NUNCA executa de verdade uma ação que crie/apague um backup
+// remoto — só verifica estaticamente (grep) que a delegação existe, e
+// executa ao vivo apenas os caminhos garantidamente seguros: cancelamento
+// (nunca chega a tocar em git) e leitura pura (Validar Integridade/
+// Listar/Informações, que só fazem fetch/ls-remote, nunca push).
+
+test('módulo Backup e Recuperação: interface (menu.sh) só desenha — nenhuma chamada direta a git/npm/bash fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/backup-recuperacao/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgit\s|\bnpm\s|\bbash\s+"/, 'menu.sh (Interface) não pode chamar git/npm/bash diretamente — pertence à camada de Serviço (lib/*.sh)');
+    for (const lib of ['backup.sh', 'recuperacao.sh', 'validacao.sh', 'listagem.sh', 'utilitarios.sh']) {
+        const caminho = join(CC, 'modules/backup-recuperacao/lib', lib);
+        assert.ok(existsSync(caminho), `modules/backup-recuperacao/lib/${lib} ausente`);
+        assert.ok(ehExecutavel(caminho), `modules/backup-recuperacao/lib/${lib} precisa ser executável`);
+    }
+});
+
+test('módulo Backup e Recuperação: as 6 delegações pro Sistema Oficial de Backup existem (nenhuma reimplementada)', () => {
+    const backup = readFileSync(join(CC, 'modules/backup-recuperacao/lib/backup.sh'), 'utf8');
+    const recuperacao = readFileSync(join(CC, 'modules/backup-recuperacao/lib/recuperacao.sh'), 'utf8');
+    const listagem = readFileSync(join(CC, 'modules/backup-recuperacao/lib/listagem.sh'), 'utf8');
+
+    assert.match(backup, /scripts\/backup\/backup-manual\.sh"/, 'Backup Manual precisa delegar pra scripts/backup/backup-manual.sh');
+    assert.match(backup, /scripts\/backup\/backup-automatic\.sh"/, 'Backup Automático precisa delegar pra scripts/backup/backup-automatic.sh');
+    assert.match(backup, /node backup-dados\.js --dev/, 'Backup do Firebase (dev) precisa delegar pra backup-dados.js --dev');
+    assert.match(backup, /node backup-dados\.js --prod/, 'Backup do Firebase (prod) precisa delegar pra backup-dados.js --prod');
+    assert.match(backup, /bash "\$REPO_DIR\/backup\.sh"/, 'Backup do Projeto precisa delegar pra backup.sh (raiz do repo)');
+    assert.match(recuperacao, /scripts\/backup\/restore-backup\.sh"/, 'Restaurar Backup precisa delegar pra scripts/backup/restore-backup.sh');
+    assert.match(listagem, /restore-backup\.sh/, 'Listar Backups precisa reaproveitar restore-backup.sh (nunca reimplementar a listagem)');
+
+    for (const src of [backup, recuperacao]) {
+        assert.doesNotMatch(src, /git\s+push\s+--force\s+origin\s+main|git\s+tag\s+-f.*main/, 'não pode reimplementar lógica de publicação direta em main');
+    }
+});
+
+test('módulo Backup e Recuperação: Backup Manual detecta working tree sujo e pede confirmação (achado de segurança desta Sprint)', () => {
+    const src = readFileSync(join(CC, 'modules/backup-recuperacao/lib/backup.sh'), 'utf8');
+    assert.match(src, /status --porcelain/, '_bkp_manual precisa checar se o working tree está sujo antes de delegar');
+    assert.match(src, /_cc_confirm/, '_bkp_manual precisa confirmar antes de commitar/publicar alterações pendentes de terceiros');
+});
+
+test('módulo Backup e Recuperação: ações destrutivas/de rede (automático, restaurar, limpeza, projeto, firebase) cancelam de verdade sem tocar em git remoto', () => {
+    const antesTags = execSync("git ls-remote --tags https://github.com/itamaratento/Cell-City-Backup.git 2>/dev/null | wc -l", { encoding: 'utf8' }).trim();
+
+    const automatico = rodarModulo('backup-recuperacao', '2\nn\n\n11\n0\n');
+    assert.match(automatico, /Cancelado\./);
+
+    const restaurar = rodarModulo('backup-recuperacao', '3\nn\n\n11\n0\n');
+    assert.match(restaurar, /Cancelado\./);
+
+    const projeto = rodarModulo('backup-recuperacao', '7\n1\nn\n\n11\n0\n');
+    assert.match(projeto, /Cancelado\./);
+
+    const firebaseEnvInvalido = rodarModulo('backup-recuperacao', '6\nx\n\n11\n0\n');
+    assert.match(firebaseEnvInvalido, /Cancelado\./);
+
+    const firebaseProd = rodarModulo('backup-recuperacao', '6\n2\nn\n\n11\n0\n');
+    assert.match(firebaseProd, /Cancelado\./);
+
+    const limpeza = rodarModulo('backup-recuperacao', '9\nn\n\n11\n0\n');
+    assert.match(limpeza, /Cancelado\.|Nada para limpar/);
+
+    const depoisTags = execSync("git ls-remote --tags https://github.com/itamaratento/Cell-City-Backup.git 2>/dev/null | wc -l", { encoding: 'utf8' }).trim();
+    assert.equal(depoisTags, antesTags, 'nenhuma tag do repositório de backup pode mudar quando toda confirmação é recusada');
+});
+
+test('módulo Backup e Recuperação: Validar Integridade/Listar/Informações são leitura real (sem crashar, sem precisar confirmação)', () => {
+    const validar = rodarModulo('backup-recuperacao', '5\n\n11\n0\n');
+    assert.match(validar, /Validar Integridade/);
+    assert.match(validar, /git fsck|Repositório local íntegro/);
+
+    const listar = rodarModulo('backup-recuperacao', '4\n\n11\n0\n');
+    assert.match(listar, /Listar Backups/);
+
+    const info = rodarModulo('backup-recuperacao', '10\n\n11\n0\n');
+    assert.match(info, /Informações dos Backups/);
+    assert.match(info, /Backups locais do projeto/);
+});
+
+test('módulo Backup e Recuperação: Backup das Configurações executa de verdade (seguro — só cópia local, sem rede)', () => {
+    const antes = new Set(readdirSync(join(ROOT, '_BACKUPS')).filter(n => n.startsWith('configuracoes-')));
+    const saida = rodarModulo('backup-recuperacao', '8\n\n11\n0\n');
+    assert.match(saida, /Backup das configurações concluído/i);
+    const depois = readdirSync(join(ROOT, '_BACKUPS')).filter(n => n.startsWith('configuracoes-'));
+    const novas = depois.filter(n => !antes.has(n));
+    assert.equal(novas.length, 1, `esperava 1 pasta nova de configuracoes-*, achou ${novas.length}`);
+    try {
+        const conteudo = readdirSync(join(ROOT, '_BACKUPS', novas[0]));
+        assert.ok(conteudo.includes('CLAUDE.md'), 'backup das configurações precisa incluir CLAUDE.md');
+    } finally {
+        rmSync(join(ROOT, '_BACKUPS', novas[0]), { recursive: true, force: true });
+    }
 });

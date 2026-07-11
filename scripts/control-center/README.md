@@ -125,6 +125,38 @@ silenciosamente. Validar Branch/Validar Workspace Limpo/Gerar Changelog/
 Histórico de Releases são leitura pura (não existiam como comando
 separado antes) — só essas são "novas" de verdade.
 
+**Módulo Backup e Recuperação (Fase 3)** — mesma regra de ouro. Este
+projeto já tinha, antes da Fase 3, o Sistema Oficial de Backup
+(`scripts/backup/*.sh`, mais `backup.sh` e `backup-dados.js` na raiz —
+ver `../../GUIA_ROLLBACK.md`). Camadas: `lib/backup.sh` (Backup),
+`lib/recuperacao.sh` (Recuperação), `lib/validacao.sh` (Validação),
+`lib/listagem.sh` (Listagem), `lib/utilitarios.sh` (Utilitários).
+
+| Ação no menu              | Delega para |
+|----------------------------|-------------|
+| Backup Manual               | `scripts/backup/backup-manual.sh` (commit + push pro repo Cell-City-Backup, tag `manual-<timestamp>`) |
+| Backup Automático            | `scripts/backup/backup-automatic.sh` (normalmente só roda via GitHub Actions semanal — rodar manualmente força a rotação do slot) |
+| Restaurar Backup             | `scripts/backup/restore-backup.sh` (cria branch local `restore/<data>-<tag>`, nunca toca em develop/main) |
+| Listar Backups               | o mesmo `restore-backup.sh`, respondendo "0" (cancelar) — mostra a lista sem restaurar nada |
+| Backup do Firebase           | `backup-dados.js` (raiz do repo — export Firestore → JSON; ambiente sempre explícito, dev ou prod, nunca auto-detectado) |
+| Backup do Projeto            | `backup.sh` (raiz do repo — rsync rotativo de 2 slots por tipo: diário/semanal/mensal/grande) |
+
+Validar Integridade/Backup das Configurações/Informações dos Backups/
+Limpeza de Backups são novos (não existia uma checagem de integridade,
+um backup só de configs, ou uma limpeza de backups manuais antes desta
+Sprint) — cada um é read-only ou de escopo estreito o suficiente pra não
+ser "um novo sistema de backup" (ver "Restrições" desta Sprint no
+histórico do projeto). Limpeza nunca remove `auto-slot-*` (rotacionam
+sozinhos) nem o backup manual mais recente.
+
+**Achado de segurança desta Sprint:** `backup-manual.sh` faz `git add .`
+e commita/publica QUALQUER alteração pendente no working tree, sem
+distinguir de quem é — em um checkout com sessões concorrentes (comum
+neste projeto, ver [[feedback-concorrencia-sessoes-checkout]] na memória),
+isso poderia commitar/publicar trabalho alheio em andamento sem intenção.
+`_bkp_manual` detecta working tree sujo e pede confirmação explícita
+antes de delegar — o script original não foi alterado.
+
 ## Fluxo de inicialização
 
 Toda execução de `cellcity` segue sempre a mesma sequência, em
@@ -314,7 +346,14 @@ em nenhuma fase futura:
     dinâmico, ações de leitura (status/branch/workspace/changelog/
     histórico) retornam dado real do Git, ações destrutivas (cache,
     dependências, subir, subir-ok, rollback) pedem confirmação antes de
-    executar e cancelam de verdade quando a resposta é "não".
+    executar e cancelam de verdade quando a resposta é "não";
+  - módulo Backup e Recuperação (Fase 3): as 6 delegações pro Sistema
+    Oficial de Backup são estáticas (grep — nunca executa
+    push/commit/force-push real durante o teste, pra não sujar o
+    repositório de backup compartilhado a cada rodada de CI); ações
+    destrutivas (backup manual com working tree sujo, automático,
+    restaurar, limpeza) cancelam de verdade sem tocar em git; Validar
+    Integridade/Listar/Informações rodam de verdade (são leitura).
 - Registrada em `../../.github/workflows/tests.yml`, junto das demais
   suítes do projeto.
 - Verificação manual do comando `cellcity` (depende de `~/.bashrc`, fora
