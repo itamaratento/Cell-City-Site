@@ -716,8 +716,9 @@ export const dashboardAlarmeOsMixin = {
         const left = window.innerWidth - width - 20;
         const top = 100;
 
+        const prefix = location.pathname === '/dev' || location.pathname.startsWith('/dev/') ? '/dev' : '';
         const janela = window.open(
-          '/CRM/pages/dashboard/index.html?mini=1',
+          prefix + '/CRM/pages/dashboard/index.html?mini=1',
           'alarme-flutuante',
           `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=no`
         );

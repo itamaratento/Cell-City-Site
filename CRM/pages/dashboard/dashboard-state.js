@@ -14,6 +14,7 @@ export const RBAC_CARD_PARA_MODULO_ID = {
   'financeiro': 'financeiro',
   'crm-comercial': 'crm',
   'relatorios': 'relatorios',
+  'acaodasemana': 'agenda',
 };
 
 // Substitui a antiga variável solta `let _uid` — um objeto mutável
