@@ -23,9 +23,17 @@ function setup() {
     const mes = String(now.getMonth() + 1).padStart(2, '0');
     const ano = now.getFullYear();
     const dia = String(now.getDate()).padStart(2, '0');
+    // Último dia do mês corrente. pag_pend precisa continuar no mês (para
+    // renderRelatorio somar despesa=2450) E nunca ser reclassificado como
+    // 'vencido' pelo código (financeiro.js:90 marca vencido quando
+    // vencimento < hoje(), e hoje() usa toISOString() = UTC). Datar no dia
+    // 10 fixo quebrava o teste sempre que rodava do dia 10 em diante — ou,
+    // como hoje, num fuso atrás de UTC (Brasil UTC-3), em que o UTC já é o
+    // dia 11 à noite. O último dia do mês é sempre >= hoje, nunca < hoje().
+    const ultimoDia = String(new Date(ano, now.getMonth() + 1, 0).getDate()).padStart(2, '0');
     // Despesas do mês
     fsMock.__seed('financeiro_pagar', 'pag_paga',   { descricao: 'Aluguel', categoria: 'Aluguel', vencimento: `${ano}-${mes}-05`, valor: 1500, status: 'pago' });
-    fsMock.__seed('financeiro_pagar', 'pag_pend',   { descricao: 'Internet', categoria: 'Serviços', vencimento: `${ano}-${mes}-10`, valor: 200, status: 'pendente' });
+    fsMock.__seed('financeiro_pagar', 'pag_pend',   { descricao: 'Internet', categoria: 'Serviços', vencimento: `${ano}-${mes}-${ultimoDia}`, valor: 200, status: 'pendente' });
     fsMock.__seed('financeiro_pagar', 'pag_vencida', { descricao: 'Fornecedor', categoria: 'Fornecedor', vencimento: `${ano}-${mes}-01`, valor: 500, status: 'vencido' });
     // Despesas de outro mês (não devem contar)
     const mes2 = String(now.getMonth()).padStart(2, '0');
