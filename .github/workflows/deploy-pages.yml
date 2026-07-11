@@ -61,6 +61,54 @@ jobs:
             site-develop/ _site/dev/
           touch _site/.nojekyll
 
+      - name: Validar artefato antes de publicar
+        # Incidente 2026-07-11: excludes do rsync sem âncora de raiz apagaram
+        # CRM/pages/ e CRM/scripts/ inteiros do artefato — o deploy "funcionou"
+        # (workflow verde) mas publicou um site vazio. Este step falha o build
+        # ANTES do upload/publish se qualquer caminho crítico da aplicação não
+        # sobreviver ao rsync, em main OU em develop. Mesma lista de caminhos
+        # de scripts/release/validar-deploy.sh (mantida em sincronia manual).
+        run: |
+          set -euo pipefail
+          CAMINHOS=(
+            "CRM/index.html"
+            "CRM/pages/dashboard/index.html"
+            "CRM/pages/dashboard/dashboard.js"
+            "CRM/pages/os/index.html"
+            "CRM/pages/os/os.js"
+            "CRM/pages/portal-cliente/index.html"
+            "CRM/pages/portal-cliente/portal.js"
+            "CRM/scripts/firebase.js"
+            "CRM/scripts/kernel.js"
+            "CRM/garantia.html"
+          )
+          falhou=0
+          for base in _site _site/dev; do
+            for caminho in "${CAMINHOS[@]}"; do
+              if [ ! -f "$base/$caminho" ]; then
+                echo "❌ AUSENTE: $base/$caminho"
+                falhou=1
+              fi
+            done
+            total_pages=$(find "$base/CRM/pages" -type f 2>/dev/null | wc -l)
+            total_scripts=$(find "$base/CRM/scripts" -type f 2>/dev/null | wc -l)
+            echo "ℹ️  $base: CRM/pages tem $total_pages arquivo(s), CRM/scripts tem $total_scripts arquivo(s)."
+            if [ "$total_pages" -lt 50 ]; then
+              echo "❌ $base/CRM/pages/ tem poucos arquivos ($total_pages) — algum exclude apagando o diretório?"
+              falhou=1
+            fi
+            if [ "$total_scripts" -lt 3 ]; then
+              echo "❌ $base/CRM/scripts/ tem poucos arquivos ($total_scripts) — algum exclude apagando o diretório?"
+              falhou=1
+            fi
+          done
+          if [ "$falhou" -eq 1 ]; then
+            echo ""
+            echo "❌ Artefato quebrado — abortando ANTES de publicar no GitHub Pages."
+            exit 1
+          fi
+          echo "✅ Artefato íntegro em _site/ e _site/dev/."
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
@@ -76,3 +124,45 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  smoke-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar site publicado (HTTP 200 nas páginas-chave)
+        # Fase 5 da Sprint "Blindagem do Processo de Release" (2026-07-11) —
+        # confirma que o deploy que acabou de "ter sucesso" no Actions
+        # realmente publicou um site funcional, não só que o upload correu
+        # sem erro (era exatamente esse o caso do incidente: workflow verde,
+        # site com "File not found").
+        run: |
+          set -uo pipefail
+          URLS=(
+            "https://cellcityinformatica.com.br/"
+            "https://cellcityinformatica.com.br/CRM/pages/dashboard/index.html"
+            "https://cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html"
+            "https://cellcityinformatica.com.br/dev/CRM/pages/dashboard/index.html"
+          )
+          falhou=0
+          # A publicação do Pages pode levar alguns segundos pra propagar após
+          # o job "deploy" reportar sucesso — algumas tentativas com espera.
+          for url in "${URLS[@]}"; do
+            ok=0
+            for tentativa in 1 2 3 4 5; do
+              codigo=$(curl -s -o /dev/null -L -w "%{http_code}" "$url" || echo "000")
+              if [ "$codigo" = "200" ]; then ok=1; break; fi
+              sleep 10
+            done
+            if [ "$ok" = "1" ]; then
+              echo "✅ $url -> 200"
+            else
+              echo "❌ $url -> $codigo (após 5 tentativas)"
+              falhou=1
+            fi
+          done
+          if [ "$falhou" -eq 1 ]; then
+            echo ""
+            echo "❌ Smoke test pós-deploy falhou — release marcada como FALHA."
+            exit 1
+          fi
+          echo "✅ Smoke test pós-deploy: todas as páginas-chave respondem 200."

@@ -221,3 +221,53 @@ test('portal.js: seção de Garantias Expiradas não é renderizada ao cliente',
     assert.match(src, /if \(pendentes\.length === 0 && ativas\.length === 0\) {/,
         'estado vazio não pode mais exigir expiradas.length === 0 (cliente só com expiradas deve ver a tela vazia)');
 });
+
+// ── Blindagem do processo de release (Sprint 2026-07-11, incidente P0) ──
+// Excludes do rsync em deploy-pages.yml sem "/" inicial casam em QUALQUER
+// profundidade — apagaram CRM/pages/ e CRM/scripts/ inteiros do artefato
+// publicado (site inteiro "File not found"). Checagem estrutural: todo
+// --exclude de um segmento só (nome de diretório, sem "/" no meio) precisa
+// começar com "/" (âncora de raiz do rsync). CRM/pages/kernel-test/ é
+// multi-segmento — já vem implicitamente ancorado pelo próprio rsync, fica
+// de fora desta regra de propósito.
+test('deploy-pages.yml: excludes de diretório de topo são ancorados à raiz', () => {
+    const src = read('.github/workflows/deploy-pages.yml');
+    const excludes = [...src.matchAll(/--exclude='([^']+)'/g)].map(m => m[1]);
+    assert.ok(excludes.length > 5, 'esperava vários --exclude no workflow — parseamento pode ter quebrado');
+    const soltos = excludes.filter(e => {
+        const semBarraFinal = e.replace(/\/$/, '');
+        // multi-segmento (tem "/" no meio) já é ancorado pelo próprio rsync;
+        // padrões glob de arquivo (com "*") não são diretórios, ficam de fora.
+        if (semBarraFinal.includes('/') || e.includes('*')) return false;
+        return !e.startsWith('/');
+    });
+    assert.deepEqual(soltos, [],
+        `excludes de diretório sem "/" inicial (casam em qualquer profundidade, risco de apagar CRM/pages ou CRM/scripts de novo): ${soltos.join(', ')}`);
+});
+
+// Teste "de verdade": roda o MESMO rsync do workflow contra a árvore de
+// trabalho atual e confirma que os caminhos mínimos da aplicação sobrevivem.
+// execSync porque este projeto não tem build step — o artefato publicado É
+// literalmente o resultado deste rsync, então testar o rsync real (não uma
+// reimplementação em JS) é o que realmente prova que o deploy não quebra.
+test('deploy-pages.yml: rsync simulado preserva CRM/pages e CRM/scripts no artefato', () => {
+    const tmpDir = execSync('mktemp -d', { encoding: 'utf8' }).trim();
+    try {
+        const yml = read('.github/workflows/deploy-pages.yml');
+        const rsyncCmd = yml.match(/rsync -a[^\n]*(?:\n\s+--exclude[^\n]*)*\n\s+site-main\/ _site\//)?.[0];
+        assert.ok(rsyncCmd, 'não encontrei o comando rsync do site-main em deploy-pages.yml — o parseamento pode ter quebrado com uma edição futura');
+        const comando = rsyncCmd.replace('site-main/ _site/', `./ ${tmpDir}/_site/`);
+        execSync(comando, { cwd: ROOT, stdio: 'pipe' });
+
+        const CAMINHOS_CRITICOS = [
+            'CRM/index.html', 'CRM/pages/dashboard/index.html', 'CRM/pages/dashboard/dashboard.js',
+            'CRM/pages/os/index.html', 'CRM/pages/os/os.js',
+            'CRM/pages/portal-cliente/index.html', 'CRM/pages/portal-cliente/portal.js',
+            'CRM/scripts/firebase.js', 'CRM/scripts/kernel.js', 'CRM/garantia.html',
+        ];
+        const ausentes = CAMINHOS_CRITICOS.filter(c => !existsSync(join(tmpDir, '_site', c)));
+        assert.deepEqual(ausentes, [], `caminhos críticos ausentes no artefato simulado: ${ausentes.join(', ')}`);
+    } finally {
+        execSync(`rm -rf ${tmpDir}`);
+    }
+});
