@@ -264,8 +264,6 @@ async function converterEmOS() {
         preOSId: preOSEmFoco.id
     };
 
-    console.log('🚀 [Conversão] Pré-OS', preOSEmFoco.id, '→ abrindo formulário de OS pré-preenchido:', dadosOS);
-
     // Armazenar em sessionStorage para a página de OS ler ao carregar.
     // A Pré-OS só é marcada como CONVERTIDA quando a OS for de fato salva (na página de OS).
     sessionStorage.setItem('cc_dados_preos', JSON.stringify(dadosOS));
