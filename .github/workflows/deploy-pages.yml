@@ -46,17 +46,17 @@ jobs:
         # e nunca mitigado. Mesma técnica: exclusão só do artefato.
         run: |
           mkdir -p _site
-          rsync -a --exclude='.git' --exclude='.github' \
-            --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
-            --exclude='_BACKUPS/' --exclude='_runtime_audit/' --exclude='sql/' --exclude='pages/' --exclude='scripts/' --exclude='sistema/' \
-            --exclude='BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
+          rsync -a --exclude='/.git' --exclude='/.github' \
+            --exclude='/plans/' --exclude='/CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            --exclude='/_BACKUPS/' --exclude='/_runtime_audit/' --exclude='/sql/' --exclude='/pages/' --exclude='/scripts/' --exclude='/sistema/' \
+            --exclude='/BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
             --exclude='firestore.rules.backup*' --exclude='firebase.json.bak*' \
             site-main/ _site/
           mkdir -p _site/dev
-          rsync -a --exclude='.git' --exclude='.github' \
-            --exclude='plans/' --exclude='CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
-            --exclude='_BACKUPS/' --exclude='_runtime_audit/' --exclude='sql/' --exclude='pages/' --exclude='scripts/' --exclude='sistema/' \
-            --exclude='BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
+          rsync -a --exclude='/.git' --exclude='/.github' \
+            --exclude='/plans/' --exclude='/CLAUDE.md' --exclude='CRM/pages/kernel-test/' \
+            --exclude='/_BACKUPS/' --exclude='/_runtime_audit/' --exclude='/sql/' --exclude='/pages/' --exclude='/scripts/' --exclude='/sistema/' \
+            --exclude='/BACKUP_POSVENDA_SAAS_FIX_2026-06-26/' \
             --exclude='firestore.rules.backup*' --exclude='firebase.json.bak*' \
             site-develop/ _site/dev/
           touch _site/.nojekyll
