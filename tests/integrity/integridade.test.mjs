@@ -124,3 +124,29 @@ test('Central de Módulos: toda URL do catálogo aponta para página existente',
     const quebradas = urls.filter(u => !existsSync(join(ROOT, 'CRM', u.split('?')[0])));
     assert.deepEqual(quebradas, [], `URLs quebradas no catálogo:\n${quebradas.join('\n')}`);
 });
+
+// ── 6. XSS: campos de entrada pública em garantia.html precisam de escHTML() ──
+// Achado da Revisão Técnica de 2026-07-11: clientName/phone/cpf/model/defect
+// vêm do formulário PÚBLICO de pré-OS (mesma origem do XSS armazenado já
+// corrigido em os.js na Certificação v1.0) e são renderizados via innerHTML
+// em renderGarantiaHTML() — página sem login. `technician` já usava escHTML()
+// nesta mesma função; os outros 5 pontos não. Escopo só na função de render
+// (copiarGarantia() usa os mesmos campos como texto puro de clipboard, não
+// innerHTML — não é um sink de XSS).
+test('garantia.html: campos públicos (clientName/phone/cpf/model/defect) escapados em renderGarantiaHTML', () => {
+    const full = read('CRM/garantia.html');
+    const inicio = full.indexOf('function renderGarantiaHTML');
+    const fim = full.indexOf('window.copiarGarantia');
+    assert.ok(inicio > -1 && fim > inicio, 'renderGarantiaHTML não encontrada em garantia.html');
+    const src = full.slice(inicio, fim);
+    const camposPublicos = ['clientName', 'phone', 'cpf', 'model', 'defect'];
+    const naoEscapados = [];
+    for (const campo of camposPublicos) {
+        const re = new RegExp(`\\$\\{[^}]*\\bos\\.${campo}\\b[^}]*\\}`, 'g');
+        for (const m of src.matchAll(re)) {
+            if (!m[0].includes(`escHTML(os.${campo}`)) naoEscapados.push(`os.${campo}: ${m[0].trim()}`);
+        }
+    }
+    assert.deepEqual(naoEscapados, [],
+        `Campos de entrada pública sem escHTML() em garantia.html (XSS armazenado explorável por qualquer visitante):\n${naoEscapados.join('\n')}`);
+});

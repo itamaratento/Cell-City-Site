@@ -578,16 +578,16 @@
 
             const clienteBlock = `
                 <div class="cliente-info" style="text-align: left; border: none; padding: 16px; background: #ffffff; margin-bottom: 16px; border: 1px solid #d1d5db;">
-                    <div style="font-size: 14px; color: #4b5563;"><strong>Cliente:</strong> ${os.clientName || 'Não informado'}</div>
-                    ${os.phone ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>Telefone:</strong> ${os.phone}</div>` : ''}
-                    ${os.cpf ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>CPF:</strong> ${os.cpf}</div>` : ''}
+                    <div style="font-size: 14px; color: #4b5563;"><strong>Cliente:</strong> ${escHTML(os.clientName) || 'Não informado'}</div>
+                    ${os.phone ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>Telefone:</strong> ${escHTML(os.phone)}</div>` : ''}
+                    ${os.cpf ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>CPF:</strong> ${escHTML(os.cpf)}</div>` : ''}
                 </div>`;
 
             const dadosServicoBlock = `
                 <div class="garantia-secao-titulo">Dados do Serviço</div>
                 <div class="garantia-info" style="border-left: 4px solid #1f2937; background: #f9fafb; padding: 16px;">
-                    <div class="info-row"><span class="info-label">Equipamento:</span><span class="info-value">${os.model || 'Não especificado'}</span></div>
-                    <div class="info-row"><span class="info-label">Serviço:</span><span class="info-value">${os.defect || 'Não especificado'}</span></div>
+                    <div class="info-row"><span class="info-label">Equipamento:</span><span class="info-value">${escHTML(os.model) || 'Não especificado'}</span></div>
+                    <div class="info-row"><span class="info-label">Serviço:</span><span class="info-value">${escHTML(os.defect) || 'Não especificado'}</span></div>
                     ${os.technician ? `<div class="info-row"><span class="info-label">Técnico responsável:</span><span class="info-value">${escHTML(os.technician)}</span></div>` : ''}
                     <div class="info-row"><span class="info-label">Status:</span><span class="info-value" ${statusStyle}>${statusTexto}</span></div>
                 </div>`;
