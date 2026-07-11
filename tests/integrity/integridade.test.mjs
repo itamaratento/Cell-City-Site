@@ -184,3 +184,25 @@ test('portal.js: link da Nota Fiscal (os.nfLink) exibido em renderOSDetalhe e re
     assert.ok(ocorrencias.length >= 2, `esperava pelo menos 2 usos de o.nfLink (detalhe da OS + lista de garantias), achou ${ocorrencias.length}`);
     assert.match(src, /Visualizar Nota Fiscal/);
 });
+
+// Achado da homologação de 2026-07-11: OS com orçamento recusado (garantiaId
+// preenchido na criação, sem entrega) aparecia em "Minhas Garantias" —
+// _emGarantia() e o filtro de "pendentes" não checavam o status. Ver
+// _STATUS_SEM_GARANTIA em portal.js. Estas checagens são estruturais
+// (sem harness jsdom para portal.js); a lógica foi verificada manualmente
+// por rastreamento de código linha a linha nos dois pontos afetados.
+test('portal.js: OS com orçamento recusado nunca conta como garantia (nem pendente nem ativa)', () => {
+    const src = read('CRM/pages/portal-cliente/portal.js');
+    assert.match(src, /_STATUS_SEM_GARANTIA:\s*\[['"]orcamento_recusado['"],\s*['"]devolvido_orcamento['"]\]/,
+        '_STATUS_SEM_GARANTIA precisa cobrir os 2 status de recusa (oficial + legado)');
+    assert.match(src, /_emGarantia\(os\)\s*{\s*if \(this\._STATUS_SEM_GARANTIA\.includes\(os\.status\)\) return false;/,
+        '_emGarantia precisa negar logo no início pra status recusado, antes do fallback de garantiaId');
+    assert.match(src, /const pendentes = this\.currentOS\.filter\(o =>\s*\n\s*o\.garantiaId && !this\._getDeliveryDate\(o\) && !this\._STATUS_SEM_GARANTIA\.includes\(o\.status\)/,
+        'filtro de "pendentes" (Garantias Vinculadas) também precisa excluir status recusado — mesma causa raiz do bug em _emGarantia');
+});
+
+test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () => {
+    const src = read('CRM/pages/portal-cliente/portal.js');
+    assert.match(src, /if \(o\.nfLink && this\._emGarantia\(o\)\)/,
+        'bloco de Nota Fiscal dentro de acoesDoc() precisa exigir _emGarantia(o), não só nfLink');
+});

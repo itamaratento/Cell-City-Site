@@ -1128,7 +1128,16 @@ window.Portal = {
   },
 
   // ===== GARANTIAS =====
+  // garantiaId é escolhido na CRIAÇÃO da OS (os.js::startOS, campo
+  // f-garantia-modelo) — toda OS aberta com um modelo de garantia selecionado
+  // já nasce com garantiaId preenchido, mesmo que o orçamento seja recusado
+  // depois. Sem checar o status aqui, o fallback "não entregue mas tem
+  // garantiaId" tratava recusa/cancelamento como "garantia pendente de
+  // entrega" — falso positivo achado na homologação de 2026-07-11 (ex.:
+  // Samsung J2 Core com orçamento recusado aparecendo em Minhas Garantias).
+  _STATUS_SEM_GARANTIA: ['orcamento_recusado', 'devolvido_orcamento'],
   _emGarantia(os) {
+    if (this._STATUS_SEM_GARANTIA.includes(os.status)) return false;
     // Se tem garantiaId, considera em garantia mesmo sem entrega (prazo conta da criação).
     // Se foi entregue, o prazo conta da data de entrega (comportamento original).
     const dd = this._getDeliveryDate(os);
@@ -1221,9 +1230,12 @@ window.Portal = {
         return g ? g.nome : null;
       };
 
-      // Classifica OS em 3 grupos mutuamente exclusivos
+      // Classifica OS em 3 grupos mutuamente exclusivos. garantiaId sozinho
+      // não basta — é escolhido na criação da OS, então uma OS recusada
+      // também teria garantiaId e nenhuma data de entrega, caindo aqui por
+      // engano (mesma causa raiz do fix em _emGarantia, ver comentário lá).
       const pendentes = this.currentOS.filter(o =>
-        o.garantiaId && !this._getDeliveryDate(o)
+        o.garantiaId && !this._getDeliveryDate(o) && !this._STATUS_SEM_GARANTIA.includes(o.status)
       );
       const ativas = this.currentOS.filter(o => this._emGarantia(o));
       const expiradas = this.currentOS.filter(o =>
@@ -1299,8 +1311,11 @@ window.Portal = {
              + `</div>`;
         }
         // Link colado manualmente pela equipe (Google Drive) — restaurado
-        // 2026-07-11, existia antes do rollback do SaaS.
-        if (o.nfLink) {
+        // 2026-07-11, existia antes do rollback do SaaS. Em Minhas Garantias
+        // só aparece com garantia REALMENTE válida (não em pendente nem
+        // expirada) — homologação de 2026-07-11 pediu essa regra explícita;
+        // na tela de detalhe da OS (renderOSDetalhe) continua sempre visível.
+        if (o.nfLink && this._emGarantia(o)) {
           h += `<div style="${LBL}margin:14px 0 6px;">📄 Nota Fiscal</div>`;
           h += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`
              + `<a href="${this._esc(o.nfLink)}" target="_blank" rel="noopener" style="${BTN_NF}">👁️ Visualizar Nota Fiscal</a>`
