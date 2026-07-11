@@ -1,6 +1,12 @@
 # Logs
 logs
 *.log
+
+# Cell City Control Center — a pasta logs/ faz parte da estrutura oficial
+# (scripts/control-center/README.md), mas o conteúdo em runtime (*.log)
+# continua ignorado pelas regras acima. Só o .gitkeep é versionado.
+!scripts/control-center/logs/
+!scripts/control-center/logs/.gitkeep
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

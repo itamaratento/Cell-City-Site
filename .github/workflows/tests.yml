@@ -80,3 +80,6 @@ jobs:
 
       - name: Testes de integridade (imports/refs/coleções×rules — Observabilidade v1.1)
         run: node --test tests/integrity/integridade.test.mjs
+
+      - name: Testes do Control Center (estrutura, menus, dispatch — Fase 1)
+        run: node --test tests/control-center/estrutura.test.mjs
