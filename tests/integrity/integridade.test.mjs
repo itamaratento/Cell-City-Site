@@ -1,0 +1,126 @@
+// Suíte de Integridade — Épico Observabilidade v1.1 (Fases 4 e 5).
+//
+// Automatiza as auditorias que até hoje eram manuais (e que já pegaram
+// problemas reais em revisão: 4 coleções sem rule na release v2026.07.10,
+// garantia.html deletado mas linkado, import dinâmico com path errado):
+//
+//   1. Todo <script src> / <link href> / <a href> relativo ou absoluto
+//      (/CRM/...) nas páginas aponta para arquivo que existe no repo.
+//   2. Todo import ESM relativo em CRM/**/*.js resolve para arquivo real.
+//   3. Toda coleção Firestore referenciada no código (literal ou via
+//      constante) tem `match /colecao/` em CRM/firestore.rules.
+//   4. As duas cópias de rules (raiz e CRM/) são idênticas — drift entre
+//      elas já causou análise errada de auditoria (COLECOES_FIRESTORE.md,
+//      nota de 2026-07-07).
+//   5. URLs do catálogo da Central de Módulos apontam para páginas reais.
+//
+// Node puro, sem Firestore, sem emulador — roda em qualquer CI.
+// Exceções conhecidas/documentadas: known-issues.json ao lado deste arquivo.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, existsSync } from 'node:fs';
+import { execSync } from 'node:child_process';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const ROOT = resolve(__dirname, '../..');
+const known = JSON.parse(readFileSync(join(__dirname, 'known-issues.json'), 'utf8'));
+
+// git ls-files ignora node_modules/artefatos; arquivos deletados no working
+// tree (ex.: outra sessão em andamento) são pulados na leitura.
+function lsFiles(pattern) {
+    return execSync(`git ls-files '${pattern}'`, { cwd: ROOT, encoding: 'utf8' })
+        .trim().split('\n').filter(Boolean)
+        .filter(f => !/BACKUP|_BACKUPS|\.bak/i.test(f))
+        .filter(f => existsSync(join(ROOT, f)));
+}
+function read(f) { return readFileSync(join(ROOT, f), 'utf8'); }
+
+// Remove comentários antes de escanear código — senão exemplos de uso em
+// JSDoc/comentário (ex.: kernel.js mostra `import ... from '../../scripts/
+// kernel.js'`; base.repository.js cita `collection(db,'x')`) viram falsos
+// positivos. Preserva `://` de URLs ao cortar comentários de linha.
+function stripJsComments(src) {
+    return src
+        .replace(/\/\*[\s\S]*?\*\//g, '')      // blocos /* ... */
+        .replace(/(^|[^:])\/\/.*$/gm, '$1');    // linha // ... (não toca em ://)
+}
+function stripHtmlComments(src) {
+    return src.replace(/<!--[\s\S]*?-->/g, '');
+}
+
+// ── 1. Referências de HTML (src/href) ────────────────────────────────
+test('HTML: todo src/href local aponta para arquivo existente', () => {
+    const quebrados = [];
+    for (const html of lsFiles('CRM/**/*.html')) {
+        const dir = dirname(html);
+        const src = stripHtmlComments(read(html));
+        const refs = [...src.matchAll(/(?:src|href)="([^"#?]+?\.(?:js|css|html|png|svg|ico|webmanifest|json))(?:[?#][^"]*)?"/g)]
+            .map(m => m[1]);
+        for (const ref of refs) {
+            if (/^(https?:)?\/\//.test(ref) || ref.startsWith('mailto:')) continue;
+            const alvo = ref.startsWith('/') ? ref.slice(1) : join(dir, ref);
+            if (known.htmlRefs.includes(`${html} -> ${ref}`)) continue;
+            if (!existsSync(join(ROOT, alvo))) quebrados.push(`${html} -> ${ref}`);
+        }
+    }
+    assert.deepEqual(quebrados, [], `Referências quebradas:\n${quebrados.join('\n')}`);
+});
+
+// ── 2. Imports ESM relativos ─────────────────────────────────────────
+test('JS: todo import ESM relativo resolve para arquivo existente', () => {
+    const quebrados = [];
+    for (const js of lsFiles('CRM/**/*.js')) {
+        const dir = dirname(js);
+        const src = stripJsComments(read(js));
+        const refs = [...src.matchAll(/(?:^|\n)\s*(?:import[^'"]*?from\s*|import\s*\(\s*|export[^'"]*?from\s*)['"]([^'"]+)['"]/g)]
+            .map(m => m[1]);
+        for (const ref of refs) {
+            if (!ref.startsWith('.')) continue; // CDN/bare specifiers fora do escopo
+            const alvo = join(dir, ref.split('?')[0]);
+            if (!existsSync(join(ROOT, alvo))) quebrados.push(`${js} -> ${ref}`);
+        }
+    }
+    assert.deepEqual(quebrados, [], `Imports quebrados:\n${quebrados.join('\n')}`);
+});
+
+// ── 3. Coleções do código × Firestore Rules ──────────────────────────
+test('Firestore: toda coleção usada no código tem rule correspondente', () => {
+    const rules = read('CRM/firestore.rules');
+    const comRule = new Set([...rules.matchAll(/match \/([a-zA-Z_0-9]+)\//g)].map(m => m[1]));
+    const semRule = new Set();
+    for (const js of lsFiles('CRM/**/*.js')) {
+        const src = stripJsComments(read(js));
+        // Literais diretos: collection(db, 'x') / doc(db, 'x', ...)
+        const literais = [...src.matchAll(/(?:collection|doc)\(\s*(?:db|_db)\s*,\s*['"]([a-zA-Z_0-9]+)['"]/g)].map(m => m[1]);
+        // Constantes: collection(db, COL_X) com COL_X = 'x' no mesmo arquivo
+        const porConst = [...src.matchAll(/(?:collection|doc)\(\s*(?:db|_db)\s*,\s*([A-Z][A-Z_0-9]*)\s*[,)]/g)].map(m => m[1]);
+        for (const c of porConst) {
+            const def = src.match(new RegExp(`${c}\\s*=\\s*['"]([a-zA-Z_0-9]+)['"]`));
+            if (def) literais.push(def[1]);
+        }
+        // Camada Repository: createRepository('x')
+        literais.push(...[...src.matchAll(/createRepository\(\s*['"]([a-zA-Z_0-9]+)['"]/g)].map(m => m[1]));
+        for (const col of literais) {
+            if (known.colecoesSemRule.includes(col)) continue;
+            if (!comRule.has(col)) semRule.add(`${col} (em ${js})`);
+        }
+    }
+    assert.deepEqual([...semRule], [],
+        `Coleções sem rule (módulo quebraria por deny-by-default):\n${[...semRule].join('\n')}`);
+});
+
+// ── 4. Cópias de rules idênticas ─────────────────────────────────────
+test('Firestore: firestore.rules (raiz) é idêntico a CRM/firestore.rules', () => {
+    assert.equal(read('firestore.rules'), read('CRM/firestore.rules'),
+        'As duas cópias divergiram — sincronizar antes de promover (drift já causou auditoria errada em 2026-07-07)');
+});
+
+// ── 5. Catálogo da Central de Módulos ────────────────────────────────
+test('Central de Módulos: toda URL do catálogo aponta para página existente', () => {
+    const src = read('CRM/shared/central-modulos.js');
+    const urls = [...src.matchAll(/url:\s*'\/CRM\/([^']+)'/g)].map(m => m[1]);
+    const quebradas = urls.filter(u => !existsSync(join(ROOT, 'CRM', u.split('?')[0])));
+    assert.deepEqual(quebradas, [], `URLs quebradas no catálogo:\n${quebradas.join('\n')}`);
+});

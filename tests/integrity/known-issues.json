@@ -1,0 +1,10 @@
+{
+  "comentario": "Exceções conhecidas da suíte de integridade. Cada entrada precisa de justificativa e deve ser removida quando o item for resolvido.",
+  "colecoesSemRule": [
+    "auditoria_saas",
+    "notificacoes_saas"
+  ],
+  "colecoesSemRule_motivo": "saas.repository.js — órfão da iniciativa multiempresa obsoleta (CERTIFICACAO_V1.md risco #6); nenhum módulo o importa. Remoção do arquivo em andamento em outra sessão (2026-07-10); retirar estas exceções quando o arquivo sair do repo.",
+  "htmlRefs": [],
+  "htmlRefs_motivo": "vazio — nenhum link quebrado conhecido."
+}
