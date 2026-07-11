@@ -77,3 +77,6 @@ jobs:
 
       - name: Testes de performance (padrão de gating polling/aba oculta)
         run: node --test tests/performance/polling-gating.test.mjs
+
+      - name: Testes de integridade (imports/refs/coleções×rules — Observabilidade v1.1)
+        run: node --test tests/integrity/integridade.test.mjs
