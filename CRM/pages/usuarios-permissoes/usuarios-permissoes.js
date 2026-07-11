@@ -746,7 +746,12 @@ function renderPermissoesSelect() {
 function carregarMatrizPerfil(perfilId) {
   perfilPermissoesSelecionadoId = perfilId;
   const perfil = perfis.find(p => p.id === perfilId);
-  matrizEdicao = perfil ? JSON.parse(JSON.stringify(perfil.permissoes || matrizVazia())) : null;
+  // Perfis salvos antes da ampliação de MODULOS (2026-07-11, 9→25) só têm
+  // entrada para os módulos antigos — sem o merge abaixo, salvarMatrizPerfil()
+  // e o listener de checkbox quebram ao acessar matrizEdicao[moduloNovo]
+  // (undefined). Default 'false' fecha o fail-open assim que o perfil for
+  // salvo, em vez de perpetuar o acesso liberado com um valor explícito 'true'.
+  matrizEdicao = perfil ? { ...matrizVazia(false), ...JSON.parse(JSON.stringify(perfil.permissoes || {})) } : null;
   renderTabelaPermissoes();
 }
 
