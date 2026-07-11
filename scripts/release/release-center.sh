@@ -519,6 +519,9 @@ opcao_status() {
 }
 
 _recomendar_proxima_acao() {
+  local branch_atual
+  branch_atual=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  if [ "$branch_atual" != "develop" ]; then echo "trocar para a branch 'develop' (git checkout develop) antes de promover"; return; fi
   if [ -n "$(git status --porcelain)" ]; then echo "commitar/subir as alterações pendentes (subir)"; return; fi
   if [ ! -f "$MARCADOR" ]; then echo "rodar 'release' (opção 2 ou 3) antes de promover"; return; fi
   local commit_marcado commit_atual status_marcado
@@ -589,33 +592,55 @@ opcao_infraestrutura() {
 }
 
 # ============================================================
-# Marcador de homologação (.git/, local, nunca versionado)
+# Marcador de homologação (.git/, local, nunca versionado — .git/ nunca é
+# rastreado pelo git, então é mais seguro que um dotfile na raiz do repo,
+# que dependeria de .gitignore pra não vazar).
 # ============================================================
+_tipo_release() {
+  case "$1" in
+    1) echo "Rápida" ;;
+    2) echo "Completa" ;;
+    3) echo "Certificação" ;;
+    *) echo "desconhecida" ;;
+  esac
+}
+
 _gravar_homologacao() {
   local opcao="$1" status="$2"
-  local commit ts
+  local commit ts branch versao tipo
   commit=$(git rev-parse HEAD)
   ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  versao=$(git describe --tags --abbrev=0 2>/dev/null || echo "nenhuma")
+  tipo=$(_tipo_release "$opcao")
   cat > "$MARCADOR" <<EOF
-{"commit": "$commit", "opcao": $opcao, "status": "$status", "timestamp": "$ts"}
+{"commit": "$commit", "opcao": $opcao, "tipo": "$tipo", "status": "$status", "resultado": "$status", "timestamp": "$ts", "branch": "$branch", "versao": "$versao"}
 EOF
   echo ""
-  echo "📝 Homologação registrada (commit $commit, opção $opcao, status $status)."
+  echo "📝 Homologação registrada (commit $commit, tipo $tipo, branch $branch, versão $versao, status $status)."
 }
 
 _invalidar_homologacao() {
   rm -f "$MARCADOR"
 }
 
-# Usado pelo subir-ok — não interativo, só código de saída.
-# 0 = homologação válida para o commit atual; 1 = inválida/ausente.
+# Usado pelo subir-ok — não interativo, só código de saída. Auto-suficiente
+# de propósito (Sprint "Bloqueio Obrigatório de Homologação"): não depende
+# dos checks que o subir-ok já faz antes de chamar isto — confere de novo
+# aqui branch/working-tree/commit/status, pra a garantia valer mesmo se
+# alguém rodar `release-center.sh --check-homologacao` fora do subir-ok.
+# 0 = homologação válida para o estado atual; 1 = inválida/ausente/stale.
 verificar_homologacao_valida() {
   if [ ! -f "$MARCADOR" ]; then return 1; fi
-  local commit_marcado status_marcado commit_atual
+  local commit_marcado status_marcado commit_atual branch_atual
   commit_marcado=$(python3 -c "import json;print(json.load(open('$MARCADOR'))['commit'])" 2>/dev/null) || return 1
   status_marcado=$(python3 -c "import json;print(json.load(open('$MARCADOR'))['status'])" 2>/dev/null) || return 1
   commit_atual=$(git rev-parse HEAD 2>/dev/null)
-  [ "$commit_marcado" = "$commit_atual" ] && [ "$status_marcado" = "GO" ]
+  branch_atual=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+  [ "$branch_atual" = "develop" ] || return 1
+  [ -z "$(git status --porcelain)" ] || return 1
+  [ "$commit_marcado" = "$commit_atual" ] || return 1
+  [ "$status_marcado" = "GO" ]
 }
 
 # ============================================================
