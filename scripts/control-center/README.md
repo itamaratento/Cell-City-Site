@@ -39,10 +39,8 @@ scripts/control-center/
                    carregado do Manifesto (config/modules.conf).
   modules/         um módulo por pasta. Código 100% isolado — nenhum
                    módulo importa código de outro módulo.
-  lib/             funções compartilhadas entre core/ e modules/
-                   (common.sh: status, pausa, placeholder e log;
-                   ui-box.sh: moldura padrão de todo menu/submenu;
-                   plugin-loader.sh: carregamento de plugins/).
+  lib/             funções compartilhadas entre core/ e modules/ — ver
+                   "Componentes de UX" logo abaixo pra cada arquivo.
   state/           Estado do Sistema: um .json por rotina (release,
                    backup, homologação, restauração, health check,
                    sincronização) registrando a última execução de cada
@@ -60,21 +58,41 @@ scripts/control-center/
   README.md        este arquivo.
 ```
 
+## Componentes de UX (Fase 1.2)
+
+A UX é uma camada separada da lógica de negócio (`core/menu.sh` e cada
+`modules/<slug>/menu.sh` só chamam estes componentes, nunca desenham nada
+na mão). Cada arquivo de `lib/` tem uma responsabilidade só:
+
+| Arquivo             | Componente                        | Responsabilidade |
+|---------------------|------------------------------------|-------------------|
+| `ui-colors.sh`      | Cores                              | Detecta suporte a ANSI uma vez por processo (`tput colors`, `NO_COLOR`, `[ -t 1 ]`) e expõe `_CC_C_VERDE`/`_CC_C_AMARELO`/`_CC_C_VERMELHO`/`_CC_C_CIANO`/`_CC_C_NEGRITO`/`_CC_C_RESET` — vazias quando não há suporte, nunca quebra. |
+| `ui-box.sh`         | Boxes                              | Moldura em caixa (bordas, item, texto, centralização), responsiva ao terminal, consciente de sequências ANSI ao calcular alinhamento (ver "Padrão de menus"). |
+| `ui-status.sh`      | Status                             | Lê o estado real do Git (`_cc_git_branch`, `_cc_projeto_status_label`) pro bloco Projeto/Branch/Status do menu principal. |
+| `ui-screen.sh`      | Cabeçalho / Rodapé / Menus         | Composição de tela: `_cc_screen_title` (título+subtítulo), `_cc_screen_status_block` (Projeto/Branch/Status), `_cc_screen_breadcrumb` (localização atual), `_cc_screen_footer` (mensagem de ajuda + borda final). |
+| `ui-widgets.sh`     | Mensagens / Barras / Confirmações  | `_cc_confirm` (pergunta sim/não) e `_cc_bar` (barra de progresso textual). Nenhum módulo desta Fase os usa ainda — existem prontos pra Fase 2, mesmo padrão do Plugin Loader na Fase 1.1. `_cc_ok`/`_cc_fail`/`_cc_warn` (em `common.sh`) seguem sendo o componente de "Mensagens" de status, sempre fora de uma caixa. |
+| `common.sh`         | Ponto único de entrada             | `source "$CC_ROOT/lib/common.sh"` já carrega todos os arquivos acima, transitivamente — nenhum módulo precisa dar `source` em cada um. Também tem `_cc_log`, `_cc_pause` e `_cc_placeholder`. |
+| `plugin-loader.sh`  | —                                   | Carregamento de `plugins/*/plugin.sh` (ver Roadmap, Versão 3.0). |
+
 ## Fluxo de inicialização
 
 Toda execução de `cellcity` segue sempre a mesma sequência, em
 `core/menu.sh`:
 
-1. Resolve `CC_ROOT` a partir do próprio caminho do script (nunca depende
-   do diretório de onde `cellcity` foi chamado).
-2. Carrega `lib/common.sh` (UI/log) e `lib/plugin-loader.sh`.
+1. Resolve `CC_ROOT` e `REPO_DIR` a partir do próprio caminho do script
+   (nunca depende do diretório de onde `cellcity` foi chamado).
+2. Carrega `lib/common.sh` (que já traz todos os componentes de UX — ver
+   "Componentes de UX") e `lib/plugin-loader.sh`.
 3. Carrega `config/control-center.conf` (Fase atual) e lê `VERSION`
    (versão semver).
 4. Carrega o Manifesto (`config/modules.conf`) para dentro de arrays —
    é dali que o menu principal e o dispatch são montados, nunca hardcoded.
 5. Roda `_cc_load_plugins` (varre `plugins/*/plugin.sh`; sem nenhum
    plugin instalado, não faz nada).
-6. Registra o boot em `logs/control-center.log` e entra no loop do menu.
+6. Registra o boot em `logs/control-center.log` e entra no loop do menu:
+   `_cc_screen_title` (título+versão) → `_cc_screen_status_block` (lê
+   `REPO_DIR` via Git: branch atual e se o working tree está limpo) →
+   itens do Manifesto → `_cc_screen_footer` (mensagem de ajuda).
 7. A cada opção escolhida: grava no log, localiza o módulo correspondente
    no Manifesto e executa `modules/<slug>/menu.sh`; ao retornar, reexibe o
    menu principal. `0` sempre sai.
@@ -130,16 +148,20 @@ A velocidade de desenvolvimento nunca deve comprometer estes princípios.
    - resolver seu próprio `CC_ROOT` (não depender de variáveis herdadas do
      processo pai — cada módulo tem que rodar isolado, mesmo chamado
      direto sem passar pelo `core/menu.sh`);
-   - dar `source` em `lib/common.sh` (que já carrega `lib/ui-box.sh`
-     transitivamente);
+   - dar `source` em `lib/common.sh` (que já carrega todos os componentes
+     de UX transitivamente — ver "Componentes de UX");
    - se ainda não tem funcionalidade real, chamar só
      `_cc_placeholder "<Nome do módulo>"`;
-   - quando ganhar um submenu de verdade, montar a tela só com as funções
-     de `lib/ui-box.sh` (`_cc_box_top`/`_cc_box_line_center`/`_cc_box_sep`/
-     `_cc_box_item`/`_cc_box_blank`/`_cc_box_bottom`) — nunca `echo` cru
-     de borda, pra não fugir do padrão visual (ver "Padrão de menus");
-     rodapé com `9 ► Voltar` + `0 ► Sair` quando o submenu tiver navegação
-     própria (só `0 ► Sair`/`0 ► Voltar` quando não tiver).
+   - quando ganhar um submenu de verdade, montar a tela só com
+     `_cc_screen_title` (título) + `_cc_screen_breadcrumb "Control Center ›
+     <Nome> › <sub-tela>"` + itens via `_cc_box_item`/`_cc_box_blank` +
+     `_cc_screen_footer "<mensagem de ajuda>"` — nunca `echo` cru de borda,
+     pra não fugir do padrão visual (ver "Padrão de menus"); rodapé com
+     `9 ► Voltar` + `0 ► Sair` quando o submenu tiver navegação própria (só
+     `0 ► Sair`/`0 ► Voltar` quando não tiver);
+   - usar `_cc_confirm "<pergunta>"` antes de qualquer ação destrutiva/
+     irreversível, e `_cc_bar` pra qualquer operação longa que valha
+     mostrar progresso (`lib/ui-widgets.sh`);
    - usar `_cc_ok`/`_cc_fail`/`_cc_warn` (fora da caixa, nunca dentro) e
      `_cc_log` para manter o mesmo padrão de status e de log de todos os
      outros módulos.
@@ -170,10 +192,15 @@ Padronização dos Menus e Submenus") — nenhuma tela nova pode fugir disto,
 em nenhuma fase futura:
 
 - Toda tela (menu principal, submenu de módulo, placeholder) é desenhada
-  só com as funções de `lib/ui-box.sh` — moldura em caixa (`╔═╗`/`║`/`╚═╝`),
-  título centralizado, item numerado com `►`, rodapé com `0` sempre
-  presente. Nunca um `echo` cru de borda, nunca uma tela com layout
-  diferente da outra.
+  só com os componentes de `lib/ui-box.sh` e `lib/ui-screen.sh` — moldura
+  em caixa (`╔═╗`/`║`/`╚═╝`), título centralizado, item numerado com `►`,
+  rodapé com `0` sempre presente. Nunca um `echo` cru de borda, nunca uma
+  tela com layout diferente da outra.
+- Toda tela tem, na mesma ordem: cabeçalho (título + subtítulo) →
+  bloco de contexto (status Projeto/Branch/Status no menu principal;
+  breadcrumb "Control Center › <tela atual>" nas telas de módulo) → corpo
+  (itens de menu ou texto) → rodapé (mensagem de ajuda + borda final).
+  Nenhuma tela pula uma dessas seções.
 - Responsivo: a largura da caixa se adapta ao terminal (`tput cols`), com
   teto de 56 colunas de conteúdo (não deixa a caixa virar uma linha só de
   bordas num terminal enorme) e piso de 30 (nunca fica ilegível). Terminais
@@ -190,6 +217,12 @@ em nenhuma fase futura:
   a borda direita. Status com emoji (`_cc_ok`/`_cc_fail`/`_cc_warn`)
   continua existindo, mas sempre fora de uma caixa — mesmo padrão que
   `scripts/release/release-center.sh` já usa pros seus checks.
+- Cor ANSI (`lib/ui-colors.sh`) é permitida dentro da caixa (ex.: o valor
+  do "Status"). `_cc_box_line`/`_cc_box_line_center` medem o texto pelo
+  comprimento *visível* (descontando as sequências de escape), nunca por
+  `${#texto}` cru — do contrário a borda direita desalinha. Sem suporte a
+  cor no terminal, as variáveis de cor ficam vazias e a tela sai idêntica,
+  só sem cor — nunca quebra.
 - Opção inválida nunca derruba o programa — só imprime aviso e reexibe o
   menu.
 
@@ -217,6 +250,14 @@ em nenhuma fase futura:
   - sintaxe bash válida (`bash -n`) em todos os scripts do Control Center;
   - toda tela usa a moldura de `lib/ui-box.sh` (bordas `╔`/`║`/`╚`
     presentes, sem `echo` cru de `====`);
+  - o menu principal exibe o bloco Projeto/Branch/Status e as telas de
+    módulo exibem o breadcrumb;
+  - todas as linhas de uma mesma caixa saem com a mesma largura visível
+    (alinhamento correto mesmo com texto colorido dentro — ver "Padrão de
+    menus");
+  - a caixa se adapta de verdade a um `COLUMNS` estreito e a um largo;
+  - `_cc_confirm`/`_cc_bar` (`lib/ui-widgets.sh`) se comportam
+    corretamente nos limites (0%, 100%, resposta vazia);
   - navegação completa do menu principal (opções 1 a 9 e saída pela
     opção 0) sem travar nem quebrar.
 - Registrada em `../../.github/workflows/tests.yml`, junto das demais
