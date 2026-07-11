@@ -1,6 +1,6 @@
 import {
   db, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc,
-  query, orderBy, where, getDocs, onSnapshot, serverTimestamp, runTransaction
+  query, orderBy, getDocs, onSnapshot, serverTimestamp, runTransaction
 } from '../../scripts/firebase.js';
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 import { initModulo } from '../../scripts/kernel.js';

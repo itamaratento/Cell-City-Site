@@ -35,7 +35,7 @@
    ============================================================ */
 import { initModulo, temPermissao, getUid, getNome } from '../../scripts/kernel.js';
 import {
-  db, collection, addDoc, doc, setDoc, updateDoc, getDoc, getDocs,
+  db, collection, addDoc, doc, setDoc, updateDoc, getDoc,
   query, orderBy, onSnapshot, serverTimestamp, limit
 } from '../../scripts/firebase.js';
 import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
