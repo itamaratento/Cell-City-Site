@@ -1449,3 +1449,26 @@ Sprints de qualidade após a Certificação v1.0, ordem de prioridade bug→segu
 Método que achou o P0: escrever teste para módulo gated sem cobertura →
 regra reforçada de que `node --check` verde ≠ módulo funcional. Suítes: RBAC
 156/156 · Rules 73/73 · Functions 25/25 · Performance 4/4.
+
+---
+
+## 2026-07-11 — Sprint S1: Ampliação da matriz RBAC (16 gates fail-open → gerenciáveis)
+
+**Evidência:** `PROXIMA_ETAPA.md` §136 — "IDs de gate fora da matriz RBAC. Gates novos (`analise`, `compras`, `chat`...) fail-open — a UI só gerencia 9 IDs."
+
+**Problema:** O array `MODULOS` em `usuarios-permissoes.js` continha apenas 9 módulos. Os 16 módulos restantes que utilizam `podeVisualizar()`/`podeCriar()`/etc. (via `permissoes.js`) não apareciam na UI de gerenciamento de permissões, permanecendo fail-open para todos os perfis operacionais — admins não conseguiam restringir acesso a esses módulos.
+
+**Solução:** Mapeamento exaustivo de todos os `moduloId` utilizados nas chamadas RBAC em todo o código-fonte (`grep` em 34 diretórios de página). Array `MODULOS` expandido de 9 → 25 entries:
+- `configuracoes` renomeado para `config` (alinhado com o ID real usado por `clientes/clientes.js`)
+- Adicionados: `compras`, `fornecedor`, `catalogo`, `pos-venda`, `contas`, `diario`, `chat`, `minha-semana`, `autoatendimento`, `importar`, `campanhas`, `analise`, `auditoria`, `central-alertas`, `central-comandos`, `central-informacoes`
+
+**Alterações:**
+- `CRM/pages/usuarios-permissoes/usuarios-permissoes.js` — MODULOS array (linhas 56-82)
+- `PROXIMA_ETAPA.md` — item §136 marcado como corrigido
+- `HISTORICO_PROJETO.md` — este registro
+
+**Testes:** RBAC 156/156 (sem regressão — testes não dependem do conteúdo de MODULOS).
+
+**Como validar:** Abrir módulo Usuários e Permissões → aba Permissões → tabela agora exibe 25 linhas (vs. 9 anteriores). Perfis existentes mantêm fail-open para os novos módulos até que o admin edite as permissões.
+
+**Pendências:** Perfis operacionais existentes no Firestore não têm entrada na matriz para os 16 novos módulos — continuam fail-open até que o admin ajuste manualmente as permissões de cada perfil. Isto é esperado e seguro (fail-open é o comportamento conservador).

@@ -60,7 +60,7 @@ Se a solicitação for **diagnóstico, auditoria, investigação, relatório ou 
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-09) — MODO ESTABILIDADE
+## ✅ ESTADO ATUAL (2026-07-11) — MODO ESTABILIDADE
 
 ### 🏁 MARCO: DESENVOLVIMENTO PRINCIPAL CONCLUÍDO
 
@@ -124,6 +124,16 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
+## ✅ CORRIGIDO NA SPRINT ATUAL
+
+| Item | Correção |
+|------|----------|
+| `dashboard-alarme-os.js` path absoluto sem `/dev` (GUIA item 21) | Mesmo padrão do H-009: prefixo dinâmico adicionado ao `window.open()` |
+| `saas.repository.js` órfão (GUIA item 23) | Removido — 4 exports com zero imports, herança do multiempresa revertido |
+| Card da Agenda ausente no Dashboard (GUIA item 12, TECHDOC §7.2) | Card `data-module="acaodasemana"` adicionado ao grid + RBAC mapping `'acaodasemana': 'agenda'` |
+| `_runtime_audit/`, `sql/`, `pages/`, `scripts/`, `sistema/` publicados no Pages (item 5) | Adicionados ao `--exclude` do `deploy-pages.yml` |
+| Matriz RBAC com apenas 9 gates gerenciáveis (16 gates fail-open) | `MODULOS` em usuarios-permissoes.js ampliado de 9 → 25 entries, incluindo `analise`, `compras`, `chat`, `central-alertas`, `diario`, `fornecedor`, `pos-venda`, `minha-semana`, etc. `configuracoes` renomeado para `config` (alinhado com IDs reais). |
+
 ## ⚠️ ITENS PENDENTES (sem previsão)
 
 | Item | Motivo | Desbloqueio |
@@ -133,7 +143,7 @@ console — ver GUIA_MANUTENCAO).
 | Portal Técnico (conteúdo) | FRP, firmwares, soluções técnicas | Planejamento estratégico + aprovação |
 | 17 módulos sem testes RBAC | Cobertura adicional não crítica | Roadmap futuro |
 | Políticas de senha (server-side) | Expiração/força validadas no backend | Cloud Function + decisão de negócio |
-| IDs de gate fora da matriz RBAC | Gates novos (`analise`, `compras`, `chat`...) fail-open — a UI só gerencia 9 IDs | Sprint p/ ampliar `MODULOS` em usuarios-permissoes.js + homologação |
+| ~~IDs de gate fora da matriz RBAC~~ | ✅ Ampliado: `MODULOS` com 25 entries — todos os gates gerenciáveis via UI | Sprint S1-2026.07.11 concluída — ver CORRIGIDO acima |
 | Módulo Chat DESATIVADO | Sem uso operacional (TECHDOC §31) | Reativação em minutos: `CHAT_ENABLED=true` |
 
 ---
@@ -143,7 +153,7 @@ console — ver GUIA_MANUTENCAO).
 - 🔴 Rules corrigidas **ainda não deployadas** — 3 módulos da release quebrados em runtime até o deploy (ver Próxima Tarefa).
 - 🟡 `os.list` aberto a qualquer sessão autenticada (decisão deliberada, documentada).
 - 🟢 `develop` == `main` == `origin` — push e promoção concluídos em 2026-07-10.
-- 🟢 Suítes verdes: RBAC 149/149 · Rules 73/73 · Functions 25/25 · Performance 4/4 (falha antiga do caixa.test corrigida em 3ca6763).
+- 🟢 Suítes verdes: RBAC 153/153 · Rules 73/73 · Functions 25/25 · Performance 4/4 (falha antiga do caixa.test corrigida em 3ca6763).
 - 🟢 Sem trava de cota (Blaze), sem chave comprometida, sem autoprovisionamento.
 
 ---
