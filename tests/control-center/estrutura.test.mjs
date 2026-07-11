@@ -20,7 +20,7 @@
 // README.md, "Padrão de testes").
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, statSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, statSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -79,6 +79,29 @@ function rodarComUiWidgets(script, stdin = '') {
     return execSync(`bash -c ${JSON.stringify(preambulo + script)}`, { encoding: 'utf8', input: stdin });
 }
 
+function rodarModulo(modulo, stdin, env = {}) {
+    return execSync(`bash modules/${modulo}/menu.sh`, { cwd: CC, input: stdin, encoding: 'utf8', env: { ...process.env, ...env } });
+}
+
+// Roda _cc_run_submenu isolado, com uma função de teste registrada — prova
+// que o motor genérico chama a função certa e devolve o controle (nunca
+// sai do processo) quando o usuário escolhe "Voltar".
+function rodarSubmenuSintetico(stdin) {
+    // Statements separados por ";", nunca por newline real — newline dentro
+    // de um argumento com aspas duplas de `bash -c` não sobrevive à camada
+    // extra de shell que o execSync usa por padrão (mesma armadilha já
+    // corrigida em rodarComUiBox/rodarComUiWidgets).
+    const script = [
+        `CC_ROOT='${CC}'`,
+        `REPO_DIR='${ROOT}'`,
+        `source '${CC}/lib/common.sh'`,
+        `_teste_acao() { echo "ACAO_CHAMADA"; }`,
+        `_cc_run_submenu "Teste" "Control Center › Teste" "1|Item|_teste_acao"`,
+        `echo "SUBMENU_RETORNOU"`,
+    ].join('; ');
+    return execSync(`bash -c ${JSON.stringify(script)}`, { encoding: 'utf8', input: stdin });
+}
+
 test('estrutura de pastas obrigatória existe (core/modules/lib/state/logs/docs/config/plugins)', () => {
     for (const pasta of ['core', 'modules', 'lib', 'state', 'logs', 'docs', 'config', 'plugins']) {
         assert.ok(existsSync(join(CC, pasta)) && statSync(join(CC, pasta)).isDirectory(),
@@ -90,13 +113,17 @@ test('core/menu.sh e todos os componentes de lib/ existem e são executáveis/le
     assert.ok(existsSync(join(CC, 'core/menu.sh')), 'core/menu.sh ausente');
     assert.ok(ehExecutavel(join(CC, 'core/menu.sh')), 'core/menu.sh precisa ser executável (chmod +x)');
     const libComum = readFileSync(join(CC, 'lib/common.sh'), 'utf8');
-    for (const lib of ['ui-colors.sh', 'ui-box.sh', 'ui-status.sh', 'ui-screen.sh', 'ui-widgets.sh', 'plugin-loader.sh']) {
+    for (const lib of ['ui-colors.sh', 'ui-box.sh', 'ui-status.sh', 'ui-screen.sh', 'ui-widgets.sh', 'plugin-loader.sh', 'svc-git.sh']) {
         assert.ok(existsSync(join(CC, 'lib', lib)), `lib/${lib} ausente`);
     }
     for (const lib of ['ui-colors.sh', 'ui-box.sh', 'ui-status.sh', 'ui-screen.sh', 'ui-widgets.sh']) {
         assert.match(libComum, new RegExp(`source "\\$CC_ROOT/lib/${lib.replace('.', '\\.')}"`),
             `lib/common.sh precisa carregar lib/${lib} (ponto único de entrada da UX)`);
     }
+    // svc-git.sh é opt-in (só Desenvolvimento/Release precisam de Git) —
+    // não é transitivo via common.sh, ao contrário dos componentes de UX.
+    assert.doesNotMatch(libComum, /source "\$CC_ROOT\/lib\/svc-git\.sh"/,
+        'svc-git.sh deve ser carregado só pelos módulos que precisam (Desenvolvimento/Release), não por common.sh');
 });
 
 test('VERSION existe e segue semver (com sufixo opcional tipo -alpha)', () => {
@@ -150,7 +177,7 @@ test('state/ tem os 6 arquivos de controle esperados, com schema válido', () =>
 
 test('sintaxe bash válida em todos os scripts do Control Center', () => {
     const scripts = listarShellScripts(CC);
-    assert.ok(scripts.length >= 17, `esperava pelo menos 17 scripts (core + 9 módulos + 7 arquivos de lib), achou ${scripts.length}`);
+    assert.ok(scripts.length >= 22, `esperava pelo menos 22 scripts (core + 8 lib + 9 módulos + 3 lib/desenvolvimento + 1 lib/release), achou ${scripts.length}`);
     const comErro = [];
     for (const script of scripts) {
         try {
@@ -188,7 +215,7 @@ test('Plugin Loader roda sem nenhum plugin instalado e não quebra', () => {
 });
 
 test('toda tela usa a moldura padrão (lib/ui-box.sh) — bordas presentes, sem cabeçalho antigo', () => {
-    const stdin = '1\n\n0\n';
+    const stdin = '3\n\n0\n'; // 3 = Backup e Recuperação, ainda placeholder na Fase 2
     const saida = rodarMenu(stdin);
     assert.ok(saida.includes('╔') && saida.includes('║') && saida.includes('╚'),
         'saída não contém moldura em caixa (╔/║/╚) — todo menu/submenu precisa usar lib/ui-box.sh');
@@ -196,12 +223,12 @@ test('toda tela usa a moldura padrão (lib/ui-box.sh) — bordas presentes, sem 
 });
 
 test('moldura fica com bordas alinhadas (todas as linhas da caixa com a mesma largura)', () => {
-    const linhas = [];
-    for (let i = 1; i <= 9; i++) { linhas.push(String(i)); linhas.push(''); }
-    linhas.push('0');
-    const saida = rodarMenu(linhas.join('\n') + '\n', { COLUMNS: '80' });
+    // Só navega no menu principal (nunca entra em outro módulo) — isolado
+    // de propósito de qualquer módulo além do que este teste precisa
+    // validar (moldura do menu principal já tem dezenas de linhas de caixa).
+    const saida = rodarMenu('0\n', { COLUMNS: '80' });
     const linhasCaixa = saida.split('\n').filter(l => /^[║╔╚╠]/.test(l));
-    assert.ok(linhasCaixa.length > 20, `esperava várias linhas de caixa, achou ${linhasCaixa.length}`);
+    assert.ok(linhasCaixa.length > 15, `esperava várias linhas de caixa, achou ${linhasCaixa.length}`);
     const larguras = new Set(linhasCaixa.map(l => l.length));
     assert.equal(larguras.size, 1, `linhas de caixa com larguras diferentes: ${[...larguras].join(', ')}`);
 });
@@ -216,18 +243,26 @@ test('moldura é responsiva ao terminal (COLUMNS estreito e largo)', () => {
     assert.ok(topoLarga.length <= 60, 'terminal largo não pode deixar a caixa maior que o teto (56 de conteúdo + 4)');
 });
 
-test('navegação completa do menu principal (opções 1 a 9 e saída pela opção 0) não crasha', () => {
-    const linhas = [];
-    for (let i = 1; i <= 9; i++) { linhas.push(String(i)); linhas.push(''); }
-    linhas.push('0');
-    const stdin = linhas.join('\n') + '\n';
+test('navegação completa pelo menu principal: entra e volta dos módulos Desenvolvimento e Release, sai pela opção 0', () => {
+    // Restrito de propósito aos módulos 1 (Desenvolvimento) e 2 (Release) —
+    // são os únicos cujo conteúdo esta suíte controla. Os módulos 3 a 9 são
+    // isolados por design (cada um roda como processo próprio via
+    // core/menu.sh) e não são exercidos aqui: não há garantia de que
+    // continuem placeholder (outras Sprints podem implementá-los a
+    // qualquer momento) e testar a interação deles é responsabilidade da
+    // suíte de cada módulo, não desta.
+    const stdin = ['1', '14', '2', '11', '0'].join('\n') + '\n';
 
     const saida = rodarMenu(stdin);
 
     assert.match(saida, /CELL CITY CONTROL CENTER/);
     assert.match(saida, /Saindo do Control Center\./);
-    const ocorrencias = [...saida.matchAll(/Módulo em construção\./g)];
-    assert.equal(ocorrencias.length, 9, `esperava as 9 telas de placeholder, achou ${ocorrencias.length}`);
+    assert.match(saida, /Control Center › Desenvolvimento/);
+    assert.match(saida, /Control Center › Release/);
+    // depois de voltar dos dois módulos, o menu principal precisa
+    // reaparecer (prova que o dispatch devolveu o controle de verdade).
+    const aparicoesMenu = [...saida.matchAll(/CELL CITY CONTROL CENTER/g)];
+    assert.ok(aparicoesMenu.length >= 3, `esperava o menu principal reaparecer após cada módulo, achou ${aparicoesMenu.length} aparições`);
 });
 
 test('menu principal rejeita opção inválida sem travar', () => {
@@ -247,15 +282,17 @@ test('menu principal exibe o bloco Projeto/Branch/Status com dados reais do Git'
 });
 
 test('telas de módulo exibem breadcrumb (localização atual)', () => {
-    const saida = rodarMenu('1\n\n0\n');
-    assert.match(saida, /Control Center › Desenvolvimento/);
+    const saida = rodarMenu('3\n\n0\n'); // 3 = Backup e Recuperação (placeholder)
+    assert.match(saida, /Control Center › Backup e Recuperação/);
 });
 
 test('toda tela tem rodapé com mensagem de ajuda antes da borda final', () => {
     const principal = rodarMenu('0\n');
     assert.match(principal, /Use os números para navegar/);
-    const modulo = rodarMenu('1\n\n0\n');
-    assert.match(modulo, /volta ao menu principal/);
+    const placeholder = rodarMenu('3\n\n0\n');
+    assert.match(placeholder, /volta ao menu principal/);
+    const submenuReal = rodarMenu('1\n14\n0\n');
+    assert.match(submenuReal, /volta · 0 sai do Control Center/);
 });
 
 test('_cc_visible_len ignora sequências ANSI reais (inclusive \\e(B do tput sgr0) — a mesma classe de bug já encontrada e corrigida nesta Fase', () => {
@@ -308,4 +345,143 @@ test('_cc_bar não imprime caractere sobrando nos limites (0% e 100%) — armadi
     const cem = rodarComUiWidgets('_cc_bar 10 10 10');
     assert.equal(zero.trim(), '[----------] 0%');
     assert.equal(cem.trim(), '[██████████] 100%');
+});
+
+// ── Fase 2 — "Desenvolvimento + Release" ─────────────────────────────
+
+test('_cc_run_submenu: "Voltar" é o número seguinte ao último item e devolve o controle (nunca sai do processo)', () => {
+    const saida = rodarSubmenuSintetico('1\n\n2\n');
+    assert.match(saida, /1 ► Item/);
+    assert.match(saida, /2 ► Voltar/, 'com 1 item real, Voltar precisa ser "2" (não um número fixo como "9")');
+    assert.match(saida, /ACAO_CHAMADA/, 'a função associada ao item 1 precisa ser chamada');
+    assert.match(saida, /SUBMENU_RETORNOU/, '_cc_run_submenu precisa retornar (return), nunca chamar exit, quando o usuário escolhe Voltar');
+});
+
+test('_cc_run_submenu: opção "0" sai do Control Center inteiro, de dentro de qualquer submenu', () => {
+    const saida = rodarSubmenuSintetico('0\n');
+    assert.match(saida, /Saindo do Control Center\./);
+    assert.doesNotMatch(saida, /SUBMENU_RETORNOU/, 'opção 0 precisa sair do processo, não retornar pro chamador');
+});
+
+test('módulo Desenvolvimento: interface (menu.sh) só desenha — nenhuma chamada direta a git/npm fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/desenvolvimento/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgit\s|\bnpm\s/, 'menu.sh (Interface) não pode chamar git/npm diretamente — isso é regra de negócio, pertence à camada de Serviço (lib/*.sh)');
+    for (const lib of ['status.sh', 'comandos.sh', 'utilitarios.sh']) {
+        const caminho = join(CC, 'modules/desenvolvimento/lib', lib);
+        assert.ok(existsSync(caminho), `modules/desenvolvimento/lib/${lib} ausente`);
+        assert.ok(ehExecutavel(caminho), `modules/desenvolvimento/lib/${lib} precisa ser executável`);
+    }
+});
+
+test('módulo Release: interface (menu.sh) só desenha — nenhuma chamada direta a git fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/release/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgit\s/, 'menu.sh (Interface) não pode chamar git diretamente — pertence à camada de Serviço (lib/release.sh)');
+    const caminho = join(CC, 'modules/release/lib/release.sh');
+    assert.ok(existsSync(caminho) && ehExecutavel(caminho), 'modules/release/lib/release.sh ausente ou não executável');
+});
+
+test('módulo Release: "Executar Testes"/"Checklist"/"Build Final" delegam pro pipeline existente (não reimplementam)', () => {
+    const src = readFileSync(join(CC, 'modules/release/lib/release.sh'), 'utf8');
+    assert.match(src, /release-center\.sh"\s*$/m, 'precisa chamar scripts/release/release-center.sh, não reimplementar');
+    assert.match(src, /printf '2\\n0\\n' \| bash/, '"Executar Testes" precisa selecionar a opção 2 (Release Completa) de forma não-interativa');
+    assert.match(src, /printf '3\\n0\\n' \| bash/, '"Checklist de Release" precisa selecionar a opção 3 (Certificação) de forma não-interativa');
+    assert.match(src, /validar-deploy\.sh/, '"Build Final" precisa chamar scripts/release/validar-deploy.sh, não reimplementar');
+});
+
+test('módulo Release: "Enviar Alterações"/"Criar Tag e Publicar" envelopam subir/subir-ok — não reimplementam tag/push/promoção', () => {
+    const src = readFileSync(join(CC, 'modules/release/lib/release.sh'), 'utf8');
+    assert.match(src, /type subir\b.*>\/dev\/null/s, 'precisa checar se a função subir existe antes de chamar (bash -i -c)');
+    assert.match(src, /type subir-ok\b.*>\/dev\/null/s, 'precisa checar se a função subir-ok existe antes de chamar (bash -i -c)');
+    assert.doesNotMatch(src, /git\s+tag\s|git\s+push\s+origin\s+main/, 'não pode reimplementar criação de tag nem push direto pra main — isso é trabalho do subir-ok existente');
+});
+
+test('módulo Release: ações destrutivas (subir/subir-ok/rollback) pedem confirmação e cancelam de verdade (sem tocar em git)', () => {
+    const antesHead = execSync('git rev-parse HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const antesTags = execSync("git tag -l 'v*'", { cwd: ROOT, encoding: 'utf8' }).trim();
+
+    const subir = rodarModulo('release', '8\nn\n\n11\n0\n');
+    assert.match(subir, /Cancelado\./);
+
+    const subirOk = rodarModulo('release', '9\nn\n\n11\n0\n');
+    assert.match(subirOk, /Cancelado\./);
+
+    const rollback = rodarModulo('release', '10\nn\n\n11\n0\n');
+    assert.match(rollback, /Cancelado\./);
+
+    const depoisHead = execSync('git rev-parse HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const depoisTags = execSync("git tag -l 'v*'", { cwd: ROOT, encoding: 'utf8' }).trim();
+    assert.equal(depoisHead, antesHead, 'HEAD não pode mudar quando a confirmação é recusada');
+    assert.equal(depoisTags, antesTags, 'nenhuma tag nova pode ser criada quando a confirmação é recusada');
+});
+
+test('módulo Release: Validar Branch/Workspace/Changelog/Histórico mostram dados reais do Git', () => {
+    const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const saida = rodarModulo('release', '1\n\n2\n\n3\n\n7\n\n11\n0\n');
+    assert.ok(saida.includes(`Branch atual: ${branchReal}`), 'Validar Branch precisa mostrar a branch real');
+    assert.match(saida, /Working tree (limpo|com \d+ arquivo)/);
+    assert.match(saida, /commit\(s\) desde/);
+    assert.match(saida, /Últimas \d+ versões|Nenhuma release/);
+    assert.match(saida, /11 ► Voltar/, 'Release tem 10 itens reais — Voltar precisa ser "11"');
+});
+
+test('módulo Desenvolvimento: Status/Git Status/Diff/Log/Alterações Locais mostram dados reais do Git', () => {
+    const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const saida = rodarModulo('desenvolvimento', '1\n\n2\n\n4\n\n5\n\n14\n0\n');
+    assert.ok(saida.includes(`Branch atual   : ${branchReal}`), 'Status do Projeto precisa mostrar a branch real');
+    assert.match(saida, /Último commit  : [0-9a-f]{7,}/, 'Status do Projeto precisa mostrar um hash de commit real');
+    assert.match(saida, /On branch|Your branch/, 'Git Status precisa mostrar a saída real de "git status"');
+    assert.match(saida, /14 ► Voltar/, 'Desenvolvimento tem 13 itens reais — Voltar precisa ser "14"');
+});
+
+test('módulo Desenvolvimento: Limpeza de Cache pede confirmação e cancela sem apagar nada', () => {
+    // Cria um alvo garantido (firestore-debug.log na raiz é um dos caminhos
+    // que _dev_limpeza_cache já procura) — sem isso, o teste dependeria do
+    // estado ambiente (se alguém já rodou a limpeza antes, "Nada para
+    // limpar" também seria uma resposta honesta, só que não a que este
+    // teste quer verificar).
+    const alvo = join(ROOT, 'firestore-debug.log');
+    const jaExistia = existsSync(alvo);
+    if (!jaExistia) writeFileSync(alvo, 'log de teste — descartável\n');
+    try {
+        const saida = rodarModulo('desenvolvimento', '10\nn\n\n14\n0\n');
+        assert.match(saida, /Itens a remover:/);
+        assert.match(saida, /Cancelado\./);
+        assert.ok(existsSync(alvo), 'o arquivo não pode ser removido quando a confirmação é recusada');
+    } finally {
+        if (!jaExistia) rmSync(alvo, { force: true });
+    }
+});
+
+test('módulo Desenvolvimento: Atualizar Dependências pede confirmação e cancela sem rodar npm', () => {
+    const deps = rodarModulo('desenvolvimento', '11\nn\n\n14\n0\n');
+    assert.match(deps, /Cancelado\./);
+});
+
+test('módulo Desenvolvimento: Build/Lint/Formatação relatam honestamente o que existe no projeto (sem fingir ferramenta que não existe)', () => {
+    const saida = rodarModulo('desenvolvimento', '6\n\n8\n\n9\n\n14\n0\n');
+    assert.match(saida, /não tem build step/);
+    assert.match(saida, /Lint não configurado|ESLint encontrada/);
+    assert.match(saida, /Formatação automática não configurada|Prettier encontrada/);
+});
+
+test('lib/svc-git.sh: funções de serviço retornam dados consistentes com o estado real do repositório', () => {
+    const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const preambulo = `CC_ROOT='${CC}'; REPO_DIR='${ROOT}'; source '${CC}/lib/common.sh'; source '${CC}/lib/svc-git.sh'; `;
+    const rodar = (script) => execSync(`bash -c ${JSON.stringify(preambulo + script)}`, { encoding: 'utf8' }).trim();
+
+    const total = Number(rodar('_cc_svc_git_arquivos_alterados_count'));
+    assert.ok(Number.isInteger(total) && total >= 0, `contagem de arquivos alterados inválida: ${total}`);
+
+    const ultimo = rodar('_cc_svc_git_ultimo_commit');
+    assert.match(ultimo, /^[0-9a-f]{7,}\s/, `_cc_svc_git_ultimo_commit não parece um commit real: "${ultimo}"`);
+
+    let reconhecida;
+    try {
+        execSync(`bash -c ${JSON.stringify(preambulo + '_cc_svc_git_branch_reconhecida')}`, { stdio: 'pipe' });
+        reconhecida = 0;
+    } catch (e) {
+        reconhecida = e.status;
+    }
+    const esperado = /^(develop|main)$/.test(branchReal) ? 0 : 1;
+    assert.equal(reconhecida, esperado, `_cc_svc_git_branch_reconhecida deveria refletir a branch real (${branchReal})`);
 });

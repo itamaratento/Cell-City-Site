@@ -69,10 +69,61 @@ na mão). Cada arquivo de `lib/` tem uma responsabilidade só:
 | `ui-colors.sh`      | Cores                              | Detecta suporte a ANSI uma vez por processo (`tput colors`, `NO_COLOR`, `[ -t 1 ]`) e expõe `_CC_C_VERDE`/`_CC_C_AMARELO`/`_CC_C_VERMELHO`/`_CC_C_CIANO`/`_CC_C_NEGRITO`/`_CC_C_RESET` — vazias quando não há suporte, nunca quebra. |
 | `ui-box.sh`         | Boxes                              | Moldura em caixa (bordas, item, texto, centralização), responsiva ao terminal, consciente de sequências ANSI ao calcular alinhamento (ver "Padrão de menus"). |
 | `ui-status.sh`      | Status                             | Lê o estado real do Git (`_cc_git_branch`, `_cc_projeto_status_label`) pro bloco Projeto/Branch/Status do menu principal. |
-| `ui-screen.sh`      | Cabeçalho / Rodapé / Menus         | Composição de tela: `_cc_screen_title` (título+subtítulo), `_cc_screen_status_block` (Projeto/Branch/Status), `_cc_screen_breadcrumb` (localização atual), `_cc_screen_footer` (mensagem de ajuda + borda final). |
-| `ui-widgets.sh`     | Mensagens / Barras / Confirmações  | `_cc_confirm` (pergunta sim/não) e `_cc_bar` (barra de progresso textual). Nenhum módulo desta Fase os usa ainda — existem prontos pra Fase 2, mesmo padrão do Plugin Loader na Fase 1.1. `_cc_ok`/`_cc_fail`/`_cc_warn` (em `common.sh`) seguem sendo o componente de "Mensagens" de status, sempre fora de uma caixa. |
-| `common.sh`         | Ponto único de entrada             | `source "$CC_ROOT/lib/common.sh"` já carrega todos os arquivos acima, transitivamente — nenhum módulo precisa dar `source` em cada um. Também tem `_cc_log`, `_cc_pause` e `_cc_placeholder`. |
+| `ui-screen.sh`      | Cabeçalho / Rodapé / Menus         | Composição de tela: `_cc_screen_title` (título+subtítulo), `_cc_screen_status_block` (Projeto/Branch/Status), `_cc_screen_breadcrumb` (localização atual), `_cc_screen_footer` (mensagem de ajuda + borda final), `_cc_run_submenu` (Fase 2 — motor genérico de submenu com itens numerados + Voltar/Sair, ver "Arquitetura de serviços"). |
+| `ui-widgets.sh`     | Mensagens / Barras / Confirmações  | `_cc_confirm` (pergunta sim/não) e `_cc_bar` (barra de progresso textual). Usados desde a Fase 2 pelos módulos Desenvolvimento/Release em toda ação destrutiva/irreversível. `_cc_ok`/`_cc_fail`/`_cc_warn` (em `common.sh`) seguem sendo o componente de "Mensagens" de status, sempre fora de uma caixa. |
+| `svc-git.sh`        | Serviço de Git (Fase 2)            | `_cc_svc_git_status_verbose`/`_diff`/`_log`/`_arquivos_alterados_count`/`_workspace_limpo`/`_ultimo_commit`/`_branch_reconhecida` — compartilhado pelos módulos Desenvolvimento e Release (nenhum dos dois duplica lógica de Git). Complementa `ui-status.sh` (que já cobre branch/rótulo colorido do menu principal). |
+| `common.sh`         | Ponto único de entrada             | `source "$CC_ROOT/lib/common.sh"` já carrega todos os arquivos acima (exceto `svc-git.sh`, opcional — ver "Arquitetura de serviços"), transitivamente. Também tem `_cc_log`, `_cc_pause` e `_cc_placeholder`. |
 | `plugin-loader.sh`  | —                                   | Carregamento de `plugins/*/plugin.sh` (ver Roadmap, Versão 3.0). |
+
+## Arquitetura de serviços (Fase 2)
+
+A partir da Fase 2 ("Desenvolvimento + Release"), todo módulo com
+funcionalidade real segue uma separação estrita entre Interface e Serviço
+— "nenhuma regra de negócio na camada visual":
+
+```
+modules/<slug>/
+  menu.sh          Interface: só monta o submenu (via _cc_run_submenu,
+                   ver lib/ui-screen.sh) e aponta cada item pra uma
+                   função de serviço. Nunca roda git/npm/comando direto.
+  lib/
+    <arquivo>.sh   Serviço(s): a lógica de verdade, uma responsabilidade
+                   por arquivo. Recebe REPO_DIR (definido pelo menu.sh do
+                   módulo, mesmo padrão de CC_ROOT).
+```
+
+- `modules/desenvolvimento/lib/status.sh` — Status do Projeto/Git Status/
+  Diff/Log/Alterações Locais (formata a saída de `lib/svc-git.sh`).
+- `modules/desenvolvimento/lib/comandos.sh` — Comandos: Build/Testes/Lint/
+  Formatação/Cache/Dependências.
+- `modules/desenvolvimento/lib/utilitarios.sh` — Utilitários: Abrir
+  Diretório do Projeto/Informações do Ambiente.
+- `modules/release/lib/release.sh` — Release: validações (branch/
+  workspace), changelog/histórico, e as delegações abaixo.
+
+**Regra de ouro do módulo Release: envelopar, nunca reimplementar.** Este
+projeto já tinha, antes da Fase 2, um pipeline de release maduro e testado
+(`subir` → `release` → `subir-ok`, mais `rollback` — ver `../../.bashrc` e
+`scripts/release/`). O módulo Release do Control Center **não** cria uma
+segunda forma de fazer tag/push/promoção/rollback — cada ação do menu
+delega pro mecanismo que já existe:
+
+| Ação no menu                  | Delega para |
+|--------------------------------|-------------|
+| Executar Testes                | `scripts/release/release-center.sh` (opção 2, não-interativo) |
+| Build Final                    | `scripts/release/validar-deploy.sh` (script próprio, chamado direto) |
+| Checklist de Release           | `scripts/release/release-center.sh` (opção 3, não-interativo) |
+| Enviar Alterações              | função `subir` de `~/.bashrc` (via `bash -i -c`, única forma de reusar uma função de bashrc a partir de um script) |
+| Criar Tag e Publicar           | função `subir-ok` de `~/.bashrc` (idem — preserva 100% dos gates: homologação obrigatória, backup, versionamento semântico, fast-forward pra main) |
+| Rollback de Produção           | `scripts/release/rollback.sh` (script próprio) |
+
+`subir`/`subir-ok` não têm script próprio no repositório (só existem como
+função de `~/.bashrc`) — por isso são as únicas duas ações que dependem de
+`bash -i -c` para serem chamadas a partir de um módulo. Se a função não
+existir no `~/.bashrc` de quem roda, o módulo avisa em vez de falhar
+silenciosamente. Validar Branch/Validar Workspace Limpo/Gerar Changelog/
+Histórico de Releases são leitura pura (não existiam como comando
+separado antes) — só essas são "novas" de verdade.
 
 ## Fluxo de inicialização
 
@@ -99,10 +150,9 @@ Toda execução de `cellcity` segue sempre a mesma sequência, em
 
 ## Roadmap
 
-**Versão 1.0 — Infraestrutura do Projeto** (esta Fase 1 cobre só a
-estrutura + menu; itens abaixo entram em Fases seguintes da mesma versão)
-- Desenvolvimento
-- Release
+**Versão 1.0 — Infraestrutura do Projeto**
+- ✅ Desenvolvimento (Fase 2)
+- ✅ Release (Fase 2 — envelopa `subir`/`release`/`subir-ok`/`rollback`)
 - Backup
 - Recuperação
 - Banco de Dados
@@ -152,13 +202,11 @@ A velocidade de desenvolvimento nunca deve comprometer estes princípios.
      de UX transitivamente — ver "Componentes de UX");
    - se ainda não tem funcionalidade real, chamar só
      `_cc_placeholder "<Nome do módulo>"`;
-   - quando ganhar um submenu de verdade, montar a tela só com
-     `_cc_screen_title` (título) + `_cc_screen_breadcrumb "Control Center ›
-     <Nome> › <sub-tela>"` + itens via `_cc_box_item`/`_cc_box_blank` +
-     `_cc_screen_footer "<mensagem de ajuda>"` — nunca `echo` cru de borda,
-     pra não fugir do padrão visual (ver "Padrão de menus"); rodapé com
-     `9 ► Voltar` + `0 ► Sair` quando o submenu tiver navegação própria (só
-     `0 ► Sair`/`0 ► Voltar` quando não tiver);
+   - quando ganhar um submenu de verdade, chamar `_cc_run_submenu "<Título>"
+     "Control Center › <Nome>" "1|Rótulo|_funcao" "2|Rótulo|_funcao" ...`
+     (ver `lib/ui-screen.sh` e "Arquitetura de serviços") — nunca montar o
+     loop de menu na mão; cada `_funcao` mora na camada de Serviço
+     (`modules/<slug>/lib/*.sh`), nunca dentro de `menu.sh`;
    - usar `_cc_confirm "<pergunta>"` antes de qualquer ação destrutiva/
      irreversível, e `_cc_bar` pra qualquer operação longa que valha
      mostrar progresso (`lib/ui-widgets.sh`);
@@ -208,10 +256,12 @@ em nenhuma fase futura:
   uso normal do Terminal do Ubuntu.
 - Navegação exclusivamente por opções numéricas (`read -rp`), nunca por
   atalhos de letra.
-- `0` sempre volta/sai — no menu principal, sai do Control Center; dentro
-  de um submenu de módulo, `9 ► Voltar` retorna ao menu anterior e
-  `0 ► Sair` sai do Control Center inteiro (mesma convenção nos dois
-  níveis). Telas sem opções próprias (placeholder) têm só `0 ► Voltar`.
+- `0` sempre sai do Control Center inteiro, em qualquer tela. Dentro de um
+  submenu com opções reais (via `_cc_run_submenu`), "Voltar" é sempre o
+  número seguinte ao último item real — nunca um número fixo como `9`:
+  um módulo com 13 opções (ex.: Desenvolvimento) tem "Voltar" em `14`, um
+  com 5 tem em `6`. Isso evita colidir com módulos que crescem além de 8
+  itens. Telas sem opções próprias (placeholder) têm só `0 ► Voltar`.
 - Nenhum emoji dentro da caixa (✅/❌/⚠️/🚧) — emoji ocupa 2 colunas visuais
   em terminais reais mas só 1 posição em `${#string}`, o que desalinharia
   a borda direita. Status com emoji (`_cc_ok`/`_cc_fail`/`_cc_warn`)
@@ -259,7 +309,12 @@ em nenhuma fase futura:
   - `_cc_confirm`/`_cc_bar` (`lib/ui-widgets.sh`) se comportam
     corretamente nos limites (0%, 100%, resposta vazia);
   - navegação completa do menu principal (opções 1 a 9 e saída pela
-    opção 0) sem travar nem quebrar.
+    opção 0) sem travar nem quebrar;
+  - módulos Desenvolvimento e Release (Fase 2): submenu com "Voltar"
+    dinâmico, ações de leitura (status/branch/workspace/changelog/
+    histórico) retornam dado real do Git, ações destrutivas (cache,
+    dependências, subir, subir-ok, rollback) pedem confirmação antes de
+    executar e cancelam de verdade quando a resposta é "não".
 - Registrada em `../../.github/workflows/tests.yml`, junto das demais
   suítes do projeto.
 - Verificação manual do comando `cellcity` (depende de `~/.bashrc`, fora
