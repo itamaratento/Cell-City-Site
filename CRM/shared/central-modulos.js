@@ -50,8 +50,11 @@ const RAW_MODULOS = [
   { id: 'diario',              nome: 'Diário',                  icone: '📔', url: '/CRM/pages/diario/index.html' },
   { id: 'auditoria',           nome: 'Auditoria',               icone: '🔍', url: '/CRM/pages/auditoria/index.html' },
   { id: 'autoatendimento',     nome: 'Autoatendimento',         icone: '🤖', url: '/CRM/pages/autoatendimento/index.html' },
+  { id: 'analise',             nome: 'Análise',                 icone: '📊', url: '/CRM/pages/analise/index.html' },
+  { id: 'campanhas',           nome: 'Campanhas',               icone: '📢', url: '/CRM/pages/campanhas/index.html' },
+  { id: 'importar',            nome: 'Importar',                icone: '📥', url: '/CRM/pages/importar/index.html' },
+  { id: 'minha-semana',        nome: 'Minha Semana',            icone: '📋', url: '/CRM/pages/minha-semana/index.html' },
   { id: 'usuarios-permissoes', nome: 'Usuários e Permissões',   icone: '🔐', url: '/CRM/pages/usuarios-permissoes/index.html' },
-  { id: 'config',              nome: 'Configurações',           icone: '⚙️', url: '/CRM/pages/config/index.html' },
 ];
 
 // URLs sempre absolutas do ambiente atual (nunca relativas — path do
