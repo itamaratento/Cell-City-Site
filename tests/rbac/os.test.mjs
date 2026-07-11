@@ -118,6 +118,85 @@ test('OS: cliente restrito sem editar/excluir na listagem', async () => {
     assert.doesNotMatch(content, /deleteClient\(/);
 });
 
+// ── Dados para Emissão da Nota Fiscal (achado em backup pré-rollback SaaS,
+// reaproveitado com RBAC novo) — ver _renderDadosNotaFiscalCard() em os.js.
+test('NF: card aparece com podeVisualizar(financeiro), some sem permissão', async () => {
+    const comAcesso = setup({ matriz: { os: { visualizar: true, criar: true, editar: true, excluir: true }, financeiro: { visualizar: true, criar: false, editar: true, excluir: false } } });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(comAcesso.window);
+    assert.match(comAcesso.document.getElementById('detail-content').innerHTML, /Dados para Emissão da Nota Fiscal/);
+
+    const semAcesso = setup({ matriz: { os: { visualizar: true, criar: true, editar: true, excluir: true }, financeiro: { visualizar: false, criar: false, editar: false, excluir: false } } });
+    await importFresh(MOD_URL);
+    await abrirDetalhe(semAcesso.window);
+    assert.doesNotMatch(semAcesso.document.getElementById('detail-content').innerHTML, /Dados para Emissão da Nota Fiscal/);
+});
+
+test('NF: campos existentes da OS pré-carregam nos inputs', async () => {
+    fsMock.__reset(); perm.__reset();
+    fsMock.__seed('os', 'os_1', {
+        id: 'os_1', clientName: 'João Teste', phone: '11999998888', phoneDigits: '11999998888',
+        category: 'celular', brand: 'Samsung', model: 'Galaxy S21', defect: 'Tela quebrada',
+        status: 'em_reparo', createdAt: new Date().toISOString(), timeline: [],
+        razaoSocial: 'Empresa Teste LTDA', cnpjEmpresa: '11.444.777/0001-61', nfEmail: 'fiscal@empresa.com',
+    });
+    fsMock.__seed('clientes', '11999998888', { name: 'João Teste', phone: '11999998888', phoneDigits: '11999998888', history: ['os_1'] });
+    perm.__setMatriz(null);
+    const { document, window } = mountPage(HTML_PATH, '/CRM/pages/os/index.html');
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    assert.equal(document.getElementById('nf-razao').value, 'Empresa Teste LTDA');
+    assert.equal(document.getElementById('nf-cnpj').value, '11.444.777/0001-61');
+    assert.equal(document.getElementById('nf-email').value, 'fiscal@empresa.com');
+});
+
+test('NF: salvarDadosNotaFiscal grava na própria OS (não em clientes) e valida CNPJ/e-mail', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+    window.navigator.clipboard = { writeText: () => Promise.resolve() };
+
+    document.getElementById('nf-razao').value = 'Empresa X LTDA';
+    document.getElementById('nf-cnpj').value = '11.444.777/0001-61'; // válido
+    document.getElementById('nf-email').value = 'email-invalido'; // inválido de propósito
+
+    await window.salvarDadosNotaFiscal();
+    assert.match(document.getElementById('nf-email-erro').textContent, /inválido/);
+    assert.equal(fsMock.__raw('os', 'os_1').razaoSocial, undefined, 'não deve salvar nada com e-mail inválido');
+
+    document.getElementById('nf-email').value = 'fiscal@empresax.com.br';
+    await window.salvarDadosNotaFiscal();
+
+    const salvo = fsMock.__raw('os', 'os_1');
+    assert.equal(salvo.razaoSocial, 'Empresa X LTDA');
+    assert.equal(salvo.cnpjEmpresa, '11.444.777/0001-61');
+    assert.equal(salvo.nfEmail, 'fiscal@empresax.com.br');
+    assert.equal(fsMock.__raw('clientes', '11999998888').razaoSocial, undefined, 'não pode vazar pro documento do cliente');
+});
+
+test('NF: CNPJ com dígito verificador errado é rejeitado', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    document.getElementById('nf-cnpj').value = '11.222.333/0001-00'; // dv errado
+    await window.salvarDadosNotaFiscal();
+    assert.match(document.getElementById('nf-cnpj-erro').textContent, /inválido/);
+    assert.equal(fsMock.__raw('os', 'os_1').cnpjEmpresa, undefined);
+});
+
+test('NF: máscara de CNPJ formata enquanto digita', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    const input = document.getElementById('nf-cnpj');
+    input.value = '11444777000161';
+    window.maskCnpj(input);
+    assert.equal(input.value, '11.444.777/0001-61');
+});
+
 // ── Botão Portal do Cliente (substitui o clique-no-telefone que abria
 // WhatsApp) — ver abrirPortalCliente() em os.js e ticket de 2026-07-11.
 test('OS detalhe: telefone não abre mais WhatsApp, abre abrirPortalCliente()', async () => {

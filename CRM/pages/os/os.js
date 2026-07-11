@@ -46,6 +46,10 @@ window.saveOSEdit = saveOSEdit;
 window.saveObservation = saveObservation;
 window.shareWhatsApp = shareWhatsApp;
 window.abrirPortalCliente = abrirPortalCliente;
+window.maskCnpj = maskCnpj;
+window.copiarCampoNF = copiarCampoNF;
+window.copiarTodosDadosNF = copiarTodosDadosNF;
+window.salvarDadosNotaFiscal = salvarDadosNotaFiscal;
 window.printOS = printOS;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
@@ -956,6 +960,8 @@ function renderDetail() {
         html += `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📂 Histórico do Cliente</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">${otherOS.map(hId => { const h = DB.getOS().find(o => o.id === hId); return h ? `<div onclick="openDetail('${h.id}')" style="padding:10px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;cursor:pointer;"><div><div style="font-size:12px;font-weight:800;color:var(--green-light);">${h.id}</div><div style="font-size:11px;color:var(--text3);">${h.model} — ${formatDateShort(h.createdAt)}</div></div><span class="os-card-status status-${(h.status||'').replace(/ /g, '_')}">${getStatusLabel(h.status)}</span></div>` : ''; }).join('')}</div></div></div>`;
     }
     
+    html += _renderDadosNotaFiscalCard(os);
+
     html += `<div class="detail-actions"><button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button>${podeExcluir('os') ? `<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>` : ''}`;
     c.innerHTML = html;
     updateSaveUI();
@@ -1300,8 +1306,130 @@ function abrirPortalCliente(osId, phoneDigits) {
     showToast('❌ Telefone da OS inválido — não é possível abrir o Portal do Cliente.');
     return;
   }
+
   const prefix = (location.pathname === '/dev' || location.pathname.startsWith('/dev/')) ? '/dev' : '';
   window.open(`${prefix}/CRM/pages/portal-cliente/index.html?tel=${phoneDigits}&os=${encodeURIComponent(osId)}`, '_blank');
+}
+
+// ===== DADOS PARA EMISSÃO DA NOTA FISCAL =====
+// Cadastro auxiliar simples (achado em backup pré-rollback SaaS: campos
+// razaoSocial/cnpjEmpresa/nfEmail/nfTelefone já existiam na OS antes do
+// rollback de 27/06 — reaproveitados aqui; nfNumero/nfData/nfLink (controle
+// de nota emitida + link de arquivo) ficam de fora por decisão explícita
+// desta Sprint: não há emissão, upload nem controle de notas no CRM, só
+// consulta/cópia manual dos dados para emitir em outro sistema).
+const NF_CAMPOS = [
+  ['razaoSocial',   'nf-razao',       'Razão Social / Nome da Empresa'],
+  ['cnpjEmpresa',   'nf-cnpj',        'CNPJ'],
+  ['nfEmail',       'nf-email',       'E-mail'],
+  ['nfTelefone',    'nf-tel1',        'Telefone 1'],
+  ['nfTelefone2',   'nf-tel2',        'Telefone 2 / WhatsApp'],
+  ['nfResponsavel', 'nf-responsavel', 'Responsável pelo Recebimento da Nota Fiscal'],
+  ['nfObservacoes', 'nf-obs',         'Observações'],
+];
+
+function maskCnpj(el) {
+  let v = el.value.replace(/\D/g, '').slice(0, 14);
+  v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+  v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+  v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+  v = v.replace(/(\d{4})(\d)/, '$1-$2');
+  el.value = v;
+}
+
+// Algoritmo padrão de dígito verificador de CNPJ (Receita Federal).
+function validarCNPJ(cnpj) {
+  const c = String(cnpj || '').replace(/\D/g, '');
+  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
+  const digitos = c.split('').map(Number);
+  const calcDigito = (tamanho) => {
+    let soma = 0, pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += digitos[tamanho - i] * pos--;
+      if (pos < 2) pos = 9;
+    }
+    const resto = soma % 11;
+    return resto < 2 ? 0 : 11 - resto;
+  };
+  return calcDigito(12) === digitos[12] && calcDigito(13) === digitos[13];
+}
+
+function _renderDadosNotaFiscalCard(os) {
+  if (!podeVisualizar('financeiro')) return '';
+  const editavel = podeEditar('financeiro');
+  const ro = editavel ? '' : 'readonly';
+  const campo = (campoOs, id, label, extra = '') => `
+<label style="font-size:12px;color:var(--text2);">${label}</label>
+<div style="display:flex;gap:6px;">
+<input id="${id}" value="${escHtml(os[campoOs])}" ${ro} ${extra} style="flex:1;padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<button type="button" class="icon-btn" onclick="copiarCampoNF('${id}')" title="Copiar">📋</button>
+</div>`;
+  return `<div class="form-section accordion collapsed" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:20px;"><button type="button" class="form-section-title accordion-header" style="padding:10px 14px 6px;" onclick="toggleAccordion(this)" aria-expanded="false"><span>📄 Dados para Emissão da Nota Fiscal</span><span class="accordion-arrow">▶</span></button><div class="accordion-content"><div class="accordion-content-inner" style="padding:0 14px 14px;">
+<div style="display:flex;flex-direction:column;gap:10px;">
+${campo('razaoSocial', 'nf-razao', 'Razão Social / Nome da Empresa')}
+${campo('cnpjEmpresa', 'nf-cnpj', 'CNPJ', 'maxlength="18" oninput="maskCnpj(this);window.markUnsaved()"')}
+<span id="nf-cnpj-erro" style="font-size:11px;color:var(--red);margin-top:-6px;"></span>
+${campo('nfEmail', 'nf-email', 'E-mail', 'type="email"')}
+<span id="nf-email-erro" style="font-size:11px;color:var(--red);margin-top:-6px;"></span>
+${campo('nfTelefone', 'nf-tel1', 'Telefone 1', 'type="tel" oninput="this.value=maskPhone(this.value);window.markUnsaved()"')}
+${campo('nfTelefone2', 'nf-tel2', 'Telefone 2 / WhatsApp', 'type="tel" oninput="this.value=maskPhone(this.value);window.markUnsaved()"')}
+<label style="font-size:12px;color:var(--text2);">Responsável pelo Recebimento da Nota Fiscal</label>
+<input id="nf-responsavel" value="${escHtml(os.nfResponsavel)}" ${ro} style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+<label style="font-size:12px;color:var(--text2);">Observações</label>
+<textarea id="nf-obs" rows="2" ${ro} style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);resize:vertical;font-family:inherit;" oninput="window.markUnsaved()">${escHtml(os.nfObservacoes)}</textarea>
+<div style="display:flex;gap:8px;margin-top:4px;">
+${editavel ? `<button onclick="salvarDadosNotaFiscal()" style="flex:1;padding:10px;background:var(--green-primary);color:#000;border:none;border-radius:var(--radius-sm);font-weight:800;cursor:pointer;">💾 Salvar</button>` : ''}
+<button onclick="copiarTodosDadosNF()" style="flex:1;padding:10px;background:var(--surface3);border:1px solid var(--border);color:var(--text);border-radius:var(--radius-sm);font-weight:700;cursor:pointer;">📋 Copiar Todos os Dados</button>
+</div>
+</div>
+</div></div></div>`;
+}
+
+function copiarCampoNF(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el || !el.value.trim()) { showToast('⚠️ Campo vazio.'); return; }
+  navigator.clipboard.writeText(el.value.trim()).then(() => showToast('📋 Copiado!'));
+}
+
+function copiarTodosDadosNF() {
+  const v = (id) => (document.getElementById(id)?.value || '').trim();
+  const texto = `Razão Social: ${v('nf-razao')}\nCNPJ: ${v('nf-cnpj')}\nE-mail: ${v('nf-email')}\nTelefone 1: ${v('nf-tel1')}\nTelefone 2: ${v('nf-tel2')}\nResponsável: ${v('nf-responsavel')}\nObservações: ${v('nf-obs')}`;
+  navigator.clipboard.writeText(texto).then(() => showToast('📋 Todos os dados copiados!'));
+}
+
+async function salvarDadosNotaFiscal() {
+  if (!currentOS) return;
+  const erroCnpj = document.getElementById('nf-cnpj-erro');
+  const erroEmail = document.getElementById('nf-email-erro');
+  erroCnpj.textContent = '';
+  erroEmail.textContent = '';
+
+  const dados = {};
+  for (const [campoOs, id] of NF_CAMPOS) {
+    dados[campoOs] = document.getElementById(id).value.trim() || null;
+  }
+
+  if (dados.cnpjEmpresa && !validarCNPJ(dados.cnpjEmpresa)) {
+    erroCnpj.textContent = '⚠️ CNPJ inválido.';
+    return;
+  }
+  if (dados.nfEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.nfEmail)) {
+    erroEmail.textContent = '⚠️ E-mail inválido.';
+    return;
+  }
+
+  try {
+    dados.updatedAt = new Date().toISOString();
+    await updateDoc(doc(db, "os", currentOS.id), dados);
+    Object.assign(currentOS, dados);
+    const idx = localOS.findIndex(o => o.id === currentOS.id);
+    if (idx >= 0) localOS[idx] = { ...currentOS };
+    showToast('✅ Dados da Nota Fiscal salvos!');
+    window.markSaved();
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Erro ao salvar dados da Nota Fiscal.');
+  }
 }
 
 // ===== OBS RÁPIDA =====
