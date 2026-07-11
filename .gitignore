@@ -91,3 +91,10 @@ plans/*_INTERNO.md
 # Artefatos de teste/debug na raiz
 teste*.txt
 how*
+
+# Cell City Control Center — relatórios exportados em runtime (módulos
+# Ferramentas e Banco de Dados, ver scripts/control-center/README.md) e
+# config local por módulo (preferências do desenvolvedor, nunca dado de
+# negócio) — nenhum dos dois é código-fonte, nunca deve ir pro repositório.
+_reports/
+scripts/control-center/modules/*/config/local.json
