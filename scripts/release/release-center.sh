@@ -1,12 +1,14 @@
 #!/bin/bash
-# Cell City Release Center — homologação técnica antes da promoção pra main.
+# Cell City Release Center v2.0 — homologação técnica antes da promoção pra main.
 #
 # Fluxo oficial: subir -> release -> subir-ok. O comando `release` é
 # SOMENTE auditoria: nunca commita, nunca dá push, nunca promove, nunca cria
-# tag. Ao final de uma "Release Completa" ou "Certificação Completa" com
-# todas as checagens verdes, grava um marcador local (.git/, nunca
-# versionado/pushado) que o `subir-ok` exige antes de prosseguir — ver
-# ALTERAÇÃO NO SUBIR-OK, Sprint 2026-07-11 (Release Center).
+# tag, nunca altera código, nunca automatiza login (só páginas públicas na
+# checagem Pós-Deploy). Ao final de uma "Release Completa" ou "Certificação
+# de Produção" com todas as checagens verdes, grava um
+# marcador local (.git/, nunca versionado/pushado) que o `subir-ok` exige
+# antes de prosseguir — ver ALTERAÇÃO NO SUBIR-OK, Sprint 2026-07-11
+# (Release Center).
 #
 # Uso: scripts/release/release-center.sh (interativo) ou
 #      scripts/release/release-center.sh --check-homologacao (usado pelo subir-ok)
@@ -34,6 +36,34 @@ _warn() { echo "  ⚠️  $1"; }
 # ============================================================
 # RELEASE RÁPIDA (~30s) — não gera homologação, só panorama.
 # ============================================================
+_check_estrutura_projeto() {
+  echo "  Verificando estrutura do projeto..."
+  local CAMINHOS=(
+    "CRM/index.html" "CRM/login.html" "CRM/pages" "CRM/scripts" "CRM/repositories"
+    "tests" ".github/workflows/deploy-pages.yml" "scripts/release"
+  )
+  local ausente=0
+  for c in "${CAMINHOS[@]}"; do
+    [ -e "$REPO_DIR/$c" ] || { echo "  ❌ AUSENTE: $c"; ausente=1; }
+  done
+  [ "$ausente" -eq 0 ] && _ok "Estrutura de diretórios/arquivos essenciais presente" || _fail "Estrutura do projeto incompleta (ver acima)"
+}
+
+_check_testes_rapidos() {
+  echo "  Testes rápidos (sintaxe dos scripts principais)..."
+  local ARQUIVOS=(
+    "CRM/scripts/firebase.js" "CRM/scripts/kernel.js"
+    "CRM/pages/dashboard/dashboard.js" "CRM/pages/os/os.js" "CRM/pages/portal-cliente/portal.js"
+  )
+  local quebrado=0
+  for a in "${ARQUIVOS[@]}"; do
+    if [ -f "$REPO_DIR/$a" ]; then
+      node --check "$REPO_DIR/$a" >/tmp/cellcity-release-syntax.log 2>&1 || { echo "  ❌ Erro de sintaxe: $a"; quebrado=1; }
+    fi
+  done
+  [ "$quebrado" -eq 0 ] && _ok "Sintaxe ok nos scripts principais" || _fail "Sintaxe quebrada — ver /tmp/cellcity-release-syntax.log"
+}
+
 opcao_release_rapida() {
   echo ""
   echo "⚡ Release Rápida"
@@ -60,6 +90,9 @@ opcao_release_rapida() {
   echo "Último commit: $last_commit"
   last_tag=$(git tag -l 'v*' --sort=-creatordate | head -1)
   echo "Última tag: ${last_tag:-（nenhuma）}"
+
+  _check_estrutura_projeto
+  _check_testes_rapidos
 
   echo ""
   echo "ℹ️  Release Rápida é só panorama — não homologa. Use a opção 2 ou 3 pra liberar o subir-ok."
@@ -182,6 +215,89 @@ _check_github_pages() {
   if [ "$http_dev" = "200" ]; then _ok "DEV responde 200"; else _fail "DEV respondeu $http_dev"; fi
 }
 
+_check_pages_deployment_recente() {
+  echo "  Verificando última implantação (deployment) do GitHub Pages..."
+  local dep state created_at
+  dep=$(curl -s "https://api.github.com/repos/$GH_REPO/deployments?environment=github-pages&per_page=1" 2>/dev/null)
+  if [ -z "$dep" ] || [ "$dep" = "[]" ]; then
+    _warn "Não foi possível consultar deployments do GitHub Pages (rede/API?)"
+    return
+  fi
+  local dep_id
+  dep_id=$(echo "$dep" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['id'] if d else '')" 2>/dev/null)
+  created_at=$(echo "$dep" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d[0]['created_at'] if d else '')" 2>/dev/null)
+  [ -z "$dep_id" ] && { _warn "Deployment do GitHub Pages não encontrado"; return; }
+  state=$(curl -s "https://api.github.com/repos/$GH_REPO/deployments/$dep_id/statuses" 2>/dev/null | python3 -c "
+import json,sys
+d=json.load(sys.stdin)
+print(d[0]['state'] if d else '')
+" 2>/dev/null)
+  echo "  Última implantação: $created_at, estado: ${state:-desconhecido}"
+  if [ "$state" = "success" ]; then _ok "GitHub Pages atualizado (última implantação com sucesso)"
+  else _fail "Última implantação do GitHub Pages não teve sucesso (estado: ${state:-desconhecido})"; fi
+}
+
+# ============================================================
+# PÓS-DEPLOY — valida o site AO VIVO em produção. Só páginas públicas,
+# nunca automatiza login (CLAUDE.md §1). Reaproveitada pela Certificação
+# de Produção (opção 3) e disponível standalone como opção 7.
+# ============================================================
+_check_pos_deploy() {
+  echo "  Confirmando páginas-chave (HTTP 200)..."
+  local URLS_LABEL=(
+    "home:https://cellcityinformatica.com.br/"
+    "login:https://cellcityinformatica.com.br/CRM/login.html"
+    "dashboard:https://cellcityinformatica.com.br/CRM/pages/dashboard/index.html"
+    "portal-cliente:https://cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html"
+  )
+  local item label url codigo
+  for item in "${URLS_LABEL[@]}"; do
+    label="${item%%:*}"; url="${item#*:}"
+    codigo=$(curl -s -o /dev/null -L -w "%{http_code}" "$url" 2>/dev/null)
+    if [ "$codigo" = "200" ]; then _ok "$label abre (200)"; else _fail "$label respondeu $codigo"; fi
+  done
+
+  echo "  Confirmando assets estáticos..."
+  local ASSETS=(
+    "https://cellcityinformatica.com.br/CRM/scripts/firebase.js"
+    "https://cellcityinformatica.com.br/CRM/scripts/kernel.js"
+  )
+  local asset codigo_asset
+  for asset in "${ASSETS[@]}"; do
+    codigo_asset=$(curl -s -o /dev/null -L -w "%{http_code}" "$asset" 2>/dev/null)
+    if [ "$codigo_asset" = "200" ]; then _ok "Asset ok: $(basename "$asset")"; else _fail "Asset $(basename "$asset") respondeu $codigo_asset"; fi
+  done
+
+  _check_pages_deployment_recente
+
+  echo "  Console do navegador (Chrome headless, só páginas públicas)..."
+  local saida status_browser
+  saida=$(_carregar_node && node "$SCRIPT_DIR/pos-deploy-browser.mjs" 2>/tmp/cellcity-release-browser-stderr.log)
+  status_browser=$?
+  echo "$saida" > /tmp/cellcity-release-browser.json
+  if [ "$status_browser" -eq 2 ]; then
+    _warn "Checagem de console pulada — Chrome não disponível nesta máquina"
+  elif [ "$status_browser" -eq 0 ]; then
+    _ok "Console sem erros críticos nas páginas públicas visitadas"
+  else
+    _fail "Console com erro(s) — ver /tmp/cellcity-release-browser.json"
+  fi
+}
+
+opcao_pos_deploy() {
+  echo ""
+  echo "🚀 Pós-Deploy"
+  echo "──────────────"
+  FALHAS=0
+  _check_pos_deploy
+  echo ""
+  if [ "$FALHAS" -eq 0 ]; then
+    echo "🟢 Deploy validado"
+  else
+    echo "🔴 Deploy com falha ($FALHAS checagem(ns))"
+  fi
+}
+
 # ============================================================
 # RELEASE COMPLETA (2-5 min)
 # ============================================================
@@ -195,11 +311,17 @@ opcao_release_completa() {
   _check_functions
   _check_performance
   _check_integridade
-  _check_artefato
-  _check_workflow
   _check_versionamento
   _check_github_actions
   _check_github_pages
+  local falhas_antes_deploy=$FALHAS
+  _check_workflow
+  _check_artefato
+  if [ "$FALHAS" -eq "$falhas_antes_deploy" ]; then
+    _ok "Deploy: pipeline íntegro (workflow, artefato, Actions e Pages ao vivo)"
+  else
+    _fail "Deploy: pipeline com problema(s) — ver checagens acima"
+  fi
 
   echo ""
   if [ "$FALHAS" -eq 0 ]; then
@@ -212,32 +334,141 @@ opcao_release_completa() {
 }
 
 # ============================================================
-# CERTIFICAÇÃO COMPLETA — Release Completa + achados estáticos adicionais
+# Checagens exclusivas da Certificação de Produção
+# ============================================================
+_check_arquitetura() {
+  echo "  Auditoria de arquitetura (regressão de incidentes históricos)..."
+  local achados=0
+  if grep -rlE "from ['\"]/CRM/scripts/kernel\.js['\"]" "$REPO_DIR/CRM" --include="*.js" --include="*.html" >/dev/null 2>&1; then
+    echo "  ❌ import absoluto de kernel.js encontrado (padrão do incidente H-008)"
+    achados=1
+  fi
+  [ "$achados" -eq 0 ] && _ok "Nenhum import absoluto de kernel.js (H-008 não regrediu)" || _fail "Achado(s) de arquitetura — ver acima"
+}
+
+_check_seguranca() {
+  echo "  Auditoria de segurança (segredos/exclusões sensíveis)..."
+  local achados=0
+  local secretos
+  secretos=$(git -C "$REPO_DIR" ls-files | grep -iE "sa-key.*\.json$|\.pem$|credentials.*\.json$" || true)
+  if [ -n "$secretos" ]; then
+    echo "  ❌ Possível credencial versionada no git: $(echo "$secretos" | tr '\n' ' ')"
+    achados=1
+  fi
+  local wf="$REPO_DIR/.github/workflows/deploy-pages.yml"
+  for padrao in "/plans/" "/CLAUDE.md" "/_BACKUPS/"; do
+    grep -qF "exclude='$padrao'" "$wf" || { echo "  ❌ deploy-pages.yml não exclui '$padrao' do artefato publicado"; achados=1; }
+  done
+  [ "$achados" -eq 0 ] && _ok "Nenhuma credencial versionada, exclusões sensíveis presentes no deploy" || _fail "Achado(s) de segurança — ver acima"
+}
+
+_check_repository_layer() {
+  echo "  Auditoria da Camada Repository..."
+  local dir="$REPO_DIR/CRM/repositories"
+  if [ ! -d "$dir" ]; then _warn "CRM/repositories/ não existe nesta branch — checagem não se aplica"; return; fi
+  if [ ! -f "$dir/base.repository.js" ]; then _fail "base.repository.js ausente em CRM/repositories/"; return; fi
+  local quebrado=0
+  local f
+  for f in "$dir"/*.js; do
+    node --check "$f" >/tmp/cellcity-release-repo-syntax.log 2>&1 || { echo "  ❌ Erro de sintaxe: $(basename "$f")"; quebrado=1; }
+  done
+  local total usando_base
+  total=$(find "$dir" -maxdepth 1 -name "*.repository.js" | wc -l)
+  usando_base=$(grep -lE "base\.repository|BaseRepository" "$dir"/*.repository.js 2>/dev/null | wc -l)
+  echo "  $total repositório(s) encontrados, $usando_base referenciam base.repository/BaseRepository."
+  if [ "$quebrado" -eq 0 ] && [ "$usando_base" -ge $((total - 1)) ]; then
+    _ok "Camada Repository consistente (sintaxe ok, herança de base.repository)"
+  else
+    _fail "Camada Repository com inconsistências — ver acima"
+  fi
+}
+
+_check_fluxos_criticos() {
+  echo "  Auditoria de fluxos críticos (CLAUDE.md §5)..."
+  local FLUXOS=(
+    "Login:CRM/login.html"
+    "Dashboard:CRM/pages/dashboard/index.html"
+    "CRM (clientes):CRM/pages/clientes/index.html"
+    "Ordem de Serviço:CRM/pages/os/index.html"
+    "Caixa:CRM/pages/caixa/index.html"
+    "Estoque:CRM/pages/estoque/index.html"
+    "Financeiro:CRM/pages/financeiro/index.html"
+    "Portal do Cliente:CRM/pages/portal-cliente/index.html"
+  )
+  local item label caminho vazio_ou_ausente=0
+  for item in "${FLUXOS[@]}"; do
+    label="${item%%:*}"; caminho="${item#*:}"
+    if [ ! -s "$REPO_DIR/$caminho" ]; then
+      echo "  ❌ $label: $caminho ausente ou vazio"
+      vazio_ou_ausente=1
+    fi
+  done
+  [ "$vazio_ou_ausente" -eq 0 ] && _ok "Todos os 8 fluxos críticos presentes e não-vazios (checagem estrutural — reforça teste manual)" || _fail "Fluxo(s) crítico(s) ausente(s) — ver acima"
+}
+
+_check_cicd() {
+  echo "  Auditoria de CI/CD (deploy-pages.yml)..."
+  local wf="$REPO_DIR/.github/workflows/deploy-pages.yml"
+  local achados=0
+  grep -q "^on:" "$wf" && grep -qE "branches:\s*\[main, develop\]" "$wf" || { echo "  ❌ Trigger de push (main+develop) não encontrado"; achados=1; }
+  for job in "build:" "deploy:" "smoke-test:"; do
+    grep -q "^  $job" "$wf" || { echo "  ❌ Job '$job' ausente no workflow"; achados=1; }
+  done
+  [ "$achados" -eq 0 ] && _ok "Workflow com triggers e jobs (build/deploy/smoke-test) esperados" || _fail "CI/CD com achado(s) — ver acima"
+}
+
+_emitir_relatorio_certificacao() {
+  local status="$1"
+  local dir="$REPO_DIR/evidencias/release-center"
+  mkdir -p "$dir"
+  local ts arquivo commit
+  ts=$(date -u +"%Y%m%d-%H%M%S")
+  commit=$(git rev-parse HEAD)
+  arquivo="$dir/${ts}-certificacao.md"
+  {
+    echo "# Certificação de Produção — Cell City Release Center"
+    echo ""
+    echo "- Commit: $commit"
+    echo "- Timestamp (UTC): $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+    echo "- Resultado: $status"
+    echo "- Checagens que falharam: $FALHAS"
+    echo ""
+    echo "Relatório gerado automaticamente pela opção 3 (Certificação de Produção) do Release Center."
+  } > "$arquivo"
+  echo "  📄 Relatório técnico: $arquivo"
+}
+
+# ============================================================
+# CERTIFICAÇÃO DE PRODUÇÃO (10-20 min) — Release Completa + auditoria
+# estática ampliada + validação pós-deploy ao vivo.
 # ============================================================
 opcao_certificacao_completa() {
   echo ""
-  echo "🏆 Certificação Completa"
-  echo "─────────────────────────"
+  echo "🏆 Certificação de Produção"
+  echo "────────────────────────────"
   FALHAS=0
   _check_rbac
   _check_rules
   _check_functions
   _check_performance
   _check_integridade
-  _check_artefato
-  _check_workflow
   _check_versionamento
   _check_github_actions
   _check_github_pages
+  _check_workflow
+  _check_artefato
 
   echo ""
-  echo "🔎 Auditoria estática adicional:"
-  # XSS / código morto / imports órfãos / coleções sem rule já são cobertos
+  echo "🔎 Auditoria estática ampliada:"
+  # XSS / imports órfãos / ES modules / coleções sem rule já são cobertos
   # pela própria suíte de Integridade acima (tests/integrity/integridade.test.mjs) —
   # não duplica lógica aqui, só resume o que ela já teria pego.
-  if [ "$FALHAS" -eq 0 ]; then
-    _ok "Sem achados novos de XSS/imports órfãos/coleções sem rule (cobertos pela suíte de Integridade)"
-  fi
+  _ok "XSS, imports órfãos, ES modules e coleções sem rule cobertos pela suíte de Integridade"
+  _check_arquitetura
+  _check_seguranca
+  _check_repository_layer
+  _check_fluxos_criticos
+  _check_cicd
   local protegidos_tocados
   protegidos_tocados=$(git diff origin/main..HEAD --name-only 2>/dev/null | grep -E "firebase\.js$|auth\.js$|config\.js$|global\.css$" || true)
   if [ -n "$protegidos_tocados" ]; then
@@ -247,17 +478,25 @@ opcao_certificacao_completa() {
   fi
 
   echo ""
+  echo "🚀 Validação Pós-Deploy (ao vivo):"
+  _check_pos_deploy
+
+  echo ""
   echo "═══════════════════════════════════════"
   echo "  CHECKLIST GO / NO-GO"
   echo "═══════════════════════════════════════"
+  local status
   if [ "$FALHAS" -eq 0 ]; then
     echo "  ✅ GO — apto para promoção"
+    status="GO"
     _gravar_homologacao "3" "GO"
   else
     echo "  ❌ NO-GO — $FALHAS checagem(ns) falharam, corrigir antes de promover"
+    status="NO-GO"
     _invalidar_homologacao
   fi
   echo "═══════════════════════════════════════"
+  _emitir_relatorio_certificacao "$status"
 }
 
 # ============================================================
@@ -292,12 +531,12 @@ _recomendar_proxima_acao() {
 }
 
 # ============================================================
-# HISTÓRICO
+# HISTÓRICO DAS RELEASES
 # ============================================================
 opcao_historico() {
   echo ""
-  echo "🕘 Histórico de Releases"
-  echo "──────────────────────────"
+  echo "🕘 Histórico das Releases"
+  echo "───────────────────────────"
   echo "Últimas 10 tags:"
   git tag -l 'v*' --sort=-creatordate | head -10 | sed 's/^/  /'
   echo ""
@@ -306,25 +545,35 @@ opcao_historico() {
   echo ""
   echo "Últimas 5 promoções (commits em main):"
   git log main --oneline -5 | sed 's/^/  /'
+  echo ""
+  echo "Últimos 5 backups (Cell-City-Backup):"
+  git ls-remote --tags "$(grep -oE 'https://github.com/[^"'"'"']+Cell-City-Backup\.git' "$REPO_DIR/scripts/backup/config.sh" | head -1)" 2>/dev/null \
+    | grep -v '\^{}' | awk '{print $2}' | sed 's#refs/tags/##' | LC_ALL=C sort | tail -5 | sed 's/^/  /' \
+    || echo "  (não foi possível consultar o repositório de backup)"
 }
 
 # ============================================================
-# AUDITORIA DE INFRAESTRUTURA
+# AUDITORIA DA INFRAESTRUTURA
 # ============================================================
 opcao_infraestrutura() {
   echo ""
   echo "🏗️  Auditoria da Infraestrutura"
   echo "─────────────────────────────────"
-  echo "subir / subir-ok:"
+  echo "subir / subir-ok / release:"
   if grep -q "^subir-ok()" "$HOME/.bashrc" && grep -q "^subir()" "$HOME/.bashrc"; then
     _ok "Funções subir/subir-ok definidas em ~/.bashrc"
   else
     _fail "subir/subir-ok não encontrados em ~/.bashrc"
   fi
-  if grep -q 'RELEASE não homologada\|release não homologada\|Release não homologada' "$HOME/.bashrc"; then
+  if grep -q 'RELEASE não homologada\|release não homologada\|Release não homologada\|check-homologacao' "$HOME/.bashrc"; then
     _ok "subir-ok exige homologação da Release antes de promover"
   else
     _warn "subir-ok ainda não exige homologação (rodar a Sprint que adiciona essa trava)"
+  fi
+  if [ -x /usr/local/bin/release ] && grep -q "release-center.sh" /usr/local/bin/release 2>/dev/null; then
+    _ok "/usr/local/bin/release aponta para o release-center.sh versionado"
+  else
+    _warn "/usr/local/bin/release desatualizado ou ausente — reinstalar com scripts/release/release-wrapper-usr-local-bin.sh"
   fi
   echo ""
   _check_workflow
@@ -385,17 +634,31 @@ fi
 # ============================================================
 while true; do
   echo ""
-  echo "========================================"
+  echo "=========================================="
   echo "        CELL CITY RELEASE CENTER"
-  echo "========================================"
-  echo "1 - Release Rápida (v1)"
-  echo "2 - Release Completa (v2)"
-  echo "3 - Certificação Completa (v3)"
+  echo "=========================================="
+  echo ""
+  echo "1 - Release Rápida (30 segundos)"
+  echo ""
+  echo "2 - Release Completa (2~5 minutos)"
+  echo ""
+  echo "3 - Certificação de Produção (10~20 minutos)"
+  echo ""
+  echo "------------------------------------------"
+  echo ""
   echo "4 - Status da Release"
-  echo "5 - Histórico de Releases"
-  echo "6 - Verificar Infraestrutura"
+  echo ""
+  echo "5 - Histórico das Releases"
+  echo ""
+  echo "6 - Auditoria da Infraestrutura"
+  echo ""
+  echo "7 - Pós-Deploy"
+  echo ""
+  echo "------------------------------------------"
+  echo ""
   echo "0 - Sair"
-  echo "========================================"
+  echo ""
+  echo "=========================================="
   read -rp "Escolha uma opção: " escolha
   case "$escolha" in
     1) opcao_release_rapida ;;
@@ -404,6 +667,7 @@ while true; do
     4) opcao_status ;;
     5) opcao_historico ;;
     6) opcao_infraestrutura ;;
+    7) opcao_pos_deploy ;;
     0) echo "Saindo do Release Center."; exit 0 ;;
     *) echo "Opção inválida." ;;
   esac
