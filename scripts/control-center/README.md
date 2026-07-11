@@ -32,28 +32,52 @@ Control Center       → usado exclusivamente pelos desenvolvedores,
 
 ```
 scripts/control-center/
+  VERSION          versão semver do Control Center (fonte única — ver
+                   "Fluxo de inicialização"). Ex.: 1.0.0-alpha.
   core/            núcleo: menu principal e dispatch (core/menu.sh).
-                   Não conhece a lógica interna de nenhum módulo — só
-                   sabe o caminho do menu.sh de cada um.
+                   Não conhece nenhum módulo por nome — o menu inteiro é
+                   carregado do Manifesto (config/modules.conf).
   modules/         um módulo por pasta. Código 100% isolado — nenhum
                    módulo importa código de outro módulo.
   lib/             funções compartilhadas entre core/ e modules/
-                   (lib/common.sh: cabeçalho, status, pausa, log).
+                   (common.sh: status, pausa, placeholder e log;
+                   ui-box.sh: moldura padrão de todo menu/submenu;
+                   plugin-loader.sh: carregamento de plugins/).
+  state/           Estado do Sistema: um .json por rotina (release,
+                   backup, homologação, restauração, health check,
+                   sincronização) registrando a última execução de cada
+                   uma. Nesta Fase 1.1 só o schema existe (campos null) —
+                   nenhum módulo escreve neles ainda (ver state/README.md).
   logs/            log de execução (control-center.log). Conteúdo
                    nunca versionado — só a estrutura (logs/.gitkeep).
   docs/            documentação específica de cada módulo, conforme
                    ganham funcionalidade real.
-  config/          metadados e configuração do Control Center
-                   (control-center.conf: versão, fase atual).
+  config/          config/control-center.conf (fase atual) e
+                   config/modules.conf (Manifesto Oficial dos Módulos).
   plugins/         reservado para a Versão 3.0 (Automação Inteligente).
-                   Vazio de propósito nesta Fase 1.
+                   Vazio de propósito, mas já com o Plugin Loader pronto
+                   (lib/plugin-loader.sh) — ver plugins/README.md.
   README.md        este arquivo.
 ```
 
-Fluxo de uma execução: `cellcity` (função em `~/.bashrc`) → chama
-`core/menu.sh` → menu principal lê a opção escolhida → `core/menu.sh`
-despacha para `modules/<módulo>/menu.sh` → módulo executa e devolve o
-controle ao menu principal.
+## Fluxo de inicialização
+
+Toda execução de `cellcity` segue sempre a mesma sequência, em
+`core/menu.sh`:
+
+1. Resolve `CC_ROOT` a partir do próprio caminho do script (nunca depende
+   do diretório de onde `cellcity` foi chamado).
+2. Carrega `lib/common.sh` (UI/log) e `lib/plugin-loader.sh`.
+3. Carrega `config/control-center.conf` (Fase atual) e lê `VERSION`
+   (versão semver).
+4. Carrega o Manifesto (`config/modules.conf`) para dentro de arrays —
+   é dali que o menu principal e o dispatch são montados, nunca hardcoded.
+5. Roda `_cc_load_plugins` (varre `plugins/*/plugin.sh`; sem nenhum
+   plugin instalado, não faz nada).
+6. Registra o boot em `logs/control-center.log` e entra no loop do menu.
+7. A cada opção escolhida: grava no log, localiza o módulo correspondente
+   no Manifesto e executa `modules/<slug>/menu.sh`; ao retornar, reexibe o
+   menu principal. `0` sempre sai.
 
 ## Roadmap
 
@@ -106,12 +130,21 @@ A velocidade de desenvolvimento nunca deve comprometer estes princípios.
    - resolver seu próprio `CC_ROOT` (não depender de variáveis herdadas do
      processo pai — cada módulo tem que rodar isolado, mesmo chamado
      direto sem passar pelo `core/menu.sh`);
-   - dar `source` em `lib/common.sh`;
-   - usar `_cc_header`, `_cc_ok`/`_cc_fail`/`_cc_warn`, `_cc_pause` e
-     `_cc_log` para manter a mesma UI e o mesmo padrão de log de todos os
+   - dar `source` em `lib/common.sh` (que já carrega `lib/ui-box.sh`
+     transitivamente);
+   - se ainda não tem funcionalidade real, chamar só
+     `_cc_placeholder "<Nome do módulo>"`;
+   - quando ganhar um submenu de verdade, montar a tela só com as funções
+     de `lib/ui-box.sh` (`_cc_box_top`/`_cc_box_line_center`/`_cc_box_sep`/
+     `_cc_box_item`/`_cc_box_blank`/`_cc_box_bottom`) — nunca `echo` cru
+     de borda, pra não fugir do padrão visual (ver "Padrão de menus");
+     rodapé com `9 ► Voltar` + `0 ► Sair` quando o submenu tiver navegação
+     própria (só `0 ► Sair`/`0 ► Voltar` quando não tiver).
+   - usar `_cc_ok`/`_cc_fail`/`_cc_warn` (fora da caixa, nunca dentro) e
+     `_cc_log` para manter o mesmo padrão de status e de log de todos os
      outros módulos.
-3. Adicionar uma linha nova em `_cc_dispatch()` (`core/menu.sh`) e uma
-   opção nova no texto do menu principal.
+3. Adicionar uma linha nova em `config/modules.conf` (o Manifesto) — nunca
+   em `core/menu.sh`, que não conhece nenhum módulo por nome.
 4. Nunca alterar a lógica de outro módulo para acomodar o novo.
 5. Adicionar a estrutura correspondente em
    `tests/control-center/estrutura.test.mjs` (ver "Padrão de testes").
@@ -132,12 +165,31 @@ A velocidade de desenvolvimento nunca deve comprometer estes princípios.
 
 ## Padrão de menus
 
+Padronização visual obrigatória desde a Fase 1.1 ("Ajuste de Arquitetura —
+Padronização dos Menus e Submenus") — nenhuma tela nova pode fugir disto,
+em nenhuma fase futura:
+
+- Toda tela (menu principal, submenu de módulo, placeholder) é desenhada
+  só com as funções de `lib/ui-box.sh` — moldura em caixa (`╔═╗`/`║`/`╚═╝`),
+  título centralizado, item numerado com `►`, rodapé com `0` sempre
+  presente. Nunca um `echo` cru de borda, nunca uma tela com layout
+  diferente da outra.
+- Responsivo: a largura da caixa se adapta ao terminal (`tput cols`), com
+  teto de 56 colunas de conteúdo (não deixa a caixa virar uma linha só de
+  bordas num terminal enorme) e piso de 30 (nunca fica ilegível). Terminais
+  menores que ~34 colunas são um caso extremo fora de alcance — não são o
+  uso normal do Terminal do Ubuntu.
 - Navegação exclusivamente por opções numéricas (`read -rp`), nunca por
   atalhos de letra.
 - `0` sempre volta/sai — no menu principal, sai do Control Center; dentro
-  de um módulo com submenu próprio, volta ao menu anterior.
-- Cabeçalho padronizado via `_cc_header` (mesma borda `====` usada em
-  todos os menus do projeto, incluindo o Release Center).
+  de um submenu de módulo, `9 ► Voltar` retorna ao menu anterior e
+  `0 ► Sair` sai do Control Center inteiro (mesma convenção nos dois
+  níveis). Telas sem opções próprias (placeholder) têm só `0 ► Voltar`.
+- Nenhum emoji dentro da caixa (✅/❌/⚠️/🚧) — emoji ocupa 2 colunas visuais
+  em terminais reais mas só 1 posição em `${#string}`, o que desalinharia
+  a borda direita. Status com emoji (`_cc_ok`/`_cc_fail`/`_cc_warn`)
+  continua existindo, mas sempre fora de uma caixa — mesmo padrão que
+  `scripts/release/release-center.sh` já usa pros seus checks.
 - Opção inválida nunca derruba o programa — só imprime aviso e reexibe o
   menu.
 
@@ -155,9 +207,16 @@ A velocidade de desenvolvimento nunca deve comprometer estes princípios.
 
 - Suíte automatizada em `../../tests/control-center/estrutura.test.mjs`
   (Node `node:test`, mesmo padrão de `tests/integrity/`), validando:
-  - toda a árvore de pastas obrigatória existe;
+  - toda a árvore de pastas obrigatória existe (incluindo `state/`);
+  - `VERSION` existe e tem formato semver (com sufixo opcional tipo
+    `-alpha`), e o menu principal exibe essa versão;
+  - o Manifesto (`config/modules.conf`) tem as 9 entradas esperadas e
+    `core/menu.sh` não tem nenhum módulo hardcoded;
+  - os 6 arquivos de `state/` existem com o schema esperado (campos null);
   - todo módulo do menu principal tem um `menu.sh` executável;
   - sintaxe bash válida (`bash -n`) em todos os scripts do Control Center;
+  - toda tela usa a moldura de `lib/ui-box.sh` (bordas `╔`/`║`/`╚`
+    presentes, sem `echo` cru de `====`);
   - navegação completa do menu principal (opções 1 a 9 e saída pela
     opção 0) sem travar nem quebrar.
 - Registrada em `../../.github/workflows/tests.yml`, junto das demais

@@ -1,16 +1,16 @@
 #!/bin/bash
-# Cell City Control Center — núcleo (Fase 1: estrutura + menu principal).
+# Cell City Control Center — núcleo (Fase 1.1: manifesto de módulos, versão,
+# plugin loader e estado do sistema — ver README.md).
 #
 # Comando oficial: `cellcity` (função em ~/.bashrc que executa este arquivo).
 # Uso direto (sem passar pelo bashrc): scripts/control-center/core/menu.sh
 #
 # Arquitetura (ver README.md em scripts/control-center/ para o documento
-# completo): este arquivo só monta o menu principal e despacha pro módulo
-# escolhido. Cada módulo é 100% isolado em modules/<nome>/menu.sh — core/
-# nunca conhece a lógica interna de um módulo, só o caminho do arquivo.
-# Crescer o Control Center (Versão 2.0 em diante) é só adicionar uma pasta
-# nova em modules/ e uma linha no _cc_dispatch abaixo — nunca precisa
-# reorganizar o que já existe.
+# completo): este arquivo não conhece nenhum módulo por nome — o menu e o
+# dispatch são 100% carregados de config/modules.conf (o "Manifesto Oficial
+# dos Módulos"). Crescer o Control Center (Versão 2.0 em diante) é só
+# adicionar uma pasta nova em modules/ e uma linha no manifesto — nunca
+# precisa tocar neste arquivo.
 set -uo pipefail
 
 CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,46 +19,55 @@ MODULES_DIR="$CC_ROOT/modules"
 
 # shellcheck source=../lib/common.sh
 source "$CC_ROOT/lib/common.sh"
+# shellcheck source=../lib/ui-box.sh
+source "$CC_ROOT/lib/ui-box.sh"
+# shellcheck source=../lib/plugin-loader.sh
+source "$CC_ROOT/lib/plugin-loader.sh"
 # shellcheck source=../config/control-center.conf
 source "$CC_ROOT/config/control-center.conf"
 
+# Versão (semver) — fonte única em VERSION, nunca duplicada no .conf (ver
+# config/control-center.conf).
+CC_VERSION="$(<"$CC_ROOT/VERSION")"
+
+# Manifesto Oficial dos Módulos (config/modules.conf) — única fonte do menu
+# principal. Formato: ordem|slug|rotulo. Ver comentário do próprio arquivo.
+declare -a CC_ORDEM=() CC_SLUG=() CC_ROTULO=()
+while IFS='|' read -r ordem slug rotulo; do
+  [ -z "$ordem" ] && continue
+  case "$ordem" in \#*) continue ;; esac
+  CC_ORDEM+=("$ordem")
+  CC_SLUG+=("$slug")
+  CC_ROTULO+=("$rotulo")
+done < "$CC_ROOT/config/modules.conf"
+
 _cc_dispatch() {
-  case "$1" in
-    1) bash "$MODULES_DIR/desenvolvimento/menu.sh" ;;
-    2) bash "$MODULES_DIR/release/menu.sh" ;;
-    3) bash "$MODULES_DIR/backup-recuperacao/menu.sh" ;;
-    4) bash "$MODULES_DIR/banco-dados/menu.sh" ;;
-    5) bash "$MODULES_DIR/branches-sincronizacao/menu.sh" ;;
-    6) bash "$MODULES_DIR/diagnostico/menu.sh" ;;
-    7) bash "$MODULES_DIR/ferramentas/menu.sh" ;;
-    8) bash "$MODULES_DIR/central-ias/menu.sh" ;;
-    9) bash "$MODULES_DIR/configuracoes/menu.sh" ;;
-    *) echo "Opção inválida." ;;
-  esac
+  local escolha="$1" i
+  for i in "${!CC_ORDEM[@]}"; do
+    if [ "${CC_ORDEM[$i]}" = "$escolha" ]; then
+      bash "$MODULES_DIR/${CC_SLUG[$i]}/menu.sh"
+      return
+    fi
+  done
+  echo "Opção inválida."
 }
 
+_cc_load_plugins
 _cc_log "Control Center iniciado (v$CC_VERSION, Fase $CC_FASE)"
 
 while true; do
   echo ""
-  echo "=========================================="
-  echo "        CELL CITY CONTROL CENTER"
-  echo "        v$CC_VERSION — Fase $CC_FASE"
-  echo "=========================================="
-  echo ""
-  echo "1 - Desenvolvimento"
-  echo "2 - Release"
-  echo "3 - Backup e Recuperação"
-  echo "4 - Banco de Dados"
-  echo "5 - Branches e Sincronização"
-  echo "6 - Diagnóstico"
-  echo "7 - Ferramentas"
-  echo "8 - Central das IAs"
-  echo "9 - Configurações"
-  echo ""
-  echo "0 - Sair"
-  echo ""
-  echo "=========================================="
+  _cc_box_top
+  _cc_box_line_center "CELL CITY CONTROL CENTER"
+  _cc_box_sep
+  _cc_box_line_center "v$CC_VERSION — Fase $CC_FASE"
+  _cc_box_blank
+  for i in "${!CC_ORDEM[@]}"; do
+    _cc_box_item "${CC_ORDEM[$i]}" "${CC_ROTULO[$i]}"
+  done
+  _cc_box_blank
+  _cc_box_item "0" "Sair"
+  _cc_box_bottom
   read -rp "Escolha uma opção: " escolha
   if [ "$escolha" = "0" ]; then
     _cc_log "Control Center encerrado (opção 0)"
