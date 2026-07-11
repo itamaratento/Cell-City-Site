@@ -151,6 +151,31 @@ window.Portal = {
       console.log('[Portal] Nenhuma sessão salva');
     }
 
+    // Auto-login vindo da Ordem de Serviço no CRM — botão "Portal do Cliente"
+    // em CRM/pages/os/os.js::abrirPortalCliente(), que abre esta página com
+    // ?tel=<phoneDigits>&os=<osId>. Evita a equipe pesquisar o cliente
+    // manualmente: o telefone já é dado conhecido (o da própria OS).
+    // Se a sessão restaurada já é do mesmo telefone, não repete a consulta —
+    // só pula direto pra rota da OS (equivalente ao "cliente já logado").
+    const paramsAuto = new URLSearchParams(location.search);
+    const telAuto = paramsAuto.get('tel');
+    if (telAuto) {
+      const digitsAuto = this._phoneDigits(telAuto);
+      const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
+      if (!mesmoCliente) {
+        console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto);
+        await this._autenticarComDigits(digitsAuto);
+      }
+      if (this.session) {
+        const osAuto = paramsAuto.get('os');
+        location.hash = osAuto ? `#/os-detalhe/${osAuto}` : '#/painel';
+      }
+      // Remove telefone/os da URL visível — não deixa esses dados na barra
+      // de endereço nem sobrevivendo a um refresh (a sessão já está no
+      // sessionStorage, que é a fonte de verdade a partir daqui).
+      history.replaceState(null, '', location.pathname + (location.hash || ''));
+    }
+
     // Escuta hash
     window.addEventListener('hashchange', () => this._handleRoute());
 
@@ -359,6 +384,75 @@ window.Portal = {
     setTimeout(() => input.focus(), 300);
   },
 
+  // Núcleo do login, sem dependência do formulário — usado tanto por
+  // doLogin() (telefone digitado pelo cliente) quanto pelo auto-login vindo
+  // da OS no CRM (?tel=<digits> na URL, ver _boot() e os.js::abrirPortalCliente()).
+  // Retorna true se encontrou cliente/OS e criou sessão; false se não achou nada.
+  async _autenticarComDigits(digits) {
+    const db = window.db;
+    const { collection, query, where, getDocs } = window.FirebaseModules;
+    const formatted = this._phoneMask(digits); // formato canônico (exibição na sessão)
+
+    console.log('[Portal] Buscando cliente — digits:', digits, 'formatted:', formatted);
+
+    // Busca do nome em clientes: doc-ID é o próprio phoneDigits. `clientes`
+    // exige temAcessoLiberado() nas Rules (tem CPF/e-mail/endereço, não
+    // pode reabrir para sessão anônima como as outras 6 coleções do
+    // Portal) — sessão anônima nunca tem doc usuarios/{uid}, então um
+    // getDoc direto SEMPRE nega para cliente real. Fix definitivo do
+    // HOTFIX P0 (2026-07-06): mesmo padrão das demais Cloud Functions
+    // desta sprint — Admin SDK, retorna só `name`.
+    let clientName = '';
+    try {
+      const resp = await window.PortalFunctions.obterNomeCliente({ phoneDigits: digits });
+      clientName = (resp.data && resp.data.name) || '';
+      console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
+    } catch (errCliente) {
+      console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
+    }
+
+    // Busca OS do cliente pelo campo canônico
+    const qOS = query(collection(db, 'os'), where('phoneDigits', '==', digits));
+    const snapOS = await getDocs(qOS);
+    const osCount = snapOS.size;
+    console.log('[Portal] OSs encontradas (phoneDigits ==):', osCount);
+    snapOS.forEach(d => {
+      const data = d.data();
+      console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
+    });
+
+    if (osCount === 0 && !clientName) {
+      console.log('[Portal] Nenhum resultado para o telefone:', formatted);
+      return false;
+    }
+
+    // Cria sessão
+    // telefone       = formato canônico (máscara), usado para EXIBIÇÃO.
+    // telefoneDigits = campo canônico (só dígitos), usado em TODAS as consultas.
+    this.session = {
+      telefone: formatted,
+      telefoneDigits: digits,
+      clientName: clientName || `Cliente`,
+      osCount
+    };
+    sessionStorage.setItem('portal_session', JSON.stringify(this.session));
+    console.log('[Portal] Sessão criada:', JSON.stringify(this.session));
+    console.log('[AUDIT:SESSION] telefone salvo na sessão:', JSON.stringify(this.session.telefone));
+    console.log('[AUDIT:SESSION] osCount do login (getDocs):', osCount);
+
+    // Tracking de acesso (ETAPA 3)
+    this._registrarEvento('acesso', {
+      telefone: this.session.telefone,
+      clientName: this.session.clientName
+    });
+
+    // Escuta OS em tempo real
+    this._listenOS();
+    this._carregarMensagens();
+    this._carregarAgendamentos();
+    return true;
+  },
+
   async doLogin() {
     const input = document.getElementById('login-phone');
     const errorEl = document.getElementById('login-error');
@@ -380,77 +474,14 @@ window.Portal = {
     errorEl.textContent = '';
 
     try {
-      const db = window.db;
-      const { collection, query, where, getDocs } = window.FirebaseModules;
-
-      // ===== CAMPO CANÔNICO =====
-      // `phoneDigits`/`telefoneDigits` é gravado por os.js e pelo próprio Portal
-      // usando a mesma função (shared/phone-utils.js). Uma comparação exata é
-      // suficiente — não precisamos mais adivinhar variantes de máscara.
       const digits = this._phoneDigits(raw);
-      const formatted = this._phoneMask(digits); // formato canônico (exibição na sessão)
-
-      console.log('[Portal] Buscando cliente — raw:', raw, 'digits:', digits, 'formatted:', formatted);
-
-      // Busca do nome em clientes: doc-ID é o próprio phoneDigits. `clientes`
-      // exige temAcessoLiberado() nas Rules (tem CPF/e-mail/endereço, não
-      // pode reabrir para sessão anônima como as outras 6 coleções do
-      // Portal) — sessão anônima nunca tem doc usuarios/{uid}, então um
-      // getDoc direto SEMPRE nega para cliente real. Fix definitivo do
-      // HOTFIX P0 (2026-07-06): mesmo padrão das demais Cloud Functions
-      // desta sprint — Admin SDK, retorna só `name`.
-      let clientName = '';
-      try {
-        const resp = await window.PortalFunctions.obterNomeCliente({ phoneDigits: digits });
-        clientName = (resp.data && resp.data.name) || '';
-        console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
-      } catch (errCliente) {
-        console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
-      }
-
-      // Busca OS do cliente pelo campo canônico
-      const qOS = query(collection(db, 'os'), where('phoneDigits', '==', digits));
-      const snapOS = await getDocs(qOS);
-      const osCount = snapOS.size;
-      console.log('[Portal] OSs encontradas (phoneDigits ==):', osCount);
-      snapOS.forEach(d => {
-        const data = d.data();
-        console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
-      });
-
-      if (osCount === 0 && !clientName) {
+      const ok = await this._autenticarComDigits(digits);
+      if (!ok) {
         btn.style.display = '';
         loading.style.display = 'none';
         errorEl.textContent = '❌ Nenhum serviço encontrado com este telefone.';
-        console.log('[Portal] Nenhum resultado para o telefone:', formatted);
         return;
       }
-
-      // Cria sessão
-      // telefone       = formato canônico (máscara), usado para EXIBIÇÃO.
-      // telefoneDigits = campo canônico (só dígitos), usado em TODAS as consultas.
-      this.session = {
-        telefone: formatted,
-        telefoneDigits: digits,
-        clientName: clientName || `Cliente`,
-        osCount
-      };
-      sessionStorage.setItem('portal_session', JSON.stringify(this.session));
-      console.log('[Portal] Sessão criada:', JSON.stringify(this.session));
-      console.log('[AUDIT:SESSION] telefone salvo na sessão:', JSON.stringify(this.session.telefone));
-      console.log('[AUDIT:SESSION] osCount do login (getDocs):', osCount);
-
-      // Tracking de acesso (ETAPA 3)
-      this._registrarEvento('acesso', {
-        telefone: this.session.telefone,
-        clientName: this.session.clientName
-      });
-
-      // Escuta OS em tempo real
-      this._listenOS();
-      this._carregarMensagens();
-      this._carregarAgendamentos();
-
       // Vai para o painel
       location.hash = '#painel';
     } catch (err) {

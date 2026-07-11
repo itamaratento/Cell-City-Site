@@ -118,6 +118,48 @@ test('OS: cliente restrito sem editar/excluir na listagem', async () => {
     assert.doesNotMatch(content, /deleteClient\(/);
 });
 
+// ── Botão Portal do Cliente (substitui o clique-no-telefone que abria
+// WhatsApp) — ver abrirPortalCliente() em os.js e ticket de 2026-07-11.
+test('OS detalhe: telefone não abre mais WhatsApp, abre abrirPortalCliente()', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    const content = document.getElementById('detail-content').innerHTML;
+    assert.doesNotMatch(content, /wa\.me/, 'não pode restar nenhum link wa.me no detalhe da OS');
+    assert.match(content, /onclick="abrirPortalCliente\('os_1','11999998888'\);return false;"/);
+    assert.match(content, /title="Abrir Portal do Cliente"/);
+});
+
+test('abrirPortalCliente: abre o Portal com tel e os na URL, sem WhatsApp', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    const chamadas = [];
+    window.open = (url) => { chamadas.push(url); return null; };
+
+    window.abrirPortalCliente('os_1', '11999998888');
+
+    assert.equal(chamadas.length, 1);
+    assert.match(chamadas[0], /\/CRM\/pages\/portal-cliente\/index\.html\?tel=11999998888&os=os_1/);
+    assert.doesNotMatch(chamadas[0], /wa\.me|whatsapp/i);
+});
+
+test('abrirPortalCliente: telefone inválido mostra toast e não abre nada', async () => {
+    const { document, window } = setup();
+    await importFresh(MOD_URL);
+    await abrirDetalhe(window);
+
+    let abriu = false;
+    window.open = () => { abriu = true; return null; };
+
+    window.abrirPortalCliente('os_1', '123'); // menos de 10 dígitos
+
+    assert.equal(abriu, false);
+    assert.match(document.getElementById('toast').textContent, /Telefone da OS inválido/);
+});
+
 // ── Hardening XSS (Certificação v1.0) — campos que podem vir do formulário
 // PÚBLICO de pré-OS (clientName/model/defect) não podem injetar HTML no
 // console da equipe. Ver escHtml() em CRM/pages/os/os.js.

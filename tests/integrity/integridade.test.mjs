@@ -150,3 +150,24 @@ test('garantia.html: campos públicos (clientName/phone/cpf/model/defect) escapa
     assert.deepEqual(naoEscapados, [],
         `Campos de entrada pública sem escHTML() em garantia.html (XSS armazenado explorável por qualquer visitante):\n${naoEscapados.join('\n')}`);
 });
+
+// ── 7. Integração OS → Portal do Cliente (2026-07-11) ────────────────
+// Checagem estrutural leve (sem harness jsdom+Firebase para portal.js, que
+// não existe ainda) — garante que a peça do lado do Portal do fluxo
+// "clique no telefone da OS abre o Portal já logado" não seja removida ou
+// desconectada silenciosamente. A cobertura funcional real está em
+// tests/rbac/os.test.mjs (lado do CRM, com mutation test provado); o lado
+// do portal.js foi verificado manualmente por rastreamento de código
+// (reaproveita doLogin()/_autenticarComDigits() já testados em produção).
+test('portal.js: auto-login por ?tel= existe e roteia para os-detalhe', () => {
+    const src = read('CRM/pages/portal-cliente/portal.js');
+    assert.match(src, /_autenticarComDigits\(digits\)/, 'função de login reutilizável não pode ser removida');
+    assert.match(src, /paramsAuto\.get\(['"]tel['"]\)/, '_boot() precisa ler ?tel= da URL (vem de os.js::abrirPortalCliente)');
+    assert.match(src, /#\/os-detalhe\/\$\{osAuto\}/, 'auto-login precisa rotear direto pra OS quando ?os= vier junto');
+});
+
+test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.me', () => {
+    const src = read('CRM/pages/os/os.js');
+    assert.match(src, /function abrirPortalCliente\(osId, phoneDigits\)/);
+    assert.match(src, /portal-cliente\/index\.html\?tel=\$\{phoneDigits\}&os=/);
+});
