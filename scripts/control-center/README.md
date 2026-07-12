@@ -299,7 +299,7 @@ por fase (ver responsabilidade das IAs logo abaixo):
 - ✅ Fase 3 — Backup e Recuperação (Claude)
 - ✅ Fase 4 — Banco de Dados (Claude — CCC-F04-001)
 - ✅ Fase 5 — Branches e Sincronização (Claude — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
-- 🔵 Fase 6 — Diagnóstico e Health Check (DeepSeek — implementada, aguardando revisão técnica)
+- ✅ Fase 6 — Diagnóstico e Health Check (DeepSeek + Claude — CCC-F06-001, revisado via CCC-SPRINT-FINAL-001)
 - 🔵 Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek — implementada, aguardando revisão técnica)
 - ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
 - 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
@@ -310,6 +310,11 @@ Plano de execução do CCC-ROADMAP-001: Fase 10 → Fase 11 → revisar
 Fase 6 → revisar Fase 7 → revisar Fase 9 → executar Fase 8 → auditoria
 final → ShellCheck geral → testes automatizados → testes de regressão →
 Parecer Executivo CCC-HOM-001 → Release 1.0.
+
+Fase 6 revisada e homologada em 2026-07-12 (ver
+`docs/PARECER-CCC-HOM-001-DIAGNOSTICO.md`): backend já estava completo;
+`menu.sh` ainda era o placeholder da Fase 1 (nunca chamava `engine.sh`) —
+reconectado. Fase 9 permanece fora do escopo desta rodada.
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
