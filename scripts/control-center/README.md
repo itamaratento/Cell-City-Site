@@ -304,12 +304,14 @@ por fase (ver responsabilidade das IAs logo abaixo):
 - ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
 - 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
 - ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001, auditada via CCC-SPRINT-FINAL-001)
-- ⬜ Fase 11 — Configurações (Claude — não iniciada)
+- ✅ Fase 11 — Configurações (Claude — CCC-F11-001, implementada via CCC-SPRINT-FINAL-001)
 
-Plano de execução do CCC-ROADMAP-001: Fase 10 → Fase 11 → revisar
-Fase 6 → revisar Fase 7 → revisar Fase 9 → executar Fase 8 → auditoria
-final → ShellCheck geral → testes automatizados → testes de regressão →
-Parecer Executivo CCC-HOM-001 → Release 1.0.
+Plano de execução do CCC-ROADMAP-001: Fase 10 ✅ → Fase 11 ✅ → revisar
+Fase 6 ✅ → revisar Fase 7 ✅ → revisar Fase 9 (pendente) → executar
+Fase 8 (Polimento Final, pendente) → auditoria geral final → Release
+1.0. As Fases 6/7/10/11 foram concluídas em bloco via CCC-SPRINT-FINAL-001
+(2026-07-12); restam Fase 9 (revisão) e Fase 8 (execução) pra fechar o
+Roadmap 1.0.
 
 Fase 6 revisada e homologada em 2026-07-12 (ver
 `docs/PARECER-CCC-HOM-001-DIAGNOSTICO.md`): backend já estava completo;
@@ -329,6 +331,13 @@ Fase 10 auditada (não reimplementada — já estava correta) em
 de execução; 1 achado de design registrado (Histórico atribui IA por
 `fases.conf`, não por autor real do commit) e 2 testes corrigidos para
 refletir os pareceres/commits gerados por esta própria Sprint.
+
+Fase 11 implementada em 2026-07-12 (ver
+`docs/PARECER-CCC-HOM-001-CONFIGURACOES.md`): módulo 100% novo. Escopo
+(só leitura de status + preferências locais, nunca mutação real de
+Backup/Git/Firebase/Banco) confirmado com o dono do projeto antes de
+começar. 1 achado de UX corrigido antes do commit (pausa dupla em
+telas de tiro único "engolia" a tecla seguinte do usuário).
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
