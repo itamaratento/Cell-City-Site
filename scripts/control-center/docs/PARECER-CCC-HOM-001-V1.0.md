@@ -153,6 +153,27 @@ publicação em si (push, promoção a `main`, tag de release, bump de
 versão) não foi executada por proibição explícita do documento e
 aguarda autorização do dono do projeto.
 
+## 6. Adendo — Homologação final CCC-V1.0-RELEASE-001 (2026-07-12)
+
+A Sprint de homologação e publicação final reexecutou as validações
+(158/158, ShellCheck 0 erros, navegação manual completa pelos 10
+módulos, performance, compatibilidade incl. 160 colunas) e concluiu as
+etapas de release que a certificação havia deixado pendentes:
+
+- `VERSION` **1.0.0** (commit `3148d79`), CHANGELOG.md e
+  RELEASE-NOTES-1.0.0.md criados.
+- **Backup oficial da versão** no repositório Cell-City-Backup (tag
+  `manual-2026-07-12_21-24-33-control-center-v1-0-0-certificado`,
+  integridade validada por comparação de hash; origin intocado).
+- Tag de release **`control-center-v1.0.0`** criada **localmente** —
+  o nome `v1.0.0` já pertence a uma release pública do site
+  (2026-07-11), colisão detectada e resolvida por namespacing.
+- Checklist final 22/22 — ver `HOMOLOGACAO-CCC-V1.0-RELEASE-001.md`.
+
+**Pendente apenas de autorização do proprietário:** push de `develop`
+(26 commits) + tag para o origin e promoção a `main` via módulo Release.
+
 ---
 *Emitido sob o padrão CCC-HOM-001. Detalhes operacionais em
-`RELATORIO-EXECUTIVO-CCC-V1.0-FINAL-001.md`.*
+`RELATORIO-EXECUTIVO-CCC-V1.0-FINAL-001.md` e
+`HOMOLOGACAO-CCC-V1.0-RELEASE-001.md`.*
