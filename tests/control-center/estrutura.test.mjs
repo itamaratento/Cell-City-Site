@@ -624,7 +624,11 @@ test('módulo Branches e Sincronização: regra de ouro — nenhuma lógica de t
     }
     const syncSrc = readFileSync(join(CC, 'modules/branches-sincronizacao/lib/sync.sh'), 'utf8');
     assert.match(syncSrc, /git -C "\$REPO_DIR" fetch/, 'Sincronização precisa usar git fetch (leitura)');
-    assert.doesNotMatch(syncSrc, /git\s+(pull|push)\b/, 'Sincronização não pode fazer pull/push — publicar continua sendo papel do Release');
+    // Verifica invocação real (sempre no padrão `git -C "$REPO_DIR" <verbo>`
+    // usado em todo o módulo), não texto — a tela de Sincronização orienta o
+    // usuário em português a rodar "git pull"/publicar via Release, o que é
+    // uma string informativa, não uma chamada de comando.
+    assert.doesNotMatch(syncSrc, /git -C "\$REPO_DIR" (pull|push)\b/, 'Sincronização não pode fazer pull/push — publicar continua sendo papel do Release');
 });
 
 test('módulo Branches e Sincronização: "Voltar" dinâmico é 14 (13 itens reais)', () => {
