@@ -203,9 +203,21 @@ branches.sh` (Gerenciar Branches: listar/alternar/criar/excluir),
 `lib/compare.sh` (Comparar Branches), `lib/history.sh` (Histórico),
 `lib/tags.sh` (Tags, inclusive órfãs local×remoto), `lib/stash.sh`
 (Stash), `lib/integrity.sh` (Integridade Git), `lib/statistics.sh`
-(Estatísticas), `lib/tools.sh` (Ferramentas Git, só leitura) e
-`lib/config.sh` (Configurações — `branches.conf` próprio do módulo,
-nunca altera `git config` global nem `config/control-center.conf`).
+(Estatísticas), `lib/export.sh` (Exportações TXT/Markdown/JSON em
+`_reports/git/`, mesmo padrão de `modules/banco-dados/lib/export.sh`),
+`lib/tools.sh` (Ferramentas Git, só leitura) e `lib/config.sh`
+(Configurações — `branches.conf` próprio do módulo, nunca altera `git
+config` global nem `config/control-center.conf`). Documentação completa
+em `docs/branches-sincronizacao.md` (inclui a justificativa formal de o
+módulo não ter `engine.sh` — ver auditoria CCC-F05-AUD-002).
+
+Auditoria técnica CCC-F05-AUD-002 (2026-07-12) corrigiu 2 desvios frente
+à especificação original CCC-F05-001: Exportação (não existia — corrigida
+com `lib/export.sh`) e Logs de detalhe por operação (o framework
+`_cc_run_submenu` já registrava toda seleção de menu genericamente; esta
+auditoria acrescentou `_cc_log` com branch/commit/resultado em cada tela
+e mutação, reaproveitando `_cc_log()` — nenhum sistema de log novo). Ver
+parecer atualizado.
 
 | Ação                                    | Comportamento |
 |------------------------------------------|----------------|
@@ -213,6 +225,7 @@ nunca altera `git config` global nem `config/control-center.conf`).
 | Excluir Branch Local                     | bloqueia incondicionalmente `develop`/`main` e a branch atual, mesmo com confirmação |
 | Alternar/Criar Branch                    | pedem nome (Enter cancela) + `_cc_confirm` antes de qualquer `git checkout`/`git branch` |
 | Aplicar/Remover Stash                    | sempre pedem `_cc_confirm`; nunca aplicam/removem automaticamente |
+| Exportação                               | TXT/Markdown/JSON somente-leitura, sempre em `_reports/git/` (não versionado) |
 | Status/Branch Atual/Histórico/Tags/Comparar/Integridade/Estatísticas/Ferramentas Git | 100% leitura, sem exceção |
 
 "Última sincronização" (Status do Repositório/Estatísticas) é lida do

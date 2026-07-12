@@ -603,7 +603,7 @@ test('módulo Backup e Recuperação: Backup das Configurações executa de verd
 // Sprint), mas sempre com confirmação e nunca tocando develop/main.
 
 const BRS_LIBS = ['status.sh', 'branches.sh', 'sync.sh', 'compare.sh', 'history.sh',
-    'tags.sh', 'stash.sh', 'integrity.sh', 'statistics.sh', 'tools.sh', 'config.sh'];
+    'tags.sh', 'stash.sh', 'integrity.sh', 'statistics.sh', 'export.sh', 'tools.sh', 'config.sh'];
 
 test('módulo Branches e Sincronização: interface (menu.sh) só desenha — nenhuma chamada direta a git fora da camada de serviço', () => {
     const src = readFileSync(join(CC, 'modules/branches-sincronizacao/menu.sh'), 'utf8');
@@ -627,14 +627,14 @@ test('módulo Branches e Sincronização: regra de ouro — nenhuma lógica de t
     assert.doesNotMatch(syncSrc, /git\s+(pull|push)\b/, 'Sincronização não pode fazer pull/push — publicar continua sendo papel do Release');
 });
 
-test('módulo Branches e Sincronização: "Voltar" dinâmico é 13 (12 itens reais)', () => {
-    const saida = rodarModulo('branches-sincronizacao', '13\n');
-    assert.match(saida, /13 ► Voltar/);
+test('módulo Branches e Sincronização: "Voltar" dinâmico é 14 (13 itens reais)', () => {
+    const saida = rodarModulo('branches-sincronizacao', '14\n');
+    assert.match(saida, /14 ► Voltar/);
 });
 
 test('módulo Branches e Sincronização: Status do Repositório/Branch Atual/Histórico/Tags/Integridade/Estatísticas mostram dados reais do Git', () => {
     const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
-    const saida = rodarModulo('branches-sincronizacao', '1\n\n2\n\n6\n\n\n7\n\n9\n\n10\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '1\n\n2\n\n6\n\n\n7\n\n9\n\n10\n\n14\n');
     assert.ok(saida.includes(`Branch atual        : ${branchReal}`), 'Status do Repositório precisa mostrar a branch real');
     assert.match(saida, /Resultado: (SAUDÁVEL|ATENÇÃO|CRÍTICO)/);
     assert.ok(saida.includes(`Nome                    : ${branchReal}`), 'Branch Atual precisa mostrar a branch real');
@@ -645,18 +645,18 @@ test('módulo Branches e Sincronização: Status do Repositório/Branch Atual/Hi
 });
 
 test('módulo Branches e Sincronização: Comparar Branches aceita os defaults e mostra diff real entre develop e main', () => {
-    const saida = rodarModulo('branches-sincronizacao', '5\n\n\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '5\n\n\n\n14\n');
     assert.match(saida, /Commits exclusivos de 'develop'/);
     assert.match(saida, /Resumo de arquivos/);
 });
 
 test('módulo Branches e Sincronização: Sincronização busca atualizações de verdade (git fetch) sem travar', () => {
-    const saida = rodarModulo('branches-sincronizacao', '4\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '4\n\n14\n');
     assert.match(saida, /Fetch concluído\.|Fetch falhou/);
 });
 
 test('módulo Branches e Sincronização: Ferramentas Git (validar config/.gitignore/config atual) são leitura real', () => {
-    const saida = rodarModulo('branches-sincronizacao', '11\n5\n\n6\n\n7\n\n0\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '12\n5\n\n6\n\n7\n\n0\n\n14\n');
     assert.match(saida, /user\.name: |user\.name não configurado/);
     assert.match(saida, /\.gitignore encontrado\.|\.gitignore não encontrado/);
     assert.match(saida, /core\.repositoryformatversion/);
@@ -665,7 +665,7 @@ test('módulo Branches e Sincronização: Ferramentas Git (validar config/.gitig
 test('módulo Branches e Sincronização: Configurações mostra o branches.conf real e cancela edição sem alterar o arquivo', () => {
     const arquivoConf = join(CC, 'modules/branches-sincronizacao/branches.conf');
     const antes = readFileSync(arquivoConf, 'utf8');
-    const saida = rodarModulo('branches-sincronizacao', '12\n6\n99\nn\n0\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '13\n6\n99\nn\n0\n\n14\n');
     assert.match(saida, /Timeout de rede \(segundos\)\s*: \d+/);
     const depois = readFileSync(arquivoConf, 'utf8');
     assert.equal(depois, antes, 'edição cancelada não pode alterar branches.conf');
@@ -675,13 +675,13 @@ test('módulo Branches e Sincronização: Alternar/Criar/Excluir Branch cancelam
     const antesHead = execSync('git rev-parse HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
     const antesBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
 
-    const alternar = rodarModulo('branches-sincronizacao', '3\n4\n\n0\n\n13\n');
+    const alternar = rodarModulo('branches-sincronizacao', '3\n4\n\n0\n\n14\n');
     assert.match(alternar, /Cancelado\./);
 
-    const criar = rodarModulo('branches-sincronizacao', '3\n5\n\n0\n\n13\n');
+    const criar = rodarModulo('branches-sincronizacao', '3\n5\n\n0\n\n14\n');
     assert.match(criar, /Cancelado\./);
 
-    const excluir = rodarModulo('branches-sincronizacao', '3\n6\n\n0\n\n13\n');
+    const excluir = rodarModulo('branches-sincronizacao', '3\n6\n\n0\n\n14\n');
     assert.match(excluir, /Cancelado\./);
 
     const depoisHead = execSync('git rev-parse HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
@@ -692,7 +692,7 @@ test('módulo Branches e Sincronização: Alternar/Criar/Excluir Branch cancelam
 
 test('módulo Branches e Sincronização: Excluir Branch nunca remove develop/main, mesmo pedindo diretamente', () => {
     const antes = execSync('git branch --list develop main', { cwd: ROOT, encoding: 'utf8' });
-    const saida = rodarModulo('branches-sincronizacao', '3\n6\ndevelop\n\n0\n\n13\n');
+    const saida = rodarModulo('branches-sincronizacao', '3\n6\ndevelop\n\n0\n\n14\n');
     assert.match(saida, /branch protegida/);
     const depois = execSync('git branch --list develop main', { cwd: ROOT, encoding: 'utf8' });
     assert.equal(depois, antes, 'develop/main precisam continuar existindo exatamente como antes');
@@ -707,11 +707,11 @@ test('módulo Branches e Sincronização: Aplicar/Remover Stash pedem confirmaç
         try {
             assert.ok(!existsSync(arquivoTeste), 'git stash push precisa ter limpado o arquivo do working tree');
 
-            const aplicar = rodarModulo('branches-sincronizacao', '8\n3\n0\nn\n0\n\n13\n');
+            const aplicar = rodarModulo('branches-sincronizacao', '8\n3\n0\nn\n0\n\n14\n');
             assert.match(aplicar, /Cancelado\./);
             assert.ok(!existsSync(arquivoTeste), 'Aplicar Stash cancelado não pode restaurar o arquivo');
 
-            const remover = rodarModulo('branches-sincronizacao', '8\n4\n0\nn\n0\n\n13\n');
+            const remover = rodarModulo('branches-sincronizacao', '8\n4\n0\nn\n0\n\n14\n');
             assert.match(remover, /Cancelado\./);
             const stashesDepois = execSync('git stash list', { cwd: ROOT, encoding: 'utf8' });
             assert.match(stashesDepois, /teste-fase5-descartavel/, 'Remover Stash cancelado não pode remover o stash de teste');
@@ -721,6 +721,36 @@ test('módulo Branches e Sincronização: Aplicar/Remover Stash pedem confirmaç
     } finally {
         rmSync(arquivoTeste, { force: true });
     }
+});
+
+// Auditoria CCC-F05-AUD-002 (2026-07-12): corrigiu 2 desvios frente à
+// CCC-F05-001 — Exportação (não existia) e Logs de detalhe por operação
+// (o framework _cc_run_submenu já logava a seleção de menu genericamente;
+// faltava branch/commit/resultado por operação). Os 2 testes abaixo
+// cobrem essas correções.
+
+test('módulo Branches e Sincronização: Exportação gera TXT/Markdown/JSON reais em _reports/git/ (removidos pelo próprio teste)', () => {
+    const dir = join(ROOT, '_reports', 'git');
+    rmSync(dir, { recursive: true, force: true });
+    const saida = rodarModulo('branches-sincronizacao', '11\n1\n\n2\n\n3\n\n0\n\n14\n');
+    assert.match(saida, /Relatório exportado: .*\.txt/);
+    assert.match(saida, /Relatório exportado: .*\.md/);
+    assert.match(saida, /Relatório exportado: .*\.json/);
+    const gerados = existsSync(dir) ? readdirSync(dir) : [];
+    assert.ok(gerados.some(f => f.endsWith('.txt')), 'TXT não foi gerado em _reports/git/');
+    assert.ok(gerados.some(f => f.endsWith('.md')), 'Markdown não foi gerado em _reports/git/');
+    assert.ok(gerados.some(f => f.endsWith('.json')), 'JSON não foi gerado em _reports/git/');
+    const jsonPath = join(dir, gerados.find(f => f.endsWith('.json')));
+    const jsonConteudo = JSON.parse(readFileSync(jsonPath, 'utf8'));
+    assert.equal(jsonConteudo.modulo, 'Branches e Sincronização');
+    assert.ok(jsonConteudo.branch, 'JSON exportado precisa registrar a branch');
+    rmSync(dir, { recursive: true, force: true });
+});
+
+test('módulo Branches e Sincronização: operações relevantes ficam registradas em logs/control-center.log com branch/resultado (não só a seleção genérica de menu)', () => {
+    rodarModulo('branches-sincronizacao', '4\n\n14\n');
+    const log = readFileSync(join(CC, 'logs/control-center.log'), 'utf8');
+    assert.match(log, /Branches e Sincronização: Sincronização — fetch (falhou|ok)/);
 });
 
 // ── Fase 4 — "Banco de Dados" (CCC-F04-001) ──────────────────────────
