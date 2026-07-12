@@ -303,7 +303,7 @@ por fase (ver responsabilidade das IAs logo abaixo):
 - ✅ Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek + Claude — CCC-F07-FINAL, revisado via CCC-SPRINT-FINAL-001)
 - ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
 - 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
-- ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001)
+- ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001, auditada via CCC-SPRINT-FINAL-001)
 - ⬜ Fase 11 — Configurações (Claude — não iniciada)
 
 Plano de execução do CCC-ROADMAP-001: Fase 10 → Fase 11 → revisar
@@ -323,6 +323,12 @@ Fase 7 revisada e homologada em 2026-07-12 (ver
 real de performance corrigido (Auditoria de Segurança travava por não
 excluir `node_modules` dos `find`). Fase 9 permanece fora do escopo
 desta rodada.
+
+Fase 10 auditada (não reimplementada — já estava correta) em
+2026-07-12 (ver `docs/PARECER-CCC-HOM-001-CENTRAL-IAS.md`): 0 defeitos
+de execução; 1 achado de design registrado (Histórico atribui IA por
+`fases.conf`, não por autor real do commit) e 2 testes corrigidos para
+refletir os pareceres/commits gerados por esta própria Sprint.
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
