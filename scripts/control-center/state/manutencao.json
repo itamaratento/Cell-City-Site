@@ -1,0 +1,12 @@
+{
+  "descricao": "Estado da última higienização (módulo Manutenção — Fase 9).",
+  "timestamp": null,
+  "status": null,
+  "total": null,
+  "aprovados": null,
+  "avisos": null,
+  "falhas": null,
+  "encontrados": [],
+  "removidos": null,
+  "espaco_recuperado": null
+}

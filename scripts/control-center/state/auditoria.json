@@ -1,0 +1,10 @@
+{
+  "descricao": "Estado da última auditoria (executada pelo módulo Ferramentas — Fase 7).",
+  "timestamp": "2026-07-12T15:52:33-03:00",
+  "status": "ATENCAO",
+  "tipo": "bash",
+  "total": 4,
+  "aprovados": 2,
+  "avisos": 2,
+  "falhas": 0
+}
