@@ -987,7 +987,14 @@ test('módulo Central de IAs: Histórico filtra por IA/Fase reais via git log (n
     assert.match(filtrado, /Fase 5/);
     assert.doesNotMatch(filtrado, /Fase 4/);
 
-    const semResultado = rodarModulo('central-ias', '7\ndeepseek\n\n\n\n12\n0\n');
+    // Filtro por um valor que garantidamente não existe em fases.conf —
+    // "deepseek" não serve mais aqui: o Histórico atribui a IA de um
+    // commit pelo mapeamento estático fases.conf (quem foi designado pra
+    // fase), não pelo autor real do commit; qualquer revisão técnica do
+    // Claude em módulo atribuído ao DeepSeek (ex.: Fases 6/7) aparece
+    // rotulada "(deepseek)" no Histórico — achado de design registrado
+    // no parecer da Fase 10, não uma regressão desta suíte.
+    const semResultado = rodarModulo('central-ias', '7\niaqueninguemcadastrou\n\n\n\n12\n0\n');
     assert.match(semResultado, /Nenhum registro encontrado/);
 });
 
@@ -1009,9 +1016,13 @@ test('módulo Central de IAs: Documentação enumera README.md e a documentaçã
 });
 
 test('módulo Central de IAs: Estatísticas rodam de verdade e batem com o Dashboard', () => {
+    // Contagem de pareceres é dinâmica de propósito (não hardcoded) — o
+    // número de PARECER-CCC-HOM-001*.md cresce a cada fase homologada
+    // (3 na Fase 5, 5 depois das Fases 6/7 nesta mesma Sprint).
+    const totalPareceres = readdirSync(join(CC, 'docs')).filter(f => f.startsWith('PARECER-CCC-HOM-001')).length;
     const saida = rodarModulo('central-ias', '10\n\n12\n0\n');
     assert.match(saida, /Fases concluídas: 5\/11 \(45%\)/);
-    assert.match(saida, /Homologações \(Pareceres Executivos\): 3/);
+    assert.match(saida, new RegExp(`Homologações \\(Pareceres Executivos\\): ${totalPareceres}`));
 });
 
 test('módulo Central de IAs: Exportações (via Configurações) geram TXT/Markdown/JSON reais em _reports/ai-center/ (removidos pelo próprio teste)', () => {
