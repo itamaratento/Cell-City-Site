@@ -190,6 +190,37 @@ em `dev` não estão declarados no arquivo local. 3 blocos de Rules com
 `allow ...: if true`, todos documentados no próprio arquivo como acesso
 público intencional e estreito (`config`, `pre_os`, `catalogo_config`).
 
+**Módulo Branches e Sincronização (Fase 5)** — mesma regra de ouro:
+nenhuma lógica de tag/push/merge/promoção é reimplementada aqui, isso
+continua sendo papel exclusivo do módulo Release (`subir`/`subir-ok`/
+`rollback`). Diferente de Release/Backup, não havia nenhum script prévio
+de branch/stash/sincronização no projeto pra envelopar — as ações abaixo
+são novas de propósito, mas de escopo estreito (leitura + ações pontuais
+de branch/stash sempre com confirmação, nunca em `develop`/`main`).
+Camadas: `lib/status.sh` (Status do Repositório/Branch Atual), `lib/
+branches.sh` (Gerenciar Branches: listar/alternar/criar/excluir),
+`lib/sync.sh` (Sincronização: `git fetch` + divergências + orientação),
+`lib/compare.sh` (Comparar Branches), `lib/history.sh` (Histórico),
+`lib/tags.sh` (Tags, inclusive órfãs local×remoto), `lib/stash.sh`
+(Stash), `lib/integrity.sh` (Integridade Git), `lib/statistics.sh`
+(Estatísticas), `lib/tools.sh` (Ferramentas Git, só leitura) e
+`lib/config.sh` (Configurações — `branches.conf` próprio do módulo,
+nunca altera `git config` global nem `config/control-center.conf`).
+
+| Ação                                    | Comportamento |
+|------------------------------------------|----------------|
+| Sincronização                            | só `git fetch --all --prune` (leitura) + relatório de ahead/behind; nunca `pull`/`push` — publicar é sempre "Release › Enviar Alterações/Criar Tag e Publicar" |
+| Excluir Branch Local                     | bloqueia incondicionalmente `develop`/`main` e a branch atual, mesmo com confirmação |
+| Alternar/Criar Branch                    | pedem nome (Enter cancela) + `_cc_confirm` antes de qualquer `git checkout`/`git branch` |
+| Aplicar/Remover Stash                    | sempre pedem `_cc_confirm`; nunca aplicam/removem automaticamente |
+| Status/Branch Atual/Histórico/Tags/Comparar/Integridade/Estatísticas/Ferramentas Git | 100% leitura, sem exceção |
+
+"Última sincronização" (Status do Repositório/Estatísticas) é lida do
+mtime de `.git/FETCH_HEAD`, não de `state/sincronizacao.json` — nenhum
+módulo desta versão (Release/Backup incluídos) ainda escreve nos arquivos
+de `state/`, e um módulo novo divergir sozinho desse padrão criaria uma
+inconsistência maior do que vale a pena nesta Sprint (ver `state/README.md`).
+
 ## Fluxo de inicialização
 
 Toda execução de `cellcity` segue sempre a mesma sequência, em
@@ -218,10 +249,9 @@ Toda execução de `cellcity` segue sempre a mesma sequência, em
 **Versão 1.0 — Infraestrutura do Projeto**
 - ✅ Desenvolvimento (Fase 2)
 - ✅ Release (Fase 2 — envelopa `subir`/`release`/`subir-ok`/`rollback`)
-- Backup
-- Recuperação
+- ✅ Backup e Recuperação (Fase 3)
 - ✅ Banco de Dados (Fase 4 — CCC-F04-001)
-- Branches
+- ✅ Branches e Sincronização (Fase 5 — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
 - Diagnóstico
 
 **Versão 2.0 — Administração dos Módulos**
@@ -387,6 +417,15 @@ em nenhuma fase futura:
     destrutivas (backup manual com working tree sujo, automático,
     restaurar, limpeza) cancelam de verdade sem tocar em git; Validar
     Integridade/Listar/Informações rodam de verdade (são leitura).
+  - módulo Branches e Sincronização (Fase 5): grep confirma a regra de
+    ouro (nenhum `git tag`/`push origin main`/`merge` reimplementado, só
+    `fetch`); Status/Branch Atual/Histórico/Tags/Comparar/Integridade/
+    Estatísticas/Ferramentas Git rodam de verdade (são leitura); Alternar/
+    Criar/Excluir Branch cancelam sem nome informado e Excluir nunca
+    remove `develop`/`main`; Aplicar/Remover Stash usam um stash real e
+    descartável (criado e removido pelo próprio teste) pra provar que
+    cancelam sem tocar nele; Configurações cancela edição sem alterar
+    `branches.conf`.
 - Registrada em `../../.github/workflows/tests.yml`, junto das demais
   suítes do projeto.
 - Verificação manual do comando `cellcity` (depende de `~/.bashrc`, fora
