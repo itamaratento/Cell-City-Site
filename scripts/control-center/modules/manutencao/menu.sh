@@ -86,7 +86,7 @@ _cc_man_analise_e_limpeza() {
 _cc_man_loop() {
   while true; do
     _cc_man_cabecalho; _cc_man_exibir_menu
-    read -rp "Opção: " op
+    read -rp "Opção: " op || break
     case "$op" in
       1)  _cc_man_analise_e_limpeza ;;
       2)  _cc_man_executar_display "orfaos" "Arquivos Órfãos" ;;

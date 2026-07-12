@@ -438,7 +438,11 @@ test('módulo Desenvolvimento: Status/Git Status/Diff/Log/Alterações Locais mo
     const saida = rodarModulo('desenvolvimento', '1\n\n2\n\n4\n\n5\n\n14\n0\n');
     assert.ok(saida.includes(`Branch atual   : ${branchReal}`), 'Status do Projeto precisa mostrar a branch real');
     assert.match(saida, /Último commit  : [0-9a-f]{7,}/, 'Status do Projeto precisa mostrar um hash de commit real');
-    assert.match(saida, /On branch|Your branch/, 'Git Status precisa mostrar a saída real de "git status"');
+    // git status sai no locale do usuário — inglês ("On branch") ou
+    // português ("No ramo", pt_BR.UTF-8, locale real desta máquina); o
+    // regex original só aceitava inglês e falhava em qualquer sistema em
+    // português (corrigido na certificação CCC-V1.0-FINAL-001).
+    assert.match(saida, /On branch|Your branch|No ramo|Seu ramo/, 'Git Status precisa mostrar a saída real de "git status"');
     assert.match(saida, /14 ► Voltar/, 'Desenvolvimento tem 13 itens reais — Voltar precisa ser "14"');
 });
 

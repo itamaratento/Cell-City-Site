@@ -68,7 +68,11 @@ while true; do
   _cc_box_blank
   _cc_box_item "0" "Sair"
   _cc_screen_footer "Use os números para navegar · 0 sai do Control Center"
-  read -rp "Escolha uma opção: " escolha
+  # `|| break`: em EOF (stdin esgotado — pipe, teste, uso não-interativo)
+  # o read falha; sem isto o loop redesenhava o menu infinitamente
+  # (defeito real encontrado na certificação CCC-V1.0-FINAL-001: 57s de
+  # saída até estourar o buffer de quem capturava).
+  read -rp "Escolha uma opção: " escolha || { _cc_log "Control Center encerrado (EOF no stdin)"; echo ""; break; }
   if [ "$escolha" = "0" ]; then
     _cc_log "Control Center encerrado (opção 0)"
     echo "Saindo do Control Center."

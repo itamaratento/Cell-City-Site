@@ -75,7 +75,9 @@ _cc_run_submenu() {
     _cc_box_item "$voltar_num" "Voltar"
     _cc_box_item "0" "Sair"
     _cc_screen_footer "Escolha uma opção · $voltar_num volta · 0 sai do Control Center"
-    read -rp "Opção: " escolha
+    # EOF no stdin encerra o submenu como um "Voltar" (mesma proteção
+    # contra loop infinito do core/menu.sh — certificação CCC-V1.0-FINAL-001).
+    read -rp "Opção: " escolha || return 0
 
     if [ "$escolha" = "0" ]; then
       _cc_log "Control Center encerrado (submenu '$titulo')"
