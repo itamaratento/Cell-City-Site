@@ -221,6 +221,37 @@ módulo desta versão (Release/Backup incluídos) ainda escreve nos arquivos
 de `state/`, e um módulo novo divergir sozinho desse padrão criaria uma
 inconsistência maior do que vale a pena nesta Sprint (ver `state/README.md`).
 
+**Módulo Central de IAs (Fase 10 — padrão CCC-F10-001)** — centro de
+organização/documentação/acompanhamento das IAs do projeto, somente
+leitura. Camadas: `lib/utils.sh` (Registro de Fases/IAs/Fluxo + config
+local), `lib/dashboard.sh` (Dashboard das IAs), `lib/agents.sh` (IAs
+Cadastradas), `lib/skills.sh` (Especialidades), `lib/responsibilities.sh`
+(Responsabilidades), `lib/workflow.sh` (Fluxo de Desenvolvimento),
+`lib/tasks.sh` (Distribuição de Tarefas — só organização, nenhum
+gerenciamento automático), `lib/history.sh` (Histórico, via `git log`
+real), `lib/audit.sh` (Auditorias, via `docs/PARECER-*.md` reais),
+`lib/documentation.sh` (Documentação), `lib/statistics.sh`
+(Estatísticas), `lib/export.sh` (Exportações), `lib/config.sh`
+(Configurações locais do módulo, em `config/local.json` — mesmo escopo
+isolado do Banco de Dados). Detalhe completo em
+`modules/central-ias/docs/central-ias.md`.
+
+**Princípio: nenhuma fase/IA/estágio hardcoded em `lib/*.sh`.** Fonte
+única em `modules/central-ias/config/{fases,registry,workflow}.conf`
+(mesmo espírito de `config/modules.conf`) — atualizar uma fase é só
+editar uma linha lá. O estado REAL de cada módulo (implementado/
+placeholder/ausente) nunca é assumido a partir do status declarado —
+é verificado ao vivo contra `modules/<slug>/menu.sh` a cada consulta
+(Dashboard classifica `CRITICO` se um módulo declarado `CONCLUIDA`
+não bater com a realidade).
+
+**Achado real desta Sprint:** uma lista unida só por `,`/`→` (sem
+espaço) vira, pro word-wrap de `_cc_box_text`, uma "palavra" única sem
+ponto de quebra — o trecho que não cabe na largura da caixa é cortado
+silenciosamente por `_cc_box_line`. Corrigido usando sempre separador
+**+ espaço** (`", "`/`"→ "`) — vale pra qualquer módulo futuro que monte
+uma lista dinâmica pra exibir dentro da caixa.
+
 ## Fluxo de inicialização
 
 Toda execução de `cellcity` segue sempre a mesma sequência, em
@@ -246,13 +277,26 @@ Toda execução de `cellcity` segue sempre a mesma sequência, em
 
 ## Roadmap
 
+Roadmap Oficial completo: documento CCC-ROADMAP-001 (11 fases). Status
+por fase (ver responsabilidade das IAs logo abaixo):
+
 **Versão 1.0 — Infraestrutura do Projeto**
-- ✅ Desenvolvimento (Fase 2)
-- ✅ Release (Fase 2 — envelopa `subir`/`release`/`subir-ok`/`rollback`)
-- ✅ Backup e Recuperação (Fase 3)
-- ✅ Banco de Dados (Fase 4 — CCC-F04-001)
-- ✅ Branches e Sincronização (Fase 5 — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
-- Diagnóstico
+- ✅ Fase 1 — Estrutura Base, UX e Arquitetura (Claude)
+- ✅ Fase 2 — Desenvolvimento e Release (Claude — envelopa `subir`/`release`/`subir-ok`/`rollback`)
+- ✅ Fase 3 — Backup e Recuperação (Claude)
+- ✅ Fase 4 — Banco de Dados (Claude — CCC-F04-001)
+- ✅ Fase 5 — Branches e Sincronização (Claude — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
+- 🔵 Fase 6 — Diagnóstico e Health Check (DeepSeek — implementada, aguardando revisão técnica)
+- 🔵 Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek — implementada, aguardando revisão técnica)
+- ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
+- 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
+- ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001)
+- ⬜ Fase 11 — Configurações (Claude — não iniciada)
+
+Plano de execução do CCC-ROADMAP-001: Fase 10 → Fase 11 → revisar
+Fase 6 → revisar Fase 7 → revisar Fase 9 → executar Fase 8 → auditoria
+final → ShellCheck geral → testes automatizados → testes de regressão →
+Parecer Executivo CCC-HOM-001 → Release 1.0.
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
