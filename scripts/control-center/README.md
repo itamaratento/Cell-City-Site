@@ -301,17 +301,20 @@ por fase (ver responsabilidade das IAs logo abaixo):
 - ✅ Fase 5 — Branches e Sincronização (Claude — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
 - ✅ Fase 6 — Diagnóstico e Health Check (DeepSeek + Claude — CCC-F06-001, revisado via CCC-SPRINT-FINAL-001)
 - ✅ Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek + Claude — CCC-F07-FINAL, revisado via CCC-SPRINT-FINAL-001)
-- ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
-- 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
+- ✅ Fase 8 — Polimento Final, Testes e Certificação (Claude — executada via CCC-V1.0-FINAL-001)
+- ✅ Fase 9 — Manutenção e Higienização (DeepSeek + Claude — CCC-F09-FINAL, homologada via CCC-V1.0-FINAL-001)
 - ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001, auditada via CCC-SPRINT-FINAL-001)
 - ✅ Fase 11 — Configurações (Claude — CCC-F11-001, implementada via CCC-SPRINT-FINAL-001)
 
-Plano de execução do CCC-ROADMAP-001: Fase 10 ✅ → Fase 11 ✅ → revisar
-Fase 6 ✅ → revisar Fase 7 ✅ → revisar Fase 9 (pendente) → executar
-Fase 8 (Polimento Final, pendente) → auditoria geral final → Release
-1.0. As Fases 6/7/10/11 foram concluídas em bloco via CCC-SPRINT-FINAL-001
-(2026-07-12); restam Fase 9 (revisão) e Fase 8 (execução) pra fechar o
-Roadmap 1.0.
+Plano de execução do CCC-ROADMAP-001: **todas as 11 fases concluídas.**
+Fases 6/7/10/11 em bloco via CCC-SPRINT-FINAL-001 (2026-07-12); Fases 9
+e 8 (certificação completa: auditorias globais, ShellCheck geral, suíte
+de 158 testes com zero falhas, compatibilidade, revisão de docs) via
+CCC-V1.0-FINAL-001 (2026-07-12) — ver
+`docs/PARECER-CCC-HOM-001-V1.0.md` (parecer consolidado da versão 1.0)
+e `docs/RELATORIO-EXECUTIVO-CCC-V1.0-FINAL-001.md`. Único passo
+restante do Roadmap 1.0 é a publicação (Release 1.0 via módulo Release),
+que exige autorização explícita do dono do projeto.
 
 Fase 6 revisada e homologada em 2026-07-12 (ver
 `docs/PARECER-CCC-HOM-001-DIAGNOSTICO.md`): backend já estava completo;
@@ -338,6 +341,20 @@ Fase 11 implementada em 2026-07-12 (ver
 Backup/Git/Firebase/Banco) confirmado com o dono do projeto antes de
 começar. 1 achado de UX corrigido antes do commit (pausa dupla em
 telas de tiro único "engolia" a tecla seguinte do usuário).
+
+Fase 9 homologada em 2026-07-12 (ver
+`docs/PARECER-CCC-HOM-001-MANUTENCAO.md`): implementação DeepSeek
+completa (dry-run, snapshot, `_trash/`, confirmação dupla, 17 checks de
+validação pré-execução), mas a revisão encontrou e corrigiu um bug
+crítico latente — a lógica de remoção estava invertida (arquivo
+protegido recebia `rm -f` permanente; o não-protegido ia pra
+`_trash/`) — além do módulo não estar registrado no Manifesto (ficava
+inacessível pelo `cellcity`).
+
+Fase 8 executada como a própria certificação CCC-V1.0-FINAL-001: 2
+defeitos reais de framework corrigidos (EOF no stdin travava o menu em
+loop infinito — os "ENOBUFS" intermitentes da suíte eram isso; teste
+dependente de locale inglês) e o marco de zero placeholders atingido.
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
