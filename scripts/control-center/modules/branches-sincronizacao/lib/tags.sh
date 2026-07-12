@@ -61,4 +61,5 @@ _brs_tags() {
 
   echo ""
   _brs_tags_orfas "$locais" "$remotas"
+  _cc_log "Branches e Sincronização: Tags consultadas (locais=$(grep -c . <<< "$locais"), remotas=$(grep -c . <<< "$remotas"))"
 }

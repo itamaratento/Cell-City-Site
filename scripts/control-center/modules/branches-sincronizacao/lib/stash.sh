@@ -51,7 +51,11 @@ _brs_stash_aplicar() {
     echo "Cancelado."
     return
   fi
-  git -C "$REPO_DIR" stash apply "stash@{$indice}"
+  if git -C "$REPO_DIR" stash apply "stash@{$indice}"; then
+    _cc_log "Branches e Sincronização: Aplicar Stash — stash@{$indice} aplicado (sucesso)"
+  else
+    _cc_log "Branches e Sincronização: Aplicar Stash — falha ao aplicar stash@{$indice}"
+  fi
 }
 
 _brs_stash_remover() {
@@ -71,10 +75,15 @@ _brs_stash_remover() {
     echo "Cancelado."
     return
   fi
-  git -C "$REPO_DIR" stash drop "stash@{$indice}"
+  if git -C "$REPO_DIR" stash drop "stash@{$indice}"; then
+    _cc_log "Branches e Sincronização: Remover Stash — stash@{$indice} removido (sucesso)"
+  else
+    _cc_log "Branches e Sincronização: Remover Stash — falha ao remover stash@{$indice}"
+  fi
 }
 
 _brs_stash() {
+  _cc_log "Branches e Sincronização: Stash acessado"
   while true; do
     echo "📦 Stash"
     echo "─────────"

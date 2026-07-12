@@ -21,4 +21,5 @@ _brs_historico() {
   branch="$(_cc_git_branch)"
   total_geral="$(git -C "$REPO_DIR" rev-list --count HEAD)"
   echo "Branch: $branch — $total_geral commit(s) no total."
+  _cc_log "Branches e Sincronização: Histórico consultado (branch=$branch, mostrados=$qtd, total=$total_geral)"
 }

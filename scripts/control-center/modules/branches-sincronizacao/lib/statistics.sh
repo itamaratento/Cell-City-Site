@@ -27,4 +27,5 @@ _brs_estatisticas() {
   echo "Último commit             : $ultimo"
   echo "Branch mais recente       : ${branch_recente:-?}"
   echo "Última sincronização      : $(_brs_ultima_sincronizacao) ($(_brs_tempo_desde_sincronizacao))"
+  _cc_log "Branches e Sincronização: Estatísticas consultadas (locais=$total_locais, remotas=$total_remotas, commits=$total_commits)"
 }

@@ -14,6 +14,7 @@
 #   Stash         — lib/stash.sh.
 #   Integridade   — lib/integrity.sh.
 #   Estatísticas  — lib/statistics.sh.
+#   Exportação    — lib/export.sh (TXT/Markdown/JSON em _reports/git/).
 #   Ferramentas   — lib/tools.sh.
 #   Configurações — lib/config.sh (branches.conf próprio do módulo).
 #
@@ -55,6 +56,8 @@ source "$MODULE_DIR/lib/statistics.sh"
 source "$MODULE_DIR/lib/tools.sh"
 # shellcheck source=./lib/config.sh
 source "$MODULE_DIR/lib/config.sh"
+# shellcheck source=./lib/export.sh
+source "$MODULE_DIR/lib/export.sh"
 
 _cc_run_submenu "Branches e Sincronização" "Control Center › Branches e Sincronização" \
   "1|Status do Repositório|_brs_status_repositorio" \
@@ -67,5 +70,6 @@ _cc_run_submenu "Branches e Sincronização" "Control Center › Branches e Sinc
   "8|Stash|_brs_stash" \
   "9|Integridade Git|_brs_integridade_git" \
   "10|Estatísticas|_brs_estatisticas" \
-  "11|Ferramentas Git|_brs_ferramentas_git" \
-  "12|Configurações|_brs_configuracoes"
+  "11|Exportação|_brs_exportar" \
+  "12|Ferramentas Git|_brs_ferramentas_git" \
+  "13|Configurações|_brs_configuracoes"

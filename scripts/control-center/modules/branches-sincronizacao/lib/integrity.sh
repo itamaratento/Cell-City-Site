@@ -46,10 +46,13 @@ _brs_integridade_git() {
   fi
 
   echo "Objetos íntegros (git fsck)..."
+  local fsck_resultado
   if git -C "$REPO_DIR" fsck --no-dangling >/tmp/cellcity-branches-fsck.log 2>&1; then
     _cc_ok "git fsck não encontrou problemas."
+    fsck_resultado="ok"
   else
     _cc_fail "git fsck encontrou problemas — ver /tmp/cellcity-branches-fsck.log"
+    fsck_resultado="falhou"
   fi
 
   echo "Referências válidas..."
@@ -65,4 +68,6 @@ _brs_integridade_git() {
   else
     _cc_warn "Working tree com alterações pendentes ($(_cc_svc_git_arquivos_alterados_count) arquivo(s))."
   fi
+
+  _cc_log "Branches e Sincronização: Integridade Git verificada (branch=$branch, fsck=$fsck_resultado)"
 }

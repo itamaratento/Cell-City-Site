@@ -19,10 +19,12 @@ _brs_comparar_branches() {
 
   if ! git -C "$REPO_DIR" rev-parse --verify --quiet "$a" >/dev/null; then
     _cc_fail "Branch '$a' não encontrada."
+    _cc_log "Branches e Sincronização: Comparar Branches — falha, '$a' não encontrada"
     return
   fi
   if ! git -C "$REPO_DIR" rev-parse --verify --quiet "$b" >/dev/null; then
     _cc_fail "Branch '$b' não encontrada."
+    _cc_log "Branches e Sincronização: Comparar Branches — falha, '$b' não encontrada"
     return
   fi
 
@@ -38,4 +40,5 @@ _brs_comparar_branches() {
   echo ""
   echo "Arquivos adicionados/removidos/modificados ($a vs $b):"
   git -C "$REPO_DIR" diff --name-status "$b"..."$a"
+  _cc_log "Branches e Sincronização: Comparar Branches — $a vs $b"
 }

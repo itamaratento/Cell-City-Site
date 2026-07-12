@@ -54,10 +54,12 @@ _brs_conf_editar_campo() {
   fi
   sed -i "s#^${chave}=.*#${chave}=\"${novo}\"#" "$arquivo"
   _cc_ok "$rotulo atualizado para '$novo'."
+  _cc_log "Branches e Sincronização: Configurações — $rotulo alterado de '$atual' para '$novo'"
 }
 
 _brs_configuracoes() {
   _brs_conf_carregar
+  _cc_log "Branches e Sincronização: Configurações acessadas"
   while true; do
     echo "⚙️  Configurações — Branches e Sincronização"
     echo "───────────────────────────────────────────"

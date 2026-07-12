@@ -15,6 +15,7 @@ _brs_sincronizacao() {
     _cc_ok "Fetch concluído."
   else
     _cc_fail "Fetch falhou — ver /tmp/cellcity-branches-fetch.log"
+    _cc_log "Branches e Sincronização: Sincronização — fetch falhou"
     return
   fi
 
@@ -24,6 +25,7 @@ _brs_sincronizacao() {
   IFS='|' read -r upstream ahead behind <<< "$info"
   if [ -z "$upstream" ]; then
     _cc_warn "Branch atual sem upstream configurado — nada pra comparar."
+    _cc_log "Branches e Sincronização: Sincronização — fetch ok, sem upstream configurado"
     return
   fi
 
@@ -37,4 +39,5 @@ _brs_sincronizacao() {
     [ "$behind" != "0" ] && _cc_warn "Precisa atualizar: sua branch está atrás do upstream (dê um 'git pull' local)."
     [ "$ahead" != "0" ] && _cc_warn "Precisa publicar: use Release › Enviar Alterações (subir) ou Criar Tag e Publicar (subir-ok)."
   fi
+  _cc_log "Branches e Sincronização: Sincronização — fetch ok (upstream=$upstream, ahead=$ahead, behind=$behind)"
 }

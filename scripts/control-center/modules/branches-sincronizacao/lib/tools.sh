@@ -86,6 +86,7 @@ _brs_tool_config_atual() {
 }
 
 _brs_ferramentas_git() {
+  _cc_log "Branches e Sincronização: Ferramentas Git acessadas"
   while true; do
     echo "🧰 Ferramentas Git"
     echo "───────────────────"

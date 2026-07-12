@@ -50,11 +50,17 @@ _brs_alternar_branch() {
     _cc_fail "Branch '$destino' não encontrada (local nem remota)."
     return
   fi
-  if ! _cc_confirm "Trocar de '$(_cc_git_branch)' para '$destino'?"; then
+  local origem
+  origem="$(_cc_git_branch)"
+  if ! _cc_confirm "Trocar de '$origem' para '$destino'?"; then
     echo "Cancelado."
     return
   fi
-  git -C "$REPO_DIR" checkout "$destino"
+  if git -C "$REPO_DIR" checkout "$destino"; then
+    _cc_log "Branches e Sincronização: Alternar Branch — de '$origem' para '$destino' (sucesso)"
+  else
+    _cc_log "Branches e Sincronização: Alternar Branch — de '$origem' para '$destino' (falha)"
+  fi
 }
 
 _brs_criar_branch() {
@@ -73,7 +79,13 @@ _brs_criar_branch() {
     echo "Cancelado."
     return
   fi
-  git -C "$REPO_DIR" branch "$nome" && _cc_ok "Branch '$nome' criada."
+  if git -C "$REPO_DIR" branch "$nome"; then
+    _cc_ok "Branch '$nome' criada."
+    _cc_log "Branches e Sincronização: Criar Branch — '$nome' criada (sucesso)"
+  else
+    _cc_fail "Falha ao criar a branch '$nome'."
+    _cc_log "Branches e Sincronização: Criar Branch — falha ao criar '$nome'"
+  fi
 }
 
 _brs_excluir_branch() {
@@ -100,10 +112,17 @@ _brs_excluir_branch() {
     echo "Cancelado."
     return
   fi
-  git -C "$REPO_DIR" branch -d "$nome"
+  if git -C "$REPO_DIR" branch -d "$nome"; then
+    _cc_ok "Branch local '$nome' excluída."
+    _cc_log "Branches e Sincronização: Excluir Branch Local — '$nome' excluída (sucesso)"
+  else
+    _cc_fail "Falha ao excluir a branch '$nome' (git branch -d recusou)."
+    _cc_log "Branches e Sincronização: Excluir Branch Local — falha ao excluir '$nome'"
+  fi
 }
 
 _brs_gerenciar_branches() {
+  _cc_log "Branches e Sincronização: Gerenciar Branches acessado"
   while true; do
     echo "🌳 Gerenciar Branches"
     echo "──────────────────────"

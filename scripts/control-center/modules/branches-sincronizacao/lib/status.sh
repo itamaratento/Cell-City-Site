@@ -93,6 +93,7 @@ _brs_status_repositorio() {
   fi
   echo ""
   echo "Resultado: $resultado"
+  _cc_log "Branches e Sincronização: Status do Repositório consultado (branch=$branch, resultado=$resultado)"
 }
 
 _brs_branch_atual() {
@@ -115,4 +116,5 @@ _brs_branch_atual() {
   else
     echo "Sincronização           : divergente (ver Ahead/Behind acima)"
   fi
+  _cc_log "Branches e Sincronização: Branch Atual consultada (branch=$branch, commit=$(_cc_svc_git_ultimo_commit))"
 }
