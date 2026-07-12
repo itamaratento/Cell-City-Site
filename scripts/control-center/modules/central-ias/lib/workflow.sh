@@ -14,7 +14,11 @@ _cc_cia_workflow() {
   _cc_box_blank
 
   local estagios
-  estagios=$(_cc_cia_estagios | paste -sd '→' -)
+  # "→ " (com espaço) e nunca só "→": um separador sem espaço nenhum vira
+  # uma "palavra" única longa demais pro word-wrap de _cc_box_text, que
+  # degenera em corte silencioso de texto (mesmo achado real de
+  # lib/agents.sh, "Módulos atribuídos").
+  estagios=$(_cc_cia_estagios | paste -sd '→' - | sed 's/→/→ /g')
   _cc_box_text "Estágios oficiais: $estagios"
   _cc_box_blank
 

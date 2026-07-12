@@ -15,18 +15,25 @@ _cc_cia_documentacao() {
   _cc_box_blank
 
   _cc_box_text "Arquitetura e Roadmap:"
-  _cc_box_text "  scripts/control-center/README.md"
+  _cc_box_text "README.md"
   _cc_box_blank
 
+  # Só o nome do arquivo (nunca o caminho completo prefixado) — um nome
+  # de Parecer já é longo por si só (ex.: PARECER-CCC-HOM-001-BANCO-DE-
+  # DADOS.md); prefixar com "scripts/control-center/docs/" empurrava a
+  # linha inteira pra virar uma "palavra" sem espaço maior que a largura
+  # da caixa, cortada silenciosamente por _cc_box_line (mesma classe de
+  # achado de lib/agents.sh/lib/workflow.sh). A seção já deixa claro que
+  # o diretório é docs/.
   _cc_box_text "Pareceres e Homologações (docs/):"
   local arquivo encontrado=0
   for arquivo in "$CC_ROOT"/docs/*.md; do
     [ -e "$arquivo" ] || continue
     [ "$(basename "$arquivo")" = "README.md" ] && continue
     encontrado=1
-    _cc_box_text "  scripts/control-center/docs/$(basename "$arquivo")"
+    _cc_box_text "$(basename "$arquivo")"
   done
-  [ "$encontrado" -eq 0 ] && _cc_box_text "  Nenhum ainda."
+  [ "$encontrado" -eq 0 ] && _cc_box_text "Nenhum ainda."
   _cc_box_blank
 
   _cc_box_text "Documentação por módulo:"
