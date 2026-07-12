@@ -33,7 +33,8 @@ Control Center       → usado exclusivamente pelos desenvolvedores,
 ```
 scripts/control-center/
   VERSION          versão semver do Control Center (fonte única — ver
-                   "Fluxo de inicialização"). Ex.: 1.0.0-alpha.
+                   "Fluxo de inicialização"). Ex.: 1.0.0.
+  CHANGELOG.md     histórico de versões (novidades/correções por release).
   core/            núcleo: menu principal e dispatch (core/menu.sh).
                    Não conhece nenhum módulo por nome — o menu inteiro é
                    carregado do Manifesto (config/modules.conf).
