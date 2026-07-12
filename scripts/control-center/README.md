@@ -300,7 +300,7 @@ por fase (ver responsabilidade das IAs logo abaixo):
 - ✅ Fase 4 — Banco de Dados (Claude — CCC-F04-001)
 - ✅ Fase 5 — Branches e Sincronização (Claude — inspeção/comparação/`fetch`, nunca `pull`/`push`/`merge`)
 - ✅ Fase 6 — Diagnóstico e Health Check (DeepSeek + Claude — CCC-F06-001, revisado via CCC-SPRINT-FINAL-001)
-- 🔵 Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek — implementada, aguardando revisão técnica)
+- ✅ Fase 7 — Ferramentas, Auditorias e Relatórios (DeepSeek + Claude — CCC-F07-FINAL, revisado via CCC-SPRINT-FINAL-001)
 - ⬜ Fase 8 — Polimento Final, Testes e Certificação (Claude — não iniciada)
 - 🔵 Fase 9 — Manutenção e Higienização (DeepSeek — implementada, aguardando revisão técnica)
 - ✅ Fase 10 — Central de IAs (Claude — CCC-F10-001)
@@ -314,7 +314,15 @@ Parecer Executivo CCC-HOM-001 → Release 1.0.
 Fase 6 revisada e homologada em 2026-07-12 (ver
 `docs/PARECER-CCC-HOM-001-DIAGNOSTICO.md`): backend já estava completo;
 `menu.sh` ainda era o placeholder da Fase 1 (nunca chamava `engine.sh`) —
-reconectado. Fase 9 permanece fora do escopo desta rodada.
+reconectado.
+
+Fase 7 revisada e homologada em 2026-07-12 (ver
+`docs/PARECER-CCC-HOM-001-FERRAMENTAS.md`): mesmo padrão da Fase 6
+(`menu.sh` placeholder reconectado) + 1 inconsistência de UX corrigida
+("0 = Voltar" só neste módulo, divergente do resto do projeto) + 1 bug
+real de performance corrigido (Auditoria de Segurança travava por não
+excluir `node_modules` dos `find`). Fase 9 permanece fora do escopo
+desta rodada.
 
 **Versão 2.0 — Administração dos Módulos**
 Financeiro, Caixa, CRM, OS, Estoque, Dashboard, Portal Cliente, Garantias,
