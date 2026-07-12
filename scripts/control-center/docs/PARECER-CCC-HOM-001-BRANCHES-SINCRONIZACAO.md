@@ -102,10 +102,93 @@ cancelamento de ações destrutivas (branch e stash) e "Voltar" dinâmico.
   módulo, são só informativos/preparatórios para uma Sprint futura que
   realmente os leia).
 
-## 6. Veredito
+## 6. Veredito (original, 2026-07-11)
 
 **APROVADO para `develop`.** Não promovido para `main` — fora do escopo
 desta Sprint, seguindo o mesmo critério das Fases 2–4.
+
+## 7. Adendo — Auditoria CCC-F05-AUD-002 (2026-07-12)
+
+| Campo | Valor |
+|---|---|
+| Objeto | Correção de desvios entre a implementação e a especificação original CCC-F05-001 |
+| Responsável técnico | Claude (Revisor Técnico Principal) |
+| Data | 2026-07-12 |
+| Branch | `develop` |
+| Commits | `98a6338` (lib/menu.sh), `f1cabe8` (docs/README/testes), `b280b4f` (fix de teste) |
+
+### 7.1 Requisitos da CCC-F05-001 — cobertura
+
+16 requisitos funcionais na especificação original (Menu, Status do
+Repositório, Branch Atual, Branches Locais, Branches Remotas, Comparar
+Branches, Sincronização, Histórico, Tags, Stash, Integridade Git,
+Ferramentas Git, Configurações, Segurança, Logs, Exportação) + 1
+requisito estrutural (Arquitetura: `menu.sh`/`engine.sh`/`docs/`/`lib/`).
+
+- **13/16 já implementados** na Fase 5 original (2026-07-11).
+- **3/16 corrigidos nesta auditoria**: Exportação (`lib/export.sh`, novo
+  — reaproveita o padrão de `modules/banco-dados/lib/export.sh`), Logs de
+  detalhe por operação (reaproveita `_cc_log()` de `lib/common.sh`, já
+  usado pela infraestrutura do próprio framework `_cc_run_submenu`) e
+  Documentação (`docs/branches-sincronizacao.md`, novo).
+- **Arquitetura (`engine.sh`)** — decisão documentada, não implementação:
+  3 dos 5 módulos homologados (Backup e Recuperação, Desenvolvimento,
+  Release) também não usam `engine.sh`; só Banco de Dados usa. Não há
+  arquitetura oficial que exija o arquivo em todo módulo — ver
+  justificativa completa em `docs/branches-sincronizacao.md`, "Decisão
+  arquitetural — sem engine.sh".
+- **Menu reorganizado** (Branches Locais/Remotas unidas em "Gerenciar
+  Branches"; "Estatísticas" e agora "Exportação" adicionados) —
+  decisão já registrada no §1 original e no README.md; nenhuma
+  funcionalidade da spec foi perdida.
+
+### 7.2 Arquivos alterados
+
+`menu.sh` (item Exportação=11, Ferramentas Git=12, Configurações=13);
+10 `lib/*.sh` existentes (log de detalhe); `lib/export.sh` (novo);
+`docs/branches-sincronizacao.md` (novo); `README.md` (seção Fase 5);
+`tests/control-center/estrutura.test.mjs` (BRS_LIBS + export.sh,
+renumeração 11→14, 2 testes novos, 1 correção de falso positivo).
+
+### 7.3 Testes e ShellCheck
+
+- Testes do módulo: **13/13 aprovados** (11 originais + 2 novos:
+  Exportação gera TXT/MD/JSON reais em `_reports/git/`; logs de detalhe
+  aparecem em `logs/control-center.log`).
+- Suíte completa (`estrutura.test.mjs`, todos os módulos): 82 testes, 77
+  aprovados, 5 falhas — **nenhuma no módulo Branches e Sincronização**;
+  as 5 são `ENOBUFS` (esgotamento de recursos ao rodar `core/menu.sh`) e
+  condição de corrida em `config/modules.conf`/status do Git, causadas
+  pela sessão concorrente descrita em 7.4, não por esta auditoria.
+- ShellCheck: **0 achados** (13 arquivos: `menu.sh` + 12 `lib/*.sh`),
+  verificado a partir do diretório do módulo.
+- `bash -n`: sintaxe válida em todos os 13 arquivos.
+
+### 7.4 Achado de processo — sessão concorrente ativa
+
+Durante esta auditoria, o `git reflog` registrou **múltiplos `git reset
+--hard`** de uma sessão concorrente no mesmo checkout (a mesma classe de
+risco já documentada no §4 original desta Fase e em
+[[feedback-concorrencia-sessoes-checkout]]), incluindo 2 ocorrências
+*enquanto a suíte de testes completa rodava*, explicando a contagem
+inconsistente de falhas entre execuções (9 → 6 → 5). Diferente do
+episódio original, desta vez a sessão concorrente também **commitou
+trabalho próprio** (Fase 10 — Central de IAs, `316f7f1`/`718a7c4`),
+incluindo alteração em `README.md`. Mitigado com o mesmo método:
+verificação de `git reflog`/`git status` antes de cada restauração,
+edições reaplicadas e **commitadas em lotes pequenos imediatamente**
+após cada verificação rápida (ShellCheck + sintaxe), em vez de aguardar
+a suíte completa (~4 min) antes de commitar — reduz a janela de exposição
+a um novo reset.
+
+### 7.5 Veredito da auditoria
+
+**GO** — Fase 5 homologada com as correções aplicadas. 16/16 requisitos
+funcionais da CCC-F05-001 atendidos (13 desde a aprovação original + 3
+corrigidos aqui); arquitetura sem `engine.sh` mantida por decisão
+documentada; 0 regressões no módulo; ShellCheck limpo; testes 13/13.
+Segue **não promovido para `main`** — fora do escopo desta auditoria,
+mesmo critério das Fases 2–5.
 
 ---
 *Ver `docs/PARECER-CCC-HOM-001.md` (Fase 3) para o parecer que originou
