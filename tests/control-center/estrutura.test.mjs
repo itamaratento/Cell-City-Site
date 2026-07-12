@@ -298,8 +298,13 @@ test('telas de módulo exibem breadcrumb (localização atual)', () => {
 test('toda tela tem rodapé com mensagem de ajuda antes da borda final', () => {
     const principal = rodarMenu('0\n');
     assert.match(principal, /Use os números para navegar/);
-    const placeholder = rodarMenu('4\n\n0\n');
-    assert.match(placeholder, /volta ao menu principal/);
+    // Desde a certificação 1.0 (CCC-V1.0-FINAL-001) não existe mais módulo
+    // placeholder — os 10 módulos do Manifesto são reais. O rodapé padrão
+    // de submenu é o do _cc_run_submenu; a asserção antiga ("volta ao menu
+    // principal", rodapé do _cc_placeholder) ficou obsoleta pelo próprio
+    // avanço do Roadmap.
+    const bancoDados = rodarMenu('4\n\n0\n');
+    assert.match(bancoDados, /volta · 0 sai do Control Center/);
     const submenuReal = rodarMenu('1\n14\n0\n');
     assert.match(submenuReal, /volta · 0 sai do Control Center/);
 });
