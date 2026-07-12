@@ -157,6 +157,39 @@ isso poderia commitar/publicar trabalho alheio em andamento sem intenção.
 `_bkp_manual` detecta working tree sujo e pede confirmação explícita
 antes de delegar — o script original não foi alterado.
 
+**Módulo Banco de Dados (Fase 4 — padrão CCC-F04-001)** — administração
+somente-leitura do Firestore/Firebase. Camadas: `lib/status.sh` (Status
+do Banco), `lib/collections.sh` (Coleções), `lib/indexes.sh` (Índices),
+`lib/rules.sh` (Firestore Rules), `lib/functions.sh` (Cloud Functions),
+`lib/integrity.sh` (Integridade), `lib/statistics.sh` (Estatísticas),
+`lib/export.sh` (Exportações), `lib/config.sh` (Configurações locais do
+módulo, em `config/local.json` — escopo isolado, fora do schema de
+`state/`).
+
+**Princípio: nenhuma escrita.** Toda checagem ao vivo usa só `gcloud`
+(`describe`/`list`) ou GET em `firebaserules.googleapis.com` — nunca
+`firebase deploy`, nunca Admin SDK com permissão de escrita. Publicar
+Rules/índices/Functions continua sendo exclusivamente `firebase deploy`,
+fora deste módulo. Ambiente sempre explícito (mesmo princípio do Backup
+e Recuperação) — nenhuma ação deduz sozinha se é `dev` ou `prod`.
+
+Coleções conhecidas vêm da união dos blocos `match` de topo em
+`CRM/firestore.rules` (caminho lido de `firebase.json`, nunca hardcoded)
+com a lista já cadastrada em `backup-dados.js`. "Coleções órfãs" e
+"Rules não utilizadas" são heurísticas por `grep` estático em `CRM/` e
+`functions/` — sinalizam candidatos, não substituem revisão manual.
+"Documentos"/"uso aproximado" não são mensuráveis sem Admin SDK com
+Application Default Credentials (não configuradas por padrão) ou Cloud
+Billing API — reportados como indisponíveis, nunca estimados.
+
+**Achados reais desta Sprint:** `firestore.indexes.json` existe na raiz
+do repositório, diferente do arquivo oficial (`CRM/firestore.indexes.json`,
+usado por `firebase.json`) — provável artefato desatualizado (`firestore.rules`
+na raiz, por outro lado, está idêntico ao oficial). 4 índices publicados
+em `dev` não estão declarados no arquivo local. 3 blocos de Rules com
+`allow ...: if true`, todos documentados no próprio arquivo como acesso
+público intencional e estreito (`config`, `pre_os`, `catalogo_config`).
+
 ## Fluxo de inicialização
 
 Toda execução de `cellcity` segue sempre a mesma sequência, em
@@ -187,7 +220,7 @@ Toda execução de `cellcity` segue sempre a mesma sequência, em
 - ✅ Release (Fase 2 — envelopa `subir`/`release`/`subir-ok`/`rollback`)
 - Backup
 - Recuperação
-- Banco de Dados
+- ✅ Banco de Dados (Fase 4 — CCC-F04-001)
 - Branches
 - Diagnóstico
 

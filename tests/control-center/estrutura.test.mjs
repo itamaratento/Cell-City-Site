@@ -591,3 +591,143 @@ test('módulo Backup e Recuperação: Backup das Configurações executa de verd
         rmSync(join(ROOT, '_BACKUPS', novas[0]), { recursive: true, force: true });
     }
 });
+// ── Fase 4 — "Banco de Dados" (CCC-F04-001) ──────────────────────────
+//
+// Todo o módulo é somente leitura: nenhuma ação cria/altera/publica/
+// remove coleção, documento, Rule, índice ou Cloud Function. Checagens
+// ao vivo usam gcloud (describe/list) ou GET em firebaserules.googleapis.com
+// — nunca `firebase deploy`, nunca escrita via Admin SDK. Como o ambiente
+// de CI não tem gcloud instalado/autenticado, os testes abaixo cobrem os
+// dois cenários sem exigir nenhum dos dois: navegação, heurísticas locais
+// (Coleções/Rules/Integridade/Estatísticas/Exportações/Configurações) e a
+// degradação graciosa das ações que dependem de gcloud, sem travar.
+
+const BD_LIBS = ['utils.sh', 'status.sh', 'collections.sh', 'indexes.sh', 'rules.sh',
+    'functions.sh', 'integrity.sh', 'statistics.sh', 'export.sh', 'config.sh'];
+
+test('módulo Banco de Dados: interface (menu.sh) só desenha — nenhuma chamada direta a git/gcloud/curl fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/banco-dados/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgcloud\s|\bcurl\s|\bgit\s/, 'menu.sh (Interface) não pode chamar gcloud/curl/git diretamente — pertence à camada de Serviço (lib/*.sh)');
+    assert.ok(existsSync(join(CC, 'modules/banco-dados/engine.sh')), 'engine.sh ausente');
+    assert.ok(existsSync(join(CC, 'modules/banco-dados/docs/database.md')), 'docs/database.md ausente');
+    for (const lib of BD_LIBS) {
+        const caminho = join(CC, 'modules/banco-dados/lib', lib);
+        assert.ok(existsSync(caminho), `modules/banco-dados/lib/${lib} ausente`);
+        assert.ok(ehExecutavel(caminho), `modules/banco-dados/lib/${lib} precisa ser executável`);
+    }
+});
+
+test('módulo Banco de Dados: nenhum lib/*.sh escreve/publica no Firestore/Firebase — só describe/list/GET (CCC-F04-001 §17)', () => {
+    for (const lib of BD_LIBS) {
+        // Só invocação real (início de comando/pipe/subshell), nunca texto —
+        // comentários e strings de sugestão deste módulo citam "firebase
+        // deploy" de propósito, pra explicar ao usuário que publicar
+        // continua sendo papel exclusivo de fora dele (nunca executado
+        // daqui). Comentários também são excluídos por completo.
+        const codigo = readFileSync(join(CC, 'modules/banco-dados/lib', lib), 'utf8')
+            .split('\n')
+            .filter(linha => !linha.trim().startsWith('#'))
+            .join('\n');
+        const inicioDeComando = /(?:^|[\n;&|`]|\$\()\s*/.source;
+        assert.doesNotMatch(codigo, new RegExp(inicioDeComando + 'firebase\\s+deploy'), `${lib}: não pode chamar firebase deploy — publicar é sempre fora deste módulo`);
+        assert.doesNotMatch(codigo, new RegExp(inicioDeComando + 'gcloud\\s+firestore\\s+(indexes\\s+composite\\s+)?(create|delete|update)\\b'), `${lib}: não pode criar/remover/atualizar índice via gcloud`);
+        assert.doesNotMatch(codigo, new RegExp(inicioDeComando + 'gcloud\\s+functions\\s+(deploy|delete)\\b'), `${lib}: não pode publicar/remover Cloud Function via gcloud`);
+        assert.doesNotMatch(codigo, /curl\b[^\n]*-X\s*['"]?(POST|PUT|DELETE|PATCH)/, `${lib}: chamada HTTP não pode ser de escrita — só GET`);
+    }
+});
+
+test('módulo Banco de Dados: "Voltar" dinâmico é 11 (10 itens reais)', () => {
+    const saida = rodarModulo('banco-dados', '11\n');
+    assert.match(saida, /11 ► Voltar/);
+});
+
+test('módulo Banco de Dados: ações que dependem de ambiente cancelam de verdade com tecla inválida, sem crash', () => {
+    const status = rodarModulo('banco-dados', '1\nx\n\n11\n0\n');
+    assert.match(status, /Cancelado\./);
+
+    const indices = rodarModulo('banco-dados', '3\nx\n\n11\n0\n');
+    assert.match(indices, /Cancelado\./);
+
+    const rules = rodarModulo('banco-dados', '4\nx\n\n11\n0\n');
+    assert.match(rules, /Cancelado\./);
+
+    const functions = rodarModulo('banco-dados', '5\nx\n\n11\n0\n');
+    assert.match(functions, /Cancelado\./);
+});
+
+test('módulo Banco de Dados: Status do Banco (ambiente dev) mostra dados reais dos arquivos locais e degrada sem gcloud', () => {
+    const saida = rodarModulo('banco-dados', '1\n1\n\n11\n0\n');
+    assert.match(saida, /Projeto Firebase ativo: cellcity-crm-dev/);
+    assert.match(saida, /Database ID: \(default\)/);
+    assert.match(saida, /Região: southamerica-east1/);
+    assert.match(saida, /Estado geral: (SAUDÁVEL|ATENÇÃO|CRÍTICO)/);
+});
+
+test('módulo Banco de Dados: Coleções (Listar/Sem Rules/Vazias/Órfãs/Duplicadas) rodam de verdade, sem crash', () => {
+    const saida = rodarModulo('banco-dados', '2\n1\n\n2\n\n3\n\n4\n\n5\n\n0\n\n11\n0\n');
+    assert.match(saida, /COLEÇÕES\b/);
+    assert.match(saida, /COLEÇÕES SEM RULES/);
+    assert.match(saida, /Não disponível: contar documentos exige Admin SDK/);
+    assert.match(saida, /COLEÇÕES ÓRFÃS/);
+    assert.match(saida, /COLEÇÕES\/PADRÕES DUPLICADOS/);
+});
+
+test('módulo Banco de Dados: Índices detecta o firestore.indexes.json duplicado na raiz do repositório (achado real desta Sprint)', () => {
+    const saida = rodarModulo('banco-dados', '3\n1\n\n11\n0\n');
+    assert.match(saida, /Arquivo duplicado/);
+    assert.match(saida, /firestore\.indexes\.json existe e é diferente do arquivo oficial/);
+});
+
+test('módulo Banco de Dados: Firestore Rules identifica sintaxe válida e os 3 "if true" documentados como acesso público', () => {
+    const saida = rodarModulo('banco-dados', '4\n1\n\n11\n0\n');
+    assert.match(saida, /Sintaxe \(heurística\)/);
+    assert.match(saida, /Permissões abertas.*3 linha\(s\)/);
+    assert.match(saida, /config:\d+/);
+});
+
+test('módulo Banco de Dados: Integridade e Estatísticas rodam de verdade e nunca travam, com ou sem gcloud', () => {
+    const integridade = rodarModulo('banco-dados', '6\n\n11\n0\n');
+    assert.match(integridade, /Resultado: (OK|WARNING|ERRO)/);
+    assert.match(integridade, /Arquivo obrigatório — firebase\.json presente/);
+
+    const estatisticas = rodarModulo('banco-dados', '7\n\n11\n0\n');
+    assert.match(estatisticas, /Coleções conhecidas: \d+/);
+    assert.match(estatisticas, /não mensurável sem Admin SDK\/ADC/);
+});
+
+test('módulo Banco de Dados: Ferramentas (atalhos) reaproveitam as mesmas funções de Coleções/Rules/Índices/Functions/Integridade', () => {
+    const saida = rodarModulo('banco-dados', '9\n1\n\n5\n\n0\n\n11\n0\n');
+    assert.match(saida, /COLEÇÕES VAZIAS/);
+    assert.match(saida, /Resultado: (OK|WARNING|ERRO)/);
+});
+
+test('módulo Banco de Dados: Exportações gera TXT/Markdown/JSON reais em _reports/database/ (removidos pelo próprio teste)', () => {
+    const dir = join(ROOT, '_reports', 'database');
+    rmSync(dir, { recursive: true, force: true });
+    const saida = rodarModulo('banco-dados', '8\n1\n\n2\n\n3\n\n0\n\n11\n0\n');
+    assert.match(saida, /Relatório exportado: .*\.txt/);
+    assert.match(saida, /Relatório exportado: .*\.md/);
+    assert.match(saida, /Relatório exportado: .*\.json/);
+    const gerados = existsSync(dir) ? readdirSync(dir) : [];
+    assert.ok(gerados.some(f => f.endsWith('.txt')), 'TXT não foi gerado em _reports/database/');
+    assert.ok(gerados.some(f => f.endsWith('.md')), 'Markdown não foi gerado em _reports/database/');
+    assert.ok(gerados.some(f => f.endsWith('.json')), 'JSON não foi gerado em _reports/database/');
+    const jsonPath = join(dir, gerados.find(f => f.endsWith('.json')));
+    const jsonConteudo = JSON.parse(readFileSync(jsonPath, 'utf8'));
+    assert.equal(jsonConteudo.modulo, 'Banco de Dados');
+    rmSync(dir, { recursive: true, force: true });
+});
+
+test('módulo Banco de Dados: Configurações persiste em config/local.json (escopo isolado, nunca em state/) e Restaurar Padrões limpa o arquivo', () => {
+    const arquivoConf = join(CC, 'modules/banco-dados/config/local.json');
+    rmSync(arquivoConf, { force: true });
+    const definir = rodarModulo('banco-dados', '10\n4\n25\n\n0\n\n11\n0\n');
+    assert.match(definir, /Timeout definido: 25s/);
+    assert.ok(existsSync(arquivoConf), 'config/local.json precisa existir depois de definir uma configuração');
+    const conteudo = JSON.parse(readFileSync(arquivoConf, 'utf8'));
+    assert.equal(conteudo.timeout_segundos, '25');
+
+    const restaurar = rodarModulo('banco-dados', '10\n6\ns\n\n0\n\n11\n0\n');
+    assert.match(restaurar, /Configurações restauradas ao padrão\./);
+    assert.ok(!existsSync(arquivoConf), 'Restaurar Padrões precisa remover config/local.json');
+});
