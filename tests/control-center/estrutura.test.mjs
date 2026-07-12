@@ -1060,3 +1060,174 @@ test('módulo Central de IAs: Configurações persiste em config/local.json (esc
     assert.match(restaurar, /Configurações restauradas ao padrão\./);
     assert.ok(!existsSync(arquivoConf), 'Restaurar Padrões precisa remover config/local.json');
 });
+
+// ── Fase 11 — "Configurações" (CCC-F11-001) ──────────────────────────
+//
+// Escopo confirmado com o dono do projeto antes da implementação: só
+// leitura de status (Backup/Git/Firebase/Banco de Dados, sempre lidos
+// dos mesmos arquivos/comandos reais, nunca reimplementando a lógica
+// desses módulos) + preferências locais deste módulo, sempre em
+// config/local.json (nunca em state/ nem em arquivo de outro módulo).
+//
+// Telas de tiro único (Geral/Tema/Status×4/Ambiente/Validação) NÃO
+// chamam _cc_pause internamente — o wrapper de _cc_run_submenu já pausa
+// uma vez sozinho ao retornar (mesmo padrão de branches-sincronizacao/
+// lib/status.sh); só as telas com loop próprio (Logs/Exportações/
+// Importar-Exportar-Reset, com "0 = voltar local") pausam por ação.
+
+const CFG_LIBS = ['utils.sh', 'geral.sh', 'logs.sh', 'status.sh', 'ambiente.sh',
+    'exportacao.sh', 'validacao.sh', 'importexport.sh'];
+
+test('módulo Configurações: interface (menu.sh) só desenha — nenhuma chamada direta a git/jq fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/configuracoes/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgit\s|\bjq\s/, 'menu.sh (Interface) não pode chamar git/jq diretamente — pertence à camada de Serviço (lib/*.sh)');
+    assert.ok(existsSync(join(CC, 'modules/configuracoes/engine.sh')), 'engine.sh ausente');
+    assert.ok(existsSync(join(CC, 'modules/configuracoes/docs/configuracoes.md')), 'docs/configuracoes.md ausente');
+    for (const lib of CFG_LIBS) {
+        const caminho = join(CC, 'modules/configuracoes/lib', lib);
+        assert.ok(existsSync(caminho), `modules/configuracoes/lib/${lib} ausente`);
+        assert.ok(ehExecutavel(caminho), `modules/configuracoes/lib/${lib} precisa ser executável`);
+    }
+});
+
+test('módulo Configurações: nenhum lib/*.sh escreve em outro módulo, em state/ ou executa ação destrutiva sem confirmação', () => {
+    for (const lib of CFG_LIBS) {
+        const src = readFileSync(join(CC, 'modules/configuracoes/lib', lib), 'utf8');
+        assert.doesNotMatch(src, />\s*"\$REPO_DIR"\/(?!_reports)/, `${lib}: não pode escrever em arquivo do repositório fora de _reports/`);
+        assert.doesNotMatch(src, />\s*"\$CC_ROOT\/state\//, `${lib}: não pode escrever em state/ (escopo é config/local.json deste módulo)`);
+    }
+    const importSrc = readFileSync(join(CC, 'modules/configuracoes/lib/importexport.sh'), 'utf8');
+    assert.match(importSrc, /_cc_confirm.*[Rr]eset|_cc_confirm.*[Ss]ubstituir/, 'Reset/Importar precisam pedir confirmação explícita');
+});
+
+test('módulo Configurações: "Voltar" dinâmico é 12 (11 itens reais)', () => {
+    const saida = rodarModulo('configuracoes', '12\n');
+    assert.match(saida, /12 ► Voltar/);
+});
+
+test('módulo Configurações: submenu principal exibe todas as 11 opções', () => {
+    const saida = rodarModulo('configuracoes', '12\n');
+    assert.match(saida, /Control Center › Configurações/);
+    assert.match(saida, /1 ► Configuração Geral/);
+    assert.match(saida, /2 ► Tema e Aparência/);
+    assert.match(saida, /3 ► Logs/);
+    assert.match(saida, /4 ► Status do Backup/);
+    assert.match(saida, /5 ► Status do Git/);
+    assert.match(saida, /6 ► Status do Firebase/);
+    assert.match(saida, /7 ► Status do Banco de Dados/);
+    assert.match(saida, /8 ► Exportações/);
+    assert.match(saida, /9 ► Ambiente e Diagnóstico/);
+    assert.match(saida, /10 ► Validação e Persistência/);
+    assert.match(saida, /11 ► Importar \/ Exportar \/ Reset/);
+});
+
+test('módulo Configurações: Configuração Geral mostra dados reais do projeto (versão/branch)', () => {
+    const versao = readFileSync(join(CC, 'VERSION'), 'utf8').trim();
+    const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const saida = rodarModulo('configuracoes', '1\n\n12\n');
+    assert.ok(saida.includes(versao), 'Configuração Geral precisa mostrar a versão real do VERSION');
+    assert.ok(saida.includes(`Branch atual        : ${branchReal}`), 'Configuração Geral precisa mostrar a branch real');
+});
+
+test('módulo Configurações: Status do Git/Firebase/Banco de Dados mostram dados reais, sem crash', () => {
+    const branchReal = execSync('git rev-parse --abbrev-ref HEAD', { cwd: ROOT, encoding: 'utf8' }).trim();
+    const git = rodarModulo('configuracoes', '5\n\n12\n');
+    assert.ok(git.includes(`Branch atual   : ${branchReal}`), 'Status do Git precisa mostrar a branch real');
+
+    const firebase = rodarModulo('configuracoes', '6\n\n12\n');
+    assert.match(firebase, /Projeto ativo|Firestore Rules/);
+
+    const banco = rodarModulo('configuracoes', '7\n\n12\n');
+    assert.match(banco, /firestore\.rules|firestore\.indexes\.json/);
+
+    const backup = rodarModulo('configuracoes', '4\n\n12\n');
+    assert.match(backup, /Último backup/);
+});
+
+test('módulo Configurações: Ambiente e Diagnóstico reflete state/health-check.json real (ou orienta a rodar o Diagnóstico)', () => {
+    const saida = rodarModulo('configuracoes', '9\n\n12\n');
+    assert.match(saida, /Última execução :|Nenhum diagnóstico foi executado ainda/);
+});
+
+test('módulo Configurações: Tema persiste a preferência em config/local.json (escopo isolado, nunca em state/)', () => {
+    const arquivoConf = join(CC, 'modules/configuracoes/config/local.json');
+    rmSync(arquivoConf, { force: true });
+
+    const ligar = rodarModulo('configuracoes', '2\n1\n\n12\n');
+    assert.match(ligar, /Preferência salva: on/);
+    assert.ok(existsSync(arquivoConf), 'config/local.json precisa existir depois de definir uma preferência');
+    let conteudo = JSON.parse(readFileSync(arquivoConf, 'utf8'));
+    assert.equal(conteudo.tema_cores, 'on');
+
+    const desligar = rodarModulo('configuracoes', '2\n2\n\n12\n');
+    assert.match(desligar, /Preferência salva: off/);
+    conteudo = JSON.parse(readFileSync(arquivoConf, 'utf8'));
+    assert.equal(conteudo.tema_cores, 'off');
+
+    rmSync(arquivoConf, { force: true });
+});
+
+test('módulo Configurações: Logs define verbosidade/retenção e mostra o log real', () => {
+    const arquivoConf = join(CC, 'modules/configuracoes/config/local.json');
+    rmSync(arquivoConf, { force: true });
+
+    const saida = rodarModulo('configuracoes', '3\n1\ndetalhada\n\n2\n7\n\n3\n\n0\n\n12\n');
+    assert.match(saida, /Verbosidade definida: detalhada/);
+    assert.match(saida, /Retenção definida: 7 dia\(s\)/);
+    const conteudo = JSON.parse(readFileSync(arquivoConf, 'utf8'));
+    assert.equal(conteudo.logs_verbosidade, 'detalhada');
+    assert.equal(conteudo.logs_retencao_dias, '7');
+
+    rmSync(arquivoConf, { force: true });
+});
+
+test('módulo Configurações: Validação confirma JSON válido e o ciclo de persistência (escrever → ler)', () => {
+    const saida = rodarModulo('configuracoes', '10\n\n12\n');
+    assert.match(saida, /Persistência confirmada/);
+});
+
+test('módulo Configurações: Exportações gera TXT/Markdown/JSON reais em _reports/configuracoes/ (removidos pelo próprio teste)', () => {
+    const dir = join(ROOT, '_reports', 'configuracoes');
+    rmSync(dir, { recursive: true, force: true });
+    const saida = rodarModulo('configuracoes', '8\n3\n\n4\n\n5\n\n0\n\n12\n');
+    assert.match(saida, /Relatório exportado: .*\.txt/);
+    assert.match(saida, /Relatório exportado: .*\.md/);
+    assert.match(saida, /Relatório exportado: .*\.json/);
+    const gerados = existsSync(dir) ? readdirSync(dir) : [];
+    assert.ok(gerados.some(f => f.endsWith('.txt')), 'TXT não foi gerado em _reports/configuracoes/');
+    assert.ok(gerados.some(f => f.endsWith('.md')), 'Markdown não foi gerado em _reports/configuracoes/');
+    assert.ok(gerados.some(f => f.endsWith('.json')), 'JSON não foi gerado em _reports/configuracoes/');
+    const jsonPath = join(dir, gerados.find(f => f.endsWith('.json')));
+    const jsonConteudo = JSON.parse(readFileSync(jsonPath, 'utf8'));
+    assert.equal(jsonConteudo.modulo, 'Configurações');
+    rmSync(dir, { recursive: true, force: true });
+});
+
+test('módulo Configurações: Importar/Exportar/Reset — backup gera arquivo real, importação recusa JSON inválido, Reset seguro pede confirmação e remove local.json', () => {
+    const arquivoConf = join(CC, 'modules/configuracoes/config/local.json');
+    const dir = join(ROOT, '_reports', 'configuracoes');
+    rmSync(dir, { recursive: true, force: true });
+
+    // Backup real
+    const backup = rodarModulo('configuracoes', '11\n1\n\n0\n\n12\n');
+    assert.match(backup, /Cópia de segurança salva: .*config-backup_.*\.json/);
+    const gerados = existsSync(dir) ? readdirSync(dir).filter(f => f.startsWith('config-backup_')) : [];
+    assert.ok(gerados.length > 0, 'backup do local.json não foi gerado em _reports/configuracoes/');
+
+    // Importação de arquivo inexistente/():
+    const semArquivo = rodarModulo('configuracoes', '11\n2\n/caminho/que/nao/existe.json\n\n0\n\n12\n');
+    assert.match(semArquivo, /Arquivo não encontrado/);
+
+    // Reset seguro cancelado não remove o arquivo
+    rodarModulo('configuracoes', '2\n1\n\n12\n'); // garante que local.json existe
+    const cancelado = rodarModulo('configuracoes', '11\n3\nn\n\n0\n\n12\n');
+    assert.match(cancelado, /Cancelado\./);
+    assert.ok(existsSync(arquivoConf), 'Reset cancelado não pode remover config/local.json');
+
+    // Reset seguro confirmado remove o arquivo
+    const resetado = rodarModulo('configuracoes', '11\n3\ns\n\n0\n\n12\n');
+    assert.match(resetado, /Configurações restauradas ao padrão\./);
+    assert.ok(!existsSync(arquivoConf), 'Reset seguro precisa remover config/local.json');
+
+    rmSync(dir, { recursive: true, force: true });
+});
