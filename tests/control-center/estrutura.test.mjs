@@ -863,3 +863,155 @@ test('módulo Banco de Dados: Configurações persiste em config/local.json (esc
     assert.match(restaurar, /Configurações restauradas ao padrão\./);
     assert.ok(!existsSync(arquivoConf), 'Restaurar Padrões precisa remover config/local.json');
 });
+
+// ── Fase 10 — "Central de IAs" (CCC-F10-001) ─────────────────────────
+//
+// Somente leitura sobre o próprio Control Center e o repositório Git —
+// nenhuma tela cria/altera/remove arquivo, commit ou módulo alheio. As
+// únicas escritas são as próprias do módulo: config/local.json
+// (Configurações) e _reports/ai-center/ (Exportações), mesmo princípio
+// já usado no Banco de Dados. Fonte de dados: config/{fases,registry,
+// workflow}.conf — nenhuma fase/IA/estágio hardcoded em lib/*.sh.
+
+const CIA_LIBS = ['utils.sh', 'dashboard.sh', 'agents.sh', 'skills.sh',
+    'responsibilities.sh', 'workflow.sh', 'tasks.sh', 'history.sh',
+    'audit.sh', 'documentation.sh', 'statistics.sh', 'export.sh', 'config.sh'];
+
+test('módulo Central de IAs: interface (menu.sh) só desenha — nenhuma chamada direta a git fora da camada de serviço', () => {
+    const src = readFileSync(join(CC, 'modules/central-ias/menu.sh'), 'utf8');
+    assert.doesNotMatch(src, /\bgit\s/, 'menu.sh (Interface) não pode chamar git diretamente — pertence à camada de Serviço (lib/*.sh)');
+    assert.ok(existsSync(join(CC, 'modules/central-ias/engine.sh')), 'engine.sh ausente');
+    assert.ok(existsSync(join(CC, 'modules/central-ias/docs/central-ias.md')), 'docs/central-ias.md ausente');
+    for (const lib of CIA_LIBS) {
+        const caminho = join(CC, 'modules/central-ias/lib', lib);
+        assert.ok(existsSync(caminho), `modules/central-ias/lib/${lib} ausente`);
+        assert.ok(ehExecutavel(caminho), `modules/central-ias/lib/${lib} precisa ser executável`);
+    }
+    for (const conf of ['fases.conf', 'registry.conf', 'workflow.conf']) {
+        assert.ok(existsSync(join(CC, 'modules/central-ias/config', conf)), `config/${conf} ausente`);
+    }
+});
+
+test('módulo Central de IAs: nenhum lib/*.sh escreve/altera commit, arquivo ou módulo alheio (CCC-F10-001, "Segurança")', () => {
+    for (const lib of CIA_LIBS) {
+        const codigo = readFileSync(join(CC, 'modules/central-ias/lib', lib), 'utf8')
+            .split('\n')
+            .filter(linha => !linha.trim().startsWith('#'))
+            .join('\n');
+        const inicioDeComando = /(?:^|[\n;&|`]|\$\()\s*/.source;
+        assert.doesNotMatch(codigo, new RegExp(inicioDeComando + 'git\\s+(commit|push|checkout|reset|merge|rebase|tag|branch\\s+-D)\\b'), `${lib}: não pode alterar commit/branch/tag — só leitura (git log)`);
+        assert.doesNotMatch(codigo, /\brm\s+-rf?\s+(?!.*CC_CIA_CONFIG_FILE)/, `${lib}: não pode remover arquivo fora do próprio config local`);
+    }
+});
+
+test('módulo Central de IAs: "Voltar" dinâmico é 12 (11 itens reais)', () => {
+    const saida = rodarModulo('central-ias', '12\n');
+    assert.match(saida, /12 ► Voltar/);
+});
+
+test('módulo Central de IAs: Dashboard mostra números reais e coerentes com o Registro de Fases (config/fases.conf)', () => {
+    const saida = rodarModulo('central-ias', '1\n\n12\n0\n');
+    assert.match(saida, /IAs cadastradas: 2/);
+    assert.match(saida, /Fases do Roadmap: 11/);
+    assert.match(saida, /Fases concluídas: 5/);
+    assert.match(saida, /Percentual de conclusão do projeto: 45%/);
+    assert.match(saida, /Estado geral: (SAUDÁVEL|ATENÇÃO|CRÍTICO)/);
+});
+
+test('módulo Central de IAs: IAs Cadastradas lista Claude e DeepSeek com módulos atribuídos derivados de fases.conf (sem truncar)', () => {
+    const saida = rodarModulo('central-ias', '2\n\n12\n0\n');
+    assert.match(saida, /Claude \(Sonnet 5\)/);
+    assert.match(saida, /DeepSeek \(-\)/);
+    // Regressão do achado de truncamento silencioso: a lista de módulos
+    // do Claude tem 5+ entradas — precisa aparecer inteira, não cortada
+    // na primeira (era o bug antes de juntar com ", " em vez de ",").
+    assert.match(saida, /branches-sincronizacao/);
+    assert.match(saida, /central-ias/);
+});
+
+test('módulo Central de IAs: Especialidades/Responsabilidades/Fluxo de Desenvolvimento/Distribuição de Tarefas rodam de verdade, sem crash', () => {
+    const especialidades = rodarModulo('central-ias', '3\n\n12\n0\n');
+    assert.match(especialidades, /Diagnóstico/);
+
+    const responsabilidades = rodarModulo('central-ias', '4\n\n12\n0\n');
+    assert.match(responsabilidades, /Fase 6.*Revisão Técnica/s);
+    assert.match(responsabilidades, /Status: Pendente/);
+
+    const workflow = rodarModulo('central-ias', '5\n\n12\n0\n');
+    assert.match(workflow, /Fase 1 — Estrutura Base, UX e Arquitetura: Release/);
+    assert.match(workflow, /Fase 11 — Configurações: Planejamento/);
+
+    const tarefas = rodarModulo('central-ias', '6\n\n12\n0\n');
+    assert.match(tarefas, /Aguardando revisão técnica/);
+});
+
+test('módulo Central de IAs: Histórico filtra por IA/Fase reais via git log (nenhum evento fabricado)', () => {
+    const semFiltro = rodarModulo('central-ias', '7\n\n\n\n\n\n12\n0\n');
+    assert.match(semFiltro, /Fase 5.*Branches e Sincronização/);
+
+    const filtrado = rodarModulo('central-ias', '7\nclaude\n5\n\n\n12\n0\n');
+    assert.match(filtrado, /Fase 5/);
+    assert.doesNotMatch(filtrado, /Fase 4/);
+
+    const semResultado = rodarModulo('central-ias', '7\ndeepseek\n\n\n\n12\n0\n');
+    assert.match(semResultado, /Nenhum registro encontrado/);
+});
+
+test('módulo Central de IAs: Auditorias lista os Pareceres Executivos reais e as fases aguardando revisão', () => {
+    const saida = rodarModulo('central-ias', '8\n\n12\n0\n');
+    assert.match(saida, /PARECER-CCC-HOM-001\.md/);
+    assert.match(saida, /PARECER-CCC-HOM-001-BANCO-DE-DADOS\.md/);
+    assert.match(saida, /Fase 6 — Diagnóstico/);
+});
+
+test('módulo Central de IAs: Documentação enumera README.md e a documentação por módulo (nomes completos, sem corte)', () => {
+    const saida = rodarModulo('central-ias', '9\n\n12\n0\n');
+    assert.match(saida, /README\.md/);
+    assert.match(saida, /banco-dados\/docs\/database\.md/);
+    // Regressão do truncamento: o nome completo do Parecer mais longo
+    // precisa aparecer inteiro (era cortado quando prefixado pelo
+    // caminho completo).
+    assert.match(saida, /PARECER-CCC-HOM-001-BANCO-DE-DADOS\.md/);
+});
+
+test('módulo Central de IAs: Estatísticas rodam de verdade e batem com o Dashboard', () => {
+    const saida = rodarModulo('central-ias', '10\n\n12\n0\n');
+    assert.match(saida, /Fases concluídas: 5\/11 \(45%\)/);
+    assert.match(saida, /Homologações \(Pareceres Executivos\): 3/);
+});
+
+test('módulo Central de IAs: Exportações (via Configurações) geram TXT/Markdown/JSON reais em _reports/ai-center/ (removidos pelo próprio teste)', () => {
+    const dir = join(ROOT, '_reports', 'ai-center');
+    rmSync(dir, { recursive: true, force: true });
+    const arquivoConf = join(CC, 'modules/central-ias/config/local.json');
+    rmSync(arquivoConf, { force: true });
+
+    rodarModulo('central-ias', '11\n5\nmd\n\n6\n\n0\n12\n0\n');
+    rodarModulo('central-ias', '11\n5\njson\n\n6\n\n0\n12\n0\n');
+    rodarModulo('central-ias', '11\n5\ntxt\n\n6\n\n0\n12\n0\n');
+
+    const gerados = existsSync(dir) ? readdirSync(dir) : [];
+    assert.ok(gerados.some(f => f.endsWith('.txt')), 'TXT não foi gerado em _reports/ai-center/');
+    assert.ok(gerados.some(f => f.endsWith('.md')), 'Markdown não foi gerado em _reports/ai-center/');
+    assert.ok(gerados.some(f => f.endsWith('.json')), 'JSON não foi gerado em _reports/ai-center/');
+    const jsonPath = join(dir, gerados.find(f => f.endsWith('.json')));
+    const jsonConteudo = JSON.parse(readFileSync(jsonPath, 'utf8'));
+    assert.equal(jsonConteudo.modulo, 'Central de IAs');
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(arquivoConf, { force: true });
+});
+
+test('módulo Central de IAs: Configurações persiste em config/local.json (escopo isolado, nunca em state/) e Restaurar Padrões limpa o arquivo', () => {
+    const arquivoConf = join(CC, 'modules/central-ias/config/local.json');
+    rmSync(arquivoConf, { force: true });
+
+    const definir = rodarModulo('central-ias', '11\n3\ndetalhada\n\n0\n12\n0\n');
+    assert.match(definir, /Verbosidade definida: detalhada/);
+    assert.ok(existsSync(arquivoConf), 'config/local.json precisa existir depois de definir uma configuração');
+    const conteudo = JSON.parse(readFileSync(arquivoConf, 'utf8'));
+    assert.equal(conteudo.verbosidade, 'detalhada');
+
+    const restaurar = rodarModulo('central-ias', '11\n8\ns\n\n0\n12\n0\n');
+    assert.match(restaurar, /Configurações restauradas ao padrão\./);
+    assert.ok(!existsSync(arquivoConf), 'Restaurar Padrões precisa remover config/local.json');
+});
