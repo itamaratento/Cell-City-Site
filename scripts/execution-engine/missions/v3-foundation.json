@@ -1,0 +1,50 @@
+{
+  "id": "v3_foundation",
+  "nome": "Fundação V3 — Blocos Completos",
+  "prioridade": "P0",
+  "blocos": [
+    {
+      "id": "health_engine",
+      "nome": "Health Engine",
+      "passos": [
+        {"id": "he_quick", "comando": "bash scripts/health-engine/engine.sh --quick", "descricao": "Health check rápido", "checkpoint": true},
+        {"id": "he_full", "comando": "bash scripts/health-engine/engine.sh", "descricao": "Health check completo", "checkpoint": false}
+      ]
+    },
+    {
+      "id": "diagnostico",
+      "nome": "Diagnóstico do Sistema",
+      "passos": [
+        {"id": "diag_system", "comando": "bash scripts/diagnostic-engine/engine.sh --quick", "descricao": "Diagnóstico rápido", "checkpoint": true}
+      ]
+    },
+    {
+      "id": "observabilidade",
+      "nome": "Coleta de Métricas",
+      "passos": [
+        {"id": "obs_collect", "comando": "bash scripts/observability/observability.sh --collect sistema", "descricao": "Coletar métricas de sistema", "checkpoint": true}
+      ]
+    },
+    {
+      "id": "monitoramento",
+      "nome": "Monitoramento",
+      "passos": [
+        {"id": "mon_event", "comando": "bash scripts/monitoring/monitor.sh --event health info 'Execution Engine' 'Missão V3 Foundation iniciada'", "descricao": "Registrar evento de início", "checkpoint": true}
+      ]
+    },
+    {
+      "id": "painel",
+      "nome": "Painel Inteligente",
+      "passos": [
+        {"id": "panel_render", "comando": "bash scripts/smart-panel/panel.sh --compact", "descricao": "Renderizar painel compacto", "checkpoint": false}
+      ]
+    },
+    {
+      "id": "automacao",
+      "nome": "Automações",
+      "passos": [
+        {"id": "auto_health", "comando": "bash scripts/automations/automations.sh --run auto-health", "descricao": "Auto health check", "checkpoint": true}
+      ]
+    }
+  ]
+}

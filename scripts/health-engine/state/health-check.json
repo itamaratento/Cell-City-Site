@@ -1,0 +1,18 @@
+{
+  "descricao": "Health Check V3 - quick",
+  "versao": "3.0.0",
+  "timestamp": "2026-07-13T16:41:32-03:00",
+  "status": "concluido",
+  "nivel": "critico",
+  "score": {
+    "geral": 56,
+    "categorias": {}
+  },
+  "execucao": {
+    "tipo": "quick",
+    "checkers_executados": 3,
+    "checkers_pass": 1,
+    "checkers_fail": 2
+  },
+  "alertas": []
+}

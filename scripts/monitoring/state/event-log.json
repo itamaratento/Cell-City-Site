@@ -1,0 +1,63 @@
+{
+  "id": "evt_20260713_131731_107794",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:17:31-03:00",
+  "origem": "Integration",
+  "mensagem": "Cadeia de integração executada",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_131837_108545",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:18:37-03:00",
+  "origem": "Validation",
+  "mensagem": "Teste integrado",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_132037_109725",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:20:37-03:00",
+  "origem": "Test",
+  "mensagem": "Teste final",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_132042_109789",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:20:42-03:00",
+  "origem": "Test",
+  "mensagem": "Mensagem teste",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_132047_109865",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:20:47-03:00",
+  "origem": "Test",
+  "mensagem": "Mensagem teste",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_132059_110139",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:20:59-03:00",
+  "origem": "Test",
+  "mensagem": "Teste final",
+  "dados": {}
+}
+{
+  "id": "evt_20260713_132059_110337",
+  "tipo": "health",
+  "severidade": "info",
+  "timestamp": "2026-07-13T16:20:59-03:00",
+  "origem": "Integration",
+  "mensagem": "Cadeia de integração executada",
+  "dados": {}
+}

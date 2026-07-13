@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-07-13T16:20:59-03:00",
+  "tipo": "relatorio_consolidado",
+  "versao": "3.0.0",
+  "health_score": "56",
+  "alertas_ativos": 0,
+  "total_findings": 2,
+  "memoria_percent": "",
+  "disco_percent": "",
+  "componentes": {
+    "health_engine": {
+      "state": "scripts/health-engine/state/health-check.json"
+    },
+    "diagnostic_engine": {
+      "state": "scripts/diagnostic-engine/state/last-diagnostic.json"
+    },
+    "monitoring": {
+      "state": "scripts/monitoring/state/alert-history.json"
+    },
+    "observability": {
+      "state": "scripts/observability/state/metrics.json"
+    }
+  }
+}

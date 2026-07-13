@@ -1,0 +1,47 @@
+{
+  "id": "health_quick",
+  "nome": "Health Check Rápido",
+  "prioridade": "P0",
+  "blocos": [
+    {
+      "id": "health_engine",
+      "nome": "Health Engine",
+      "passos": [
+        {
+          "id": "check_git",
+          "comando": "bash scripts/health-engine/checkers/git.sh",
+          "descricao": "Verificar repositório Git",
+          "estimativa_segundos": 10,
+          "checkpoint": true
+        },
+        {
+          "id": "check_workspace",
+          "comando": "bash scripts/health-engine/checkers/workspace.sh",
+          "descricao": "Verificar integridade do workspace",
+          "estimativa_segundos": 10,
+          "checkpoint": true
+        },
+        {
+          "id": "check_node",
+          "comando": "bash scripts/health-engine/checkers/node.sh",
+          "descricao": "Verificar ambiente Node.js",
+          "estimativa_segundos": 10,
+          "checkpoint": true
+        }
+      ]
+    },
+    {
+      "id": "diagnostico",
+      "nome": "Diagnóstico Rápido",
+      "passos": [
+        {
+          "id": "diag_system",
+          "comando": "bash scripts/diagnostic-engine/analyzers/system.sh",
+          "descricao": "Analisar sistema",
+          "estimativa_segundos": 10,
+          "checkpoint": true
+        }
+      ]
+    }
+  ]
+}
