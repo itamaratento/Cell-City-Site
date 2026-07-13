@@ -103,8 +103,20 @@ opcao_release_rapida() {
 # ============================================================
 _check_rbac() {
   echo "  Rodando RBAC..."
+  local rc
   (_carregar_node && cd "$REPO_DIR/tests/rbac" && npm test) >/tmp/cellcity-release-rbac.log 2>&1
-  if [ $? -eq 0 ]; then _ok "RBAC verde ($(grep -oE '# pass [0-9]+' /tmp/cellcity-release-rbac.log | tail -1 | grep -oE '[0-9]+'))"
+  rc=$?
+  if [ $rc -ne 0 ] && grep -q 'Unable to deserialize cloned data' /tmp/cellcity-release-rbac.log; then
+    # Flake conhecido do IPC do test runner do Node (frame serializado
+    # truncado sob carga — investigado em 2026-07-13, não reproduzível,
+    # 166/166 na reexecução imediata). Não é falha de teste: uma única
+    # reexecução decide; falha genuína continua falhando aqui embaixo.
+    echo "  ⚠️  IPC do test runner corrompeu (flake conhecido) — reexecutando 1x..."
+    mv /tmp/cellcity-release-rbac.log /tmp/cellcity-release-rbac.flake.log
+    (_carregar_node && cd "$REPO_DIR/tests/rbac" && npm test) >/tmp/cellcity-release-rbac.log 2>&1
+    rc=$?
+  fi
+  if [ $rc -eq 0 ]; then _ok "RBAC verde ($(grep -oE '# pass [0-9]+' /tmp/cellcity-release-rbac.log | tail -1 | grep -oE '[0-9]+'))"
   else _fail "RBAC falhou — ver /tmp/cellcity-release-rbac.log"; fi
 }
 
