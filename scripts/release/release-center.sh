@@ -379,10 +379,18 @@ _check_repository_layer() {
   local dir="$REPO_DIR/CRM/repositories"
   if [ ! -d "$dir" ]; then _warn "CRM/repositories/ não existe nesta branch — checagem não se aplica"; return; fi
   if [ ! -f "$dir/base.repository.js" ]; then _fail "base.repository.js ausente em CRM/repositories/"; return; fi
+  # Era a única checagem que usava `node` sem _carregar_node: em shell sem
+  # nvm, "node: comando não encontrado" (exit 127) era rotulado como "erro
+  # de sintaxe" nos 16 arquivos (falso positivo, incidente de 2026-07-13).
+  _carregar_node
+  if ! command -v node >/dev/null 2>&1; then
+    _fail "node indisponível para a auditoria (nvm não carregado) — indisponibilidade de ferramenta, NÃO é erro de sintaxe"
+    return
+  fi
   local quebrado=0
   local f
   for f in "$dir"/*.js; do
-    node --check "$f" >/tmp/cellcity-release-repo-syntax.log 2>&1 || { echo "  ❌ Erro de sintaxe: $(basename "$f")"; quebrado=1; }
+    node --check "$f" >/tmp/cellcity-release-repo-syntax.log 2>&1 || { echo "  ❌ Erro de sintaxe: $(basename "$f") — $(head -2 /tmp/cellcity-release-repo-syntax.log | tail -1)"; quebrado=1; }
   done
   local total usando_base
   total=$(find "$dir" -maxdepth 1 -name "*.repository.js" | wc -l)
