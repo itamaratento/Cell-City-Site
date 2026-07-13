@@ -15,6 +15,7 @@ import { PosvendaContatosRepository as PosvendaContatos } from '../../repositori
 import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../repositories/sistema.repository.js';
 import { FinanceiroPagarRepository as FinanceiroPagar, FinanceiroReceberRepository as FinanceiroReceber, FinanceiroFixasRepository as FinanceiroFixas } from '../../repositories/financeiro.repository.js';
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
+import { formatDateTime } from '../../shared/date-utils.js';
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = 'cc_config_alertas';
@@ -68,10 +69,7 @@ function toast(msg) {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
 }
-function fmtDataHora(d) {
-    if (!d) return '—';
-    return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-}
+function fmtDataHora(d) { return formatDateTime(d, { year: null, vazio: '—' }); }
 function diasAtras(dias) {
     return new Date(Date.now() - (dias || 0) * 86400000);
 }

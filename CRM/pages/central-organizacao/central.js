@@ -3,6 +3,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { CentralOrganizacaoRepository as CentralOrganizacao } from '../../repositories/central-organizacao.repository.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { formatDateOnly } from '../../shared/date-utils.js';
 
 const SECAO_DOC = 'central_organizacao';
 
@@ -170,11 +171,7 @@ const SECOES = {
 const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [], _edit: null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatarData(iso) {
-    if (!iso) return '—';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-}
+function formatarData(iso) { return formatDateOnly(iso, '—'); }
 function toast(msg) {
     const el = document.getElementById('toast');
     el.textContent = msg;

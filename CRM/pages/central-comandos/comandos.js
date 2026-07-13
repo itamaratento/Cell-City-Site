@@ -12,6 +12,7 @@ import { ConfigRepository as Config } from '../../repositories/sistema.repositor
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { formatDate } from '../../shared/date-utils.js';
 
 const COL = 'comandos';
 const CAT_COL = 'categorias_comandos';
@@ -641,8 +642,7 @@ async function excluirComando(id) {
 function formatarData(c) {
     const iso = c.atualizadoEmISO || c.criadoEmISO;
     if (!iso) return '';
-    const d = new Date(iso);
-    const data = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    const data = formatDate(iso);
     return (c.atualizadoEmISO && c.atualizadoEmISO !== c.criadoEmISO) ? `✏️ ${data}` : `📅 ${data}`;
 }
 

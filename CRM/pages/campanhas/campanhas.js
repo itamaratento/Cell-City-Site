@@ -2,6 +2,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { ClientesRepository as Clientes } from '../../repositories/clientes.repository.js';
 import { escHtml } from '../../shared/sanitize.js';
+import { formatDateOnly } from '../../shared/date-utils.js';
 
 const COL_CLIENTES = 'clientes';
 const DIAS_INATIVO = 90;
@@ -275,13 +276,7 @@ document.getElementById('camp-modal-overlay').addEventListener('click', e => {
 });
 
 // ── utilitários ────────────────────────────────────────────────────
-function formatarData(iso) {
-    if (!iso) return '—';
-    try {
-        const [y, m, d] = iso.slice(0, 10).split('-');
-        return `${d}/${m}/${y}`;
-    } catch { return iso; }
-}
+function formatarData(iso) { return formatDateOnly(iso, '—'); }
 
 document.addEventListener('DOMContentLoaded', async () => {
     const ctx = await initModulo();

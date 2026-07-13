@@ -41,6 +41,7 @@ import {
 import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
+import { formatDateTime } from '../../shared/date-utils.js';
 
 // Mesma região do deploy da function (functions/index.js) e do Firestore.
 const excluirUsuarioAdminFn = httpsCallable(getFunctions(getApp(), 'southamerica-east1'), 'excluirUsuarioAdmin');
@@ -123,11 +124,7 @@ const gerarSenhaTemp = () => {
   for (let i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];
   return s;
 };
-const fmtData = (ts) => {
-  if (!ts) return '—';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
-};
+const fmtData = (ts) => formatDateTime(ts, { vazio: '—' });
 
 function toast(msg) {
   const t = $('up-toast');

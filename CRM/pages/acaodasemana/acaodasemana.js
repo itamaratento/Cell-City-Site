@@ -6,6 +6,7 @@ import { AgendaRepository as Agenda } from '../../repositories/diario.repository
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar } from '../../shared/permissoes.js';
 import { escHtml } from '../../shared/sanitize.js';
+import { formatDateOnly as fmtData } from '../../shared/date-utils.js';
 
 // ── 5 cores estilo lembretes do Windows ────────────────────────────
 const CORES = {
@@ -79,7 +80,6 @@ const toastEl    = $('ag-toast');
 // ── util ───────────────────────────────────────────────────────────
 function isoHoje() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
 function pad(n) { return String(n).padStart(2, '0'); }
-function fmtData(iso) { if (!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
 function fmtDiaLongo(iso) {
   const [y,m,d] = iso.split('-').map(Number);
   const dt = new Date(y, m-1, d);

@@ -5,6 +5,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { PreOSRepository as PreOS } from '../../repositories/os.repository.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { formatDate as formatarData } from '../../shared/date-utils.js';
 
 const COL = 'pre_os';
 const CACHE_KEY = 'cc_preos_cache';
@@ -314,11 +315,6 @@ function traduzirOrigem(valor) {
 }
 
 // ===== UTILS =====
-function formatarData(iso) {
-    const d = new Date(iso);
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-}
-
 function formatarDataCompleta(iso) {
     const d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });

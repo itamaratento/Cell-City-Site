@@ -3,6 +3,7 @@ import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir 
 import { serverTimestamp } from '../../firebase/client.js';
 import { ContasNumerosRepository as Contas } from '../../repositories/crm.repository.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { formatDate } from '../../shared/date-utils.js';
 
 const COL = 'contas_numeros';
 
@@ -13,12 +14,7 @@ let _atual  = null;
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
-function formatarData(ts) {
-    if (!ts) return '—';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric' });
-}
+function formatarData(ts) { return formatDate(ts, { year: 'numeric', vazio: '—' }); }
 
 function toast(msg) {
     const el = $('toast');

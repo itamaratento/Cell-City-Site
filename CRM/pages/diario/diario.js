@@ -15,6 +15,7 @@ import { DiarioRegistrosRepository as DiarioRegistros, DiarioEventosRepository a
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
 import { excluirEmCascata, getApelido, setApelido } from "../../shared/cc-sync.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
+import { formatDateTime } from '../../shared/date-utils.js';
 
 const COL = 'diario_registros';
 const COL_EVT = 'diario_eventos';
@@ -140,11 +141,7 @@ function tsToMillis(ts) {
     const t = new Date(ts).getTime();
     return isNaN(t) ? 0 : t;
 }
-function fmtData(ts) {
-    const ms = tsToMillis(ts);
-    if (!ms) return '—';
-    return new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
+function fmtData(ts) { return formatDateTime(ts, { year: 'numeric', vazio: '—' }); }
 function ehHoje(ts) {
     const ms = tsToMillis(ts);
     if (!ms) return false;

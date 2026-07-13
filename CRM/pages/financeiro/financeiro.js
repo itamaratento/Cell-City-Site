@@ -2,6 +2,7 @@ import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from '../../shared/sanitize.js';
+import { formatDateOnly } from '../../shared/date-utils.js';
 
 const COL_PAGAR   = 'financeiro_pagar';
 const COL_FIXAS   = 'financeiro_fixas';
@@ -412,7 +413,7 @@ function buscarGlobal() {
 }
 
 // ── Relatório Mensal ───────────────────────────────────────────────
-function fmtDataRel(iso) { if (!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtDataRel(iso) { return formatDateOnly(iso, '—'); }
 function ymKey(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
 function diaKey(iso) { return (iso||'').substring(0,7); }
 
@@ -625,11 +626,7 @@ function atualizarResumoCompleto() {
 }
 
 // ── utilitários ────────────────────────────────────────────────────
-function formatarData(iso) {
-    if (!iso) return '';
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-}
+function formatarData(iso) { return formatDateOnly(iso); }
 
 // ── eventos ────────────────────────────────────────────────────────
 // Contas a Pagar

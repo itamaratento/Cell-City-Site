@@ -3,6 +3,7 @@ import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, delet
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
+import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -576,8 +577,6 @@ function getStatusLabel(status) {
     if (found) return found.label;
     return STATUS_LEGACY[status] || status || '';
 }
-function formatDate(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; }
-function formatDateShort(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : ''; }
 
 // ===== STATS =====
 function updateStats() {
