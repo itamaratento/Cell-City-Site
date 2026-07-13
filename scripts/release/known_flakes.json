@@ -1,0 +1,11 @@
+{
+  "descricao": "Banco de assinaturas de falsos positivos conhecidos do Release Center. Quando o log de uma suíte que falhou casa com uma assinatura, o pipeline reexecuta automaticamente (máximo 2 tentativas). Falha genuína não casa e reprova na hora.",
+  "flakes": [
+    { "assinatura": "Unable to deserialize cloned data",           "nome": "Node IPC deserialize (frame truncado do test runner sob carga — incidente 2026-07-13)" },
+    { "assinatura": "node: (comando não encontrado|command not found)", "nome": "Node ausente no PATH (nvm não carregado no shell)" },
+    { "assinatura": "EADDRINUSE|Port .* is not open|address already in use", "nome": "Porta do emulador Firestore ocupada (execução concorrente)" },
+    { "assinatura": "ETIMEDOUT|ECONNRESET|ENOTFOUND api\\.github\\.com|curl: \\(28\\)", "nome": "Timeout/rede na GitHub API" },
+    { "assinatura": "npm ERR!.*(ECACHE|cache|EINTEGRITY)",          "nome": "Falha de cache do npm" },
+    { "assinatura": "FirebaseError: .*emulator.*(hub|start)",       "nome": "Emulador Firebase demorou a subir" }
+  ]
+}
