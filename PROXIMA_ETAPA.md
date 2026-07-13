@@ -160,4 +160,4 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
-*Última atualização: 2026-07-13 — MOD-V2-003 concluída (consolidação da Central de Módulos V2 + correções de RBAC, ícones, labels e stubs). Próximos passos: resolver SA keys, deploy das Rules e planejar MOD-V2-004.*
+*Última atualização: 2026-07-13 — Fases 12-14 concluídas: escHtml centralizado (30 módulos), formatDate centralizado (9 módulos), SW expandido (67 entries), RBAC em central-organizacao, estrategia convertido para placeholder. Pendências externas: SA keys em disco (🔴), Firestore Rules deploy (🔴).*

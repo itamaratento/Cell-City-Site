@@ -1952,8 +1952,41 @@ check de todos os módulos de `CRM/pages/`.
 1. `clientes` e `config` têm rótulo divergente do conteúdo real
    (Config. de Impressão / PIN-Acesso) — catálogo marca 🟡 com alerta.
 2. `data-sid="config"` duplicado na sidebar do Dashboard.
-3. `central-organizacao` sem gate de RBAC.
-4. Artefatos de dev publicados em `os/`, `portal-cliente/`, `pos-venda/`.
-5. `estrategia/` é stub de 0 bytes desde 2026-06-10 (🔴 no catálogo).
-6. Dois sistemas de favoritos paralelos (`central-modulos.js` vs
+3. Artefatos de dev publicados em `os/`, `portal-cliente/`, `pos-venda/`.
+4. Dois sistemas de favoritos paralelos (`central-modulos.js` vs
    `shared/favoritos.js`, coleções diferentes).
+
+## 34. Sprint MOD-V2-003 — Refatoração escHtml e formatDate (2026-07-13)
+
+### 34.1 Escape HTML centralizado
+
+- `CRM/shared/sanitize.js`: fonte única de `escHtml()`. Usa `createTextNode`
+  + `innerHTML` para escape seguro. Fallback global `window.CC_escHtml`.
+- 30 módulos migrados — toda implementação local de `escHtml()`/`esc()`/
+  `escapeHtml()` removida.
+- 5 ocorrências em scripts clássicos (dashboard + 4 portal-tecnico) alinhadas
+  manualmente por não suportarem import ES module.
+
+### 34.2 Formatação de datas centralizada
+
+- `CRM/shared/date-utils.js`: fonte única com 5 exports: `formatDate`,
+  `formatDateTime`, `formatDateShort`, `formatDateOnly`, `formatDateFull`.
+- Aceita ISO string, Date, epoch ms e Firestore Timestamp.
+- `formatDateOnly()` evita viés de fuso horário em strings date-only.
+- 9 módulos migrados: autoatendimento, campanhas, central-alertas,
+  central-comandos, central-organizacao, compras, contas, diario, financeiro.
+- Eliminadas 11 implementações locais de `formatDate()`/`formatarData()`/
+  `fmtData()`/`fmtDataRel()`/`fmtDataHora()`.
+
+### 34.3 Service Worker expandido
+
+- SHELL expandido de 33 para 67 entradas.
+- Cobre todos os shared components + 13 módulos mais acessados.
+
+### 34.4 Pendências resolvidas (itens da §32.4)
+
+| Item | Status |
+|---|---|
+| 3. `central-organizacao` sem RBAC | ✅ RBAC adicionado (carregarPermissoes + podeVisualizar) |
+| 5. `estrategia/` stub 0 bytes | ✅ Convertido para placeholder funcional + catálogo atualizado para 🟢 |
+| Artefatos de dev detectados | 🟡 Catalogados como diagnóstico (não removidos por decisão do dono) |
