@@ -1,0 +1,223 @@
+{
+  "$comment": "Metadados de enriquecimento do catálogo automático de módulos. A DESCOBERTA é sempre automática (scripts/central-modulos/gerar-catalogo.mjs varre CRM/pages/*): uma pasta nova aparece no catálogo mesmo sem entrada aqui, com defaults derivados (nome do <title>, ícone padrão, grupo 'Sem grupo'). Este arquivo só sobrepõe apresentação e regras que não dá para derivar do código: id legado (compatibilidade com favoritos já salvos no Firestore por id), nome/ícone exibidos, grupo funcional (ARCH-001 §6.2), descrição, arquivo de entrada quando não é index.html e ocultação com motivo. Nunca listar aqui um módulo só para ele existir no catálogo — isso é papel do gerador.",
+  "modulos": {
+    "os": {
+      "nome": "Ordem de Serviço",
+      "icone": "📦",
+      "grupo": "Atendimento",
+      "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo."
+    },
+    "caixa": {
+      "nome": "Caixa",
+      "icone": "💰",
+      "grupo": "Financeiro",
+      "descricao": "Lançamentos de entrada e saída do caixa diário, categorias e lembretes de pagamento."
+    },
+    "central-alertas": {
+      "nome": "Central de Alertas",
+      "icone": "🔔",
+      "grupo": "Infraestrutura",
+      "descricao": "Agregador de alertas de todos os módulos (OS, financeiro, portal, pós-venda, sistema)."
+    },
+    "central-comandos": {
+      "nome": "Central de Comandos",
+      "icone": "⚡",
+      "grupo": "Infraestrutura",
+      "descricao": "Comandos rápidos e categorizados de operação do sistema."
+    },
+    "crm-comercial": {
+      "nome": "CRM Comercial",
+      "icone": "🎯",
+      "grupo": "Comercial",
+      "descricao": "Gestão de leads, chips e entradas do funil comercial (4 subtelas)."
+    },
+    "clientes": {
+      "nome": "Clientes",
+      "icone": "👥",
+      "grupo": "Comercial",
+      "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
+      "alerta": "Rótulo histórico 'Clientes' não corresponde ao conteúdo real (tela de Configurações de Impressão). Correção do rótulo/conteúdo é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
+    },
+    "estoque": {
+      "nome": "Estoque",
+      "icone": "📱",
+      "grupo": "Estoque",
+      "descricao": "Controle de produtos em estoque, entradas, saídas e alertas de reposição."
+    },
+    "financeiro": {
+      "nome": "Financeiro",
+      "icone": "💹",
+      "grupo": "Financeiro",
+      "descricao": "Contas a pagar/receber, despesas fixas, categorias e fechamentos."
+    },
+    "compras": {
+      "nome": "Compras",
+      "icone": "🛒",
+      "grupo": "Estoque",
+      "descricao": "Pedidos de compra e acompanhamento de recebimento."
+    },
+    "fornecedor": {
+      "nome": "Fornecedor",
+      "icone": "🏭",
+      "grupo": "Estoque",
+      "descricao": "Cadastro de fornecedores, histórico de compras e tendências."
+    },
+    "pos-venda": {
+      "nome": "Pós-venda",
+      "icone": "💝",
+      "grupo": "Atendimento",
+      "descricao": "Acompanhamento pós-entrega, mensagens e avaliações de clientes."
+    },
+    "config": {
+      "nome": "Configurações",
+      "icone": "⚙️",
+      "grupo": "Administração",
+      "descricao": "Tela de acesso por PIN e conta de sincronização.",
+      "alerta": "Rótulo histórico 'Configurações' não corresponde ao conteúdo real (tela de PIN/Acesso). Correção é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
+    },
+    "contas": {
+      "nome": "Contas & Números",
+      "icone": "📇",
+      "grupo": "Financeiro",
+      "descricao": "Contas e números de referência da operação."
+    },
+    "acaodasemana": {
+      "id": "agenda",
+      "nome": "Agenda",
+      "icone": "📅",
+      "grupo": "Comercial",
+      "descricao": "Agenda e ações da semana (eventos, tarefas e ações comerciais).",
+      "observacao": "id legado 'agenda' preservado de propósito: favoritos já salvos no Firestore referenciam esse id."
+    },
+    "portal-cliente": {
+      "nome": "Portal do Cliente",
+      "icone": "🔷",
+      "grupo": "Atendimento",
+      "arquivoEntrada": "admin.html",
+      "descricao": "Painel interno do Portal do Cliente (agendamentos, mensagens, avaliações). O index.html da mesma pasta é o portal público, sem login CRM."
+    },
+    "portal-tecnico": {
+      "nome": "Portal Técnico",
+      "icone": "🔓",
+      "grupo": "Atendimento",
+      "descricao": "Conteúdo técnico de apoio: soluções, softwares, tutoriais (4 subpáginas estáticas)."
+    },
+    "central-organizacao": {
+      "id": "central-automacao",
+      "nome": "Central de Automação",
+      "icone": "⚡",
+      "grupo": "Administração",
+      "descricao": "Organização e automação de rotinas internas.",
+      "observacao": "id legado 'central-automacao' preservado de propósito: favoritos já salvos no Firestore referenciam esse id."
+    },
+    "central-informacoes": {
+      "nome": "Central de Informações",
+      "icone": "📚",
+      "grupo": "Administração",
+      "descricao": "Base de conhecimento interna, informações categorizadas da operação."
+    },
+    "catalogo": {
+      "nome": "Catálogo",
+      "icone": "🛍️",
+      "grupo": "Comercial",
+      "descricao": "Catálogo de produtos com vitrine pública (subpasta public/, sem login)."
+    },
+    "relatorios": {
+      "nome": "Relatórios",
+      "icone": "📊",
+      "grupo": "Inteligência",
+      "descricao": "Relatórios consolidados de caixa e ordens de serviço."
+    },
+    "diario": {
+      "nome": "Diário",
+      "icone": "📔",
+      "grupo": "Administração",
+      "descricao": "Registro diário da operação com backup no Google Drive."
+    },
+    "auditoria": {
+      "nome": "Auditoria",
+      "icone": "🔍",
+      "grupo": "Administração",
+      "descricao": "Trilha de auditoria de usuários e permissões."
+    },
+    "autoatendimento": {
+      "nome": "Autoatendimento",
+      "icone": "🤖",
+      "grupo": "Atendimento",
+      "descricao": "Pré-OS online criada pelo próprio cliente (autoatendimento)."
+    },
+    "analise": {
+      "nome": "Análise",
+      "icone": "📊",
+      "grupo": "Inteligência",
+      "descricao": "Análises sobre lançamentos do caixa."
+    },
+    "campanhas": {
+      "nome": "Campanhas",
+      "icone": "📢",
+      "grupo": "Comercial",
+      "descricao": "Campanhas de comunicação para a base de clientes."
+    },
+    "importar": {
+      "nome": "Importar",
+      "icone": "📥",
+      "grupo": "Administração",
+      "descricao": "Importação de dados externos (vendas, produtos, clientes, lançamentos)."
+    },
+    "minha-semana": {
+      "nome": "Minha Semana",
+      "icone": "📋",
+      "grupo": "Atendimento",
+      "descricao": "Visão semanal pessoal de tarefas e eventos."
+    },
+    "usuarios-permissoes": {
+      "nome": "Usuários e Permissões",
+      "icone": "🔐",
+      "grupo": "Administração",
+      "descricao": "Gestão de usuários, perfis operacionais e permissões (RBAC)."
+    },
+    "chat": {
+      "nome": "Chat",
+      "icone": "💬",
+      "grupo": "Atendimento",
+      "descricao": "Chat interno entre usuários do sistema (desativado).",
+      "oculto": true,
+      "motivoOculto": "DESATIVADO por decisão do dono em 2026-07-10 (TECHDOC §31): sem uso operacional; chat.js renderiza 'Módulo desativado'. Código/Rules/coleção preservados. Para reativar, ver passos no TECHDOC §31 e remover este oculto."
+    },
+    "dashboard": {
+      "nome": "Dashboard",
+      "icone": "🏠",
+      "grupo": "Inteligência",
+      "oculto": true,
+      "motivoOculto": "É o shell/home do sistema (host da sidebar), não um módulo de catálogo."
+    },
+    "central-modulos": {
+      "nome": "Central de Módulos",
+      "icone": "🧩",
+      "grupo": "Infraestrutura",
+      "oculto": true,
+      "motivoOculto": "Autorreferência — é a própria página do catálogo."
+    },
+    "kernel-test": {
+      "nome": "Kernel Test",
+      "icone": "🧪",
+      "grupo": "Infraestrutura",
+      "oculto": true,
+      "motivoOculto": "Ferramenta interna de diagnóstico, excluída do deploy (deploy-pages.yml)."
+    },
+    "em-breve": {
+      "nome": "Em Breve",
+      "icone": "🚧",
+      "grupo": "Sem grupo",
+      "oculto": true,
+      "motivoOculto": "Página genérica 'em construção', destino de links não implementados — não é uma feature própria."
+    },
+    "estrategia": {
+      "nome": "Estratégia",
+      "icone": "♟️",
+      "grupo": "Sem grupo",
+      "oculto": true,
+      "motivoOculto": "Stub morto: js/css/html com 0 bytes desde 2026-06-10, nunca implementado. Exibir um card clicável seria tela fictícia."
+    }
+  }
+}
