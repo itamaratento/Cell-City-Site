@@ -1,18 +1,36 @@
 /* ============================================================
-   CENTRAL DE MÓDULOS — Cell City CRM
+   CENTRAL DE MÓDULOS — Cell City CRM (V2, Sprint MOD-V2-001)
    Catálogo de módulos do sistema + favoritos do usuário.
+
+   O catálogo NÃO é mais hardcoded aqui: é gerado automaticamente
+   por scripts/central-modulos/gerar-catalogo.mjs (varre CRM/pages/*)
+   e publicado em shared/modulos.catalogo.json. Pasta nova em
+   CRM/pages/ = módulo novo no catálogo, sem editar arquivo nenhum
+   além de rodar o gerador.
 
    Favoritar um módulo aqui (⭐) faz ele aparecer automaticamente
    no menu principal (barra lateral do Dashboard) — ver
    shared/menu-favoritos.js, que consome os favoritos daqui.
 
+   Compatibilidade preservada com os consumidores existentes:
+   TODOS_MODULOS continua sendo um array exportado ({id, nome,
+   icone, url}) e o evento 'cc-modulos-changed' continua sendo o
+   sinal de re-render — ele agora também dispara quando o catálogo
+   termina de carregar.
+
    Firestore: usuarios/{uid}/preferencias/modulos → { favoritos: string[] }
-   localStorage: cc_modulos_favs (cache rápido / offline)
+   localStorage: cc_modulos_favs      (cache de favoritos / offline)
+                 cc_modulos_catalogo  (cache do catálogo / offline)
+                 cc_modulos_log       (log local de eventos do módulo)
    ============================================================ */
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 
 const LS_KEY = 'cc_modulos_favs';
+const LS_CATALOGO = 'cc_modulos_catalogo';
+const LS_LOG = 'cc_modulos_log';
+const LOG_MAX = 200;
+const CATALOGO_URL = '/CRM/shared/modulos.catalogo.json';
 const prefsRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'modulos');
 
 let _uid = null;
@@ -25,44 +43,62 @@ const ENV_PREFIX = (function () {
   return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
 })();
 
-// ── Catálogo completo (só módulos com página real no sistema) ──
-const RAW_MODULOS = [
-  { id: 'os',                 nome: 'Ordem de Serviço',       icone: '📦', url: '/CRM/pages/os/index.html' },
-  { id: 'caixa',               nome: 'Caixa',                   icone: '💰', url: '/CRM/pages/caixa/index.html' },
-  { id: 'central-alertas',     nome: 'Central de Alertas',      icone: '🔔', url: '/CRM/pages/central-alertas/index.html' },
-  { id: 'central-comandos',    nome: 'Central de Comandos',     icone: '⚡', url: '/CRM/pages/central-comandos/index.html' },
-  { id: 'crm-comercial',       nome: 'CRM Comercial',           icone: '🎯', url: '/CRM/pages/crm-comercial/index.html' },
-  { id: 'clientes',            nome: 'Clientes',                icone: '👥', url: '/CRM/pages/clientes/index.html' },
-  { id: 'estoque',             nome: 'Estoque',                 icone: '📱', url: '/CRM/pages/estoque/index.html' },
-  { id: 'financeiro',          nome: 'Financeiro',              icone: '💹', url: '/CRM/pages/financeiro/index.html' },
-  { id: 'compras',             nome: 'Compras',                 icone: '🛒', url: '/CRM/pages/compras/index.html' },
-  { id: 'fornecedor',          nome: 'Fornecedor',              icone: '🏭', url: '/CRM/pages/fornecedor/index.html' },
-  { id: 'pos-venda',           nome: 'Pós-venda',               icone: '💝', url: '/CRM/pages/pos-venda/index.html' },
-  { id: 'config',              nome: 'Configurações',           icone: '⚙️', url: '/CRM/pages/config/index.html' },
-  { id: 'contas',              nome: 'Contas & Números',        icone: '📇', url: '/CRM/pages/contas/index.html' },
-  { id: 'agenda',              nome: 'Agenda',                  icone: '📅', url: '/CRM/pages/acaodasemana/index.html' },
-  { id: 'portal-cliente',      nome: 'Portal do Cliente',       icone: '🔷', url: '/CRM/pages/portal-cliente/admin.html' },
-  { id: 'portal-tecnico',      nome: 'Portal Técnico',          icone: '🔓', url: '/CRM/pages/portal-tecnico/index.html' },
-  { id: 'central-automacao',   nome: 'Central de Automação',    icone: '⚡', url: '/CRM/pages/central-organizacao/index.html' },
-  { id: 'central-informacoes', nome: 'Central de Informações',  icone: '📚', url: '/CRM/pages/central-informacoes/index.html' },
-  { id: 'catalogo',            nome: 'Catálogo',                icone: '🛍️', url: '/CRM/pages/catalogo/index.html' },
-  { id: 'relatorios',          nome: 'Relatórios',              icone: '📊', url: '/CRM/pages/relatorios/index.html' },
-  { id: 'diario',              nome: 'Diário',                  icone: '📔', url: '/CRM/pages/diario/index.html' },
-  { id: 'auditoria',           nome: 'Auditoria',               icone: '🔍', url: '/CRM/pages/auditoria/index.html' },
-  { id: 'autoatendimento',     nome: 'Autoatendimento',         icone: '🤖', url: '/CRM/pages/autoatendimento/index.html' },
-  { id: 'analise',             nome: 'Análise',                 icone: '📊', url: '/CRM/pages/analise/index.html' },
-  { id: 'campanhas',           nome: 'Campanhas',               icone: '📢', url: '/CRM/pages/campanhas/index.html' },
-  { id: 'importar',            nome: 'Importar',                icone: '📥', url: '/CRM/pages/importar/index.html' },
-  { id: 'minha-semana',        nome: 'Minha Semana',            icone: '📋', url: '/CRM/pages/minha-semana/index.html' },
-  { id: 'usuarios-permissoes', nome: 'Usuários e Permissões',   icone: '🔐', url: '/CRM/pages/usuarios-permissoes/index.html' },
-];
+// ── Catálogo (gerado; ver cabeçalho) ──────────────────────────
+// Array de referência ESTÁVEL: preenchido in-place quando o JSON
+// chega, para que consumidores que importaram TODOS_MODULOS antes
+// do load (ex.: menu-favoritos.js) enxerguem os dados sem reimport.
+export const TODOS_MODULOS = [];
 
-// URLs sempre absolutas do ambiente atual (nunca relativas — path do
-// catálogo é usado tanto pelo menu lateral quanto pela Central de
-// Módulos, hospedados em profundidades de diretório diferentes).
-export const TODOS_MODULOS = RAW_MODULOS.map(m => ({ ...m, url: ENV_PREFIX + m.url }));
+let _catalogo = null;        // JSON completo (resumo, anomalias, diagnósticos)
+let _carregando = null;      // promise em voo, evita fetch duplicado
 
-// ── Estado interno ──────────────────────────────────────────────
+export function getCatalogo() { return _catalogo; }
+
+export function carregarCatalogo() {
+  if (_catalogo) return Promise.resolve(_catalogo);
+  if (_carregando) return _carregando;
+  _carregando = (async () => {
+    let data = null;
+    try {
+      const r = await fetch(ENV_PREFIX + CATALOGO_URL, { cache: 'no-cache' });
+      if (r.ok) data = await r.json();
+    } catch { /* offline — cai para o cache abaixo */ }
+    if (data) {
+      try { localStorage.setItem(LS_CATALOGO, JSON.stringify(data)); } catch {}
+    } else {
+      try { data = JSON.parse(localStorage.getItem(LS_CATALOGO) || 'null'); } catch {}
+      if (data) registrarLog('catalogo-offline', 'catálogo servido do cache local (fetch falhou)');
+    }
+    if (!data || !Array.isArray(data.modulos)) {
+      registrarLog('catalogo-erro', 'catálogo indisponível (sem rede e sem cache)');
+      return null;
+    }
+    _catalogo = data;
+    TODOS_MODULOS.length = 0;
+    data.modulos
+      .filter((m) => !m.oculto)
+      .forEach((m) => TODOS_MODULOS.push({ ...m, url: ENV_PREFIX + m.url }));
+    registrarLog('catalogo-carregado', `${TODOS_MODULOS.length} módulos (gerado em ${data.geradoEm})`);
+    _notify();
+    return _catalogo;
+  })();
+  return _carregando;
+}
+
+// ── Log local do módulo (auditorias, erros, execuções) ────────
+export function registrarLog(evento, detalhe) {
+  try {
+    const log = JSON.parse(localStorage.getItem(LS_LOG) || '[]');
+    log.push({ em: new Date().toISOString(), evento, detalhe: String(detalhe || '') });
+    while (log.length > LOG_MAX) log.shift();
+    localStorage.setItem(LS_LOG, JSON.stringify(log));
+  } catch { /* localStorage cheio/indisponível — log é melhor-esforço */ }
+}
+export function getLogs() {
+  try { return JSON.parse(localStorage.getItem(LS_LOG) || '[]'); } catch { return []; }
+}
+
+// ── Estado interno (favoritos) ────────────────────────────────
 let _favs  = null; // null = ainda não carregado
 let _unsub = null;
 
@@ -88,6 +124,7 @@ export async function toggleFavorito(id) {
 
   _favs = cur;
   _writeCache(cur);
+  registrarLog('favorito', `${idx >= 0 ? 'removido' : 'adicionado'}: ${id}`);
   _notify();
 
   if (!_uid) return;
@@ -95,6 +132,7 @@ export async function toggleFavorito(id) {
     await setDoc(prefsRef(_uid), { favoritos: cur, atualizadoEm: serverTimestamp() }, { merge: true });
   } catch (e) {
     console.warn('[CentralModulos] erro ao salvar favoritos:', e);
+    registrarLog('erro-favorito', e && e.message);
   }
 }
 
@@ -117,6 +155,7 @@ function _assinar() {
 export function init() {
   const cached = _readCache();
   if (cached) { _favs = cached; _notify(); }
+  carregarCatalogo();
   initModulo().then((ctx) => {
     if (!ctx) return;
     _uid = ctx.uid;

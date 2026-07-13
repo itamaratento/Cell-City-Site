@@ -1,0 +1,3992 @@
+{
+  "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
+  "versaoGerador": "1.0.0",
+  "geradoEm": "2026-07-13T12:59:50.400Z",
+  "commitBase": "45a86a6",
+  "resumo": {
+    "totalPastas": 34,
+    "visiveis": 28,
+    "ocultos": 6,
+    "porStatus": {
+      "ok": 26,
+      "atencao": 7,
+      "erro": 1
+    },
+    "porGrupo": {
+      "Comercial": 5,
+      "Inteligência": 3,
+      "Administração": 7,
+      "Atendimento": 7,
+      "Financeiro": 3,
+      "Infraestrutura": 4,
+      "Estoque": 3,
+      "Sem grupo": 2
+    },
+    "semRbac": 2,
+    "semFirestore": 3,
+    "incompletos": 1,
+    "colecoesDistintas": 58,
+    "scoreMedio": 94,
+    "anomaliasGlobais": 1
+  },
+  "anomalias": [
+    {
+      "tipo": "sidebar-duplicada",
+      "detalhe": "data-sid=\"config\" aparece 2x na sidebar do Dashboard (CRM/pages/dashboard/index.html)"
+    }
+  ],
+  "modulos": [
+    {
+      "id": "agenda",
+      "pasta": "acaodasemana",
+      "nome": "Agenda",
+      "icone": "📅",
+      "url": "/CRM/pages/acaodasemana/index.html",
+      "grupo": "Comercial",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Agenda e ações da semana (eventos, tarefas e ações comerciais).",
+      "oculto": false,
+      "versao": "1.0.18",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 18,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "acoes_semana",
+          "agenda",
+          "diario_eventos",
+          "diario_registros",
+          "tarefas_semana"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "diario.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "acaodasemana.js",
+          "linhas": 900
+        },
+        {
+          "arquivo": "acaodasemana.css",
+          "linhas": 508
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 156
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "id-legado",
+          "detalhe": "id 'agenda' difere da pasta 'acaodasemana' (alias documentado no modulos.meta.json, preservado por compatibilidade de favoritos)"
+        },
+        {
+          "tipo": "observacao",
+          "detalhe": "id legado 'agenda' preservado de propósito: favoritos já salvos no Firestore referenciam esse id."
+        }
+      ]
+    },
+    {
+      "id": "analise",
+      "pasta": "analise",
+      "nome": "Análise",
+      "icone": "📊",
+      "url": "/CRM/pages/analise/index.html",
+      "grupo": "Inteligência",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Análises sobre lançamentos do caixa.",
+      "oculto": false,
+      "versao": "1.0.15",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 15,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "caixa_lancamentos"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "analise.js",
+          "linhas": 355
+        },
+        {
+          "arquivo": "analise.css",
+          "linhas": 144
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 76
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (1 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "auditoria",
+      "pasta": "auditoria",
+      "nome": "Auditoria",
+      "icone": "🔍",
+      "url": "/CRM/pages/auditoria/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Trilha de auditoria de usuários e permissões.",
+      "oculto": false,
+      "versao": "1.0.15",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 15,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "auditoria_usuarios_permissoes",
+          "config",
+          "perfis_operacionais",
+          "usuarios"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "auditoria.js",
+          "linhas": 204
+        },
+        {
+          "arquivo": "auditoria.css",
+          "linhas": 79
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 67
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (4 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "autoatendimento",
+      "pasta": "autoatendimento",
+      "nome": "Autoatendimento",
+      "icone": "🤖",
+      "url": "/CRM/pages/autoatendimento/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Pré-OS online criada pelo próprio cliente (autoatendimento).",
+      "oculto": false,
+      "versao": "1.0.19",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 19,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "os",
+          "pre_os",
+          "solicitacoes_diagnostico"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "os.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "autoatendimento.css",
+          "linhas": 494
+        },
+        {
+          "arquivo": "autoatendimento.js",
+          "linhas": 334
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 76
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": true,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "caixa",
+      "pasta": "caixa",
+      "nome": "Caixa",
+      "icone": "💰",
+      "url": "/CRM/pages/caixa/index.html",
+      "grupo": "Financeiro",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Lançamentos de entrada e saída do caixa diário, categorias e lembretes de pagamento.",
+      "oculto": false,
+      "versao": "1.0.42",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 42,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "caixa_lancamentos",
+          "categorias_caixa",
+          "estoque_produtos",
+          "lembretes_pagamento"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "favoritos.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "caixa.js",
+          "linhas": 814
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 312
+        },
+        {
+          "arquivo": "caixa.css",
+          "linhas": 307
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (4 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "campanhas",
+      "pasta": "campanhas",
+      "nome": "Campanhas",
+      "icone": "📢",
+      "url": "/CRM/pages/campanhas/index.html",
+      "grupo": "Comercial",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Campanhas de comunicação para a base de clientes.",
+      "oculto": false,
+      "versao": "1.0.15",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 15,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "clientes"
+        ],
+        "viaRepositorio": [
+          "clientes"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "clientes.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "campanhas.js",
+          "linhas": 296
+        },
+        {
+          "arquivo": "campanhas.css",
+          "linhas": 161
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 119
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "catalogo",
+      "pasta": "catalogo",
+      "nome": "Catálogo",
+      "icone": "🛍️",
+      "url": "/CRM/pages/catalogo/index.html",
+      "grupo": "Comercial",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Catálogo de produtos com vitrine pública (subpasta public/, sem login).",
+      "oculto": false,
+      "versao": "1.0.34",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 34,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "catalogo_config",
+          "catalogo_produtos",
+          "categorias_produtos",
+          "produtos"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "env-config.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "produtos.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "catalogo.css",
+          "linhas": 354
+        },
+        {
+          "arquivo": "catalogo.js",
+          "linhas": 311
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 184
+        }
+      ],
+      "totalArquivos": 6,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "central-alertas",
+      "pasta": "central-alertas",
+      "nome": "Central de Alertas",
+      "icone": "🔔",
+      "url": "/CRM/pages/central-alertas/index.html",
+      "grupo": "Infraestrutura",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Agregador de alertas de todos os módulos (OS, financeiro, portal, pós-venda, sistema).",
+      "oculto": false,
+      "versao": "1.0.43",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 43,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "acoes_semana",
+          "agenda",
+          "agendamentos",
+          "alarme_config",
+          "alertas_usuario",
+          "avaliacoes",
+          "central_alertas_status",
+          "config",
+          "diario_eventos",
+          "diario_registros",
+          "financeiro_categorias",
+          "financeiro_fixas",
+          "financeiro_pagar",
+          "financeiro_receber",
+          "historico_diario",
+          "historico_mensal",
+          "historico_semanal",
+          "lembretes_pagamento",
+          "mensagens_portal",
+          "metadata",
+          "os",
+          "portal_eventos",
+          "posvenda_contatos",
+          "posvenda_mensagens",
+          "posvenda_rastreamento",
+          "pre_os",
+          "resumo_live",
+          "solicitacoes_diagnostico",
+          "tarefas_semana",
+          "vendas_importadas"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "diario.repository.js",
+          "financeiro.repository.js",
+          "os.repository.js",
+          "portal.repository.js",
+          "posvenda.repository.js",
+          "sistema.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "central-alertas.js",
+          "linhas": 883
+        },
+        {
+          "arquivo": "central-alertas.css",
+          "linhas": 340
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 208
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "central-comandos",
+      "pasta": "central-comandos",
+      "nome": "Central de Comandos",
+      "icone": "⚡",
+      "url": "/CRM/pages/central-comandos/index.html",
+      "grupo": "Infraestrutura",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Comandos rápidos e categorizados de operação do sistema.",
+      "oculto": false,
+      "versao": "1.0.22",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 22,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "alarme_config",
+          "alertas_usuario",
+          "categorias_comandos",
+          "categorias_informacoes",
+          "central_alertas_status",
+          "comandos",
+          "config",
+          "historico_diario",
+          "historico_mensal",
+          "historico_semanal",
+          "informacoes",
+          "metadata",
+          "resumo_live",
+          "vendas_importadas"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "central.repository.js",
+          "sistema.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "comandos.css",
+          "linhas": 699
+        },
+        {
+          "arquivo": "comandos.js",
+          "linhas": 673
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 123
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": true,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "central-informacoes",
+      "pasta": "central-informacoes",
+      "nome": "Central de Informações",
+      "icone": "📚",
+      "url": "/CRM/pages/central-informacoes/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Base de conhecimento interna, informações categorizadas da operação.",
+      "oculto": false,
+      "versao": "1.0.25",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 25,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "categorias_comandos",
+          "categorias_informacoes",
+          "comandos",
+          "informacoes"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "central.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "informacoes.css",
+          "linhas": 1812
+        },
+        {
+          "arquivo": "informacoes.js",
+          "linhas": 1482
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 284
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": true,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "central-modulos",
+      "pasta": "central-modulos",
+      "nome": "Central de Módulos",
+      "icone": "🧩",
+      "url": "/CRM/pages/central-modulos/index.html",
+      "grupo": "Infraestrutura",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Central de Módulos.",
+      "oculto": true,
+      "motivoOculto": "Autorreferência — é a própria página do catálogo.",
+      "versao": "1.0.16",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-03",
+      "commits": 16,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "central-modulos.js",
+          "dock.css",
+          "dock.js"
+        ],
+        "scripts": [],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "index.html",
+          "linhas": 209
+        },
+        {
+          "arquivo": "central-modulos-page.js",
+          "linhas": 208
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "central-automacao",
+      "pasta": "central-organizacao",
+      "nome": "Central de Automação",
+      "icone": "⚡",
+      "url": "/CRM/pages/central-organizacao/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Organização e automação de rotinas internas.",
+      "oculto": false,
+      "versao": "1.0.39",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-05",
+      "commits": 39,
+      "status": "atencao",
+      "score": 90,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "central_organizacao"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "central-organizacao.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "central.js",
+          "linhas": 335
+        },
+        {
+          "arquivo": "central.css",
+          "linhas": 329
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 155
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": false
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-rbac",
+          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        },
+        {
+          "tipo": "id-legado",
+          "detalhe": "id 'central-automacao' difere da pasta 'central-organizacao' (alias documentado no modulos.meta.json, preservado por compatibilidade de favoritos)"
+        },
+        {
+          "tipo": "observacao",
+          "detalhe": "id legado 'central-automacao' preservado de propósito: favoritos já salvos no Firestore referenciam esse id."
+        }
+      ]
+    },
+    {
+      "id": "chat",
+      "pasta": "chat",
+      "nome": "Chat",
+      "icone": "💬",
+      "url": "/CRM/pages/chat/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Chat interno entre usuários do sistema (desativado).",
+      "oculto": true,
+      "motivoOculto": "DESATIVADO por decisão do dono em 2026-07-10 (TECHDOC §31): sem uso operacional; chat.js renderiza 'Módulo desativado'. Código/Rules/coleção preservados. Para reativar, ver passos no TECHDOC §31 e remover este oculto.",
+      "versao": "1.0.4",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 4,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "chat_mensagens",
+          "usuarios"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "chat.js",
+          "linhas": 200
+        },
+        {
+          "arquivo": "chat.css",
+          "linhas": 78
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 40
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "clientes",
+      "pasta": "clientes",
+      "nome": "Clientes",
+      "icone": "👥",
+      "url": "/CRM/pages/clientes/index.html",
+      "grupo": "Comercial",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
+      "oculto": false,
+      "versao": "1.0.21",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 21,
+      "status": "atencao",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "alarme_config",
+          "alertas_usuario",
+          "central_alertas_status",
+          "config",
+          "historico_diario",
+          "historico_mensal",
+          "historico_semanal",
+          "metadata",
+          "resumo_live",
+          "vendas_importadas"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "sistema.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "clientes.css",
+          "linhas": 235
+        },
+        {
+          "arquivo": "clientes.js",
+          "linhas": 189
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 94
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "alerta",
+          "detalhe": "Rótulo histórico 'Clientes' não corresponde ao conteúdo real (tela de Configurações de Impressão). Correção do rótulo/conteúdo é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
+        }
+      ]
+    },
+    {
+      "id": "compras",
+      "pasta": "compras",
+      "nome": "Compras",
+      "icone": "🛒",
+      "url": "/CRM/pages/compras/index.html",
+      "grupo": "Estoque",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Pedidos de compra e acompanhamento de recebimento.",
+      "oculto": false,
+      "versao": "1.0.22",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 22,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "compras_pedidos",
+          "fornecedor_compras"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "compras.js",
+          "linhas": 170
+        },
+        {
+          "arquivo": "compras.css",
+          "linhas": 114
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 89
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (2 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "config",
+      "pasta": "config",
+      "nome": "Configurações",
+      "icone": "⚙️",
+      "url": "/CRM/pages/config/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Tela de acesso por PIN e conta de sincronização.",
+      "oculto": false,
+      "versao": "1.0.21",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 21,
+      "status": "atencao",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "alarme_config",
+          "alertas_usuario",
+          "central_alertas_status",
+          "config",
+          "historico_diario",
+          "historico_mensal",
+          "historico_semanal",
+          "metadata",
+          "resumo_live",
+          "vendas_importadas"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "permissoes.js",
+          "session.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "sistema.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "config.js",
+          "linhas": 228
+        },
+        {
+          "arquivo": "config.css",
+          "linhas": 189
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 175
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": true,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "alerta",
+          "detalhe": "Rótulo histórico 'Configurações' não corresponde ao conteúdo real (tela de PIN/Acesso). Correção é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
+        }
+      ]
+    },
+    {
+      "id": "contas",
+      "pasta": "contas",
+      "nome": "Contas & Números",
+      "icone": "📇",
+      "url": "/CRM/pages/contas/index.html",
+      "grupo": "Financeiro",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Contas e números de referência da operação.",
+      "oculto": false,
+      "versao": "1.0.13",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 13,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "contas_numeros",
+          "crm_leads"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "crm.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "contas.js",
+          "linhas": 223
+        },
+        {
+          "arquivo": "contas.css",
+          "linhas": 148
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 119
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "crm-comercial",
+      "pasta": "crm-comercial",
+      "nome": "CRM Comercial",
+      "icone": "🎯",
+      "url": "/CRM/pages/crm-comercial/index.html",
+      "grupo": "Comercial",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Gestão de leads, chips e entradas do funil comercial (4 subtelas).",
+      "oculto": false,
+      "versao": "1.0.32",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 32,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "clientes",
+          "config",
+          "crm_leads"
+        ],
+        "viaRepositorio": [
+          "chips_cadastros"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js",
+          "phone-utils.js",
+          "sidebar.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": [
+          "chips.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "crm.js",
+          "linhas": 1130
+        },
+        {
+          "arquivo": "crm.css",
+          "linhas": 956
+        },
+        {
+          "arquivo": "chips.js",
+          "linhas": 622
+        },
+        {
+          "arquivo": "entrada.css",
+          "linhas": 456
+        },
+        {
+          "arquivo": "entrada.js",
+          "linhas": 422
+        },
+        {
+          "arquivo": "chips-entrada.js",
+          "linhas": 324
+        },
+        {
+          "arquivo": "chips.html",
+          "linhas": 230
+        },
+        {
+          "arquivo": "chips.css",
+          "linhas": 215
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 207
+        },
+        {
+          "arquivo": "chips-entrada.html",
+          "linhas": 164
+        },
+        {
+          "arquivo": "entrada.html",
+          "linhas": 133
+        },
+        {
+          "arquivo": "chips-entrada.css",
+          "linhas": 17
+        }
+      ],
+      "totalArquivos": 12,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "dashboard",
+      "pasta": "dashboard",
+      "nome": "Dashboard",
+      "icone": "🏠",
+      "url": "/CRM/pages/dashboard/index.html",
+      "grupo": "Inteligência",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Gestão Empresarial.",
+      "oculto": true,
+      "motivoOculto": "É o shell/home do sistema (host da sidebar), não um módulo de catálogo.",
+      "versao": "1.0.130",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-11",
+      "commits": 130,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "agenda",
+          "agendamentos",
+          "alarme_config",
+          "avaliacoes",
+          "backup_logs",
+          "caixa_lancamentos",
+          "clientes",
+          "diario_registros",
+          "estoque_produtos",
+          "mensagens_portal",
+          "notas_usuarios",
+          "os",
+          "posvenda_contatos",
+          "pre_os",
+          "produtos",
+          "solicitacoes_diagnostico"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "favoritos.js",
+          "menu-favoritos.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "dashboard.css",
+          "linhas": 3045
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 1308
+        },
+        {
+          "arquivo": "dashboard-alarme-os.js",
+          "linhas": 989
+        },
+        {
+          "arquivo": "dashboard-alertas.js",
+          "linhas": 881
+        },
+        {
+          "arquivo": "sw-alarme.js",
+          "linhas": 441
+        },
+        {
+          "arquivo": "dashboard-ui.js",
+          "linhas": 424
+        },
+        {
+          "arquivo": "dashboard-busca.js",
+          "linhas": 198
+        },
+        {
+          "arquivo": "dashboard-events.js",
+          "linhas": 140
+        },
+        {
+          "arquivo": "dashboard-caixa.js",
+          "linhas": 139
+        },
+        {
+          "arquivo": "dashboard-state.js",
+          "linhas": 69
+        },
+        {
+          "arquivo": "dashboard.js",
+          "linhas": 39
+        },
+        {
+          "arquivo": "dashboard-init.js",
+          "linhas": 30
+        },
+        {
+          "arquivo": "dashboard-utils.js",
+          "linhas": 20
+        }
+      ],
+      "totalArquivos": 13,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "diario",
+      "pasta": "diario",
+      "nome": "Diário",
+      "icone": "📔",
+      "url": "/CRM/pages/diario/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Registro diário da operação com backup no Google Drive.",
+      "oculto": false,
+      "versao": "1.0.23",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 23,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "diario_eventos"
+        ],
+        "viaRepositorio": [
+          "acoes_semana",
+          "agenda",
+          "diario_eventos",
+          "diario_registros",
+          "tarefas_semana"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "cc-sync.js",
+          "dock.css",
+          "dock.js",
+          "gdrive-backup.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "diario.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "diario.js",
+          "linhas": 877
+        },
+        {
+          "arquivo": "diario.css",
+          "linhas": 592
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 324
+        },
+        {
+          "arquivo": "diario-gdrive.js",
+          "linhas": 85
+        }
+      ],
+      "totalArquivos": 4,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "em-breve",
+      "pasta": "em-breve",
+      "nome": "Em Breve",
+      "icone": "🚧",
+      "url": "/CRM/pages/em-breve/index.html",
+      "grupo": "Sem grupo",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Em Breve.",
+      "oculto": true,
+      "motivoOculto": "Página genérica 'em construção', destino de links não implementados — não é uma feature própria.",
+      "versao": "1.0.12",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-03",
+      "commits": 12,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js"
+        ],
+        "scripts": [],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "index.html",
+          "linhas": 35
+        }
+      ],
+      "totalArquivos": 1,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": false
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "estoque",
+      "pasta": "estoque",
+      "nome": "Estoque",
+      "icone": "📱",
+      "url": "/CRM/pages/estoque/index.html",
+      "grupo": "Estoque",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Controle de produtos em estoque, entradas, saídas e alertas de reposição.",
+      "oculto": false,
+      "versao": "1.0.24",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 24,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "catalogo_config",
+          "catalogo_produtos",
+          "categorias_produtos",
+          "estoque_produtos",
+          "produtos"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "estoque.repository.js",
+          "produtos.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "estoque.css",
+          "linhas": 500
+        },
+        {
+          "arquivo": "estoque.js",
+          "linhas": 356
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 146
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "estrategia",
+      "pasta": "estrategia",
+      "nome": "Estratégia",
+      "icone": "♟️",
+      "url": "/CRM/pages/estrategia/index.html",
+      "grupo": "Sem grupo",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Sem página principal.",
+      "oculto": true,
+      "motivoOculto": "Stub morto: js/css/html com 0 bytes desde 2026-06-10, nunca implementado. Exibir um card clicável seria tela fictícia.",
+      "versao": "1.0.1",
+      "autor": "Itamar Buscher",
+      "atualizadoEm": "2026-06-10",
+      "commits": 1,
+      "status": "erro",
+      "score": 80,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [],
+        "scripts": [],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "estrategia.css",
+          "linhas": 0
+        },
+        {
+          "arquivo": "estrategia.js",
+          "linhas": 0
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 0
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": false
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": false
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "arquivo-vazio",
+          "detalhe": "arquivos com 0 bytes: estrategia.css, estrategia.js, index.html"
+        }
+      ]
+    },
+    {
+      "id": "financeiro",
+      "pasta": "financeiro",
+      "nome": "Financeiro",
+      "icone": "💹",
+      "url": "/CRM/pages/financeiro/index.html",
+      "grupo": "Financeiro",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Contas a pagar/receber, despesas fixas, categorias e fechamentos.",
+      "oculto": false,
+      "versao": "1.0.32",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 32,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "financeiro_categorias",
+          "financeiro_fechamentos",
+          "financeiro_fixas",
+          "financeiro_pagar",
+          "financeiro_receber"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "financeiro.js",
+          "linhas": 1137
+        },
+        {
+          "arquivo": "financeiro.css",
+          "linhas": 429
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 333
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (5 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "fornecedor",
+      "pasta": "fornecedor",
+      "nome": "Fornecedor",
+      "icone": "🏭",
+      "url": "/CRM/pages/fornecedor/index.html",
+      "grupo": "Estoque",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Cadastro de fornecedores, histórico de compras e tendências.",
+      "oculto": false,
+      "versao": "1.0.28",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 28,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "estoque_produtos",
+          "fornecedor_compras",
+          "fornecedor_tendencias",
+          "fornecedores_cadastro"
+        ],
+        "viaRepositorio": [
+          "estoque_produtos",
+          "fornecedor_compras",
+          "fornecedor_tendencias"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": [
+          "estoque.repository.js",
+          "fornecedor.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "fornecedor.js",
+          "linhas": 409
+        },
+        {
+          "arquivo": "fornecedor.css",
+          "linhas": 292
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 254
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "importar",
+      "pasta": "importar",
+      "nome": "Importar",
+      "icone": "📥",
+      "url": "/CRM/pages/importar/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Importação de dados externos (vendas, produtos, clientes, lançamentos).",
+      "oculto": false,
+      "versao": "1.0.15",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 15,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "caixa_lancamentos",
+          "categorias_produtos",
+          "clientes",
+          "estoque_produtos",
+          "vendas_importadas"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js",
+          "phone-utils.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "importar.js",
+          "linhas": 411
+        },
+        {
+          "arquivo": "importar.css",
+          "linhas": 184
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 90
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (5 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "kernel-test",
+      "pasta": "kernel-test",
+      "nome": "Kernel Test",
+      "icone": "🧪",
+      "url": "/CRM/pages/kernel-test/index.html",
+      "grupo": "Infraestrutura",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Diagnóstico do Sistema.",
+      "oculto": true,
+      "motivoOculto": "Ferramenta interna de diagnóstico, excluída do deploy (deploy-pages.yml).",
+      "versao": "1.0.5",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-05",
+      "commits": 5,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "_diagnostico_temp"
+        ],
+        "viaRepositorio": [
+          "alarme_config",
+          "alertas_usuario",
+          "caixa_lancamentos",
+          "categorias_caixa",
+          "central_alertas_status",
+          "config",
+          "historico_diario",
+          "historico_mensal",
+          "historico_semanal",
+          "metadata",
+          "os",
+          "pre_os",
+          "resumo_live",
+          "solicitacoes_diagnostico",
+          "vendas_importadas"
+        ]
+      },
+      "dependencias": {
+        "shared": [],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": [
+          "caixa.repository.js",
+          "os.repository.js",
+          "sistema.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "index.html",
+          "linhas": 412
+        }
+      ],
+      "totalArquivos": 2,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": false
+      },
+      "deployExcluido": true,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "minha-semana",
+      "pasta": "minha-semana",
+      "nome": "Minha Semana",
+      "icone": "📋",
+      "url": "/CRM/pages/minha-semana/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Visão semanal pessoal de tarefas e eventos.",
+      "oculto": false,
+      "versao": "1.0.16",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 16,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "acoes_semana",
+          "agenda",
+          "diario_eventos",
+          "diario_registros",
+          "tarefas_semana"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "diario.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "minha-semana.css",
+          "linhas": 222
+        },
+        {
+          "arquivo": "minha-semana.js",
+          "linhas": 168
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 56
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "os",
+      "pasta": "os",
+      "nome": "Ordem de Serviço",
+      "icone": "📦",
+      "url": "/CRM/pages/os/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo.",
+      "oculto": false,
+      "versao": "1.0.79",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-11",
+      "commits": 79,
+      "status": "atencao",
+      "score": 80,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "agenda",
+          "alertas_usuario",
+          "caixa_lancamentos",
+          "clientes",
+          "config",
+          "financeiro_receber",
+          "metadata",
+          "os",
+          "pre_os",
+          "solicitacoes_diagnostico"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "permissoes.js",
+          "phone-utils.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "os.js",
+          "linhas": 2773
+        },
+        {
+          "arquivo": "os.css",
+          "linhas": 734
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 378
+        }
+      ],
+      "totalArquivos": 4,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": false
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "artefato-dev",
+          "detalhe": "arquivos de desenvolvimento na pasta publicada: cell-City.code-workspace"
+        },
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (10 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "portal-cliente",
+      "pasta": "portal-cliente",
+      "nome": "Portal do Cliente",
+      "icone": "🔷",
+      "url": "/CRM/pages/portal-cliente/admin.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Painel interno do Portal do Cliente (agendamentos, mensagens, avaliações). O index.html da mesma pasta é o portal público, sem login CRM.",
+      "oculto": false,
+      "versao": "1.0.29",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-11",
+      "commits": 29,
+      "status": "atencao",
+      "score": 80,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "agendamentos",
+          "avaliacoes",
+          "config",
+          "mensagens_portal",
+          "os",
+          "portal_eventos",
+          "solicitacoes_diagnostico"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "env-config.js",
+          "permissoes.js",
+          "phone-utils.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "portal.js",
+          "linhas": 2355
+        },
+        {
+          "arquivo": "portal.css",
+          "linhas": 1936
+        },
+        {
+          "arquivo": "admin.js",
+          "linhas": 1410
+        },
+        {
+          "arquivo": "admin.css",
+          "linhas": 1266
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 244
+        },
+        {
+          "arquivo": "admin.html",
+          "linhas": 150
+        }
+      ],
+      "totalArquivos": 8,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": true,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": false
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "artefato-dev",
+          "detalhe": "arquivos de desenvolvimento na pasta publicada: DIAGNOSTICO_ETAPA4.md, RELATORIO_HOMOLOGACAO_ETAPA3.md"
+        },
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (7 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    },
+    {
+      "id": "portal-tecnico",
+      "pasta": "portal-tecnico",
+      "nome": "Portal Técnico",
+      "icone": "🔓",
+      "url": "/CRM/pages/portal-tecnico/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Conteúdo técnico de apoio: soluções, softwares, tutoriais (4 subpáginas estáticas).",
+      "oculto": false,
+      "versao": "1.0.18",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-10",
+      "commits": 18,
+      "status": "atencao",
+      "score": 90,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "os",
+          "pre_os",
+          "solicitacoes_diagnostico"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "cc-sync.js",
+          "dock.css",
+          "dock.js",
+          "gdrive-backup.js",
+          "portal-sync.js"
+        ],
+        "scripts": [],
+        "repositorios": [
+          "os.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "portal-tecnico.css",
+          "linhas": 331
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 195
+        }
+      ],
+      "totalArquivos": 10,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": false
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-rbac",
+          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        }
+      ]
+    },
+    {
+      "id": "pos-venda",
+      "pasta": "pos-venda",
+      "nome": "Pós-venda",
+      "icone": "💝",
+      "url": "/CRM/pages/pos-venda/index.html",
+      "grupo": "Atendimento",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Acompanhamento pós-entrega, mensagens e avaliações de clientes.",
+      "oculto": false,
+      "versao": "1.0.24",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 24,
+      "status": "atencao",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "os",
+          "posvenda_mensagens"
+        ],
+        "viaRepositorio": [
+          "os",
+          "posvenda_contatos",
+          "posvenda_mensagens",
+          "posvenda_rastreamento",
+          "pre_os",
+          "solicitacoes_diagnostico"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": [
+          "os.repository.js",
+          "posvenda.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "posvenda.css",
+          "linhas": 1448
+        },
+        {
+          "arquivo": "posvenda.js",
+          "linhas": 1077
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 131
+        }
+      ],
+      "totalArquivos": 6,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": false
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "artefato-dev",
+          "detalhe": "arquivos de desenvolvimento na pasta publicada: ATALHOS_TECLADO.md, RELATORIO_TESTES.md, posvenda-test.html"
+        }
+      ]
+    },
+    {
+      "id": "relatorios",
+      "pasta": "relatorios",
+      "nome": "Relatórios",
+      "icone": "📊",
+      "url": "/CRM/pages/relatorios/index.html",
+      "grupo": "Inteligência",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Relatórios consolidados de caixa e ordens de serviço.",
+      "oculto": false,
+      "versao": "1.0.21",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-09",
+      "commits": 21,
+      "status": "ok",
+      "score": 100,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": [
+          "caixa_lancamentos",
+          "categorias_caixa",
+          "os",
+          "pre_os",
+          "solicitacoes_diagnostico"
+        ]
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "favoritos.js",
+          "permissoes.js"
+        ],
+        "scripts": [
+          "kernel.js"
+        ],
+        "repositorios": [
+          "caixa.repository.js",
+          "os.repository.js"
+        ]
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "relatorios.js",
+          "linhas": 928
+        },
+        {
+          "arquivo": "relatorios.css",
+          "linhas": 595
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 184
+        }
+      ],
+      "totalArquivos": 3,
+      "menu": {
+        "sidebarDashboard": true,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": []
+    },
+    {
+      "id": "usuarios-permissoes",
+      "pasta": "usuarios-permissoes",
+      "nome": "Usuários e Permissões",
+      "icone": "🔐",
+      "url": "/CRM/pages/usuarios-permissoes/index.html",
+      "grupo": "Administração",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Gestão de usuários, perfis operacionais e permissões (RBAC).",
+      "oculto": false,
+      "versao": "1.0.14",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-11",
+      "commits": 14,
+      "status": "ok",
+      "score": 90,
+      "rbac": {
+        "protegido": true,
+        "mecanismos": [
+          "kernel.temPermissao"
+        ]
+      },
+      "colecoesFirestore": {
+        "diretas": [
+          "auditoria_usuarios_permissoes",
+          "config",
+          "perfis_operacionais",
+          "usuarios"
+        ],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "brand-header.js",
+          "dock.css",
+          "dock.js",
+          "env-config.js",
+          "sidebar.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "usuarios-permissoes.js",
+          "linhas": 823
+        },
+        {
+          "arquivo": "usuarios-permissoes.css",
+          "linhas": 297
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 220
+        },
+        {
+          "arquivo": "firebase-secondary.js",
+          "linhas": 61
+        }
+      ],
+      "totalArquivos": 4,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": false
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (4 coleções) sem usar a camada CRM/repositories/"
+        }
+      ]
+    }
+  ]
+}
