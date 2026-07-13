@@ -1,7 +1,11 @@
 # CELL CITY CRM
 ## ENGINEERING.md — Constituição do Projeto
 
-**Versão:** 1.1
+**Versão:** 1.2 — revisão de 2026-07-12: papéis de engenharia tornados
+vendor-neutros (nenhum papel é mais vinculado ao nome de um modelo de
+IA específico); processo de qualidade e separação de responsabilidades
+preservados sem alteração. Motivo e histórico completos em
+`plans/CCC-V2.0-ARCH-001_ARQUITETURA_OFICIAL.md` §17.
 
 ## Objetivo
 
@@ -45,9 +49,15 @@ Preservar:
 
 Alterações estruturais somente com autorização.
 
-## Estratégia das IAs
+## Papéis de Engenharia
 
-### ChatGPT — CTO / Arquiteto-Chefe
+Os papéis abaixo são **funções da Sprint, não cargos permanentes de uma
+IA específica** (ver "Princípios sobre uso de IA" mais abaixo). Qualquer
+IA designada por quem responde pelo projeto pode exercer qualquer
+papel, numa Sprint qualquer, desde que siga integralmente esta
+constituição.
+
+### Papel de Estratégia
 
 Responsável por:
 
@@ -61,9 +71,11 @@ Responsável por:
 - Redução de retrabalho
 - Melhoria contínua do processo
 
-Não desenvolve código. Não revisa releases. Seu trabalho é fazer toda a equipe produzir mais.
+Quem exerce este papel numa Sprint não desenvolve código nem revisa
+releases nessa mesma Sprint — sua função é fazer toda a equipe produzir
+mais.
 
-### Claude — Revisor Técnico Principal
+### Papel de Revisão Técnica
 
 Responsável por:
 
@@ -81,7 +93,7 @@ Responsável por:
 - Tags
 - Relatório final
 
-### DeepSeek — Engenheiro de Desenvolvimento
+### Papel de Desenvolvimento
 
 Responsável por:
 
@@ -94,18 +106,21 @@ Responsável por:
 - Documentação técnica
 - Commits na `develop`
 
-Nunca promove para `main`.
+Quem exerce este papel numa Sprint nunca promove para `main` nessa
+mesma Sprint — o que garante o gate de qualidade é a separação entre
+quem desenvolve e quem aprova, não o nome de quem executa (ver
+"Processo de Qualidade" abaixo).
 
 ## Fluxo oficial
 
 ```
-ChatGPT
-  ↓ define estratégia
-Claude OU DeepSeek
+Papel de Estratégia
+  ↓ define estratégia/escopo da Sprint
+Papel de Desenvolvimento
   ↓ implementa Sprint
 Commit em develop
   ↓
-Claude
+Papel de Revisão Técnica
   ↓ revisão técnica + testes
 develop → main
   ↓
@@ -114,15 +129,58 @@ Tag
 Release
 ```
 
-## Utilização das IAs
+## Processo de Qualidade
 
-Quando Claude estiver disponível: Claude é a IA principal.
+O fluxo abaixo é **obrigatório** em toda Sprint, independentemente de
+qual IA (ou pessoa) exerce cada papel:
 
-Quando Claude atingir limite: DeepSeek assume o desenvolvimento.
+```
+Desenvolvimento
+  ↓
+Revisão Técnica
+  ↓
+Testes
+  ↓
+Homologação
+  ↓
+Aprovação
+  ↓
+Produção
+```
 
-Quando Claude retornar: revisa todo o trabalho realizado pelo DeepSeek.
+A ferramenta/IA utilizada em cada etapa não faz parte da arquitetura
+nem da governança permanente do projeto. O que é permanente é a
+sequência de etapas e a exigência de que quem desenvolveu a entrega não
+seja também quem a aprova.
 
-**Somente Claude aprova releases.**
+## Designação das IAs por Sprint
+
+A IA (ou IAs) que exerce cada papel é escolhida por quem responde pelo
+projeto, Sprint a Sprint — não é uma atribuição fixa.
+
+Quando a IA designada para o papel de Revisão Técnica estiver
+disponível, ela conduz a revisão da Sprint. Se ficar indisponível ou
+atingir limite de uso, quem responde pelo projeto pode designar outra
+IA para assumir o desenvolvimento; quando a IA original retornar, ela
+revisa o trabalho realizado nesse intervalo.
+
+**Somente quem estiver exercendo o papel de Revisão Técnica na Sprint
+aprova releases dessa Sprint** — exclusividade do papel dentro do
+processo de qualidade, não exclusividade de uma ferramenta específica.
+
+## Princípios sobre uso de IA
+
+- Nenhuma IA possui autoridade permanente.
+- Nenhuma IA possui exclusividade operacional fora do papel que estiver
+  exercendo numa Sprint específica.
+- Nenhuma IA pode recusar uma atividade alegando que ela pertence a
+  outra IA.
+- A escolha da IA é uma decisão operacional de cada Sprint, feita por
+  quem responde pelo projeto.
+- A substituição de uma IA por outra não exige alteração desta
+  documentação.
+- A qualidade do processo é garantida pelos critérios de validação da
+  seção "Processo de Qualidade", não pelo nome da ferramenta utilizada.
 
 ## Sprint
 

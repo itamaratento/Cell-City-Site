@@ -1,4 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
+import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { CentralOrganizacaoRepository as CentralOrganizacao } from '../../repositories/central-organizacao.repository.js';
 
@@ -328,7 +329,12 @@ document.querySelectorAll('.tab').forEach(btn => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-initModulo().then(ctx => {
+initModulo().then(async ctx => {
     if (!ctx) return;
+    await carregarPermissoes(ctx);
+    if (!podeVisualizar('central-organizacao')) {
+        document.body.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280">⛔ Acesso restrito.</div>';
+        return;
+    }
     Object.keys(estado).filter(k => k !== '_edit').forEach(secao => carregar(secao).catch(console.error));
 });

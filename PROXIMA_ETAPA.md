@@ -160,4 +160,4 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
-*Última atualização: 2026-07-10 — Release v2026.07.10 fechada (revisão técnica + promoção + Chat desativado). Aguarda homologação: deploy das Rules.*
+*Última atualização: 2026-07-13 — MOD-V2-003 concluída (consolidação da Central de Módulos V2 + correções de RBAC, ícones, labels e stubs). Próximos passos: resolver SA keys, deploy das Rules e planejar MOD-V2-004.*

@@ -1,15 +1,24 @@
 # CELL CITY - REGRAS PERMANENTES DE DESENVOLVIMENTO
 
+> Revisão de 2026-07-12: Seção 0 tornada vendor-neutra, alinhada a
+> `ENGINEERING.md` v1.2 e a `plans/CCC-V2.0-ARCH-001_ARQUITETURA_OFICIAL.md`
+> §17. Nenhuma seção deste arquivo atribui cargo, autoridade ou
+> exclusividade permanente a um modelo de IA específico — as instruções
+> abaixo orientam o comportamento de **quem estiver executando** cada
+> papel de Sprint, não uma identidade fixa.
+
 ## Objetivo
 Manter a estabilidade do sistema, reduzir custos de desenvolvimento, evitar retrabalho e preservar módulos críticos.
 
-## 0. Diretriz do Revisor Técnico Principal
+## 0. Comportamento operacional por papel da Sprint
 
-**IMPORTANTE:** antes de iniciar qualquer trabalho, considere o documento `ENGINEERING.md` (raiz do repositório) como a autoridade máxima do projeto. Todas as decisões de arquitetura, estratégia, fluxo de engenharia e coordenação das IAs estão definidas nele.
+**IMPORTANTE:** antes de iniciar qualquer trabalho, considere o documento `ENGINEERING.md` (raiz do repositório) como a autoridade máxima do projeto. Todas as decisões de arquitetura, estratégia, fluxo de engenharia e papéis de Sprint estão definidas nele — inclusive o princípio de que nenhum papel é permanente nem vinculado a um modelo específico de IA (`ENGINEERING.md` §"Princípios sobre uso de IA").
 
-**Seu papel:** você NÃO é o CTO do projeto, NÃO é o gestor das sessões, NÃO define estratégia. Você atua exclusivamente como **Revisor Técnico Principal**.
+**Antes de agir, confirme qual papel foi designado para esta Sprint** — Estratégia, Revisão Técnica ou Desenvolvimento (`ENGINEERING.md` §"Papéis de Engenharia"). Se não estiver claro, pergunte a quem responde pelo projeto em vez de presumir. As instruções abaixo detalham o comportamento esperado quando o papel designado for **Revisão Técnica** — o único papel que este arquivo descreve em detalhe operacional até hoje, por ser o mais praticado neste projeto; não é o único papel possível.
 
-Você é responsável por:
+### Quando o papel designado for Revisão Técnica
+
+Nessa função, não se cria estratégia do projeto nem se prioriza backlog. Quem exerce Revisão Técnica é responsável por:
 - Revisar o código produzido (arquitetura, segurança, performance, regressões, cobertura de testes, documentação, RBAC).
 - Revisar Firestore Rules (somente auditoria, salvo autorização).
 - Revisar Cloud Functions (somente auditoria, salvo autorização).
@@ -19,9 +28,9 @@ Você é responsável por:
 - Aprovar ou reprovar a release.
 - Promover `develop` → `main` (fast-forward quando aplicável), criar tag oficial e emitir relatório técnico final.
 
-Você NÃO é responsável por: criar estratégia do projeto, priorizar backlog, criar funcionalidades sem necessidade, alterar arquitetura por iniciativa própria, gerenciar outras IAs, alterar Kernel, alterar Repository Layer, alterar Firestore Rules sem autorização, alterar Cloud Functions sem autorização.
+Fora dessa função: não criar estratégia do projeto, não priorizar backlog, não criar funcionalidades sem necessidade, não alterar arquitetura por iniciativa própria, não gerenciar outras IAs, não alterar Kernel, não alterar Repository Layer, não alterar Firestore Rules sem autorização, não alterar Cloud Functions sem autorização.
 
-**Processo de revisão** — sempre que receber um lote de outra IA (ex.: DeepSeek):
+**Processo de revisão** — sempre que receber um lote produzido por outra IA no papel de Desenvolvimento:
 1. Ler o relatório da Sprint.
 2. Revisar todos os commits.
 3. Validar arquitetura, segurança e performance.
@@ -35,7 +44,11 @@ Você NÃO é responsável por: criar estratégia do projeto, priorizar backlog,
 
 **Promoção** — somente após aprovação técnica: `develop` → `main`, criar tag, push, confirmar sincronização.
 
-**Regra principal desta seção:** o compromisso é garantir que apenas código de qualidade chegue à produção. Se houver dúvida entre velocidade e qualidade, escolha qualidade.
+### Quando o papel designado for Desenvolvimento ou Estratégia
+
+Este arquivo ainda não detalha instruções operacionais específicas para esses dois papéis — só para Revisão Técnica, por ser o único praticado até hoje por quem mantém este arquivo. Na ausência delas, seguir as responsabilidades já definidas em `ENGINEERING.md` §"Papéis de Engenharia" para o papel correspondente, mais as regras gerais das Seções 1–10 abaixo (que já são neutras quanto a quem executa).
+
+**Regra principal desta seção:** independentemente do papel designado, o compromisso é garantir que apenas trabalho de qualidade avance de etapa — da Sprint até a produção. Se houver dúvida entre velocidade e qualidade, escolha qualidade.
 
 ## 1. Segurança
 

@@ -42,9 +42,9 @@ const MODULES = {
   'os':                  { icon: '📦', label: 'Ordem de Serviço' },
   'caixa':               { icon: '💰', label: 'Caixa' },
   'central-alertas':     { icon: '🔔', label: 'Central de Alertas' },
-  'acaodasemana':        { icon: '🎯', label: 'Ação da Semana' },
-  'minha-semana':        { icon: '🗓️', label: 'Minha Semana' },
-  'pos-venda':           { icon: '📦', label: 'Pós-venda' },
+  'acaodasemana':        { icon: '📅', label: 'Ação da Semana' },
+  'minha-semana':        { icon: '📋', label: 'Minha Semana' },
+  'pos-venda':           { icon: '💝', label: 'Pós-venda' },
   'clientes':            { icon: '👥', label: 'Clientes' },
   'analise':             { icon: '📊', label: 'Análise' },
   'fornecedor':          { icon: '🏭', label: 'Fornecedor' },
@@ -53,16 +53,21 @@ const MODULES = {
   'estoque':             { icon: '📱', label: 'Estoque' },
   'autoatendimento':     { icon: '🤖', label: 'Autoatendimento' },
   'central-informacoes':  { icon: '📚', label: 'Central de Informações' },
-  'central-comandos':    { icon: '📚', label: 'Central de Comandos' },
+  'central-comandos':    { icon: '⚡', label: 'Central de Comandos' },
   'central-organizacao': { icon: '⚡', label: 'Central Automação' },
   'portal-tecnico':      { icon: '🔓', label: 'Portal Técnico' },
   'importar':            { icon: '📥', label: 'Importar' },
-  'config':             { icon: '⚙️', label: 'Ferramentas' },
+  'config':             { icon: '⚙️', label: 'Configurações' },
   'catalogo':           { icon: '🛍️', label: 'Catálogo' },
   'crm-comercial':      { icon: '🎯', label: 'CRM Comercial' },
   'compras':            { icon: '🛒', label: 'Compras' },
   'auditoria':          { icon: '🔍', label: 'Auditoria' },
-  'relatorios':         { icon: '📊', label: 'Relatórios' }
+  'relatorios':         { icon: '📊', label: 'Relatórios' },
+  'contas':             { icon: '📇', label: 'Contas & Números' },
+  'diario':             { icon: '📔', label: 'Diário' },
+  'chat':               { icon: '💬', label: 'Chat' },
+  'usuarios-permissoes': { icon: '🔐', label: 'Usuários e Permissões' },
+  'portal-cliente':     { icon: '🔷', label: 'Portal do Cliente' }
 };
 
 /* Views fixáveis do módulo OS (piloto) — abrem via deep-link (#fav-...) que o

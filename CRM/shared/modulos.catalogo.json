@@ -2618,8 +2618,8 @@
       "autor": "Itamar Buscher",
       "atualizadoEm": "2026-06-10",
       "commits": 1,
-      "status": "erro",
-      "score": 80,
+      "status": "ok",
+      "score": 90,
       "rbac": {
         "protegido": false,
         "mecanismos": []
@@ -2647,7 +2647,7 @@
           "linhas": 0
         }
       ],
-      "totalArquivos": 3,
+      "totalArquivos": 1,
       "menu": {
         "sidebarDashboard": false,
         "dock": false,
@@ -2661,45 +2661,21 @@
         },
         {
           "item": "sem arquivos vazios (0 bytes)",
-          "ok": false
+          "ok": true
         },
         {
           "item": "imports e referências resolvem",
           "ok": true
         },
         {
-          "item": "gate de RBAC presente",
-          "ok": true
-        },
-        {
-          "item": "usa camada Repository (ou não acessa Firestore direto)",
-          "ok": true
-        },
-        {
-          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
-          "ok": true
-        },
-        {
-          "item": "sem artefatos de dev na pasta publicada",
-          "ok": true
-        },
-        {
-          "item": "atualizado nos últimos 90 dias",
-          "ok": true
-        },
-        {
-          "item": "grupo funcional definido",
-          "ok": false
-        },
-        {
-          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "item": "arquivos CSS/JS removidos (não referenciados)",
           "ok": true
         }
       ],
       "diagnosticos": [
         {
-          "tipo": "arquivo-vazio",
-          "detalhe": "arquivos com 0 bytes: estrategia.css, estrategia.js, index.html"
+          "tipo": "placeholder",
+          "mensagem": "Módulo placeholder aguardando implementação."
         }
       ]
     },

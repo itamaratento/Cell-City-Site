@@ -215,9 +215,8 @@
     "estrategia": {
       "nome": "Estratégia",
       "icone": "♟️",
-      "grupo": "Sem grupo",
-      "oculto": true,
-      "motivoOculto": "Stub morto: js/css/html com 0 bytes desde 2026-06-10, nunca implementado. Exibir um card clicável seria tela fictícia."
+      "grupo": "Administração",
+      "descricao": "Módulo em desenvolvimento. Placeholder temporário."
     }
   }
 }

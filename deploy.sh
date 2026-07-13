@@ -1,8 +1,7 @@
 #!/bin/bash
 # deploy.sh — Cell City CRM: deploy completo
-set -e
-
-cd "/home/cellcity/Músicas/projetos/Cell-City-Site"
+set -eo pipefail
+cd "$(dirname "$0")"
 
 echo ""
 echo "╔══════════════════════════════════════════╗"

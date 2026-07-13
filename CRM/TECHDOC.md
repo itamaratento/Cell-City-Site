@@ -1868,6 +1868,29 @@ coleção `chat_mensagens` permanecem intactos.
    expor o módulo no menu — nunca existiu, criar se desejado.
 4. Garantir que a rule de `chat_mensagens` (§30.1) esteja deployada.
 
+## 33. Sprint MOD-V2-003 — Consolidação e Correções (2026-07-13)
+
+### 33.1 Correções aplicadas
+
+- RBAC adicionado ao módulo `central-organizacao` (estava sem gate de permissão).
+- Módulo `estrategia/` convertido de stub 0 bytes para placeholder funcional.
+- Ícones e labels de `favoritos.js` sincronizados com o catálogo central (`📅`, `📋`, `💝`, `⚡`, `📇`, etc.).
+- 4 módulos faltantes adicionados ao `favoritos.js` (`contas`, `diario`, `chat`, `usuarios-permissoes`, `portal-cliente`).
+- `deploy.sh`: caminho hardcoded substituído por `dirname $0`.
+- `fases.conf` (Control Center): status das fases 6-11 atualizados para `CONCLUIDA`.
+- `firestore.indexes.json` vazio da raiz foi removido (o ativo está em `CRM/`).
+- `CLAUDE.md` e `ENGINEERING.md` atualizados para versão vendor-neutra v1.2.
+
+### 33.2 Pendências para MOD-V2-004
+
+1. 🔴 SA keys (`sa-key.json`, `sa-key-dev.json`) — remover do disco e rotacionar.
+2. 🔴 Deploy das 5 Firestore Rules pendentes (chat_mensagens, compras_pedidos, financeiro_fechamentos, fornecedores_cadastro, crm_templates).
+3. 🟠 Atualizar `PROXIMA_ETAPA.md` com estado real.
+4. 🟠 Revisar escopo da Fase 3 do `MASTER_ROADMAP.md` (desatualizado, cita tenant.js).
+5. 🟠 Unificar sistemas de favoritos (`central-modulos.js` vs `favoritos.js`, coleções diferentes).
+6. 🟡 Adicionar índices Firestore para coleções de alto uso sem índice.
+7. 🟡 Expandir cache do Service Worker para +20 módulos.
+
 ## 32. Central de Módulos V2 — catálogo automático (Sprint MOD-V2-001, 2026-07-13)
 
 A Central de Módulos deixou de ser uma lista hardcoded e virou a central
