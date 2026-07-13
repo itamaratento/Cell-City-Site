@@ -1867,3 +1867,70 @@ coleção `chat_mensagens` permanecem intactos.
 3. (Opcional) Adicionar entrada na Central de Módulos/sidebar para
    expor o módulo no menu — nunca existiu, criar se desejado.
 4. Garantir que a rule de `chat_mensagens` (§30.1) esteja deployada.
+
+## 32. Central de Módulos V2 — catálogo automático (Sprint MOD-V2-001, 2026-07-13)
+
+A Central de Módulos deixou de ser uma lista hardcoded e virou a central
+administrativa do sistema: descoberta automática, diagnóstico e health
+check de todos os módulos de `CRM/pages/`.
+
+### 32.1 Arquitetura
+
+- **Gerador (dev-time):** `scripts/central-modulos/gerar-catalogo.mjs`
+  varre `CRM/pages/*`, extrai nome (`<title>`), coleções Firestore
+  (diretas e via `CRM/repositories/`), RBAC, dependências, versão/autor/
+  data (git), presença em sidebar/dock, e calcula por módulo: status
+  🟢🟡🔴, score (checklist de 10 itens) e diagnósticos (imports
+  quebrados, arquivos vazios, sem RBAC, artefatos de dev, etc.). Saída:
+  `CRM/shared/modulos.catalogo.json` (commitado e publicado; runtime não
+  paga nada por isso).
+- **Enriquecimento:** `CRM/pages/central-modulos/modulos.meta.json` —
+  só apresentação/regras não deriváveis (nome, ícone, grupo funcional
+  do ARCH-001 §6.2, id legado, oculto+motivo). A descoberta nunca
+  depende dele: pasta nova aparece sozinha na próxima geração.
+- **Runtime:** `CRM/shared/central-modulos.js` carrega o JSON (1 fetch
+  + cache em `localStorage.cc_modulos_catalogo`); API pública e evento
+  `cc-modulos-changed` idênticos aos consumidos por
+  `shared/menu-favoritos.js` — favoritos continuam em
+  `usuarios/{uid}/preferencias/modulos` (nenhuma mudança de Firestore).
+- **Página V2:** métricas agregadas, busca global (nome, descrição,
+  grupo, arquivo, coleção, permissão, dependência), filtros (grupo,
+  status, favoritos, sem RBAC, atualizados 7d, sem dependências),
+  modal ⓘ com health check/diagnósticos por módulo e log local (📜,
+  `localStorage.cc_modulos_log`).
+
+### 32.2 Decisões de compatibilidade
+
+- Ids legados `agenda`→`acaodasemana` e `central-automacao`→
+  `central-organizacao` preservados (favoritos já salvos referenciam
+  esses ids).
+- `portal-cliente` continua entrando por `admin.html`.
+- **Chat oculto do catálogo**: o dono desativou o módulo em 2026-07-10
+  (§31) e o commit `ea44c0a` (07-11) tinha adicionado o card por engano
+  um dia depois. Ocultação documentada no meta; reativação = §31 +
+  remover `oculto`.
+
+### 32.3 Testes
+
+- `npm run testar-central-modulos` — 17 asserts (estrutura do JSON,
+  regressão dos 28 ids ativos, aliases, ocultos, API preservada,
+  descoberta automática fim a fim com pasta temporária).
+- `npm run homologar-central-modulos` — 11 asserts em Chrome headless
+  contra a página real (render, busca por coleção/dependência, filtros,
+  health check, favorito→localStorage+setDoc, logs, zero erros de
+  console). Stubs somente para `scripts/firebase.js`/`kernel.js`, por
+  interceptação de URL.
+- Regressão do Dashboard verificada em navegador: favorito injetado na
+  sidebar real via `menu-favoritos.js` com o catálogo assíncrono, sem
+  duplicar itens fixos.
+
+### 32.4 Pendências cross-module (fora do escopo desta Sprint, decisão do dono)
+
+1. `clientes` e `config` têm rótulo divergente do conteúdo real
+   (Config. de Impressão / PIN-Acesso) — catálogo marca 🟡 com alerta.
+2. `data-sid="config"` duplicado na sidebar do Dashboard.
+3. `central-organizacao` sem gate de RBAC.
+4. Artefatos de dev publicados em `os/`, `portal-cliente/`, `pos-venda/`.
+5. `estrategia/` é stub de 0 bytes desde 2026-06-10 (🔴 no catálogo).
+6. Dois sistemas de favoritos paralelos (`central-modulos.js` vs
+   `shared/favoritos.js`, coleções diferentes).

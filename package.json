@@ -1,7 +1,10 @@
 {
   "type": "module",
   "scripts": {
-    "homologar-performance": "node scripts/homologacao/index.mjs"
+    "homologar-performance": "node scripts/homologacao/index.mjs",
+    "gerar-catalogo": "node scripts/central-modulos/gerar-catalogo.mjs",
+    "testar-central-modulos": "node scripts/central-modulos/test-catalogo.mjs",
+    "homologar-central-modulos": "node scripts/central-modulos/homologar.mjs"
   },
   "dependencies": {
     "firebase": "^12.14.0"
