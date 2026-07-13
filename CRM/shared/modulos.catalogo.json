@@ -1,8 +1,8 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-13T13:49:56.652Z",
-  "commitBase": "52304c5",
+  "geradoEm": "2026-07-13T17:13:51.784Z",
+  "commitBase": "af7a442",
   "resumo": {
     "totalPastas": 34,
     "visiveis": 28,
@@ -46,10 +46,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agenda e ações da semana (eventos, tarefas e ações comerciais).",
       "oculto": false,
-      "versao": "1.0.18",
+      "versao": "1.0.20",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 18,
+      "atualizadoEm": "2026-07-13",
+      "commits": 20,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -71,6 +71,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -278,10 +279,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Trilha de auditoria de usuários e permissões.",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.16",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 15,
+      "atualizadoEm": "2026-07-13",
+      "commits": 16,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -390,10 +391,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pré-OS online criada pelo próprio cliente (autoatendimento).",
       "oculto": false,
-      "versao": "1.0.19",
+      "versao": "1.0.21",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 19,
+      "atualizadoEm": "2026-07-13",
+      "commits": 21,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -413,6 +414,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -432,7 +434,7 @@
         },
         {
           "arquivo": "autoatendimento.js",
-          "linhas": 329
+          "linhas": 325
         },
         {
           "arquivo": "index.html",
@@ -500,10 +502,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Lançamentos de entrada e saída do caixa diário, categorias e lembretes de pagamento.",
       "oculto": false,
-      "versao": "1.0.42",
+      "versao": "1.0.43",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 42,
+      "atualizadoEm": "2026-07-13",
+      "commits": 43,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -616,10 +618,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Campanhas de comunicação para a base de clientes.",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.17",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 15,
+      "atualizadoEm": "2026-07-13",
+      "commits": 17,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -639,6 +641,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -654,7 +657,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "campanhas.js",
-          "linhas": 293
+          "linhas": 288
         },
         {
           "arquivo": "campanhas.css",
@@ -726,10 +729,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Catálogo de produtos com vitrine pública (subpasta public/, sem login).",
       "oculto": false,
-      "versao": "1.0.34",
+      "versao": "1.0.35",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 34,
+      "atualizadoEm": "2026-07-13",
+      "commits": 35,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -838,10 +841,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agregador de alertas de todos os módulos (OS, financeiro, portal, pós-venda, sistema).",
       "oculto": false,
-      "versao": "1.0.43",
+      "versao": "1.0.45",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 43,
+      "atualizadoEm": "2026-07-13",
+      "commits": 45,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -888,6 +891,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -908,7 +912,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "central-alertas.js",
-          "linhas": 879
+          "linhas": 877
         },
         {
           "arquivo": "central-alertas.css",
@@ -980,10 +984,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Comandos rápidos e categorizados de operação do sistema.",
       "oculto": false,
-      "versao": "1.0.22",
+      "versao": "1.0.24",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 22,
+      "atualizadoEm": "2026-07-13",
+      "commits": 24,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1014,6 +1018,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -1102,10 +1107,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Base de conhecimento interna, informações categorizadas da operação.",
       "oculto": false,
-      "versao": "1.0.25",
+      "versao": "1.0.26",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 25,
+      "atualizadoEm": "2026-07-13",
+      "commits": 26,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1214,10 +1219,10 @@
       "descricao": "Módulo Central de Módulos.",
       "oculto": true,
       "motivoOculto": "Autorreferência — é a própria página do catálogo.",
-      "versao": "1.0.20",
+      "versao": "1.0.21",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-13",
-      "commits": 20,
+      "commits": 21,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1310,10 +1315,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Organização e automação de rotinas internas.",
       "oculto": false,
-      "versao": "1.0.40",
+      "versao": "1.0.42",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-13",
-      "commits": 40,
+      "commits": 42,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1331,6 +1336,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "permissoes.js",
           "sanitize.js"
@@ -1345,7 +1351,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "central.js",
-          "linhas": 339
+          "linhas": 336
         },
         {
           "arquivo": "central.css",
@@ -1427,10 +1433,10 @@
       "descricao": "Chat interno entre usuários do sistema (desativado).",
       "oculto": true,
       "motivoOculto": "DESATIVADO por decisão do dono em 2026-07-10 (TECHDOC §31): sem uso operacional; chat.js renderiza 'Módulo desativado'. Código/Rules/coleção preservados. Para reativar, ver passos no TECHDOC §31 e remover este oculto.",
-      "versao": "1.0.4",
+      "versao": "1.0.5",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 4,
+      "atualizadoEm": "2026-07-13",
+      "commits": 5,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1535,10 +1541,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
       "oculto": false,
-      "versao": "1.0.21",
+      "versao": "1.0.22",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 21,
+      "atualizadoEm": "2026-07-13",
+      "commits": 22,
       "status": "atencao",
       "score": 100,
       "rbac": {
@@ -1657,10 +1663,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pedidos de compra e acompanhamento de recebimento.",
       "oculto": false,
-      "versao": "1.0.22",
+      "versao": "1.0.24",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 22,
+      "atualizadoEm": "2026-07-13",
+      "commits": 24,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1679,6 +1685,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -1693,7 +1700,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "compras.js",
-          "linhas": 170
+          "linhas": 171
         },
         {
           "arquivo": "compras.css",
@@ -1889,10 +1896,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Contas e números de referência da operação.",
       "oculto": false,
-      "versao": "1.0.13",
+      "versao": "1.0.15",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 13,
+      "atualizadoEm": "2026-07-13",
+      "commits": 15,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1910,6 +1917,7 @@
       },
       "dependencias": {
         "shared": [
+          "date-utils.js",
           "permissoes.js",
           "sanitize.js"
         ],
@@ -1923,7 +1931,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "contas.js",
-          "linhas": 220
+          "linhas": 216
         },
         {
           "arquivo": "contas.css",
@@ -1995,10 +2003,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Gestão de leads, chips e entradas do funil comercial (4 subtelas).",
       "oculto": false,
-      "versao": "1.0.32",
+      "versao": "1.0.33",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 32,
+      "atualizadoEm": "2026-07-13",
+      "commits": 33,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2147,10 +2155,10 @@
       "descricao": "Módulo Gestão Empresarial.",
       "oculto": true,
       "motivoOculto": "É o shell/home do sistema (host da sidebar), não um módulo de catálogo.",
-      "versao": "1.0.130",
+      "versao": "1.0.131",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-11",
-      "commits": 130,
+      "atualizadoEm": "2026-07-13",
+      "commits": 131,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2309,10 +2317,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Registro diário da operação com backup no Google Drive.",
       "oculto": false,
-      "versao": "1.0.23",
+      "versao": "1.0.25",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 23,
+      "atualizadoEm": "2026-07-13",
+      "commits": 25,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2337,6 +2345,7 @@
         "shared": [
           "brand-header.js",
           "cc-sync.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "gdrive-backup.js",
@@ -2353,7 +2362,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "diario.js",
-          "linhas": 873
+          "linhas": 870
         },
         {
           "arquivo": "diario.css",
@@ -2518,10 +2527,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Controle de produtos em estoque, entradas, saídas e alertas de reposição.",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.25",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 24,
+      "atualizadoEm": "2026-07-13",
+      "commits": 25,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2720,10 +2729,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Contas a pagar/receber, despesas fixas, categorias e fechamentos.",
       "oculto": false,
-      "versao": "1.0.32",
+      "versao": "1.0.34",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 32,
+      "atualizadoEm": "2026-07-13",
+      "commits": 34,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2745,6 +2754,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "permissoes.js",
@@ -2759,7 +2769,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "financeiro.js",
-          "linhas": 1135
+          "linhas": 1132
         },
         {
           "arquivo": "financeiro.css",
@@ -2836,10 +2846,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Cadastro de fornecedores, histórico de compras e tendências.",
       "oculto": false,
-      "versao": "1.0.28",
+      "versao": "1.0.29",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 28,
+      "atualizadoEm": "2026-07-13",
+      "commits": 29,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -3292,10 +3302,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo.",
       "oculto": false,
-      "versao": "1.0.80",
+      "versao": "1.0.81",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-13",
-      "commits": 80,
+      "commits": 81,
       "status": "atencao",
       "score": 80,
       "rbac": {
@@ -3321,6 +3331,7 @@
       },
       "dependencias": {
         "shared": [
+          "date-utils.js",
           "permissoes.js",
           "phone-utils.js",
           "sanitize.js"
@@ -3333,7 +3344,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "os.js",
-          "linhas": 2761
+          "linhas": 2760
         },
         {
           "arquivo": "os.css",
@@ -3546,10 +3557,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Conteúdo técnico de apoio: soluções, softwares, tutoriais (4 subpáginas estáticas).",
       "oculto": false,
-      "versao": "1.0.18",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 18,
+      "atualizadoEm": "2026-07-13",
+      "commits": 19,
       "status": "atencao",
       "score": 90,
       "rbac": {
@@ -3654,10 +3665,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Acompanhamento pós-entrega, mensagens e avaliações de clientes.",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.25",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 24,
+      "atualizadoEm": "2026-07-13",
+      "commits": 25,
       "status": "atencao",
       "score": 90,
       "rbac": {
@@ -3890,10 +3901,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Gestão de usuários, perfis operacionais e permissões (RBAC).",
       "oculto": false,
-      "versao": "1.0.14",
+      "versao": "1.0.15",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-11",
-      "commits": 14,
+      "atualizadoEm": "2026-07-13",
+      "commits": 15,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -3914,6 +3925,7 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "date-utils.js",
           "dock.css",
           "dock.js",
           "env-config.js",
@@ -3928,7 +3940,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "usuarios-permissoes.js",
-          "linhas": 823
+          "linhas": 820
         },
         {
           "arquivo": "usuarios-permissoes.css",

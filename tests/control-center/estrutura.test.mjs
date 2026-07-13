@@ -29,6 +29,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '../..');
 const CC = join(ROOT, 'scripts/control-center');
 
+// Registro de Fases real (fonte única do módulo Central de IAs). Os testes
+// abaixo derivam as contagens daqui — a intenção deles sempre foi "números
+// coerentes com fases.conf", mas pinavam valores (5/11, 45%, Pendente) que
+// ficaram obsoletos quando 5f9a64d marcou as fases 6-11 como CONCLUIDA.
+const FASES = readFileSync(join(CC, 'modules/central-ias/config/fases.conf'), 'utf8')
+    .split('\n').filter((l) => /^\d+\|/.test(l))
+    .map((l) => { const [num, nome, ia, status] = l.split('|'); return { num: +num, nome, ia, status }; });
+const FASES_CONCLUIDAS = FASES.filter((f) => f.status === 'CONCLUIDA').length;
+const FASES_PCT = Math.floor((FASES_CONCLUIDAS * 100) / FASES.length); // divisão inteira, igual ao dashboard.sh
+
 // Derivado do Manifesto real (config/modules.conf), não hardcoded: outras
 // Sprints/sessões adicionam módulos novos o tempo todo (ver README.md,
 // "Como adicionar um novo módulo") — travar esta lista quebraria a suíte
@@ -847,10 +857,10 @@ test('módulo Banco de Dados: Coleções (Listar/Sem Rules/Vazias/Órfãs/Duplic
     assert.match(saida, /COLEÇÕES\/PADRÕES DUPLICADOS/);
 });
 
-test('módulo Banco de Dados: Índices detecta o firestore.indexes.json duplicado na raiz do repositório (achado real desta Sprint)', () => {
+test('módulo Banco de Dados: Índices não acusa mais duplicado na raiz (arquivo vazio removido em 5f9a64d) e aponta o arquivo oficial', () => {
     const saida = rodarModulo('banco-dados', '3\n1\n\n11\n0\n');
-    assert.match(saida, /Arquivo duplicado/);
-    assert.match(saida, /firestore\.indexes\.json existe e é diferente do arquivo oficial/);
+    assert.match(saida, /Arquivo de índices/);
+    assert.doesNotMatch(saida, /Arquivo duplicado/);
 });
 
 test('módulo Banco de Dados: Firestore Rules identifica sintaxe válida e os 3 "if true" documentados como acesso público', () => {
@@ -955,9 +965,9 @@ test('módulo Central de IAs: "Voltar" dinâmico é 12 (11 itens reais)', () => 
 test('módulo Central de IAs: Dashboard mostra números reais e coerentes com o Registro de Fases (config/fases.conf)', () => {
     const saida = rodarModulo('central-ias', '1\n\n12\n0\n');
     assert.match(saida, /IAs cadastradas: 2/);
-    assert.match(saida, /Fases do Roadmap: 11/);
-    assert.match(saida, /Fases concluídas: 5/);
-    assert.match(saida, /Percentual de conclusão do projeto: 45%/);
+    assert.match(saida, new RegExp(`Fases do Roadmap: ${FASES.length}`));
+    assert.match(saida, new RegExp(`Fases concluídas: ${FASES_CONCLUIDAS}`));
+    assert.match(saida, new RegExp(`Percentual de conclusão do projeto: ${FASES_PCT}%`));
     assert.match(saida, /Estado geral: (SAUDÁVEL|ATENÇÃO|CRÍTICO)/);
 });
 
@@ -977,12 +987,12 @@ test('módulo Central de IAs: Especialidades/Responsabilidades/Fluxo de Desenvol
     assert.match(especialidades, /Diagnóstico/);
 
     const responsabilidades = rodarModulo('central-ias', '4\n\n12\n0\n');
-    assert.match(responsabilidades, /Fase 6.*Revisão Técnica/s);
-    assert.match(responsabilidades, /Status: Pendente/);
+    assert.match(responsabilidades, /Fase 6/);
+    assert.match(responsabilidades, /Status: (Pendente|CONCLUÍDA)/);
 
     const workflow = rodarModulo('central-ias', '5\n\n12\n0\n');
     assert.match(workflow, /Fase 1 — Estrutura Base, UX e Arquitetura: Release/);
-    assert.match(workflow, /Fase 11 — Configurações: Planejamento/);
+    assert.match(workflow, /Fase 11 — Configurações: \S+/);
 
     const tarefas = rodarModulo('central-ias', '6\n\n12\n0\n');
     assert.match(tarefas, /Aguardando revisão técnica/);
@@ -1011,7 +1021,11 @@ test('módulo Central de IAs: Auditorias lista os Pareceres Executivos reais e a
     const saida = rodarModulo('central-ias', '8\n\n12\n0\n');
     assert.match(saida, /PARECER-CCC-HOM-001\.md/);
     assert.match(saida, /PARECER-CCC-HOM-001-BANCO-DE-DADOS\.md/);
-    assert.match(saida, /Fase 6 — Diagnóstico/);
+    if (FASES_CONCLUIDAS === FASES.length) {
+        assert.match(saida, /Pendências \(fases aguardando revisão técnica\):[\s\S]*Nenhuma\./);
+    } else {
+        assert.match(saida, /aguardando revisão/i);
+    }
 });
 
 test('módulo Central de IAs: Documentação enumera README.md e a documentação por módulo (nomes completos, sem corte)', () => {
@@ -1030,7 +1044,7 @@ test('módulo Central de IAs: Estatísticas rodam de verdade e batem com o Dashb
     // (3 na Fase 5, 5 depois das Fases 6/7 nesta mesma Sprint).
     const totalPareceres = readdirSync(join(CC, 'docs')).filter(f => f.startsWith('PARECER-CCC-HOM-001')).length;
     const saida = rodarModulo('central-ias', '10\n\n12\n0\n');
-    assert.match(saida, /Fases concluídas: 5\/11 \(45%\)/);
+    assert.match(saida, new RegExp(`Fases concluídas: ${FASES_CONCLUIDAS}/${FASES.length} \\(${FASES_PCT}%\\)`));
     assert.match(saida, new RegExp(`Homologações \\(Pareceres Executivos\\): ${totalPareceres}`));
 });
 
