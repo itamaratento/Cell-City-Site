@@ -1,6 +1,7 @@
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
+import { escHtml } from '../../shared/sanitize.js';
 
 const COL_PAGAR   = 'financeiro_pagar';
 const COL_FIXAS   = 'financeiro_fixas';
@@ -628,9 +629,6 @@ function formatarData(iso) {
     if (!iso) return '';
     const [y, m, d] = iso.split('-');
     return `${d}/${m}/${y}`;
-}
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── eventos ────────────────────────────────────────────────────────

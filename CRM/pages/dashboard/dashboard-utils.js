@@ -4,12 +4,14 @@ Etapa 3 da refatoração modular: formatações, helpers e funções puras reuti
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
 
+import { escHtml } from '../../shared/sanitize.js';
+
 export const dashboardUtilsMixin = {
   // ===== BUSCA GLOBAL INTELIGENTE =====
+  // Mantido como método do mixin (call sites usam this.escapeHtml);
+  // a implementação é a fonte única em shared/sanitize.js.
   escapeHtml(s) {
-    return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
-      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ));
+    return escHtml(s);
   },
 
   _setChecked(id, value) { const el = document.getElementById(id); if (el) el.checked = !!value; },

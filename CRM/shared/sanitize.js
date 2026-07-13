@@ -13,9 +13,16 @@
    ============================================================ */
 export function escHtml(s) {
   if (s == null) return '';
-  const d = document.createElement('div');
-  d.appendChild(document.createTextNode(String(s)));
-  return d.innerHTML;
+  // Escapa também aspas: a saída é interpolada dentro de atributos HTML
+  // (value="...", title="...") em vários módulos — a variante DOM
+  // (createTextNode→innerHTML) não escapa aspas e reabriria o stored XSS
+  // corrigido na Certificação v1.0 (2026-07-10).
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Fallback global para scripts clássicos (não-module)

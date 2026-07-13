@@ -592,7 +592,7 @@
   function setVistos(a) { try { localStorage.setItem(VISTOS_KEY, JSON.stringify(a)); } catch (e) {} }
   function keyOf(os) { return (os.id || os._id || '') + '|' + (os.orcamentoTimestamp || os.updatedAt || os.orcamentoDataResposta || ''); }
   function pvKey(it) { return 'pv|' + it.osId + '|' + it.prazo; }
-  function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } // mesma semântica de shared/sanitize.js (script clássico não importa módulo)
 
   function getPreOSVistos() { try { return JSON.parse(localStorage.getItem(PREOS_VISTOS_KEY) || '[]'); } catch (e) { return []; } }
   function setPreOSVistos(a) { try { localStorage.setItem(PREOS_VISTOS_KEY, JSON.stringify(a)); } catch (e) {} }

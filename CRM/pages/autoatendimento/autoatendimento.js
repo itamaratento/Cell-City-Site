@@ -4,6 +4,7 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { PreOSRepository as PreOS } from '../../repositories/os.repository.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const COL = 'pre_os';
 const CACHE_KEY = 'cc_preos_cache';
@@ -321,12 +322,6 @@ function formatarData(iso) {
 function formatarDataCompleta(iso) {
     const d = new Date(iso);
     return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function esc(s) {
-    return String(s ?? '')
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ===== INICIALIZAR =====

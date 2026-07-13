@@ -14,6 +14,7 @@
 
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
+import { escHtml as esc } from './sanitize.js';
 
 // Mesma detecção de ambiente usada em shared/brand-header.js — evita
 // que favoritos/atalhos gravados com URL absoluta (ex.: OS_VIEWS)
@@ -77,10 +78,6 @@ const OS_VIEWS = [
   { key: 'os-finalizados', icon: '✅', label: 'OS Finalizados',  url: '/CRM/pages/os/index.html#fav-finalizados' },
   { key: 'os-clientes',    icon: '👥', label: 'Clientes (OS)',   url: '/CRM/pages/os/index.html#fav-clientes' },
 ];
-
-function esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-}
 
 /* ---------- Armazenamento (Firestore + cache local) ---------- */
 function sanitize(arr) {

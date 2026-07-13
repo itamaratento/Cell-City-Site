@@ -6,6 +6,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { CatalogoConfigRepository as CatalogoConfig, CatalogoProdutosRepository as CatalogoProdutos } from '../../repositories/produtos.repository.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ─── Estado ──────────────────────────────────────────────
 let _produtos = [];
@@ -296,11 +297,6 @@ function fmtPreco(v) {
   return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
 
 // ─── Start ────────────────────────────────────────────────
 if (document.readyState === 'loading') {

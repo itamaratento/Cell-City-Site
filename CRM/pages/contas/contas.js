@@ -2,6 +2,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ContasNumerosRepository as Contas } from '../../repositories/crm.repository.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const COL = 'contas_numeros';
 
@@ -11,10 +12,6 @@ let _atual  = null;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
-
-function esc(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
 
 function formatarData(ts) {
     if (!ts) return '—';

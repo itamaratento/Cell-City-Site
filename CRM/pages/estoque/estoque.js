@@ -3,6 +3,7 @@ import { EstoqueRepository as Estoque } from '../../repositories/estoque.reposit
 import { ProdutosRepository as Produtos } from '../../repositories/produtos.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
+import { escHtml } from '../../shared/sanitize.js';
 
 const COL = 'estoque_produtos'; // nova coleção dedicada ao estoque
 
@@ -314,10 +315,6 @@ function filtrar() {
         (p.nome || p.description || '').toLowerCase().includes(q) ||
         (p.categoria || '').toLowerCase().includes(q)
     ));
-}
-
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── eventos + boot (RBAC Fase 2, Sprint 3 — moduloId 'estoque') ─────

@@ -11,6 +11,7 @@ import { ConfigRepository as Config } from '../../repositories/sistema.repositor
 // Detectado pela nova suíte central-comandos.test.mjs.
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const COL = 'comandos';
 const CAT_COL = 'categorias_comandos';
@@ -645,11 +646,6 @@ function formatarData(c) {
     return (c.atualizadoEmISO && c.atualizadoEmISO !== c.criadoEmISO) ? `✏️ ${data}` : `📅 ${data}`;
 }
 
-function esc(s) {
-    return String(s ?? '')
-        .replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>')
-        .replace(/"/g, '"').replace(/'/g, '&#39;');
-}
 
 
 

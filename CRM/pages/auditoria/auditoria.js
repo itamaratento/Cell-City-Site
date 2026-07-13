@@ -3,6 +3,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
   db, collection, getDocs, query, orderBy, limit, onSnapshot
 } from '../../scripts/firebase.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const $ = id => document.getElementById(id);
 
@@ -200,4 +201,3 @@ function renderTabela() {
   }).join('');
 }
 
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }

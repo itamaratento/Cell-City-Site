@@ -14,6 +14,7 @@ import { serverTimestamp } from "../../firebase/client.js";
 import { DiarioRegistrosRepository as DiarioRegistros, DiarioEventosRepository as DiarioEventos } from "../../repositories/diario.repository.js";
 import { initGDrive, backupConfigurado, fazerBackup, excluirArquivoDrive } from "./diario-gdrive.js";
 import { excluirEmCascata, getApelido, setApelido } from "../../shared/cc-sync.js";
+import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 
 const COL = 'diario_registros';
 const COL_EVT = 'diario_eventos';
@@ -132,11 +133,6 @@ function confirmar(titulo, corpo, txtBtn = 'Confirmar') {
 }
 
 // ── Util ──────────────────────────────────────────────────────────────
-function escapeHtml(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => (
-        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ));
-}
 function tsToMillis(ts) {
     if (!ts) return 0;
     if (typeof ts.toMillis === 'function') return ts.toMillis();

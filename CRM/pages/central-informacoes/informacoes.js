@@ -6,6 +6,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { InformacoesRepository as Informacoes, CategoriasInformacoesRepository as CategoriasInformacoes } from '../../repositories/central.repository.js';
 import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 
 const COL = 'informacoes';
 const CAT_COL = 'categorias_informacoes';
@@ -957,17 +958,6 @@ function mostrarPopoverSenha(id, senha) {
             toast('🔒 Senha ocultada');
         }
     }, 10000);
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return String(text ?? '').replace(/[&<>"']/g, m => map[m]);
 }
 
 function escapeBotoes(text) {

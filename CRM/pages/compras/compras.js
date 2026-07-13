@@ -1,6 +1,7 @@
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const COL_COMPRAS = 'compras_pedidos';
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -142,7 +143,6 @@ function statusBadge(s) {
   const cls = s === 'recebido' ? 'cr-badge-recebido' : s === 'pedido' ? 'cr-badge-pedido' : s === 'cancelado' ? 'cr-badge-cancelado' : 'cr-badge-pendente';
   return `<span class="cr-badge ${cls}">${m[s] || s}</span>`;
 }
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
 function fmtData(iso) { if (!iso) return '—'; const [y,m,d] = iso.split('-'); return `${d}/${m}/${y}`; }
 
 // ── Eventos ────────────────────────────────────────────────────────

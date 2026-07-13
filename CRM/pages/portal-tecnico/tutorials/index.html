@@ -264,7 +264,7 @@
             }
         }
 
-        function esc(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+        function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); } // mesma semântica de shared/sanitize.js (script clássico não importa módulo)
         function catMeta(k) { return CATS.find(function (c) { return c.key === k; }) || { icon: '📌', label: k }; }
         function statusMeta(v) { return STATUS.find(function (s) { return s.v === v; }) || { label: v, cls: '' }; }
         function ytId(url) { if (!url) return ''; var m = String(url).match(/(?:youtu\.be\/|[?&]v=|embed\/)([A-Za-z0-9_-]{6,})/); if (m) return m[1]; return /^[A-Za-z0-9_-]{6,}$/.test(url) ? url : ''; }

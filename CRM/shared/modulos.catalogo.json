@@ -1,32 +1,32 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-13T13:02:52.667Z",
-  "commitBase": "9a1f6c9",
+  "geradoEm": "2026-07-13T13:49:56.652Z",
+  "commitBase": "52304c5",
   "resumo": {
     "totalPastas": 34,
     "visiveis": 28,
     "ocultos": 6,
     "porStatus": {
-      "ok": 26,
-      "atencao": 7,
-      "erro": 1
+      "ok": 28,
+      "atencao": 6,
+      "erro": 0
     },
     "porGrupo": {
       "Comercial": 5,
       "Inteligência": 3,
-      "Administração": 7,
+      "Administração": 8,
       "Atendimento": 7,
       "Financeiro": 3,
       "Infraestrutura": 4,
       "Estoque": 3,
-      "Sem grupo": 2
+      "Sem grupo": 1
     },
-    "semRbac": 2,
+    "semRbac": 1,
     "semFirestore": 3,
-    "incompletos": 1,
+    "incompletos": 0,
     "colecoesDistintas": 58,
-    "scoreMedio": 94,
+    "scoreMedio": 95,
     "anomaliasGlobais": 1
   },
   "anomalias": [
@@ -73,7 +73,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -300,7 +301,8 @@
       },
       "dependencias": {
         "shared": [
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -413,7 +415,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -429,7 +432,7 @@
         },
         {
           "arquivo": "autoatendimento.js",
-          "linhas": 334
+          "linhas": 329
         },
         {
           "arquivo": "index.html",
@@ -524,7 +527,8 @@
           "dock.css",
           "dock.js",
           "favoritos.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -535,7 +539,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "caixa.js",
-          "linhas": 814
+          "linhas": 811
         },
         {
           "arquivo": "index.html",
@@ -637,7 +641,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -649,7 +654,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "campanhas.js",
-          "linhas": 296
+          "linhas": 293
         },
         {
           "arquivo": "campanhas.css",
@@ -748,7 +753,8 @@
           "dock.css",
           "dock.js",
           "env-config.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -764,7 +770,7 @@
         },
         {
           "arquivo": "catalogo.js",
-          "linhas": 311
+          "linhas": 307
         },
         {
           "arquivo": "index.html",
@@ -884,7 +890,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -901,7 +908,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "central-alertas.js",
-          "linhas": 883
+          "linhas": 879
         },
         {
           "arquivo": "central-alertas.css",
@@ -1009,7 +1016,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1026,7 +1034,7 @@
         },
         {
           "arquivo": "comandos.js",
-          "linhas": 673
+          "linhas": 669
         },
         {
           "arquivo": "index.html",
@@ -1120,7 +1128,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1136,7 +1145,7 @@
         },
         {
           "arquivo": "informacoes.js",
-          "linhas": 1482
+          "linhas": 1472
         },
         {
           "arquivo": "index.html",
@@ -1205,10 +1214,10 @@
       "descricao": "Módulo Central de Módulos.",
       "oculto": true,
       "motivoOculto": "Autorreferência — é a própria página do catálogo.",
-      "versao": "1.0.18",
+      "versao": "1.0.20",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-13",
-      "commits": 18,
+      "commits": 20,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1224,7 +1233,8 @@
           "brand-header.js",
           "central-modulos.js",
           "dock.css",
-          "dock.js"
+          "dock.js",
+          "sanitize.js"
         ],
         "scripts": [],
         "repositorios": []
@@ -1236,7 +1246,7 @@
         },
         {
           "arquivo": "central-modulos-page.js",
-          "linhas": 208
+          "linhas": 205
         }
       ],
       "totalArquivos": 3,
@@ -1300,15 +1310,17 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Organização e automação de rotinas internas.",
       "oculto": false,
-      "versao": "1.0.39",
+      "versao": "1.0.40",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-05",
-      "commits": 39,
-      "status": "atencao",
-      "score": 90,
+      "atualizadoEm": "2026-07-13",
+      "commits": 40,
+      "status": "ok",
+      "score": 100,
       "rbac": {
-        "protegido": false,
-        "mecanismos": []
+        "protegido": true,
+        "mecanismos": [
+          "shared/permissoes.js"
+        ]
       },
       "colecoesFirestore": {
         "diretas": [],
@@ -1319,7 +1331,9 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
-          "dock.css"
+          "dock.css",
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1331,7 +1345,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "central.js",
-          "linhas": 335
+          "linhas": 339
         },
         {
           "arquivo": "central.css",
@@ -1364,7 +1378,7 @@
         },
         {
           "item": "gate de RBAC presente",
-          "ok": false
+          "ok": true
         },
         {
           "item": "usa camada Repository (ou não acessa Firestore direto)",
@@ -1392,10 +1406,6 @@
         }
       ],
       "diagnosticos": [
-        {
-          "tipo": "sem-rbac",
-          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
-        },
         {
           "tipo": "id-legado",
           "detalhe": "id 'central-automacao' difere da pasta 'central-organizacao' (alias documentado no modulos.meta.json, preservado por compatibilidade de favoritos)"
@@ -1441,7 +1451,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -1556,7 +1567,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1572,7 +1584,7 @@
         },
         {
           "arquivo": "clientes.js",
-          "linhas": 189
+          "linhas": 184
         },
         {
           "arquivo": "index.html",
@@ -1669,7 +1681,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -1897,7 +1910,8 @@
       },
       "dependencias": {
         "shared": [
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1909,7 +1923,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "contas.js",
-          "linhas": 223
+          "linhas": 220
         },
         {
           "arquivo": "contas.css",
@@ -2010,6 +2024,7 @@
           "dock.js",
           "permissoes.js",
           "phone-utils.js",
+          "sanitize.js",
           "sidebar.js"
         ],
         "scripts": [
@@ -2023,7 +2038,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "crm.js",
-          "linhas": 1130
+          "linhas": 1126
         },
         {
           "arquivo": "crm.css",
@@ -2031,7 +2046,7 @@
         },
         {
           "arquivo": "chips.js",
-          "linhas": 622
+          "linhas": 618
         },
         {
           "arquivo": "entrada.css",
@@ -2170,7 +2185,8 @@
           "brand-header.js",
           "favoritos.js",
           "menu-favoritos.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2229,7 +2245,7 @@
         },
         {
           "arquivo": "dashboard-utils.js",
-          "linhas": 20
+          "linhas": 22
         }
       ],
       "totalArquivos": 13,
@@ -2324,7 +2340,8 @@
           "dock.css",
           "dock.js",
           "gdrive-backup.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -2336,7 +2353,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "diario.js",
-          "linhas": 877
+          "linhas": 873
         },
         {
           "arquivo": "diario.css",
@@ -2528,7 +2545,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -2545,7 +2563,7 @@
         },
         {
           "arquivo": "estoque.js",
-          "linhas": 356
+          "linhas": 353
         },
         {
           "arquivo": "index.html",
@@ -2609,17 +2627,17 @@
       "nome": "Estratégia",
       "icone": "♟️",
       "url": "/CRM/pages/estrategia/index.html",
-      "grupo": "Sem grupo",
+      "grupo": "Administração",
       "categoria": "Sistema Web (CRM)",
-      "descricao": "Sem página principal.",
+      "descricao": "Módulo em desenvolvimento. Placeholder temporário.",
       "oculto": true,
-      "motivoOculto": "Stub morto: js/css/html com 0 bytes desde 2026-06-10, nunca implementado. Exibir um card clicável seria tela fictícia.",
-      "versao": "1.0.1",
-      "autor": "Itamar Buscher",
-      "atualizadoEm": "2026-06-10",
-      "commits": 1,
+      "motivoOculto": "Ainda é placeholder ('em desenvolvimento'), sem funcionalidade real — exibir um card clicável seria tela fictícia. Reexibir quando o módulo for implementado.",
+      "versao": "1.0.2",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-13",
+      "commits": 2,
       "status": "ok",
-      "score": 90,
+      "score": 100,
       "rbac": {
         "protegido": false,
         "mecanismos": []
@@ -2629,22 +2647,16 @@
         "viaRepositorio": []
       },
       "dependencias": {
-        "shared": [],
+        "shared": [
+          "brand-header.js"
+        ],
         "scripts": [],
         "repositorios": []
       },
       "arquivosPrincipais": [
         {
-          "arquivo": "estrategia.css",
-          "linhas": 0
-        },
-        {
-          "arquivo": "estrategia.js",
-          "linhas": 0
-        },
-        {
           "arquivo": "index.html",
-          "linhas": 0
+          "linhas": 28
         }
       ],
       "totalArquivos": 1,
@@ -2668,16 +2680,35 @@
           "ok": true
         },
         {
-          "item": "arquivos CSS/JS removidos (não referenciados)",
+          "item": "gate de RBAC presente",
+          "ok": true
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": true
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
           "ok": true
         }
       ],
-      "diagnosticos": [
-        {
-          "tipo": "placeholder",
-          "mensagem": "Módulo placeholder aguardando implementação."
-        }
-      ]
+      "diagnosticos": []
     },
     {
       "id": "financeiro",
@@ -2716,7 +2747,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2727,7 +2759,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "financeiro.js",
-          "linhas": 1137
+          "linhas": 1135
         },
         {
           "arquivo": "financeiro.css",
@@ -2834,7 +2866,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2848,7 +2881,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "fornecedor.js",
-          "linhas": 409
+          "linhas": 406
         },
         {
           "arquivo": "fornecedor.css",
@@ -3259,10 +3292,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo.",
       "oculto": false,
-      "versao": "1.0.79",
+      "versao": "1.0.80",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-11",
-      "commits": 79,
+      "atualizadoEm": "2026-07-13",
+      "commits": 80,
       "status": "atencao",
       "score": 80,
       "rbac": {
@@ -3289,7 +3322,8 @@
       "dependencias": {
         "shared": [
           "permissoes.js",
-          "phone-utils.js"
+          "phone-utils.js",
+          "sanitize.js"
         ],
         "scripts": [
           "kernel.js"
@@ -3299,7 +3333,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "os.js",
-          "linhas": 2773
+          "linhas": 2761
         },
         {
           "arquivo": "os.css",
@@ -3651,7 +3685,8 @@
           "brand-header.js",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "sanitize.js"
         ],
         "scripts": [
           "firebase.js",
@@ -3669,7 +3704,7 @@
         },
         {
           "arquivo": "posvenda.js",
-          "linhas": 1077
+          "linhas": 1073
         },
         {
           "arquivo": "index.html",

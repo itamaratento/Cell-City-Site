@@ -2,6 +2,7 @@ import { serverTimestamp } from '../../firebase/client.js';
 import { ChipsRepository as Chips } from '../../repositories/chips.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ── Status ────────────────────────────────────────────────────
 const CHIP_STATUS = [
@@ -24,11 +25,6 @@ let searchQuery = '';
 let unsub       = null;
 
 // ── Utilitários ──────────────────────────────────────────────
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
 
 function fmtDate(ts) {
   if (!ts) return '';

@@ -9,6 +9,7 @@ import {
     PosvendaContatosRepository as PosvendaContatos,
     PosvendaMensagensRepository as PosvendaMensagens
 } from '../../repositories/posvenda.repository.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem
@@ -918,11 +919,6 @@ function saveBadge(count) {
     localStorage.setItem('pv_pending_count', count);
 }
 
-function esc(str) {
-    const d = document.createElement('div');
-    d.textContent = str || '';
-    return d.innerHTML;
-}
 
 function showToast(msg) {
     const toast = document.getElementById('toast');

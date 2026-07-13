@@ -216,7 +216,9 @@
       "nome": "Estratégia",
       "icone": "♟️",
       "grupo": "Administração",
-      "descricao": "Módulo em desenvolvimento. Placeholder temporário."
+      "descricao": "Módulo em desenvolvimento. Placeholder temporário.",
+      "oculto": true,
+      "motivoOculto": "Ainda é placeholder ('em desenvolvimento'), sem funcionalidade real — exibir um card clicável seria tela fictícia. Reexibir quando o módulo for implementado."
     }
   }
 }

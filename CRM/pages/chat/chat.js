@@ -1,6 +1,7 @@
 import { db, collection, getDocs, addDoc, query, orderBy, where, onSnapshot, serverTimestamp, limit } from '../../scripts/firebase.js';
 import { initModulo, getUid, getNome } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // MÓDULO DESATIVADO (2026-07-10) — sem uso operacional na Cell City.
@@ -188,7 +189,6 @@ function fmtTs(ts) {
   const d = ts.toDate();
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
 
 function toast(msg) {
   const t = $('ch-toast');

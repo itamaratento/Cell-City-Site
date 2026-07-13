@@ -14,6 +14,7 @@ import { OSRepository as OS } from '../../repositories/os.repository.js';
 import { PosvendaContatosRepository as PosvendaContatos } from '../../repositories/posvenda.repository.js';
 import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../repositories/sistema.repository.js';
 import { FinanceiroPagarRepository as FinanceiroPagar, FinanceiroReceberRepository as FinanceiroReceber, FinanceiroFixasRepository as FinanceiroFixas } from '../../repositories/financeiro.repository.js';
+import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = 'cc_config_alertas';
@@ -50,11 +51,6 @@ const ordenarEl = $('alr-ordenar');
 let toastTimer = null;
 
 // ── Util ────────────────────────────────────────────────────────────
-function escapeHtml(s) {
-    return String(s ?? '').replace(/[&<>"']/g, c => (
-        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
-    ));
-}
 function slug(s) {
     return String(s ?? '')
         .toLowerCase()

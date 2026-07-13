@@ -5,6 +5,7 @@ import {
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ── Status do funil ──────────────────────────────────────────
 const STATUS = [
@@ -60,11 +61,6 @@ let _clienteEncontrado = null;
 let filtroBanco        = { motivo: '', marca: '', servico: '' };
 
 // ── Utilitários ──────────────────────────────────────────────
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
 
 function fmtDate(ts) {
   if (!ts) return '';

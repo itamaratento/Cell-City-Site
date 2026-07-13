@@ -1,6 +1,7 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { ClientesRepository as Clientes } from '../../repositories/clientes.repository.js';
+import { escHtml } from '../../shared/sanitize.js';
 
 const COL_CLIENTES = 'clientes';
 const DIAS_INATIVO = 90;
@@ -280,10 +281,6 @@ function formatarData(iso) {
         const [y, m, d] = iso.slice(0, 10).split('-');
         return `${d}/${m}/${y}`;
     } catch { return iso; }
-}
-
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

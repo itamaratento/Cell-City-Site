@@ -4,6 +4,7 @@ import { serverTimestamp } from '../../firebase/client.js';
 import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../../scripts/firebase.js';
 import { FornecedorComprasRepository as FornecedorCompras, FornecedorTendenciasRepository as FornecedorTendencias } from '../../repositories/fornecedor.repository.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
+import { escHtml } from '../../shared/sanitize.js';
 
 const COL_COMPRAS    = 'fornecedor_compras';
 const COL_TENDENCIAS = 'fornecedor_tendencias';
@@ -284,10 +285,6 @@ async function salvarTendencia() {
 function fecharFormTendencia() {
     document.getElementById('form-tendencia').style.display = 'none';
     document.getElementById('btn-nova-tendencia').style.display = '';
-}
-
-function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── FORNECEDORES (cadastro) ────────────────────────────────────────

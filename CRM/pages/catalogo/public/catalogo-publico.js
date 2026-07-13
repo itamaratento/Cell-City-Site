@@ -10,6 +10,7 @@ import {
 
 // ─── Config Firebase (ambiente selecionado por env-config.js) ──
 import '../../../shared/env-config.js';
+import { escHtml as esc } from '../../../shared/sanitize.js';
 const FIREBASE_CONFIG = window.CC_FIREBASE_CONFIG;
 
 // ─── Estado ─────────────────────────────────────────────────
@@ -251,12 +252,6 @@ window.catBuscar = function(val) {
 function fmtPreco(v) {
   if (!v && v !== 0) return 'Consultar';
   return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function esc(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // ─── Start ────────────────────────────────────────────────

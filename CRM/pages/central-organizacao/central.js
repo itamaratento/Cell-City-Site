@@ -2,6 +2,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { CentralOrganizacaoRepository as CentralOrganizacao } from '../../repositories/central-organizacao.repository.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 const SECAO_DOC = 'central_organizacao';
 
@@ -169,9 +170,6 @@ const SECOES = {
 const estado = { whatsapp: [], robos: [], programas: [], historico: [], links: [], _edit: null };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function esc(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 function formatarData(iso) {
     if (!iso) return '—';
     const [y, m, d] = iso.split('-');

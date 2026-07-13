@@ -5,6 +5,7 @@ import {
 import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-utils.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeCriar } from '../../shared/permissoes.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ── Status / Destino ──────────────────────────────────────────
 const STATUSES = [
@@ -27,7 +28,6 @@ let _patSeq = [], _patPath = [], _patDrawing = false;
 
 // ── Utilidades ────────────────────────────────────────────────
 function $(id) { return document.getElementById(id); }
-function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
 let _toastTimer = null;
 function showToast(msg) {

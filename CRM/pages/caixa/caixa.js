@@ -6,6 +6,7 @@ import {
     getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc,
     onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 // ── Constantes ────────────────────────────────────────────────
 const COL_LANCAMENTOS = 'caixa_lancamentos';
@@ -577,10 +578,6 @@ function intervalo(periodo) {
 
 function formatarMoeda(v) {
     return (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function esc(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function showToast(msg) {

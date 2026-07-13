@@ -2,6 +2,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
 import { ConfigRepository as Config } from "../../repositories/sistema.repository.js";
+import { escHtml as esc } from '../../shared/sanitize.js';
 
 window.handleLogoUpload = handleLogoUpload;
 window.removeLogo = removeLogo;
@@ -169,12 +170,6 @@ async function saveConfig() {
         btn.textContent = '💾 Salvar Configurações';
         btn.disabled = false;
     }
-}
-
-function esc(str) {
-    const d = document.createElement('div');
-    d.textContent = str || '';
-    return d.innerHTML;
 }
 
 function showToast(msg) {
