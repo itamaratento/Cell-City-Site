@@ -1,10 +1,10 @@
 {
   "branch": "develop",
-  "commit": "45a86a6",
-  "commitFull": "45a86a6d857a304f7eee2e7e1c5a9ffdf1c26ad8",
-  "mensagem": "docs(control-center): relatório de publicação em produção — CCC-V1.0-PROD-001",
+  "commit": "f2a6b4d",
+  "commitFull": "f2a6b4db9631b236c857f70739cd6d298d92416f",
+  "mensagem": "refactor(fase12): remove 2 reposit\u00f3rios \u00f3rf\u00e3os (empresas, usuarios) \u2014 0 consumidores",
   "autor": "Cell City",
-  "dataCommit": "2026-07-12 19:25:20 -0300",
-  "geradoEm": "2026-07-13T01:00:19Z",
-  "backupNome": "CellCity-v1.0-2026-07-12-2200"
+  "dataCommit": "2026-07-13 11:07:43 -0300",
+  "geradoEm": "2026-07-13T11:18:10Z",
+  "backupNome": "CellCity-v1.0-2026-07-13-1118"
 }
