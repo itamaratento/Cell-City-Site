@@ -46,6 +46,7 @@ Preservar:
 - Cloud Functions
 - ES Modules
 - MPA
+- V3 (overlay de inteligência/automação/observabilidade — não altera a V2)
 
 Alterações estruturais somente com autorização.
 

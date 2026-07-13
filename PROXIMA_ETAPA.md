@@ -160,4 +160,18 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
-*Última atualização: 2026-07-13 — Fases 12-14 concluídas: escHtml centralizado (30 módulos), formatDate centralizado (9 módulos), SW expandido (67 entries), RBAC em central-organizacao, estrategia convertido para placeholder. Pendências externas: SA keys em disco (🔴), Firestore Rules deploy (🔴).*
+## ✅ FASE 15 (2026-07-13) — REVISÃO TÉCNICA FINAL E HOMOLOGAÇÃO GERAL
+
+- Revisão independente concluída (Claude, papel Revisão Técnica): **V2 certificada** e **Fundação V3 homologada com correções** — parecer completo em `CRM/TECHDOC.md` §35.
+- Suítes completas: **457/457** (RBAC 166 · Control Center 158 · Rules 73 · Functions 25 · Catálogo 17 · Integridade 14 · Performance 4).
+- Fundação V3 commitada em develop (fc4eb18) com 5 correções da revisão; testes obsoletos do Control Center corrigidos (b41326f).
+- Nota: `estrategia/` permanece **oculto** no catálogo (regra "sem placeholders") — corrige o registro anterior.
+
+### 🚦 PRÓXIMA TAREFA
+1. Dono decide: push de `develop` → origin e eventual promoção a `main` (deploy é operação de produção — fora da alçada da revisão).
+2. Iniciar **V3-F2 — Health Engine operacional** (implementar os 19 checkers restantes), conforme `plans/v3/CCC-V3.0-ARCH-001` §8.
+3. Verificar workflows CI (backup semanal / tests) — status não verificável desta sessão.
+
+---
+
+*Última atualização: 2026-07-13 (Fase 15) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção).*

@@ -415,3 +415,14 @@ A partir daqui, a execução segue de forma controlada *(atualizado em 2026-07-0
 ---
 
 *Este documento é vivo: deve ser atualizado ao final de cada fase com o resultado real obtido, mantendo o mesmo espírito de [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) — nunca apagar o que já foi decidido, apenas registrar a evolução.*
+
+
+---
+
+## Situação em 2026-07-13 — Fase 15: Revisão Técnica Final; V2 certificada; Fundação V3 homologada
+
+- Fases 12–14 (refatoração global, arquitetura, performance) concluídas: escape HTML e datas centralizados em `CRM/shared/` (sanitize.js / date-utils.js), 2 repositórios órfãos removidos, SW expandido, catálogo V2 estável (34 módulos, 28 visíveis, score médio 95).
+- **Fundação V3 entregue** (DeepSeek, `plans/v3/CCC-V3.0-ARCH-001`): 10 engines bash em `scripts/` (health, diagnostic, monitoring, observability, smart-panel, prompt-generator, automations, execution, integration, central-modulos-v3) como *overlay* — zero alteração na V2, zero Firestore, excluídos do deploy Pages.
+- **Revisão independente (Fase 15)**: 5 correções aplicadas na V3 (timestamps, JSON inválido em metrics/module-center, `--category`, VERSION), 5 testes obsoletos do Control Center corrigidos, suítes completas **457/457**.
+- Roadmap V3 (V3-F1 Fundação ✅ → V3-F12 Release): ver `plans/v3/CCC-V3.0-ARCH-001`, §8.
+- Próximo marco: push/promoção (decisão do dono) e início da V3-F2 (Health Engine operacional).

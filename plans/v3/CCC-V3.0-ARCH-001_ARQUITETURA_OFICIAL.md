@@ -11,7 +11,7 @@ FUNÇÃO: Arquiteto Principal
 DATA: 2026-07-13
 
 PRECEDIDO POR:
-- planc/CCC-V2.0-ARCH-001_ARQUITETURA_OFICIAL.md (V2.0)
+- plans/CCC-V2.0-ARCH-001_ARQUITETURA_OFICIAL.md (V2.0)
 - scripts/control-center/README.md (Control Center v1.0)
 - CRM/TECHDOC.md (Documentação Técnica V2)
 ======================================================================
@@ -123,6 +123,8 @@ Gera prompts técnicos para IA automaticamente:
 | Observability | `scripts/observability/` | Observabilidade (logs, métricas) |
 | Automations | `scripts/automations/` | Automações programadas |
 | Central Modules V3 | `scripts/central-modulos-v3/` | Integração V3 da Central |
+| Execution Engine | `scripts/execution-engine/` | Execução de missões com checkpoint/retomada |
+| Integration | `scripts/integration/` | Encadeamento entre engines (health→monitor→panel) |
 
 ## 4. Fluxo de Dados da V3
 
@@ -243,14 +245,23 @@ Health é curado.
 
 - [x] Arquitetura documentada
 - [x] Estrutura de diretórios criada
-- [ ] Health Engine: core e verificadores esboçados
-- [ ] Monitoring: eventos, alertas, níveis definidos
-- [ ] Smart Panel: estrutura de widgets/cards definida
-- [ ] Diagnostic Engine: tipos de diagnóstico definidos
-- [ ] Prompt Generator: formato e arquitetura definidos
-- [ ] Central de Módulos V3: integração projetada
-- [ ] Observabilidade: logs, métricas, telemetria definidos
-- [ ] Automations: esboço das automações
-- [ ] Padronização: nomenclatura e estrutura revisadas
-- [ ] Documentação atualizada
-- [ ] Validação: compatibilidade V2 confirmada
+- [x] Health Engine: core e verificadores esboçados (3 checkers reais; 19 restantes = V3-F2)
+- [x] Monitoring: eventos, alertas, níveis definidos
+- [x] Smart Panel: estrutura de widgets/cards definida
+- [x] Diagnostic Engine: tipos de diagnóstico definidos
+- [x] Prompt Generator: formato e arquitetura definidos
+- [x] Central de Módulos V3: integração projetada
+- [x] Observabilidade: logs, métricas, telemetria definidos
+- [x] Automations: esboço das automações
+- [x] Padronização: nomenclatura e estrutura revisadas (integration/ normalizado na revisão)
+- [x] Documentação atualizada (TECHDOC §35, MASTER_ROADMAP, PROXIMA_ETAPA)
+- [x] Validação: compatibilidade V2 confirmada (suítes 457/457, zero arquivos da V2 alterados pela V3)
+
+## 10. Revisão Técnica da Fundação (2026-07-13)
+
+Revisão independente (Claude): fundação **homologada com correções** —
+5 fixes de baixo risco aplicados (timestamps -03:00 fixo → %:z; JSON
+inválido em observability/metrics e central-modulos-v3; `--category`
+ignorando argumento; VERSION do integration). Detalhes: `CRM/TECHDOC.md`
+§35. Esta tabela de componentes foi completada com Execution Engine e
+Integration, ausentes na versão original do documento.

@@ -3,6 +3,19 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/);
 versionamento semântico ([VERSION](VERSION) é a fonte única da versão).
 
+## [Não lançado]
+
+### Corrigido
+- Suíte de testes: 5 testes que pinavam o estado antigo do Registro de
+  Fases (`fases.conf`) e o duplicado de `firestore.indexes.json` (removido
+  em 5f9a64d) agora derivam as contagens do próprio `fases.conf`
+  (revisão técnica da Fase 15, 2026-07-13).
+
+### Contexto
+- Fundação V3 entregue como overlay fora deste diretório (`scripts/*-engine`,
+  `scripts/monitoring`, etc.) — os engines V3 serão plugáveis via
+  `lib/plugin-loader.sh` (ADR-004 de `plans/v3/CCC-V3.0-ARCH-001`).
+
 ## [1.0.0] — 2026-07-12
 
 Primeira versão completa. Encerra o Roadmap 1.0 (11 fases), certificada

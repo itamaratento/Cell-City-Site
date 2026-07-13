@@ -1990,3 +1990,45 @@ check de todos os módulos de `CRM/pages/`.
 | 3. `central-organizacao` sem RBAC | ✅ RBAC adicionado (carregarPermissoes + podeVisualizar) |
 | 5. `estrategia/` stub 0 bytes | ✅ Convertido para placeholder funcional + catálogo atualizado para 🟢 |
 | Artefatos de dev detectados | 🟡 Catalogados como diagnóstico (não removidos por decisão do dono) |
+
+
+## §35 — Revisão Técnica Final e Homologação Geral (Fase 15, 2026-07-13)
+
+Revisão independente (Claude, papel Revisão Técnica) sobre develop com a
+Fundação V3 recém-entregue pelo DeepSeek. Escopo: auditoria geral, V2,
+Fundação V3, componentes, testes, segurança e documentação.
+
+### Resultado das suítes (execução integral nesta revisão)
+| Suíte | Resultado |
+|---|---|
+| RBAC (jsdom, código real) | 166/166 ✅ |
+| Control Center | 158/158 ✅ (após correção de 5 testes obsoletos) |
+| Firestore Rules (emulador) | 73/73 ✅ |
+| Cloud Functions (emulador) | 25/25 ✅ |
+| Catálogo Central de Módulos | 17/17 ✅ (após regeneração legítima) |
+| Integridade | 14/14 ✅ |
+| Performance (polling gating) | 4/4 ✅ |
+| **Total** | **457/457** |
+
+### Correções aplicadas na Fundação V3 (baixo risco, reexecutadas)
+1. Timestamps `date -u` com offset fixo `-03:00` (hora errada em 3h) — 23 ocorrências → `%:z` real.
+2. `observability.sh`: `read` sem descarte fazia `load_15m` engolir o resto de `/proc/loadavg` → `metrics.json` inválido → Smart Panel quebrava no `jq`.
+3. `module-center.sh`: `grep -c '"slug"' || echo 34` imprimia `0`+`34` (JSON inválido) e a chave não existe no catálogo → conta `"pasta":` (34 reais).
+4. `health-engine --category` ignorava o argumento (rodava tudo) → executa o checker pedido.
+5. `scripts/integration/VERSION` criado (3.0.0, padrão dos engines).
+
+### Correções na V2 / testes
+- 5 testes do Control Center pinavam estado antigo do `fases.conf` (5/11, 45%, "Pendente", duplicado de índices já removido) — passaram a derivar do próprio `fases.conf` (ver b41326f).
+- Correção de registro do §34: `estrategia/` **permanece oculto** no catálogo (`modulos.meta.json`, commit 9f9a2b6) — placeholder visível violaria a regra "não criar placeholders" (card → tela fictícia). O §34 registrava "🟢 catálogo atualizado", o que valia para a página, não para a exposição no catálogo.
+
+### Incidente operacional (registrado)
+Reset externo no checkout compartilhado (fenômeno recorrente, ver §"concorrência") reverteu, durante a revisão, edits não commitados: correções de teste (reaplicadas e commitadas) e atualizações de docs da sessão V3 (MASTER_ROADMAP +65 linhas, PROXIMA_ETAPA — perdidas, reautoradas nesta seção e nos roadmaps). Mitigação adotada: commits imediatos em lotes pequenos.
+
+### Pendências registradas (não bloqueiam a certificação)
+- 🟡 Health Engine: 3/22 checkers implementados (fases V3-F2+ do roadmap V3).
+- 🟡 `develop` está à frente de `origin/develop` — push pendente (decisão de promoção é do dono).
+- 🟡 CI: status real dos workflows (backup semanal, tests) não verificável desta sessão (`gh` indisponível); falhas conhecidas pré-existentes.
+- 🟢 `ee_log` só imprime em TTY; checker `node` falha fora de shell com nvm no PATH.
+- 🟢 `CRM/firestore.rules.secure` sem referência (arquivo morto candidato — Rules são audit-only neste papel).
+- 🟢 `toast()` duplicado em 14 módulos (dívida técnica de refatoração futura).
+- 🟢 Camada `CRM/services/` vazia (só README) — declarada na arquitetura, sem implementações.
