@@ -17,3 +17,6 @@ export function escHtml(s) {
   d.appendChild(document.createTextNode(String(s)));
   return d.innerHTML;
 }
+
+// Fallback global para scripts clássicos (não-module)
+if (typeof window !== 'undefined') window.CC_escHtml = escHtml;

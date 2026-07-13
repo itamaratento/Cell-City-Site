@@ -2,19 +2,7 @@ import { initModulo } from '../../scripts/kernel.js';
 import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
-
-// ===== ESCAPE DE SAÍDA (hardening XSS — Certificação v1.0, 2026-07-10) =====
-// Campos como clientName/brand/model/defect podem se originar do formulário
-// PÚBLICO de pré-OS (CRM/public/abrir-atendimento.html → coleção pre_os →
-// conversão em autoatendimento.js → OS). Um visitante não autenticado
-// conseguia gravar `<img src=x onerror=...>` nesses campos e o payload
-// executava no console da EQUIPE ao abrir a OS (stored XSS). Toda
-// interpolação de campo controlável pelo cliente passa por escHtml().
-function escHtml(s) {
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
+import { escHtml } from "../../shared/sanitize.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;

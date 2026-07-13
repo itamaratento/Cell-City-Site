@@ -9,16 +9,13 @@
    Única escrita remota: favoritos (mesmo caminho já homologado,
    usuarios/{uid}/preferencias/modulos).
    ============================================================ */
+import { escHtml } from '../../shared/sanitize.js';
 import {
   init, carregarCatalogo, getCatalogo, TODOS_MODULOS,
   isFavorito, toggleFavorito, getLogs, registrarLog,
 } from '../../shared/central-modulos.js';
 
 const $ = (id) => document.getElementById(id);
-
-function escHtml(s) {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 const STATUS_INFO = {
   ok:      { emoji: '🟢', rotulo: 'OK' },
