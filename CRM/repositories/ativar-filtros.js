@@ -57,7 +57,14 @@ import {
   CentralAlertasStatusRepository
 } from './sistema.repository.js';
 
+import { setTenantFiltersEnabled } from '../shared/tenant-context.js';
+
 export function ativarFiltrosTenant() {
+  // PS-6: a via oficial de ativação é a flag global (ligada pelo
+  // tenant-provider quando empresas/{id}.dados_migrados === true).
+  // Este utilitário permanece para ativação manual via console e
+  // liga as duas camadas: flag global + enableFilter() individual.
+  setTenantFiltersEnabled(true);
   const repos = [
     OSRepository, PreOSRepository, SolicitacoesDiagnosticoRepository,
     CaixaLancamentosRepository, CategoriasCaixaRepository,

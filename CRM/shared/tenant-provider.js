@@ -17,7 +17,7 @@
      const tenantCtx = await initTenant(kernelCtx);
    ============================================================ */
 
-import { setTenant, tryRestoreTenant } from './tenant-context.js';
+import { setTenant, tryRestoreTenant, setTenantFiltersEnabled } from './tenant-context.js';
 import { resolveTenantFromUser, getTenantConfig, DEFAULT_TENANT_ID } from './tenant-resolver.js';
 
 export async function initTenant(ctx, empresaId) {
@@ -30,6 +30,9 @@ export async function initTenant(ctx, empresaId) {
 
   const restored = tryRestoreTenant();
   if (restored && restored.tenantId) {
+    // PS-6: reativa os filtros a partir do cache da sessão — o flag
+    // dadosMigrados foi persistido junto com o tenant no sessionStorage.
+    if (restored.dadosMigrados === true) setTenantFiltersEnabled(true);
     return restored;
   }
 
@@ -48,9 +51,16 @@ export async function initTenant(ctx, empresaId) {
       config,
       logoUrl: config.logo_url || '',
       createdAt: config.createdAt || null,
+      dadosMigrados: config.dados_migrados === true,
     };
 
     setTenant(tenant);
+
+    // PS-6: ativação automática dos filtros empresa_id, gateada pelo
+    // estado dos dados. empresas/{id}.dados_migrados só é marcado true
+    // após o backfill validado (scripts/backfill-empresa-id.mjs +
+    // validar-backfill.mjs). Ligar antes esconderia docs legados.
+    if (tenant.dadosMigrados) setTenantFiltersEnabled(true);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('tenant-ready', { detail: tenant }));

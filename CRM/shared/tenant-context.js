@@ -22,6 +22,7 @@
 
 let _currentTenant = null;
 let _listeners = [];
+let _filtersEnabled = false;
 const TENANT_CACHE_KEY = 'cc_tenant_v1';
 
 function _broadcast() {
@@ -76,4 +77,23 @@ export function getTenantId() {
 
 export function getTenantName() {
   return _currentTenant?.tenantName || '';
+}
+
+/* ── Filtros tenant (PS-6) ─────────────────────────────────────
+   Flag global consultada por base.repository.tenant.js e
+   tenant-query.js. Só pode ser ligada quando os dados do tenant
+   já passaram pelo backfill de empresa_id (empresas/{id}.dados_migrados
+   === true) — ligar antes faria documentos legados sem o campo
+   sumirem de todas as listagens. Quem liga é o tenant-provider. */
+export function setTenantFiltersEnabled(enabled) {
+  _filtersEnabled = !!enabled;
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('tenant-filters-enabled', {
+      detail: { enabled: _filtersEnabled }
+    }));
+  }
+}
+
+export function areTenantFiltersEnabled() {
+  return _filtersEnabled;
 }

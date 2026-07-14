@@ -20,28 +20,56 @@ service cloud.firestore {
              get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil != 'pendente';
     }
 
-    // PS-1: Isolamento multiempresa.
-    // Verifica se o documento lido (resource) pertence à mesma empresa
-    // do usuário logado. Se o documento não tiver campo empresa_id,
-    // permite acesso para compatibilidade com dados legados
-    // (single-tenant Cell City).
-    function mesmaEmpresaRead() {
-      let userEmpresaId = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresa_id;
-      return userEmpresaId == null ||
-             resource == null ||
-             resource.data.empresa_id == null ||
-             resource.data.empresa_id == userEmpresaId;
+    // PS-6: dados do usuário logado. O get() de usuarios/{uid} é
+    // deduplicado pelo Firestore dentro da mesma avaliação de rule
+    // (temAcessoLiberado + helpers abaixo = 1 leitura só).
+    function usuarioAtual() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    // Verifica se a escrita (create/update) respeita o isolamento
-    // multiempresa: o documento DEVE ter empresa_id igual ao do
-    // usuário logado.
-    function mesmaEmpresaWrite() {
-      let userEmpresaId = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresa_id;
-      return userEmpresaId == null || (
-             request.resource.data.empresa_id != null &&
-             request.resource.data.empresa_id == userEmpresaId
-      );
+    // Operador da plataforma (Cell City) — suporte cross-empresa.
+    // Único perfil que atravessa o isolamento de tenant.
+    function isMasterAdmin() {
+      return usuarioAtual().perfil == 'master_admin';
+    }
+
+    function empresaDoUsuario() {
+      return usuarioAtual().get('empresa_id', null);
+    }
+
+    // PS-1/PS-6: Isolamento multiempresa — LEITURA.
+    // O doc lido pertence à empresa do usuário. Docs legados (sem
+    // empresa_id) continuam legíveis até o backfill concluir.
+    // O 1º disjunto usa acesso direto ao campo (provável a partir do
+    // where('empresa_id','==',...) em queries `list`); erros de campo
+    // ausente são absorvidos pelos disjuntos seguintes (semântica de
+    // || das Rules absorve erro quando outro lado é true).
+    function mesmaEmpresaRead() {
+      return resource == null ||
+             resource.data.empresa_id == empresaDoUsuario() ||
+             resource.data.get('empresa_id', null) == null ||
+             isMasterAdmin();
+    }
+
+    // PS-6: Isolamento multiempresa — CREATE.
+    // Todo doc novo nasce carimbado com a empresa do usuário.
+    // master_admin pode criar para qualquer empresa (suporte).
+    function mesmaEmpresaCreate() {
+      return (request.resource.data.get('empresa_id', null) != null &&
+              request.resource.data.get('empresa_id', null) == empresaDoUsuario()) ||
+             isMasterAdmin();
+    }
+
+    // PS-6: Isolamento multiempresa — UPDATE (usar junto com
+    // mesmaEmpresaRead). empresa_id não pode MUDAR num update —
+    // impede mover/roubar documentos entre empresas. Doc legado
+    // (sem empresa_id) só pode ser reivindicado para a empresa do
+    // próprio usuário (transição pré→pós backfill).
+    function empresaImutavel() {
+      return request.resource.data.get('empresa_id', null) == resource.data.get('empresa_id', null) ||
+             (resource.data.get('empresa_id', null) == null &&
+              request.resource.data.get('empresa_id', null) == empresaDoUsuario()) ||
+             isMasterAdmin();
     }
 
     // ─────────────────────────────────────────────
@@ -64,8 +92,8 @@ service cloud.firestore {
       // Quando o Portal migrar para Cloud Functions (sprint futura),
       // `list` poderá ser fechado com mesmaEmpresaRead.
       allow list:                          if request.auth != null;
-      allow create:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
-      allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
       allow delete:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
@@ -90,8 +118,10 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     // PS-3: tenant-scoped collections com mesmaEmpresaRead/Write
     match /clientes/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /metadata/{docId} {
@@ -102,119 +132,163 @@ service cloud.firestore {
     // PRIVADO: Caixa e financeiro
     // ─────────────────────────────────────────────
     match /caixa_lancamentos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /categorias_caixa/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /historico_diario/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /historico_semanal/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /historico_mensal/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /resumo_live/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /financeiro_pagar/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /financeiro_fixas/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /financeiro_receber/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /financeiro_categorias/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /financeiro_fechamentos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Estoque e fornecedores
     // ─────────────────────────────────────────────
     match /estoque_produtos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /produtos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /categorias_produtos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /fornecedor_compras/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /fornecedor_tendencias/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /fornecedores_cadastro/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /compras_pedidos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Produtividade pessoal
     // ─────────────────────────────────────────────
     match /acoes_semana/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /agenda/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /tarefas_semana/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /notas_usuarios/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /alarme_config/{docId} {
@@ -244,46 +318,62 @@ service cloud.firestore {
     // PRIVADO: Base de conhecimento
     // ─────────────────────────────────────────────
     match /comandos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /categorias_comandos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /informacoes/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /categorias_informacoes/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Pós-venda e campanhas
     // ─────────────────────────────────────────────
     match /lembretes_pagamento/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /posvenda_contatos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /posvenda_mensagens/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /posvenda_rastreamento/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -291,7 +381,7 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /chat_mensagens/{docId} {
       allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
       allow update, delete:                if false;
     }
 
@@ -299,26 +389,34 @@ service cloud.firestore {
     // PRIVADO: Importações
     // ─────────────────────────────────────────────
     match /vendas_importadas/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Sincronização CRM ↔ Google Drive
     // ─────────────────────────────────────────────
     match /cc_lixeira/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /cc_gdrive_logs/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /gdrive_backup/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -329,9 +427,14 @@ service cloud.firestore {
     // usuários. A regra original (dono do próprio doc) continua intacta.
     // ─────────────────────────────────────────────
     match /usuarios/{uid} {
+      // PS-6: exceção de admin passa a ser tenant-scoped — admin da
+      // empresa A não lê/gerencia mais usuários da empresa B. Só
+      // master_admin (operador da plataforma) atravessa empresas.
       allow read: if request.auth != null && (
         request.auth.uid == uid ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+        isMasterAdmin() ||
+        (usuarioAtual().perfil == 'admin' &&
+         resource.data.get('empresa_id', null) == empresaDoUsuario())
       );
 
       // BL-006 (homologação 2026-07-03): a regra antiga permitia que o
@@ -377,11 +480,16 @@ service cloud.firestore {
         (request.auth.uid == uid &&
          request.resource.data.perfil == 'pendente' &&
          request.resource.data.empresa_id == 'cellcity-master') ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+        isMasterAdmin() ||
+        (usuarioAtual().perfil == 'admin' &&
+         request.resource.data.get('empresa_id', null) == empresaDoUsuario())
       );
 
       allow update: if request.auth != null && (
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'] ||
+        isMasterAdmin() ||
+        (usuarioAtual().perfil == 'admin' &&
+         resource.data.get('empresa_id', null) == empresaDoUsuario() &&
+         request.resource.data.get('empresa_id', null) == resource.data.get('empresa_id', null)) ||
         (request.auth.uid == uid &&
          request.resource.data.get('perfil', null) == resource.data.get('perfil', null) &&
          request.resource.data.get('perfil_operacional_id', null) == resource.data.get('perfil_operacional_id', null) &&
@@ -391,13 +499,22 @@ service cloud.firestore {
 
       allow delete: if request.auth != null && (
         request.auth.uid == uid ||
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
+        isMasterAdmin() ||
+        (usuarioAtual().perfil == 'admin' &&
+         resource.data.get('empresa_id', null) == empresaDoUsuario())
       );
     }
 
+    // PS-6: cada empresa lê apenas o próprio doc de config (nome, plano,
+    // dados_migrados) — antes qualquer usuário liberado enumerava todas
+    // as empresas da plataforma. Escrita restrita ao operador
+    // (master_admin, console saas-admin); onboarding self-service cria
+    // empresas via Cloud Function (Admin SDK), nunca pelo client.
     match /empresas/{empId} {
-      allow read: if request.auth != null && temAcessoLiberado();
-      allow write: if false; // escrita apenas via Admin SDK / console
+      allow read: if request.auth != null && temAcessoLiberado() &&
+        (empId == empresaDoUsuario() || isMasterAdmin());
+      allow create, update: if request.auth != null && temAcessoLiberado() && isMasterAdmin();
+      allow delete: if false; // desativar via status, nunca apagar (histórico/auditoria)
     }
 
     // Preferências por usuário (ex.: usuarios/{uid}/preferencias/modulos —
@@ -415,10 +532,17 @@ service cloud.firestore {
     // futuras de checagem de permissão dentro dos módulos); escrita
     // restrita a admin/master_admin.
     // ─────────────────────────────────────────────
+    // PS-6: leitura tenant-scoped (catálogo RBAC é por empresa) e escrita
+    // de admin restrita à própria empresa — antes um admin da empresa A
+    // podia reescrever os perfis RBAC da empresa B.
     match /perfis_operacionais/{perfilId} {
-      allow read: if request.auth != null && temAcessoLiberado();
-      allow write: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+      allow read: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null &&
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaCreate();
+      allow update: if request.auth != null &&
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null &&
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaRead();
     }
 
     // Log de auditoria do módulo — imutável (nunca editado/apagado),
@@ -433,13 +557,17 @@ service cloud.firestore {
     // PRIVADO: CRM Comercial — leads/pré-orçamentos
     // ─────────────────────────────────────────────
     match /crm_leads/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /crm_templates/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -453,48 +581,66 @@ service cloud.firestore {
     // PRIVADO: Dashboard — coleções de analytics e portal
     // ─────────────────────────────────────────────
     match /avaliacoes/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /diario_registros/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /diario_eventos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /estoque/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /mensagens_portal/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /portal_eventos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /agendamentos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /solicitacoes_diagnostico/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /catalogo_produtos/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -511,54 +657,67 @@ service cloud.firestore {
     // coleções hoje.
     // ─────────────────────────────────────────────
     match /alertas_usuario/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /chips_cadastros/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /contas_numeros/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /central_organizacao/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /backup_logs/{docId} {
-      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     match /catalogo_config/{docId} {
       // PS-3: `get` público (catálogo público sem login); list/write com tenant
       allow get:    if true;
       allow list:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
-      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
-      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
-      allow delete: if request.auth != null && temAcessoLiberado();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
     // SAAS (PS-5): Auditoria e Eventos — escrita autenticada,
     // leitura restrita a admin
     // ─────────────────────────────────────────────
+    // PS-6: create exige carimbo da própria empresa (evita log forjado
+    // em nome de outro tenant); leitura de admin é tenant-scoped —
+    // admin da empresa A não lê trilha de auditoria da empresa B.
     match /saas_eventos/{docId} {
-      allow create:   if request.auth != null && temAcessoLiberado();
+      allow create:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
       allow read:     if request.auth != null && temAcessoLiberado() &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaRead();
       allow update, delete: if false;
     }
 
     match /auditoria_saas/{docId} {
-      allow create:   if request.auth != null && temAcessoLiberado();
+      allow create:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
       allow read:     if request.auth != null && temAcessoLiberado() &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaRead();
       allow update, delete: if false;
     }
 

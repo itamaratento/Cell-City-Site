@@ -33,7 +33,7 @@ import {
   db, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc,
   deleteDoc, query, orderBy, where, onSnapshot, limit
 } from '../firebase/client.js';
-import { getTenantId } from '../shared/tenant-context.js';
+import { getTenantId, areTenantFiltersEnabled } from '../shared/tenant-context.js';
 
 export function createTenantRepository(collectionName, tenantField = 'empresa_id') {
   let _filterEnabled = false;
@@ -53,7 +53,10 @@ export function createTenantRepository(collectionName, tenantField = 'empresa_id
   }
 
   function _addTenantFilter(constraints, options = {}) {
-    if (!_filterEnabled) return constraints;
+    // PS-6: além do enableFilter() individual, respeita a flag global
+    // ligada pelo tenant-provider quando empresas/{id}.dados_migrados
+    // === true — ativação automática pós-backfill, sem import manual.
+    if (!_filterEnabled && !areTenantFiltersEnabled()) return constraints;
     const tenantId = _getTenantId();
     if (!tenantId) return constraints;
     if (options.skipTenantFilter) return constraints;

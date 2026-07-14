@@ -67,7 +67,7 @@ export function getModulosPorPlano(planoId) {
 }
 
 export function getFeatureFlags(planoId) {
-  return getFeatureFlags;
+  return getPlano(planoId).features;
 }
 
 export function temModulo(planoId, moduloId) {
