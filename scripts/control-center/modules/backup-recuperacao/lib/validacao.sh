@@ -12,10 +12,12 @@ _bkp_validar_integridade() {
   echo "───────────────────────"
 
   echo "Estrutura Git local (git fsck)..."
-  if git -C "$REPO_DIR" fsck --no-dangling >/tmp/cellcity-backup-fsck.log 2>&1; then
+  local fsck_log
+  fsck_log=$(mktemp /tmp/cellcity-backup-fsck-XXXXXX)
+  if git -C "$REPO_DIR" fsck --no-dangling >"$fsck_log" 2>&1; then
     _cc_ok "Repositório local íntegro."
   else
-    _cc_fail "git fsck encontrou problemas — ver /tmp/cellcity-backup-fsck.log"
+    _cc_fail "git fsck encontrou problemas — ver $fsck_log"
   fi
 
   echo "Permissões dos scripts de backup..."
@@ -38,12 +40,14 @@ _bkp_validar_integridade() {
   fi
 
   echo "Conectividade com o repositório de backup..."
-  if git ls-remote --tags "$BACKUP_REPO_HTTPS" >/tmp/cellcity-backup-lsremote.log 2>&1; then
+  local lsremote_log
+  lsremote_log=$(mktemp /tmp/cellcity-backup-lsremote-XXXXXX)
+  if git ls-remote --tags "$BACKUP_REPO_HTTPS" >"$lsremote_log" 2>&1; then
     local total_tags
-    total_tags=$(grep -c . /tmp/cellcity-backup-lsremote.log)
+    total_tags=$(grep -c . "$lsremote_log")
     _cc_ok "Conectado — $total_tags referência(s) encontrada(s)."
   else
-    _cc_fail "Não foi possível acessar $BACKUP_REPO_HTTPS — ver /tmp/cellcity-backup-lsremote.log"
+    _cc_fail "Não foi possível acessar $BACKUP_REPO_HTTPS — ver $lsremote_log"
   fi
 
   echo "Backups locais do projeto (_BACKUPS/)..."

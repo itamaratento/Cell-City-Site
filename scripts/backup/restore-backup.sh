@@ -87,7 +87,8 @@ git branch "$restore_branch" "$selected_commit"
 
 echo ""
 echo "-- Validando integridade --"
-git fsck --no-dangling >/tmp/cellcity-restore-fsck.log 2>&1
+fsck_log=$(mktemp /tmp/cellcity-restore-fsck-XXXXXX)
+git fsck --no-dangling >"$fsck_log" 2>&1
 fsck_status=$?
 branch_commit=$(git rev-parse "$restore_branch")
 integrity_ok="sim"
@@ -124,7 +125,7 @@ echo "  - Publicar em main:         somente com autorização explícita, via 's
 
 if [ "$integrity_ok" != "sim" ]; then
   echo ""
-  echo "❌ ALERTA: validação de integridade falhou (ver /tmp/cellcity-restore-fsck.log). Não prossiga sem investigar."
+  echo "❌ ALERTA: validação de integridade falhou (ver $fsck_log). Não prossiga sem investigar."
   exit 1
 fi
 exit 0

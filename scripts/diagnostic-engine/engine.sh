@@ -26,7 +26,9 @@ _cc_v3_diag_executar() {
       analyzers=("system" "git" "build" "firebase" "security" "integrity")
       ;;
     deep)
-      analyzers=("system" "git" "build" "dependency" "firebase" "rules" "performance" "security" "integrity")
+      # "dependency" não existia (o arquivo é dependencies.sh) e os analyzers
+      # novos structure/network não eram invocados por nenhum modo.
+      analyzers=("system" "git" "build" "dependencies" "structure" "network" "firebase" "rules" "performance" "security" "integrity")
       ;;
     auto)
       analyzers=("system" "git" "build" "firebase" "security")

@@ -1,0 +1,16 @@
+{
+  "components": {
+    "test:test-component": null,
+    "panel:noc-dashboard": {
+      "id": "noc-dashboard",
+      "type": "panel",
+      "version": "0.1.0",
+      "dependencies": [],
+      "registered_at": "2026-07-13T20:35:48-03:00",
+      "status": "registered",
+      "path": "/home/cellcity/Músicas/projetos/Cell-City-Site/scripts/control-center/v3/panels/noc-dashboard.sh"
+    }
+  },
+  "last_discovery": "2026-07-13T20:35:49-03:00",
+  "total_components": 1
+}

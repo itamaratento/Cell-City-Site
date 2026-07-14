@@ -1,0 +1,20 @@
+{
+  "id": "backup_verify",
+  "nome": "Backup e Verificação de Integridade",
+  "blocos": [
+    {
+      "nome": "Executar Backup",
+      "passos": [
+        {"id": "backup_exec", "comando": "bash scripts/backup/backup-manual.sh", "descricao": "Executar backup manual completo"}
+      ]
+    },
+    {
+      "nome": "Verificar Integridade",
+      "passos": [
+        {"id": "backup_dir_check", "comando": "bash -c 'if [ -d _BACKUPS ] && [ \"$(ls -A _BACKUPS 2>/dev/null)\" ]; then echo \"OK: diretório _BACKUPS contém arquivos\"; else echo \"FALHA: diretório _BACKUPS vazio ou inexistente\"; exit 1; fi'", "descricao": "Verificar se diretório _BACKUPS existe e contém arquivos"},
+        {"id": "backup_size_check", "comando": "bash -c 'latest=$(ls -t _BACKUPS/ 2>/dev/null | head -1); if [ -n \"$latest\" ]; then size=$(du -sh \"_BACKUPS/$latest\" 2>/dev/null | cut -f1); echo \"Backup mais recente: $latest ($size)\"; else echo \"ALERTA: nenhum backup encontrado\"; exit 1; fi'", "descricao": "Verificar tamanho do backup mais recente"},
+        {"id": "backup_age_check", "comando": "bash -c 'latest=$(ls -t _BACKUPS/ 2>/dev/null | head -1); if [ -n \"$latest\" ]; then modified=$(stat -c %Y \"_BACKUPS/$latest\" 2>/dev/null); now=$(date +%s); hours=$(( (now - modified) / 3600 )); if [ $hours -gt 24 ]; then echo \"ALERTA: backup mais recente tem $hours horas\"; else echo \"OK: backup recente ($hours horas)\"; fi; else echo \"ALERTA: nenhum backup\"; exit 1; fi'", "descricao": "Verificar idade do backup mais recente (alerta se >24h)"}
+      ]
+    }
+  ]
+}

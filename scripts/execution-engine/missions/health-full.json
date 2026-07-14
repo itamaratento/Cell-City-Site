@@ -1,0 +1,53 @@
+{
+  "id": "health_full",
+  "nome": "Health Check Completo (22 Checkers)",
+  "blocos": [
+    {
+      "nome": "Core",
+      "passos": [
+        {"id": "hc_git", "comando": "bash scripts/health-engine/checkers/git.sh", "descricao": "Verificar repositório Git"},
+        {"id": "hc_workspace", "comando": "bash scripts/health-engine/checkers/workspace.sh", "descricao": "Verificar integridade do workspace"},
+        {"id": "hc_build", "comando": "bash scripts/health-engine/checkers/build.sh", "descricao": "Verificar build do projeto"},
+        {"id": "hc_node", "comando": "bash scripts/health-engine/checkers/node.sh", "descricao": "Verificar ambiente Node.js"},
+        {"id": "hc_npm", "comando": "bash scripts/health-engine/checkers/npm.sh", "descricao": "Verificar pacotes npm"}
+      ]
+    },
+    {
+      "nome": "Firebase",
+      "passos": [
+        {"id": "hc_firebase", "comando": "bash scripts/health-engine/checkers/firebase.sh", "descricao": "Verificar configuração Firebase"},
+        {"id": "hc_firestore", "comando": "bash scripts/health-engine/checkers/firestore.sh", "descricao": "Verificar regras Firestore"},
+        {"id": "hc_rules", "comando": "bash scripts/health-engine/checkers/rules.sh", "descricao": "Verificar security rules"},
+        {"id": "hc_indexes", "comando": "bash scripts/health-engine/checkers/indexes.sh", "descricao": "Verificar índices Firestore"},
+        {"id": "hc_functions", "comando": "bash scripts/health-engine/checkers/functions.sh", "descricao": "Verificar Cloud Functions"}
+      ]
+    },
+    {
+      "nome": "Segurança e Acesso",
+      "passos": [
+        {"id": "hc_rbac", "comando": "bash scripts/health-engine/checkers/rbac.sh", "descricao": "Verificar RBAC e permissões"},
+        {"id": "hc_repositories", "comando": "bash scripts/health-engine/checkers/repositories.sh", "descricao": "Verificar repositórios de dados"},
+        {"id": "hc_services", "comando": "bash scripts/health-engine/checkers/services.sh", "descricao": "Verificar serviços"}
+      ]
+    },
+    {
+      "nome": "Módulos",
+      "passos": [
+        {"id": "hc_shared", "comando": "bash scripts/health-engine/checkers/shared.sh", "descricao": "Verificar módulo Shared"},
+        {"id": "hc_modules", "comando": "bash scripts/health-engine/checkers/modules.sh", "descricao": "Verificar módulos do sistema"},
+        {"id": "hc_dashboard", "comando": "bash scripts/health-engine/checkers/dashboard.sh", "descricao": "Verificar Dashboard"},
+        {"id": "hc_portal", "comando": "bash scripts/health-engine/checkers/portal.sh", "descricao": "Verificar Portal"},
+        {"id": "hc_central_modulos", "comando": "bash scripts/health-engine/checkers/central-modulos.sh", "descricao": "Verificar Central de Módulos"},
+        {"id": "hc_control_center", "comando": "bash scripts/health-engine/checkers/control-center.sh", "descricao": "Verificar Control Center"}
+      ]
+    },
+    {
+      "nome": "Serviços e Logs",
+      "passos": [
+        {"id": "hc_service_worker", "comando": "bash scripts/health-engine/checkers/service-worker.sh", "descricao": "Verificar Service Worker"},
+        {"id": "hc_backup", "comando": "bash scripts/health-engine/checkers/backup.sh", "descricao": "Verificar sistema de backup"},
+        {"id": "hc_logs", "comando": "bash scripts/health-engine/checkers/logs.sh", "descricao": "Verificar logs do sistema"}
+      ]
+    }
+  ]
+}

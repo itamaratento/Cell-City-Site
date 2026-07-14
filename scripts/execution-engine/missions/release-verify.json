@@ -1,0 +1,20 @@
+{
+  "id": "release_verify",
+  "nome": "Verificação de Release",
+  "blocos": [
+    {
+      "nome": "Validar Deploy",
+      "passos": [
+        {"id": "validar_deploy", "comando": "bash scripts/release/validar-deploy.sh", "descricao": "Executar validação completa de deploy"}
+      ]
+    },
+    {
+      "nome": "Verificação de Sintaxe",
+      "passos": [
+        {"id": "syntax_sh", "comando": "bash -c 'errors=0; for f in scripts/**/*.sh; do [ -f \"$f\" ] || continue; bash -n \"$f\" 2>/dev/null || { echo \"ERRO: $f\"; ((errors++)); }; done; [ $errors -eq 0 ] && echo \"OK: todos scripts .sh passaram\"; exit $errors'", "descricao": "Verificar sintaxe de todos os scripts .sh"},
+        {"id": "syntax_js", "comando": "bash -c 'errors=0; for f in scripts/**/*.mjs scripts/**/*.js js/*.js; do [ -f \"$f\" ] || continue; node --check \"$f\" 2>/dev/null || { echo \"ERRO: $f\"; ((errors++)); }; done; [ $errors -le 0 ] && echo \"OK: sintaxe JS verificada\"; exit 0'", "descricao": "Verificar sintaxe de arquivos .js/.mjs"},
+        {"id": "syntax_json", "comando": "bash -c 'errors=0; for f in scripts/**/*.json firebase.json package.json; do [ -f \"$f\" ] || continue; jq . \"$f\" > /dev/null 2>&1 || { echo \"ERRO JSON: $f\"; ((errors++)); }; done; [ $errors -eq 0 ] && echo \"OK: todos JSONs válidos\"; exit $errors'", "descricao": "Verificar validade de arquivos JSON"}
+      ]
+    }
+  ]
+}

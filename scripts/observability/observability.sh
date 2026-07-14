@@ -134,6 +134,103 @@ _cc_v3_obs_coletar_telemetria() {
   _cc_v3_log "info" "Observability" "Telemetria coletada: ${#components[@]} componentes"
 }
 
+_cc_v3_obs_registrar_metricas() {
+  local timestamp
+  timestamp=$(date +"%Y-%m-%dT%H:%M:%S%:z")
+
+  _cc_v3_log "info" "Observability" "Registrando métricas em state/metrics.json"
+
+  local mem_total=0 mem_used=0 mem_pct=0
+  if command -v free &>/dev/null; then
+    mem_total=$(free -m | awk '/^Mem/{print $2}')
+    mem_used=$(free -m | awk '/^Mem/{print $3}')
+    if [[ -n "$mem_total" ]] && (( mem_total > 0 )); then
+      mem_pct=$(( mem_used * 100 / mem_total ))
+    fi
+  fi
+
+  local disk_pct=0 disk_free=0 disk_total=0
+  if command -v df &>/dev/null; then
+    disk_pct=$(df -h / | awk 'NR==2{sub(/%/,"",$5);print $5}')
+    disk_free=$(df -BG / | awk 'NR==2{gsub(/G/,"",$4);print $4}')
+    disk_total=$(df -BG / | awk 'NR==2{gsub(/G/,"",$2);print $2}')
+  fi
+
+  local cpu_model="unknown" cpu_cores=0
+  if command -v nproc &>/dev/null; then
+    cpu_cores=$(nproc)
+  fi
+  if [[ -f /proc/cpuinfo ]]; then
+    cpu_model=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs || echo "unknown")
+  fi
+  local load_1=0 load_5=0 load_15=0
+  if [[ -f /proc/loadavg ]]; then
+    read -r load_1 load_5 load_15 _ < /proc/loadavg 2>/dev/null || true
+  fi
+
+  local repo_dir="${REPO_DIR:-${CC_V3_ROOT}}"
+  local git_branch="N/A" git_commit="N/A" git_modified=0 git_untracked=0
+  if [[ -d "$repo_dir/.git" ]]; then
+    git_branch=$(cd "$repo_dir" && git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "N/A")
+    git_commit=$(cd "$repo_dir" && git log -1 --format=%h 2>/dev/null || echo "N/A")
+    git_modified=$(cd "$repo_dir" && git status --porcelain 2>/dev/null | grep -c '^ M\|^M') || true
+    git_untracked=$(cd "$repo_dir" && git status --porcelain 2>/dev/null | grep -c '^??') || true
+    [[ -z "$git_modified" ]] && git_modified=0
+    [[ -z "$git_untracked" ]] && git_untracked=0
+  fi
+
+  mkdir -p "$OBS_DIR/state"
+  jq -n \
+    --arg ts "$timestamp" \
+    --argjson mem_total "$mem_total" \
+    --argjson mem_used "$mem_used" \
+    --argjson mem_pct "$mem_pct" \
+    --argjson disk_pct "$disk_pct" \
+    --argjson disk_free "$disk_free" \
+    --argjson disk_total "$disk_total" \
+    --arg cpu_model "$cpu_model" \
+    --argjson cpu_cores "$cpu_cores" \
+    --argjson load_1 "$load_1" \
+    --argjson load_5 "$load_5" \
+    --argjson load_15 "$load_15" \
+    --arg git_branch "$git_branch" \
+    --arg git_commit "$git_commit" \
+    --argjson git_modified "$git_modified" \
+    --argjson git_untracked "$git_untracked" \
+    '{
+      timestamp: $ts,
+      cpu: {model: $cpu_model, cores: $cpu_cores, load_1m: $load_1, load_5m: $load_5, load_15m: $load_15},
+      memory: {total_mb: $mem_total, used_mb: $mem_used, percent: $mem_pct},
+      disk: {total_gb: $disk_total, free_gb: $disk_free, percent: $disk_pct},
+      git: {branch: $git_branch, commit: $git_commit, modified: $git_modified, untracked: $git_untracked}
+    }' > "$OBS_DIR/state/metrics.json"
+
+  _cc_v3_log "info" "Observability" "Métricas registradas: CPU ${cpu_cores} cores, RAM ${mem_pct}%, Disco ${disk_pct}%, Git branch=$git_branch"
+}
+
+_cc_v3_obs_rotacionar_logs() {
+  local dias="${1:-7}"
+  local logs_dir="${CC_V3_LOGS:-}"
+  if [[ -z "$logs_dir" ]] || [[ "$logs_dir" == "/dev/null" ]]; then
+    logs_dir="$CC_V3_ROOT/logs"
+  fi
+
+  if [[ ! -d "$logs_dir" ]]; then
+    _cc_v3_log "info" "Observability" "Diretório de logs não encontrado: $logs_dir"
+    return
+  fi
+
+  local removidos=0
+  removidos=$(find "$logs_dir" -type f -name "*.log" -mtime +"$dias" 2>/dev/null | wc -l)
+
+  if (( removidos > 0 )); then
+    find "$logs_dir" -type f -name "*.log" -mtime +"$dias" -delete 2>/dev/null
+    _cc_v3_log "info" "Observability" "Rotação de logs: $removidos arquivos com mais de $dias dias removidos"
+  else
+    _cc_v3_log "info" "Observability" "Rotação de logs: nenhum arquivo com mais de $dias dias encontrado"
+  fi
+}
+
 _cc_v3_obs_exportar() {
   local format="${1:-json}"
   local metric_file="$OBS_DIR/state/metrics.json"
@@ -162,10 +259,17 @@ _cc_v3_obs_exportar() {
 }
 
 case "${1:-}" in
-  --collect)  shift; _cc_v3_obs_coletar "$@" ;;
-  --export)   shift; _cc_v3_obs_exportar "$@" ;;
+  --collect)   shift; _cc_v3_obs_coletar "$@" ;;
+  --export)    shift; _cc_v3_obs_exportar "$@" ;;
+  --metrics)   _cc_v3_obs_registrar_metricas ;;
+  --rotate)    shift; _cc_v3_obs_rotacionar_logs "${1:-7}" ;;
   --help|-h)
     echo "Uso: observability.sh [--collect <sistema|performance|tudo>] [--export <json|texto|historico>]"
+    echo "                     [--metrics] [--rotate <dias>]"
+    echo ""
+    echo "Opções:"
+    echo "  --metrics    Registrar métricas (CPU, RAM, disco, git) em state/metrics.json"
+    echo "  --rotate N   Rotacionar logs com mais de N dias (default: 7)"
     ;;
-  *)          _cc_v3_obs_coletar "tudo" ;;
+  *)           _cc_v3_obs_coletar "tudo" ;;
 esac

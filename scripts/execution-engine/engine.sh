@@ -143,7 +143,7 @@ _cc_v3_ee_executar_blocos() {
 
       local saida=0
       if [[ -n "$passo_cmd" ]]; then
-        eval "$passo_cmd" 2>/dev/null || saida=$?
+        bash -c "$passo_cmd" 2>/dev/null || saida=$?
       fi
 
       local fim

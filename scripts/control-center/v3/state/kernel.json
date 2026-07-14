@@ -1,0 +1,8 @@
+{
+  "status": "shutdown",
+  "shutdown_time": "2026-07-13T20:40:14-03:00",
+  "boot_id": "boot-1783985748",
+  "boot_time": "2026-07-13T20:35:49-03:00",
+  "version": "3.0.0",
+  "boot_duration_ms": 1
+}

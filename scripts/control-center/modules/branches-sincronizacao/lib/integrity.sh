@@ -46,12 +46,13 @@ _brs_integridade_git() {
   fi
 
   echo "Objetos íntegros (git fsck)..."
-  local fsck_resultado
-  if git -C "$REPO_DIR" fsck --no-dangling >/tmp/cellcity-branches-fsck.log 2>&1; then
+  local fsck_resultado fsck_log
+  fsck_log=$(mktemp /tmp/cellcity-branches-fsck-XXXXXX)
+  if git -C "$REPO_DIR" fsck --no-dangling >"$fsck_log" 2>&1; then
     _cc_ok "git fsck não encontrou problemas."
     fsck_resultado="ok"
   else
-    _cc_fail "git fsck encontrou problemas — ver /tmp/cellcity-branches-fsck.log"
+    _cc_fail "git fsck encontrou problemas — ver $fsck_log"
     fsck_resultado="falhou"
   fi
 

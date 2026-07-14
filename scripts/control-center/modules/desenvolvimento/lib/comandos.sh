@@ -85,7 +85,9 @@ _dev_limpeza_cache() {
   echo "Itens a remover:"
   printf '  - %s\n' "${encontrados[@]}"
   if _cc_confirm "Remover os itens acima?"; then
-    rm -rf "${encontrados[@]}"
+    for alvo in "${encontrados[@]}"; do
+      [[ "$alvo" == "$REPO_DIR"* ]] && rm -rf "$alvo"
+    done
     _cc_ok "Cache limpo (${#encontrados[@]} item(ns))."
   else
     echo "Cancelado."

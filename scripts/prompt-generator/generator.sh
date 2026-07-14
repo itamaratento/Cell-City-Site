@@ -117,12 +117,50 @@ _cc_v3_prompt_gerar() {
   _cc_v3_log "info" "Prompt Generator" "Prompt salvo em $output_file"
 }
 
+_cc_v3_prompt_exportar() {
+  local output="${1:-}"
+  local mode="${2:-padrao}"
+  shift 2 || shift || true
+
+  local prompt
+  prompt=$(_cc_v3_prompt_gerar "$mode" "$@" 2>/dev/null)
+
+  if [[ -n "$output" ]]; then
+    if [[ "$output" == "clipboard" ]]; then
+      if command -v xclip &>/dev/null; then
+        echo -e "$prompt" | xclip -selection clipboard
+        _cc_v3_log "info" "Prompt Generator" "Prompt copiado para clipboard (xclip)"
+      elif command -v xsel &>/dev/null; then
+        echo -e "$prompt" | xsel --clipboard
+        _cc_v3_log "info" "Prompt Generator" "Prompt copiado para clipboard (xsel)"
+      elif command -v wl-copy &>/dev/null; then
+        echo -e "$prompt" | wl-copy
+        _cc_v3_log "info" "Prompt Generator" "Prompt copiado para clipboard (wl-copy)"
+      else
+        _cc_v3_log "warn" "Prompt Generator" "Nenhum clipboard tool disponível (xclip, xsel, wl-copy)"
+        echo -e "$prompt"
+      fi
+    else
+      mkdir -p "$(dirname "$output" 2>/dev/null)" 2>/dev/null || true
+      echo -e "$prompt" > "$output"
+      _cc_v3_log "info" "Prompt Generator" "Prompt exportado para $output"
+    fi
+  else
+    echo -e "$prompt"
+  fi
+}
+
 case "${1:-}" in
-  --quick)  shift; _cc_v3_prompt_gerar "rapido" "$@" ;;
-  --debug)  shift; _cc_v3_prompt_gerar "debug" "$@" ;;
-  --review) shift; _cc_v3_prompt_gerar "revisao" "$@" ;;
+  --quick)   shift; _cc_v3_prompt_gerar "rapido" "$@" ;;
+  --debug)   shift; _cc_v3_prompt_gerar "debug" "$@" ;;
+  --review)  shift; _cc_v3_prompt_gerar "revisao" "$@" ;;
+  --export)  shift; _cc_v3_prompt_exportar "$@" ;;
   --help|-h)
     echo "Uso: generator.sh [--quick|--debug|--review] --goal \"missão\" [--files \"caminho1,caminho2\"] [--debug]"
+    echo "      generator.sh --export [<arquivo>|clipboard] [--quick|--debug|--review] [<args...>]"
+    echo ""
+    echo "Modos:"
+    echo "  --export <destino>   Exporta prompt para arquivo ou clipboard"
     ;;
-  *)        shift; _cc_v3_prompt_gerar "padrao" "$@" ;;
+  *)         shift; _cc_v3_prompt_gerar "padrao" "$@" ;;
 esac

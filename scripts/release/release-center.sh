@@ -240,6 +240,7 @@ _rodar_suites() {
   local sevmap="$1"; shift
   local lanes=("$@")
   local resdir; resdir=$(mktemp -d)
+  trap 'rm -rf "$resdir"' EXIT
   local todos=() key lane
   local est_total=0 lane_est
 
@@ -310,22 +311,39 @@ _check_workspace_branch() {
       "a homologação vale apenas para develop (fluxo subir → release → subir-ok)" \
       "git checkout develop"
   fi
-  dirty=$(git status --porcelain)
-  if [ -z "$dirty" ]; then
-    _pass "Workspace limpo"
-  else
-    while IFS= read -r f; do
-      case "${f:3}" in
-        scripts/*/state/*|logs/*|*.log) : ;;
-        *) runtime_only=0 ;;
-      esac
-    done <<< "$dirty"
-    if [ "$runtime_only" -eq 1 ]; then
-      _aviso "Workspace alterado apenas por estado de runtime/logs (flake conhecido) — restaure com: git checkout -- $(echo "$dirty" | awk '{print $2}' | tr '\n' ' ')"
+  local wi_lib="$REPO_DIR/scripts/control-center/lib/workspace-intelligence.sh"
+  if [ -x "$wi_lib" ]; then
+    local wi_ctx="release-rapida"
+    case "${FUNCNAME[1]:-}" in
+      opcao_release_completa) wi_ctx="release-completa" ;;
+      opcao_release_turbo)    wi_ctx="release-turbo" ;;
+      opcao_certificacao_completa) wi_ctx="certificacao" ;;
+    esac
+    if "$wi_lib" gate "$wi_ctx"; then
+      _pass "Workspace Intelligence: prosseguir ($wi_ctx)"
     else
-      _blocker "Workspace sujo" \
-        "arquivos alterados/não commitados: $(echo "$dirty" | awk '{print $2}' | tr '\n' ' ')" \
+      _blocker "Workspace Intelligence bloqueou a release (contexto: $wi_ctx)" \
+        "arquivos com impacto >= MEDIO detectados pelo Workspace Intelligence" \
         "commite com 'subir' (ou git stash) e rode a release de novo"
+    fi
+  else
+    dirty=$(git status --porcelain)
+    if [ -z "$dirty" ]; then
+      _pass "Workspace limpo"
+    else
+      while IFS= read -r f; do
+        case "${f:3}" in
+          scripts/*/state/*|logs/*|*.log) : ;;
+          *) runtime_only=0 ;;
+        esac
+      done <<< "$dirty"
+      if [ "$runtime_only" -eq 1 ]; then
+        _aviso "Workspace alterado apenas por estado de runtime/logs (flake conhecido) — restaure com: git checkout -- $(echo "$dirty" | awk '{print $2}' | tr '\n' ' ')"
+      else
+        _blocker "Workspace sujo" \
+          "arquivos alterados/não commitados: $(echo "$dirty" | awk '{print $2}' | tr '\n' ' ')" \
+          "commite com 'subir' (ou git stash) e rode a release de novo"
+      fi
     fi
   fi
 }
@@ -976,7 +994,12 @@ verificar_homologacao_valida() {
   commit_atual=$(git rev-parse HEAD 2>/dev/null)
   branch_atual=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
   [ "$branch_atual" = "develop" ] || return 1
-  [ -z "$(git status --porcelain)" ] || return 1
+  local wi_lib="$REPO_DIR/scripts/control-center/lib/workspace-intelligence.sh"
+  if [ -x "$wi_lib" ]; then
+    "$wi_lib" gate homologacao || return 1
+  else
+    [ -z "$(git status --porcelain)" ] || return 1
+  fi
   [ "$commit_marcado" = "$commit_atual" ] || return 1
   [ "$status_marcado" = "GO" ]
 }

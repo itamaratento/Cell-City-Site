@@ -11,10 +11,12 @@ _brs_sincronizacao() {
   echo "🔄 Sincronização"
   echo "─────────────────"
   echo "Buscando atualizações do remote (git fetch --all --prune)..."
-  if git -C "$REPO_DIR" fetch --all --prune >/tmp/cellcity-branches-fetch.log 2>&1; then
+  local fetch_log
+  fetch_log=$(mktemp /tmp/cellcity-branches-fetch-XXXXXX)
+  if git -C "$REPO_DIR" fetch --all --prune >"$fetch_log" 2>&1; then
     _cc_ok "Fetch concluído."
   else
-    _cc_fail "Fetch falhou — ver /tmp/cellcity-branches-fetch.log"
+    _cc_fail "Fetch falhou — ver $fetch_log"
     _cc_log "Branches e Sincronização: Sincronização — fetch falhou"
     return
   fi
