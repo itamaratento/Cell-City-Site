@@ -134,3 +134,48 @@ mktemp agora usado corretamente. Nenhuma redução de segurança introduzida.
 Cumpridos 1–3, recomendo recertificação imediata: a auditoria técnica do código
 está completa e os critérios de qualidade, segurança, performance, testes,
 compatibilidade e documentação estão atendidos no estado atual do working tree.
+
+---
+
+# ADENDO — Recertificação (2026-07-14)
+
+Auditor: Claude (Revisão Técnica). Estado verificado: `develop` @ **e545c91**
+("feat(control-center): finalize Control Center V3", 2026-07-13 21:30,
+82 arquivos, +6569/−37), **pushado a origin/develop**.
+
+## Status dos 3 bloqueios
+
+1. **Artefato sem identidade versionada → ✅ RESOLVIDO.** O working tree
+   auditado foi commitado pelo operador em e545c91 e enviado ao remote.
+   Verificação de conteúdo: as 3 correções críticas presentes (zero ocorrências
+   do idioma `:-{}}`; `LC_ALL=C` nos coletores; fix da escala 0-100 no health
+   score; `mktemp` único nos 4 módulos V1), wrappers `_v3_box_*` presentes,
+   `exit` no noc-v3/menu.sh, busy-loop eliminado, antipadrão `grep -c || echo 0`
+   zerado na V3. Nenhum arquivo da V3 modificado após o commit (mtimes).
+2. **Reset externo → ⚠️ MITIGADO, não neutralizado.** Novo `reset: moving to
+   HEAD` externo em 2026-07-14 06:14:06 (reflog) — o fenômeno persiste, mas com
+   a árvore limpa não destruiu nada. O artefato certificado tem hash e está no
+   remote; o risco residual atinge apenas trabalho futuro não commitado.
+   Identificação da causa (suspeito: extensão kilo/VS Code) segue pendente.
+3. **Homologação manual do operador → ⏳ PENDENTE.** Único item em aberto.
+   Roteiro: `bash scripts/control-center/v3/noc.sh` em terminal real — painéis,
+   teclas ([A]/[N]/[M]/ENTER/q), menu V1 → opção 11 → NOC → sair, gate WI.
+
+## Testes re-executados sobre e545c91 (2026-07-14)
+
+| Suite | Resultado |
+|---|---|
+| V3 phase1 | 71/71 ✅ |
+| RBAC (`npm test`, lane oficial) | 166/166 ✅ |
+| Integridade | 14/14 ✅ |
+| CC diagnostico / estrutura / ferramentas | 21/21, 94/94, 25/25 ✅ |
+| CC manutencao | 18/18 ✅ (suite lenta, ~9 min) |
+| Boot NOC ponta a ponta | exit 0, stderr 0, KERNEL PRONTO ✅ |
+
+## Veredito da recertificação
+
+✅ **CERTIFICAÇÃO TÉCNICA CONCEDIDA a develop@e545c91** — código, testes,
+segurança, performance e compatibilidade atendidos no artefato versionado.
+Condições remanescentes antes da promoção a produção (decisão do operador):
+(a) aceite manual em terminal real (bloqueio 3); (b) ciência de que o reset
+externo segue ativo no checkout. Pendências P1–P6 permanecem em backlog.
