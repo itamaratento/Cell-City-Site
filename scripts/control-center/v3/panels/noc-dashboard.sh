@@ -97,8 +97,11 @@ _v3_noc_refresh_data() {
   local health_result
   local he_state="$CC_ROOT/../health-engine/state/health-check.json"
   if [[ -f "$he_state" ]]; then
-    local he_age=$(($(date +%s) - $(stat -c %Y "$he_state" 2>/dev/null || echo 0)))
-    if [[ "$he_age" -lt 300 ]]; then
+    local he_mode he_age
+    he_mode=$(jq -r '.execucao.tipo // "desconhecido"' "$he_state" 2>/dev/null)
+    he_age=$(($(date +%s) - $(stat -c %Y "$he_state" 2>/dev/null || echo 0)))
+    # ignora quick mode — só tem 3 checkers e puxa o score pra baixo no dashboard
+    if [[ "$he_mode" != "quick" && "$he_age" -lt 300 ]]; then
       health_result=$(jq -c '{score: (.score.geral // 0), level: (.nivel // "CRITICO"), source: "health-engine"}' "$he_state" 2>/dev/null || echo '{"score":0,"level":"CRITICO"}')
     else
       health_result=$(_v3_health_calculate 2>/dev/null || echo '{"score":0,"level":"CRITICO"}')
@@ -226,7 +229,7 @@ _v3_noc_render_system() {
   _v3_noc_indicator "Performance"      "$perf_status"                     "CPU:${cpu}%" "perf"
   _v3_noc_indicator "Seguranca"        "${_V3_NOC_STATE[security]:-checking}" "" "sec"
   _v3_noc_indicator "RBAC"             "${_V3_NOC_STATE[security]:-checking}" "" "rbac"
-  _v3_noc_indicator "Usuarios"         "checking"                         "" "users"
+  _v3_noc_indicator "Usuarios"         "${_V3_NOC_STATE[security]:-checking}" "" "users"
   _v3_noc_indicator "Logs"             "OK"                               "" "logs"
   _v3_noc_indicator "Alertas"          "OK"                               "" "alerts"
 }

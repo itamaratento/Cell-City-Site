@@ -50,7 +50,7 @@ _cc_dispatch() {
       return
     fi
   done
-  echo "Opção inválida."
+  echo "Opção inválida. Use um número de 1 a ${#CC_ORDEM[@]} ou 0 para sair."
 }
 
 _cc_load_plugins

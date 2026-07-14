@@ -98,3 +98,13 @@ how*
 # negócio) — nenhum dos dois é código-fonte, nunca deve ir pro repositório.
 _reports/
 scripts/control-center/modules/*/config/local.json
+
+# Runtime state files — modificados a cada execucao do NOC/health-engine.
+# Apenas o .gitkeep e o snapshot inicial sao versionados; o resto e ruido.
+scripts/control-center/v3/state/*.json
+!scripts/control-center/v3/state/.gitkeep
+scripts/health-engine/state/health-check.json
+scripts/observability/state/*.json
+!scripts/observability/state/.gitkeep
+scripts/prompt-generator/state/
+
