@@ -3,6 +3,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
   db, collection, getDocs, query, orderBy, limit, onSnapshot
 } from '../../scripts/firebase.js';
+import { injectTenantFilter } from '../../shared/tenant-query.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
 
 const $ = id => document.getElementById(id);
@@ -53,11 +54,11 @@ window.metaAcao = metaAcao;
   if (!podeVisualizar('auditoria')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
 
   try {
-    const snap = await getDocs(collection(db, 'perfis_operacionais'));
+    const snap = await getDocs(query(collection(db, 'perfis_operacionais'), ...injectTenantFilter([])));
     perfis = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch {}
   try {
-    const snap = await getDocs(collection(db, 'usuarios'));
+    const snap = await getDocs(query(collection(db, 'usuarios'), ...injectTenantFilter([])));
     usuarios = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch {}
 
@@ -66,7 +67,7 @@ window.metaAcao = metaAcao;
 
   // Listener em tempo real
   onSnapshot(
-    query(collection(db, COL_AUDITORIA), orderBy('timestamp', 'desc'), limit(500)),
+    query(collection(db, COL_AUDITORIA), ...injectTenantFilter([]), orderBy('timestamp', 'desc'), limit(500)),
     (snap) => {
       logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderDashboard();
@@ -102,7 +103,7 @@ function setupUI() {
 // ── Carregar dados iniciais ────────────────────────────────────────
 async function carregarLogs() {
   try {
-    const snap = await getDocs(query(collection(db, COL_AUDITORIA), orderBy('timestamp', 'desc'), limit(500)));
+    const snap = await getDocs(query(collection(db, COL_AUDITORIA), ...injectTenantFilter([]), orderBy('timestamp', 'desc'), limit(500)));
     logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { logs = []; }
   renderDashboard();

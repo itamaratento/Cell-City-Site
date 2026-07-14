@@ -4,7 +4,8 @@ Etapa 10 da refatoração modular: alarme configurável de chegada de nova OS
 (Service Worker, notificações, Wake Lock, janela flutuante).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, doc, setDoc, collection, onSnapshot } from "../../scripts/firebase.js";
+import { db, doc, setDoc, collection, onSnapshot, query } from "../../scripts/firebase.js";
+import { injectTenantFilter } from '../../shared/tenant-query.js';
 import { dashboardShared } from './dashboard-state.js';
 
 export const dashboardAlarmeOsMixin = {
@@ -605,9 +606,9 @@ export const dashboardAlarmeOsMixin = {
       }
 
       try {
-        const { onSnapshot, collection } = await import('../../scripts/firebase.js');
+        const { onSnapshot, collection, query } = await import('../../scripts/firebase.js');
 
-        const ordersRef = collection(db, 'os');
+        const ordersRef = query(collection(db, 'os'), ...injectTenantFilter([]));
 
         if (unsubscribeOS) unsubscribeOS();
 

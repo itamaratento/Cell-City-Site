@@ -38,6 +38,7 @@ import {
   db, collection, addDoc, doc, setDoc, updateDoc, getDoc,
   query, orderBy, onSnapshot, serverTimestamp, limit
 } from '../../scripts/firebase.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { criarContaSecundaria, redefinirSenhaSecundaria, enviarResetPorEmail } from './firebase-secondary.js';
 import { getApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
@@ -144,7 +145,7 @@ window.__upFecharModal = fecharModal;
 
 async function registrarAuditoria(acao, alvoUid, alvoNome, detalhes) {
   try {
-    await addDoc(collection(db, 'auditoria_usuarios_permissoes'), {
+    await addDoc(collection(db, 'auditoria_usuarios_permissoes'), tData({
       acao,
       admin_uid: getUid(),
       admin_nome: getNome(),
@@ -152,7 +153,7 @@ async function registrarAuditoria(acao, alvoUid, alvoNome, detalhes) {
       alvo_nome: alvoNome || null,
       detalhes: detalhes || null,
       timestamp: serverTimestamp()
-    });
+    }));
   } catch (e) {
     console.error('[usuarios-permissoes] Falha ao registrar auditoria', e);
   }
@@ -367,7 +368,7 @@ function setupTabs() {
 }
 
 function iniciarListeners() {
-  onSnapshot(query(collection(db, 'usuarios'), orderBy('nome_exibicao', 'asc')), (snap) => {
+  onSnapshot(query(collection(db, 'usuarios'), ...injectTenantFilter([]), orderBy('nome_exibicao', 'asc')), (snap) => {
     usuarios = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(u => u.perfil_operacional_id); // só usuários geridos por este módulo
@@ -375,7 +376,7 @@ function iniciarListeners() {
     renderDashboard();
   }, (err) => console.error('[usuarios-permissoes] listener usuarios:', err));
 
-  onSnapshot(collection(db, 'perfis_operacionais'), (snap) => {
+  onSnapshot(query(collection(db, 'perfis_operacionais'), ...injectTenantFilter([])), (snap) => {
     perfis = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
     renderPerfis();
     renderPermissoesSelect();
@@ -389,7 +390,7 @@ function iniciarListeners() {
     renderDashboard();
   }, (err) => console.error('[usuarios-permissoes] listener perfis:', err));
 
-  onSnapshot(query(collection(db, 'auditoria_usuarios_permissoes'), orderBy('timestamp', 'desc'), limit(300)), (snap) => {
+  onSnapshot(query(collection(db, 'auditoria_usuarios_permissoes'), ...injectTenantFilter([]), orderBy('timestamp', 'desc'), limit(300)), (snap) => {
     logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderLogs();
     renderDashboard();
@@ -538,7 +539,7 @@ function abrirFormUsuario(usuarioExistente) {
       } else {
         const senha = $('uf-senha').value;
         const uid = await criarContaSecundaria(email, senha);
-        await setDoc(doc(db, 'usuarios', uid), {
+        await setDoc(doc(db, 'usuarios', uid), tData({
           email, nome, nome_exibicao: nome, setor, telefone, observacao,
           perfil_operacional_id: perfilId,
           perfil: kernelPerfilPara(perfilId),
@@ -546,7 +547,7 @@ function abrirFormUsuario(usuarioExistente) {
           criado_por: getUid(),
           ultima_alteracao: serverTimestamp(),
           createdAt: serverTimestamp()
-        }, { merge: true });
+        }), { merge: true });
         await registrarAuditoria('usuario_criado', uid, nome, { perfil: perfilId });
         fecharModal();
         abrirModal('Conta criada', `
@@ -700,10 +701,10 @@ function abrirFormPerfil(perfilExistente) {
         await registrarAuditoria('perfil_editado', null, nome);
       } else {
         const id = nome.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || ('perfil-' + Date.now());
-        await setDoc(doc(db, 'perfis_operacionais', id), {
+        await setDoc(doc(db, 'perfis_operacionais', id), tData({
           nome, descricao, sistema: false, ativo: true, permissoes: matrizVazia(true),
           criadoEm: serverTimestamp(), criadoPor: getUid(), atualizadoEm: serverTimestamp()
-        });
+        }));
         await registrarAuditoria('perfil_criado', null, nome);
       }
       toast('Perfil salvo.');

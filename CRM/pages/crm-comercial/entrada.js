@@ -6,6 +6,7 @@ import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-util
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeCriar } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { tData } from '../../shared/tenant-query.js';
 
 // ── Status / Destino ──────────────────────────────────────────
 const STATUSES = [
@@ -314,11 +315,11 @@ async function linkOuCriarCliente(phone, nome, leadId) {
     return existente.id;
   }
   const { phone: telCanon, phoneDigits: chave } = canonicalizePhone(phone);
-  await setDoc(doc(db, 'clientes', chave), {
+  await setDoc(doc(db, 'clientes', chave), tData({
     name: nome, phone: telCanon, phoneDigits: chave, history: [], crmLeads: [leadId],
     cpf: '', email: '', endereco: '', obsCliente: '',
     createdAt: new Date().toISOString(), origem: 'crm'
-  });
+  }));
   return chave;
 }
 
@@ -366,7 +367,7 @@ window.submitEntrada = async function(e) {
       data.osConvertidoEm = serverTimestamp();
     }
 
-    const ref    = await addDoc(collection(db, 'crm_leads'), data);
+    const ref    = await addDoc(collection(db, 'crm_leads'), tData(data));
     const leadId = ref.id;
 
     try { await linkOuCriarCliente(telefone, nome, leadId); }

@@ -4,7 +4,8 @@ Etapa 7 da refatoração modular: fechamento automático do Caixa e Meta Semanal
 (lê caixa_lancamentos).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs } from "../../scripts/firebase.js";
+import { db, collection, getDocs, query } from "../../scripts/firebase.js";
+import { injectTenantFilter } from "../../shared/tenant-query.js";
 
 export const dashboardCaixaMixin = {
   // ===== FECHAMENTO AUTOMÁTICO DO CAIXA =====
@@ -63,7 +64,7 @@ export const dashboardCaixaMixin = {
       const numSem   = _weekNum(now);
 
       // Lê todos os lançamentos via SDK (autenticado)
-      const snap = await getDocs(collection(db, 'caixa_lancamentos'));
+      const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), ...injectTenantFilter([])));
 
       let lucroAtual = 0;
       // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }

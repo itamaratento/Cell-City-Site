@@ -701,11 +701,11 @@
     if (!dbx || !FB || !FB.setDoc) { console.warn('[Alertas] Firestore indisponível.'); return; }
     var key = it.osId + '_' + it.prazo;
     if (contatosFeitos.has(key)) { recompute(); return; }
-    FB.setDoc(FB.doc(dbx, 'posvenda_contatos', key), {
+    FB.setDoc(FB.doc(dbx, 'posvenda_contatos', key), (window.ccTenant ? window.ccTenant.tData : Object)({
       osId: it.osId, clientName: it.clientName || '', phone: it.phone || '', model: it.model || '',
       prazo: it.prazo, emoji: '✅', resultado: 'Contato realizado (via Painel de Alertas)',
       dataContato: new Date().toISOString(), createdAt: FB.serverTimestamp()
-    }).then(function () { contatosFeitos.add(key); recompute(); })
+    })).then(function () { contatosFeitos.add(key); recompute(); })
       .catch(function (e) { console.warn('[Alertas] erro:', e && e.message); alert('Não foi possível registrar.'); });
   }
 
@@ -886,12 +886,12 @@
       var it = ultimosPv.find(function (x) { return String(x.osId) === String(osId) && String(x.prazo) === String(prazo); });
       var fkey = osId + '_' + prazo;
       if (contatosFeitos.has(fkey)) return;
-      FB.setDoc(FB.doc(db, 'posvenda_contatos', fkey), {
+      FB.setDoc(FB.doc(db, 'posvenda_contatos', fkey), (window.ccTenant ? window.ccTenant.tData : Object)({
         osId: osId, clientName: (it && it.clientName) || '', phone: (it && it.phone) || '',
         model: (it && it.model) || '', prazo: prazo, emoji: '👁️',
         resultado: 'Visualizado (sem ação imediata)',
         dataContato: new Date().toISOString(), createdAt: FB.serverTimestamp()
-      }).catch(function (e) { console.warn('[Alertas] erro pv visto:', e && e.message); });
+      })).catch(function (e) { console.warn('[Alertas] erro pv visto:', e && e.message); });
     } else {
       var osId2 = key.split('|')[0];
       if (!osId2) return;
@@ -967,20 +967,20 @@
     var db = window.dbFirestore, FB = window.FirebaseFirestore;
     if (!db || !FB) return;
     try {
-      FB.onSnapshot(FB.collection(db, 'os'), function (snap) {
+      FB.onSnapshot(FB.query(FB.collection(db, 'os'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         osDocs = []; snap.forEach(function (d) { var os = d.data(); os._id = d.id; osDocs.push(os); }); recompute();
       }, function (err) { console.warn('[Alertas] listener os:', err && err.message); });
 
-      FB.onSnapshot(FB.collection(db, 'posvenda_contatos'), function (snap) {
+      FB.onSnapshot(FB.query(FB.collection(db, 'posvenda_contatos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         contatosFeitos = new Set();
         snap.forEach(function (d) { var c = d.data(); if (c.ativo === false) return; contatosFeitos.add(c.osId + '_' + c.prazo); }); recompute();
       }, function (err) { console.warn('[Alertas] listener pv:', err && err.message); });
 
-      FB.onSnapshot(FB.collection(db, 'agendamentos'), function (snap) {
+      FB.onSnapshot(FB.query(FB.collection(db, 'agendamentos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         agDocs = []; snap.forEach(function (d) { var a = d.data(); a._id = d.id; agDocs.push(a); }); recompute();
       }, function (err) { console.warn('[Alertas] listener ag:', err && err.message); });
 
-      FB.onSnapshot(FB.collection(db, 'solicitacoes_diagnostico'), function (snap) {
+      FB.onSnapshot(FB.query(FB.collection(db, 'solicitacoes_diagnostico'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         diagDocs = []; snap.forEach(function (d) { var s = d.data(); s._id = d.id; diagDocs.push(s); }); recompute();
       }, function (err) { console.warn('[Alertas] listener diag:', err && err.message); });
 
@@ -1135,7 +1135,12 @@
       for (var i = 0; i < COLECOES.length; i++) {
         var col = COLECOES[i];
         try {
-          var snap = await FB.getDocs(FB.collection(db, col));
+          // PS-6: exporta só os dados da empresa (pre_os fica integral:
+          // docs criados por visitantes anônimos não têm empresa_id)
+          var colRef = (col === 'pre_os' || !window.ccTenant)
+            ? FB.collection(db, col)
+            : FB.query(FB.collection(db, col), ...window.ccTenant.injectTenantFilter([]));
+          var snap = await FB.getDocs(colRef);
           data[col] = [];
           snap.forEach(function (d) { var obj = d.data(); obj._id = d.id; data[col].push(obj); });
         } catch (e) {
@@ -1171,14 +1176,14 @@
       localStorage.setItem('cc_bk_' + tipo, slot);
 
       try {
-        await FB.addDoc(FB.collection(db, 'backup_logs'), {
+        await FB.addDoc(FB.collection(db, 'backup_logs'), (window.ccTenant ? window.ccTenant.tData : Object)({
           tipo: tipo, slot: slot,
           dataISO: agora.toISOString(),
           data: agora.toLocaleDateString('pt-BR'),
           hora: agora.toLocaleTimeString('pt-BR'),
           totalDocs: totalDocs, arquivo: nome,
           colecoes: COLECOES,
-        });
+        }));
       } catch (e) { console.warn('[Backup] log Firestore falhou:', e.message); }
 
       setStatus('✅ ' + nome + '\n' + totalDocs + ' documentos exportados', 'ok');

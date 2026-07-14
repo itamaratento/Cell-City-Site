@@ -47,3 +47,10 @@ export function tData(data) {
   if (!tenantId) return { ...data };
   return { ...data, [TENANT_FIELD]: tenantId };
 }
+
+// Globais para scripts inline não-module (ex.: dashboard/index.html usa
+// window.FirebaseFirestore) — mesmo padrão do firebase.js. Carregado
+// via kernel.js → tenant-provider.js → aqui.
+if (typeof window !== 'undefined') {
+  window.ccTenant = { injectTenantFilter, tData, getTenantFieldValue };
+}

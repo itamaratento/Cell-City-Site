@@ -19,6 +19,9 @@
 
 import { setTenant, tryRestoreTenant, setTenantFiltersEnabled } from './tenant-context.js';
 import { resolveTenantFromUser, getTenantConfig, DEFAULT_TENANT_ID } from './tenant-resolver.js';
+// Importado pelo efeito colateral: expõe window.ccTenant para os scripts
+// inline não-module (dashboard/index.html) já na carga do kernel.
+import './tenant-query.js';
 
 export async function initTenant(ctx, empresaId) {
   if (!ctx || !ctx.uid) {

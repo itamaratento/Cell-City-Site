@@ -12,8 +12,9 @@
 //   • cc_lixeira      — itens excluídos (retenção 30 dias)
 //   • cc_gdrive_logs  — auditoria (ação, módulo, apelido, data/hora)
 // ============================================================
-import { db, collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp }
+import { db, collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, query }
     from "../scripts/firebase.js";
+import { injectTenantFilter, tData } from './tenant-query.js';
 
 export const COL_LIXEIRA = 'cc_lixeira';
 export const COL_LOGS = 'cc_gdrive_logs';
@@ -35,7 +36,7 @@ function apelidoOuPadrao() { return getApelido() || 'Dispositivo não identifica
 //  acao: 'exclusao' | 'exclusao_definitiva' | 'restauracao' | 'reenvio' | ...
 export async function registrarLog(acao, info = {}) {
     try {
-        await addDoc(collection(db, COL_LOGS), {
+        await addDoc(collection(db, COL_LOGS), tData({
             acao,
             modulo: info.modulo || '',
             registroId: info.registroId || '',
@@ -43,7 +44,7 @@ export async function registrarLog(acao, info = {}) {
             detalhe: info.detalhe || '',
             apelido: apelidoOuPadrao(),
             em: serverTimestamp()
-        });
+        }));
     } catch (e) { console.warn('cc-sync: falha ao registrar log', e); }
 }
 
@@ -55,7 +56,7 @@ function lixeiraDocId(modulo, registroId) { return `${modulo}__${registroId}`; }
 export async function enviarParaLixeira(modulo, registro, extra = {}) {
     const registroId = registro.id || registro.registroId || '';
     try {
-        await setDoc(doc(db, COL_LIXEIRA, lixeiraDocId(modulo, registroId)), {
+        await setDoc(doc(db, COL_LIXEIRA, lixeiraDocId(modulo, registroId)), tData({
             modulo,
             registroId,
             titulo: registro.titulo || registro.defeito || registro.nome || '(sem título)',
@@ -66,14 +67,14 @@ export async function enviarParaLixeira(modulo, registro, extra = {}) {
             excluidoEm: new Date().toISOString(),
             excluidoEmTs: serverTimestamp(),
             ...extra
-        });
+        }));
         return true;
     } catch (e) { console.warn('cc-sync: falha ao enviar para lixeira', e); return false; }
 }
 
 export async function listarLixeira() {
     try {
-        const snap = await getDocs(collection(db, COL_LIXEIRA));
+        const snap = await getDocs(query(collection(db, COL_LIXEIRA), ...injectTenantFilter([])));
         const out = [];
         snap.forEach(d => out.push(Object.assign({ _docId: d.id }, d.data())));
         return out.sort((a, b) => (b.excluidoEm || '').localeCompare(a.excluidoEm || ''));

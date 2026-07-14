@@ -6,6 +6,7 @@ Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sem
 ============================================ */
 import { db, doc, setDoc, serverTimestamp, onSnapshot } from "../../scripts/firebase.js";
 import { podeVisualizar } from '../../shared/permissoes.js';
+import { tData } from '../../shared/tenant-query.js';
 import { RBAC_CARD_PARA_MODULO_ID, dashboardShared } from './dashboard-state.js';
 
 export const dashboardUiMixin = {
@@ -84,11 +85,11 @@ export const dashboardUiMixin = {
       saveTimer = setTimeout(async () => {
         setStatus('salvando...');
         try {
-          await setDoc(docRef, {
+          await setDoc(docRef, tData({
             conteudo:    textarea.value,
             atualizadoEm: serverTimestamp(),
             userId: dashboardShared.uid
-          });
+          }));
           setStatus('✓ salvo');
         } catch { setStatus('⚠ erro ao salvar'); }
       }, 1000);

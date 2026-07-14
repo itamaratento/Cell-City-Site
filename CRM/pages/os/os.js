@@ -1,5 +1,6 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js?v=20260628";
+import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js?v=20260628";
+import { injectTenantFilter, tData } from "../../shared/tenant-query.js";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
@@ -438,19 +439,19 @@ let localCounter = 0;
 
 const DB = {
     getOS() { return localOS; },
-    async addOS(osData) { localOS.unshift(osData); await setDoc(doc(db, "os", osData.id), osData); },
+    async addOS(osData) { localOS.unshift(osData); await setDoc(doc(db, "os", osData.id), tData(osData)); },
     async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await updateDoc(doc(db, "os", osData.id), osData); },
     async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await deleteDoc(doc(db, "os", id)); },
     getClients() { return localClients; },
-    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await setDoc(doc(db, "clientes", clientData.phoneDigits || clientData.phone), clientData); },
+    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await setDoc(doc(db, "clientes", clientData.phoneDigits || clientData.phone), tData(clientData)); },
     getCounter() { return localCounter; },
     async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
         try {
                     localOS = []; localClients = []; localCounter = 0;
-            const osSnap = await getDocs(collection(db, "os"));
+            const osSnap = await getDocs(query(collection(db, "os"), ...injectTenantFilter([])));
             localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            const clientSnap = await getDocs(collection(db, "clientes"));
+            const clientSnap = await getDocs(query(collection(db, "clientes"), ...injectTenantFilter([])));
             localClients = clientSnap.docs.map(d => d.data());
             const counterSnap = await getDocs(collection(db, "metadata"));
             counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });
@@ -727,7 +728,7 @@ async function runAutomacoesOS(os) {
         const textoNote = `09:00 🔔 Retorno OS: ${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`;
         if (!notasExist.some(n => (n.texto || n) === textoNote)) {
             const base = snap.exists() ? snap.data() : {};
-            await setDoc(agRef, {
+            await setDoc(agRef, tData({
                 data:                dataKey,
                 notas:               [...notasExist, { texto: textoNote, concluido: false }],
                 cor:                 base.cor || 'amarelo',
@@ -738,7 +739,7 @@ async function runAutomacoesOS(os) {
                 recorrenciaPararEm:  base.recorrenciaPararEm || '',
                 textoCor:            base.textoCor || 'preto',
                 atualizadoEm:        serverTimestamp()
-            });
+            }));
         }
     } catch (e) { console.warn('⚠️ [Automação] Lembrete não criado:', e); }
 
@@ -746,7 +747,7 @@ async function runAutomacoesOS(os) {
     const valorTotal = (os.valor || 0) + (os.valorCartao || 0);
     if (valorTotal > 0) {
         try {
-            await setDoc(doc(db, 'financeiro_receber', `os_${os.id}_${Date.now()}`), {
+            await setDoc(doc(db, 'financeiro_receber', `os_${os.id}_${Date.now()}`), tData({
                 descricao:  `${os.id} — ${os.clientName} (${[os.brand, os.model].filter(Boolean).join(' ')})`,
                 vencimento: new Date().toISOString().slice(0, 10),
                 valor:      valorTotal,
@@ -755,7 +756,7 @@ async function runAutomacoesOS(os) {
                 origem:     'os',
                 osId:       os.id,
                 atualizadoEm: serverTimestamp()
-            });
+            }));
         } catch (e) { console.warn('⚠️ [Automação] Financeiro não registrado:', e); }
     }
 }
@@ -1252,7 +1253,7 @@ function addPhotoToOS() {
     input.click();
 }
 
-async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); if(currentOS.valor && currentOS.valor > 0 && confirm(`Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`)) { try { await setDoc(doc(collection(db, 'caixa_lancamentos')), { tipo:'entrada', descricao:'OS '+(currentOS.id||'')+' - '+ (currentOS.clientName||'') + ' - ' + (currentOS.model||''), categoria:'Vendas', valor:(parseFloat(currentOS.valor)||0), custo:0, lucro:(parseFloat(currentOS.valor)||0), data:new Date().toISOString().slice(0,10), dataISO:new Date().toISOString(), ano:new Date().getFullYear(), criadoEm:serverTimestamp(), osId:currentOS.id }); showToast('💰 Pagamento registrado no Caixa!'); } catch(e) { showToast('Erro ao registrar pagamento'); console.error(e); } } }
+async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); if(currentOS.valor && currentOS.valor > 0 && confirm(`Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`)) { try { await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({ tipo:'entrada', descricao:'OS '+(currentOS.id||'')+' - '+ (currentOS.clientName||'') + ' - ' + (currentOS.model||''), categoria:'Vendas', valor:(parseFloat(currentOS.valor)||0), custo:0, lucro:(parseFloat(currentOS.valor)||0), data:new Date().toISOString().slice(0,10), dataISO:new Date().toISOString(), ano:new Date().getFullYear(), criadoEm:serverTimestamp(), osId:currentOS.id })); showToast('💰 Pagamento registrado no Caixa!'); } catch(e) { showToast('Erro ao registrar pagamento'); console.error(e); } } }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
@@ -1478,7 +1479,7 @@ async function salvarLembreteOS() {
     try {
         const novoRef = doc(collection(db, 'alertas_usuario'));
         const agora = new Date().toISOString();
-        await setDoc(novoRef, {
+        await setDoc(novoRef, tData({
             id: novoRef.id,
             titulo,
             descricao: desc || '',
@@ -1495,7 +1496,7 @@ async function salvarLembreteOS() {
             criadoEmISO: agora,
             atualizadoEm: serverTimestamp(),
             atualizadoEmISO: agora,
-        });
+        }));
         showToast('🔔 Lembrete criado na Central de Alertas!');
         document.getElementById('lembrete-os-overlay').classList.remove('active');
     } catch (err) {
@@ -2259,7 +2260,7 @@ async function saveClientEdit(oldPhone) {
         const updated = { ...oldClient, name: n, phone: pCanon, phoneDigits: pDigits };
         if (pDigits !== oldDocId) {
             // Telefone mudou: doc-ID precisa mudar junto (doc-ID = phoneDigits canônico).
-            await setDoc(doc(db, "clientes", pDigits), updated, { merge: true });
+            await setDoc(doc(db, "clientes", pDigits), tData(updated), { merge: true });
             await deleteDoc(doc(db, "clientes", oldDocId));
         } else {
             await updateDoc(doc(db, "clientes", oldDocId), { name: n, phone: pCanon, phoneDigits: pDigits });

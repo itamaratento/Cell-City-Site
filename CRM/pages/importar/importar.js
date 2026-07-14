@@ -1,9 +1,10 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
-    db, collection, doc, setDoc, getDocs, serverTimestamp
+    db, collection, doc, setDoc, getDocs, serverTimestamp, query
 } from "../../scripts/firebase.js";
 import { normalizePhoneDigits, maskPhone } from "../../shared/phone-utils.js";
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 
 window.handleFile        = handleFile;
 window.iniciarImportacao = iniciarImportacao;
@@ -199,9 +200,9 @@ async function importarCategorias(categorias, stats) {
         const id   = String(fixed.id || Date.now());
         const nome = fixed.description || fixed.name || fixed.nome || `Categoria ${id}`;
         try {
-            await setDoc(doc(db, "categorias_produtos", id), {
+            await setDoc(doc(db, "categorias_produtos", id), tData({
                 id, nome, createdAt: serverTimestamp()
-            }, { merge: true });
+            }), { merge: true });
             catMap[id] = nome.trim();
             stats.categoriasImportadas++;
         } catch (e) { erros.push(`Categoria ${id}: ${e.message}`); }
@@ -219,7 +220,7 @@ async function importarClientes(clientes, stats) {
     // Mapeia clientes já existentes por telefone (dígitos canônicos) → doc-ID, para deduplicar.
     const existentes = {};
     try {
-        const snap = await getDocs(collection(db, "clientes"));
+        const snap = await getDocs(query(collection(db, "clientes"), ...injectTenantFilter([])));
         snap.forEach(d => {
             const data = d.data();
             const digits = data.phoneDigits || normalizePhoneDigits(data.phone || d.id);
@@ -254,7 +255,7 @@ async function importarClientes(clientes, stats) {
         }
 
         try {
-            await setDoc(doc(db, "clientes", docId), payload, { merge: true });
+            await setDoc(doc(db, "clientes", docId), tData(payload), { merge: true });
 
             clienteMap[idOrig] = docId;
             if (digits) existentes[digits] = docId;
@@ -271,7 +272,7 @@ async function importarClientes(clientes, stats) {
 async function importarProdutos(produtos, catMap, stats) {
     const existentes = {};
     try {
-        const snap = await getDocs(collection(db, "estoque_produtos"));
+        const snap = await getDocs(query(collection(db, "estoque_produtos"), ...injectTenantFilter([])));
         snap.forEach(d => {
             const data = d.data();
             const chave = (data.nome || data.description || '').toLowerCase();
@@ -310,7 +311,7 @@ async function importarProdutos(produtos, catMap, stats) {
         }
 
         try {
-            await setDoc(doc(db, "estoque_produtos", docId), payload, { merge: true });
+            await setDoc(doc(db, "estoque_produtos", docId), tData(payload), { merge: true });
 
             if (isNovo) { existentes[chave] = docId; stats.produtosNovos++; }
             else stats.produtosAtualizados++;
@@ -333,12 +334,12 @@ async function importarVendas(vendas, clienteMap, stats) {
 
         try {
             // Registro histórico
-            await setDoc(doc(db, "vendas_importadas", `beep_${idOrig}`), {
+            await setDoc(doc(db, "vendas_importadas", `beep_${idOrig}`), tData({
                 id: `beep_${idOrig}`, idOriginal: idOrig,
                 clienteId, dataISO, total,
                 importadoDe: 'beepstart',
                 createdAt: serverTimestamp()
-            }, { merge: true });
+            }), { merge: true });
 
             // Lançamento no Caixa (aparece no módulo e na Meta Semanal)
             if (dataISO && total > 0) {
@@ -348,7 +349,7 @@ async function importarVendas(vendas, clienteMap, stats) {
                 const mes     = `${dt.getFullYear()}-${pad(dt.getMonth()+1)}`;
                 const horario = `${pad(dt.getHours())}:${pad(dt.getMinutes())}:${pad(dt.getSeconds())}`;
 
-                await setDoc(doc(db, "caixa_lancamentos", `beep_venda_${idOrig}`), {
+                await setDoc(doc(db, "caixa_lancamentos", `beep_venda_${idOrig}`), tData({
                     tipo: "entrada",
                     descricao: `Venda #${idOrig}`,
                     categoria: "Venda Beepstart",
@@ -366,7 +367,7 @@ async function importarVendas(vendas, clienteMap, stats) {
                     status:     "ativo",
                     importadoDe: "beepstart",
                     createdAt:  serverTimestamp()
-                }, { merge: true });
+                }), { merge: true });
             }
 
             stats.vendasImportadas++;

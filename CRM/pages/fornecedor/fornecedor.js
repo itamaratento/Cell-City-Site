@@ -1,7 +1,8 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
-import { db, collection, getDocs, doc, setDoc, deleteDoc } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, query } from '../../scripts/firebase.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { FornecedorComprasRepository as FornecedorCompras, FornecedorTendenciasRepository as FornecedorTendencias } from '../../repositories/fornecedor.repository.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 import { escHtml } from '../../shared/sanitize.js';
@@ -291,7 +292,7 @@ function fecharFormTendencia() {
 let fornecedoresCache = [];
 async function carregarFornecedores() {
     try {
-        const snap = await getDocs(collection(db, COL_FORN));
+        const snap = await getDocs(query(collection(db, COL_FORN), ...injectTenantFilter([])));
         fornecedoresCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderFornecedores(fornecedoresCache);
     } catch { fornecedoresCache = []; renderFornecedores([]); }
@@ -346,7 +347,7 @@ async function salvarFornecedor() {
     if (!dados.nome) { toast('⚠ Informe o nome do fornecedor'); return; }
     const id = document.getElementById('ff-salvar').dataset.id || `forn_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_FORN, id), { ...dados, atualizadoEm: serverTimestamp() });
+        await setDoc(doc(db, COL_FORN, id), tData({ ...dados, atualizadoEm: serverTimestamp() }));
         toast(id ? '✏️ Fornecedor atualizado!' : '✅ Fornecedor salvo!');
         fecharFormFornecedor();
         await carregarFornecedores();

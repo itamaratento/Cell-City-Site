@@ -6,6 +6,7 @@ import { normalizePhoneDigits, canonicalizePhone } from '../../shared/phone-util
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 
 // ── Status do funil ──────────────────────────────────────────
 const STATUS = [
@@ -107,7 +108,7 @@ async function linkOuCriarCliente(phone, nome, leadId) {
     return existente.id;
   } else {
     const { phone: telCanon, phoneDigits: chave } = canonicalizePhone(phone);
-    await setDoc(doc(db, 'clientes', chave), {
+    await setDoc(doc(db, 'clientes', chave), tData({
       name:       nome,
       phone:      telCanon,
       phoneDigits: chave,
@@ -119,7 +120,7 @@ async function linkOuCriarCliente(phone, nome, leadId) {
       obsCliente: '',
       createdAt:  new Date().toISOString(),
       origem:     'crm'
-    });
+    }));
     return chave;
   }
 }
@@ -151,7 +152,7 @@ async function checkAlertasSemResposta() {
         const snap = await getDoc(doc(db, ALERTAS_COL, alertId));
         if (snap.exists()) continue;
         const hoje = new Date().toISOString().substring(0, 10);
-        await setDoc(doc(db, ALERTAS_COL, alertId), {
+        await setDoc(doc(db, ALERTAS_COL, alertId), tData({
           id:              alertId,
           titulo:          `🔔 CRM — ${lead.nome} sem retorno (${dias} dias)`,
           descricao:       `Lead em "${getStatus(lead.status).label}" há ${Math.floor(diasPassados)} dia(s). Aparelho: ${lead.aparelho || '—'}.`,
@@ -166,7 +167,7 @@ async function checkAlertasSemResposta() {
           leadId:          lead.id,
           criadoEmISO:     new Date().toISOString(),
           atualizadoEmISO: new Date().toISOString()
-        });
+        }));
       } catch(e) { console.warn('Erro ao criar alerta CRM:', e); }
     }
   }
@@ -175,7 +176,7 @@ async function checkAlertasSemResposta() {
 // ── Firestore ────────────────────────────────────────────────
 function startListener() {
   if (unsub) unsub();
-  const q = query(collection(db, 'crm_leads'), orderBy('criadoEm', 'desc'));
+  const q = query(collection(db, 'crm_leads'), ...injectTenantFilter([]), orderBy('criadoEm', 'desc'));
   unsub = onSnapshot(q, snap => {
     leads = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderAll();
@@ -463,7 +464,7 @@ window.programarRecontato = async function(id, dias) {
   const alertId = `crm_recontato_${id}_${dias}d_${dataISO}`;
 
   try {
-    await setDoc(doc(db, ALERTAS_COL, alertId), {
+    await setDoc(doc(db, ALERTAS_COL, alertId), tData({
       id:              alertId,
       titulo:          `🔄 Remarketing — ${lead.nome} (${dias} dias)`,
       descricao:       `Reativar contato. Aparelho: ${lead.aparelho || '—'} | Serviço: ${lead.servico || '—'} | Motivo da perda: ${getMotivo(lead.motivoPerda)}`,
@@ -478,7 +479,7 @@ window.programarRecontato = async function(id, dias) {
       leadId:          id,
       criadoEmISO:     new Date().toISOString(),
       atualizadoEmISO: new Date().toISOString()
-    });
+    }));
     showToast(`⏰ Recontato agendado para ${dataRecontato.toLocaleDateString('pt-BR')}`);
   } catch(e) {
     console.error(e);
@@ -780,12 +781,12 @@ window.submitForm = async function(e) {
       await updateDoc(doc(db, 'crm_leads', editingId), { ...data, atualizadoEm: serverTimestamp() });
     } else {
       const preOsId = await gerarPreOsId();
-      const ref = await addDoc(collection(db, 'crm_leads'), {
+      const ref = await addDoc(collection(db, 'crm_leads'), tData({
         ...data,
         preOsId,
         criadoEm:     serverTimestamp(),
         atualizadoEm: serverTimestamp()
-      });
+      }));
       leadId = ref.id;
     }
 
@@ -859,7 +860,7 @@ window.__templatesCache = () => templatesCache;
 
 async function carregarTemplates() {
   try {
-    const snap = await getDocs(collection(db, TEMPLATES_COL));
+    const snap = await getDocs(query(collection(db, TEMPLATES_COL), ...injectTenantFilter([])));
     templatesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { templatesCache = []; }
 }
@@ -924,7 +925,7 @@ window.abrirWhatsApp = function(id) {
 // ── Gerenciamento de Templates ─────────────────────────────────
 window.abrirGerenciarTemplates = async function() {
   if (!podeEditar('crm')) { showToast('❌ Sem permissão para gerenciar templates'); return; }
-  const snap = await getDocs(collection(db, TEMPLATES_COL));
+  const snap = await getDocs(query(collection(db, TEMPLATES_COL), ...injectTenantFilter([])));
   const templates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   let html = `<div class="modal-handle"></div>
     <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;">⚙️ Gerenciar Templates WhatsApp</h3>
@@ -975,7 +976,7 @@ window.salvarTemplate = async function(editId) {
       await updateDoc(doc(db, TEMPLATES_COL, editId), { nome, texto, atualizadoEm: serverTimestamp() });
       showToast('✅ Template atualizado');
     } else {
-      await addDoc(collection(db, TEMPLATES_COL), { nome, texto, criadoEm: serverTimestamp() });
+      await addDoc(collection(db, TEMPLATES_COL), tData({ nome, texto, criadoEm: serverTimestamp() }));
       showToast('✅ Template criado');
     }
     await carregarTemplates();

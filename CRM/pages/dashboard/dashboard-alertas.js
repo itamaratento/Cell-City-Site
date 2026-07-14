@@ -5,6 +5,7 @@ e o motor de geração de alertas (pós-venda, OS, meta, portal, avaliações).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
 import { db, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
+import { injectTenantFilter } from "../../shared/tenant-query.js";
 
 export const dashboardAlertasMixin = {
   // ===== AUTOATENDIMENTO =====
@@ -42,7 +43,7 @@ export const dashboardAlertasMixin = {
     if (!badge) return;
     const hoje0 = new Date(); hoje0.setHours(0, 0, 0, 0);
     try {
-      onSnapshot(collection(db, 'diario_registros'), snap => {
+      onSnapshot(query(collection(db, 'diario_registros'), ...injectTenantFilter([])), snap => {
         let vencidas = 0;
         snap.forEach(d => {
           const r = d.data();
@@ -69,7 +70,7 @@ export const dashboardAlertasMixin = {
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
   async _lerAgenda() {
     try {
-      const snap = await getDocs(collection(db, 'agenda'));
+      const snap = await getDocs(query(collection(db, 'agenda'), ...injectTenantFilter([])));
       const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -371,8 +372,8 @@ export const dashboardAlertasMixin = {
         });
       }
 
-      const osSnap = await getDocs(collection(db, 'os'));
-      const contatosSnap = await getDocs(collection(db, 'posvenda_contatos'));
+      const osSnap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
+      const contatosSnap = await getDocs(query(collection(db, 'posvenda_contatos'), ...injectTenantFilter([])));
 
       const contatosFeitos = new Set();
       contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
@@ -500,7 +501,7 @@ export const dashboardAlertasMixin = {
       // ===== PRIORIDADE 4 — PORTAL DO CLIENTE =====
       try {
         const portalMsgsSnap = await getDocs(
-          query(collection(db, 'mensagens_portal'), where('lida', '==', false))
+          query(collection(db, 'mensagens_portal'), ...injectTenantFilter([where('lida', '==', false)]))
         );
         const msgsNaoLidas = [];
         portalMsgsSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
@@ -538,7 +539,7 @@ export const dashboardAlertasMixin = {
       // ===== AVALIAÇÕES DO PORTAL =====
       try {
         const avaliacoesSnap = await getDocs(
-          query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(5))
+          query(collection(db, 'avaliacoes'), ...injectTenantFilter([]), orderBy('createdAt', 'desc'), limit(5))
         );
         const avaliacoesRecentes = [];
         avaliacoesSnap.forEach(d => avaliacoesRecentes.push({ id: d.id, ...d.data() }));
@@ -586,7 +587,7 @@ export const dashboardAlertasMixin = {
     // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
     try {
       const prontoSnap = await getDocs(
-        query(collection(db, 'os'), where('status', '==', 'concluido'))
+        query(collection(db, 'os'), ...injectTenantFilter([where('status', '==', 'concluido')]))
       );
       const prontos = [];
       prontoSnap.forEach(d => {
@@ -620,7 +621,7 @@ export const dashboardAlertasMixin = {
     // ===== ORÇAMENTOS SEM RESPOSTA =====
     try {
       const orcSnap = await getDocs(
-        query(collection(db, 'os'), where('status', 'in', ['orcamento', 'orcamento_enviado']))
+        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['orcamento', 'orcamento_enviado'])]))
       );
       const orcamentos = [];
       orcSnap.forEach(d => {

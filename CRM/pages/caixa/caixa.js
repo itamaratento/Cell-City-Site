@@ -7,6 +7,7 @@ import {
     onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 
 // ── Constantes ────────────────────────────────────────────────
 const COL_LANCAMENTOS = 'caixa_lancamentos';
@@ -610,7 +611,7 @@ function limparForm() {
 // ── Estoque: carregar cache ────────────────────────────────────
 async function carregarProdutosEstoque() {
     try {
-        const snap = await getDocs(collection(db, COL_ESTOQUE));
+        const snap = await getDocs(query(collection(db, COL_ESTOQUE), ...injectTenantFilter([])));
         return snap.docs.map(d => ({ id: d.id, ...d.data() }));
     } catch { return []; }
 }
@@ -754,10 +755,10 @@ window.salvarNovoProduto = async function () {
 
     const id = `prod_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_ESTOQUE, id), {
+        await setDoc(doc(db, COL_ESTOQUE, id), tData({
             nome, categoria: cat, quantidade: qty, quantidadeMinima: 1,
             venda, custo, atualizadoEm: serverTimestamp()
-        });
+        }));
         const novoProd = { id, nome, custo, venda, quantidade: qty };
         _cacheProdutos.push(novoProd);
         _produtoVinculado = novoProd;

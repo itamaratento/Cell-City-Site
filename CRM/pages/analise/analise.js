@@ -1,6 +1,7 @@
-import { db, collection, getDocs } from "../../scripts/firebase.js";
+import { db, collection, getDocs, query } from "../../scripts/firebase.js";
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
+import { injectTenantFilter } from '../../shared/tenant-query.js';
 
 // ── Estado
 let todos       = [];
@@ -15,7 +16,7 @@ const fmtK    = v => { const n=Number(v||0); return Math.abs(n)>=1000?`R$ ${(n/1
 
 // ── Firestore: lê todos os lançamentos
 async function carregar() {
-    const snap = await getDocs(collection(db, 'caixa_lancamentos'));
+    const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), ...injectTenantFilter([])));
     todos = snap.docs.map(d => {
         const data = d.data();
         return {

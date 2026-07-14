@@ -4,7 +4,8 @@ Etapa 8 da refatoração modular: índice de busca (OS, clientes, produtos) e
 renderização dos resultados.
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs } from "../../scripts/firebase.js";
+import { db, collection, getDocs, query } from "../../scripts/firebase.js";
+import { injectTenantFilter } from "../../shared/tenant-query.js";
 
 export const dashboardBuscaMixin = {
   setupGlobalSearch() {
@@ -71,7 +72,7 @@ export const dashboardBuscaMixin = {
 
       // ----- OS (abre a OS exata via deep-link #os-<id>) -----
       try {
-        const snap = await getDocs(collection(db, 'os'));
+        const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
         snap.forEach(d => {
           const o = { ...d.data() };
           const id = o.id || d.id;
@@ -88,7 +89,7 @@ export const dashboardBuscaMixin = {
 
       // ----- Clientes (abre a tela de Clientes do módulo OS) -----
       try {
-        const snap = await getDocs(collection(db, 'clientes'));
+        const snap = await getDocs(query(collection(db, 'clientes'), ...injectTenantFilter([])));
         snap.forEach(d => {
           const c = { ...d.data() };
           const phone = c.phone || d.id;
@@ -105,8 +106,8 @@ export const dashboardBuscaMixin = {
 
       // ----- Produtos (coleção dedicada + fallback) -----
       try {
-        let snap = await getDocs(collection(db, 'estoque_produtos'));
-        if (snap.empty) snap = await getDocs(collection(db, 'produtos'));
+        let snap = await getDocs(query(collection(db, 'estoque_produtos'), ...injectTenantFilter([])));
+        if (snap.empty) snap = await getDocs(query(collection(db, 'produtos'), ...injectTenantFilter([])));
         snap.forEach(d => {
           const p = { ...d.data() };
           const nome = p.nome || p.description || '—';

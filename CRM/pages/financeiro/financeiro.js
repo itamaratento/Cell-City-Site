@@ -1,4 +1,5 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query } from '../../scripts/firebase.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from '../../shared/sanitize.js';
@@ -63,9 +64,9 @@ document.querySelectorAll('[data-s2]').forEach(btn => {
 async function carregar() {
     try {
         const [sp, sf, sr] = await Promise.all([
-            getDocs(collection(db, COL_PAGAR)),
-            getDocs(collection(db, COL_FIXAS)),
-            getDocs(collection(db, COL_RECEBER))
+            getDocs(query(collection(db, COL_PAGAR), ...injectTenantFilter([]))),
+            getDocs(query(collection(db, COL_FIXAS), ...injectTenantFilter([]))),
+            getDocs(query(collection(db, COL_RECEBER), ...injectTenantFilter([])))
         ]);
         dadosPagar   = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
         dadosFixas   = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
@@ -233,7 +234,7 @@ async function marcarStatus(id, col, novoStatus) {
     if (!item) return;
     const atualizado = { ...item, status: novoStatus, [`${novoStatus}Em`]: hoje() };
     try {
-        await setDoc(doc(db, colecao, id), atualizado);
+        await setDoc(doc(db, colecao, id), tData(atualizado));
         if (col === 'pagar') {
             dadosPagar = dadosPagar.map(c => c.id === id ? atualizado : c);
             renderPagar(dadosPagar);
@@ -324,7 +325,7 @@ async function salvarPagar() {
     };
     const id = editandoId || `pag_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_PAGAR, id), dados);
+        await setDoc(doc(db, COL_PAGAR, id), tData(dados));
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
         fecharForm('form-pagar', 'btn-nova-pagar');
         await recarregar('pagar');
@@ -344,7 +345,7 @@ async function salvarFixa() {
     };
     const id = editandoId || `fix_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_FIXAS, id), dados);
+        await setDoc(doc(db, COL_FIXAS, id), tData(dados));
         toast(editandoId ? '✏️ Atualizado!' : '✅ Despesa fixa adicionada!');
         fecharForm('form-fixa', 'btn-nova-fixa');
         await recarregar('fixa');
@@ -365,7 +366,7 @@ async function salvarReceber() {
     };
     const id = editandoId || `rec_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_RECEBER, id), dados);
+        await setDoc(doc(db, COL_RECEBER, id), tData(dados));
         toast(editandoId ? '✏️ Atualizado!' : '✅ Conta adicionada!');
         fecharForm('form-receber', 'btn-nova-receber');
         await recarregar('receber');
@@ -383,7 +384,7 @@ async function recarregar(col) {
         const m = colMap[col];
         if (!m) return;
         // Otimização: reler apenas a coleção afetada (não todas as 3)
-        const sp = await getDocs(collection(db, m.col));
+        const sp = await getDocs(query(collection(db, m.col), ...injectTenantFilter([])));
         const arr = [];
         sp.forEach(d => arr.push({ id: d.id, ...d.data() }));
         if (m.calc) arr.forEach((c, i) => { arr[i] = calcStatus(c, m.calc); });
@@ -582,7 +583,7 @@ async function gerarDespesasDoMes() {
         if (dadosPagar.some(c => c.descricao === descricao && diaKey(c.vencimento) === mesKey)) continue;
 
         try {
-            await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${mesKey}`), {
+            await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${mesKey}`), tData({
                 descricao,
                 categoria: fixa.categoria || 'Outro',
                 vencimento: vencISO,
@@ -591,7 +592,7 @@ async function gerarDespesasDoMes() {
                 obs: `Gerado automaticamente de "${fixa.descricao}"`,
                 criadoEm: serverTimestamp(),
                 atualizadoEm: serverTimestamp()
-            });
+            }));
             count++;
         } catch(e) { console.warn('Erro ao gerar despesa fixa:', e); }
     }
@@ -688,7 +689,7 @@ let dadosCustom = {};      // {catId: [{id, descricao, valor, vencimento, status
 
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(collection(db, COL_CATS));
+        const snap = await getDocs(query(collection(db, COL_CATS), ...injectTenantFilter([])));
         categoriasCustom = [];
         snap.forEach(d => categoriasCustom.push({ id: d.id, ...d.data() }));
         categoriasCustom.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
@@ -890,7 +891,7 @@ document.getElementById('fin-cat-salvar').addEventListener('click', async () => 
     if (!nome) { document.getElementById('fin-cat-nome').focus(); return; }
     const id = `cat_${Date.now()}`;
     try {
-        await setDoc(doc(db, COL_CATS, id), { nome, criadoEm: serverTimestamp() });
+        await setDoc(doc(db, COL_CATS, id), tData({ nome, criadoEm: serverTimestamp() }));
         document.getElementById('fin-modal-cat').style.display = 'none';
         categoriasCustom.push({ id, nome });
         dadosCustom[id] = [];
@@ -926,7 +927,7 @@ let dadosFechamentos = {}; // {mesKey: {receita, despesa, saldo, ...}}
 
 async function carregarFechamentos() {
     try {
-        const snap = await getDocs(collection(db, COL_FECHAMENTOS));
+        const snap = await getDocs(query(collection(db, COL_FECHAMENTOS), ...injectTenantFilter([])));
         dadosFechamentos = {};
         snap.forEach(d => { dadosFechamentos[d.id] = { id: d.id, ...d.data() }; });
     } catch { dadosFechamentos = {}; }
@@ -978,7 +979,7 @@ async function fecharMes(mesKey) {
     };
 
     try {
-        await setDoc(doc(db, COL_FECHAMENTOS, mesKey), fechamento);
+        await setDoc(doc(db, COL_FECHAMENTOS, mesKey), tData(fechamento));
         dadosFechamentos[mesKey] = { id: mesKey, ...fechamento };
         toast(`✅ Mês ${label} fechado! Saldo: ${fmt(saldoFinal)}`);
 
@@ -992,12 +993,12 @@ async function fecharMes(mesKey) {
             const desc = `${fixa.descricao} (Fixa)`;
             if (dadosPagar.some(c => c.descricao === desc && diaKey(c.vencimento) === proxKey)) continue;
             try {
-                await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${proxKey}`), {
+                await setDoc(doc(db, COL_PAGAR, `fixa_${fixa.id}_${proxKey}`), tData({
                     descricao: desc, categoria: fixa.categoria || 'Outro',
                     vencimento: vencISO, valor: Number(fixa.valor) || 0,
                     status: 'pendente', obs: `Gerado no fechamento de ${mesKey}`,
                     criadoEm: serverTimestamp(), atualizadoEm: serverTimestamp()
-                });
+                }));
                 countFixas++;
             } catch(e) { console.warn('Erro ao gerar fixa pós-fechamento:', e); }
         }

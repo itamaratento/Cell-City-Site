@@ -1,4 +1,5 @@
 import { db, collection, getDocs, addDoc, query, orderBy, where, onSnapshot, serverTimestamp, limit } from '../../scripts/firebase.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo, getUid, getNome } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
@@ -43,7 +44,7 @@ let unsubscribeMsgs = null;
   meuNome = getNome() || 'Você';
 
   try {
-    const snap = await getDocs(collection(db, 'usuarios'));
+    const snap = await getDocs(query(collection(db, 'usuarios'), ...injectTenantFilter([])));
     usuarios = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(u => u.id !== meuUid && u.status !== 'inativo');
@@ -62,7 +63,7 @@ async function carregarConversas() {
   try {
     const q = query(
       collection(db, COL_MSGS),
-      where('participantes', 'array-contains', meuUid),
+      ...injectTenantFilter([where('participantes', 'array-contains', meuUid)]),
       orderBy('criadoEm', 'desc'),
       limit(200)
     );
@@ -138,7 +139,7 @@ function abrirConversa(uid) {
   // Listener em tempo real
   const q = query(
     collection(db, COL_MSGS),
-    where('participantes', 'array-contains', meuUid),
+    ...injectTenantFilter([where('participantes', 'array-contains', meuUid)]),
     orderBy('criadoEm', 'desc'),
     limit(1)
   );
@@ -173,14 +174,14 @@ async function enviarMsg() {
   input.value = '';
 
   try {
-    await addDoc(collection(db, COL_MSGS), {
+    await addDoc(collection(db, COL_MSGS), tData({
       de: meuUid,
       para: conversaAtiva,
       participantes: [meuUid, conversaAtiva],
       texto,
       lida: false,
       criadoEm: serverTimestamp()
-    });
+    }));
   } catch { toast('❌ Erro ao enviar mensagem.'); }
 }
 

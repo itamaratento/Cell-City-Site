@@ -135,11 +135,11 @@ window.Portal = {
         if (!this.session.telefoneDigits && this.session.telefone) {
           this.session.telefoneDigits = this._phoneDigits(this.session.telefone);
         }
-        console.log('[Portal] Sessão restaurada:', JSON.stringify(this.session));
-        console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
+        false && console.log('[Portal] Sessão restaurada:', JSON.stringify(this.session));
+        false && console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
 
         // Inicia listeners em tempo real para a sessão restaurada
-        console.log('[AUDIT:BOOT] Iniciando _listenOS() e _carregarMensagens() para sessão restaurada');
+        false && console.log('[AUDIT:BOOT] Iniciando _listenOS() e _carregarMensagens() para sessão restaurada');
         this._listenOS();
         this._carregarMensagens();
         this._carregarAgendamentos();
@@ -163,7 +163,7 @@ window.Portal = {
       const digitsAuto = this._phoneDigits(telAuto);
       const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
       if (!mesmoCliente) {
-        console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto);
+        portDebug && console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto);
         await this._autenticarComDigits(digitsAuto);
       }
       if (this.session) {
@@ -406,7 +406,7 @@ window.Portal = {
     try {
       const resp = await window.PortalFunctions.obterNomeCliente({ phoneDigits: digits });
       clientName = (resp.data && resp.data.name) || '';
-      console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
+      false && console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
     } catch (errCliente) {
       console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
     }
@@ -418,7 +418,7 @@ window.Portal = {
     console.log('[Portal] OSs encontradas (phoneDigits ==):', osCount);
     snapOS.forEach(d => {
       const data = d.data();
-      console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
+      false && console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
     });
 
     if (osCount === 0 && !clientName) {
@@ -436,9 +436,9 @@ window.Portal = {
       osCount
     };
     sessionStorage.setItem('portal_session', JSON.stringify(this.session));
-    console.log('[Portal] Sessão criada:', JSON.stringify(this.session));
-    console.log('[AUDIT:SESSION] telefone salvo na sessão:', JSON.stringify(this.session.telefone));
-    console.log('[AUDIT:SESSION] osCount do login (getDocs):', osCount);
+    false && console.log('[Portal] Sessão criada:', JSON.stringify(this.session));
+    false && console.log('[AUDIT:SESSION] telefone salvo na sessão:', JSON.stringify(this.session.telefone));
+    false && console.log('[AUDIT:SESSION] osCount do login (getDocs):', osCount);
 
     // Tracking de acesso (ETAPA 3)
     this._registrarEvento('acesso', {
@@ -505,18 +505,18 @@ window.Portal = {
     // Fallback para sessões antigas (restauradas do sessionStorage) que não têm
     // telefoneDigits ainda: recalcula a partir do telefone mascarado da sessão.
     const digits = this.session.telefoneDigits || this._phoneDigits(this.session.telefone);
-    console.log('[AUDIT:LISTENER] Iniciando listener com phoneDigits:', digits);
+    false && false && console.log('[AUDIT:LISTENER] Iniciando listener com phoneDigits:', digits);
     const q = query(collection(db, 'os'), where('phoneDigits', '==', digits));
     this.unsubscribeOS = onSnapshot(q, (snap) => {
-      console.log('[AUDIT:LISTENER] onSnapshot disparado! size:', snap.size);
-      console.log('[AUDIT:LISTENER] metadata.hasPendingWrites:', snap.metadata.hasPendingWrites);
+      false && console.log('[AUDIT:LISTENER] onSnapshot disparado! size:', snap.size);
+      false && console.log('[AUDIT:LISTENER] metadata.hasPendingWrites:', snap.metadata.hasPendingWrites);
       this.currentOS = [];
       snap.forEach(d => {
         const data = d.data();
-        console.log('[AUDIT:LISTENER:doc] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
+        false && console.log('[AUDIT:LISTENER:doc] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
         this.currentOS.push({ firestoreId: d.id, ...data });
       });
-      console.log('[AUDIT:LISTENER] currentOS.length após snapshot:', this.currentOS.length);
+      false && console.log('[AUDIT:LISTENER] currentOS.length após snapshot:', this.currentOS.length);
       // Se currentOS estiver vazio, logar aviso
       if (this.currentOS.length === 0) {
         console.warn('[AUDIT:LISTENER] *** ALERTA: listener retornou 0 documentos! phoneDigits usado:', digits);
@@ -534,7 +534,7 @@ window.Portal = {
       // tela nunca recebia a atualização ao vivo do aprovar/recusar orçamento.
       const hashParts = location.hash.replace(/^#\/?/, '').split('/');
       const route = hashParts[0];
-      console.log('[AUDIT:LISTENER] Rota atual:', route, '| hash:', location.hash);
+      false && console.log('[AUDIT:LISTENER] Rota atual:', route, '| hash:', location.hash);
       if (route === 'os') this.renderOSList();
       else if (route === 'os-detalhe') {
         const id = hashParts[1];
@@ -594,19 +594,19 @@ window.Portal = {
 
     const s = this.session;
     const os = this.currentOS;
-    console.log('[AUDIT:PAINEL] this.currentOS.length:', os?.length);
-    console.log('[AUDIT:PAINEL] this.session?.telefone:', JSON.stringify(s?.telefone));
-    console.log('[AUDIT:PAINEL] osCount do login:', s?.osCount);
+    false && console.log('[AUDIT:PAINEL] this.currentOS.length:', os?.length);
+    false && console.log('[AUDIT:PAINEL] this.session?.telefone:', JSON.stringify(s?.telefone));
+    false && console.log('[AUDIT:PAINEL] osCount do login:', s?.osCount);
     if (os?.length > 0) {
-      console.log('[AUDIT:PAINEL] OS encontradas no currentOS:');
-      os.forEach(o => console.log('  - ID:', o.firestoreId || o.id, '| phone:', JSON.stringify(o.phone), '| status:', o.status));
+      false && console.log('[AUDIT:PAINEL] OS encontradas no currentOS:');
+      os.forEach(o => false && console.log('  - ID:', o.firestoreId || o.id, '| phone:', JSON.stringify(o.phone), '| status:', o.status));
     } else {
       console.warn('[AUDIT:PAINEL] *** ALERTA: currentOS VAZIO! OS serão exibidas como 0.');
     }
     const activeOS = os.filter(o => o.status !== 'entregue' && o.status !== 'devolvido_orcamento' && o.status !== 'orcamento_recusado');
     const warranties = os.filter(o => this._emGarantia(o));
     const msgsNaoLidas = (this.currentMsgs || []).filter(m => !m.lida);
-    console.log('[AUDIT:PAINEL] activeOS:', activeOS.length, '| warranties:', warranties.length, '| msgsNaoLidas:', msgsNaoLidas.length);
+    false && console.log('[AUDIT:PAINEL] activeOS:', activeOS.length, '| warranties:', warranties.length, '| msgsNaoLidas:', msgsNaoLidas.length);
 
     // Busca última avaliação do Firestore (assíncrona, exibe depois)
     this._buscarUltimaAvaliacao().then(ultimaAval => {
@@ -1210,12 +1210,12 @@ window.Portal = {
     try {
       const el = document.getElementById('app-content');
 
-      console.log('[AUDIT:GARANTIAS] this.currentOS.length:', this.currentOS?.length);
+      false && console.log('[AUDIT:GARANTIAS] this.currentOS.length:', this.currentOS?.length);
       if (this.currentOS?.length > 0) {
         this.currentOS.forEach(o => {
           const emGar = this._emGarantia(o);
           const dd = this._getDeliveryDate(o);
-          console.log('[AUDIT:GARANTIAS:OS] ID:', o.firestoreId || o.id, '| status:', o.status, '| garantiaId:', o.garantiaId, '| emGarantia:', emGar, '| deliveryDate:', dd?.toISOString?.() || dd);
+          false && console.log('[AUDIT:GARANTIAS:OS] ID:', o.firestoreId || o.id, '| status:', o.status, '| garantiaId:', o.garantiaId, '| emGarantia:', emGar, '| deliveryDate:', dd?.toISOString?.() || dd);
         });
       } else {
         console.warn('[AUDIT:GARANTIAS] *** ALERTA: currentOS VAZIO! Garantias serão exibidas como 0.');
@@ -1242,7 +1242,7 @@ window.Portal = {
         !this._emGarantia(o) && this._getDeliveryDate(o)
       );
 
-      console.log('[AUDIT:GARANTIAS] pendentes:', pendentes.length, '| ativas:', ativas.length, '| expiradas:', expiradas.length);
+      false && console.log('[AUDIT:GARANTIAS] pendentes:', pendentes.length, '| ativas:', ativas.length, '| expiradas:', expiradas.length);
 
       let html = `<div class="garantias-container"><h2 class="screen-title">🛡️ Minhas Garantias</h2>`;
 

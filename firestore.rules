@@ -201,6 +201,16 @@ service cloud.firestore {
       allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
+    // PS-6: subcoleção de itens de categoria — NUNCA teve rule (caía no
+    // deny-by-default). Herda o tenant do doc-pai via get() (+1 leitura),
+    // sem precisar de empresa_id em cada item nem de filtro nas queries.
+    match /financeiro_categorias/{catId}/itens/{itemId} {
+      allow read, write: if request.auth != null && temAcessoLiberado() &&
+        (get(/databases/$(database)/documents/financeiro_categorias/$(catId)).data.get('empresa_id', null) == empresaDoUsuario() ||
+         get(/databases/$(database)/documents/financeiro_categorias/$(catId)).data.get('empresa_id', null) == null ||
+         isMasterAdmin());
+    }
+
     match /financeiro_fechamentos/{docId} {
       allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
       allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
@@ -547,9 +557,13 @@ service cloud.firestore {
 
     // Log de auditoria do módulo — imutável (nunca editado/apagado),
     // leitura e criação restritas a admin/master_admin.
+    // PS-6: leitura e criação tenant-scoped — admin da empresa A não lê
+    // a trilha de auditoria da empresa B; log nasce carimbado.
     match /auditoria_usuarios_permissoes/{logId} {
-      allow read, create: if request.auth != null &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+      allow read: if request.auth != null &&
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaRead();
+      allow create: if request.auth != null &&
+        usuarioAtual().perfil in ['admin', 'master_admin'] && mesmaEmpresaCreate();
       allow update, delete: if false;
     }
 
