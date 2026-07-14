@@ -1,152 +1,201 @@
-// Backfill empresa_id nos dados existentes — PS-3
-// Uso: node --experimental-vm-modules scripts/backfill-empresa-id.mjs
-// Requer: firebase-admin SDK ou sa-key.json com permissão de escrita
+// Backfill de empresa_id nos dados existentes — PS-3/PS-6
+//
+// Reescrito na PS-6: a versão original usava require() em ESM (crash
+// imediato) e where('empresa_id','==',null), que NÃO encontra documentos
+// onde o campo está AUSENTE (Firestore não indexa campo inexistente).
+// Esta versão faz scan completo paginado por __name__ via REST e filtra
+// no cliente — encontra ausente E null.
+//
+// Uso:
+//   node scripts/backfill-empresa-id.mjs                 # dry-run no DEV
+//   node scripts/backfill-empresa-id.mjs --execute       # escreve no DEV
+//   node scripts/backfill-empresa-id.mjs --project prod  # dry-run no PROD
+//   node scripts/backfill-empresa-id.mjs --project prod --execute
+//
+// Autenticação: token do gcloud (conta ativa precisa de acesso ao
+// Firestore do projeto-alvo):  gcloud auth print-access-token
+//
+// Idempotente: só escreve em documentos com empresa_id ausente ou null;
+// nunca sobrescreve um empresa_id já preenchido (updateMask só no campo).
 
-const BACKFILL_CONFIG = {
-  batchSize: 500,
-  targetTenant: 'cellcity-master',
-  field: 'empresa_id',
-};
+import { execSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
-// Coleções que precisam de backfill (excluindo globais e protegidas)
-const COLLECTIONS = [
-  // Núcleo
+const ARGS = process.argv.slice(2);
+const EXECUTE = ARGS.includes('--execute');
+const PROJECT = ARGS.includes('--project')
+  ? (ARGS[ARGS.indexOf('--project') + 1] === 'prod' ? 'cellcity-crm' : 'cellcity-crm-dev')
+  : 'cellcity-crm-dev';
+
+const TARGET_TENANT = 'cellcity-master';
+const FIELD = 'empresa_id';
+const PAGE_SIZE = 300;
+const BATCH_SIZE = 400; // batchWrite aceita até 500
+
+// Coleções tenant-scoped (PS-6: + usuarios, perfis_operacionais,
+// auditoria_usuarios_permissoes — as rules agora exigem empresa_id nelas)
+export const COLLECTIONS = [
   'os', 'clientes',
-  // Caixa
   'caixa_lancamentos', 'categorias_caixa',
-  // Financeiro
   'financeiro_pagar', 'financeiro_receber', 'financeiro_categorias',
   'financeiro_fixas', 'lembretes_pagamento', 'financeiro_fechamentos',
-  // Estoque
   'estoque_produtos', 'produtos', 'categorias_produtos',
-  // Fornecedor/Compras
   'fornecedor_compras', 'fornecedor_tendencias', 'fornecedores_cadastro',
   'compras_pedidos',
-  // Agenda/Tarefas
   'agenda', 'tarefas_semana', 'acoes_semana', 'notas_usuarios',
-  // Pós-Venda
   'posvenda_contatos', 'posvenda_mensagens', 'posvenda_rastreamento',
-  // CRM
   'crm_leads', 'crm_templates', 'contas_numeros', 'chips_cadastros',
-  // Portal
   'avaliacoes', 'mensagens_portal', 'portal_eventos',
-  'agendamentos', 'solicitacoes_diagnostico',
-  // Catálogo
+  'agendamentos', 'solicitacoes_diagnostico', 'pre_os',
   'catalogo_produtos', 'catalogo_config',
-  // Conhecimento
   'comandos', 'categorias_comandos', 'informacoes',
   'categorias_informacoes', 'central_organizacao',
-  // Diário
   'diario_registros', 'diario_eventos',
-  // Histórico
   'historico_diario', 'historico_semanal', 'historico_mensal',
   'resumo_live', 'vendas_importadas',
-  // Alertas
-  'alertas_usuario',
-  // Backup/Sync
+  'alertas_usuario', 'central_alertas_status',
   'cc_lixeira', 'cc_gdrive_logs', 'gdrive_backup',
-  // Legado
   'estoque', 'backup_logs',
-  // Chat
   'chat_mensagens',
+  'usuarios', 'perfis_operacionais', 'auditoria_usuarios_permissoes',
 ];
 
-async function backfillColecao(db, nomeColecao) {
-  const { FieldValue } = require('firebase-admin').firestore;
-  let total = 0;
-  let hasMore = true;
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 
-  while (hasMore) {
-    const snapshot = await db.collection(nomeColecao)
-      .where(BACKFILL_CONFIG.field, '==', null)
-      .limit(BACKFILL_CONFIG.batchSize)
-      .get();
+function getToken() {
+  return execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim();
+}
 
-    if (snapshot.empty) {
-      // Tenta documentos que não têm o campo (null vs undefined)
-      const snapMissing = await db.collection(nomeColecao)
-        .where(BACKFILL_CONFIG.field, '==', '__missing__')
-        .limit(BACKFILL_CONFIG.batchSize)
-        .get();
-      if (snapMissing.empty) {
-        hasMore = false;
-        break;
-      }
+let _token = getToken();
+function headers() {
+  return {
+    'Authorization': `Bearer ${_token}`,
+    'Content-Type': 'application/json',
+    'x-goog-user-project': PROJECT,
+  };
+}
 
-      const batch = db.batch();
-      let count = 0;
-      snapMissing.forEach(doc => {
-        batch.update(doc.ref, { [BACKFILL_CONFIG.field]: BACKFILL_CONFIG.targetTenant });
-        count++;
-      });
-      await batch.commit();
-      total += count;
-      console.log(`  → ${nomeColecao}: +${count} docs (missing field)`);
-      continue;
-    }
-
-    const batch = db.batch();
-    let count = 0;
-    snapshot.forEach(doc => {
-      batch.update(doc.ref, { [BACKFILL_CONFIG.field]: BACKFILL_CONFIG.targetTenant });
-      count++;
-    });
-    await batch.commit();
-    total += count;
-    console.log(`  → ${nomeColecao}: +${count} docs`);
+async function api(path, body, retry = true) {
+  const resp = await fetch(`${BASE}${path}`, {
+    method: 'POST', headers: headers(), body: JSON.stringify(body),
+  });
+  if (resp.status === 401 && retry) {
+    _token = getToken();
+    return api(path, body, false);
   }
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
+  return resp.json();
+}
 
-  return total;
+// Scan completo de uma coleção (paginado, projeção só no campo empresa_id)
+async function* scanColecao(colId) {
+  let cursor = null;
+  for (;;) {
+    const q = {
+      structuredQuery: {
+        from: [{ collectionId: colId }],
+        select: { fields: [{ fieldPath: FIELD }] },
+        orderBy: [{ field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+        limit: PAGE_SIZE,
+        ...(cursor ? { startAt: { values: [{ referenceValue: cursor }], before: false } } : {}),
+      },
+    };
+    const rows = await api(':runQuery', q);
+    const docs = rows.filter(r => r.document);
+    if (docs.length === 0) return;
+    for (const r of docs) yield r.document;
+    if (docs.length < PAGE_SIZE) return;
+    cursor = docs[docs.length - 1].document.name;
+  }
+}
+
+function valorEmpresa(doc) {
+  const f = doc.fields?.[FIELD];
+  if (!f) return undefined;                    // campo ausente
+  if ('nullValue' in f) return null;           // null explícito
+  return f.stringValue ?? `<${Object.keys(f)[0]}>`;
+}
+
+async function corrigirLote(nomes) {
+  const writes = nomes.map(name => ({
+    update: { name, fields: { [FIELD]: { stringValue: TARGET_TENANT } } },
+    updateMask: { fieldPaths: [FIELD] },
+    currentDocument: { exists: true },
+  }));
+  const resp = await api(':batchWrite', { writes });
+  const erros = (resp.status || []).filter(s => s.code && s.code !== 0);
+  return { ok: writes.length - erros.length, erros: erros.length };
 }
 
 async function main() {
-  console.log('=== BACKFILL empresa_id ===');
-  console.log(`Alvo: ${BACKFILL_CONFIG.targetTenant}`);
-  console.log(`Coleções: ${COLLECTIONS.length}`);
-  console.log('');
+  console.log(`=== BACKFILL ${FIELD} → '${TARGET_TENANT}' ===`);
+  console.log(`Projeto: ${PROJECT}  |  Modo: ${EXECUTE ? '🔴 EXECUÇÃO' : '🟢 DRY-RUN (análise)'}`);
+  console.log(`Coleções: ${COLLECTIONS.length}\n`);
 
-  const admin = require('firebase-admin');
-  const serviceAccount = require('../sa-key.json');
+  let totGeral = 0, totPend = 0, totOk = 0, totOutro = 0, totCorrigidos = 0, totFalhas = 0;
+  const divergentes = [];
 
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
-
-  const db = admin.firestore();
-  let totalGeral = 0;
-  const resultados = [];
-
-  for (const nome of COLLECTIONS) {
-    console.log(`[${nome}]`);
+  for (const col of COLLECTIONS) {
+    let total = 0, pendentes = 0, corretos = 0, outros = 0;
+    const paraCorrigir = [];
     try {
-      const total = await backfillColecao(db, nome);
-      resultados.push({ colecao: nome, documentos: total });
-      totalGeral += total;
-      if (total === 0) console.log(`  → OK (nenhum pendente)`);
-    } catch (err) {
-      console.error(`  → ERRO: ${err.message}`);
-      resultados.push({ colecao: nome, documentos: -1, erro: err.message });
+      for await (const doc of scanColecao(col)) {
+        total++;
+        const v = valorEmpresa(doc);
+        if (v === undefined || v === null) { pendentes++; paraCorrigir.push(doc.name); }
+        else if (v === TARGET_TENANT) corretos++;
+        else { outros++; divergentes.push(`${col}/${doc.name.split('/').pop()} = ${v}`); }
+      }
+    } catch (e) {
+      console.log(`[${col}] ERRO: ${e.message}`);
+      totFalhas++;
+      continue;
+    }
+
+    let corrigidos = 0, falhas = 0;
+    if (EXECUTE && paraCorrigir.length > 0) {
+      for (let i = 0; i < paraCorrigir.length; i += BATCH_SIZE) {
+        const r = await corrigirLote(paraCorrigir.slice(i, i + BATCH_SIZE));
+        corrigidos += r.ok; falhas += r.erros;
+      }
+    }
+
+    totGeral += total; totPend += pendentes; totOk += corretos; totOutro += outros;
+    totCorrigidos += corrigidos; totFalhas += falhas;
+
+    if (total > 0 || pendentes > 0) {
+      const acao = EXECUTE ? ` → corrigidos ${corrigidos}${falhas ? ` (⚠️ ${falhas} falhas)` : ''}` : '';
+      console.log(`[${col}] total=${total} ok=${corretos} pendentes=${pendentes} outros=${outros}${acao}`);
     }
   }
 
-  console.log('');
-  console.log('=== RESUMO ===');
-  console.log(`Total de documentos atualizados: ${totalGeral}`);
-  console.log(`Coleções processadas: ${COLLECTIONS.length}`);
-  console.log('');
-
-  const falhas = resultados.filter(r => r.erro);
-  if (falhas.length > 0) {
-    console.log('⚠️  FALHAS:');
-    falhas.forEach(f => console.log(`  - ${f.colecao}: ${f.erro}`));
+  console.log('\n=== RESUMO ===');
+  console.log(`Documentos escaneados: ${totGeral}`);
+  console.log(`Já corretos (${TARGET_TENANT}): ${totOk}`);
+  console.log(`Pendentes (ausente/null): ${totPend}${EXECUTE ? ` → corrigidos: ${totCorrigidos}` : ''}`);
+  console.log(`Com OUTRO empresa_id (preservados): ${totOutro}`);
+  if (divergentes.length) {
+    console.log('\nDocs com empresa_id divergente (não tocados):');
+    divergentes.slice(0, 20).forEach(d => console.log('  ' + d));
+    if (divergentes.length > 20) console.log(`  ... +${divergentes.length - 20}`);
   }
+  if (totFalhas) console.log(`\n⚠️  Falhas: ${totFalhas}`);
 
-  console.log('Backfill concluído.');
-  console.log('');
-  console.log('PRÓXIMO PASSO: Após validar os dados, execute:');
-  console.log('  1. node scripts/validar-backfill.mjs');
-  console.log('  2. Ativar enableFilter() nas repositories');
-  console.log('  3. Fazer deploy das Firestore Rules atualizadas');
+  if (!EXECUTE && totPend > 0) {
+    console.log(`\nDry-run: nada foi escrito. Rode com --execute para corrigir ${totPend} docs.`);
+  }
+  if (EXECUTE && totPend === totCorrigidos && totFalhas === 0) {
+    console.log('\n✅ Backfill concluído sem falhas.');
+    console.log('PRÓXIMOS PASSOS:');
+    console.log('  1. node scripts/validar-backfill.mjs' + (PROJECT.endsWith('-dev') ? '' : ' --project prod'));
+    console.log(`  2. Marcar empresas/${TARGET_TENANT}.dados_migrados = true (ativa os filtros tenant)`);
+    console.log('  3. Deploy das Firestore Rules atualizadas');
+  }
+  process.exitCode = totFalhas > 0 ? 1 : 0;
 }
 
-main().catch(console.error);
+// Guard de entrypoint: validar-backfill.mjs importa COLLECTIONS daqui —
+// o backfill só roda quando este arquivo é o script principal.
+if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
+  main().catch(e => { console.error('ERRO FATAL:', e.message); process.exit(1); });
+}

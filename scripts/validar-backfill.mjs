@@ -1,158 +1,110 @@
-// Validação do backfill de empresa_id — PS-3
-// Uso: node scripts/validar-backfill.mjs
-// Verifica se todas as coleções têm empresa_id preenchido
+// Validação do backfill de empresa_id — PS-3/PS-6
+//
+// Reescrito na PS-6: a versão original usava require() em ESM (crash) e
+// validava por amostra de 100 docs. Esta versão varre 100% dos documentos
+// de cada coleção (paginado via REST) e classifica cada um:
+//   OK        — empresa_id === valor esperado
+//   PENDENTE  — campo ausente ou null (backfill incompleto)
+//   DIVERGENTE— empresa_id de outra empresa (informativo; esperado
+//               quando já existem empresas além da cellcity-master)
+//
+// Uso:
+//   node scripts/validar-backfill.mjs                  # valida DEV
+//   node scripts/validar-backfill.mjs --project prod   # valida PROD
+//
+// Sai com código 0 somente se PENDENTE == 0 em todas as coleções.
 
-const VALIDATION_CONFIG = {
-  field: 'empresa_id',
-  expectedValue: 'cellcity-master',
-  sampleSize: 100,
-};
+import { execSync } from 'node:child_process';
+import { COLLECTIONS } from './backfill-empresa-id.mjs';
 
-const COLLECTIONS = [
-  'os', 'clientes',
-  'caixa_lancamentos', 'categorias_caixa',
-  'financeiro_pagar', 'financeiro_receber', 'financeiro_categorias',
-  'financeiro_fixas', 'lembretes_pagamento', 'financeiro_fechamentos',
-  'estoque_produtos', 'produtos', 'categorias_produtos',
-  'fornecedor_compras', 'fornecedor_tendencias', 'fornecedores_cadastro',
-  'compras_pedidos',
-  'agenda', 'tarefas_semana', 'acoes_semana', 'notas_usuarios',
-  'posvenda_contatos', 'posvenda_mensagens', 'posvenda_rastreamento',
-  'crm_leads', 'crm_templates', 'contas_numeros', 'chips_cadastros',
-  'avaliacoes', 'mensagens_portal', 'portal_eventos',
-  'agendamentos', 'solicitacoes_diagnostico',
-  'catalogo_produtos',
-  'comandos', 'categorias_comandos', 'informacoes',
-  'categorias_informacoes', 'central_organizacao',
-  'diario_registros', 'diario_eventos',
-  'historico_diario', 'historico_semanal', 'historico_mensal',
-  'resumo_live', 'vendas_importadas',
-  'alertas_usuario',
-  'cc_lixeira', 'cc_gdrive_logs', 'gdrive_backup',
-  'estoque', 'backup_logs',
-  'chat_mensagens',
-];
+const ARGS = process.argv.slice(2);
+const PROJECT = ARGS.includes('--project')
+  ? (ARGS[ARGS.indexOf('--project') + 1] === 'prod' ? 'cellcity-crm' : 'cellcity-crm-dev')
+  : 'cellcity-crm-dev';
 
-async function validarColecao(db, nomeColecao) {
-  const totalSnap = await db.collection(nomeColecao).count().get();
-  const total = totalSnap.data().count;
+const FIELD = 'empresa_id';
+const EXPECTED = 'cellcity-master';
+const PAGE_SIZE = 300;
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 
-  if (total === 0) return { colecao: nomeColecao, total: 0, pendentes: 0, status: 'VAZIA' };
+let _token = execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim();
 
-  // Amostra para verificar valor correto
-  const amostra = await db.collection(nomeColecao)
-    .limit(VALIDATION_CONFIG.sampleSize)
-    .get();
-
-  let semCampo = 0;
-  let valorIncorreto = 0;
-  let ok = 0;
-
-  amostra.forEach(doc => {
-    const val = doc.data()[VALIDATION_CONFIG.field];
-    if (val === undefined || val === null) semCampo++;
-    else if (val !== VALIDATION_CONFIG.expectedValue) valorIncorreto++;
-    else ok++;
+async function api(path, body, retry = true) {
+  const resp = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${_token}`,
+      'Content-Type': 'application/json',
+      'x-goog-user-project': PROJECT,
+    },
+    body: JSON.stringify(body),
   });
-
-  // Verifica documentos pendentes
-  const pendentesSnap = await db.collection(nomeColecao)
-    .where(VALIDATION_CONFIG.field, '==', null)
-    .limit(1)
-    .get();
-
-  let pendentes = pendentesSnap.size;
-
-  if (pendentes === 0 && ok === 0 && total > 0) {
-    // Pode ser que o campo não exista (undefined != null no Firestore)
-    const missingFieldSnap = await db.collection(nomeColecao)
-      .where(VALIDATION_CONFIG.field, '==', '__missing__')
-      .limit(1)
-      .get();
-    // Firestore não aceita where com __missing__, então tentamos outro approach
-    // Verificamos se a amostra tem documentos com campo undefined
-    if (semCampo > 0) pendentes = -1; // indica que precisa de verificação manual
+  if (resp.status === 401 && retry) {
+    _token = execSync('gcloud auth print-access-token', { encoding: 'utf8' }).trim();
+    return api(path, body, false);
   }
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).slice(0, 300)}`);
+  return resp.json();
+}
 
-  return {
-    colecao: nomeColecao,
-    total,
-    pendentes,
-    amostraOk: ok,
-    amostraSemCampo: semCampo,
-    amostraValorIncorreto: valorIncorreto,
-    status: pendentes === 0 ? 'OK' : (pendentes > 0 ? 'PENDENTE' : 'REVISAO')
-  };
+async function validarColecao(colId) {
+  let total = 0, ok = 0, pendentes = 0, divergentes = 0;
+  let cursor = null;
+  for (;;) {
+    const q = {
+      structuredQuery: {
+        from: [{ collectionId: colId }],
+        select: { fields: [{ fieldPath: FIELD }] },
+        orderBy: [{ field: { fieldPath: '__name__' }, direction: 'ASCENDING' }],
+        limit: PAGE_SIZE,
+        ...(cursor ? { startAt: { values: [{ referenceValue: cursor }], before: false } } : {}),
+      },
+    };
+    const rows = await api(':runQuery', q);
+    const docs = rows.filter(r => r.document);
+    if (docs.length === 0) break;
+    for (const r of docs) {
+      total++;
+      const f = r.document.fields?.[FIELD];
+      if (!f || 'nullValue' in f) pendentes++;
+      else if (f.stringValue === EXPECTED) ok++;
+      else divergentes++;
+    }
+    if (docs.length < PAGE_SIZE) break;
+    cursor = docs[docs.length - 1].document.name;
+  }
+  return { colecao: colId, total, ok, pendentes, divergentes };
 }
 
 async function main() {
-  const admin = require('firebase-admin');
-  const serviceAccount = require('../sa-key.json');
+  console.log('=== VALIDAÇÃO DE BACKFILL (varredura completa) ===');
+  console.log(`Projeto: ${PROJECT}  |  Campo: ${FIELD}  |  Esperado: ${EXPECTED}\n`);
 
-  if (!admin.apps.length) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  }
+  let totalDocs = 0, totalPend = 0, totalDiv = 0, vazias = 0, erros = 0;
 
-  const db = admin.firestore();
-  db.settings({ ignoreUndefinedProperties: true });
-
-  console.log('=== VALIDAÇÃO DE BACKFILL ===');
-  console.log(`Campo: ${VALIDATION_CONFIG.field}`);
-  console.log(`Valor esperado: ${VALIDATION_CONFIG.expectedValue}`);
-  console.log(`Coleções: ${COLLECTIONS.length}`);
-  console.log('');
-
-  const resultados = [];
-  let totalDocs = 0;
-  let totalPendentes = 0;
-  let totalVazias = 0;
-
-  for (const nome of COLLECTIONS) {
-    process.stdout.write(`[${nome}]... `);
+  for (const col of COLLECTIONS) {
     try {
-      const r = await validarColecao(db, nome);
-      resultados.push(r);
-      totalDocs += r.total;
-      if (r.status === 'PENDENTE') totalPendentes += r.pendentes;
-      if (r.status === 'VAZIA') totalVazias++;
-      console.log(`${r.status} (${r.total} docs)`);
-    } catch (err) {
-      console.log(`ERRO: ${err.message}`);
-      resultados.push({ colecao: nome, status: 'ERRO', erro: err.message });
+      const r = await validarColecao(col);
+      totalDocs += r.total; totalPend += r.pendentes; totalDiv += r.divergentes;
+      if (r.total === 0) { vazias++; continue; }
+      const status = r.pendentes === 0 ? 'OK' : '❌ PENDENTE';
+      console.log(`[${col}] ${status} — total=${r.total} ok=${r.ok} pendentes=${r.pendentes} divergentes=${r.divergentes}`);
+    } catch (e) {
+      erros++;
+      console.log(`[${col}] ERRO: ${e.message}`);
     }
   }
 
-  console.log('');
-  console.log('=== RESUMO ===');
-  console.log(`Total de documentos: ${totalDocs}`);
-  console.log(`Coleções vazias: ${totalVazias}`);
-  console.log(`Coleções OK: ${resultados.filter(r => r.status === 'OK').length}`);
-  console.log(`Coleções com pendência: ${resultados.filter(r => r.status === 'PENDENTE').length}`);
-  console.log(`Coleções em revisão: ${resultados.filter(r => r.status === 'REVISAO').length}`);
-  console.log(`Coleções com erro: ${resultados.filter(r => r.status === 'ERRO').length}`);
-  console.log('');
+  console.log('\n=== RESUMO ===');
+  console.log(`Documentos: ${totalDocs} | Pendentes: ${totalPend} | Divergentes: ${totalDiv} | Coleções vazias: ${vazias} | Erros: ${erros}`);
 
-  const problemas = resultados.filter(r => r.status === 'PENDENTE' || r.status === 'REVISAO' || r.status === 'ERRO');
-  if (problemas.length > 0) {
-    console.log('⚠️  COLEÇÕES COM PROBLEMAS:');
-    problemas.forEach(r => {
-      console.log(`  - ${r.colecao}: ${r.status}${r.erro ? ` (${r.erro})` : ''}`);
-      if (r.amostraSemCampo > 0) console.log(`      Amostra: ${r.amostraSemCampo} docs sem campo`);
-      if (r.amostraValorIncorreto > 0) console.log(`      Amostra: ${r.amostraValorIncorreto} docs com valor incorreto`);
-    });
-  }
-
-  if (totalPendentes === 0) {
-    console.log('✅ BACKFILL VALIDADO — Todos os documentos têm empresa_id correto.');
-    console.log('📌 PRÓXIMO PASSO:');
-    console.log('   1. Executar ativarFiltrosTenant() no navegador');
-    console.log('   2. Fazer deploy das Firestore Rules atualizadas');
-    console.log('   3. Iniciar testes de isolamento entre empresas');
+  if (totalPend === 0 && erros === 0) {
+    console.log('\n✅ BACKFILL VALIDADO — nenhum documento sem empresa_id.');
+    console.log('PRÓXIMO PASSO: marcar empresas/cellcity-master.dados_migrados = true');
   } else {
-    console.log(`❌ ${totalPendentes} documentos pendentes — executar backfill novamente.`);
+    console.log(`\n❌ ${totalPend} documentos pendentes / ${erros} erros — reexecutar backfill.`);
   }
+  process.exitCode = (totalPend === 0 && erros === 0) ? 0 : 1;
 }
 
-main().catch(console.error);
+main().catch(e => { console.error('ERRO FATAL:', e.message); process.exit(1); });
