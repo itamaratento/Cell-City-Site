@@ -89,14 +89,16 @@
   </div>
 
   <script type="module">
-    import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-    import { getFirestore, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    // PS-6: o cadastro passa pela Cloud Function saasOnboardingCriarEmpresa
+    // (Admin SDK) — as Rules bloqueiam escrita direta em `empresas` e
+    // `saas_eventos` pelo client, ainda mais sem autenticação.
+    import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js';
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
     import '../../shared/env-config.js';
 
     const app = initializeApp(window.CC_FIREBASE_CONFIG);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+    const functionsApp = getFunctions(app, 'southamerica-east1');
+    const criarEmpresa = httpsCallable(functionsApp, 'saasOnboardingCriarEmpresa');
 
     let dados = {};
 
@@ -155,25 +157,12 @@
         const btn = document.querySelector('.step.active .btn-primary');
         btn.disabled = true; btn.textContent = '⏳ Criando...';
         try {
-          const empresaId = 'emp_' + Date.now().toString(36);
-          await setDoc(doc(db, 'empresas', empresaId), {
-            nome_fantasia: dados.nome,
-            razao_social: dados.nome,
+          await criarEmpresa({
+            nome: dados.nome,
+            seuNome: dados.seuNome,
+            email: dados.email,
+            whatsapp: dados.whatsapp,
             plano: dados.plano || 'trial',
-            status: 'trial',
-            data_criacao: serverTimestamp(),
-            data_vencimento: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
-            contato_nome: dados.seuNome,
-            contato_email: dados.email,
-            contato_whatsapp: dados.whatsapp,
-            modulos_ativos: null,
-          });
-          // Registra onboarding
-          await setDoc(doc(db, 'saas_eventos', `onboard_${empresaId}`), {
-            tipo: 'onboarding',
-            empresa_id: empresaId,
-            dados,
-            criadoEm: serverTimestamp()
           });
           this.irPara(4);
         } catch (err) {

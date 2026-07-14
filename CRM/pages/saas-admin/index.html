@@ -56,13 +56,15 @@
   </div>
   <script type="module">
     import { initModulo } from '../../scripts/kernel.js';
-    import { db, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, serverTimestamp } from '../../scripts/firebase.js';
+    import { db, collection, getDocs, doc, setDoc, query, orderBy, serverTimestamp } from '../../scripts/firebase.js';
     const COL = 'empresas';
 
     window.SaaSAdmin = {
+      _cache: [],
       async carregar() {
         const snap = await getDocs(query(collection(db, COL), orderBy('nome_fantasia')));
         const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        this._cache = lista;
         const grid = document.getElementById('saas-grid');
         grid.innerHTML = lista.map(e => `
           <div class="empresa-card">
@@ -76,7 +78,7 @@
             <div style="font-size:13px;color:#666;margin:8px 0;">${e.razao_social || ''}</div>
             <div style="display:flex;gap:8px;margin-top:12px;">
               <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="SaaSAdmin.editar('${e.id}')">✏️ Editar</button>
-              <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="SaaSAdmin.excluir('${e.id}')">🗑️</button>
+              <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="SaaSAdmin.desativar('${e.id}')">🚫 Desativar</button>
             </div>
           </div>
         `).join('');
@@ -93,16 +95,8 @@
         document.getElementById('f-vencimento').value = dados?.data_vencimento || '';
       },
       editar(id) {
-        const card = document.querySelector(`[onclick*="${id}"]`)?.closest('.empresa-card');
-        // Recarrega para pegar dados frescos
-        this.carregar().then(() => {
-          const el = document.getElementById('saas-grid');
-          // Abre formulário em branco para edição simples
-          document.getElementById('f-id').value = id;
-          document.getElementById('f-id').disabled = true;
-          document.getElementById('saas-form').classList.remove('hidden');
-          document.getElementById('form-titulo').textContent = 'Editar Empresa';
-        });
+        const dados = this._cache.find(e => e.id === id);
+        this.mostrarForm(dados || { id });
       },
       fecharForm() {
         document.getElementById('saas-form').classList.add('hidden');
@@ -111,6 +105,7 @@
       async salvar() {
         const id = document.getElementById('f-id').value.trim();
         if (!id) { alert('ID da empresa é obrigatório'); return; }
+        const editando = document.getElementById('f-id').disabled;
         const dados = {
           nome_fantasia: document.getElementById('f-nome').value.trim(),
           razao_social: document.getElementById('f-razao').value.trim(),
@@ -119,20 +114,32 @@
           data_vencimento: document.getElementById('f-vencimento').value || null,
           atualizadoEm: serverTimestamp()
         };
+        // Empresa NOVA nasce sem dado legado → filtros tenant ativos.
+        // Nunca tocar em dados_migrados ao EDITAR: em produção o flag
+        // só pode virar true depois do backfill validado.
+        if (!editando) dados.dados_migrados = true;
         await setDoc(doc(db, COL, id), dados, { merge: true });
         this.fecharForm();
         await this.carregar();
       },
-      async excluir(id) {
-        if (!confirm(`Excluir empresa ${id}?`)) return;
-        await deleteDoc(doc(db, COL, id));
+      // PS-6: exclusão física é proibida nas Rules (delete: false) — o
+      // histórico da empresa é preservado; desativa via status.
+      async desativar(id) {
+        if (!confirm(`Desativar a empresa ${id}? Os usuários dela perdem o acesso.`)) return;
+        await setDoc(doc(db, COL, id), { status: 'inativa', atualizadoEm: serverTimestamp() }, { merge: true });
         await this.carregar();
       }
     };
 
     const ctx = await initModulo();
     if (!ctx) window.location.href = '../../login.html';
-    await SaaSAdmin.carregar();
+    // Console do operador da plataforma — só master_admin. As Rules já
+    // barram escrita/leitura cross-empresa; o gate aqui é UX.
+    if (ctx && ctx.perfil !== 'master_admin') {
+      document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:sans-serif;">🔒 Acesso restrito ao operador da plataforma (master_admin).</div>';
+    } else {
+      await SaaSAdmin.carregar();
+    }
   </script>
 </body>
 </html>

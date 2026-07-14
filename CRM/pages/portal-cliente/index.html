@@ -190,19 +190,34 @@
     // Rules dessas coleções sem repetir o bloqueio a cliente anônimo legítimo
     // (ver CRM/TECHDOC.md, hotfix 60173b7 / Sprint 1a).
     const functionsApp = getFunctions(app, 'southamerica-east1');
+
+    // PS-6 (multiempresa): o Portal atende uma empresa por URL
+    // (?empresa=<id>; sem o parâmetro, Cell City). O empresaId é
+    // injetado centralmente em TODAS as chamadas — portal.js não
+    // precisa saber de multiempresa.
+    const EMPRESA_ID = (new URLSearchParams(location.search).get('empresa') || 'cellcity-master')
+      .toLowerCase().replace(/[^a-z0-9-]/g, '');
+    window.PORTAL_EMPRESA_ID = EMPRESA_ID;
+    const call = (name) => {
+      const fn = httpsCallable(functionsApp, name);
+      return (data = {}) => fn({ ...data, empresaId: EMPRESA_ID });
+    };
     window.PortalFunctions = {
-      obterNomeCliente: httpsCallable(functionsApp, 'portalObterNomeCliente'),
-      listarMensagens: httpsCallable(functionsApp, 'portalListarMensagens'),
-      enviarMensagem: httpsCallable(functionsApp, 'portalEnviarMensagem'),
-      marcarMensagemLida: httpsCallable(functionsApp, 'portalMarcarMensagemLida'),
-      listarAvaliacoes: httpsCallable(functionsApp, 'portalListarAvaliacoes'),
-      criarAvaliacao: httpsCallable(functionsApp, 'portalCriarAvaliacao'),
-      listarAgendamentos: httpsCallable(functionsApp, 'portalListarAgendamentos'),
-      criarAgendamento: httpsCallable(functionsApp, 'portalCriarAgendamento'),
-      listarHorariosOcupados: httpsCallable(functionsApp, 'portalListarHorariosOcupados'),
-      criarSolicitacaoDiagnostico: httpsCallable(functionsApp, 'portalCriarSolicitacaoDiagnostico'),
-      registrarEvento: httpsCallable(functionsApp, 'portalRegistrarEvento'),
-      responderOrcamento: httpsCallable(functionsApp, 'portalResponderOrcamento'),
+      obterNomeCliente: call('portalObterNomeCliente'),
+      listarMensagens: call('portalListarMensagens'),
+      enviarMensagem: call('portalEnviarMensagem'),
+      marcarMensagemLida: call('portalMarcarMensagemLida'),
+      listarAvaliacoes: call('portalListarAvaliacoes'),
+      criarAvaliacao: call('portalCriarAvaliacao'),
+      listarAgendamentos: call('portalListarAgendamentos'),
+      criarAgendamento: call('portalCriarAgendamento'),
+      listarHorariosOcupados: call('portalListarHorariosOcupados'),
+      criarSolicitacaoDiagnostico: call('portalCriarSolicitacaoDiagnostico'),
+      registrarEvento: call('portalRegistrarEvento'),
+      responderOrcamento: call('portalResponderOrcamento'),
+      // PS-6: login e atualização de OS também via Cloud Function —
+      // permitiu fechar o `list` público de /os nas Rules.
+      consultarOSPorTelefone: call('consultarOSPorTelefonePublica'),
     };
 
     // Auth anônima

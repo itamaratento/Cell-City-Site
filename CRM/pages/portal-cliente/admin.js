@@ -262,28 +262,28 @@ window.PortalAdmin = {
     // Inicia listeners para as 3 collections
     this.unsubscribers.push(
       onSnapshot(
-        query(collection(db, 'mensagens_portal'), orderBy('createdAt', 'desc'), limit(100)),
+        query(collection(db, 'mensagens_portal'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), orderBy('createdAt', 'desc'), limit(100)),
         processarSnap('mensagens'),
         onError('mensagens')
       )
     );
     this.unsubscribers.push(
       onSnapshot(
-        query(collection(db, 'avaliacoes'), orderBy('createdAt', 'desc'), limit(100)),
+        query(collection(db, 'avaliacoes'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), orderBy('createdAt', 'desc'), limit(100)),
         processarSnap('avaliacoes'),
         onError('avaliacoes')
       )
     );
     this.unsubscribers.push(
       onSnapshot(
-        query(collection(db, 'solicitacoes_diagnostico'), orderBy('createdAt', 'desc'), limit(100)),
+        query(collection(db, 'solicitacoes_diagnostico'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), orderBy('createdAt', 'desc'), limit(100)),
         processarSnap('solicitacoes'),
         onError('solicitacoes')
       )
     );
     this.unsubscribers.push(
       onSnapshot(
-        query(collection(db, 'agendamentos'), orderBy('createdAt', 'desc'), limit(100)),
+        query(collection(db, 'agendamentos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), orderBy('createdAt', 'desc'), limit(100)),
         processarSnap('agendamentos'),
         onError('agendamentos')
       )
@@ -459,7 +459,7 @@ window.PortalAdmin = {
       // A-1: consulta s\u00f3 por igualdade (\u00edndice autom\u00e1tico); filtra/ordena por data no cliente.
       const hojeTime = hoje.getTime();
       const snapAcessos = await getDocs(
-        query(collection(db, 'portal_eventos'), where('tipo', '==', 'acesso'))
+        query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'acesso'))
       );
 
       let acessosHoje = 0;
@@ -480,8 +480,8 @@ window.PortalAdmin = {
       });
 
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_whatsapp'))),
-        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_maps')))
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'))),
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps')))
       ]);
 
       return {
@@ -1261,6 +1261,7 @@ window.PortalAdmin = {
       // A-1: consulta só por igualdade (índice automático); janelas de tempo no cliente.
       const snapAcessos = await getDocs(query(
         collection(db, 'portal_eventos'),
+        ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []),
         where('tipo', '==', 'acesso')
       ));
 
@@ -1331,8 +1332,8 @@ window.PortalAdmin = {
 
       // Cliques (paralelo)
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_whatsapp'))),
-        getDocs(query(collection(db, 'portal_eventos'), where('tipo', '==', 'clique_maps')))
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'))),
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps')))
       ]);
 
       return {

@@ -86,12 +86,15 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /os/{osId} {
       allow get:                           if false;
-      // PS-3: `list` precisa continuar aberto apenas com request.auth != null
-      // para o Portal do Cliente (sessão anônima). Create/update/delete
-      // adicionam mesmaEmpresaWrite para isolar dados entre empresas.
-      // Quando o Portal migrar para Cloud Functions (sprint futura),
-      // `list` poderá ser fechado com mesmaEmpresaRead.
-      allow list:                          if request.auth != null;
+      // PS-6: `list` FECHADO. O Portal do Cliente (login e acompanhamento
+      // de OS) migrou 100% para consultarOSPorTelefonePublica (Cloud
+      // Function, Admin SDK) — nenhuma sessão anônima fala mais direto
+      // com /os. Antes, qualquer request.auth != null (inclusive anônimo)
+      // listava TODAS as OS com TODOS os campos (senha/padrão/foto de
+      // desbloqueio, endereço, IMEI) — brecha conhecida desde a Sprint 1b,
+      // agora eliminada. Equipe: queries de os.js/dashboards carregam
+      // where('empresa_id'==) via injectTenantFilter.
+      allow list:                          if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
       allow create:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
       allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
       allow delete:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();

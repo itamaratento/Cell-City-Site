@@ -411,15 +411,17 @@ window.Portal = {
       console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
     }
 
-    // Busca OS do cliente pelo campo canônico
-    const qOS = query(collection(db, 'os'), where('phoneDigits', '==', digits));
-    const snapOS = await getDocs(qOS);
-    const osCount = snapOS.size;
-    console.log('[Portal] OSs encontradas (phoneDigits ==):', osCount);
-    snapOS.forEach(d => {
-      const data = d.data();
-      false && console.log('[AUDIT:OS] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
-    });
+    // Busca OS do cliente pelo campo canônico — PS-6: via Cloud Function
+    // (consultarOSPorTelefonePublica). A query direta em `os` foi
+    // removida junto com o fechamento do `list` público nas Rules.
+    let osCount = 0;
+    try {
+      const respOS = await window.PortalFunctions.consultarOSPorTelefone({ phoneDigits: digits });
+      osCount = ((respOS.data && respOS.data.lista) || []).length;
+    } catch (errOS) {
+      console.warn('[Portal] Não foi possível consultar OS no login:', errOS);
+    }
+    console.log('[Portal] OSs encontradas (Cloud Function):', osCount);
 
     if (osCount === 0 && !clientName) {
       console.log('[Portal] Nenhum resultado para o telefone:', formatted);
@@ -498,51 +500,56 @@ window.Portal = {
       console.warn('[Portal] _listenOS() cancelado — sessão sem telefone');
       return;
     }
+    // PS-6: o onSnapshot direto em `os` foi substituído por polling via
+    // Cloud Function (consultarOSPorTelefonePublica) — era a última
+    // dependência que obrigava as Rules a manter `list` de /os aberto a
+    // qualquer sessão autenticada (inclusive anônima), expondo TODOS os
+    // campos de TODAS as OS (senha/padrão/foto de desbloqueio, endereço,
+    // IMEI) a quem soubesse chamar a API. Perde-se o push em tempo real;
+    // o intervalo de 60s cobre o caso de uso (cliente acompanhando a
+    // própria OS) com custo de leitura menor que o listener.
     if (this.unsubscribeOS) this.unsubscribeOS();
-    const db = window.db;
-    if (!db) { console.warn('[Portal] _listenOS() cancelado — db não disponível'); return; }
-    const { collection, query, where, onSnapshot } = window.FirebaseModules;
+    const timer = setInterval(() => this._fetchOS(), 60000);
+    this.unsubscribeOS = () => clearInterval(timer);
+    this._fetchOS();
+  },
+
+  async _fetchOS() {
+    if (!this.session) return;
     // Fallback para sessões antigas (restauradas do sessionStorage) que não têm
     // telefoneDigits ainda: recalcula a partir do telefone mascarado da sessão.
     const digits = this.session.telefoneDigits || this._phoneDigits(this.session.telefone);
-    false && false && console.log('[AUDIT:LISTENER] Iniciando listener com phoneDigits:', digits);
-    const q = query(collection(db, 'os'), where('phoneDigits', '==', digits));
-    this.unsubscribeOS = onSnapshot(q, (snap) => {
-      false && console.log('[AUDIT:LISTENER] onSnapshot disparado! size:', snap.size);
-      false && console.log('[AUDIT:LISTENER] metadata.hasPendingWrites:', snap.metadata.hasPendingWrites);
-      this.currentOS = [];
-      snap.forEach(d => {
-        const data = d.data();
-        false && console.log('[AUDIT:LISTENER:doc] ID:', d.id, '| phoneDigits:', data.phoneDigits, '| status:', data.status, '| model:', data.model);
-        this.currentOS.push({ firestoreId: d.id, ...data });
-      });
-      false && console.log('[AUDIT:LISTENER] currentOS.length após snapshot:', this.currentOS.length);
-      // Se currentOS estiver vazio, logar aviso
-      if (this.currentOS.length === 0) {
-        console.warn('[AUDIT:LISTENER] *** ALERTA: listener retornou 0 documentos! phoneDigits usado:', digits);
-      }
-      this.currentOS.sort((a, b) => {
-        const da = a.createdAt || a.updatedAt || '';
-        const db_ = b.createdAt || b.updatedAt || '';
-        return db_ > da ? 1 : -1;
-      });
-      // Se estiver em tela que mostra OS, atualiza. Mesma normalização de
-      // _handleRoute() (aceita "#rota" e "#/rota") — achado da homologação
-      // do Lote 2: com hash "/" inicial (ex. link direto "#/os-detalhe/OS-1234"),
-      // a leitura antiga (slice(1).split('/')[0]) resolvia para rota vazia e
-      // o "id" (split('/')[1]) pegava "os-detalhe" em vez do ID da OS — a
-      // tela nunca recebia a atualização ao vivo do aprovar/recusar orçamento.
-      const hashParts = location.hash.replace(/^#\/?/, '').split('/');
-      const route = hashParts[0];
-      false && console.log('[AUDIT:LISTENER] Rota atual:', route, '| hash:', location.hash);
-      if (route === 'os') this.renderOSList();
-      else if (route === 'os-detalhe') {
-        const id = hashParts[1];
-        if (id) this.renderOSDetalhe(id);
-      }
-      else if (route === 'painel') this.renderPainel();
-      else if (route === 'garantias') this.renderGarantias();
-    }, (err) => console.warn('[Portal] Erro listener OS:', err));
+    let lista = [];
+    try {
+      const resp = await window.PortalFunctions.consultarOSPorTelefone({ phoneDigits: digits });
+      lista = (resp.data && resp.data.lista) || [];
+    } catch (err) {
+      console.warn('[Portal] Erro ao atualizar OS via Cloud Function:', err);
+      return; // mantém a última lista boa em vez de zerar a tela
+    }
+    // O doc-ID de `os` é o próprio campo `id` (os.js::DB.addOS) — a
+    // projeção pública devolve `id`, então firestoreId continua correto.
+    this.currentOS = lista.map(os => ({ firestoreId: os.id, ...os }));
+    this.currentOS.sort((a, b) => {
+      const da = a.createdAt || a.updatedAt || '';
+      const db_ = b.createdAt || b.updatedAt || '';
+      return db_ > da ? 1 : -1;
+    });
+    // Se estiver em tela que mostra OS, atualiza. Mesma normalização de
+    // _handleRoute() (aceita "#rota" e "#/rota") — achado da homologação
+    // do Lote 2: com hash "/" inicial (ex. link direto "#/os-detalhe/OS-1234"),
+    // a leitura antiga (slice(1).split('/')[0]) resolvia para rota vazia e
+    // o "id" (split('/')[1]) pegava "os-detalhe" em vez do ID da OS — a
+    // tela nunca recebia a atualização ao vivo do aprovar/recusar orçamento.
+    const hashParts = location.hash.replace(/^#\/?/, '').split('/');
+    const route = hashParts[0];
+    if (route === 'os') this.renderOSList();
+    else if (route === 'os-detalhe') {
+      const id = hashParts[1];
+      if (id) this.renderOSDetalhe(id);
+    }
+    else if (route === 'painel') this.renderPainel();
+    else if (route === 'garantias') this.renderGarantias();
   },
 
   // Sprint 1b: mensagens_portal fecha para acesso direto do cliente (Cloud
@@ -1079,12 +1086,13 @@ window.Portal = {
     try {
       // portalResponderOrcamento (Sprint 1b) substitui o updateDoc direto e
       // adiciona a checagem que faltava: phoneDigits do payload precisa bater
-      // com o phoneDigits gravado na OS. _listenOS() (inalterado) recebe a
-      // atualização normalmente e re-renderiza a tela.
+      // com o phoneDigits gravado na OS. PS-6: sem listener em tempo real,
+      // o refresh é imediato via _fetchOS().
       await window.PortalFunctions.responderOrcamento({
         osId, phoneDigits: this.session.telefoneDigits, resposta: 'aprovado', escolha, obs: obs || undefined,
       });
       this._toast('Orçamento aprovado! Entraremos em contato.');
+      await this._fetchOS();
     } catch (err) {
       console.error('[Portal] Erro ao aprovar:', err);
       this._toast(err.message || 'Erro ao aprovar. Tente novamente.');
@@ -1116,6 +1124,7 @@ window.Portal = {
         osId, phoneDigits: this.session.telefoneDigits, resposta: 'recusado', obs: motivo,
       });
       this._toast('Orçamento recusado. Seu aparelho será devolvido.');
+      await this._fetchOS();
     } catch (err) {
       console.error('[Portal] Erro ao recusar:', err);
       this._toast(err.message || 'Erro ao recusar. Tente novamente.');

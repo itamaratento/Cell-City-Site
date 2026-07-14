@@ -24,6 +24,24 @@ admin.initializeApp();
 
 const REGIAO = 'southamerica-east1'; // mesma região do Firestore (ver firebase.json)
 
+// PS-6 (multiempresa): toda CF pública recebe um empresaId opcional no
+// payload (injetado centralmente pelo Portal — ver index.html do Portal).
+// Default 'cellcity-master' preserva 100% dos consumidores atuais
+// (garantia.html, consultar-os.html, Portal sem ?empresa=).
+const EMPRESA_PADRAO = 'cellcity-master';
+function empresaIdDe(data) {
+  const e = String((data && data.empresaId) || EMPRESA_PADRAO);
+  if (!/^[a-z0-9][a-z0-9-]{2,39}$/.test(e)) {
+    throw new HttpsError('invalid-argument', 'Empresa inválida.');
+  }
+  return e;
+}
+// Durante a transição (dados de produção ainda sem backfill), um doc
+// legado sem empresa_id é tratado como da empresa padrão.
+function docDaEmpresa(docData, empresaId) {
+  return (docData.empresa_id || EMPRESA_PADRAO) === empresaId;
+}
+
 exports.excluirUsuarioAdmin = onCall({ region: REGIAO }, async (request) => {
   const auth = request.auth;
   if (!auth) {
@@ -52,14 +70,25 @@ exports.excluirUsuarioAdmin = onCall({ region: REGIAO }, async (request) => {
   }
   const targetData = targetSnap.data();
 
+  // PS-6 (multiempresa): admin só exclui usuários da PRÓPRIA empresa;
+  // apenas master_admin (operador da plataforma) atravessa empresas.
+  const callerEmpresa = (callerSnap.data() || {}).empresa_id || EMPRESA_PADRAO;
+  const targetEmpresa = targetData.empresa_id || EMPRESA_PADRAO;
+  if (callerPerfil !== 'master_admin' && callerEmpresa !== targetEmpresa) {
+    throw new HttpsError('permission-denied', 'Este usuário pertence a outra empresa.');
+  }
+
   // Mesma guarda do último administrador já aplicada no client
   // (usuarios-permissoes.js::bloqueadoPorProtecaoAdmin) — replicada aqui
   // porque o client não pode mais ser a única linha de defesa: esta
   // function roda com Admin SDK e ignora as Firestore Rules.
   if (targetData.perfil === 'admin' || targetData.perfil === 'master_admin') {
-    const admins = await db.collection('usuarios').where('perfil', 'in', ['admin', 'master_admin']).get();
+    // PS-6: a guarda do último admin passa a ser POR EMPRESA.
+    const admins = await db.collection('usuarios')
+      .where('empresa_id', '==', targetEmpresa)
+      .where('perfil', 'in', ['admin', 'master_admin']).get();
     if (admins.size <= 1) {
-      throw new HttpsError('failed-precondition', 'Não é possível excluir o último administrador do sistema.');
+      throw new HttpsError('failed-precondition', 'Não é possível excluir o último administrador da empresa.');
     }
   }
 
@@ -77,6 +106,7 @@ exports.excluirUsuarioAdmin = onCall({ region: REGIAO }, async (request) => {
     alvo_uid: targetUid,
     alvo_nome: targetData.nome_exibicao || targetData.nome || targetData.email || targetUid,
     detalhes: { email: targetData.email || null, via: 'cloud-function' },
+    empresa_id: targetEmpresa,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -148,9 +178,12 @@ exports.consultarOSPublica = onCall({ region: REGIAO }, async (request) => {
     throw new HttpsError('invalid-argument', 'Informe o número da OS.');
   }
 
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   const snap = await db.collection('os').doc(osId).get();
-  if (!snap.exists) {
+  // Empresa errada responde igual a inexistente — não vaza a existência
+  // de OS de outra empresa.
+  if (!snap.exists || !docDaEmpresa(snap.data(), empresaId)) {
     throw new HttpsError('not-found', 'OS não encontrada.');
   }
 
@@ -163,10 +196,18 @@ exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (reques
     throw new HttpsError('invalid-argument', 'Informe um telefone válido.');
   }
 
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
+  // Filtro de empresa aplicado pós-query (não na query) de propósito:
+  // em produção o backfill de empresa_id ainda não rodou e um
+  // where('empresa_id'==) esconderia todas as OS legadas.
   const snap = await db.collection('os').where('phoneDigits', '==', digits).limit(50).get();
 
-  return { lista: snap.docs.map((d) => projetarCamposPublicosOS(d.data())) };
+  return {
+    lista: snap.docs
+      .filter((d) => docDaEmpresa(d.data(), empresaId))
+      .map((d) => projetarCamposPublicosOS(d.data())),
+  };
 });
 
 /* ============================================================
@@ -266,15 +307,18 @@ function projetarCamposPortal(colecao, doc) {
 // `name` — nunca CPF/e-mail/endereço.
 exports.portalObterNomeCliente = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   const snap = await db.collection('clientes').doc(digits).get();
-  return { name: snap.exists ? (snap.data().name || '') : '' };
+  if (!snap.exists || !docDaEmpresa(snap.data(), empresaId)) return { name: '' };
+  return { name: snap.data().name || '' };
 });
 
 // ---- Mensagens ----
 
 exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   // Sem orderBy na query (achado da homologação em DEV: o único índice
   // composto que existe de fato em mensagens_portal é telefone+createdAt,
@@ -287,7 +331,9 @@ exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
     .limit(200)
     .get();
   const lista = ordenarPorCreatedAtDesc(
-    snap.docs.map((d) => projetarCamposPortal('mensagens_portal', serializarCreatedAt({ id: d.id, ...d.data() })))
+    snap.docs
+      .filter((d) => docDaEmpresa(d.data(), empresaId))
+      .map((d) => projetarCamposPortal('mensagens_portal', serializarCreatedAt({ id: d.id, ...d.data() })))
   );
   return { lista };
 });
@@ -305,6 +351,7 @@ exports.portalEnviarMensagem = onCall({ region: REGIAO }, async (request) => {
 
   const db = admin.firestore();
   await db.collection('mensagens_portal').add({
+    empresa_id: empresaIdDe(data),
     telefone: maskPhoneServer(digits),
     telefoneDigits: digits,
     clientName,
@@ -328,7 +375,7 @@ exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) =>
   const ref = db.collection('mensagens_portal').doc(msgId);
   const snap = await ref.get();
   if (!snap.exists) throw new HttpsError('not-found', 'Mensagem não encontrada.');
-  if (snap.data().telefoneDigits !== digits) {
+  if (snap.data().telefoneDigits !== digits || !docDaEmpresa(snap.data(), empresaIdDe(request.data))) {
     throw new HttpsError('permission-denied', 'Esta mensagem não pertence a este telefone.');
   }
   await ref.update({ lida: true });
@@ -339,12 +386,15 @@ exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) =>
 
 exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   const snap = await db.collection('avaliacoes').where('telefoneDigits', '==', digits).limit(200).get();
   // Ordena no servidor (sem orderBy na query) para não depender de um
   // índice composto extra — coleção pequena por telefone, custo desprezível.
   const lista = ordenarPorCreatedAtDesc(
-    snap.docs.map((d) => projetarCamposPortal('avaliacoes', serializarCreatedAt({ id: d.id, ...d.data() })))
+    snap.docs
+      .filter((d) => docDaEmpresa(d.data(), empresaId))
+      .map((d) => projetarCamposPortal('avaliacoes', serializarCreatedAt({ id: d.id, ...d.data() })))
   );
   return { lista };
 });
@@ -362,6 +412,7 @@ exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
 
   const db = admin.firestore();
   await db.collection('avaliacoes').add({
+    empresa_id: empresaIdDe(data),
     telefone: maskPhoneServer(digits),
     telefoneDigits: digits,
     clientName,
@@ -377,10 +428,13 @@ exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
 
 exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) => {
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   const snap = await db.collection('agendamentos').where('telefoneDigits', '==', digits).limit(200).get();
   const lista = ordenarPorCreatedAtDesc(
-    snap.docs.map((d) => projetarCamposPortal('agendamentos', serializarCreatedAt({ id: d.id, ...d.data() })))
+    snap.docs
+      .filter((d) => docDaEmpresa(d.data(), empresaId))
+      .map((d) => projetarCamposPortal('agendamentos', serializarCreatedAt({ id: d.id, ...d.data() })))
   );
   return { lista };
 });
@@ -405,6 +459,7 @@ exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
 
   const db = admin.firestore();
   await db.collection('agendamentos').add({
+    empresa_id: empresaIdDe(data),
     telefone: maskPhoneServer(digits),
     telefoneDigits: digits,
     telefoneInformado,
@@ -432,12 +487,14 @@ exports.portalListarHorariosOcupados = onCall({ region: REGIAO }, async (request
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAgendamento)) {
     throw new HttpsError('invalid-argument', 'Data inválida.');
   }
+  const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
   const snap = await db.collection('agendamentos')
     .where('data', '==', dataAgendamento)
     .where('status', 'in', ['confirmado', 'aguardando'])
     .get();
   const ocupados = snap.docs
+    .filter((d) => docDaEmpresa(d.data(), empresaId))
     .map((d) => d.data().horario)
     .filter(Boolean)
     .map((h) => String(h).slice(0, 5));
@@ -463,6 +520,7 @@ exports.portalCriarSolicitacaoDiagnostico = onCall({ region: REGIAO }, async (re
   // este payload original nunca teve esse campo; mantido para não gerar
   // deriva de schema sem necessidade real).
   await db.collection('solicitacoes_diagnostico').add({
+    empresa_id: empresaIdDe(data),
     telefone: maskPhoneServer(digits),
     clientName,
     tipoEquipamento,
@@ -500,6 +558,7 @@ exports.portalRegistrarEvento = onCall({ region: REGIAO }, async (request) => {
 
   const db = admin.firestore();
   await db.collection('portal_eventos').add({
+    empresa_id: empresaIdDe(data),
     tipo,
     telefone: maskPhoneServer(digits),
     clientName,
@@ -543,7 +602,7 @@ exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) =>
   if (!snap.exists) throw new HttpsError('not-found', 'OS não encontrada.');
   const osData = snap.data();
 
-  if (osData.phoneDigits !== digits) {
+  if (osData.phoneDigits !== digits || !docDaEmpresa(osData, empresaIdDe(data))) {
     throw new HttpsError('permission-denied', 'Este telefone não corresponde a esta OS.');
   }
   if (osData.status !== 'orcamento_enviado' && osData.status !== 'orcamento') {
@@ -579,4 +638,75 @@ exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) =>
 
   await ref.update(campos);
   return { ok: true };
+});
+
+/* ============================================================
+   SAAS — ONBOARDING SELF-SERVICE (PS-6)
+
+   A página CRM/pages/saas-onboarding/ escrevia direto em `empresas`
+   e `saas_eventos` via client SDK sem nenhuma autenticação — as Rules
+   (write master_admin / create com tenant) bloqueiam isso por design.
+   Esta function é o único caminho público de cadastro de empresa.
+
+   Decisões:
+   - A empresa nasce com status 'pendente_aprovacao' — nada é liberado
+     automaticamente; o operador (master_admin) aprova no saas-admin.
+   - dados_migrados: true — empresa nova não tem dado legado, então os
+     filtros tenant do client ficam ativos desde o primeiro login.
+   - Nenhuma conta de usuário é criada aqui: o vínculo usuário↔empresa
+     é feito pelo operador na aprovação (evita signup público virar
+     vetor de spam de contas Auth).
+   ============================================================ */
+exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) => {
+  const data = request.data || {};
+  const nome = String(data.nome || '').trim();
+  const responsavel = String(data.seuNome || '').trim();
+  const email = String(data.email || '').trim().toLowerCase();
+  const whatsapp = String(data.whatsapp || '').trim().slice(0, 20);
+  const PLANOS_VALIDOS = ['trial', 'basico', 'profissional', 'enterprise'];
+  const plano = PLANOS_VALIDOS.includes(data.plano) ? data.plano : 'trial';
+
+  if (nome.length < 2 || nome.length > 80) {
+    throw new HttpsError('invalid-argument', 'Informe o nome da empresa (2 a 80 caracteres).');
+  }
+  if (!responsavel || responsavel.length > 80) {
+    throw new HttpsError('invalid-argument', 'Informe o nome do responsável.');
+  }
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 120) {
+    throw new HttpsError('invalid-argument', 'Informe um e-mail válido.');
+  }
+
+  const db = admin.firestore();
+
+  // Dedup pelo e-mail de contato — barreira simples contra re-submissão.
+  const dup = await db.collection('empresas').where('contato_email', '==', email).limit(1).get();
+  if (!dup.empty) {
+    throw new HttpsError('already-exists', 'Já existe um cadastro com este e-mail. Fale com o suporte.');
+  }
+
+  const empresaId = 'emp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const agora = admin.firestore.FieldValue.serverTimestamp();
+
+  await db.collection('empresas').doc(empresaId).set({
+    nome_fantasia: nome,
+    razao_social: nome,
+    plano,
+    status: 'pendente_aprovacao',
+    dados_migrados: true,
+    data_criacao: agora,
+    data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    contato_nome: responsavel,
+    contato_email: email,
+    contato_whatsapp: whatsapp,
+    modulos_ativos: null,
+  });
+
+  await db.collection('saas_eventos').doc(`onboard_${empresaId}`).set({
+    tipo: 'onboarding',
+    empresa_id: empresaId,
+    detalhes: { nome, responsavel, email, whatsapp, plano },
+    criadoEm: agora,
+  });
+
+  return { ok: true, empresaId };
 });
