@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin SaaS — Cell City</title>
+  <link rel="stylesheet" href="../../shared/dock.css">
+  <link rel="stylesheet" href="../../shared/brand-header.css">
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f7fa; margin: 0; padding-top: 60px; }
+    .saas-header { background: linear-gradient(135deg,#1a237e,#283593); color:#fff; padding:16px 24px; }
+    .saas-header h1 { margin:0; font-size:20px; }
+    .saas-container { max-width:1200px; margin:0 auto; padding:20px; }
+    .saas-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
+    .empresa-card { background:#fff; border-radius:12px; padding:16px; box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid #e8ecf0; }
+    .empresa-card h3 { margin:0 0 4px; color:#1a237e; }
+    .empresa-card .status { font-size:12px; padding:2px 8px; border-radius:10px; display:inline-block; }
+    .status-ativo { background:#c8e6c9; color:#2e7d32; }
+    .status-trial { background:#fff3e0; color:#e65100; }
+    .status-cancelado { background:#ffcdd2; color:#c62828; }
+    .saas-form { background:#fff; border-radius:12px; padding:20px; margin-bottom:20px; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+    .saas-form input, .saas-form select { width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom:12px; font-size:14px; }
+    .saas-form label { font-weight:600; font-size:13px; color:#555; display:block; margin-bottom:4px; }
+    .btn { padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; }
+    .btn-primary { background:#1a237e; color:#fff; }
+    .btn-primary:hover { background:#283593; }
+    .btn-danger { background:#c62828; color:#fff; }
+    .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+    .modal-box { background:#fff; border-radius:12px; padding:24px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto; }
+    .hidden { display:none !important; }
+  </style>
+</head>
+<body>
+  <header class="saas-header"><h1>🔷 Admin SaaS — Cell City</h1></header>
+  <div class="saas-container" id="app">
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="SaaSAdmin.mostrarForm()">➕ Nova Empresa</button>
+      <button class="btn" onclick="SaaSAdmin.carregar()">🔄 Atualizar</button>
+    </div>
+    <div id="saas-form" class="saas-form hidden">
+      <h3 id="form-titulo">Nova Empresa</h3>
+      <label>ID da Empresa</label><input id="f-id" placeholder="ex: cellcity-master">
+      <label>Nome Fantasia</label><input id="f-nome" placeholder="Cell City Informática">
+      <label>Razão Social</label><input id="f-razao" placeholder="Cell City Informática Ltda">
+      <label>Plano</label>
+      <select id="f-plano"><option value="enterprise">Enterprise</option><option value="profissional">Profissional</option><option value="basico">Básico</option><option value="trial">Trial</option></select>
+      <label>Status</label>
+      <select id="f-status"><option value="ativo">Ativo</option><option value="trial">Trial</option><option value="bloqueado">Bloqueado</option><option value="cancelado">Cancelado</option></select>
+      <label>Data de Vencimento</label><input id="f-vencimento" type="date">
+      <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" onclick="SaaSAdmin.salvar()">💾 Salvar</button>
+        <button class="btn" onclick="SaaSAdmin.fecharForm()">Cancelar</button>
+      </div>
+    </div>
+    <div id="saas-grid" class="saas-grid"></div>
+  </div>
+  <script type="module">
+    import { initModulo } from '../../scripts/kernel.js';
+    import { db, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, serverTimestamp } from '../../scripts/firebase.js';
+    const COL = 'empresas';
+
+    window.SaaSAdmin = {
+      async carregar() {
+        const snap = await getDocs(query(collection(db, COL), orderBy('nome_fantasia')));
+        const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const grid = document.getElementById('saas-grid');
+        grid.innerHTML = lista.map(e => `
+          <div class="empresa-card">
+            <div style="display:flex;justify-content:space-between;align-items:start;">
+              <div>
+                <h3>${e.nome_fantasia || e.id}</h3>
+                <div style="font-size:12px;color:#888;">${e.id} · ${e.plano || '—'}</div>
+              </div>
+              <span class="status status-${e.status || 'ativo'}">${e.status || 'ativo'}</span>
+            </div>
+            <div style="font-size:13px;color:#666;margin:8px 0;">${e.razao_social || ''}</div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+              <button class="btn" style="padding:6px 12px;font-size:12px;" onclick="SaaSAdmin.editar('${e.id}')">✏️ Editar</button>
+              <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="SaaSAdmin.excluir('${e.id}')">🗑️</button>
+            </div>
+          </div>
+        `).join('');
+      },
+      mostrarForm(dados) {
+        document.getElementById('saas-form').classList.remove('hidden');
+        document.getElementById('form-titulo').textContent = dados ? 'Editar Empresa' : 'Nova Empresa';
+        document.getElementById('f-id').value = dados?.id || '';
+        document.getElementById('f-id').disabled = !!dados;
+        document.getElementById('f-nome').value = dados?.nome_fantasia || '';
+        document.getElementById('f-razao').value = dados?.razao_social || '';
+        document.getElementById('f-plano').value = dados?.plano || 'enterprise';
+        document.getElementById('f-status').value = dados?.status || 'ativo';
+        document.getElementById('f-vencimento').value = dados?.data_vencimento || '';
+      },
+      editar(id) {
+        const card = document.querySelector(`[onclick*="${id}"]`)?.closest('.empresa-card');
+        // Recarrega para pegar dados frescos
+        this.carregar().then(() => {
+          const el = document.getElementById('saas-grid');
+          // Abre formulário em branco para edição simples
+          document.getElementById('f-id').value = id;
+          document.getElementById('f-id').disabled = true;
+          document.getElementById('saas-form').classList.remove('hidden');
+          document.getElementById('form-titulo').textContent = 'Editar Empresa';
+        });
+      },
+      fecharForm() {
+        document.getElementById('saas-form').classList.add('hidden');
+        document.getElementById('f-id').disabled = false;
+      },
+      async salvar() {
+        const id = document.getElementById('f-id').value.trim();
+        if (!id) { alert('ID da empresa é obrigatório'); return; }
+        const dados = {
+          nome_fantasia: document.getElementById('f-nome').value.trim(),
+          razao_social: document.getElementById('f-razao').value.trim(),
+          plano: document.getElementById('f-plano').value,
+          status: document.getElementById('f-status').value,
+          data_vencimento: document.getElementById('f-vencimento').value || null,
+          atualizadoEm: serverTimestamp()
+        };
+        await setDoc(doc(db, COL, id), dados, { merge: true });
+        this.fecharForm();
+        await this.carregar();
+      },
+      async excluir(id) {
+        if (!confirm(`Excluir empresa ${id}?`)) return;
+        await deleteDoc(doc(db, COL, id));
+        await this.carregar();
+      }
+    };
+
+    const ctx = await initModulo();
+    if (!ctx) window.location.href = '../../login.html';
+    await SaaSAdmin.carregar();
+  </script>
+</body>
+</html>

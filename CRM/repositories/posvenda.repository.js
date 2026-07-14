@@ -1,5 +1,5 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const PosvendaContatosRepository = createRepository('posvenda_contatos');
-export const PosvendaMensagensRepository = createRepository('posvenda_mensagens');
-export const PosvendaRastreamentoRepository = createRepository('posvenda_rastreamento');
+export const PosvendaContatosRepository = createTenantRepository('posvenda_contatos');
+export const PosvendaMensagensRepository = createTenantRepository('posvenda_mensagens');
+export const PosvendaRastreamentoRepository = createTenantRepository('posvenda_rastreamento');

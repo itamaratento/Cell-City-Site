@@ -1,6 +1,6 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const ProdutosRepository = createRepository('produtos');
-export const CatalogoProdutosRepository = createRepository('catalogo_produtos');
-export const CategoriasProdutosRepository = createRepository('categorias_produtos');
-export const CatalogoConfigRepository = createRepository('catalogo_config');
+export const ProdutosRepository = createTenantRepository('produtos');
+export const CatalogoProdutosRepository = createTenantRepository('catalogo_produtos');
+export const CategoriasProdutosRepository = createTenantRepository('categorias_produtos');
+export const CatalogoConfigRepository = createTenantRepository('catalogo_config');

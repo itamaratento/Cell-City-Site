@@ -1,6 +1,6 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const PortalEventosRepository = createRepository('portal_eventos');
-export const MensagensPortalRepository = createRepository('mensagens_portal');
-export const AvaliacoesRepository = createRepository('avaliacoes');
-export const AgendamentosRepository = createRepository('agendamentos');
+export const PortalEventosRepository = createTenantRepository('portal_eventos');
+export const MensagensPortalRepository = createTenantRepository('mensagens_portal');
+export const AvaliacoesRepository = createTenantRepository('avaliacoes');
+export const AgendamentosRepository = createTenantRepository('agendamentos');

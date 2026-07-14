@@ -1,8 +1,9 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit, where } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
 import { formatDateOnly } from '../../shared/date-utils.js';
+import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 
 const COL_COMPRAS = 'compras_pedidos';
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -25,12 +26,14 @@ function toast(msg) {
 // ── Carregar ───────────────────────────────────────────────────────
 async function carregar() {
   try {
-    const snap = await getDocs(query(collection(db, COL_COMPRAS), limit(500)));
+    const q = query(collection(db, COL_COMPRAS), ...injectTenantFilter([]), limit(500));
+    const snap = await getDocs(q);
     dados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { dados = []; }
 
   try {
-    const snap = await getDocs(query(collection(db, 'fornecedor_compras'), limit(200)));
+    const q = query(collection(db, 'fornecedor_compras'), ...injectTenantFilter([]), limit(200));
+    const snap = await getDocs(q);
     fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { fornecedores = []; }
 
@@ -107,7 +110,7 @@ function fecharForm() {
 async function salvar() {
   const desc = document.getElementById('cr-desc').value.trim();
   if (!desc) { toast('Informe a descrição do pedido.'); return; }
-  const dadosDoc = {
+  const dadosDoc = tData({
     descricao: desc,
     fornecedor_ref: document.getElementById('cr-fornecedor').value || '',
     fornecedor_nome: document.getElementById('cr-fornecedor').selectedOptions?.[0]?.text || '',
@@ -116,7 +119,7 @@ async function salvar() {
     status: document.getElementById('cr-status').value || 'pendente',
     obs: document.getElementById('cr-obs').value.trim() || '',
     atualizadoEm: serverTimestamp()
-  };
+  });
   const id = editandoId || `comp_${Date.now()}`;
   try {
     await setDoc(doc(db, COL_COMPRAS, id), dadosDoc);

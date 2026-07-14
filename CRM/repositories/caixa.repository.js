@@ -1,4 +1,4 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const CaixaLancamentosRepository = createRepository('caixa_lancamentos');
-export const CategoriasCaixaRepository = createRepository('categorias_caixa');
+export const CaixaLancamentosRepository = createTenantRepository('caixa_lancamentos');
+export const CategoriasCaixaRepository = createTenantRepository('categorias_caixa');

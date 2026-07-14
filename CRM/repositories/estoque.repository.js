@@ -1,3 +1,3 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const EstoqueRepository = createRepository('estoque_produtos');
+export const EstoqueRepository = createTenantRepository('estoque_produtos');

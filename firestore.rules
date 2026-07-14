@@ -20,6 +20,30 @@ service cloud.firestore {
              get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil != 'pendente';
     }
 
+    // PS-1: Isolamento multiempresa.
+    // Verifica se o documento lido (resource) pertence à mesma empresa
+    // do usuário logado. Se o documento não tiver campo empresa_id,
+    // permite acesso para compatibilidade com dados legados
+    // (single-tenant Cell City).
+    function mesmaEmpresaRead() {
+      let userEmpresaId = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresa_id;
+      return userEmpresaId == null ||
+             resource == null ||
+             resource.data.empresa_id == null ||
+             resource.data.empresa_id == userEmpresaId;
+    }
+
+    // Verifica se a escrita (create/update) respeita o isolamento
+    // multiempresa: o documento DEVE ter empresa_id igual ao do
+    // usuário logado.
+    function mesmaEmpresaWrite() {
+      let userEmpresaId = get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresa_id;
+      return userEmpresaId == null || (
+             request.resource.data.empresa_id != null &&
+             request.resource.data.empresa_id == userEmpresaId
+      );
+    }
+
     // ─────────────────────────────────────────────
     // OS — Sprint 1a (2026-07-05): `allow get: if true` fechado. Antes,
     // qualquer visitante sem login lia o documento INTEIRO de qualquer OS
@@ -34,28 +58,15 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     match /os/{osId} {
       allow get:                           if false;
-      // FECHAMENTO PARCIAL Sprint 1b (2026-07-06): aprovar/recusar orçamento
-      // (update) migrou para portalResponderOrcamento (Cloud Function, Admin
-      // SDK, ignora estas Rules) — não é mais o client SDK quem escreve em
-      // `os`, então create/update/delete voltam a exigir temAcessoLiberado(),
-      // fechando a brecha de conta 'pendente' nessas operações.
-      //
-      // `list`, porém, PRECISA continuar aberto só com request.auth != null
-      // (sem temAcessoLiberado): doLogin() e _listenOS() em
-      // CRM/pages/portal-cliente/portal.js fazem `query(os).where(phoneDigits==...)`
-      // direto do client SDK — ficaram FORA do escopo desta sprint de
-      // propósito (decisão registrada no plano técnico,
-      // plans/SPRINT_1B_PORTAL_CLOUD_FUNCTIONS.md), porque a sessão do
-      // cliente é sempre anônima (sem doc usuarios/{uid}) e o listener em
-      // tempo real (_listenOS/onSnapshot) não tem equivalente em Cloud
-      // Function onCall (só request/response, sem push). Fechar `list` aqui
-      // quebra o login de todo cliente real — confirmado ao vivo nesta
-      // homologação (tentativa revertida). Migrar login/listener para outro
-      // mecanismo seguro (ex. Cloud Function + polling, ou uma leitura
-      // pública dedicada como consultarOSPorTelefonePublica) fica para uma
-      // sprint futura.
+      // PS-3: `list` precisa continuar aberto apenas com request.auth != null
+      // para o Portal do Cliente (sessão anônima). Create/update/delete
+      // adicionam mesmaEmpresaWrite para isolar dados entre empresas.
+      // Quando o Portal migrar para Cloud Functions (sprint futura),
+      // `list` poderá ser fechado com mesmaEmpresaRead.
       allow list:                          if request.auth != null;
-      allow create, update, delete:        if request.auth != null && temAcessoLiberado();
+      allow create:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow delete:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -77,8 +88,10 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     // PRIVADO: Clientes e OS
     // ─────────────────────────────────────────────
+    // PS-3: tenant-scoped collections com mesmaEmpresaRead/Write
     match /clientes/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /metadata/{docId} {
@@ -89,105 +102,119 @@ service cloud.firestore {
     // PRIVADO: Caixa e financeiro
     // ─────────────────────────────────────────────
     match /caixa_lancamentos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /categorias_caixa/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /historico_diario/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /historico_semanal/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /historico_mensal/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /resumo_live/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /financeiro_pagar/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /financeiro_fixas/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /financeiro_receber/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /financeiro_categorias/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
-    // Fechamento Mensal Automático (Sprint 10, 2026-07-09) — um doc por
-    // mês (financeiro.js::COL_FECHAMENTOS). Revisão 2026-07-10: o módulo
-    // foi commitado sem esta rule e caía no deny-by-default.
     match /financeiro_fechamentos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Estoque e fornecedores
     // ─────────────────────────────────────────────
     match /estoque_produtos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /produtos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /categorias_produtos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /fornecedor_compras/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /fornecedor_tendencias/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
-    // Cadastro de fornecedores (aba Cadastro do módulo Fornecedor,
-    // 2026-07-09, fornecedor.js) e pedidos do módulo Compras (Sprint 13,
-    // compras.js/fornecedor.js). Revisão 2026-07-10: ambos os módulos
-    // foram commitados sem rule e caíam no deny-by-default.
     match /fornecedores_cadastro/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /compras_pedidos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Produtividade pessoal
     // ─────────────────────────────────────────────
     match /acoes_semana/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
-    // Agenda Inteligente — um documento por evento (calendário permanente)
     match /agenda/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /tarefas_semana/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /notas_usuarios/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /alarme_config/{docId} {
@@ -217,49 +244,54 @@ service cloud.firestore {
     // PRIVADO: Base de conhecimento
     // ─────────────────────────────────────────────
     match /comandos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /categorias_comandos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /informacoes/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /categorias_informacoes/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Pós-venda e campanhas
     // ─────────────────────────────────────────────
     match /lembretes_pagamento/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /posvenda_contatos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /posvenda_mensagens/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /posvenda_rastreamento/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
-    // PRIVADO: Chat interno da equipe (Sprint 15, 2026-07-09, chat.js)
-    // Revisão 2026-07-10: o módulo foi commitado sem esta rule e caía
-    // no deny-by-default — Chat inteiro quebrado em runtime.
+    // PRIVADO: Chat interno da equipe
     // ─────────────────────────────────────────────
     match /chat_mensagens/{docId} {
-      allow read, create:                  if request.auth != null && temAcessoLiberado();
-      // Mensagens são imutáveis — chat.js só lê e adiciona (addDoc),
-      // nunca edita/apaga; negar update/delete evita adulteração.
+      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
       allow update, delete:                if false;
     }
 
@@ -267,24 +299,26 @@ service cloud.firestore {
     // PRIVADO: Importações
     // ─────────────────────────────────────────────
     match /vendas_importadas/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
     // PRIVADO: Sincronização CRM ↔ Google Drive
-    // Coleções usadas pelos módulos Tutoriais, Soluções Técnicas,
-    // Diário Técnico. Operações via cc-sync.js / gdrive-backup.js.
     // ─────────────────────────────────────────────
     match /cc_lixeira/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /cc_gdrive_logs/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /gdrive_backup/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
@@ -335,8 +369,14 @@ service cloud.firestore {
       // pendentes não passam em nenhum temPermissao() (fora da hierarquia
       // master_admin/admin/gerente/tecnico/atendente) — só um admin,
       // pelo módulo Usuários e Permissões, pode atribuir um perfil real.
+      // PS-2 (TD-002): auto-provisionamento só aceita empresa_id = 'cellcity-master'.
+      // Impede que um cliente modificado crie um usuário com empresa_id de
+      // outra empresa. Admin/master_admin continuam podendo criar qualquer
+      // empresa_id (gerenciamento de usuários multiempresa).
       allow create: if request.auth != null && (
-        (request.auth.uid == uid && request.resource.data.perfil == 'pendente') ||
+        (request.auth.uid == uid &&
+         request.resource.data.perfil == 'pendente' &&
+         request.resource.data.empresa_id == 'cellcity-master') ||
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin']
       );
 
@@ -393,15 +433,13 @@ service cloud.firestore {
     // PRIVADO: CRM Comercial — leads/pré-orçamentos
     // ─────────────────────────────────────────────
     match /crm_leads/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
-    // Revisão 2026-07-10: leitura apertada de `request.auth != null` para
-    // o padrão temAcessoLiberado() — o único consumidor é o CRM Comercial
-    // (crm.js, equipe); `auth != null` sozinho incluía a sessão anônima do
-    // Portal do Cliente e contas 'pendente', sem necessidade.
     match /crm_templates/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
@@ -415,53 +453,48 @@ service cloud.firestore {
     // PRIVADO: Dashboard — coleções de analytics e portal
     // ─────────────────────────────────────────────
     match /avaliacoes/{docId} {
-      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
-      // migrado para portalCriarAvaliacao/portalListarAvaliacoes.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /diario_registros/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
-    // HARDENING (auditoria 2026-07-06, plans/AUDITORIA_GERAL_20260706.md):
-    // usada por CRM/pages/diario/diario.js (COL_EVT) para o histórico da
-    // Linha do Tempo do Diário — não tinha nenhuma regra (falhava fechado).
-    // Mesmo padrão de diario_registros, seu par lógico.
     match /diario_eventos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /estoque/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /mensagens_portal/{docId} {
-      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
-      // migrado para portalListarMensagens/portalEnviarMensagem/portalMarcarMensagemLida.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /portal_eventos/{docId} {
-      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
-      // migrado para portalRegistrarEvento.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /agendamentos/{docId} {
-      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
-      // migrado para portalListarAgendamentos/portalCriarAgendamento/portalListarHorariosOcupados.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /solicitacoes_diagnostico/{docId} {
-      // FECHAMENTO Sprint 1b (2026-07-06, ver comentário em /os acima):
-      // migrado para portalCriarSolicitacaoDiagnostico.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /catalogo_produtos/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     // ─────────────────────────────────────────────
@@ -478,39 +511,55 @@ service cloud.firestore {
     // coleções hoje.
     // ─────────────────────────────────────────────
     match /alertas_usuario/{docId} {
-      // CRM/pages/os/os.js — alertas gerados a partir de OS.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /chips_cadastros/{docId} {
-      // CRM/pages/crm-comercial/chips.js, chips-entrada.js — módulo de
-      // Cadastro de Chip.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /contas_numeros/{docId} {
-      // CRM/pages/contas/contas.js — módulo de Contas e Pendências.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /central_organizacao/{docId} {
-      // CRM/pages/central-organizacao/central.js.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /backup_logs/{docId} {
-      // CRM/pages/dashboard/index.html (script inline) — log de rotinas
-      // de backup/manutenção acionadas pelo Dashboard.
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:  if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow write: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
     }
 
     match /catalogo_config/{docId} {
-      // CRM/pages/catalogo/catalogo.js (leitura/escrita da equipe) +
-      // CRM/pages/catalogo/public/catalogo-publico.js (leitura pública do
-      // doc único `geral`, catálogo público sem login) — mesmo padrão já
-      // usado em /config acima.
-      allow get:                           if true;
-      allow list, write:                   if request.auth != null && temAcessoLiberado();
+      // PS-3: `get` público (catálogo público sem login); list/write com tenant
+      allow get:    if true;
+      allow list:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaWrite();
+      allow delete: if request.auth != null && temAcessoLiberado();
+    }
+
+    // ─────────────────────────────────────────────
+    // SAAS (PS-5): Auditoria e Eventos — escrita autenticada,
+    // leitura restrita a admin
+    // ─────────────────────────────────────────────
+    match /saas_eventos/{docId} {
+      allow create:   if request.auth != null && temAcessoLiberado();
+      allow read:     if request.auth != null && temAcessoLiberado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+      allow update, delete: if false;
+    }
+
+    match /auditoria_saas/{docId} {
+      allow create:   if request.auth != null && temAcessoLiberado();
+      allow read:     if request.auth != null && temAcessoLiberado() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.perfil in ['admin', 'master_admin'];
+      allow update, delete: if false;
     }
 
     // ─────────────────────────────────────────────

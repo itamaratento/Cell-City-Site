@@ -1,5 +1,3 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-// Central de Organização (CRM/pages/central-organizacao/) — cada "seção"
-// (whatsapp, etc.) é um documento dentro desta coleção única.
-export const CentralOrganizacaoRepository = createRepository('central_organizacao');
+export const CentralOrganizacaoRepository = createTenantRepository('central_organizacao');

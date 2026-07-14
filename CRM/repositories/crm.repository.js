@@ -1,4 +1,4 @@
-import { createRepository } from './base.repository.js';
+import { createTenantRepository } from './base.repository.tenant.js';
 
-export const CrmLeadsRepository = createRepository('crm_leads');
-export const ContasNumerosRepository = createRepository('contas_numeros');
+export const CrmLeadsRepository = createTenantRepository('crm_leads');
+export const ContasNumerosRepository = createTenantRepository('contas_numeros');

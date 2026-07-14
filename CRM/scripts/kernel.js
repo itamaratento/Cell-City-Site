@@ -34,6 +34,9 @@ import {
 import {
     doc, getDoc, setDoc, updateDoc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { initTenant } from '../shared/tenant-provider.js';
+import { DEFAULT_TENANT_ID } from '../shared/tenant-resolver.js';
+import { clearTenant } from '../shared/tenant-context.js';
 
 // ── Configuração ──────────────────────────────────────────────
 // H-003 (homologação 2026-07-03): LOGIN_URL era fixo, sem prefixo /dev — ao
@@ -46,8 +49,12 @@ function loginUrl() {
     const prefix = (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
     return prefix + '/CRM/login.html';
 }
-const EMPRESA_ID    = 'cellcity-master';   // empresa padrão (single-store)
-const TIMEOUT_MS    = 10_000;              // 10s para resolver auth
+// PS-1: EMPRESA_ID removido do núcleo. A resolução de tenant passa a ser
+// feita pelo Tenant Resolver (shared/tenant-resolver.js), que lê o campo
+// empresa_id do documento usuarios/{uid} no Firestore. O valor
+// 'cellcity-master' continua como fallback para manter compatibilidade
+// com a Cell City (single-tenant atual).
+const TIMEOUT_MS    = 10_000;
 
 // Chave no localStorage para evitar flash no gate HTML dos módulos.
 // NÃO é o mecanismo de segurança — isso é papel do Firebase Auth.
@@ -65,6 +72,8 @@ onAuthStateChanged(auth, async (user) => {
     if (user && !user.isAnonymous) {
         try {
             _ctx = await _buildContext(user);
+            // PS-2 (TD-001): passa empresaId já resolvido para evitar dupla leitura
+            await initTenant(_ctx, _ctx.empresaId);
             localStorage.setItem(FLAG_AUTH, '1');
         } catch (e) {
             _log('ERRO ao construir contexto', e);
@@ -96,7 +105,7 @@ onAuthStateChanged(auth, async (user) => {
 // real quando um admin a cadastra formalmente pelo módulo Usuários e
 // Permissões (que sempre grava um perfil válido explícito).
 async function _buildContext(user) {
-    let empresaId = EMPRESA_ID;
+    let empresaId = DEFAULT_TENANT_ID;
     let perfil    = 'pendente';
     let nome      = user.displayName || user.email?.split('@')[0] || 'Usuário';
 
@@ -109,9 +118,11 @@ async function _buildContext(user) {
             if (d.perfil)     perfil    = d.perfil;
             if (d.nome)       nome      = d.nome;
         } else {
-            // Primeiro acesso com este UID — cria documento base, sem
-            // nenhum privilégio (ver comentário acima). A Firestore Rule
-            // de `create` exige perfil:'pendente' exato para autoprovisionamento.
+            // PS-2 (TD-004): doc não existe — usa DEFAULT_TENANT_ID diretamente
+            // em vez de chamar resolveTenantFromUser (que releria o doc
+            // que acabamos de confirmar que não existe).
+            empresaId = DEFAULT_TENANT_ID;
+
             await setDoc(doc(db, 'usuarios', user.uid), {
                 email:      user.email,
                 nome,
@@ -119,11 +130,10 @@ async function _buildContext(user) {
                 perfil,
                 createdAt:  serverTimestamp()
             });
-            _log(`Documento usuarios/${user.uid} criado (primeiro acesso, perfil pendente)`);
+            _log(`Documento usuarios/${user.uid} criado (primeiro acesso, perfil pendente, empresa=${empresaId})`);
         }
     } catch (e) {
         _log('Não foi possível carregar perfil do Firestore — usando padrões', e);
-        // Não lança: sistema funciona com os valores padrão (perfil 'pendente' = sem acesso)
     }
 
     _log(`Contexto pronto: uid=${user.uid} empresa=${empresaId} perfil=${perfil}`);
@@ -203,6 +213,7 @@ export async function logout() {
     _log('Logout iniciado');
     await signOut(auth);
     localStorage.removeItem(FLAG_AUTH);
+    clearTenant();
     _ctx = null;
     location.href = loginUrl();
 }

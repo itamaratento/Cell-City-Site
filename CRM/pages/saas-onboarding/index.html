@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Onboarding SaaS — Cell City</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f5f7fa; margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .onboard-card { background: #fff; border-radius: 16px; padding: 40px; max-width: 480px; width: 90%; box-shadow: 0 4px 24px rgba(0,0,0,.1); }
+    .onboard-card h1 { margin: 0 0 4px; color: #1a237e; font-size: 24px; }
+    .onboard-card .sub { color: #666; margin-bottom: 24px; }
+    .onboard-card label { font-weight: 600; font-size: 13px; color: #555; display: block; margin-bottom: 4px; margin-top: 12px; }
+    .onboard-card input, .onboard-card select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
+    .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; width: 100%; margin-top: 20px; }
+    .btn-primary { background: #1a237e; color: #fff; }
+    .btn-primary:hover { background: #283593; }
+    .step { display: none; }
+    .step.active { display: block; }
+    .step-indicator { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
+    .step-dot { width: 10px; height: 10px; border-radius: 50%; background: #ddd; }
+    .step-dot.active { background: #1a237e; }
+    .step-dot.done { background: #4caf50; }
+    .success { text-align: center; padding: 20px 0; }
+    .success .icon { font-size: 48px; }
+    .error { color: #c62828; font-size: 13px; margin-top: 4px; }
+  </style>
+</head>
+<body>
+  <div class="onboard-card">
+    <div class="step-indicator" id="steps">
+      <span class="step-dot active" data-step="1"></span>
+      <span class="step-dot" data-step="2"></span>
+      <span class="step-dot" data-step="3"></span>
+    </div>
+
+    <!-- STEP 1: Dados da Empresa -->
+    <div class="step active" data-step="1">
+      <h1>🚀 Criar Conta</h1>
+      <p class="sub">Configure sua empresa no Cell City CRM</p>
+      <label>Nome da Empresa *</label>
+      <input id="s-nome" placeholder="Ex: Minha Loja de Celulares">
+      <label>Seu Nome *</label>
+      <input id="s-seu-nome" placeholder="Ex: João Silva">
+      <label>Seu E-mail *</label>
+      <input id="s-email" type="email" placeholder="joao@minhaloja.com.br">
+      <label>Celular / WhatsApp *</label>
+      <input id="s-whatsapp" placeholder="(62) 99999-9999">
+      <button class="btn btn-primary" onclick="Onboarding.avancar(1)">Continuar →</button>
+    </div>
+
+    <!-- STEP 2: Plano -->
+    <div class="step" data-step="2">
+      <h1>📋 Escolher Plano</h1>
+      <p class="sub">Selecione o plano ideal para sua empresa</p>
+      <label>Plano</label>
+      <select id="s-plano" onchange="Onboarding.atualizarPreco()">
+        <option value="basico">Plano Básico — OS, Caixa, Financeiro</option>
+        <option value="profissional">Plano Profissional — + Estoque, Compras, CRM</option>
+        <option value="enterprise" selected>Plano Enterprise — Todos os módulos</option>
+      </select>
+      <div id="s-preco" style="text-align:center;padding:16px;background:#e8eaf6;border-radius:8px;margin:12px 0;">
+        <div style="font-size:28px;font-weight:700;color:#1a237e;">Grátis</div>
+        <div style="font-size:13px;color:#666;">Período de teste: 30 dias</div>
+      </div>
+      <button class="btn btn-primary" onclick="Onboarding.avancar(2)">Continuar →</button>
+      <button class="btn" onclick="Onboarding.voltar(2)" style="margin-top:8px;background:#eee;color:#333;">← Voltar</button>
+    </div>
+
+    <!-- STEP 3: Confirmação -->
+    <div class="step" data-step="3">
+      <h1>✅ Confirmar</h1>
+      <p class="sub">Revise os dados antes de criar sua conta</p>
+      <div id="s-resumo" style="background:#f5f5f5;border-radius:8px;padding:16px;font-size:14px;"></div>
+      <div id="s-erro" class="error" style="display:none;"></div>
+      <button class="btn btn-primary" onclick="Onboarding.finalizar()">✅ Criar Conta</button>
+      <button class="btn" onclick="Onboarding.voltar(3)" style="margin-top:8px;background:#eee;color:#333;">← Voltar</button>
+    </div>
+
+    <!-- SUCCESS -->
+    <div class="step" data-step="success">
+      <div class="success">
+        <div class="icon">🎉</div>
+        <h2>Conta Criada!</h2>
+        <p>Sua empresa foi cadastrada com sucesso.</p>
+        <p style="font-size:13px;color:#888;">Você receberá um e-mail com as instruções de acesso.</p>
+        <button class="btn btn-primary" onclick="window.location.href='../dashboard/index.html'">Ir para o Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { getAuth, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+    import { getFirestore, doc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import '../../shared/env-config.js';
+
+    const app = initializeApp(window.CC_FIREBASE_CONFIG);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let dados = {};
+
+    window.Onboarding = {
+      currentStep: 1,
+      avancar(from) {
+        const erros = this.validar(from);
+        if (erros) { document.getElementById('s-erro').textContent = erros; document.getElementById('s-erro').style.display = 'block'; return; }
+        document.getElementById('s-erro').style.display = 'none';
+        if (from === 2) this.montarResumo();
+        if (from === 1) {
+          dados.nome = document.getElementById('s-nome').value.trim();
+          dados.seuNome = document.getElementById('s-seu-nome').value.trim();
+          dados.email = document.getElementById('s-email').value.trim();
+          dados.whatsapp = document.getElementById('s-whatsapp').value.trim();
+        }
+        if (from === 2) dados.plano = document.getElementById('s-plano').value;
+        this.irPara(from + 1);
+      },
+      voltar(from) { this.irPara(from - 1); },
+      irPara(step) {
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active', 'done'));
+        const target = step === 4 ? 'success' : step;
+        document.querySelector(`.step[data-step="${target}"]`)?.classList.add('active');
+        for (let i = 1; i < step; i++) {
+          document.querySelector(`.step-dot[data-step="${i}"]`)?.classList.add('done');
+        }
+        document.querySelector(`.step-dot[data-step="${step}"]`)?.classList.add('active');
+        this.currentStep = step;
+      },
+      validar(step) {
+        if (step === 1) {
+          if (!document.getElementById('s-nome').value.trim()) return 'Informe o nome da empresa.';
+          if (!document.getElementById('s-seu-nome').value.trim()) return 'Informe seu nome.';
+          if (!document.getElementById('s-email').value.trim()) return 'Informe seu e-mail.';
+        }
+        return null;
+      },
+      atualizarPreco() {
+        const p = document.getElementById('s-plano').value;
+        const el = document.getElementById('s-preco');
+        if (p === 'trial' || p === 'basico') el.innerHTML = '<div style="font-size:28px;font-weight:700;color:#1a237e;">Grátis</div><div style="font-size:13px;color:#666;">Plano gratuito</div>';
+        else el.innerHTML = '<div style="font-size:28px;font-weight:700;color:#1a237e;">Grátis</div><div style="font-size:13px;color:#666;">Período de teste: 30 dias</div>';
+      },
+      montarResumo() {
+        document.getElementById('s-resumo').innerHTML = `
+          <div><strong>Empresa:</strong> ${dados.nome}</div>
+          <div><strong>Responsável:</strong> ${dados.seuNome}</div>
+          <div><strong>E-mail:</strong> ${dados.email}</div>
+          <div><strong>WhatsApp:</strong> ${dados.whatsapp}</div>
+          <div><strong>Plano:</strong> ${document.getElementById('s-plano').value}</div>
+        `;
+      },
+      async finalizar() {
+        const btn = document.querySelector('.step.active .btn-primary');
+        btn.disabled = true; btn.textContent = '⏳ Criando...';
+        try {
+          const empresaId = 'emp_' + Date.now().toString(36);
+          await setDoc(doc(db, 'empresas', empresaId), {
+            nome_fantasia: dados.nome,
+            razao_social: dados.nome,
+            plano: dados.plano || 'trial',
+            status: 'trial',
+            data_criacao: serverTimestamp(),
+            data_vencimento: new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0],
+            contato_nome: dados.seuNome,
+            contato_email: dados.email,
+            contato_whatsapp: dados.whatsapp,
+            modulos_ativos: null,
+          });
+          // Registra onboarding
+          await setDoc(doc(db, 'saas_eventos', `onboard_${empresaId}`), {
+            tipo: 'onboarding',
+            empresa_id: empresaId,
+            dados,
+            criadoEm: serverTimestamp()
+          });
+          this.irPara(4);
+        } catch (err) {
+          document.getElementById('s-erro').textContent = 'Erro: ' + err.message;
+          document.getElementById('s-erro').style.display = 'block';
+          btn.disabled = false; btn.textContent = '✅ Criar Conta';
+        }
+      }
+    };
+  </script>
+</body>
+</html>
