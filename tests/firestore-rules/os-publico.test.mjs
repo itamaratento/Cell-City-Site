@@ -48,13 +48,16 @@ async function seedOS() {
       // porque algum teste abaixo tente ler estes valores.
       password: 'segredo-do-aparelho',
       endereco: 'Rua Teste, 123',
+      empresa_id: 'cellcity-master',
     });
   });
 }
 
-async function seedUsuario(uid, perfil) {
+async function seedUsuario(uid, perfil, empresa = 'cellcity-master') {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().collection('usuarios').doc(uid).set({ perfil });
+    // PS-6: todo usuário tem empresa_id (backfill garantiu isso nos dados
+    // reais; o escape de usuário-sem-empresa foi removido das Rules).
+    await ctx.firestore().collection('usuarios').doc(uid).set({ perfil, empresa_id: empresa });
   });
 }
 
@@ -83,31 +86,37 @@ test('list de os sem autenticação → negado (não-regressão)', async () => {
   await assertFails(db.collection('os').get());
 });
 
-test('list de os com staff real (perfil != pendente) → permitido (não-regressão)', async () => {
+// PS-6: `list` de /os FECHOU. O Portal migrou login/listener para
+// consultarOSPorTelefonePublica (Cloud Function) — a dependência que
+// mantinha o list aberto deixou de existir. Equipe lista com filtro de
+// empresa (provável para as Rules); sem filtro, o Firestore não consegue
+// provar o isolamento e nega.
+test('list de os com staff real e filtro de empresa → permitido (PS-6)', async () => {
   await seedOS();
   await seedUsuario('staff-uid-2', 'admin');
   const db = testEnv.authenticatedContext('staff-uid-2').firestore();
-  await assertSucceeds(db.collection('os').get());
+  await assertSucceeds(db.collection('os').where('empresa_id', '==', 'cellcity-master').get());
 });
 
-test('list de os com perfil pendente → permitido (list NÃO fechou nesta sprint — ver comentário em CRM/firestore.rules)', async () => {
-  // `list` em `os` fica de fora do FECHAMENTO Sprint 1b de propósito:
-  // doLogin()/_listenOS() (CRM/pages/portal-cliente/portal.js) ainda fazem
-  // `query(os).where(phoneDigits==...)` direto do client SDK, sempre com
-  // sessão anônima (sem doc usuarios/{uid}). Tentar fechar `list` aqui
-  // quebrou o login de todo cliente real numa homologação real desta sprint
-  // (revertido) — fica registrado como pendência para uma sprint futura que
-  // migre login/listener para outro mecanismo.
+test('list de os com staff real SEM filtro de empresa → negado (PS-6 — isolamento não-provável)', async () => {
+  await seedOS();
+  await seedUsuario('staff-uid-3', 'admin');
+  const db = testEnv.authenticatedContext('staff-uid-3').firestore();
+  await assertFails(db.collection('os').get());
+});
+
+test('list de os com perfil pendente → negado (PS-6 — fechado junto com a migração do Portal)', async () => {
   await seedOS();
   await seedUsuario('pendente-uid', 'pendente');
   const db = testEnv.authenticatedContext('pendente-uid').firestore();
-  await assertSucceeds(db.collection('os').get());
+  await assertFails(db.collection('os').get());
 });
 
-test('list de os com sessão anônima → permitido (doLogin()/_listenOS() dependem disto — não migrado nesta sprint)', async () => {
+test('list de os com sessão anônima → negado (PS-6 — Portal usa só Cloud Function)', async () => {
   await seedOS();
   const db = testEnv.authenticatedContext('anon-uid-2', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
-  await assertSucceeds(db.collection('os').get());
+  await assertFails(db.collection('os').get());
+  await assertFails(db.collection('os').where('phoneDigits', '==', '61999998888').get());
 });
 
 test('update em os/{osId} sem autenticação → negado', async () => {
@@ -156,7 +165,8 @@ for (const colecao of ['avaliacoes', 'mensagens_portal', 'portal_eventos', 'agen
   test(`read/write em ${colecao} com staff aprovado → permitido (não-regressão — dashboard/central de alertas ainda lê direto)`, async () => {
     await seedUsuario(`staff-${colecao}`, 'admin');
     const db = testEnv.authenticatedContext(`staff-${colecao}`).firestore();
-    await assertSucceeds(db.collection(colecao).add({ teste: true }));
+    // PS-6: create exige carimbo de empresa_id (tData() nos módulos)
+    await assertSucceeds(db.collection(colecao).add({ teste: true, empresa_id: 'cellcity-master' }));
   });
 
   test(`read/write em ${colecao} sem autenticação → negado (não-regressão)`, async () => {
@@ -173,7 +183,7 @@ for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', '
   test(`read/write em ${colecao} com staff aprovado → permitido (hardening 2026-07-06)`, async () => {
     await seedUsuario(`staff-hard-${colecao}`, 'admin');
     const db = testEnv.authenticatedContext(`staff-hard-${colecao}`).firestore();
-    await assertSucceeds(db.collection(colecao).add({ teste: true }));
+    await assertSucceeds(db.collection(colecao).add({ teste: true, empresa_id: 'cellcity-master' }));
   });
 
   test(`read/write em ${colecao} com perfil pendente → negado (hardening 2026-07-06)`, async () => {
@@ -192,7 +202,11 @@ for (const colecao of ['diario_eventos', 'alertas_usuario', 'chips_cadastros', '
 // /config) — testes dedicados em vez do loop genérico acima.
 test('get de catalogo_config/geral sem autenticação → permitido (catálogo público)', async () => {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().collection('catalogo_config').doc('geral').set({ ativo: true });
+    // PS-6: empresa_id presente desde o seed — pós-fix da FASE 15 (achado
+    // crítico do vazamento de list sem filtro), docs sem empresa_id ficam
+    // ilegíveis para staff comum até serem reivindicados (ver
+    // tenant-isolamento.test.mjs).
+    await ctx.firestore().collection('catalogo_config').doc('geral').set({ ativo: true, empresa_id: 'cellcity-master' });
   });
   const db = testEnv.unauthenticatedContext().firestore();
   await assertSucceeds(db.collection('catalogo_config').doc('geral').get());
@@ -206,7 +220,7 @@ test('write em catalogo_config/geral sem autenticação → negado', async () =>
 test('write em catalogo_config/geral com staff aprovado → permitido', async () => {
   await seedUsuario('staff-catalogo-config', 'admin');
   const db = testEnv.authenticatedContext('staff-catalogo-config').firestore();
-  await assertSucceeds(db.collection('catalogo_config').doc('geral').set({ ativo: true }));
+  await assertSucceeds(db.collection('catalogo_config').doc('geral').set({ ativo: true, empresa_id: 'cellcity-master' }));
 });
 
 // ── REVISÃO 2026-07-10: os módulos Chat (Sprint 15), Compras (Sprint 13),
@@ -219,7 +233,7 @@ for (const colecao of ['chat_mensagens', 'compras_pedidos', 'financeiro_fechamen
   test(`read/write em ${colecao} com staff aprovado → permitido (revisão 2026-07-10)`, async () => {
     await seedUsuario(`staff-rev-${colecao}`, 'admin');
     const db = testEnv.authenticatedContext(`staff-rev-${colecao}`).firestore();
-    await assertSucceeds(db.collection(colecao).add({ teste: true }));
+    await assertSucceeds(db.collection(colecao).add({ teste: true, empresa_id: 'cellcity-master' }));
   });
 
   test(`read/write em ${colecao} com perfil pendente → negado (revisão 2026-07-10)`, async () => {

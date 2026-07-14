@@ -39,13 +39,13 @@ export const dashboardAlarmeOsMixin = {
           const reg = await navigator.serviceWorker.register('/CRM/pages/dashboard/sw-alarme.js', {
             scope: '/CRM/pages/dashboard/'
           });
-          console.log('✓ Service Worker Alarme registrado');
+          false && console.log('✓ Service Worker Alarme registrado');
 
           // Registra Background Sync (sincronizar a cada hora)
           if ('sync' in reg) {
             try {
               await reg.sync.register('alarme-sync');
-              console.log('📡 Background Sync registrado');
+              false && console.log('📡 Background Sync registrado');
             } catch (e) {
               console.warn('Background Sync:', e);
             }
@@ -57,7 +57,7 @@ export const dashboardAlarmeOsMixin = {
               await reg.periodicSync.register('alarme-periodico', {
                 minInterval: 60 * 60 * 1000 // 60 minutos
               });
-              console.log('⏰ Periodic Sync registrado (Android)');
+              false && console.log('⏰ Periodic Sync registrado (Android)');
             } catch (e) {
               console.warn('Periodic Sync:', e);
             }
@@ -95,7 +95,7 @@ export const dashboardAlarmeOsMixin = {
           config: config,
           userId: userId
         });
-        console.log('📤 Config enviada ao Service Worker');
+        false && console.log('📤 Config enviada ao Service Worker');
       }
     };
 
@@ -118,7 +118,7 @@ export const dashboardAlarmeOsMixin = {
         const { tipo, hora, anotacao, repeticao } = event.data;
 
         if (tipo === 'alarmeDisparou') {
-          console.log(`📢 Alarme disparou às ${hora}: ${anotacao}`);
+          false && console.log(`📢 Alarme disparou às ${hora}: ${anotacao}`);
           atualizarDebug(`🔔 ALARME! ${hora} - ${anotacao}`);
 
           // Toca o som do alarme no app se ele estiver aberto
@@ -134,19 +134,19 @@ export const dashboardAlarmeOsMixin = {
           }
         }
       });
-      console.log('✅ Listener de mensagens do Service Worker configurado');
+      false && console.log('✅ Listener de mensagens do Service Worker configurado');
     }
 
     const atualizarDebug = (msg) => {
       const agora = new Date();
       const hora = String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0') + ':' + String(agora.getSeconds()).padStart(2, '0');
       debugInfo.textContent = `[${hora}] ${msg}`;
-      console.log(msg);
+      false && console.log(msg);
     };
 
     // Adicionar novo alarme
     const adicionarAlarme = () => {
-      console.log('📥 [DEBUG] adicionarAlarme chamado');
+      false && console.log('📥 [DEBUG] adicionarAlarme chamado');
 
       try {
         if (!inputHoraInicio || !inputAnotacao) {
@@ -171,7 +171,7 @@ export const dashboardAlarmeOsMixin = {
           repeticao: repeticao
         };
 
-        console.log('📋 Novo alarme:', novoAlarme);
+        false && console.log('📋 Novo alarme:', novoAlarme);
 
         alarmes.push(novoAlarme);
         salvarAlarmes();
@@ -180,7 +180,7 @@ export const dashboardAlarmeOsMixin = {
         const msgRepeticao = repeticao > 0 ? ` (repete a cada ${repeticao}s)` : '';
         atualizarDebug(`➕ Alarme adicionado: ${novoAlarme.horaInicio}${msgRepeticao}`);
 
-        console.log('✅ Alarme adicionado com sucesso');
+        false && console.log('✅ Alarme adicionado com sucesso');
       } catch (e) {
         console.error('❌ Erro ao adicionar alarme:', e);
         atualizarDebug(`❌ Erro: ${e.message}`);
@@ -189,7 +189,7 @@ export const dashboardAlarmeOsMixin = {
 
     // Abrir/Editar alarme
     const abrirAlarme = (id) => {
-      console.log('📂 [DEBUG] Abrindo alarme:', id);
+      false && console.log('📂 [DEBUG] Abrindo alarme:', id);
 
       const alarme = alarmes.find(a => a.id === id);
       if (!alarme) {
@@ -223,7 +223,7 @@ export const dashboardAlarmeOsMixin = {
         // Garante que o painel está visível
         if (panel && panel.style.display === 'none') {
           panel.style.display = 'flex';
-          console.log('📂 Painel aberto automaticamente');
+          false && console.log('📂 Painel aberto automaticamente');
         }
 
         atualizarDebug(`✏️ Editando: ${alarme.anotacao}`);
@@ -233,7 +233,7 @@ export const dashboardAlarmeOsMixin = {
           panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
 
-        console.log('✅ [DEBUG] Alarme aberto com sucesso:', alarme);
+        false && console.log('✅ [DEBUG] Alarme aberto com sucesso:', alarme);
       } catch (e) {
         console.error('❌ [DEBUG] Erro ao abrir alarme:', e);
         atualizarDebug('❌ Erro ao abrir: ' + e.message);
@@ -251,14 +251,14 @@ export const dashboardAlarmeOsMixin = {
     // Renderizar lista de alarmes
     const renderizarAlarmes = () => {
       const lista = document.getElementById('alarmes-lista');
-      console.log('🎨 renderizarAlarmes chamado, lista:', lista, 'alarmes:', alarmes.length);
+      false && console.log('🎨 renderizarAlarmes chamado, lista:', lista, 'alarmes:', alarmes.length);
       if (!lista) {
         console.warn('⚠️ Lista não encontrada!');
         return;
       }
 
       if (alarmes.length === 0) {
-        console.log('📭 Nenhum alarme, mostrando vazio');
+        false && console.log('📭 Nenhum alarme, mostrando vazio');
         lista.innerHTML = '<div style="padding: 10px; color: var(--text-tertiary); text-align: center; font-size: 12px;">Nenhum alarme adicionado</div>';
         return;
       }
@@ -266,7 +266,7 @@ export const dashboardAlarmeOsMixin = {
       const html = alarmes.map(alarme => {
         const repeticaoText = alarme.repeticao > 0 ? ` 🔁 ${alarme.repeticao}s` : '';
         return `
-          <div style="padding: 10px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none; background: rgba(0,200,83,0.03);" onmouseover="this.style.background='rgba(0,200,83,0.08)'" onmouseout="this.style.background='rgba(0,200,83,0.03)'" onclick="console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
+          <div style="padding: 10px; border-bottom: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; user-select: none; background: rgba(0,200,83,0.03);" onmouseover="this.style.background='rgba(0,200,83,0.08)'" onmouseout="this.style.background='rgba(0,200,83,0.03)'" onclick="false && console.log('Clicou em:', '${alarme.id}'); window.abrirAlarme('${alarme.id}'); return false;">
             <div style="flex: 1;">
               <div style="font-size: 13px; font-weight: 600; color: var(--cell-green); margin-bottom: 3px;">
                 ⏰ ${alarme.horaInicio} → ${alarme.horaFim}${repeticaoText}
@@ -280,7 +280,7 @@ export const dashboardAlarmeOsMixin = {
       }).join('');
 
       lista.innerHTML = html;
-      console.log('✅ Lista renderizada com', alarmes.length, 'alarme(s)');
+      false && console.log('✅ Lista renderizada com', alarmes.length, 'alarme(s)');
     };
 
     // Salvar alarmes em Firebase
@@ -296,10 +296,10 @@ export const dashboardAlarmeOsMixin = {
         dispositivo: navigator.userAgent.substring(0, 50)
       };
 
-      console.log('💾 Salvando alarmes:', config);
+      false && console.log('💾 Salvando alarmes:', config);
       // Salva localmente
       localStorage.setItem('alarme_os_config', JSON.stringify(config));
-      console.log('✅ Salvo no localStorage');
+      false && console.log('✅ Salvo no localStorage');
 
       // 📤 ENVIA AO SERVICE WORKER (INICIA MONITORAMENTO)
       const enviarAoServiceWorker = () => {
@@ -309,7 +309,7 @@ export const dashboardAlarmeOsMixin = {
             config: config,
             timestamp: Date.now()
           });
-          console.log('📤 Config enviada ao Service Worker com alarmes ativas');
+          false && console.log('📤 Config enviada ao Service Worker com alarmes ativas');
         }
       };
 
@@ -330,7 +330,7 @@ export const dashboardAlarmeOsMixin = {
         };
 
         await setDoc(docRef, configComMetadata, { merge: true });
-        console.log('✅ Salvo no Firebase - URL:', `alarme_config/${userId}`);
+        false && console.log('✅ Salvo no Firebase - URL:', `alarme_config/${userId}`);
         atualizarDebug('☁️ Alarmes sincronizados com Firebase');
 
         // Aguarda um pouco para garantir que Firebase atualizou
@@ -348,12 +348,12 @@ export const dashboardAlarmeOsMixin = {
     // Carregar alarmes do localStorage
     const carregarAlarmes = () => {
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
-      console.log('📂 carregarAlarmes - config:', config);
+      false && console.log('📂 carregarAlarmes - config:', config);
       if (config.alarmes && Array.isArray(config.alarmes)) {
         alarmes = config.alarmes;
-        console.log('✅ Alarmes carregados:', alarmes.length);
+        false && console.log('✅ Alarmes carregados:', alarmes.length);
       } else {
-        console.log('❌ Nenhum alarme no localStorage');
+        false && console.log('❌ Nenhum alarme no localStorage');
       }
       renderizarAlarmes();
     };
@@ -453,7 +453,7 @@ export const dashboardAlarmeOsMixin = {
 
         if (unsubscribeFirebase) unsubscribeFirebase();
 
-        console.log('🔄 Configurando listener Firebase para:', userId);
+        false && console.log('🔄 Configurando listener Firebase para:', userId);
 
         unsubscribeFirebase = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
@@ -461,20 +461,20 @@ export const dashboardAlarmeOsMixin = {
             const timestamp = configFirebase.ultimaAtualizacao?.timestamp || Date.now();
             const dispositivoRemoto = configFirebase.ultimaAtualizacao?.dispositivo || 'Outro dispositivo';
 
-            console.log('📡 Alteração detectada do Firebase:', dispositivoRemoto);
+            false && console.log('📡 Alteração detectada do Firebase:', dispositivoRemoto);
 
             // Verifica se é uma atualização do mesmo dispositivo
             const ehDoMesmDispositivo = dispositivoRemoto.includes(navigator.userAgent.substring(0, 30));
 
             if (!ehDoMesmDispositivo && !atualizandoDoFirebase) {
               // Vem de outro dispositivo, atualiza!
-              console.log('🔄 Recebendo alteração de outro dispositivo - sincronizando...');
+              false && console.log('🔄 Recebendo alteração de outro dispositivo - sincronizando...');
               atualizandoDoFirebase = true;
 
               // Atualiza a lista de alarmes
               if (configFirebase.alarmes && Array.isArray(configFirebase.alarmes)) {
                 alarmes = configFirebase.alarmes;
-                console.log('✅ Alarmes atualizados:', alarmes.length);
+                false && console.log('✅ Alarmes atualizados:', alarmes.length);
               }
 
               atualizarUiComConfig(configFirebase);
@@ -496,10 +496,10 @@ export const dashboardAlarmeOsMixin = {
               atualizandoDoFirebase = false;
             } else {
               // É do próprio dispositivo, só atualiza timestamp
-              console.log('✓ Confirmação da própria sincronização');
+              false && console.log('✓ Confirmação da própria sincronização');
             }
           } else {
-            console.log('📭 Nenhuma config no Firebase ainda');
+            false && console.log('📭 Nenhuma config no Firebase ainda');
           }
         }, (error) => {
           console.error('❌ Erro ao escutar Firebase:', error);
@@ -662,7 +662,7 @@ export const dashboardAlarmeOsMixin = {
 
       // Se estava oculto e agora abriu, re-renderiza a lista
       if (estava_oculto && panel.style.display === 'flex') {
-        console.log('📂 Painel aberto, re-renderizando lista...');
+        false && console.log('📂 Painel aberto, re-renderizando lista...');
         setTimeout(() => renderizarAlarmes(), 50);
       }
     };
@@ -671,13 +671,13 @@ export const dashboardAlarmeOsMixin = {
     window.statusAlarme = () => {
       const userId = dashboardShared.uid;
       const config = JSON.parse(localStorage.getItem('alarme_os_config') || '{}');
-      console.log('=== STATUS DO ALARME ===');
-      console.log('User ID:', userId);
-      console.log('Alarmes salvos:', alarmes.length);
-      console.log('Últimas alteração:', config.ultimaAtualizacao?.timestamp);
-      console.log('Dispositivo:', config.ultimaAtualizacao?.dispositivo);
-      console.log('Service Worker ativo:', !!navigator.serviceWorker?.controller);
-      console.log('========================');
+      false && console.log('=== STATUS DO ALARME ===');
+      false && console.log('User ID:', userId);
+      false && console.log('Alarmes salvos:', alarmes.length);
+      false && console.log('Últimas alteração:', config.ultimaAtualizacao?.timestamp);
+      false && console.log('Dispositivo:', config.ultimaAtualizacao?.dispositivo);
+      false && console.log('Service Worker ativo:', !!navigator.serviceWorker?.controller);
+      false && console.log('========================');
       return { userId, alarmes: alarmes.length, config };
     };
 
@@ -686,7 +686,7 @@ export const dashboardAlarmeOsMixin = {
 
     // Aguarda um pouco para garantir que alarmes foram carregados
     setTimeout(() => {
-      console.log('⏱️ Iniciando sincronização com Firebase...');
+      false && console.log('⏱️ Iniciando sincronização com Firebase...');
       sincronizarComFirebase();
 
       // Ativa o Service Worker com os alarmes carregados
@@ -701,13 +701,13 @@ export const dashboardAlarmeOsMixin = {
           config: config,
           timestamp: Date.now()
         });
-        console.log('🚀 Service Worker ativado com', alarmes.length, 'alarmes');
+        false && console.log('🚀 Service Worker ativado com', alarmes.length, 'alarmes');
         atualizarDebug(`🚀 Monitorando ${alarmes.length} alarmes em background`);
       }
     }, 500);
 
     // Botão adicionar usa onclick direto no HTML agora
-    console.log('✅ Alarme setup completo - adicionarAlarme exposta no window');
+    false && console.log('✅ Alarme setup completo - adicionarAlarme exposta no window');
 
     // Janela Flutuante (abrir em nova janela pequena)
     const abrirJanelaFlutuante = () => {
@@ -772,7 +772,7 @@ export const dashboardAlarmeOsMixin = {
           atualizarDebug('🔒 Tela será mantida acordada');
 
           wakeLock.addEventListener('release', () => {
-            console.log('Wake Lock liberado');
+            false && console.log('Wake Lock liberado');
           });
 
           // Reacquire se página volta do background

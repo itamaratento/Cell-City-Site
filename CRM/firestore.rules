@@ -38,16 +38,41 @@ service cloud.firestore {
     }
 
     // PS-1/PS-6: Isolamento multiempresa — LEITURA.
-    // O doc lido pertence à empresa do usuário. Docs legados (sem
-    // empresa_id) continuam legíveis até o backfill concluir.
-    // O 1º disjunto usa acesso direto ao campo (provável a partir do
-    // where('empresa_id','==',...) em queries `list`); erros de campo
-    // ausente são absorvidos pelos disjuntos seguintes (semântica de
-    // || das Rules absorve erro quando outro lado é true).
+    //
+    // ACHADO CRÍTICO (homologação PS-6, tests/firestore-rules/
+    // tenant-isolamento.test.mjs): a versão original tinha um 3º
+    // disjunto `resource.data.get('empresa_id', null) == null` para
+    // manter docs legados (pré-backfill) legíveis durante a transição.
+    // Esse disjunto quebra a análise de "resultado potencial" que o
+    // motor de Rules usa para decidir se uma QUERY sem filtro é seguro
+    // provar — em vez de negar a lista inteira (comportamento padrão
+    // quando a regra não é provável para todo doc da coleção), o motor
+    // passou a DEVOLVER TODOS OS DOCUMENTOS de TODAS as empresas para
+    // qualquer `list`/`get()` sem `where('empresa_id'==...)`. Reproduzido
+    // isoladamente com uma regra mínima (get/list de 2 docs, 2 empresas).
+    // Queries FILTRADAS (o padrão real de todo o código — injectTenantFilter/
+    // repositories sempre adicionam where) continuavam corretamente
+    // isoladas mesmo com o disjunto; só a lista *sem* filtro vazava.
+    //
+    // Removido. Consequência aceita: doc sem empresa_id (não migrado)
+    // fica ILEGÍVEL para staff comum até o backfill rodar — troca
+    // deliberada de "vaza para todo mundo" por "indisponível temporário",
+    // a única direção seguro-por-padrão. Sequência de deploy em produção
+    // já exige backfill ANTES destas Rules (scripts/backfill-empresa-id.mjs
+    // → validar-backfill.mjs → dados_migrados:true → deploy), então a
+    // janela de docs sem empresa_id nem deveria existir quando esta regra
+    // entrar em vigor.
+    // Acesso via .get(default) em vez de .data.empresa_id direto: doc
+    // sem o campo (legado pré-backfill) deve NEGAR de forma limpa
+    // (null == empresaDoUsuario() é sempre false para tenant real), não
+    // lançar "Property empresa_id is undefined" — um erro de avaliação
+    // é absorvido pelo || só quando outro disjunto der true; aqui não
+    // dava (isMasterAdmin() também false para staff comum), então a
+    // request inteira falhava com erro em vez de permission-denied
+    // limpo. Mesmo resultado de segurança (nega), só sem o crash.
     function mesmaEmpresaRead() {
       return resource == null ||
-             resource.data.empresa_id == empresaDoUsuario() ||
-             resource.data.get('empresa_id', null) == null ||
+             resource.data.get('empresa_id', null) == empresaDoUsuario() ||
              isMasterAdmin();
     }
 

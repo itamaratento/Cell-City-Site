@@ -163,7 +163,7 @@ window.Portal = {
       const digitsAuto = this._phoneDigits(telAuto);
       const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
       if (!mesmoCliente) {
-        portDebug && console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto);
+        false && console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto); // PII desabilitado PS-6
         await this._autenticarComDigits(digitsAuto);
       }
       if (this.session) {
@@ -393,7 +393,7 @@ window.Portal = {
     const { collection, query, where, getDocs } = window.FirebaseModules;
     const formatted = this._phoneMask(digits); // formato canônico (exibição na sessão)
 
-    console.log('[Portal] Buscando cliente — digits:', digits, 'formatted:', formatted);
+    false && console.log('[Portal] Buscando cliente — digits:', digits, 'formatted:', formatted); // PII desabilitado PS-6
 
     // Busca do nome em clientes: doc-ID é o próprio phoneDigits. `clientes`
     // exige temAcessoLiberado() nas Rules (tem CPF/e-mail/endereço, não
@@ -424,7 +424,7 @@ window.Portal = {
     console.log('[Portal] OSs encontradas (Cloud Function):', osCount);
 
     if (osCount === 0 && !clientName) {
-      console.log('[Portal] Nenhum resultado para o telefone:', formatted);
+      false && console.log('[Portal] Nenhum resultado para o telefone:', formatted); // PII desabilitado PS-6
       return false;
     }
 
