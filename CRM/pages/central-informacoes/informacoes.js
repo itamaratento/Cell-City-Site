@@ -6,6 +6,7 @@ import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { InformacoesRepository as Informacoes, CategoriasInformacoesRepository as CategoriasInformacoes } from '../../repositories/central.repository.js';
 import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getTenantFieldValue } from "../../shared/tenant-query.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 
 const COL = 'informacoes';
@@ -1304,7 +1305,7 @@ async function salvarInformacao() {
                 // BUG corrigido (revisão 07/06/2026): o path era gerado 2x com Date.now(),
                 // podendo divergir em ms → storageUrl não batia com o arquivo enviado
                 // (download quebrado / arquivo órfão). Agora o path é calculado UMA vez.
-                const storagePath = `docs/${Date.now()}_${arquivo.name}`;
+                const storagePath = `empresas/${getTenantFieldValue() || 'cellcity-master'}/docs/${Date.now()}_${arquivo.name}`;
                 await uploadBytes(ref(storage, storagePath), arquivo);
                 dados.storageUrl = storagePath;
                 dados.extensao = arquivo.name.split('.').pop();

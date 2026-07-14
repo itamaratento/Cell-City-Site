@@ -1,6 +1,6 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js?v=20260628";
-import { injectTenantFilter, tData } from "../../shared/tenant-query.js";
+import { injectTenantFilter, tData, getTenantFieldValue } from "../../shared/tenant-query.js";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
@@ -171,6 +171,13 @@ function dataURLtoBlob(dataURL) {
     const array = new Uint8Array(binary.length);
     for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
     return new Blob([array], { type: mimeType });
+}
+
+// PS-6: todo upload novo vai para empresas/{empresaId}/... (path
+// canônico multiempresa; ver storage.rules). URLs legadas em os/
+// continuam válidas para leitura.
+function storagePrefixEmpresa() {
+    return `empresas/${getTenantFieldValue() || 'cellcity-master'}`;
 }
 
 async function uploadPhotoToStorage(dataURL, path) {
@@ -631,7 +638,7 @@ async function saveOS() {
         const photoUrls = [];
         for (let i = 0; i < tempPhotos.length; i++) {
             try {
-                const url = await uploadPhotoToStorage(tempPhotos[i], `os/${osId}/photos/photo_${i}_${Date.now()}.jpg`);
+                const url = await uploadPhotoToStorage(tempPhotos[i], `${storagePrefixEmpresa()}/os/${osId}/photos/photo_${i}_${Date.now()}.jpg`);
                 photoUrls.push(url);
             } catch (e) {
                 console.warn('⚠️ Foto não enviada para Storage, mantendo Base64:', e);
@@ -641,7 +648,7 @@ async function saveOS() {
         let lockPhotoUrl = null;
         if (currentLockPhoto) {
             try {
-                lockPhotoUrl = await uploadPhotoToStorage(currentLockPhoto, `os/${osId}/lockphoto/lock_${Date.now()}.jpg`);
+                lockPhotoUrl = await uploadPhotoToStorage(currentLockPhoto, `${storagePrefixEmpresa()}/os/${osId}/lockphoto/lock_${Date.now()}.jpg`);
             } catch (e) {
                 console.warn('⚠️ LockPhoto não enviada para Storage:', e);
                 lockPhotoUrl = currentLockPhoto;
@@ -1235,7 +1242,7 @@ function addPhotoToOS() {
                     let photoUrl = dataURL;
                     try {
                         const idx = currentOS.photos.length;
-                        photoUrl = await uploadPhotoToStorage(dataURL, `os/${currentOS.id}/photos/photo_${idx}_${Date.now()}.jpg`);
+                        photoUrl = await uploadPhotoToStorage(dataURL, `${storagePrefixEmpresa()}/os/${currentOS.id}/photos/photo_${idx}_${Date.now()}.jpg`);
                     } catch (e2) {
                         console.warn('⚠️ Upload falhou, mantendo Base64:', e2);
                     }
