@@ -16,6 +16,12 @@
    senha atual dela. Aqui a checagem de quem pode excluir é feita no
    servidor (com Admin SDK, ignorando Firestore Rules), então nenhuma
    senha da conta-alvo é necessária.
+
+   Rate limiting (P0 2026-07-15): 15/16 funções são públicas (apenas
+   phoneDigits como prova de identidade). O rate limiter abaixo reduz
+   o risco de abuso automatizado — sem depender de SMS OTP ou outro
+   fator externo. App Check completo exigiria SDK no frontend e está
+   documentado como melhoria futura (P1).
    ============================================================ */
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
@@ -23,6 +29,80 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 
 const REGIAO = 'southamerica-east1'; // mesma região do Firestore (ver firebase.json)
+
+// ============================================================
+// RATE LIMITER — in-memory sliding window
+// ============================================================
+// Em runtime serverless (Cloud Functions), cada instância tem sua
+// própria memória. Isto não é um rate limiter distribuído — na
+// prática, requisições simultâneas podem ser distribuídas entre
+// instâncias diferentes. Ainda assim, eleva o custo do abusador
+// (cada nova instância precisa aquecer o cache) e bloqueia surtos
+// dentro de uma mesma instância.
+const rateLimitStore = new Map();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minuto
+
+function rateLimitKey(tipo, valor) {
+  return `${tipo}:${valor}`;
+}
+
+function rateLimitCheck(tipo, valor, maxRequests) {
+  if (!valor) return; // sem chave = sem rate limit (não deve ocorrer)
+  const key = rateLimitKey(tipo, valor);
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+
+  let entry = rateLimitStore.get(key);
+  if (!entry) {
+    entry = [];
+    rateLimitStore.set(key, entry);
+  }
+
+  // Remove timestamps fora da janela
+  while (entry.length > 0 && entry[0] < windowStart) {
+    entry.shift();
+  }
+
+  if (entry.length >= maxRequests) {
+    const retryAfter = Math.ceil((entry[0] + RATE_LIMIT_WINDOW_MS - now) / 1000);
+    throw new HttpsError('resource-exhausted',
+      `Muitas requisições. Aguarde ${retryAfter}s antes de tentar novamente.`);
+  }
+
+  entry.push(now);
+
+  // Limpeza periódica: a cada 100 chaves, varre o Map inteiro
+  if (rateLimitStore.size > 1000) {
+    for (const [k, v] of rateLimitStore) {
+      while (v.length > 0 && v[0] < windowStart) v.shift();
+      if (v.length === 0) rateLimitStore.delete(k);
+    }
+  }
+}
+
+// Limites por operação
+const LIMITES = {
+  leitura:   { ip: 60, telefone: 30 },   // consultas
+  escrita:  { ip: 20, telefone: 10 },   // criar/responder
+  evento:   { ip: 30, telefone: 15 },   // tracking só aceita 3 tipos
+};
+
+function aplicarRateLimit(request, tipoOperacao) {
+  // IP do caller (pode ser IPv4 ou IPv6)
+  const ip = request.rawRequest?.ip
+    || request.rawRequest?.headers['x-forwarded-for']?.split(',')[0]?.trim()
+    || 'unknown';
+
+  const limites = LIMITES[tipoOperacao] || LIMITES.leitura;
+
+  rateLimitCheck('ip', ip, limites.ip);
+
+  // Se a requisição tem phoneDigits, aplica limite também por telefone
+  const phoneDigits = request.data && request.data.phoneDigits;
+  if (phoneDigits && typeof phoneDigits === 'string' && phoneDigits.length >= 10) {
+    rateLimitCheck('tel', phoneDigits, limites.telefone);
+  }
+}
 
 // PS-6 (multiempresa): toda CF pública recebe um empresaId opcional no
 // payload (injetado centralmente pelo Portal — ver index.html do Portal).
@@ -173,6 +253,7 @@ function normalizePhoneDigitsServer(input) {
 }
 
 exports.consultarOSPublica = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const osId = request.data && request.data.osId;
   if (!osId || typeof osId !== 'string' || osId.length > 30) {
     throw new HttpsError('invalid-argument', 'Informe o número da OS.');
@@ -191,6 +272,7 @@ exports.consultarOSPublica = onCall({ region: REGIAO }, async (request) => {
 });
 
 exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const digits = normalizePhoneDigitsServer(request.data && request.data.phoneDigits);
   if (digits.length < 10) {
     throw new HttpsError('invalid-argument', 'Informe um telefone válido.');
@@ -306,6 +388,7 @@ function projetarCamposPortal(colecao, doc) {
 // sem reabrir a Rule: mesmo padrão Admin SDK das demais, retornando só
 // `name` — nunca CPF/e-mail/endereço.
 exports.portalObterNomeCliente = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
@@ -317,6 +400,7 @@ exports.portalObterNomeCliente = onCall({ region: REGIAO }, async (request) => {
 // ---- Mensagens ----
 
 exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
@@ -339,6 +423,7 @@ exports.portalListarMensagens = onCall({ region: REGIAO }, async (request) => {
 });
 
 exports.portalEnviarMensagem = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const digits = validarPhoneDigitsServer(data.phoneDigits);
   const nome = String(data.nome || '').trim();
@@ -365,6 +450,7 @@ exports.portalEnviarMensagem = onCall({ region: REGIAO }, async (request) => {
 });
 
 exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const msgId = request.data && request.data.msgId;
   if (!msgId || typeof msgId !== 'string' || msgId.length > 200) {
@@ -385,6 +471,7 @@ exports.portalMarcarMensagemLida = onCall({ region: REGIAO }, async (request) =>
 // ---- Avaliações ----
 
 exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
@@ -400,6 +487,7 @@ exports.portalListarAvaliacoes = onCall({ region: REGIAO }, async (request) => {
 });
 
 exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const digits = validarPhoneDigitsServer(data.phoneDigits);
   const nota = Number(data.nota);
@@ -427,6 +515,7 @@ exports.portalCriarAvaliacao = onCall({ region: REGIAO }, async (request) => {
 // ---- Agendamentos ----
 
 exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const digits = validarPhoneDigitsServer(request.data && request.data.phoneDigits);
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
@@ -440,6 +529,7 @@ exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) =>
 });
 
 exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const digits = validarPhoneDigitsServer(data.phoneDigits);
   const nome = String(data.nome || '').trim();
@@ -483,6 +573,7 @@ exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
 // não dado de um cliente específico. Devolve só os horários ocupados,
 // nenhum dado de cliente.
 exports.portalListarHorariosOcupados = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'leitura');
   const dataAgendamento = String((request.data && request.data.data) || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dataAgendamento)) {
     throw new HttpsError('invalid-argument', 'Data inválida.');
@@ -504,6 +595,7 @@ exports.portalListarHorariosOcupados = onCall({ region: REGIAO }, async (request
 // ---- Solicitação de diagnóstico ----
 
 exports.portalCriarSolicitacaoDiagnostico = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const digits = validarPhoneDigitsServer(data.phoneDigits);
   const clientName = String(data.clientName || '');
@@ -541,6 +633,7 @@ const PORTAL_EVENTO_TIPOS = ['acesso', 'clique_whatsapp', 'clique_maps'];
 const PORTAL_EVENTO_CAMPOS_EXTRA = ['pagina', 'origem'];
 
 exports.portalRegistrarEvento = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'evento');
   const data = request.data || {};
   const digits = validarPhoneDigitsServer(data.phoneDigits);
   const tipo = String(data.tipo || '').trim();
@@ -578,6 +671,7 @@ exports.portalRegistrarEvento = onCall({ region: REGIAO }, async (request) => {
 // Function é o único caminho e exige que o phoneDigits do payload bata
 // com o phoneDigits gravado na própria OS antes de aceitar.
 exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const osId = data.osId;
   if (!osId || typeof osId !== 'string' || osId.length > 30) {
@@ -658,6 +752,7 @@ exports.portalResponderOrcamento = onCall({ region: REGIAO }, async (request) =>
      vetor de spam de contas Auth).
    ============================================================ */
 exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) => {
+  aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
   const nome = String(data.nome || '').trim();
   const responsavel = String(data.seuNome || '').trim();

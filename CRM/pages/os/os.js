@@ -1,5 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js?v=20260628";
+import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js";
 import { injectTenantFilter, tData, getTenantFieldValue } from "../../shared/tenant-query.js";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
