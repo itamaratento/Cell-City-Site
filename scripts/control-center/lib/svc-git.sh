@@ -28,7 +28,7 @@ _cc_svc_git_log() {
 
 _cc_svc_git_arquivos_alterados_count() {
   : "${REPO_DIR:?REPO_DIR precisa estar definido}"
-  git -C "$REPO_DIR" status --porcelain | grep -c .
+  git -C "$REPO_DIR" status --porcelain | wc -l
 }
 
 _cc_svc_git_workspace_limpo() {
