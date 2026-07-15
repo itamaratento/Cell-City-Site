@@ -138,8 +138,8 @@ Sem alterações nesta sessão. Recomendações já documentadas (índices compo
 | ~~LIMPEZA-001~~ | ✅ **Resolvida 2026-07-15**: tenant de teste "itamarb" (`empresas/m1xCA4OD7uZaG7kAweP6` + `usuarios/itamar_...`) apagado da produção após confirmação explícita do dono, backup manual prévio e verificação de ausência de referências órfãs em 8 coleções (0 docs com `empresa_id` apontando para o tenant em nenhuma delas) | Baixa | Não |
 | SEC-CONSOLE-001 | `console.log` de sessão completa em `portal.js:127` | Baixa | Não |
 | ROLLBACK-001 | Backfill não tem rollback automatizado (mitigado: escrita restrita a 1 campo, nunca sobrescreve valor existente; ruleset anterior salvo como referência) | Baixa (ação já concluída com sucesso) | Não |
-| PITR-001 | Point-in-Time Recovery continua desabilitado em `cellcity-crm` | Média (risco operacional geral, não específico desta migração) | Não, mas recomendado habilitar |
-| PS5-003 | Onboarding sem verificação de e-mail | Baixa | Não |
+| ~~PITR-001~~ | ✅ **Resolvida 2026-07-15**: Point-in-Time Recovery habilitado em `cellcity-crm` (`pointInTimeRecoveryEnablement: POINT_IN_TIME_RECOVERY_ENABLED`, retenção de 7 dias), confirmado explicitamente pelo dono e verificado via `gcloud firestore databases describe` | Média | Não |
+| PS5-003 | Onboarding sem verificação de e-mail — **avaliada e adiada 2026-07-15** por decisão do dono: pertence ao onboarding SaaS do PS-6, congelado desde o incidente de produção de 2026-07-14 e com o destino do multiempresa ainda pendente de decisão de negócio (ver `MASTER_ROADMAP.md` Fase 3/6) | Baixa | Não |
 
 ---
 
