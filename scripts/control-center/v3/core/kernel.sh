@@ -72,7 +72,7 @@ _v3_kernel_boot_sequence() {
 
   _v3_json_set "$_V3_KERNEL_STATE" '.boot_id' "\"$_V3_BOOT_ID\""
   _v3_json_set "$_V3_KERNEL_STATE" '.boot_time' "\"$(_v3_timestamp)\""
-  _v3_json_set "$_V3_KERNEL_STATE" '.boot_duration_ms' "$boot_duration"
+  _v3_json_set "$_V3_KERNEL_STATE" '.boot_duration_s' "$boot_duration"
   _v3_json_set "$_V3_KERNEL_STATE" '.version' "\"$_V3_VERSION\""
   _v3_json_set "$_V3_KERNEL_STATE" '.status' '"running"'
 
@@ -84,7 +84,7 @@ _v3_kernel_boot_sequence() {
   echo "  Boot: ${boot_duration}s | Componentes: $total_components | Versão: $_V3_VERSION"
   echo ""
 
-  _v3_event_pub "system.boot" "{\"boot_id\":\"$_V3_BOOT_ID\",\"duration_ms\":$boot_duration,\"components\":$total_components}"
+  _v3_event_pub "system.boot" "{\"boot_id\":\"$_V3_BOOT_ID\",\"duration_s\":$boot_duration,\"components\":$total_components}"
 
   return 0
 }

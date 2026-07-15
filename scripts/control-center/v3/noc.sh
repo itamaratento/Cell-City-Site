@@ -73,7 +73,7 @@ _v3_noc_boot() {
   boot_end=$(_v3_timestamp_epoch)
   boot_duration=$((boot_end - boot_start))
 
-  _v3_json_set "$_V3_KERNEL_STATE" '.boot_duration_ms' "$boot_duration"
+  _v3_json_set "$_V3_KERNEL_STATE" '.boot_duration_s' "$boot_duration"
 
   local total_components
   total_components=$(_v3_registry_count)
@@ -82,7 +82,7 @@ _v3_noc_boot() {
   echo -e "  ${_CC_C_VERDE}KERNEL PRONTO${_CC_C_RESET} | Boot: ${boot_duration}s | Componentes: $total_components | v$_V3_VERSION"
   echo ""
 
-  _v3_event_pub "system.boot" "{\"boot_id\":\"$_V3_BOOT_ID\",\"duration_ms\":$boot_duration,\"components\":$total_components}"
+  _v3_event_pub "system.boot" "{\"boot_id\":\"$_V3_BOOT_ID\",\"duration_s\":$boot_duration,\"components\":$total_components}"
 
   if [[ "$boot_duration" -gt 3 ]]; then
     _v3_log "warn" "NOC" "Boot excedeu 3s (${boot_duration}s)"
