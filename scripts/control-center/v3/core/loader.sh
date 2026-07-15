@@ -65,7 +65,7 @@ _v3_loader_load_component() {
     engine)  file_to_source="$path/engine.sh" ;;
     widget)  file_to_source="$path" ;;
     panel)   file_to_source="$path" ;;
-    service) file_to_source="$path/service.sh" ;;
+    service) file_to_source="$path" ;;
     *)       file_to_source="$path" ;;
   esac
 

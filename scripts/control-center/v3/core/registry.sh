@@ -138,13 +138,12 @@ _v3_registry_discover_panels() {
 
 _v3_registry_discover_services() {
   local dir="$1" count=0
-  for svc_dir in "$dir"/*/; do
-    [[ -d "$svc_dir" ]] || continue
+  for svc_file in "$dir"/*.sh; do
+    [[ -f "$svc_file" ]] || continue
     local svc_name
-    svc_name=$(basename "$svc_dir")
-    local svc_sh="$svc_dir/service.sh"
-    if [[ -f "$svc_sh" ]]; then
-      _v3_registry_register "service" "$svc_name" "$svc_dir" '{"version":"0.1.0"}'
+    svc_name=$(basename "$svc_file" .sh)
+    if [[ "$svc_name" != "base" ]]; then
+      _v3_registry_register "service" "$svc_name" "$svc_file" '{"version":"0.1.0"}'
       ((count++))
     fi
   done
