@@ -7,6 +7,17 @@ logs
 # continua ignorado pelas regras acima. Só o .gitkeep é versionado.
 !scripts/control-center/logs/
 !scripts/control-center/logs/.gitkeep
+
+# Cell City V3 — mesmo problema: a pasta logs/ do NOC V3 guarda o
+# logger.sh (código-fonte do motor de logging), não só logs de runtime.
+# A regra bare "logs" acima ignorava a pasta inteira, então logger.sh nunca
+# foi versionado (achado durante conexão de config/v3.conf, 2026-07-15) —
+# noc.sh/kernel.sh fazem `source .../logs/logger.sh` sem fallback, então
+# qualquer checkout novo sem este arquivo local ficaria com o NOC quebrado.
+# noc.log/events.log continuam ignorados pela regra *.log acima.
+!scripts/control-center/v3/logs/
+!scripts/control-center/v3/logs/logger.sh
+!scripts/control-center/v3/logs/.gitkeep
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

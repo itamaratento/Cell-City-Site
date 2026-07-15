@@ -13,7 +13,7 @@ _V3_CACHE_HITS=0
 _V3_CACHE_MISSES=0
 
 _v3_cache_set() {
-  local key="$1" value="$2" ttl_seconds="${3:-60}"
+  local key="$1" value="$2" ttl_seconds="${3:-${_V3_CACHE_DEFAULT_TTL:-60}}"
   _V3_CACHE["$key"]="$value"
   _V3_CACHE_TTL["$key"]=$(( $(_v3_timestamp_epoch) + ttl_seconds ))
 }
@@ -42,7 +42,7 @@ _v3_cache_get() {
 }
 
 _v3_cache_get_or_set() {
-  local key="$1" ttl="${2:-60}"
+  local key="$1" ttl="${2:-${_V3_CACHE_DEFAULT_TTL:-60}}"
   shift 2
   local command=("$@")
 

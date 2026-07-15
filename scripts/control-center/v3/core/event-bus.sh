@@ -11,6 +11,18 @@ set -uo pipefail
 
 declare -A _V3_EVENT_SUBSCRIBERS
 
+_v3_event_trim_log() {
+  local max="${_V3_EVENT_MAX_EVENTS:-1000}"
+  [[ -f "$_V3_EVENT_LOG" ]] || return 0
+  local count
+  count=$(jq '.events | length' "$_V3_EVENT_LOG" 2>/dev/null) || return 0
+  if [[ "$count" -gt "$max" ]]; then
+    local tmp
+    tmp=$(jq --argjson max "$max" '.events |= .[-$max:]' "$_V3_EVENT_LOG" 2>/dev/null) \
+      && echo "$tmp" > "$_V3_EVENT_LOG"
+  fi
+}
+
 _v3_event_sub() {
   local event="$1" handler="$2"
   if [[ -z "${_V3_EVENT_SUBSCRIBERS[$event]:-}" ]]; then
@@ -41,6 +53,7 @@ _v3_event_pub() {
   envelope=$(_v3_event_new "event-bus" "$event" "P3" "$data")
 
   _v3_json_append "$_V3_EVENT_LOG" '.events' "$envelope"
+  _v3_event_trim_log
   _v3_log "debug" "EventBus" "Published: $event"
 
   local current="${_V3_EVENT_SUBSCRIBERS[$event]:-}"
@@ -67,6 +80,7 @@ _v3_event_pub_sync() {
   envelope=$(_v3_event_new "event-bus" "$event" "P3" "$data")
 
   _v3_json_append "$_V3_EVENT_LOG" '.events' "$envelope"
+  _v3_event_trim_log
   _v3_log "debug" "EventBus" "Published (sync): $event"
 
   local current="${_V3_EVENT_SUBSCRIBERS[$event]:-}"

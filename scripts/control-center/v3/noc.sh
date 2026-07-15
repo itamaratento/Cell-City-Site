@@ -40,6 +40,18 @@ source "$V3_ROOT/panels/noc-dashboard.sh"
 
 source "$V3_ROOT/config/v3.conf" 2>/dev/null || true
 
+# Aplica o config carregado acima aos consumidores reais. Feito aqui (não nos
+# módulos individuais) porque v3.conf é sourced por último — os módulos já
+# rodaram seus defaults hardcoded no source; isto os sobrescreve de propósito.
+_v3_log_set_level "${V3_NOC_LOG_LEVEL:-info}"
+_V3_NOC_REFRESH_INTERVAL="${V3_NOC_AUTO_REFRESH:-5}"
+_V3_CACHE_DEFAULT_TTL="${V3_NOC_CACHE_TTL:-60}"
+_V3_EVENT_MAX_EVENTS="${V3_NOC_MAX_EVENTS:-1000}"
+case "${V3_NOC_DEFAULT_PANEL:-main}" in
+  main|alerts|missions) _V3_NOC_ACTIVE_PANEL="${V3_NOC_DEFAULT_PANEL:-main}" ;;
+  *) _v3_log "warn" "NOC" "V3_NOC_DEFAULT_PANEL inválido: '${V3_NOC_DEFAULT_PANEL:-}' — usando 'main'" ;;
+esac
+
 trap '_v3_kernel_shutdown' EXIT
 
 _v3_noc_boot() {

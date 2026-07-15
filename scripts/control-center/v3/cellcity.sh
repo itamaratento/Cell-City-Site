@@ -12,7 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 V3_NOC="$SCRIPT_DIR/noc.sh"
 V1_MENU="$SCRIPT_DIR/../core/menu.sh"
 
-if [[ -f "$V3_NOC" ]]; then
+source "$SCRIPT_DIR/config/v3.conf" 2>/dev/null || true
+
+if [[ -f "$V3_NOC" && "${V3_NOC_ENABLED:-true}" != "false" ]]; then
   exec bash "$V3_NOC"
 elif [[ -f "$V1_MENU" ]]; then
   exec bash "$V1_MENU"

@@ -11,6 +11,8 @@ source "$CC_ROOT/lib/common.sh"
 
 V3_NOC="$CC_ROOT/v3/noc.sh"
 
+source "$CC_ROOT/v3/config/v3.conf" 2>/dev/null || true
+
 _cc_screen_title "NOC V3"
 _cc_screen_breadcrumb "Control Center > NOC V3"
 _cc_box_blank
@@ -21,7 +23,7 @@ _cc_box_text "O NOC V3 oferece uma visao unificada e em tempo real"
 _cc_box_text "de todo o ecossistema Cell City."
 _cc_box_blank
 
-if [[ -f "$V3_NOC" ]]; then
+if [[ -f "$V3_NOC" && "${V3_NOC_ENABLED:-true}" != "false" ]]; then
   _cc_box_item "1" "Abrir NOC Dashboard"
   _cc_box_blank
   _cc_box_item "0" "Voltar"
@@ -39,6 +41,12 @@ if [[ -f "$V3_NOC" ]]; then
     0) exit 0 ;;
     *) echo "Opcao invalida." ; _cc_pause ; exit 0 ;;
   esac
+elif [[ -f "$V3_NOC" ]]; then
+  _cc_box_text "NOC V3 desativado via configuração (config/v3.conf: V3_NOC_ENABLED=false)."
+  _cc_box_blank
+  _cc_box_item "0" "Voltar"
+  _cc_screen_footer "0 volta ao menu principal"
+  _cc_pause
 else
   _cc_box_text "NOC V3 ainda nao instalado."
   _cc_box_text "Execute a Fase 0 da arquitetura V3 para ativar."
