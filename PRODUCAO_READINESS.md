@@ -135,7 +135,7 @@ Sem alterações nesta sessão. Recomendações já documentadas (índices compo
 
 | ID | Descrição | Severidade | Bloqueia produção? |
 |----|-----------|------------|---------------------|
-| LIMPEZA-001 | Tenant de teste "itamarb" (`empresas/m1xCA4OD7uZaG7kAweP6` + `usuarios/itamar_...`) ainda em produção | Baixa | Não |
+| ~~LIMPEZA-001~~ | ✅ **Resolvida 2026-07-15**: tenant de teste "itamarb" (`empresas/m1xCA4OD7uZaG7kAweP6` + `usuarios/itamar_...`) apagado da produção após confirmação explícita do dono, backup manual prévio e verificação de ausência de referências órfãs em 8 coleções (0 docs com `empresa_id` apontando para o tenant em nenhuma delas) | Baixa | Não |
 | SEC-CONSOLE-001 | `console.log` de sessão completa em `portal.js:127` | Baixa | Não |
 | ROLLBACK-001 | Backfill não tem rollback automatizado (mitigado: escrita restrita a 1 campo, nunca sobrescreve valor existente; ruleset anterior salvo como referência) | Baixa (ação já concluída com sucesso) | Não |
 | PITR-001 | Point-in-Time Recovery continua desabilitado em `cellcity-crm` | Média (risco operacional geral, não específico desta migração) | Não, mas recomendado habilitar |
