@@ -49,5 +49,9 @@ _bkp_limpeza() {
     fi
   done
 
-  [ "$falhas" -eq 0 ] && _cc_ok "Limpeza concluída." || _cc_warn "Limpeza concluída com $falhas falha(s)."
+  if [ "$falhas" -eq 0 ]; then
+    _cc_ok "Limpeza concluída."
+  else
+    _cc_warn "Limpeza concluída com $falhas falha(s)."
+  fi
 }

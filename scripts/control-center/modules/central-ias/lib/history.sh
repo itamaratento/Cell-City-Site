@@ -22,8 +22,8 @@ _cc_cia_historico() {
   _cc_screen_breadcrumb "Control Center › Central de IAs"
   _cc_box_blank
 
-  local hash data assunto numero ia total=0
-  while IFS='|' read -r hash data assunto; do
+  local data assunto numero ia total=0
+  while IFS='|' read -r _ data assunto; do
     numero=$(echo "$assunto" | grep -oP 'Fase \K[0-9]+' | head -1)
     [ -z "$numero" ] && continue
     ia=$(_cc_cia_fase_campo "$numero" 3)

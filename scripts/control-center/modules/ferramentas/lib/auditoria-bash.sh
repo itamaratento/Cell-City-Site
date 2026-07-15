@@ -23,7 +23,7 @@ _cc_ferr_aud_bash_sintaxe() {
         lista="${lista}$(basename "$f") "
       fi
     fi
-  done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$invalidos" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Sintaxe Bash" "${verificados} scripts válidos"
   else
@@ -41,7 +41,7 @@ _cc_ferr_aud_bash_permissoes() {
   while IFS= read -r -d '' f; do
     total=$((total + 1))
     [ ! -x "$f" ] && nao_exec=$((nao_exec + 1))
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$nao_exec" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Permissões" "Todos executáveis"
   else
@@ -58,7 +58,7 @@ _cc_ferr_aud_bash_duplicados() {
       duplicados=$((duplicados + 1))
     fi
     seen[$nome]="$f"
-  done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$duplicados" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Scripts Duplicados" "Nenhum"
   else
@@ -75,7 +75,7 @@ _cc_ferr_aud_bash_nao_utilizados() {
         chamados["$func"]=1
       fi
     done < "$f"
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   while IFS= read -r -d '' f; do
     while IFS= read -r line; do
       for func in "${!chamados[@]}"; do
@@ -84,7 +84,7 @@ _cc_ferr_aud_bash_nao_utilizados() {
         fi
       done
     done < "$f"
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   for func in "${!chamados[@]}"; do
     suspeitos=$((suspeitos + 1))
   done

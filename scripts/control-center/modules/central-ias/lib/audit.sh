@@ -26,8 +26,8 @@ _cc_cia_auditorias() {
   _cc_box_blank
 
   _cc_box_text "Pendências (fases aguardando revisão técnica):"
-  local numero nome ia status modulos pendentes=0
-  while IFS='|' read -r numero nome ia status modulos; do
+  local numero nome ia status pendentes=0
+  while IFS='|' read -r numero nome ia status _; do
     [ "$status" = "AGUARDANDO_REVISAO" ] || continue
     pendentes=$((pendentes + 1))
     _cc_box_text "  Fase $numero — $nome (implementada por $(_cc_cia_ia_nome "$ia"), revisão: $(_cc_cia_ia_nome claude))"

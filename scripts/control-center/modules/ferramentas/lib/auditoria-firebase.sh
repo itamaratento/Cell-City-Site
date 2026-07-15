@@ -69,7 +69,11 @@ _cc_ferr_aud_fire_hosting() {
 
 _cc_ferr_aud_fire_functions() {
   if [ -d "$REPO_DIR/functions" ]; then
-    [ -f "$REPO_DIR/functions/package.json" ] && _cc_ferr_adicionar "ok" "Cloud Functions" "Configurada (package.json presente)" || _cc_ferr_adicionar "warn" "Cloud Functions" "functions/ sem package.json"
+    if [ -f "$REPO_DIR/functions/package.json" ]; then
+      _cc_ferr_adicionar "ok" "Cloud Functions" "Configurada (package.json presente)"
+    else
+      _cc_ferr_adicionar "warn" "Cloud Functions" "functions/ sem package.json"
+    fi
   else
     _cc_ferr_adicionar "ok" "Cloud Functions" "Não configurada"
   fi
@@ -89,7 +93,11 @@ _cc_ferr_aud_fire_config() {
   if [ -f "$REPO_DIR/firebase.json" ]; then
     local valido
     valido=$(python3 -c "import json; json.load(open('$REPO_DIR/firebase.json')); print('ok')" 2>/dev/null)
-    [ "$valido" = "ok" ] && _cc_ferr_adicionar "ok" "Configuração" "firebase.json é JSON válido" || _cc_ferr_adicionar "warn" "Configuração" "firebase.json com problemas de sintaxe"
+    if [ "$valido" = "ok" ]; then
+      _cc_ferr_adicionar "ok" "Configuração" "firebase.json é JSON válido"
+    else
+      _cc_ferr_adicionar "warn" "Configuração" "firebase.json com problemas de sintaxe"
+    fi
   else
     _cc_ferr_adicionar "fail" "Configuração" "firebase.json não encontrado"
   fi

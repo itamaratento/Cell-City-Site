@@ -22,8 +22,8 @@ _cc_cia_workflow() {
   _cc_box_text "Estágios oficiais: $estagios"
   _cc_box_blank
 
-  local numero nome ia status modulos
-  while IFS='|' read -r numero nome ia status modulos; do
+  local numero nome status
+  while IFS='|' read -r numero nome _ status _; do
     _cc_box_text "Fase $numero — $nome: $(_cc_cia_estagio_atual "$status")"
   done < <(_cc_cia_fases)
 

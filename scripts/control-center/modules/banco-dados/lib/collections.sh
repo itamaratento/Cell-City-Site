@@ -53,7 +53,10 @@ _cc_bd_colecao_no_backup() {
 _cc_bd_colecao_indices_count() {
   local nome="$1" arquivo
   arquivo=$(_cc_bd_indexes_path)
-  [ -f "$arquivo" ] && _cc_bd_tem jq || { echo 0; return; }
+  if [ ! -f "$arquivo" ] || ! _cc_bd_tem jq; then
+    echo 0
+    return
+  fi
   jq --arg c "$nome" '[.indexes[]? | select(.collectionGroup == $c)] | length' "$arquivo" 2>/dev/null || echo 0
 }
 

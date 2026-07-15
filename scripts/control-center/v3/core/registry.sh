@@ -81,6 +81,7 @@ _v3_registry_list_json() {
   echo "$result"
 }
 
+# shellcheck disable=SC2119,SC2120 # filtro por tipo é API opcional; nenhum caller hoje passa argumento, mantido para uso futuro
 _v3_registry_count() {
   local type="${1:-}"
   local count=0

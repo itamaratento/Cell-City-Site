@@ -24,7 +24,11 @@ _cc_man_dep_nao_utilizadas() {
       }
       console.log(o);
     " 2>/dev/null)
-    [ "$orfas" -gt 0 ] && _cc_man_adicionar "warn" "Dependências Não Utilizadas" "${orfas} pacote(s) em node_modules não listados" "Dependências instaladas mas não declaradas" "Ocupam espaço em disco" "Execute npm prune" || _cc_man_adicionar "ok" "Dependências Não Utilizadas" "Nenhuma"
+    if [ "$orfas" -gt 0 ]; then
+      _cc_man_adicionar "warn" "Dependências Não Utilizadas" "${orfas} pacote(s) em node_modules não listados" "Dependências instaladas mas não declaradas" "Ocupam espaço em disco" "Execute npm prune"
+    else
+      _cc_man_adicionar "ok" "Dependências Não Utilizadas" "Nenhuma"
+    fi
   else
     _cc_man_adicionar "ok" "Dependências Não Utilizadas" "Node ausente para verificação"
   fi
@@ -40,7 +44,11 @@ _cc_man_dep_ausentes() {
       const fs=require('fs');
       deps.forEach(d => { if (!fs.existsSync('$REPO_DIR/node_modules/'+d)) { process.exit(1); } });
     " 2>/dev/null && deps_disp=0 || deps_disp=1
-    [ "$deps_disp" -eq 1 ] && _cc_man_adicionar "warn" "Dependências Ausentes" "Algumas dependências declaradas não estão instaladas" "Dependências faltando" "Projeto pode não funcionar" "Execute npm install" || _cc_man_adicionar "ok" "Dependências Ausentes" "Todas instaladas"
+    if [ "$deps_disp" -eq 1 ]; then
+      _cc_man_adicionar "warn" "Dependências Ausentes" "Algumas dependências declaradas não estão instaladas" "Dependências faltando" "Projeto pode não funcionar" "Execute npm install"
+    else
+      _cc_man_adicionar "ok" "Dependências Ausentes" "Todas instaladas"
+    fi
   else
     _cc_man_adicionar "ok" "Dependências Ausentes" "Node ausente para verificação"
   fi
@@ -50,7 +58,11 @@ _cc_man_dep_duplicadas() {
   [ ! -f "$REPO_DIR/package-lock.json" ] && _cc_man_adicionar "ok" "Dependências Duplicadas" "Sem lockfile" && return
   local dups
   dups=$(grep -oP '"[^"]+":\s*\{' "$REPO_DIR/package-lock.json" 2>/dev/null | sort | uniq -d | wc -l)
-  [ "$dups" -gt 0 ] && _cc_man_adicionar "warn" "Dependências Duplicadas" "${dups} entrada(s) duplicada(s) no lockfile" "Múltiplas versões do mesmo pacote" "Aumenta tamanho do node_modules" "Execute npm dedupe" || _cc_man_adicionar "ok" "Dependências Duplicadas" "Nenhuma"
+  if [ "$dups" -gt 0 ]; then
+    _cc_man_adicionar "warn" "Dependências Duplicadas" "${dups} entrada(s) duplicada(s) no lockfile" "Múltiplas versões do mesmo pacote" "Aumenta tamanho do node_modules" "Execute npm dedupe"
+  else
+    _cc_man_adicionar "ok" "Dependências Duplicadas" "Nenhuma"
+  fi
 }
 
 _cc_man_dep_obsoletas() {
@@ -58,7 +70,11 @@ _cc_man_dep_obsoletas() {
   if command -v npm &>/dev/null; then
     local desatualizadas
     desatualizadas=$(npm outdated --prefix "$REPO_DIR" 2>/dev/null | tail -n +2 | wc -l)
-    [ "$desatualizadas" -gt 0 ] && _cc_man_adicionar "warn" "Dependências Obsoletas" "${desatualizadas} pacote(s) desatualizado(s)" "Versões antigas de dependências" "Risco de segurança e incompatibilidade" "Execute npm update" || _cc_man_adicionar "ok" "Dependências Obsoletas" "Todas atualizadas"
+    if [ "$desatualizadas" -gt 0 ]; then
+      _cc_man_adicionar "warn" "Dependências Obsoletas" "${desatualizadas} pacote(s) desatualizado(s)" "Versões antigas de dependências" "Risco de segurança e incompatibilidade" "Execute npm update"
+    else
+      _cc_man_adicionar "ok" "Dependências Obsoletas" "Todas atualizadas"
+    fi
   else
     _cc_man_adicionar "ok" "Dependências Obsoletas" "npm ausente para verificação"
   fi

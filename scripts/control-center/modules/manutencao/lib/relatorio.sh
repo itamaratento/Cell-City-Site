@@ -35,7 +35,7 @@ _cc_man_relatorio() {
   _cc_box_line_center "${_CC_C_NEGRITO}CLASSIFICACAO DOS ITENS${_CC_C_RESET}"; _cc_box_sep
   local crit=0 alto=0 medio=0 baixo=0 info=0
   for c in "${CC_MAN_ITENS_CLASSIFICADOS[@]}"; do
-    IFS='|' read -r nivel arq razao <<< "$c"
+    IFS='|' read -r nivel arq _ <<< "$c"
     case "$nivel" in CRITICO) crit=$((crit+1)) ;; ALTO) alto=$((alto+1)) ;; MEDIO) medio=$((medio+1)) ;; BAIXO) baixo=$((baixo+1)) ;; *) info=$((info+1)) ;; esac
   done
   _cc_box_line "CRITICO     : $crit"
@@ -48,7 +48,7 @@ _cc_man_relatorio() {
   _cc_box_line_center "${_CC_C_NEGRITO}ITENS ENCONTRADOS${_CC_C_RESET}"; _cc_box_sep
   local limite=15
   for c in "${CC_MAN_ITENS_CLASSIFICADOS[@]}"; do
-    IFS='|' read -r nivel arq razao <<< "$c"
+    IFS='|' read -r nivel arq _ <<< "$c"
     [ "$limite" -le 0 ] && _cc_box_line "  ... e mais ${#CC_MAN_ITENS_CLASSIFICADOS[@]} itens" && break
     _cc_box_line "  [$(_cc_man_status_label "$nivel")] $(basename "$arq")"
     limite=$((limite - 1))

@@ -13,8 +13,8 @@ set -uo pipefail
 # realidade) — ATENÇÃO se não há quebra mas existem fases aguardando
 # revisão técnica (trabalho pendente esperado) — SAUDÁVEL caso contrário.
 _cc_cia_classificar_saude() {
-  local numero nome ia status modulos slug estado criticos=0 revisao=0
-  while IFS='|' read -r numero nome ia status modulos; do
+  local status modulos slug estado criticos=0 revisao=0
+  while IFS='|' read -r _ _ _ status modulos; do
     if [ "$status" = "CONCLUIDA" ] && [ "$modulos" != "-" ]; then
       IFS=',' read -ra slugs <<< "$modulos"
       for slug in "${slugs[@]}"; do

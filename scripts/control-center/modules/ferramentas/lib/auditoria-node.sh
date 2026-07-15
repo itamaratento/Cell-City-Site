@@ -54,7 +54,11 @@ _cc_ferr_aud_node_deps() {
   else
     desatualizadas="?"
   fi
-  [ "$desatualizadas" = "?" ] && _cc_ferr_adicionar "ok" "Dependências" "${total} pacotes instalados" || _cc_ferr_adicionar "ok" "Dependências" "${total} pacotes (${desatualizadas} desatualizados)"
+  if [ "$desatualizadas" = "?" ]; then
+    _cc_ferr_adicionar "ok" "Dependências" "${total} pacotes instalados"
+  else
+    _cc_ferr_adicionar "ok" "Dependências" "${total} pacotes (${desatualizadas} desatualizados)"
+  fi
 }
 
 _cc_ferr_aud_node_orfas() {
@@ -89,7 +93,11 @@ _cc_ferr_aud_node_scripts() {
   else
     scripts=$(grep -oP '"[^"]+"\s*:' "$REPO_DIR/package.json" 2>/dev/null | grep -vE '"(dependencies|devDependencies|scripts|name|version|description|main|author|license|private|keywords|homepage|bugs|repository|engines|browserslist|type|files)"' | tr -d '": ' | head -20 | tr '\n' ',')
   fi
-  [ -n "$scripts" ] && _cc_ferr_adicionar "ok" "Scripts npm" "$scripts" || _cc_ferr_adicionar "ok" "Scripts npm" "Nenhum script personalizado"
+  if [ -n "$scripts" ]; then
+    _cc_ferr_adicionar "ok" "Scripts npm" "$scripts"
+  else
+    _cc_ferr_adicionar "ok" "Scripts npm" "Nenhum script personalizado"
+  fi
 }
 
 _cc_ferr_aud_node_npm() {

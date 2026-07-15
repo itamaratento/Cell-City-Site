@@ -62,7 +62,7 @@ _cc_ferr_aud_credenciais_expostas() {
     if grep -qI 'password\s*=\|senha\s*=\|PASSWORD\|SECRET_KEY\|api_key\s*=' "$f" 2>/dev/null; then
       expostas=$((expostas + 1))
     fi
-  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.sh' -o -name '*.js' -o -name '*.json' -o -name '*.env*' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.sh' -o -name '*.js' -o -name '*.json' -o -name '*.env*' \) -type f -print0 2>/dev/null)
   if [ "$expostas" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Credenciais Expostas" "Nenhuma credencial aparente em texto claro"
   else
@@ -112,7 +112,7 @@ _cc_ferr_aud_permissoes_inseguras() {
       [ "$(basename "$f")" = "menu.sh" ] && continue
       inseguras=$((inseguras + 1))
     fi
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$inseguras" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Permissões Inseguras" "Permissões adequadas nos scripts"
   else
@@ -126,7 +126,7 @@ _cc_ferr_aud_segredos_codigo() {
     if grep -qPI '(password|secret|token|api.?key|credential)\s*[:=]\s*["'"'"']' "$f" 2>/dev/null; then
       segredos=$((segredos + 1))
     fi
-  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.js' -o -name '*.py' -o -name '*.sh' -o -name '*.json' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.js' -o -name '*.py' -o -name '*.sh' -o -name '*.json' \) -type f -print0 2>/dev/null)
   if [ "$segredos" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Segredos em Código" "Nenhum segredo aparente em código"
   else

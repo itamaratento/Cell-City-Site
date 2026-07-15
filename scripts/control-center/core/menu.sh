@@ -16,6 +16,7 @@ set -uo pipefail
 CORE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CC_ROOT="$(cd "$CORE_DIR/.." && pwd)"
 MODULES_DIR="$CC_ROOT/modules"
+# shellcheck disable=SC2034 # lido por lib/*.sh sourced depois (cross-file, invisivel ao shellcheck)
 REPO_DIR="$(cd "$CC_ROOT/../.." && pwd)"
 
 # shellcheck source=../lib/common.sh

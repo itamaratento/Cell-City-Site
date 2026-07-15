@@ -7,6 +7,7 @@ NOC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 V3_ROOT="$NOC_DIR"
 CC_ROOT="$(cd "$V3_ROOT/.." && pwd)"
 REPO_DIR="$(cd "$CC_ROOT/../.." && pwd)"
+# shellcheck disable=SC2034 # REPO_DIR lido por collectors.sh e outros sourced depois (cross-file, invisivel ao shellcheck)
 readonly NOC_DIR V3_ROOT CC_ROOT REPO_DIR
 
 source "$CC_ROOT/lib/common.sh" 2>/dev/null || {

@@ -35,14 +35,30 @@ _dev_testes() {
   echo "────────────────────────────────────────────────────────────────────"
   _carregar_node_dev
   local falhas=0
-  (cd "$REPO_DIR/tests/rbac" && npm test) >/tmp/cellcity-dev-testes-rbac.log 2>&1 \
-    && _cc_ok "RBAC verde" || { _cc_fail "RBAC falhou — ver /tmp/cellcity-dev-testes-rbac.log"; falhas=$((falhas+1)); }
-  (cd "$REPO_DIR" && node --test tests/integrity/integridade.test.mjs) >/tmp/cellcity-dev-testes-integridade.log 2>&1 \
-    && _cc_ok "Integridade verde" || { _cc_fail "Integridade falhou — ver /tmp/cellcity-dev-testes-integridade.log"; falhas=$((falhas+1)); }
-  (cd "$REPO_DIR" && node --test tests/performance/polling-gating.test.mjs) >/tmp/cellcity-dev-testes-performance.log 2>&1 \
-    && _cc_ok "Performance verde" || { _cc_fail "Performance falhou — ver /tmp/cellcity-dev-testes-performance.log"; falhas=$((falhas+1)); }
-  (cd "$REPO_DIR" && node --test tests/control-center/estrutura.test.mjs) >/tmp/cellcity-dev-testes-cc.log 2>&1 \
-    && _cc_ok "Control Center verde" || { _cc_fail "Control Center falhou — ver /tmp/cellcity-dev-testes-cc.log"; falhas=$((falhas+1)); }
+  if (cd "$REPO_DIR/tests/rbac" && npm test) >/tmp/cellcity-dev-testes-rbac.log 2>&1; then
+    _cc_ok "RBAC verde"
+  else
+    _cc_fail "RBAC falhou — ver /tmp/cellcity-dev-testes-rbac.log"
+    falhas=$((falhas+1))
+  fi
+  if (cd "$REPO_DIR" && node --test tests/integrity/integridade.test.mjs) >/tmp/cellcity-dev-testes-integridade.log 2>&1; then
+    _cc_ok "Integridade verde"
+  else
+    _cc_fail "Integridade falhou — ver /tmp/cellcity-dev-testes-integridade.log"
+    falhas=$((falhas+1))
+  fi
+  if (cd "$REPO_DIR" && node --test tests/performance/polling-gating.test.mjs) >/tmp/cellcity-dev-testes-performance.log 2>&1; then
+    _cc_ok "Performance verde"
+  else
+    _cc_fail "Performance falhou — ver /tmp/cellcity-dev-testes-performance.log"
+    falhas=$((falhas+1))
+  fi
+  if (cd "$REPO_DIR" && node --test tests/control-center/estrutura.test.mjs) >/tmp/cellcity-dev-testes-cc.log 2>&1; then
+    _cc_ok "Control Center verde"
+  else
+    _cc_fail "Control Center falhou — ver /tmp/cellcity-dev-testes-cc.log"
+    falhas=$((falhas+1))
+  fi
   echo ""
   if [ "$falhas" -eq 0 ]; then echo "✅ Testes rápidos: tudo verde."; else echo "❌ $falhas suíte(s) falharam."; fi
   echo "Para a suíte completa (Firestore Rules + Cloud Functions + auditoria de deploy), use Release › Executar Testes."

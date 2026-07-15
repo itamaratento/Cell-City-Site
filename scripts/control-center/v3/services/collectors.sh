@@ -31,8 +31,8 @@ _v3_collect_git() {
   fi
 
   # ahead = commits locais ainda não enviados (@{u}..HEAD); behind = o inverso
-  ahead=$(git -C "$REPO_DIR" rev-list --count @{u}..HEAD 2>/dev/null || echo "0")
-  behind=$(git -C "$REPO_DIR" rev-list --count HEAD..@{u} 2>/dev/null || echo "0")
+  ahead=$(git -C "$REPO_DIR" rev-list --count '@{u}'..HEAD 2>/dev/null || echo "0")
+  behind=$(git -C "$REPO_DIR" rev-list --count HEAD..'@{u}' 2>/dev/null || echo "0")
   last_tag=$(git -C "$REPO_DIR" describe --tags --abbrev=0 2>/dev/null || echo "none")
   local last_push
   last_push=$(git -C "$REPO_DIR" log -1 --format=%ai origin/HEAD 2>/dev/null | cut -d' ' -f1,2 | head -c 16 || echo "N/A")
@@ -206,7 +206,7 @@ _v3_collect_release() {
     return 0
   fi
 
-  local last_tag="none" last_release_date="N/A" last_deploy="N/A" release_count=0
+  local last_tag="none" last_release_date="N/A" release_count=0
 
   last_tag=$(git -C "$REPO_DIR" describe --tags --abbrev=0 2>/dev/null || echo "none")
   if [[ "$last_tag" != "none" ]]; then
@@ -273,7 +273,7 @@ _v3_collect_security() {
     return 0
   fi
 
-  local status="OK" rbac_status="checking" service_account_leak="unknown"
+  local status="OK" rbac_status="checking"
 
   if [[ -f "$REPO_DIR/CRM/firestore.rules" ]]; then
     rbac_status="configured"

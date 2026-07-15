@@ -11,8 +11,8 @@ _cc_cia_especialidades() {
   _cc_screen_breadcrumb "Control Center › Central de IAs"
   _cc_box_blank
 
-  local slug nome versao funcao especialidades esp
-  while IFS='|' read -r slug nome versao funcao especialidades; do
+  local nome especialidades esp
+  while IFS='|' read -r _ nome _ _ especialidades; do
     _cc_box_text "${nome}:"
     IFS=',' read -ra lista <<< "$especialidades"
     for esp in "${lista[@]}"; do

@@ -4,6 +4,7 @@ set -uo pipefail
 
 MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CC_ROOT="$(cd "$MODULE_DIR/../.." && pwd)"
+# shellcheck disable=SC2034 # lido por lib/*.sh sourced depois (cross-file, invisivel ao shellcheck)
 REPO_DIR="$(cd "$CC_ROOT/../.." && pwd)"
 
 source "$CC_ROOT/lib/common.sh"
@@ -131,9 +132,27 @@ _cc_man_configuracoes() {
     _cc_screen_footer "Configure o comportamento · 9 volta"
     read -rp "Opção: " opcao
     case "$opcao" in
-      1) read -rp "Nova profundidade (1-5): " depth; [[ "$depth" =~ ^[1-5]$ ]] && sed -i "s/SCAN_DEPTH=.*/SCAN_DEPTH=$depth/" "$cfg_file" 2>/dev/null && _cc_ok "Profundidade alterada" || _cc_warn "Valor inválido" ;;
-      2) read -rp "Nível (basico/normal/completo): " audit; [[ "$audit" =~ ^(basico|normal|completo)$ ]] && sed -i "s/AUDIT_LEVEL=.*/AUDIT_LEVEL=$audit/" "$cfg_file" 2>/dev/null && _cc_ok "Nível alterado" || _cc_warn "Valor inválido" ;;
-      3) read -rp "Nível (baixo/normal/alto): " sec; [[ "$sec" =~ ^(baixo|normal|alto)$ ]] && sed -i "s/SECURITY_LEVEL=.*/SECURITY_LEVEL=$sec/" "$cfg_file" 2>/dev/null && _cc_ok "Nível alterado" || _cc_warn "Valor inválido" ;;
+      1) read -rp "Nova profundidade (1-5): " depth
+         if [[ "$depth" =~ ^[1-5]$ ]] && sed -i "s/SCAN_DEPTH=.*/SCAN_DEPTH=$depth/" "$cfg_file" 2>/dev/null; then
+           _cc_ok "Profundidade alterada"
+         else
+           _cc_warn "Valor inválido"
+         fi
+         ;;
+      2) read -rp "Nível (basico/normal/completo): " audit
+         if [[ "$audit" =~ ^(basico|normal|completo)$ ]] && sed -i "s/AUDIT_LEVEL=.*/AUDIT_LEVEL=$audit/" "$cfg_file" 2>/dev/null; then
+           _cc_ok "Nível alterado"
+         else
+           _cc_warn "Valor inválido"
+         fi
+         ;;
+      3) read -rp "Nível (baixo/normal/alto): " sec
+         if [[ "$sec" =~ ^(baixo|normal|alto)$ ]] && sed -i "s/SECURITY_LEVEL=.*/SECURITY_LEVEL=$sec/" "$cfg_file" 2>/dev/null; then
+           _cc_ok "Nível alterado"
+         else
+           _cc_warn "Valor inválido"
+         fi
+         ;;
       9) break ;;
       0) echo "Saindo do Control Center."; exit 0 ;;
       *) echo "Opção inválida." ;;

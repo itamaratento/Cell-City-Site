@@ -15,8 +15,8 @@ _cc_cia_responsabilidades() {
   _cc_screen_breadcrumb "Control Center › Central de IAs"
   _cc_box_blank
 
-  local numero nome ia status modulos
-  while IFS='|' read -r numero nome ia status modulos; do
+  local numero nome ia status
+  while IFS='|' read -r numero nome ia status _; do
     _cc_box_text "$(_cc_cia_ia_nome "$ia") › Fase $numero › $nome › Implementação"
     _cc_box_line "  Status: $(_cc_cia_status_label "$status")"
     if [ "$status" = "AGUARDANDO_REVISAO" ]; then

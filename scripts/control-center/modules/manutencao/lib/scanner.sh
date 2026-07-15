@@ -19,7 +19,7 @@ _cc_man_scan_orfos() {
     orfos=$((orfos + 1))
     _cc_man_encontrar "$f"
     _cc_man_classificar_item "$f" "orfao"
-  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.bak' -o -name '*.orig' -o -name '*.rej' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 2 \( -name '*.bak' -o -name '*.orig' -o -name '*.rej' \) -type f -print0 2>/dev/null)
   [ "$orfos" -eq 0 ] && _cc_man_adicionar "ok" "Arquivos Órfãos" "Nenhum" && return
   _cc_man_adicionar "warn" "Arquivos Órfãos" "${orfos} encontrados" "Residuos de merge/backup"
 }
@@ -32,7 +32,7 @@ _cc_man_scan_dirs_vazios() {
     vazios=$((vazios + 1))
     _cc_man_encontrar "$d"
     _cc_man_classificar_item "$d" "vazio"
-  done < <(find "$REPO_DIR" -type d -empty 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -type d -empty -print0 2>/dev/null)
   [ "$vazios" -eq 0 ] && _cc_man_adicionar "ok" "Diretórios Vazios" "Nenhum" && return
   _cc_man_adicionar "warn" "Diretórios Vazios" "${vazios} encontrados"
 }
@@ -45,7 +45,7 @@ _cc_man_scan_backups() {
     local sz && sz=$(stat -c%s "$f" 2>/dev/null || echo 0) && tamanho=$((tamanho + sz))
     _cc_man_encontrar "$f"
     _cc_man_classificar_item "$f" "backup"
-  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.tar.gz' -o -name '*.tgz' -o -name '*backup*' -o -name '*BACKUP*' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.tar.gz' -o -name '*.tgz' -o -name '*backup*' -o -name '*BACKUP*' \) -type f -print0 2>/dev/null)
   [ "$encontrados" -eq 0 ] && _cc_man_adicionar "ok" "Backups Antigos" "Nenhum" && return
   local tam_h && tam_h=$(numfmt --to=iec 2>/dev/null <<< "$tamanho" || echo "${tamanho}B")
   _cc_man_adicionar "warn" "Backups Antigos" "${encontrados} arquivos (${tam_h})"
@@ -59,7 +59,7 @@ _cc_man_scan_logs() {
     local sz && sz=$(stat -c%s "$f" 2>/dev/null || echo 0) && tamanho=$((tamanho + sz))
     _cc_man_encontrar "$f"
     _cc_man_classificar_item "$f" "log"
-  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.log' -o -name 'npm-debug.log*' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.log' -o -name 'npm-debug.log*' \) -type f -print0 2>/dev/null)
   [ "$encontrados" -eq 0 ] && _cc_man_adicionar "ok" "Logs Esquecidos" "Nenhum" && return
   local tam_h && tam_h=$(numfmt --to=iec 2>/dev/null <<< "$tamanho" || echo "${tamanho}B")
   _cc_man_adicionar "warn" "Logs Esquecidos" "${encontrados} arquivos (${tam_h})"
@@ -73,7 +73,7 @@ _cc_man_scan_temporarios() {
     local sz && sz=$(stat -c%s "$f" 2>/dev/null || echo 0) && tamanho=$((tamanho + sz))
     _cc_man_encontrar "$f"
     _cc_man_classificar_item "$f" "temporario"
-  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.tmp' -o -name '*.swp' -o -name '*~' -o -name 'firestore-debug.log' -o -name 'ui-debug.log' \) -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -maxdepth 3 \( -name '*.tmp' -o -name '*.swp' -o -name '*~' -o -name 'firestore-debug.log' -o -name 'ui-debug.log' \) -type f -print0 2>/dev/null)
   [ "$encontrados" -eq 0 ] && _cc_man_adicionar "ok" "Arquivos Temporários" "Nenhum" && return
   local tam_h && tam_h=$(numfmt --to=iec 2>/dev/null <<< "$tamanho" || echo "${tamanho}B")
   _cc_man_adicionar "warn" "Arquivos Temporários" "${encontrados} arquivos (${tam_h})"

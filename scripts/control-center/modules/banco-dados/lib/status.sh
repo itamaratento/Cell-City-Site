@@ -46,8 +46,16 @@ _cc_bd_status() {
     _cc_bd_adicionar "warn" "gcloud" "não autenticado — status limitado ao que os arquivos locais informam"
   fi
 
-  [ -f "$REPO_DIR/firebase.json" ] && _cc_bd_adicionar "ok" "firebase.json" "presente" || _cc_bd_adicionar "fail" "firebase.json" "ausente"
-  [ -f "$REPO_DIR/.firebaserc" ] && _cc_bd_adicionar "ok" ".firebaserc" "presente" || _cc_bd_adicionar "fail" ".firebaserc" "ausente"
+  if [ -f "$REPO_DIR/firebase.json" ]; then
+    _cc_bd_adicionar "ok" "firebase.json" "presente"
+  else
+    _cc_bd_adicionar "fail" "firebase.json" "ausente"
+  fi
+  if [ -f "$REPO_DIR/.firebaserc" ]; then
+    _cc_bd_adicionar "ok" ".firebaserc" "presente"
+  else
+    _cc_bd_adicionar "fail" ".firebaserc" "ausente"
+  fi
 
   _cc_bd_exibir_status "STATUS DO BANCO"
 }

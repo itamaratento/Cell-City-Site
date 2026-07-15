@@ -19,7 +19,7 @@ _cc_man_mort_funcoes() {
         declaradas+=("$func|$f")
       fi
     done < "$f"
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   local entrada func_file func
   for entrada in "${declaradas[@]}"; do
     func="${entrada%%|*}"
@@ -29,7 +29,7 @@ _cc_man_mort_funcoes() {
       if [ "$f2" != "$func_file" ] && grep -qP "(?<![a-zA-Z_])${func}(?![a-zA-Z_])" "$f2" 2>/dev/null; then
         encontrada=1; break
       fi
-    done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+    done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
     [ "$encontrada" -eq 0 ] && nao_usadas=$((nao_usadas + 1)) && _cc_man_encontrar "funcao: $func em $func_file"
   done
   [ "$nao_usadas" -eq 0 ] && _cc_man_adicionar "ok" "Funções Não Utilizadas" "Nenhuma" && return
@@ -42,7 +42,7 @@ _cc_man_mort_scripts() {
     local nome
     nome=$(basename "$f" .sh)
     declarados+=("$nome|$f")
-  done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
   local entrada nome_script path
   for entrada in "${declarados[@]}"; do
     nome_script="${entrada%%|*}"
@@ -52,7 +52,7 @@ _cc_man_mort_scripts() {
       if [ "$f2" != "$path" ] && grep -q "$nome_script" "$f2" 2>/dev/null; then
         refs=$((refs + 1))
       fi
-    done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+    done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
     [ "$refs" -eq 0 ] && nao_referenciados=$((nao_referenciados + 1)) && _cc_man_encontrar "script: $(basename "$path")"
   done
   [ "$nao_referenciados" -eq 0 ] && _cc_man_adicionar "ok" "Scripts Sem Referência" "Nenhum" && return
@@ -73,9 +73,9 @@ _cc_man_mort_arquivos() {
         base="${nome%.*}"
         grep -q "$base" "$f2" 2>/dev/null && refs=$((refs + 1)) && break
       fi
-    done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+    done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
     [ "$refs" -eq 0 ] && suspensos=$((suspensos + 1)) && _cc_man_encontrar "$f"
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   [ "$suspensos" -eq 0 ] && _cc_man_adicionar "ok" "Arquivos Abandonados" "Nenhum" && return
   _cc_man_adicionar "warn" "Arquivos Abandonados" "${suspensos} arquivos sem referência em scripts" "Possível código não utilizado" "Pode indicar funcionalidade obsoleta" "Revise e arquive ou remova"
 }

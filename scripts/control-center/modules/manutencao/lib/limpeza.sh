@@ -273,7 +273,13 @@ _cc_man_validar_pre_execucao() {
     [ -n "${vistos[$alvo]:-}" ] && dups=$((dups + 1))
     vistos[$alvo]=1
   done
-  [ "$dups" -eq 0 ] && _cc_box_line "  ${_CC_C_VERDE}OK (sem duplicatas)${_CC_C_RESET}" || { _cc_box_line "  ${_CC_C_VERMELHO}FALHA: ${dups} duplicata(s)${_CC_C_RESET}"; falhas=$((falhas + 1)); _cc_log "Falha I3: duplicatas no plano"; }
+  if [ "$dups" -eq 0 ]; then
+    _cc_box_line "  ${_CC_C_VERDE}OK (sem duplicatas)${_CC_C_RESET}"
+  else
+    _cc_box_line "  ${_CC_C_VERMELHO}FALHA: ${dups} duplicata(s)${_CC_C_RESET}"
+    falhas=$((falhas + 1))
+    _cc_log "Falha I3: duplicatas no plano"
+  fi
 
   # I4. Diretorio de Snapshot ainda viavel apos validacoes
   total=$((total + 1))
@@ -364,7 +370,9 @@ _cc_man_executar_plano() {
       _cc_ok "Removido: $(basename "$alvo")"
     fi
   done
+  # shellcheck disable=SC2034 # lido por lib/utils.sh (relatório JSON), cross-file invisivel ao shellcheck
   CC_MAN_REMOVIDOS=$removidos
+  # shellcheck disable=SC2034 # idem
   CC_MAN_ESPACO=$espaco_recuperado
   _cc_man_log_fim "$removidos" "$espaco_recuperado"
   _cc_man_salvar_estado

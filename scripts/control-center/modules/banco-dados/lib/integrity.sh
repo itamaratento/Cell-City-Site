@@ -23,8 +23,16 @@ _cc_bd_integridade() {
   local rules_path indexes_path
   rules_path=$(_cc_bd_rules_path)
   indexes_path=$(_cc_bd_indexes_path)
-  [ -f "$rules_path" ] && _cc_bd_adicionar "ok" "Rules (caminho de firebase.json)" "$rules_path" || _cc_bd_adicionar "fail" "Rules (caminho de firebase.json)" "$rules_path ausente"
-  [ -f "$indexes_path" ] && _cc_bd_adicionar "ok" "Índices (caminho de firebase.json)" "$indexes_path" || _cc_bd_adicionar "fail" "Índices (caminho de firebase.json)" "$indexes_path ausente"
+  if [ -f "$rules_path" ]; then
+    _cc_bd_adicionar "ok" "Rules (caminho de firebase.json)" "$rules_path"
+  else
+    _cc_bd_adicionar "fail" "Rules (caminho de firebase.json)" "$rules_path ausente"
+  fi
+  if [ -f "$indexes_path" ]; then
+    _cc_bd_adicionar "ok" "Índices (caminho de firebase.json)" "$indexes_path"
+  else
+    _cc_bd_adicionar "fail" "Índices (caminho de firebase.json)" "$indexes_path ausente"
+  fi
 
   # Consistência raiz×CRM/ — este projeto manteve cópias em ambos os
   # lugares em algum momento do histórico; só o caminho de firebase.json

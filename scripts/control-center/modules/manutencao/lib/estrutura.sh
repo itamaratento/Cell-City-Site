@@ -29,7 +29,7 @@ _cc_man_est_convencoes() {
     [[ "$nome" =~ ^[a-z0-9._-]+$ ]] && continue
     problemas=$((problemas + 1))
     _cc_man_encontrar "$f"
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   [ "$problemas" -eq 0 ] && _cc_man_adicionar "ok" "Convenções de Nomes" "Todas as convenções seguidas" && return
   _cc_man_adicionar "warn" "Convenções de Nomes" "${problemas} arquivo(s) com nome fora do padrão" "Nomes com maiúsculas ou caracteres especiais" "Inconsistência no projeto" "Renomeie seguindo o padrão lower-case"
 }

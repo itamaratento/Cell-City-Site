@@ -16,8 +16,6 @@ readonly WI_CACHE_DIR="$WI_LOG_DIR/cache"
 readonly WI_DEP_CONFIG="$WI_DIR/../config/wi-dependencias.conf"
 
 declare -a WI_FILES=() WI_GROUPS=() WI_IMPACTS=() WI_REASONS=() WI_DEPS=()
-WI_IMPACT_ORDER=("NULO" "BAIXO" "MEDIO" "ALTO" "CRITICO")
-WI_BLOCK_THRESHOLD="MEDIO"
 
 _wi_impact_value() {
   case "$1" in
@@ -140,7 +138,7 @@ _wi_analyze_dependencies() {
   for ref in $content_refs; do
     local ref_path="$REPO_DIR/$ref"
     ref_path=$(realpath "$ref_path" 2>/dev/null || echo "$ref_path")
-    local ref_rel="${ref_path#$REPO_DIR/}"
+    local ref_rel="${ref_path#"$REPO_DIR"/}"
     local ref_group ref_impact
     IFS='|' read -r ref_group ref_impact _ <<< "$(_wi_classify "$ref_rel" "M")"
     local riv=$(_wi_impact_value "${ref_impact:-NULO}")
@@ -289,9 +287,7 @@ wi_analisar() {
   local state_hash=$(_wi_hash_state)
   local analysis=$(_wi_cache_get "$state_hash")
   if [[ -z "$analysis" ]]; then
-    local t0=$(date +%s%3N)
     analysis=$(_wi_analyze)
-    local t1=$(date +%s%3N)
     _wi_cache_set "$state_hash" "$analysis"
   fi
   if [[ "$format" == "json" ]]; then
@@ -316,9 +312,7 @@ wi_gate() {
 
   local state_hash=$(_wi_hash_state)
   local analysis=$(_wi_cache_get "$state_hash")
-  local t0=$(date +%s%3N)
   if [[ -z "$analysis" ]]; then
-    t0=$(date +%s%3N)
     analysis=$(_wi_analyze)
     _wi_cache_set "$state_hash" "$analysis"
   fi

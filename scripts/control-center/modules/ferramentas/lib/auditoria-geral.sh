@@ -83,7 +83,7 @@ _cc_ferr_aud_arquivos_duplicados() {
     else
       seen[$nome]="$f"
     fi
-  done < <(find "$REPO_DIR" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$duplicados" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Arquivos Duplicados" "Nenhum script com nome duplicado"
   else
@@ -95,7 +95,7 @@ _cc_ferr_aud_arquivos_vazios() {
   local vazios=0
   while IFS= read -r -d '' f; do
     [ ! -s "$f" ] && vazios=$((vazios + 1))
-  done < <(find "$REPO_DIR" -type f \( -name '*.sh' -o -name '*.json' -o -name '*.md' -o -name '*.js' -o -name '*.html' -o -name '*.css' \) 2>/dev/null -print0)
+  done < <(find "$REPO_DIR" -type f \( -name '*.sh' -o -name '*.json' -o -name '*.md' -o -name '*.js' -o -name '*.html' -o -name '*.css' \) -print0 2>/dev/null)
   if [ "$vazios" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Arquivos Vazios" "Nenhum arquivo vazio encontrado"
   else
@@ -110,7 +110,7 @@ _cc_ferr_aud_scripts_invalidos() {
     if ! bash -n "$f" 2>/dev/null; then
       invalidos=$((invalidos + 1))
     fi
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$invalidos" -eq 0 ] && [ "$verificados" -gt 0 ]; then
     _cc_ferr_adicionar "ok" "Scripts Inválidos" "${verificados} scripts verificados, sem erros"
   elif [ "$verificados" -eq 0 ]; then
@@ -125,7 +125,7 @@ _cc_ferr_aud_permissoes() {
   while IFS= read -r -d '' f; do
     total=$((total + 1))
     [ ! -x "$f" ] && nao_exec=$((nao_exec + 1))
-  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f 2>/dev/null -print0)
+  done < <(find "$REPO_DIR/scripts" -name '*.sh' -type f -print0 2>/dev/null)
   if [ "$nao_exec" -eq 0 ]; then
     _cc_ferr_adicionar "ok" "Permissões" "Todos os scripts são executáveis"
   else
