@@ -124,7 +124,7 @@ window.Portal = {
     }
 
     console.log('[Portal] location.hash:', location.hash);
-    console.log('[Portal] sessionStorage.portal_session:', sessionStorage.getItem('portal_session'));
+    false && console.log('[Portal] sessionStorage.portal_session:', sessionStorage.getItem('portal_session')); // PII desabilitado — SEC-CONSOLE-001 (logava telefone da sessão)
 
     // Tenta restaurar sessão
     const saved = sessionStorage.getItem('portal_session');
