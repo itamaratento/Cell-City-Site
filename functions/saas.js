@@ -19,6 +19,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const { REGIAO } = require('./lib/config');
 const { aplicarRateLimit } = require('./lib/rate-limit');
+const { PLANOS_VALIDOS, provisionamentoPorPlano } = require('./lib/saas-planos');
 
 exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) => {
   aplicarRateLimit(request, 'escrita');
@@ -26,8 +27,7 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
   const nome = String(data.nome || '').trim();
   const responsavel = String(data.seuNome || '').trim();
   const email = String(data.email || '').trim().toLowerCase();
-  const whatsapp = String(data.whatsapp || '').trim().slice(0, 20);
-  const PLANOS_VALIDOS = ['trial', 'basico', 'profissional', 'enterprise'];
+  const whatsappDigits = String(data.whatsapp || '').replace(/\D/g, '');
   const plano = PLANOS_VALIDOS.includes(data.plano) ? data.plano : 'trial';
 
   if (nome.length < 2 || nome.length > 80) {
@@ -38,6 +38,9 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
   }
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 120) {
     throw new HttpsError('invalid-argument', 'Informe um e-mail válido.');
+  }
+  if (whatsappDigits.length < 10 || whatsappDigits.length > 15) {
+    throw new HttpsError('invalid-argument', 'Informe um celular/WhatsApp válido.');
   }
 
   const db = admin.firestore();
@@ -50,6 +53,7 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
 
   const empresaId = 'emp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const agora = admin.firestore.FieldValue.serverTimestamp();
+  const { modulos_ativos, feature_flags } = provisionamentoPorPlano(plano);
 
   await db.collection('empresas').doc(empresaId).set({
     nome_fantasia: nome,
@@ -61,14 +65,15 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
     data_vencimento: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     contato_nome: responsavel,
     contato_email: email,
-    contato_whatsapp: whatsapp,
-    modulos_ativos: null,
+    contato_whatsapp: whatsappDigits,
+    modulos_ativos,
+    feature_flags,
   });
 
   await db.collection('saas_eventos').doc(`onboard_${empresaId}`).set({
     tipo: 'onboarding',
     empresa_id: empresaId,
-    detalhes: { nome, responsavel, email, whatsapp, plano },
+    detalhes: { nome, responsavel, email, whatsapp: whatsappDigits, plano },
     criadoEm: agora,
   });
 

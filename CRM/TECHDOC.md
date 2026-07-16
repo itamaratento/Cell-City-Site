@@ -2265,3 +2265,32 @@ alterados aqui; recomenda-se rodá-las na Revisão Técnica.
 página, `kernel.js`, Rules, Cloud Functions ou RBAC tocado.
 
 Relatório completo: `plans/P2_2_D_RELATORIO_FINAL.md`.
+
+## §43 — Onboarding SaaS (Sprint 3, 2026-07-16)
+
+Kickoff do fluxo self-service de cadastro de empresas (PS-5/PS-6),
+consolidado após Sprints 1 (infra/app-config/kernel) e 2 (portal split).
+
+**Entregas:**
+- Wizard 3 passos extraído para `CRM/pages/saas-onboarding/saas-onboarding.js`
+  (HTML fino; bootstrap Firebase Functions permanece no `<script>` inline
+  allowlistado — mesma exceção documentada em §39).
+- Catálogo de planos integrado (`CRM/shared/saas-planos.js` no client;
+  espelho CJS `functions/lib/saas-planos.js` no servidor).
+- Validações compartilhadas em `CRM/shared/saas-onboarding-validacao.js`.
+- Cloud Function `saasOnboardingCriarEmpresa` passa a provisionar
+  `modulos_ativos` e `feature_flags` conforme o plano escolhido; WhatsApp
+  normalizado para dígitos (10–15).
+- `FLAGS.SAAS_ONBOARDING_ATIVO: true` — kickoff SaaS (era `false` desde F1.2).
+
+**Fora de escopo (decisão PS-6, mantida):**
+- Criação de usuário administrador no onboarding (vínculo feito pelo
+  operador `master_admin` no `saas-admin` após aprovação).
+- Verificação de e-mail (PS5-003 — adiada pelo dono).
+
+**Testes:** `tests/onboarding/saas-onboarding-validacao.test.mjs` (10/10);
+`tests/functions/saas-onboarding.test.mjs` (novo — requer emulador Firestore);
+`npm run auditar-arquitetura` 6/6; RBAC 173/175 (2 pré-existentes);
+integridade 14/14; catálogo 17/17.
+
+Relatório: `plans/SPRINT3_ONBOARDING_RELATORIO.md`.

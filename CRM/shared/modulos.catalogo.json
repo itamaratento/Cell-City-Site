@@ -1,8 +1,8 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-16T22:03:57.234Z",
-  "commitBase": "fe412c5",
+  "geradoEm": "2026-07-16T23:04:44.705Z",
+  "commitBase": "721095d",
   "resumo": {
     "totalPastas": 36,
     "visiveis": 30,
@@ -3419,10 +3419,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Painel interno do Portal do Cliente (agendamentos, mensagens, avaliações). O index.html da mesma pasta é o portal público, sem login CRM.",
       "oculto": false,
-      "versao": "1.0.36",
+      "versao": "1.0.37",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 36,
+      "commits": 37,
       "status": "atencao",
       "score": 80,
       "rbac": {
@@ -4027,8 +4027,11 @@
       },
       "dependencias": {
         "shared": [
+          "app-config.js",
           "design-system.css",
           "env-config.js",
+          "saas-onboarding-validacao.js",
+          "saas-planos.js",
           "theme.js"
         ],
         "scripts": [],
@@ -4036,11 +4039,15 @@
       },
       "arquivosPrincipais": [
         {
+          "arquivo": "saas-onboarding.js",
+          "linhas": 159
+        },
+        {
           "arquivo": "index.html",
-          "linhas": 180
+          "linhas": 96
         }
       ],
-      "totalArquivos": 1,
+      "totalArquivos": 2,
       "menu": {
         "sidebarDashboard": false,
         "dock": false,

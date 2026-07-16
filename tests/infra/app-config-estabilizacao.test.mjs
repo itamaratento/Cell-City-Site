@@ -48,7 +48,7 @@ test('app-config: FLAGS expõe filtrosTenant, CHAT_ATIVO e SAAS_ONBOARDING_ATIVO
   const src = read('CRM/shared/app-config.js');
   assert.match(src, /export const FLAGS = \{[\s\S]*filtrosTenant:/);
   assert.match(src, /CHAT_ATIVO:\s*false/);
-  assert.match(src, /SAAS_ONBOARDING_ATIVO:\s*false/);
+  assert.match(src, /SAAS_ONBOARDING_ATIVO:\s*true/);
   assert.match(src, /registerTenantFiltersChecker/);
   assert.doesNotMatch(src, /import\s+\{[^}]*areTenantFiltersEnabled[^}]*\}\s+from\s+['"]\.\/tenant-context\.js['"]/,
     'app-config não pode importar tenant-context (ciclo P2.2-B)');

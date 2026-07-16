@@ -202,7 +202,7 @@ export function registerTenantFiltersChecker(fn) {
 export const FLAGS = {
   filtrosTenant: () => _tenantFiltersChecker(),
   CHAT_ATIVO: false,
-  SAAS_ONBOARDING_ATIVO: false,
+  SAAS_ONBOARDING_ATIVO: true,
 };
 
 // ── Ponte para scripts clássicos (não-módulo) ────────────────
