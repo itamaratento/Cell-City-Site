@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { ClientesRepository as Clientes } from '../../repositories/clientes.repository.js';
@@ -282,6 +283,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('campanhas')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('campanhas')) { window.location.href = URLS.dashboard(); return; }
     carregar();
 });

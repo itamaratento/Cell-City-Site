@@ -10,14 +10,14 @@ import { getTenantFieldValue } from "../../shared/tenant-query.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 import { toast } from './informacoes-ui-utils.js';
 import { criptografarSenha, descriptografarSenha } from './informacoes-crypto.js';
-import { DEFAULT_TENANT_ID } from '../../shared/app-config.js';
+import { DEFAULT_TENANT_ID, URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 
 const COL = 'informacoes';
 const CAT_COL = 'categorias_informacoes';
-const CACHE_KEY = 'cc_informacoes_cache';
-const RECENTES_KEY = 'cc_informacoes_recentes';
-const CACHE_CAT_KEY = 'cc_categorias_informacoes_cache';
-const VIEWMODE_KEY = 'cc_informacoes_viewmode';
+const CACHE_KEY = STORAGE_KEYS.INFO_CACHE;
+const RECENTES_KEY = STORAGE_KEYS.INFO_RECENTES;
+const CACHE_CAT_KEY = STORAGE_KEYS.INFO_CATEGORIAS_CACHE;
+const VIEWMODE_KEY = STORAGE_KEYS.INFO_VIEWMODE;
 
 const TIPOS_REGISTRO = ['Todos', 'Comando', 'Site', 'Senha', 'Anotação', 'Documento'];
 // Mapeamento do nome de exibição → valor armazenado no Firestore (sem acento, minúsculo)
@@ -101,7 +101,7 @@ async function init() {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('central-informacoes')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('central-informacoes')) { window.location.href = URLS.dashboard(); return; }
     await carregarCategorias();
     montarCategorias();
     montarSelectCategorias();

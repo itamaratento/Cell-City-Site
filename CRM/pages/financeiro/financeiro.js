@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query } from '../../scripts/firebase.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo } from '../../scripts/kernel.js';
@@ -1112,7 +1113,7 @@ async function _boot() {
     const ctx = await initModulo();
     if (!ctx) return; // kernel.js já redirecionou para login
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('financeiro')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('financeiro')) { window.location.href = URLS.dashboard(); return; }
     if (!podeCriar('financeiro')) {
         document.getElementById('btn-nova-pagar').style.display = 'none';
         document.getElementById('btn-nova-fixa').style.display = 'none';

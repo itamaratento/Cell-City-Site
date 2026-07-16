@@ -14,7 +14,7 @@ import { escHtml } from "../../shared/sanitize.js";
 import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
 import { openModal, closeModal, showToast } from './os-ui-utils.js';
 import { storagePrefixEmpresa, uploadPhotoToStorage, deletePhotoFromStorage } from './os-photo-storage.js';
-import { URLS, devPrefix } from '../../shared/app-config.js';
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 // Services: camada de regras de negócio (ver CRM/services/)
 // Piloto P1.7 — imports descomentar à medida que as funções inline forem migradas
 // import { getStatusLabel } from "../../services/os-status.service.js";
@@ -750,12 +750,12 @@ function showList(filter) {
 }
 
 // ===== CONTINUAR DE ONDE PAREI (registro da última tela — localStorage, sem Firestore) =====
-const ULTIMA_TELA_KEY = 'cc_ultima_tela';
+const ULTIMA_TELA_KEY = STORAGE_KEYS.ULTIMA_TELA;
 function salvarUltimaTela(view, label, sub, hash) {
     try {
         localStorage.setItem(ULTIMA_TELA_KEY, JSON.stringify({
             modulo: 'os', view, label, sub: sub || '', hash,
-            url: (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/os/index.html' + hash, ts: Date.now()
+            url: `${devPrefix()}/CRM/pages/os/index.html${hash}`, ts: Date.now()
         }));
     } catch {}
 }
@@ -763,7 +763,7 @@ function salvarUltimaTela(view, label, sub, hash) {
 function getHashOS() { const m = (location.hash || '').match(/^#os-(.+)$/); return m ? decodeURIComponent(m[1]) : ''; }
 
 // ===== FAVORITOS DAS VISÕES (atalho de abertura direta) =====
-const FAV_KEY = 'cc_os_fav';
+const FAV_KEY = STORAGE_KEYS.OS_FAV;
 function getFav() { return localStorage.getItem(FAV_KEY) || ''; }
 function openFav(view) {
     if (view === 'clientes') showScreen('clientes');
@@ -1494,7 +1494,7 @@ function copiarMensagemFinalizado() {
         .replace(/\{os\}/g, os.id)
         .replace(/\{garantia\}/g, _garantiaStr(os))
         .replace(/\{validade\}/g, _validadeGarantiaStr(os))
-        .replace(/\{avaliacao\}/g, localStorage.getItem('cc_link_avaliacao_google') || '');
+        .replace(/\{avaliacao\}/g, localStorage.getItem(STORAGE_KEYS.LINK_AVALIACAO) || '');
     _copiarComHistorico(msg, 'finalizado', '✅ Finalizado');
 }
 
@@ -1511,7 +1511,7 @@ function _validadeGarantiaStr(os) {
 }
 
 function _msgFinalizadoPadrao() {
-    const link = localStorage.getItem('cc_link_avaliacao_google') || '';
+    const link = localStorage.getItem(STORAGE_KEYS.LINK_AVALIACAO) || '';
     return 'Olá, {nome}! 👋\n\n' +
         'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
         '📋 OS Nº {os}\n\n' +
@@ -1538,7 +1538,7 @@ function getLockTypeLabel(type) {
 
 function _getWarrantyModels() {
     let cfg = { garantias: [] };
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     return Array.isArray(cfg.garantias) ? cfg.garantias : [];
 }
 
@@ -1582,7 +1582,7 @@ async function _fetchWarrantyConfigFromFirestore() {
             const data = configDoc.data();
             if (Array.isArray(data.garantias) && data.garantias.length > 0) {
                 // Sincroniza para localStorage para uso futuro
-                localStorage.setItem('cc_config_impressao', JSON.stringify(data));
+                localStorage.setItem(STORAGE_KEYS.CONFIG_IMPRESSAO, JSON.stringify(data));
                 return data;
             }
         }
@@ -1600,7 +1600,7 @@ async function _getWarrantyText() {
     if (!currentOS) return null;
     const os = currentOS;
     let cfg = null;
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     if (!cfg || !Array.isArray(cfg.garantias) || cfg.garantias.length === 0) {
         cfg = await _fetchWarrantyConfigFromFirestore();
         if (!cfg) return null;
@@ -1720,10 +1720,10 @@ function renderWppHistoricoPanel() {
 // ===== CENTRAL DE RETORNO =====
 
 function getOperadorNome() {
-    let nome = localStorage.getItem('cc_operador_nome');
+    let nome = localStorage.getItem(STORAGE_KEYS.OPERADOR_NOME);
     if (!nome) {
         nome = prompt('Seu nome (será registrado nos retornos):') || 'Responsável';
-        if (nome !== 'Responsável') localStorage.setItem('cc_operador_nome', nome);
+        if (nome !== 'Responsável') localStorage.setItem(STORAGE_KEYS.OPERADOR_NOME, nome);
     }
     return nome;
 }
@@ -1987,7 +1987,7 @@ async function generateWarrantyLink() {
     if (!currentOS) return;
     const os = currentOS;
     let cfg = null;
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     let garantias = cfg ? (Array.isArray(cfg.garantias) ? cfg.garantias : []) : [];
     if (garantias.length === 0) {
         cfg = await _fetchWarrantyConfigFromFirestore();
@@ -1996,7 +1996,7 @@ async function generateWarrantyLink() {
     if (garantias.length === 0) { showToast('⚠️ Nenhuma garantia disponível'); return; }
     const garantia = garantias.find(g => g.id == os.garantiaId) || garantias.find(g => g.padrao) || garantias[0];
     if (!garantia) { showToast('⚠️ Nenhuma garantia disponível'); return; }
-    const baseUrl = window.location.origin + (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/garantia?id=' + os.id;
+    const baseUrl = window.location.origin + `${devPrefix()}/CRM/garantia?id=${os.id}`;
     navigator.clipboard.writeText(baseUrl).then(() => {
         showToast('✅ Link copiado para compartilhar!');
     }).catch(() => {
@@ -2008,7 +2008,7 @@ async function sendWarrantyWhatsApp() {
     if (!currentOS) return;
     const os = currentOS;
     let cfg = null;
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     let garantias = cfg ? (Array.isArray(cfg.garantias) ? cfg.garantias : []) : [];
     if (garantias.length === 0) {
         cfg = await _fetchWarrantyConfigFromFirestore();
@@ -2028,7 +2028,7 @@ function printOS() {
     if (!currentOS) return;
     const os = currentOS;
     let cfg = { logo: '', garantias: [] };
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
     const checksHtml = garantias.length ? `
         <div style="margin-bottom:16px">
@@ -2088,7 +2088,7 @@ window._executePrint = function() {
     if (!currentOS) return;
     const os = currentOS;
     let cfg = { logo: '', garantias: [] };
-    try { const c = localStorage.getItem('cc_config_impressao'); if (c) cfg = JSON.parse(c); } catch {}
+    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
     const selectedIds = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
     const selecionadas = garantias.filter(g => selectedIds.includes(String(g.id)));
@@ -2614,9 +2614,9 @@ function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document
 let preOSPendente = null;
 function verificarConversaoPreOS() {
     try {
-        const raw = sessionStorage.getItem('cc_dados_preos');
+        const raw = sessionStorage.getItem(STORAGE_KEYS.DADOS_PREOS);
         if (!raw) return;
-        sessionStorage.removeItem('cc_dados_preos');
+        sessionStorage.removeItem(STORAGE_KEYS.DADOS_PREOS);
         const d = JSON.parse(raw);
         console.log('🔄 [Conversão] Dados da Pré-OS recebidos:', d);
         startOS('celular'); // abre o formulário de Nova OS na categoria padrão
@@ -2649,9 +2649,9 @@ function verificarConversaoPreOS() {
 let portalOSPendente = null;
 function verificarConversaoPortalOS() {
     try {
-        const raw = sessionStorage.getItem('cc_dados_portal_os');
+        const raw = sessionStorage.getItem(STORAGE_KEYS.DADOS_PORTAL_OS);
         if (!raw) return;
-        sessionStorage.removeItem('cc_dados_portal_os');
+        sessionStorage.removeItem(STORAGE_KEYS.DADOS_PORTAL_OS);
         const d = JSON.parse(raw);
         console.log('🔄 [Portal] Dados da solicitação recebidos:', d);
 
@@ -2681,7 +2681,7 @@ async function init() {
     if (!ctx) return;
     // RBAC (Fase 2, Sprint 5 — moduloId 'os').
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('os')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('os')) { window.location.href = URLS.dashboard(); return; }
     if (!podeCriar('os')) {
         document.querySelectorAll('.category-card').forEach(el => el.style.display = 'none');
     }

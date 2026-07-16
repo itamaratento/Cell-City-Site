@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ChipsRepository as Chips } from '../../repositories/chips.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
@@ -598,7 +599,7 @@ async function _boot() {
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('crm')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('crm')) { window.location.href = URLS.dashboard(); return; }
   if (!podeCriar('crm')) { document.querySelector('.crm-btn-chegou')?.style.setProperty('display', 'none'); }
 
   startListener();

@@ -2,6 +2,7 @@
 // CENTRAL DE COMANDOS — Cell City CRM
 // Versão com blocos modulares de comando
 // ============================================
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ComandosRepository as Comandos, CategoriasComandosRepository as CategoriasComandos, InformacoesRepository as Informacoes } from '../../repositories/central.repository.js';
 import { ConfigRepository as Config } from '../../repositories/sistema.repository.js';
@@ -16,12 +17,12 @@ import { formatDate } from '../../shared/date-utils.js';
 
 const COL = 'comandos';
 const CAT_COL = 'categorias_comandos';
-const CACHE_KEY = 'cc_comandos_cache';
-const RECENTES_KEY = 'cc_comandos_recentes';
-const CACHE_CAT_KEY = 'cc_categorias_cache';
+const CACHE_KEY = STORAGE_KEYS.COMANDOS_CACHE;
+const RECENTES_KEY = STORAGE_KEYS.COMANDOS_RECENTES;
+const CACHE_CAT_KEY = STORAGE_KEYS.CATEGORIAS_CACHE;
 
 const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
-const VIEWMODE_KEY = 'cc_comandos_viewmode';
+const VIEWMODE_KEY = STORAGE_KEYS.COMANDOS_VIEWMODE;
 
 // ===== MIGRAÇÃO v1: informacoes(tipo=comando) → comandos =====
 // Executa uma única vez. Transfere registros legados da coleção `informacoes`
@@ -101,7 +102,7 @@ async function executarMigracao() {
         });
 
         // Salva no localStorage para diagnóstico offline
-        localStorage.setItem('cc_migracao_v1_log', JSON.stringify({
+        localStorage.setItem(STORAGE_KEYS.MIGRACAO_V1_LOG, JSON.stringify({
             data: new Date().toISOString(),
             migrados, ignorados, erros, log
         }));
@@ -151,7 +152,7 @@ async function init() {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('central-comandos')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('central-comandos')) { window.location.href = URLS.dashboard(); return; }
     await carregarCategorias();
     montarCategorias();
     montarSelectCategorias();

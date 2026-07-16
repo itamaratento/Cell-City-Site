@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
@@ -400,7 +401,7 @@ document.getElementById('forn-btn-listar')?.addEventListener('click', async () =
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('fornecedor')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('fornecedor')) { window.location.href = URLS.dashboard(); return; }
   if (!podeCriar('fornecedor')) document.getElementById('btn-nova-compra').style.display = 'none';
   carregarCompras();
 })();

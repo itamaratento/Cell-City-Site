@@ -5,6 +5,7 @@
 //  Status (novo/lido/resolvido) é por usuário, sincronizado em tempo real
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
@@ -18,7 +19,7 @@ import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 import { formatDateTime } from '../../shared/date-utils.js';
 
 const STATUS_COL = 'central_alertas_status';
-const CONFIG_KEY = 'cc_config_alertas';
+const CONFIG_KEY = STORAGE_KEYS.CONFIG_ALERTAS;
 const REFRESH_MS = 300000;
 
 const PRIORIDADE_ORDEM = { critico: 0, atencao: 1, crm: 2 };

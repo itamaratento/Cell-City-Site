@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
@@ -167,7 +168,7 @@ document.querySelectorAll('[data-cr-status]')?.forEach(btn => {
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('compras')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('compras')) { window.location.href = URLS.dashboard(); return; }
   if (!podeCriar('compras')) document.getElementById('cr-btn-nova').style.display = 'none';
   await carregar();
 })();

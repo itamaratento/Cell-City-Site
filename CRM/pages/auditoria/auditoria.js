@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {
@@ -51,7 +52,7 @@ window.metaAcao = metaAcao;
   // não existia — qualquer usuário aprovado via logs de auditoria e a
   // lista completa de usuários. Mesmo padrão dos demais módulos.
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('auditoria')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('auditoria')) { window.location.href = URLS.dashboard(); return; }
 
   try {
     const snap = await getDocs(query(collection(db, 'perfis_operacionais'), ...injectTenantFilter([])));

@@ -8,6 +8,7 @@
 //    Título → Busca inteligente → Novo Registro → Favoritos →
 //    Registros → [Resumo Geral / Estatísticas / Linha do Tempo] (recolhíveis)
 // ============================================
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";
@@ -19,7 +20,7 @@ import { formatDateTime } from '../../shared/date-utils.js';
 
 const COL = 'diario_registros';
 const COL_EVT = 'diario_eventos';
-const PANELS_KEY = 'cc_diario_panels';
+const PANELS_KEY = STORAGE_KEYS.DIARIO_PANELS;
 const AUTOSAVE_MS = 2500;
 
 // ── Categorias e subcategorias (conforme estrutura aprovada) ──────────
@@ -531,7 +532,7 @@ async function salvar() {
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('diario')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('diario')) { window.location.href = URLS.dashboard(); return; }
   carregar();
 })();
         recarregarTimelineSeAberta();
@@ -864,6 +865,6 @@ initGDrive();
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('diario')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('diario')) { window.location.href = URLS.dashboard(); return; }
   carregar();
 })();

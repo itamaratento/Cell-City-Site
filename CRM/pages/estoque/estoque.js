@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 import { ProdutosRepository as Produtos } from '../../repositories/produtos.repository.js';
@@ -322,7 +323,7 @@ async function _boot() {
     const ctx = await initModulo();
     if (!ctx) return; // kernel.js já redirecionou para login
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('estoque')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('estoque')) { window.location.href = URLS.dashboard(); return; }
     if (!podeCriar('estoque')) btnNovo.style.display = 'none';
 
     btnNovo.addEventListener('click', abrirFormNovo);

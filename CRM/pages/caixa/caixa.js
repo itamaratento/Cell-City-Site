@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { db, collection, query, where, orderBy, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
@@ -41,7 +42,7 @@ async function init() {
     // o redirect só acontece na janela principal; no iframe, apenas não boota.
     await carregarPermissoes(ctx);
     if (!podeVisualizar('caixa')) {
-        if (window.self === window.top) window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html';
+        if (window.self === window.top) window.location.href = URLS.dashboard();
         return;
     }
     if (!podeCriar('caixa')) {

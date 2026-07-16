@@ -1,6 +1,7 @@
 // ============================================
 // AUTOATENDIMENTO — Cell City CRM
 // ============================================
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { PreOSRepository as PreOS } from '../../repositories/os.repository.js';
@@ -8,7 +9,7 @@ import { escHtml as esc } from '../../shared/sanitize.js';
 import { formatDate as formatarData } from '../../shared/date-utils.js';
 
 const COL = 'pre_os';
-const CACHE_KEY = 'cc_preos_cache';
+const CACHE_KEY = STORAGE_KEYS.PREOS_CACHE;
 
 // ===== STATE =====
 let preOSList = [];
@@ -29,7 +30,7 @@ async function init() {
     const ctx = await initModulo();
     if (!ctx) return;
     await carregarPermissoes(ctx);
-    if (!podeVisualizar('autoatendimento')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+    if (!podeVisualizar('autoatendimento')) { window.location.href = URLS.dashboard(); return; }
     carregarPreOS();
     setupListenerRealtime();
     document.getElementById('auto-modal')?.addEventListener('click', e => {
@@ -268,7 +269,7 @@ async function converterEmOS() {
 
     // Armazenar em sessionStorage para a página de OS ler ao carregar.
     // A Pré-OS só é marcada como CONVERTIDA quando a OS for de fato salva (na página de OS).
-    sessionStorage.setItem('cc_dados_preos', JSON.stringify(dadosOS));
+    sessionStorage.setItem(STORAGE_KEYS.DADOS_PREOS, JSON.stringify(dadosOS));
 
     window.location.href = '../os/index.html';
 }

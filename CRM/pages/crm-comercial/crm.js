@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import {
   db, collection, addDoc, doc, updateDoc, deleteDoc, getDoc, setDoc,
   query, orderBy, getDocs, onSnapshot, serverTimestamp, runTransaction
@@ -301,7 +302,7 @@ function renderHomeGrid() {
   if (!grid) return;
 
   // Card destacado: Novo Cliente (só quando o perfil pode criar no CRM)
-  const _devpfx = location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'';
+  const _devpfx = devPrefix();
   const novoCard = podeCriar('crm') ? `<div class="crm-home-block crm-novo-cliente-block" onclick="window.location.href='${_devpfx}/CRM/pages/crm-comercial/entrada.html'" title="Cadastro rápido de cliente">
     <span class="crm-home-icon">👤</span>
     <span class="crm-home-nome">Novo Cliente</span>
@@ -1009,7 +1010,7 @@ window.converterEmOS = async function(id) {
   const lead = leads.find(l => l.id === id);
   if (!lead) return;
 
-  sessionStorage.setItem('cc_crm_prefill', JSON.stringify({
+  sessionStorage.setItem(STORAGE_KEYS.CRM_PREFILL, JSON.stringify({
     nome:            lead.nome     || '',
     telefone:        lead.telefone || '',
     modelo:          lead.aparelho || '',
@@ -1032,7 +1033,7 @@ window.converterEmOS = async function(id) {
   } catch(e) { console.warn('Não foi possível marcar lead:', e); }
 
   showToast('🔧 Abrindo O.S...');
-  setTimeout(() => { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/os/index.html'; }, 600);
+  setTimeout(() => { window.location.href = devPrefix() + '/CRM/pages/os/index.html'; }, 600);
 };
 
 // ── Excluir ──────────────────────────────────────────────────
@@ -1107,7 +1108,7 @@ async function _boot() {
   const ctx = await initModulo();
   if (!ctx) return; // kernel.js já redirecionou para login
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('crm')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('crm')) { window.location.href = URLS.dashboard(); return; }
 
   startListener();
   carregarTemplates();
@@ -1116,8 +1117,8 @@ async function _boot() {
     document.getElementById('crm-sb-overlay')?.classList.remove('open');
   });
   // Toast de retorno da tela de entrada
-  const msg = sessionStorage.getItem('cc_crm_msg');
-  if (msg) { sessionStorage.removeItem('cc_crm_msg'); setTimeout(() => showToast(msg), 600); }
+  const msg = sessionStorage.getItem(STORAGE_KEYS.CRM_MSG);
+  if (msg) { sessionStorage.removeItem(STORAGE_KEYS.CRM_MSG); setTimeout(() => showToast(msg), 600); }
 }
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', _boot);

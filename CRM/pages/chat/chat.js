@@ -1,3 +1,4 @@
+import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import { db, collection, getDocs, addDoc, query, orderBy, where, onSnapshot, serverTimestamp, limit } from '../../scripts/firebase.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo, getUid, getNome } from '../../scripts/kernel.js';
@@ -39,7 +40,7 @@ let unsubscribeMsgs = null;
   const ctx = await initModulo();
   if (!ctx) return;
   await carregarPermissoes(ctx);
-  if (!podeVisualizar('chat')) { window.location.href = (location.pathname==='/dev'||location.pathname.startsWith('/dev/')?'/dev':'') + '/CRM/pages/dashboard/index.html'; return; }
+  if (!podeVisualizar('chat')) { window.location.href = URLS.dashboard(); return; }
   meuUid = getUid();
   meuNome = getNome() || 'Você';
 
