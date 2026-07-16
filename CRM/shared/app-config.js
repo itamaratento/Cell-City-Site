@@ -201,5 +201,8 @@ export const FLAGS = {
 
 // ── Ponte para scripts clássicos (não-módulo) ────────────────
 if (typeof window !== 'undefined') {
-  window.CC_CONFIG = { ENV, URLS, TEMPOS, PAGINACAO, CACHE, STORAGE_KEYS, COLECOES, LOGS, AUDITORIA, FLAGS, DEFAULT_TENANT_ID, devPrefix };
+  window.CC_CONFIG = {
+    ENV, URLS, TEMPOS, PAGINACAO, CACHE, STORAGE_KEYS, COLECOES, LOGS, AUDITORIA,
+    FLAGS, DEFAULT_TENANT_ID, devPrefix, registerTenantFiltersChecker,
+  };
 }

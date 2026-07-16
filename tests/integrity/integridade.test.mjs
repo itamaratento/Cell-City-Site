@@ -18,7 +18,7 @@
 // Exceções conhecidas/documentadas: known-issues.json ao lado deste arquivo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -262,26 +262,33 @@ test('deploy-pages.yml: excludes de diretório de topo são ancorados à raiz', 
 // Teste "de verdade": roda o MESMO rsync do workflow contra a árvore de
 // trabalho atual e confirma que os caminhos mínimos da aplicação sobrevivem.
 // execSync porque este projeto não tem build step — o artefato publicado É
-// literalmente o resultado deste rsync, então testar o rsync real (não uma
-// reimplementação em JS) é o que realmente prova que o deploy não quebra.
+// literalmente o resultado deste rsync sobre site-main/ (não a árvore de dev
+// inteira). Usamos fixture mínima em tmp para não copiar node_modules/.
 test('deploy-pages.yml: rsync simulado preserva CRM/pages e CRM/scripts no artefato', () => {
-    const tmpDir = execSync('mktemp -d', { encoding: 'utf8' }).trim();
+    const tmpRoot = execSync('mktemp -d', { encoding: 'utf8' }).trim();
+    const siteMain = join(tmpRoot, 'site-main');
     try {
-        const yml = read('.github/workflows/deploy-pages.yml');
-        const rsyncCmd = yml.match(/rsync -a[^\n]*(?:\n\s+--exclude[^\n]*)*\n\s+site-main\/ _site\//)?.[0];
-        assert.ok(rsyncCmd, 'não encontrei o comando rsync do site-main em deploy-pages.yml — o parseamento pode ter quebrado com uma edição futura');
-        const comando = rsyncCmd.replace('site-main/ _site/', `./ ${tmpDir}/_site/`);
-        execSync(comando, { cwd: ROOT, stdio: 'pipe' });
-
         const CAMINHOS_CRITICOS = [
             'CRM/index.html', 'CRM/pages/dashboard/index.html', 'CRM/pages/dashboard/dashboard.js',
             'CRM/pages/os/index.html', 'CRM/pages/os/os.js',
             'CRM/pages/portal-cliente/index.html', 'CRM/pages/portal-cliente/portal.js',
             'CRM/scripts/firebase.js', 'CRM/scripts/kernel.js', 'CRM/garantia.html',
         ];
-        const ausentes = CAMINHOS_CRITICOS.filter(c => !existsSync(join(tmpDir, '_site', c)));
+        for (const rel of CAMINHOS_CRITICOS) {
+            const dest = join(siteMain, rel);
+            mkdirSync(dirname(dest), { recursive: true });
+            writeFileSync(dest, rel.endsWith('.html') ? '<!doctype html>' : '// stub', 'utf8');
+        }
+
+        const yml = read('.github/workflows/deploy-pages.yml');
+        const rsyncCmd = yml.match(/rsync -a[^\n]*(?:\n\s+--exclude[^\n]*)*\n\s+site-main\/ _site\//)?.[0];
+        assert.ok(rsyncCmd, 'não encontrei o comando rsync do site-main em deploy-pages.yml — o parseamento pode ter quebrado com uma edição futura');
+        const comando = rsyncCmd.replace('site-main/ _site/', `${siteMain}/ ${tmpRoot}/_site/`);
+        execSync(comando, { cwd: tmpRoot, stdio: 'pipe' });
+
+        const ausentes = CAMINHOS_CRITICOS.filter(c => !existsSync(join(tmpRoot, '_site', c)));
         assert.deepEqual(ausentes, [], `caminhos críticos ausentes no artefato simulado: ${ausentes.join(', ')}`);
     } finally {
-        execSync(`rm -rf ${tmpDir}`);
+        execSync(`rm -rf ${tmpRoot}`);
     }
 });

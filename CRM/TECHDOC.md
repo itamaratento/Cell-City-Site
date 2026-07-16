@@ -2165,3 +2165,26 @@ fallback literal — mesmos valores que `app-config.js`.
 Verificação: `npm run auditar-arquitetura` → 🟢 6/6 (grafo acíclico).
 Relatório: `plans/P2_2_INFRA_RELATORIO.md`. Arquivos de página, kernel,
 auth, Rules e Cloud Functions intocados.
+
+## §41 — Estabilização da Infra app-config (P2.2-C, 2026-07-16)
+
+Validação e preparação para merge da outra frente Sprint 2. Escopo:
+`CRM/shared/` (sem páginas), `tests/`, docs.
+
+**Correções:** `brand-header.js` passou a usar `window.CC_CONFIG`
+(`URLS.dashboard()`, `devPrefix()`) com fallback literal — alinhado a
+`theme.js` e `sidebar.js`. `window.CC_CONFIG` expõe também
+`registerTenantFiltersChecker`.
+
+**Testes novos:** `tests/infra/app-config-estabilizacao.test.mjs`
+(10 invariantes STORAGE_KEYS/FLAGS/CC_CONFIG) — `npm run validar-infra-app-config`.
+
+**Integridade:** teste `rsync simulado` reescrito com fixture mínima
+`site-main/` (elimina timeout por cópia de `node_modules/`). Suíte
+14/14 em ~200ms.
+
+**Pendências registradas (não corrigidas aqui):** literal `cc_kernel_v1`
+em `kernel.js` (protegido); ~20 páginas com diff local da outra frente;
+regenerar `modulos.catalogo.json` pós-merge.
+
+Relatório: `plans/P2_2_C_ESTABILIZACAO.md`.

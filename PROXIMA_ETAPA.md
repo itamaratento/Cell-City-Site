@@ -174,4 +174,22 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
-*Última atualização: 2026-07-13 (Fase 15) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção).*
+## ✅ P2.2 — INFRAESTRUTURA app-config (2026-07-16)
+
+| Fase | Commit | Status |
+|------|--------|--------|
+| P2.2-B — Padronização shared | `1ff6f1e` | ✅ Concluída |
+| P2.2-C — Estabilização + testes | (este commit) | ✅ Concluída |
+| P2.2-A — Migração de páginas | diff local unstaged | ⏳ Outra frente |
+
+**Validação permanente:** `npm run auditar-arquitetura` (6/6) · `npm run validar-infra-app-config` (10/10) · `node --test tests/integrity/integridade.test.mjs` (14/14).
+
+**Arquivos bloqueados (outra frente):** `os.js`, `portal.js`, `informacoes.js` — não alterar na infra.
+
+**Próximo passo recomendado:** merge/rebase da frente de páginas sobre `develop` após P2.2-C; regenerar catálogo; migrar `kernel.js` → `STORAGE_KEYS.KERNEL_GATE` quando autorizado.
+
+Relatórios: `plans/P2_2_INFRA_RELATORIO.md` · `plans/P2_2_C_ESTABILIZACAO.md`
+
+---
+
+*Última atualização: 2026-07-16 (P2.2-C) — Infra app-config estabilizada; frente de páginas pendente de merge.*

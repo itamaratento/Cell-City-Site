@@ -1,5 +1,19 @@
 (function () {
-  const DASHBOARD_URL = '/CRM/pages/dashboard/index.html';
+  const _cfg = (typeof window !== 'undefined' && window.CC_CONFIG) ? window.CC_CONFIG : {};
+  const _urls = _cfg.URLS || {};
+
+  // STORAGE_KEYS / URLS.dashboard() em app-config.js — fallback literal para
+  // carregamento antes do módulo ESM (script clássico síncrono).
+  function devPathPrefix() {
+    if (typeof _cfg.devPrefix === 'function') return _cfg.devPrefix();
+    const p = window.location.pathname;
+    return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
+  }
+
+  function dashboardHref() {
+    if (typeof _urls.dashboard === 'function') return _urls.dashboard();
+    return devPathPrefix() + '/CRM/pages/dashboard/index.html';
+  }
 
   // Mesma implementação publicada nos dois ambientes — o ambiente atual é
   // detectado pela URL (prefixo /dev), nunca hardcoded por branch.
@@ -235,8 +249,7 @@
   function attachHandler(el) {
     el.title = 'Voltar ao painel';
     el.addEventListener('click', function () {
-      const prefix = detectEnv() === 'develop' ? '/dev' : '';
-      window.location.href = prefix + DASHBOARD_URL;
+      window.location.href = dashboardHref();
     });
   }
 
