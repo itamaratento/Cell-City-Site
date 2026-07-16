@@ -1,0 +1,55 @@
+name: Deploy Firebase (rules + indexes + functions)
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'firestore.rules'
+      - 'CRM/firestore.rules'
+      - 'CRM/firestore.indexes.json'
+      - 'firebase.json'
+      - 'storage.rules'
+      - 'functions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Autenticar no GCP via service account
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SA_KEY }}
+
+      - name: Setup Firebase CLI
+        run: npm install -g firebase-tools
+
+      - name: Deploy Firestore Rules
+        run: firebase deploy --only firestore:rules --project cellcity-crm --force
+
+      - name: Deploy Firestore Indexes
+        run: firebase deploy --only firestore:indexes --project cellcity-crm --force
+
+      - name: Deploy Storage Rules
+        run: firebase deploy --only storage --project cellcity-crm --force
+
+      - name: Deploy Cloud Functions
+        run: firebase deploy --only functions --project cellcity-crm --force
+
+      - name: Validar deploy das Rules (via API)
+        run: |
+          echo "=== Verificando release ativo do Firestore ==="
+          RELEASE=$(curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            "https://firebaserules.googleapis.com/v1/projects/cellcity-crm/releases/cloud.firestore")
+          RULESET_NAME=$(echo "$RELEASE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('rulesetName','N/A'))")
+          echo "Ruleset ativo: $RULESET_NAME"
+          if [ "$RULESET_NAME" = "N/A" ] || [ -z "$RULESET_NAME" ]; then
+            echo "❌ Falha na validação — ruleset não encontrado"
+            exit 1
+          fi
+          echo "✅ Firestore Rules deployadas e verificadas"

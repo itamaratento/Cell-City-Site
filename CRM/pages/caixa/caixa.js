@@ -1,11 +1,6 @@
-import { db } from '../../scripts/firebase.js';
+import { db, collection, query, where, orderBy, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
-import {
-    collection, query, where, orderBy,
-    getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc,
-    onSnapshot, serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 

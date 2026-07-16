@@ -8,6 +8,10 @@ name: Backup Semanal (Cell City)
 # presente na branch padrão do repositório. Enquanto este arquivo viver
 # apenas em 'develop', use "workflow_dispatch" para testes manuais; a
 # execução automática real só começa após a promoção deste arquivo para 'main'.
+#
+# P1.5 (2026-07-15): backup semanal manual disponível via workflow_dispatch.
+# Para ativar o cron automático, fazer squash merge de develop → main
+# (conforme regra do projeto — quem desenvolve não promove).
 on:
   schedule:
     - cron: '0 */3 * * 0' # a cada 3h, somente aos domingos (UTC)

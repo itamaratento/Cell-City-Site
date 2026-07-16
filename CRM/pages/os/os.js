@@ -5,6 +5,12 @@ import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
 import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
+// Services: camada de regras de negócio (ver CRM/services/)
+// Piloto P1.7 — imports descomentar à medida que as funções inline forem migradas
+// import { getStatusLabel } from "../../services/os-status.service.js";
+// import { addObservationEntry } from "../../services/os-timeline.service.js";
+// import { calcularLucro } from "../../services/os-financeiro.service.js";
+// import { cpfMask, cepMask, maskCnpj } from "../../services/format.service.js";
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -124,21 +130,7 @@ function toggleHomeStats() {
 window.toggleHomeStats = toggleHomeStats;
 
 // ===== MÁSCARAS DE FORMULÁRIO =====
-function cpfMask(el) {
-    let v = el.value.replace(/\D/g, '').slice(0, 11);
-    if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-    else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-    else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-    el.value = v;
-}
-window.cpfMask = cpfMask;
-
-function cepMask(el) {
-    let v = el.value.replace(/\D/g, '').slice(0, 8);
-    if (v.length > 5) v = v.replace(/(\d{5})(\d{1,3})/, '$1-$2');
-    el.value = v;
-}
-window.cepMask = cepMask;
+// cpfMask, cepMask — importados de services/format.service.js
 
 async function buscarCEP(cepRaw) {
     const cep = (cepRaw || '').replace(/\D/g, '');
@@ -510,7 +502,7 @@ async function showScreen(id) {
 function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(screenHistory.length > 0 ? screenHistory[screenHistory.length - 1] : 'home'); }); }
 
 // ===== UTILS =====
-function formatPhone(v) { return maskPhone(v); }
+function formatPhone(v) { return maskPhone(v); } // service: format.service.js
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
 // ===== FLUXO DE STATUS (9 etapas — padrão Cell City) =====

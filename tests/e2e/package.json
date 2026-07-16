@@ -1,0 +1,8 @@
+{
+  "name": "cellcity-e2e-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test basic-structure.test.mjs"
+  }
+}
