@@ -86,14 +86,37 @@ conflito.
 | `tests/rbac` (`npm test`, 175 testes) | 🟢 173/175 — 2 falhas pré-existentes em `financeiro-relatorio.test.mjs`, não relacionadas (mesmas já registradas no relatório da F1.4) |
 | `npm run testar-central-modulos` | 🟢 17/17 (catálogo regenerado) |
 
+## Verificação em navegador real (Chrome headless, pós-commit)
+
+Servida a página via `http-server` local e carregada em Chrome headless
+(`puppeteer-core`, já devDependency do projeto):
+
+- Página carrega sem `pageerror`/`console.error`/requisição falhada; os 8
+  `Object.assign` executam e `window.Portal` fica com as 21 chaves
+  amostradas (uma de cada arquivo) como `function`.
+- Tela de login renderiza de fato (`renderLogin()` real, não mock) —
+  `#app-content` mostra o card de telefone.
+- Sessão + dados mockados em memória (sem rede/Firebase real): as 9 telas
+  (`renderPainel`, `renderOSList`, `renderOSDetalhe`, `renderGarantias`,
+  `renderAvaliar`, `renderMensagens`, `renderContato`, `renderComoChegar`,
+  `renderAgendar`) foram chamadas diretamente — todas retornam HTML não
+  vazio, nenhuma lança exceção.
+- Regra de negócio protegida pelos testes de integridade exercida ao vivo
+  (não só por regex): OS entregue com `garantiaId` aparece em Garantias
+  (`_emGarantia` → `true`); OS com `orcamento_recusado` e o mesmo
+  `garantiaId` não aparece (`_emGarantia` → `false`) — comportamento
+  idêntico ao pré-split.
+
+**Limite desta verificação:** sem Firebase real (rede/emulador), não cobre
+autenticação de fato (`doLogin` → Cloud Function), listeners de polling
+(`_fetchOS`/`_carregarMensagens`/`_carregarAgendamentos`) nem gravação
+(aprovar orçamento, enviar mensagem/avaliação/agendamento). Recomenda-se
+teste manual com telefone real antes de promover para produção.
+
 ## Não testado nesta entrega
 
-- **Navegador real** (login de cliente de fato, clicar em cada tela). A
-  suíte de integridade é estrutural (regex sobre código-fonte), não
-  funcional — mesma limitação já documentada nos comentários dos testes
-  originais ("sem harness jsdom+Firebase pra portal.js"). Recomenda-se um
-  teste manual no navegador (login com telefone de teste, navegar pelas 8
-  telas) antes de promover para produção.
+- Fluxo funcional completo com Firebase real (login de cliente de fato,
+  Cloud Functions, gravação no Firestore) — ver limite acima.
 - `financeiro-relatorio.test.mjs` (2 falhas pré-existentes, fora de
   escopo) — mesma pendência já registrada em
   `plans/SPRINT1_F14_ADOCAO_PAGINAS_20260716.md`.
