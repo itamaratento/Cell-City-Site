@@ -1,8 +1,8 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-16T16:09:14.770Z",
-  "commitBase": "5867a06",
+  "geradoEm": "2026-07-16T19:30:51.305Z",
+  "commitBase": "d9eec7d",
   "resumo": {
     "totalPastas": 36,
     "visiveis": 30,
@@ -1073,10 +1073,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Base de conhecimento interna, informações categorizadas da operação.",
       "oculto": false,
-      "versao": "1.0.30",
+      "versao": "1.0.31",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 30,
+      "commits": 31,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1091,6 +1091,7 @@
       },
       "dependencias": {
         "shared": [
+          "app-config.js",
           "brand-header.js",
           "design-system.css",
           "dock.css",
@@ -1114,7 +1115,7 @@
         },
         {
           "arquivo": "informacoes.js",
-          "linhas": 1455
+          "linhas": 1456
         },
         {
           "arquivo": "index.html",
@@ -3264,10 +3265,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo.",
       "oculto": false,
-      "versao": "1.0.90",
+      "versao": "1.0.91",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 90,
+      "commits": 91,
       "status": "atencao",
       "score": 90,
       "rbac": {
@@ -3296,6 +3297,7 @@
       },
       "dependencias": {
         "shared": [
+          "app-config.js",
           "date-utils.js",
           "design-system.css",
           "permissoes.js",
@@ -3329,7 +3331,7 @@
         },
         {
           "arquivo": "os-photo-storage.js",
-          "linhas": 41
+          "linhas": 42
         },
         {
           "arquivo": "os-ui-utils.js",

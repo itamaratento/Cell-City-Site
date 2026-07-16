@@ -2067,3 +2067,20 @@ foram tocados; `functions/lib/config.js` é server-side (deploy isola `functions
 (brand-header, dock) acessam `window.CC_CONFIG` (side effect do módulo); enquanto
 não migram, os literais locais apontam para cá em comentário. Regra: código novo
 não cria constante global, chave `cc_` nem timeout mágico fora do app-config.
+
+## §38 — Auditoria e Consolidação de Arquitetura (Sprint 1 · F1.1, 2026-07-16)
+
+Auditoria estática completa do client (107 JS): 0 imports quebrados, 0
+dependências circulares, 0 imports página→página, 0 `initializeApp` fora
+dos 3 pontos autorizados, SDK via CDN restrito a allowlist auditada.
+Arquitetura oficial documentada em `CRM/ARQUITETURA.md` (camadas, bootstrap
+real, Repository por composição, regras de import, exceções justificadas —
+incluindo por que NÃO há barrels/aliases em ESM sem build).
+
+- Verificação permanente: `npm run auditar-arquitetura` (5 invariantes;
+  falha ⇒ exit 1 — usar como gate de release)
+- Relatório: `plans/A1_FASE11_RELATORIO_ARQUITETURA.md` (achados A1-01..07:
+  session.js legado, adoção Repository 18/29, storage direto em
+  central-informacoes, /dev detection duplicada → F1.2, ativar-filtros na
+  camada errada, toast() ×14, seeds one-shot públicos)
+- Nenhuma regra de negócio alterada; auth/kernel/Rules intocados.

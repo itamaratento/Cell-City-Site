@@ -5,6 +5,7 @@
     "gerar-catalogo": "node scripts/central-modulos/gerar-catalogo.mjs",
     "testar-central-modulos": "node scripts/central-modulos/test-catalogo.mjs",
     "verificar-design-system": "node scripts/design-system/verificar.mjs",
+    "auditar-arquitetura": "node scripts/arquitetura/auditar.mjs",
     "homologar-central-modulos": "node scripts/central-modulos/homologar.mjs"
   },
   "dependencies": {
