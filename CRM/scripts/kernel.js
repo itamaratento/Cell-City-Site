@@ -229,9 +229,6 @@ export const getUser = () => _ctx?.user ?? null;
 /** UID do usuário ou null. */
 export const getUid = () => _ctx?.uid ?? null;
 
-/** E-mail do usuário ou string vazia. */
-export const getEmail = () => _ctx?.email ?? '';
-
 /** Nome de exibição do usuário. */
 export const getNome = () => _ctx?.nome ?? '';
 
@@ -271,9 +268,3 @@ export function temPermissao(perfilMinimo) {
     const minimo = NIVEL[perfilMinimo]  ?? 999;
     return atual >= minimo;
 }
-
-// ── Chave de gate (uso interno dos módulos) ────────────────────
-// O gate HTML de cada módulo pode verificar esta chave para evitar
-// flash de conteúdo antes do redirect. A segurança real está no
-// Firebase Auth — esta flag é apenas UX.
-export const AUTH_FLAG = FLAG_AUTH;
