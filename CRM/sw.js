@@ -3,7 +3,7 @@
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
 // clientes.js renomeado no P2.6 que impedia o v16 de instalar).
-const CACHE = 'cellcity-crm-v17';
+const CACHE = 'cellcity-crm-v18'; // v18: + design-system.css/theme.js (P2.4)
 
 // Arquivos do shell — carregados no install (expandido para cobrir shared + módulos principais)
 const SHELL = [
@@ -11,6 +11,8 @@ const SHELL = [
   '/CRM/index.html',
   '/CRM/assets/logo.png',
   '/CRM/assets/logo.svg',
+  '/CRM/shared/design-system.css',
+  '/CRM/shared/theme.js',
   '/CRM/shared/dock.css',
   '/CRM/shared/modulos.catalogo.json',
   '/CRM/pages/dashboard/index.html',
