@@ -2084,3 +2084,50 @@ incluindo por que NÃO há barrels/aliases em ESM sem build).
   central-informacoes, /dev detection duplicada → F1.2, ativar-filtros na
   camada errada, toast() ×14, seeds one-shot públicos)
 - Nenhuma regra de negócio alterada; auth/kernel/Rules intocados.
+
+## §39 — Consolidação do Kernel (Sprint 1 · F1.3, 2026-07-16)
+
+A F1.1 auditou só `.js` (107 arquivos) — invisível a `<script
+type="module">` INLINE de `.html`, que são pontos de bootstrap reais. A
+F1.3 estendeu `scripts/arquitetura/auditar.mjs` para também extrair e
+auditar esses blocos (agora 6 invariantes), fechando lacunas reais:
+
+- **4 módulos inteiros** (`kernel-test`, `saas-admin`, `saas-onboarding`,
+  `portal-tecnico`) não têm NENHUM `.js` próprio — toda a lógica é inline
+  — e por isso eram **totalmente invisíveis** à métrica de adoção de
+  kernel/Repository da F1.1 (33 módulos rastreáveis agora, era 29).
+- **3 `initializeApp` reais** fora da allowlist (`garantia.html`,
+  `pages/saas-onboarding/index.html`, `pages/portal-cliente/index.html`) —
+  todos legítimos: páginas públicas sem conta de equipe, escrita
+  privilegiada via Cloud Function (Admin SDK). Documentados em
+  `CRM/ARQUITETURA.md` §2.1/§6 e allowlistados no auditor.
+- **2º `onAuthStateChanged` legítimo** (`portal-cliente/index.html`, auth
+  anônima do cliente por telefone) — bounded context isolado do kernel de
+  equipe, documentado.
+- **Bug real corrigido** (classe H-008): `pages/kernel-test/index.html`
+  importava `scripts/firebase.js` por caminho ABSOLUTO
+  (`/CRM/scripts/firebase.js`) — resolveria sempre para produção mesmo
+  rodando em `/dev`, fazendo o diagnóstico usar uma instância de
+  `firebase.js` diferente da do `kernel.js` (relativo) na mesma página.
+  Corrigido para caminho relativo. Novo **invariante 6** do auditor
+  (`import` absoluto `/CRM/...`) impede regressão — 0 ocorrências restantes
+  no client.
+- Import CDN morto (não usado) removido do mesmo arquivo
+  (`onAuthStateChanged` importado e nunca chamado).
+- Métrica de adoção de kernel/Repository passou a usar **alcançabilidade
+  transitiva no grafo** em vez de regex no próprio arquivo — corrige falso
+  negativo quando o módulo só chega ao kernel via helper de `shared/`
+  (`central-modulos.js`, `portal-sync.js`) ou bloco inline de `.html`
+  (`portal-cliente/admin.html`). Métrica "acesso direto ao Firestore"
+  continua 1º grau (proxy de dívida de migração — transitiva perderia
+  sentido, já que todo módulo alcança `firebase.js` via `kernel.js`).
+- `CRM/ARQUITETURA.md` §1/§2.1/§4/§6 atualizado com a cadeia de bootstrap
+  pública completa e fechada (nenhuma outra existe além das 4 páginas
+  documentadas).
+
+Verificação: `npm run auditar-arquitetura` → 🟢 0 violações (6/6).
+Testes: Integrity 14/14, RBAC 173/175 (2 pré-existentes em
+`financeiro-relatorio.test.mjs`, não relacionados — mesmos da F1.2).
+Relatório: `plans/A2_FASE13_KERNEL_RELATORIO.md`. Nenhuma regra de
+negócio, Rule, Cloud Function ou fluxo de autenticação alterado;
+`shared/session.js` e arquivos protegidos intocados.

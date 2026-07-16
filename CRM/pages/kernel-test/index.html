@@ -158,11 +158,9 @@
 
 <script type="module">
   import { auth, db, authReady }
-      from '/CRM/scripts/firebase.js';
+      from '../../scripts/firebase.js';
   import { initModulo, login, logout, getCtx, getCtxAsync, getUid, getEmpresaId, getNome, getPerfil }
       from '../../scripts/kernel.js';
-  import { onAuthStateChanged }
-      from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
   import { doc, setDoc, deleteDoc, serverTimestamp }
       from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
   import { ConfigRepository as Config }
