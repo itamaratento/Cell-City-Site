@@ -111,10 +111,15 @@ test('Firestore: toda coleção usada no código tem rule correspondente', () =>
         `Coleções sem rule (módulo quebraria por deny-by-default):\n${[...semRule].join('\n')}`);
 });
 
-// ── 4. Cópias de rules idênticas ─────────────────────────────────────
-test('Firestore: firestore.rules (raiz) é idêntico a CRM/firestore.rules', () => {
-    assert.equal(read('firestore.rules'), read('CRM/firestore.rules'),
-        'As duas cópias divergiram — sincronizar antes de promover (drift já causou auditoria errada em 2026-07-07)');
+// ── 4. Fonte única de rules ──────────────────────────────────────────
+// Sprint 0 FASE 1 (2026-07-16): a duplicata da raiz foi REMOVIDA de vez
+// (Plano Diretor §9) — a fonte única é CRM/firestore.rules, apontada pelo
+// firebase.json. O invariante virou o oposto: a duplicata não pode voltar
+// (o drift entre as duas cópias já causou auditoria errada em 2026-07-07).
+test('Firestore: firestore.rules NÃO existe na raiz (fonte única em CRM/)', () => {
+    assert.equal(existsSync(join(ROOT, 'firestore.rules')), false,
+        'firestore.rules reapareceu na raiz — remover: a fonte oficial é CRM/firestore.rules (firebase.json)');
+    assert.ok(read('CRM/firestore.rules').length > 0, 'CRM/firestore.rules (fonte única) sumiu');
 });
 
 // ── 5. Catálogo da Central de Módulos ────────────────────────────────
