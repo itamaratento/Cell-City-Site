@@ -1,10 +1,12 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, getFirebaseStorage, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js";
-import { injectTenantFilter, tData, getTenantFieldValue } from "../../shared/tenant-query.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js";
+import { injectTenantFilter, tData } from "../../shared/tenant-query.js";
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
 import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
+import { openModal, closeModal, showToast } from './os-ui-utils.js';
+import { storagePrefixEmpresa, uploadPhotoToStorage, deletePhotoFromStorage } from './os-photo-storage.js';
 // Services: camada de regras de negócio (ver CRM/services/)
 // Piloto P1.7 — imports descomentar à medida que as funções inline forem migradas
 // import { getStatusLabel } from "../../services/os-status.service.js";
@@ -156,41 +158,8 @@ async function buscarCEP(cepRaw) {
 window.buscarCEP = buscarCEP;
 
 // ===== STORAGE DE FOTOS =====
-function dataURLtoBlob(dataURL) {
-    const [header, data] = dataURL.split(',');
-    const mimeType = (header.match(/:(.*?);/) || [])[1] || 'image/jpeg';
-    const binary = atob(data);
-    const array = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
-    return new Blob([array], { type: mimeType });
-}
-
-// PS-6: todo upload novo vai para empresas/{empresaId}/... (path
-// canônico multiempresa; ver storage.rules). URLs legadas em os/
-// continuam válidas para leitura.
-function storagePrefixEmpresa() {
-    return `empresas/${getTenantFieldValue() || 'cellcity-master'}`;
-}
-
-async function uploadPhotoToStorage(dataURL, path) {
-    const sm = await getFirebaseStorage();
-    if (!sm) throw new Error('Firebase Storage indisponível');
-    const blob = dataURLtoBlob(dataURL);
-    const ref = sm.storageRef(sm.storage, path);
-    await sm.uploadBytes(ref, blob);
-    return await sm.getDownloadURL(ref);
-}
-
-async function deletePhotoFromStorage(url) {
-    if (!url || !url.startsWith('https://firebasestorage')) return;
-    try {
-        const sm = await getFirebaseStorage();
-        if (!sm) return;
-        const u = new URL(url);
-        const path = decodeURIComponent(u.pathname.split('/o/')[1]?.split('?')[0] || '');
-        if (path) await sm.deleteObject(sm.storageRef(sm.storage, path));
-    } catch {}
-}
+// Movido para os-photo-storage.js (P2.2, 2026-07-16) — sem estado do
+// módulo, importado no topo do arquivo.
 
 // ===== BANCO DE FOTOS EXTERNO =====
 const DRIVE_FOLDER_ID = ''; 
@@ -2627,9 +2596,7 @@ function globalSearch() {
 }
 
 // ===== MODAL & TOAST =====
-function openModal(content) { document.getElementById('modal-content').innerHTML = content; document.getElementById('modal-overlay').classList.add('active'); }
-function closeModal(event) { if (event && event.target === document.getElementById('modal-overlay')) document.getElementById('modal-overlay').classList.remove('active'); else document.getElementById('modal-overlay').classList.remove('active'); }
-function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+// openModal/closeModal/showToast movidos para os-ui-utils.js (P2.2, 2026-07-16).
 function openGlobalSearch() { showScreen('pesquisar'); setTimeout(() => document.getElementById('global-search')?.focus(), 150); }
 
 // ===== CONVERSÃO DE PRÉ-OS (vindo do Autoatendimento) =====
