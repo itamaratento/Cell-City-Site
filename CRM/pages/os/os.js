@@ -1,6 +1,13 @@
 import { initModulo } from '../../scripts/kernel.js';
-import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query } from "../../scripts/firebase.js";
-import { injectTenantFilter, tData } from "../../shared/tenant-query.js";
+import { db, collection, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
+import { tData } from "../../shared/tenant-query.js";
+// P2.3.2: núcleo de persistência (objeto DB) migrado para a Camada Repository.
+// getDocs/query/injectTenantFilter saíram dos imports por ficarem sem uso;
+// as primitivas restantes atendem os fluxos ainda não migrados (automações,
+// caixa, lembretes, timeline — pendência registrada da P2.3).
+import { OSRepository } from '../../repositories/os.repository.js';
+import { ClientesRepository } from '../../repositories/clientes.repository.js';
+import { MetadataRepository } from '../../repositories/sistema.repository.js';
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
@@ -401,28 +408,32 @@ function guardNavigation(callback) {
 }
 
 // ===== DATA LAYER =====
+// P2.3.2 (2026-07-16): persistência migrada para a Camada Repository —
+// OSRepository/ClientesRepository injetam empresa_id e aplicam o filtro
+// tenant com o MESMO gate do tData/injectTenantFilter usados antes
+// (areTenantFiltersEnabled). MetadataRepository é global (sem tenant),
+// igual ao setDoc direto que substituiu. O contador agora lê só
+// metadata/counter (getById) em vez de varrer a coleção inteira (§9).
 let localOS = [];
 let localClients = [];
 let localCounter = 0;
 
 const DB = {
     getOS() { return localOS; },
-    async addOS(osData) { localOS.unshift(osData); await setDoc(doc(db, "os", osData.id), tData(osData)); },
-    async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await updateDoc(doc(db, "os", osData.id), osData); },
-    async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await deleteDoc(doc(db, "os", id)); },
+    async addOS(osData) { localOS.unshift(osData); await OSRepository.set(osData.id, osData); },
+    async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await OSRepository.update(osData.id, osData); },
+    async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await OSRepository.remove(id); },
     getClients() { return localClients; },
-    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await setDoc(doc(db, "clientes", clientData.phoneDigits || clientData.phone), tData(clientData)); },
+    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await ClientesRepository.set(clientData.phoneDigits || clientData.phone, clientData); },
     getCounter() { return localCounter; },
-    async incCounter() { localCounter++; await setDoc(doc(db, "metadata", "counter"), { value: localCounter }); return localCounter; },
+    async incCounter() { localCounter++; await MetadataRepository.set('counter', { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
         try {
-                    localOS = []; localClients = []; localCounter = 0;
-            const osSnap = await getDocs(query(collection(db, "os"), ...injectTenantFilter([])));
-            localOS = osSnap.docs.map(d => d.data()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            const clientSnap = await getDocs(query(collection(db, "clientes"), ...injectTenantFilter([])));
-            localClients = clientSnap.docs.map(d => d.data());
-            const counterSnap = await getDocs(collection(db, "metadata"));
-            counterSnap.forEach(d => { if (d.id === "counter") localCounter = d.data().value || 0; });
+            localOS = []; localClients = []; localCounter = 0;
+            localOS = (await OSRepository.list()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            localClients = await ClientesRepository.list();
+            const counter = await MetadataRepository.getById('counter');
+            localCounter = (counter && counter.value) || 0;
         } catch (e) { console.error("Erro ao carregar do Firestore:", e); }
     }
 };
