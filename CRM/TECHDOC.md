@@ -39,6 +39,7 @@ if (!ctx) return; // não autenticado → kernel.js já redirecionou para /CRM/l
 - `kernel.js` mantém um único `onAuthStateChanged` global (`_ready` Promise, timeout de 10s).
 - Gate visual nos `<head>` dos módulos: `localStorage.cc_kernel_v1 === '1'` evita flash de conteúdo antes do redirect — **não é mecanismo de segurança**, isso é papel das Firestore Rules.
 - Multiempresa (`tenant.js`, `empresa_id` em queries) foi **revertido**; não usar como referência — a maioria das coleções de negócio (`os`, `clientes`, `posvenda_contatos`, `mensagens_portal`, `avaliacoes`, `agenda`) não filtra por `empresa_id`.
+- Documentação oficial e detalhada do ciclo de vida, contrato de API e exceções deliberadas: `CRM/scripts/KERNEL.md` (Sprint 1 — Kernel SaaS, Fase 1.3, ver §36).
 
 Outros pontos de entrada compartilhados, incluídos via `<script>`/`<script type="module">` em quase toda página de módulo:
 - `shared/brand-header.js` — injeta o cabeçalho padrão (`#crm-brand-bar`) com logo + título centralizado.
@@ -2032,3 +2033,69 @@ Reset externo no checkout compartilhado (fenômeno recorrente, ver §"concorrên
 - 🟢 `CRM/firestore.rules.secure` sem referência (arquivo morto candidato — Rules são audit-only neste papel).
 - 🟢 `toast()` duplicado em 14 módulos (dívida técnica de refatoração futura).
 - 🟢 Camada `CRM/services/` vazia (só README) — declarada na arquitetura, sem implementações.
+
+---
+
+## §36 — Sprint 1 (Kernel SaaS), Fase 1.3: Consolidação Oficial do Kernel (2026-07-16)
+
+Escopo travado nesta Fase, por instrução explícita: exclusivamente o
+Kernel (`CRM/scripts/kernel.js`) como único ponto oficial de
+inicialização — sem tocar regra de negócio, Firestore Rules, Cloud
+Functions, telas ou fluxos funcionais de nenhum módulo. Documentação
+completa em `CRM/scripts/KERNEL.md`; relatório e checklist em
+`plans/RELATORIO_TECNICO_KERNEL_FASE_1_3.md` e
+`plans/CHECKLIST_KERNEL_FASE_1_3.md`.
+
+### Diagnóstico (análise, sem alteração)
+
+Confirmado por leitura direta do repositório + busca completa por
+consumidores de cada export público:
+
+- `kernel.js` já era, na prática, o único boot/lifecycle real dos 32
+  módulos operacionais do CRM interno (`onAuthStateChanged` único,
+  `_ready` único, `initModulo()` como porta de entrada padrão).
+- Três superfícies de autenticação fora do Kernel identificadas e
+  **confirmadas como decisões deliberadas, não bugs** (ver
+  `CRM/scripts/KERNEL.md` §6): `shared/session.js` (Conta de
+  Sincronização, legado pré-Kernel), `firebase-secondary.js`
+  (Usuários e Permissões, segunda instância intencional) e o Portal do
+  Cliente (superfície pública, sem sessão de staff).
+- Duas exportações públicas de `kernel.js` sem nenhum consumidor em todo
+  o repositório (`getEmail`, `AUTH_FLAG`) — código morto confirmado antes
+  da remoção via busca textual completa (`grep` recursivo, excluindo
+  `_BACKUPS/`).
+- Achado registrado, **não corrigido** (fora do escopo — exigiria
+  editar telas de módulos): a chave `'cc_kernel_v1'` do gate visual está
+  duplicada como string literal em ~34 arquivos `index.html`, em vez de
+  vir de uma única fonte.
+
+### Alterações aplicadas
+
+| Arquivo | Alteração |
+|---|---|
+| `CRM/scripts/kernel.js` | Removidas as exportações mortas `getEmail()` e `AUTH_FLAG` (zero consumidores confirmados). Nenhuma outra linha de lógica alterada — `_buildContext()`, `login()`, `logout()`, `temPermissao()`, `onAuthStateChanged` idênticos ao anterior. Backup do estado anterior em `_BACKUPS/15-PRE-KERNEL-FASE-1.3/` (local, não versionado). |
+| `CRM/scripts/KERNEL.md` (novo) | Documentação oficial do ciclo de vida, contrato de API e exceções deliberadas ao boot único. |
+| `tests/kernel/` (novo) | Suíte dedicada (Node `node:test`, sem jsdom) importando o código real de `kernel.js` via loader ESM próprio (`tests/kernel/loader.mjs`) — mesmo princípio de `tests/rbac/`, isolada para não acoplar as duas suítes. |
+| `.github/workflows/tests.yml` | Novo passo "Testes do Kernel" na CI, ao lado do passo de RBAC. |
+| `CRM/TECHDOC.md` §2 | Referência à nova documentação oficial do Kernel. |
+
+### Testes executados nesta Fase
+
+| Suíte | Resultado | Observação |
+|---|---|---|
+| `tests/kernel/` (novo) | **24/24 ✅** | Boot único, `initModulo()` com/sem sessão, `/dev` vs produção, sessão anônima, carregamento de sessão/tenant (Firestore ok/ausente/falha), hierarquia completa de `temPermissao()`, `login()`/`logout()`, smoke test ponta a ponta, ausência das exportações removidas. |
+| `tests/rbac/` | 164/166 (2 falhas pré-existentes, confirmadas idênticas em `main` antes desta Fase — `financeiro-relatorio.test.mjs`, sensível à data de execução, não relacionado ao Kernel) | Cobertura indireta de `kernel.js` via mock (`tests/rbac/mocks/kernel.js`) nos 32 módulos — sem regressão. |
+| `tests/integrity/integridade.test.mjs` | 13/14 (1 falha por ausência do binário `rsync` no ambiente de execução desta sessão — infraestrutura, não código) | — |
+| `tests/control-center/estrutura.test.mjs` | 91/94 (3 falhas pré-existentes por estado de branch/git do ambiente desta sessão — sem branch `develop` local; não relacionado ao Kernel) | Fora do domínio do CRM/Kernel. |
+| Firestore Rules / Cloud Functions | Não reexecutadas nesta sessão | `kernel.js` não toca Rules nem Cloud Functions nesta Fase — fora do escopo por regra explícita da Sprint. |
+
+Nenhuma regressão nos testes que exercitam o Kernel ou seus 32
+consumidores. As falhas remanescentes são pré-existentes e não
+relacionadas a esta Fase (confirmado reproduzindo cada uma em `main`,
+antes da alteração, com o mesmo resultado).
+
+### Pendências registradas (não bloqueiam esta Fase — fora do escopo)
+
+- 🟡 Chave `'cc_kernel_v1'` duplicada como literal em ~34 telas (§ acima) — corrigir exigiria tocar múltiplos módulos/telas simultaneamente, fora da regra desta Sprint.
+- 🟢 `shared/session.js` continua com seu próprio `onAuthStateChanged` — decisão documentada, não um defeito do Kernel.
+- 🟢 Firestore Rules / Cloud Functions não reexecutadas nesta sessão (ambiente sem `firebase-tools`/emulador configurado) — sem relação com o Kernel, e explicitamente fora do escopo desta Fase.
