@@ -6,6 +6,7 @@
    v2.0 — Adicionado: Drag & Drop, modo edição,
    salvamento no Firestore, suporte mobile.
    ============================================ */
+import { STORAGE_KEYS } from './app-config.js';
 import {
   db, doc, getDoc, setDoc, onSnapshot, serverTimestamp
 } from '../scripts/firebase.js';
@@ -17,8 +18,8 @@ import './favoritos.js?v=20260612-fornecedor-fix';
 let _uid = null;
 
 const isDashboard = window.location.pathname.includes('/dashboard/');
-const DOCK_ORDEM_KEY = 'cc_dock_ordem';
-const SESSION_LOGGED_KEY = 'cc_kernel_v1';
+const DOCK_ORDEM_KEY = STORAGE_KEYS.DOCK_ORDEM;
+const SESSION_LOGGED_KEY = STORAGE_KEYS.KERNEL_GATE;
 
 // ── Lista mestra de itens do dock (com IDs únicos) ──────────────────
 const DOCK_ITEMS = [
@@ -49,10 +50,10 @@ const DASHBOARD_ITENS = [
 
 // ── Utilitários ─────────────────────────────────────────────────────
 function gerarIdUnico() {
-  let id = localStorage.getItem('cc_dock_user_id');
+  let id = localStorage.getItem(STORAGE_KEYS.DOCK_USER);
   if (!id) {
     id = 'dock_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36);
-    localStorage.setItem('cc_dock_user_id', id);
+    localStorage.setItem(STORAGE_KEYS.DOCK_USER, id);
   }
   return id;
 }

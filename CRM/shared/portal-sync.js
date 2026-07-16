@@ -12,17 +12,25 @@
      atualizam o localStorage e disparam o re-render da página.
 
    Uso (em um <script type="module"> da página):
-     import { syncPortalKeys } from '/CRM/shared/portal-sync.js';
+     import { STORAGE_KEYS } from '../../shared/app-config.js';
+     import { syncPortalKeys } from '../../shared/portal-sync.js';
      syncPortalKeys([
-       { key: 'cc_pt_tutoriais',  docId: 'tutoriais',  onRemote: rerender },
-       { key: 'cc_pt_favoritos',  docId: 'favoritos',  onRemote: rerender },
+       { key: STORAGE_KEYS.PT_TUTORIAIS, docId: 'tutoriais', onRemote: rerender },
+       { key: STORAGE_KEYS.PT_FAVORITOS, docId: 'favoritos', onRemote: rerender },
      ]);
    ============================================================ */
 
+import { STORAGE_KEYS } from './app-config.js';
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 
 let _uid = null;
+
+/** Chaves padrão do Portal Técnico (localStorage ↔ Firestore). */
+export const PORTAL_SYNC_KEYS = {
+  tutoriais: STORAGE_KEYS.PT_TUTORIAIS,
+  favoritos: STORAGE_KEYS.PT_FAVORITOS,
+};
 
 export function syncPortalKeys(keys) {
   const watched = new Map();

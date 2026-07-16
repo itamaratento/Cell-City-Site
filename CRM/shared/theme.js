@@ -6,7 +6,7 @@
      <script src="../../shared/theme.js"></script>
 
    Temas: 'dark' (padrão do CRM), 'light', 'auto' (segue o SO).
-   O tema escolhido persiste em localStorage ('cc_theme').
+   O tema escolhido persiste em localStorage (STORAGE_KEYS.TEMA em app-config.js).
 
    API global:
      CCTheme.get()        → tema atual ('dark' | 'light' | 'auto')
@@ -16,7 +16,8 @@
 (function () {
   'use strict';
 
-  var STORAGE_KEY = 'cc_theme';
+  var _sk = (window.CC_CONFIG && window.CC_CONFIG.STORAGE_KEYS) || {};
+  var STORAGE_KEY = _sk.TEMA || 'cc_theme';
   var VALID = ['dark', 'light', 'auto'];
   var DEFAULT_THEME = 'dark'; // comportamento histórico do CRM
 

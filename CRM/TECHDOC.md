@@ -2135,3 +2135,33 @@ Testes: Integrity 14/14, RBAC 173/175 (2 pré-existentes em
 Relatório: `plans/A2_FASE13_KERNEL_RELATORIO.md`. Nenhuma regra de
 negócio, Rule, Cloud Function ou fluxo de autenticação alterado;
 `shared/session.js` e arquivos protegidos intocados.
+
+## §40 — Infraestrutura e Padronização (P2.2-B, 2026-07-16)
+
+Fase de consolidação **exclusiva** de `CRM/shared/` (sem tocar módulos
+de página). Objetivos: eliminar ciclo `app-config ↔ tenant-context`,
+centralizar `STORAGE_KEYS`/`COLECOES`/`FLAGS`, padronizar imports ESM
+e alinhar scripts clássicos via `window.CC_CONFIG`.
+
+**Ciclo eliminado:** `app-config.js` deixou de importar
+`tenant-context.js`. `FLAGS.filtrosTenant()` usa
+`registerTenantFiltersChecker()` — `tenant-context.js` registra
+`areTenantFiltersEnabled` ao carregar. `tenant-context` passa a consumir
+`STORAGE_KEYS.TENANT_CACHE` da fonte única.
+
+**Constantes novas em `STORAGE_KEYS`:** dock/sidebar/favoritos/central
+(`DOCK_ORDEM`, `FAVORITOS`, `MODULOS_*`, `SIDEBAR_PREFS`, caches de
+comandos/diário/autoatendimento, `TENANT_CACHE`, `DEVICE_NICK`,
+`PT_TUTORIAIS`, `PT_FAVORITOS`). **`COLECOES`:** `CC_LIXEIRA`,
+`CC_GDRIVE_LOGS` (consumido por `cc-sync.js`).
+
+**Scripts clássicos:** `theme.js` e `sidebar.js` (IIFE, carregamento
+síncrono) leem `window.CC_CONFIG.STORAGE_KEYS` / `devPrefix()` com
+fallback literal — mesmos valores que `app-config.js`.
+
+**Módulos ESM migrados:** `cc-sync`, `central-modulos`, `dock`,
+`favoritos`, `portal-sync`, `tenant-resolver`, `tenant-context`.
+
+Verificação: `npm run auditar-arquitetura` → 🟢 6/6 (grafo acíclico).
+Relatório: `plans/P2_2_INFRA_RELATORIO.md`. Arquivos de página, kernel,
+auth, Rules e Cloud Functions intocados.

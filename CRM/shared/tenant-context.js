@@ -20,10 +20,12 @@
      logout() → clearTenant()
    ============================================================ */
 
+import { STORAGE_KEYS, registerTenantFiltersChecker } from './app-config.js';
+
 let _currentTenant = null;
 let _listeners = [];
 let _filtersEnabled = false;
-const TENANT_CACHE_KEY = 'cc_tenant_v1';
+const TENANT_CACHE_KEY = STORAGE_KEYS.TENANT_CACHE;
 
 function _broadcast() {
   _listeners.forEach(fn => {
@@ -97,3 +99,5 @@ export function setTenantFiltersEnabled(enabled) {
 export function areTenantFiltersEnabled() {
   return _filtersEnabled;
 }
+
+registerTenantFiltersChecker(areTenantFiltersEnabled);

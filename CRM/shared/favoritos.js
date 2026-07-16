@@ -12,6 +12,7 @@
    shared/dock.js, e diretamente no Dashboard via <script>.
    ============================================================ */
 
+import { devPrefix, STORAGE_KEYS } from './app-config.js';
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 import { escHtml as esc } from './sanitize.js';
@@ -21,15 +22,14 @@ import { escHtml as esc } from './sanitize.js';
 // levem o usuário de volta para a MAIN quando ele está na DEVELOP.
 function envUrl(url) {
   if (!url || typeof url !== 'string' || url.charAt(0) !== '/') return url;
-  const p = window.location.pathname;
-  const inDev = p === '/dev' || p.startsWith('/dev/');
+  const prefix = devPrefix();
   const alreadyDev = url === '/dev' || url.startsWith('/dev/');
-  return (inDev && !alreadyDev) ? '/dev' + url : url;
+  return (prefix && !alreadyDev) ? prefix + url : url;
 }
 
 let _uid = null;
 
-const STORAGE_KEY = 'cc_favoritos';            // cache local (pintura rápida)
+const STORAGE_KEY = STORAGE_KEYS.FAVORITOS;            // cache local (pintura rápida)
 const isDashboard = window.location.pathname.includes('/dashboard/');
 
 /* Estado em memória — sincronizado com o Firestore em tempo real. */
@@ -339,9 +339,9 @@ function renderDashboardBar() {
     attachDragReorder(sc);
   }
 
-  // Chip "▶ Continuar" — lê cc_ultima_tela do localStorage
+  // Chip "▶ Continuar" — lê STORAGE_KEYS.ULTIMA_TELA (app-config.js)
   try {
-    const ultima = JSON.parse(localStorage.getItem('cc_ultima_tela') || 'null');
+    const ultima = JSON.parse(localStorage.getItem(STORAGE_KEYS.ULTIMA_TELA) || 'null');
     if (ultima && ultima.url) {
       const chip = document.createElement('div');
       chip.className = 'ccfav-chip';

@@ -17,7 +17,7 @@
    ============================================================ */
 
 import { db, doc, getDoc } from '../scripts/firebase.js';
-import { DEFAULT_TENANT_ID } from './app-config.js';
+import { DEFAULT_TENANT_ID, STORAGE_KEYS } from './app-config.js';
 
 // F1.2 (2026-07-16): a constante mudou para app-config.js (fonte única de
 // config global); reexportada aqui para manter o contrato dos consumidores.
@@ -34,7 +34,7 @@ export async function resolveTenantFromUser(uid) {
     }
 
     const userData = userSnap.data();
-    const suporteId = sessionStorage.getItem('cc_suporte_empresa_id');
+    const suporteId = sessionStorage.getItem(STORAGE_KEYS.SUPORTE_EMPRESA);
     const tenantId = suporteId || userData.empresa_id || DEFAULT_TENANT_ID;
 
     return { tenantId, tenantName: '' };

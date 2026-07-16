@@ -14,7 +14,9 @@
   // Mesma detecção de ambiente usada em shared/brand-header.js — evita
   // que o menu lateral leve o usuário de volta para a MAIN quando ele
   // está navegando na DEVELOP (/dev).
-  const ENV_PREFIX = (function () {
+  const _cfg = (typeof window !== 'undefined' && window.CC_CONFIG) ? window.CC_CONFIG : {};
+  const _sk = _cfg.STORAGE_KEYS || {};
+  const ENV_PREFIX = _cfg.devPrefix ? _cfg.devPrefix() : (function () {
     const p = window.location.pathname;
     return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
   })();
@@ -41,9 +43,9 @@
     { id: 'config',             href: '/CRM/pages/config/index.html',              icon: '⚙️', label: 'Configurações' },
   ];
 
-  const COLLAPSE_KEY = 'cc_sidebar_state';
-  const ORDER_KEY    = 'cc_sidebar_order';
-  const PREFS_KEY    = 'cc_sidebar_prefs';
+  const COLLAPSE_KEY = _sk.SIDEBAR_STATE || 'cc_sidebar_state';
+  const ORDER_KEY    = _sk.SIDEBAR_ORDER || 'cc_sidebar_order';
+  const PREFS_KEY    = _sk.SIDEBAR_PREFS || 'cc_sidebar_prefs';
   const W_EXPANDED   = 240;
   const W_COLLAPSED  = 72;
   const BAR_HEIGHT   = 56; // altura do brand-header

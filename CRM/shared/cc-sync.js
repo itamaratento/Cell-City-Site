@@ -12,18 +12,19 @@
 //   • cc_lixeira      — itens excluídos (retenção 30 dias)
 //   • cc_gdrive_logs  — auditoria (ação, módulo, apelido, data/hora)
 // ============================================================
+import { STORAGE_KEYS, COLECOES } from './app-config.js';
 import { db, collection, doc, getDocs, setDoc, deleteDoc, addDoc, serverTimestamp, query }
     from "../scripts/firebase.js";
 import { injectTenantFilter, tData } from './tenant-query.js';
 
-export const COL_LIXEIRA = 'cc_lixeira';
-export const COL_LOGS = 'cc_gdrive_logs';
+export const COL_LIXEIRA = COLECOES.CC_LIXEIRA;
+export const COL_LOGS = COLECOES.CC_GDRIVE_LOGS;
 export const RETENCAO_DIAS = 30;
 
 // ── Identidade do dispositivo (apelido p/ logs/lixeira) ───────────────
 //  Não há login nominal (auth anônima); cada aparelho define um apelido
 //  uma vez, guardado localmente.
-const APELIDO_KEY = 'cc_device_nick';
+const APELIDO_KEY = STORAGE_KEYS.DEVICE_NICK;
 export function getApelido() {
     try { return localStorage.getItem(APELIDO_KEY) || ''; } catch { return ''; }
 }

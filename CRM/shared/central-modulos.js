@@ -23,12 +23,13 @@
                  cc_modulos_catalogo  (cache do catálogo / offline)
                  cc_modulos_log       (log local de eventos do módulo)
    ============================================================ */
+import { devPrefix, STORAGE_KEYS } from './app-config.js';
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 
-const LS_KEY = 'cc_modulos_favs';
-const LS_CATALOGO = 'cc_modulos_catalogo';
-const LS_LOG = 'cc_modulos_log';
+const LS_KEY = STORAGE_KEYS.MODULOS_FAVS;
+const LS_CATALOGO = STORAGE_KEYS.MODULOS_CATALOGO;
+const LS_LOG = STORAGE_KEYS.MODULOS_LOG;
 const LOG_MAX = 200;
 const CATALOGO_URL = '/CRM/shared/modulos.catalogo.json';
 const prefsRef = (uid) => doc(db, 'usuarios', uid, 'preferencias', 'modulos');
@@ -38,10 +39,7 @@ let _uid = null;
 // ── Ambiente atual (MAIN/DEVELOP) — mesma detecção usada em
 // shared/brand-header.js, para que nenhuma URL do catálogo aponte
 // para a MAIN quando o usuário está navegando na DEVELOP (/dev).
-const ENV_PREFIX = (function () {
-  const p = window.location.pathname;
-  return (p === '/dev' || p.startsWith('/dev/')) ? '/dev' : '';
-})();
+const ENV_PREFIX = devPrefix();
 
 // ── Catálogo (gerado; ver cabeçalho) ──────────────────────────
 // Array de referência ESTÁVEL: preenchido in-place quando o JSON

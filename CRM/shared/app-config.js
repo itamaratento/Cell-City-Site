@@ -134,8 +134,34 @@ export const STORAGE_KEYS = {
   CRM_PREFILL: 'cc_crm_prefill',
   OPERADOR_NOME: 'cc_operador_nome',
   LINK_AVALIACAO: 'cc_link_avaliacao_google',
+  // dock / sidebar / favoritos / central
+  DOCK_ORDEM: 'cc_dock_ordem',
+  FAVORITOS: 'cc_favoritos',
+  MODULOS_FAVS: 'cc_modulos_favs',
+  MODULOS_CATALOGO: 'cc_modulos_catalogo',
+  MODULOS_LOG: 'cc_modulos_log',
+  SIDEBAR_PREFS: 'cc_sidebar_prefs',
+  // central-comandos / diário / autoatendimento
+  COMANDOS_CACHE: 'cc_comandos_cache',
+  COMANDOS_RECENTES: 'cc_comandos_recentes',
+  CATEGORIAS_CACHE: 'cc_categorias_cache',
+  COMANDOS_VIEWMODE: 'cc_comandos_viewmode',
+  MIGRACAO_V1_LOG: 'cc_migracao_v1_log',
+  DIARIO_PANELS: 'cc_diario_panels',
+  PREOS_CACHE: 'cc_preos_cache',
+  // tenant / sync / portal técnico
+  TENANT_CACHE: 'cc_tenant_v1',
+  DEVICE_NICK: 'cc_device_nick',
+  PT_TUTORIAIS: 'cc_pt_tutoriais',
+  PT_FAVORITOS: 'cc_pt_favoritos',
   // diagnóstico
   DEBUG_REPO: 'cc_repo_debug',
+};
+
+// Coleções Firestore compartilhadas (não confundir com STORAGE_KEYS).
+export const COLECOES = {
+  CC_LIXEIRA: 'cc_lixeira',
+  CC_GDRIVE_LOGS: 'cc_gdrive_logs',
 };
 
 // ── LOGS ─────────────────────────────────────────────────────
@@ -157,20 +183,23 @@ export const AUDITORIA = {
 };
 
 // ── FEATURE FLAGS ────────────────────────────────────────────
-// Fachada única. Flags de RUNTIME delegam à fonte que já as governa;
-// flags ESTÁTICAS vivem aqui. saas-planos.js (flags por plano) segue
-// intocado até a Sprint 1 SaaS reativá-lo formalmente.
-import { areTenantFiltersEnabled } from './tenant-context.js';
+// Fachada única. Flags de RUNTIME delegam à fonte que já as governa
+// (tenant-context); registro em runtime evita import estático
+// app-config ↔ tenant-context (P2.2-B).
+let _tenantFiltersChecker = () => false;
+
+/** @param {() => boolean} fn — tipicamente areTenantFiltersEnabled */
+export function registerTenantFiltersChecker(fn) {
+  if (typeof fn === 'function') _tenantFiltersChecker = fn;
+}
 
 export const FLAGS = {
-  // runtime (fonte: tenant-context ← tenant-provider ← empresas/{id}.dados_migrados)
-  filtrosTenant: () => areTenantFiltersEnabled(),
-  // estáticas
-  CHAT_ATIVO: false,            // módulo desativado por falta de uso (modulos.meta.json)
-  SAAS_ONBOARDING_ATIVO: false, // páginas saas-* existem mas não operam (congeladas até kickoff SaaS)
+  filtrosTenant: () => _tenantFiltersChecker(),
+  CHAT_ATIVO: false,
+  SAAS_ONBOARDING_ATIVO: false,
 };
 
 // ── Ponte para scripts clássicos (não-módulo) ────────────────
 if (typeof window !== 'undefined') {
-  window.CC_CONFIG = { ENV, URLS, TEMPOS, PAGINACAO, CACHE, STORAGE_KEYS, LOGS, AUDITORIA, FLAGS, DEFAULT_TENANT_ID, devPrefix };
+  window.CC_CONFIG = { ENV, URLS, TEMPOS, PAGINACAO, CACHE, STORAGE_KEYS, COLECOES, LOGS, AUDITORIA, FLAGS, DEFAULT_TENANT_ID, devPrefix };
 }
