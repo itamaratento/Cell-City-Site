@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ChipsRepository as Chips } from '../../repositories/chips.repository.js';
 import { initModulo } from '../../scripts/kernel.js';

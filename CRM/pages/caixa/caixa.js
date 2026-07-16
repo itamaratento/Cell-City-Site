@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { db, collection, query, where, orderBy, getDocs, getDoc, addDoc, deleteDoc, updateDoc, doc, setDoc, onSnapshot, serverTimestamp } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';

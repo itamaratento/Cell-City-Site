@@ -10,7 +10,7 @@ import { getTenantFieldValue } from "../../shared/tenant-query.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 import { toast } from './informacoes-ui-utils.js';
 import { criptografarSenha, descriptografarSenha } from './informacoes-crypto.js';
-import { DEFAULT_TENANT_ID, URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { DEFAULT_TENANT_ID, URLS, STORAGE_KEYS } from '../../shared/app-config.js';
 
 const COL = 'informacoes';
 const CAT_COL = 'categorias_informacoes';

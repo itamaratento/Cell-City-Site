@@ -1,7 +1,7 @@
 // ===== AGENDA INTELIGENTE — Cell City (calendário com Sticky Notes) =====
 // 1 documento por DIA: { data, notas: [ {texto, cor}, ... ], atualizadoEm }
 // Cada anotação tem o horário no início do texto (ex.: "09:00 Buscar películas").
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { AgendaRepository as Agenda } from '../../repositories/diario.repository.js';
 import { initModulo } from '../../scripts/kernel.js';

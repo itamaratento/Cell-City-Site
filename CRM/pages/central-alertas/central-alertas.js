@@ -5,7 +5,7 @@
 //  Status (novo/lido/resolvido) é por usuário, sincronizado em tempo real
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';

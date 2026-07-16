@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import {

@@ -8,7 +8,7 @@
 //    Título → Busca inteligente → Novo Registro → Favoritos →
 //    Registros → [Resumo Geral / Estatísticas / Linha do Tempo] (recolhíveis)
 // ============================================
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS, STORAGE_KEYS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";

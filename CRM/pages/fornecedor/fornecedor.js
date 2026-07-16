@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';

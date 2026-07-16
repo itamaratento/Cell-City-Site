@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 import { ProdutosRepository as Produtos } from '../../repositories/produtos.repository.js';

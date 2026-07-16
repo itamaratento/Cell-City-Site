@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS } from '../../shared/app-config.js';
 import { db, collection, getDocs, addDoc, query, orderBy, where, onSnapshot, serverTimestamp, limit } from '../../scripts/firebase.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo, getUid, getNome } from '../../scripts/kernel.js';

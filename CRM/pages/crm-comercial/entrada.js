@@ -1,4 +1,4 @@
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import {
   db, collection, addDoc, doc, updateDoc, getDoc, setDoc,
   serverTimestamp, runTransaction

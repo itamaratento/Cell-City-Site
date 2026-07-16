@@ -2,7 +2,7 @@
 // CENTRAL DE COMANDOS — Cell City CRM
 // Versão com blocos modulares de comando
 // ============================================
-import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import { URLS, STORAGE_KEYS } from '../../shared/app-config.js';
 import { serverTimestamp } from '../../firebase/client.js';
 import { ComandosRepository as Comandos, CategoriasComandosRepository as CategoriasComandos, InformacoesRepository as Informacoes } from '../../repositories/central.repository.js';
 import { ConfigRepository as Config } from '../../repositories/sistema.repository.js';

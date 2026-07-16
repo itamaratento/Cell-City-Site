@@ -2294,3 +2294,44 @@ consolidado após Sprints 1 (infra/app-config/kernel) e 2 (portal split).
 integridade 14/14; catálogo 17/17.
 
 Relatório: `plans/SPRINT3_ONBOARDING_RELATORIO.md`.
+
+## §44 — Certificação Técnica Final F1.4 (Revisão Técnica, 2026-07-16)
+
+Certificação formal (papel Revisão Técnica) da Sprint 1 F1.4 (adoção de
+`app-config.js` em 20 páginas, `fe412c5`) e da conclusão da divisão do
+Portal do Cliente em 8 arquivos-irmãos (`c8e4235`/`08c8f3f`). Não reabre
+P2.2-B/C/D nem a Sprint 3 Onboarding SaaS (auditadas e fechadas por
+outras frentes).
+
+**Achado corrigido:** 18 das 20 páginas migradas na F1.4 importavam de
+`app-config.js` 1–2 símbolos (`devPrefix`/`STORAGE_KEYS`/`URLS`) nunca
+usados no resto do arquivo — padrão de import uniforme aplicado sem
+verificar uso real por arquivo. Corrigido: cada import reduzido aos
+símbolos efetivamente referenciados; `node --check` OK em todos, zero
+import morto remanescente.
+
+**Portal do Cliente — verificação de completude:** cross-check dos 88
+membros de topo do objeto `Portal` original contra núcleo + 8 irmãos
+— 88/88 idênticos, sem perda/duplicata. Nenhum import quebrado
+(`auditar-arquitetura` 6/6), nenhuma função órfã, nenhuma dependência
+circular (métodos só referenciam `window.Portal.*` dentro de corpos de
+função, nunca na definição — sem race de ordem de `<script>`).
+
+**Verificação em navegador real (Chrome headless):** login renderiza,
+as 8 telas navegam via `Portal.navegar()` sem erro, regra de negócio de
+exclusão de garantia por orçamento recusado exercida ao vivo com
+resultado correto. `logout()` verificado estruturalmente (execução ao
+vivo trava o harness por `confirm()` nativo sem handler — limitação do
+ambiente, não defeito).
+
+**Testes:** `auditar-arquitetura` 6/6 · integridade 14/14 · RBAC 173/175
+(2 pré-existentes, não relacionadas) · `validar-infra-app-config` 12/12 ·
+catálogo 17/17.
+
+**Pendências não bloqueantes:** teste funcional do Portal com Firebase
+real (só mock nesta certificação); `ARQUITETURA.md` §6 ainda descreve
+`portal.js` como script único, sem mencionar os 8 irmãos; 2 falhas
+pré-existentes em `financeiro-relatorio.test.mjs`.
+
+**Veredito:** ✅ APROVADO PARA INTEGRAÇÃO. Relatório completo:
+`plans/F1_4_CERTIFICACAO_FINAL.md`.
