@@ -25,7 +25,7 @@ Isso escondia:
 | # | Achado | Onde |
 |---|---|---|
 | A2-01 | 3 `initializeApp` reais fora da allowlist documentada | `garantia.html`, `pages/saas-onboarding/index.html`, `pages/portal-cliente/index.html` |
-| A2-02 | 2º `onAuthStateChanged` legítimo (auth anônima do cliente) | `pages/portal-cliente/index.html` |
+| A2-02 | `onAuthStateChanged` adicional legítimo (auth anônima do cliente) | `pages/portal-cliente/index.html` — total real no client é **4** registros (kernel.js oficial, firebase.js one-shot `authReady`, session.js legado/A1-01, este); não rotulado "2º" para não colidir com a numeração ad-hoc de A1-01 |
 | A2-03 | Import absoluto `/CRM/...` real (classe H-008) | `pages/kernel-test/index.html` — resolveria sempre para PRODUÇÃO mesmo em `/dev`, misturando instâncias de `firebase.js` na mesma página de diagnóstico |
 | A2-04 | Import CDN morto (nunca chamado) | `pages/kernel-test/index.html` (`onAuthStateChanged` importado e sem uso) |
 | A2-05 | 4 módulos inteiros invisíveis à métrica de adoção (0 `.js` próprio — tudo inline) | `kernel-test`, `saas-admin`, `saas-onboarding`, `portal-tecnico` |
@@ -57,9 +57,13 @@ alterado; apenas documentados e allowlistados no auditor.
      enforcement automático de uma regra que já existia só como
      documentação (`CRM/ARQUITETURA.md` regra #6 desde a F1.1);
    - métrica de adoção kernel/Repository recalculada por
-     **alcançabilidade transitiva no grafo** (BFS), não mais regex no
-     próprio arquivo — corrige A2-05/A2-06 sem esconder nada por trás de
-     um número que parecia bom mas media a coisa errada;
+     **alcançabilidade transitiva no grafo** (busca exaustiva com pilha —
+     função `alcancaveis()`, correção pós-auditoria: era rotulada "BFS" na
+     primeira versão deste relatório, mas usa `pop()`/LIFO, isto é, DFS;
+     irrelevante para o RESULTADO — o conjunto alcançável é o mesmo
+     independente da ordem de visita — só a nomenclatura estava errada),
+     não mais regex no próprio arquivo — corrige A2-05/A2-06 sem esconder
+     nada por trás de um número que parecia bom mas media a coisa errada;
    - métrica "acesso direto ao Firestore" mantida em 1º grau
      deliberadamente (ver §5, risco).
 3. **`CRM/ARQUITETURA.md`** — nova seção §2.1 (a segunda cadeia de

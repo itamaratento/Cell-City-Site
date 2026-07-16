@@ -67,11 +67,24 @@ outra existe no client):
 | `pages/catalogo/public/catalogo-publico.js` | nenhuma | catálogo público, zero dado sensível |
 | `garantia.html` | nenhuma | consulta pública de OS via `consultarOSPublica` (Cloud Function) |
 | `pages/saas-onboarding/index.html` | nenhuma | cadastro de empresa via `saasOnboardingCriarEmpresa` (Cloud Function) |
-| `pages/portal-cliente/index.html` + `portal.js` | **anônima própria** (`signInAnonymously` + 2º `onAuthStateChanged`, ver §6) | cliente final identificado por telefone, não por conta de equipe; todas as 13 operações passam por `PortalFunctions.*` (Cloud Functions) |
+| `pages/portal-cliente/index.html` + `portal.js` | **anônima própria** (`signInAnonymously` + `onAuthStateChanged` próprio, ver inventário completo abaixo) | cliente final identificado por telefone, não por conta de equipe; todas as 13 operações passam por `PortalFunctions.*` (Cloud Functions) |
 
 O gate inline (`cc_kernel_v1`) e o kernel real (`initModulo()`) são
 exclusivos do fluxo de equipe — nunca usar em página pública, e nunca
 introduzir uma TERCEIRA cadeia sem atualizar esta tabela e o auditor.
+
+**Inventário completo de `onAuthStateChanged` no client** (4 registros —
+"2º", "3º" etc. não são usados como rótulo em nenhum lugar deste
+documento propositalmente, para não colidir com a numeração ad-hoc de
+relatórios de fases anteriores; a lista abaixo é a única fonte de
+verdade):
+
+| Arquivo | Natureza | Observação |
+|---|---|---|
+| `scripts/kernel.js` | persistente, oficial | dono do fluxo de auth da equipe (§2) |
+| `scripts/firebase.js` | **one-shot** (`authReady`) | resolve 1x com o usuário atual e faz `unsubscribe()` imediato — não é um 2º listener de estado, é uma leitura pontual |
+| `shared/session.js` | persistente, **legado** | modelo pré-kernel, só `config`/Ferramentas usa (A1-01 — protegido, fora de escopo) |
+| `pages/portal-cliente/index.html` | persistente, bounded context próprio | auth anônima do cliente por telefone (§2.1) |
 
 ## 3. Padrão Repository (composição, não herança)
 
@@ -107,8 +120,8 @@ página. Import direto do arquivo da coleção é a regra.
 
 Desde a Fase 1.3 os invariantes 1, 3, 4 e 5 também auditam `<script
 type="module">` INLINE de `.html` — a Fase 1.1 auditava só `.js` e não
-via 3 `initializeApp` reais nem o 2º `onAuthStateChanged` legítimo
-(§2.1, §6).
+via 3 `initializeApp` reais nem o `onAuthStateChanged` do Portal do
+Cliente (§2.1, §6 — inventário completo em §2.1).
 
 ## 5. Multiempresa (estado PS-1..PS-6, congelado pós-incidente 07-14)
 
@@ -132,7 +145,7 @@ via 3 `initializeApp` reais nem o 2º `onAuthStateChanged` legítimo
 | `pages/central-informacoes/informacoes.js` | storage direto da CDN — dívida: usar `getFirebaseStorage()` |
 | `garantia.html` *(Fase 1.3)* | `initializeApp` próprio, página pública sem auth (§2.1) |
 | `pages/saas-onboarding/index.html` *(Fase 1.3)* | `initializeApp` próprio, cadastro público sem auth (§2.1) |
-| `pages/portal-cliente/index.html` *(Fase 1.3)* | `initializeApp` próprio + **2º `onAuthStateChanged`** legítimo do app (auth anônima do cliente, bounded context isolado — §2.1); `portal.js` (clássico, sem import) consome via `window.*` |
+| `pages/portal-cliente/index.html` *(Fase 1.3)* | `initializeApp` próprio + `onAuthStateChanged` próprio (auth anônima do cliente, bounded context isolado — inventário completo em §2.1); `portal.js` (clássico, sem import) consome via `window.*` |
 | `pages/kernel-test/index.html` *(Fase 1.3)* | diagnóstico do kernel: `import()` dinâmico de `signOut` direto da CDN para encerrar sessão sem o redirect de `logout()` — não é um novo listener nem uma nova app |
 
 Adoção do kernel/Repository por módulo (métrica do auditor) é calculada

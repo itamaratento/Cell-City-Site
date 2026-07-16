@@ -2101,9 +2101,13 @@ auditar esses blocos (agora 6 invariantes), fechando lacunas reais:
   todos legítimos: páginas públicas sem conta de equipe, escrita
   privilegiada via Cloud Function (Admin SDK). Documentados em
   `CRM/ARQUITETURA.md` §2.1/§6 e allowlistados no auditor.
-- **2º `onAuthStateChanged` legítimo** (`portal-cliente/index.html`, auth
-  anônima do cliente por telefone) — bounded context isolado do kernel de
-  equipe, documentado.
+- **`onAuthStateChanged` adicional legítimo** (`portal-cliente/index.html`,
+  auth anônima do cliente por telefone) — bounded context isolado do
+  kernel de equipe. Auditoria pós-fase (2026-07-16) recontou o total real:
+  4 registros no client (`kernel.js` oficial, `firebase.js` one-shot
+  `authReady`, `session.js` legado/A1-01, `portal-cliente` anônimo) —
+  inventário completo em `CRM/ARQUITETURA.md` §2.1, sem usar ordinal ("2º")
+  para não colidir com a numeração ad-hoc do relatório da F1.1.
 - **Bug real corrigido** (classe H-008): `pages/kernel-test/index.html`
   importava `scripts/firebase.js` por caminho ABSOLUTO
   (`/CRM/scripts/firebase.js`) — resolveria sempre para produção mesmo

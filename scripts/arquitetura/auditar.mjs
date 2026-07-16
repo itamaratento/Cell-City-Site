@@ -55,7 +55,10 @@ const CDN_ALLOWLIST = new Set([
   'CRM/pages/usuarios-permissoes/usuarios-permissoes.js', // functions/callable
   'CRM/garantia.html',                                    // Fase 1.3: página pública (Cloud Function, sem Auth)
   'CRM/pages/saas-onboarding/index.html',                 // Fase 1.3: cadastro público de empresa (Cloud Function)
-  'CRM/pages/portal-cliente/index.html',                  // Fase 1.3: app anônima do cliente — bounded context próprio
+  'CRM/pages/portal-cliente/index.html',                  // Fase 1.3: app anônima do cliente — bounded context próprio.
+                                                           // NOTA: usa <script type="importmap"> (bare specifier "firebase/app"),
+                                                           // que este parser não resolve — entrada mantida por documentação;
+                                                           // o invariante 5 nunca a aciona de fato (ver relatório A2, §5 Riscos).
   'CRM/pages/kernel-test/index.html',                     // Fase 1.3: diagnóstico — signOut() cru p/ não redirecionar
 ]);
 const INIT_APP_ALLOWLIST = new Set([
