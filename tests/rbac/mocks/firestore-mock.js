@@ -12,9 +12,13 @@ function col(name) {
 
 export function collection(_db, name) { return { __col: name }; }
 // Suporta as duas formas do SDK real: doc(db, name, id) e doc(collectionRef) (auto-id, sem escrever).
+// Expõe `.id` como o DocumentReference real — base.repository::newId() depende disso.
 export function doc(a, b, c) {
-    if (b === undefined) return { __col: a.__col, __id: 'auto_' + Math.random().toString(36).slice(2, 10) };
-    return { __col: b, __id: c };
+    if (b === undefined) {
+        const id = 'auto_' + Math.random().toString(36).slice(2, 10);
+        return { __col: a.__col, __id: id, id };
+    }
+    return { __col: b, __id: c, id: c };
 }
 export function query(ref, ...clauses) { return { __col: ref.__col, __clauses: clauses }; }
 export function where(field, op, value) { return { type: 'where', field, op, value }; }
@@ -40,6 +44,8 @@ function applyClauses(entries, clauses = []) {
                 if (c.op === '==') return v === c.value;
                 if (c.op === '>=') return v >= c.value;
                 if (c.op === '<=') return v <= c.value;
+                if (c.op === '>')  return v > c.value;
+                if (c.op === '<')  return v < c.value;
                 return true;
             });
         }

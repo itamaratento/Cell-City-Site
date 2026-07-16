@@ -6,6 +6,7 @@ import {
   db, collection, addDoc, getDocs, getDoc, doc, setDoc, updateDoc,
   deleteDoc, query, orderBy, where, onSnapshot, limit
 } from '../firebase/client.js';
+import { comApiPadrao } from './base.repository.padrao.js';
 
 export function createRepository(collectionName) {
   const col = () => collection(db, collectionName);
@@ -18,7 +19,11 @@ export function createRepository(collectionName) {
     return constraints.length ? query(col(), ...constraints) : col();
   }
 
-  return {
+  // P2.3.2: comApiPadrao adiciona a API padronizada em português
+  // (listar/listarPaginado/buscar*/pesquisar/criar/editar/remover/
+  // contar/validar, com envelope {ok,dados,erro}, cache opt-in e
+  // logging) sem alterar nenhum dos métodos abaixo.
+  return comApiPadrao({
     collectionName,
 
     // Gera um novo ID de documento sem escrever nada ainda — para o padrão
@@ -67,5 +72,5 @@ export function createRepository(collectionName) {
         callback(snap.exists() ? { id: snap.id, ...snap.data() } : null);
       }, onError || (() => {}));
     }
-  };
+  });
 }

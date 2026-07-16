@@ -34,6 +34,7 @@ import {
   deleteDoc, query, orderBy, where, onSnapshot, limit
 } from '../firebase/client.js';
 import { getTenantId, areTenantFiltersEnabled } from '../shared/tenant-context.js';
+import { comApiPadrao } from './base.repository.padrao.js';
 
 export function createTenantRepository(collectionName, tenantField = 'empresa_id') {
   let _filterEnabled = false;
@@ -74,7 +75,10 @@ export function createTenantRepository(collectionName, tenantField = 'empresa_id
     return constraints.length ? query(col(), ...constraints) : col();
   }
 
-  return {
+  // P2.3.2: comApiPadrao adiciona a API padronizada em português (envelope
+  // {ok,dados,erro}, cache opt-in, logging) por cima destes métodos — a
+  // injeção/filtro de empresa_id continua acontecendo aqui, por delegação.
+  return comApiPadrao({
     collectionName,
 
     enableFilter() {
@@ -89,9 +93,15 @@ export function createTenantRepository(collectionName, tenantField = 'empresa_id
       return _filterEnabled;
     },
 
-    newId(extraData = {}) {
-      const fullData = _injectTenant(extraData);
-      return { id: doc(col()).id, ...fullData };
+    // P2.3.2 (bugfix): retornava { id, ...empresa_id }, mas TODOS os 8
+    // consumidores (informacoes.js, diario.js, comandos.js) usam o retorno
+    // direto como ID de documento em set(novoId, ...) — no SDK real,
+    // doc(db, col, objeto) lança erro (mascarado pelos try/catch das
+    // páginas, ex. toast "criada (offline)"). Alinhado ao contrato da
+    // base.repository.js: retorna SÓ a string do id. O empresa_id nunca
+    // se perde — set()/create() injetam no payload de qualquer forma.
+    newId() {
+      return doc(col()).id;
     },
 
     async getById(id) {
@@ -137,5 +147,5 @@ export function createTenantRepository(collectionName, tenantField = 'empresa_id
     getTenantField() {
       return tenantField;
     }
-  };
+  });
 }
