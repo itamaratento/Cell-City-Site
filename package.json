@@ -4,6 +4,7 @@
     "homologar-performance": "node scripts/homologacao/index.mjs",
     "gerar-catalogo": "node scripts/central-modulos/gerar-catalogo.mjs",
     "testar-central-modulos": "node scripts/central-modulos/test-catalogo.mjs",
+    "verificar-design-system": "node scripts/design-system/verificar.mjs",
     "homologar-central-modulos": "node scripts/central-modulos/homologar.mjs"
   },
   "dependencies": {
