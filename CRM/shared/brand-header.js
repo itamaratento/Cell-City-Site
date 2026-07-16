@@ -390,16 +390,29 @@
 
     var userBadge = document.createElement('span');
     userBadge.className = 'crm-user-badge';
-    userBadge.style.cssText = 'font-size:12px;color:var(--text2,#a1a8b3);margin-right:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;';
+    userBadge.style.cssText = 'font-size:12px;color:var(--text2,#a1a8b3);margin-right:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;';
     userBadge.textContent = '👤 ...';
     bar.insertBefore(userBadge, siteBtn);
 
     function updateUserBadge(ctx) {
       if (!ctx) { userBadge.textContent = ''; userBadge.style.display = 'none'; return; }
       var nome = ctx.nome || '';
-      var perfil = ctx.perfil_operacional_nome || ctx.perfil || '';
+      var perfilOpNome = null;
+      try { perfilOpNome = ctx.perfil_operacional_nome; } catch(e) {}
+      if (!perfilOpNome) {
+        try {
+          import('../shared/permissoes.js').then(function(p) {
+            perfilOpNome = p.getPerfilOperacionalNome();
+            if (perfilOpNome) {
+              userBadge.textContent = '👤 ' + nome + ' | ' + perfilOpNome + (ctx.perfil && ctx.perfil !== perfilOpNome ? ' (' + ctx.perfil + ')' : '');
+            }
+          }).catch(function(){});
+        } catch(e) {}
+      }
+      var perfil = perfilOpNome || ctx.perfil_operacional_nome || ctx.perfil || '';
       userBadge.textContent = '👤 ' + nome + (perfil ? ' | ' + perfil : '');
       userBadge.style.display = '';
+      userBadge.title = 'Usuário: ' + nome + (ctx.perfil ? ' | Perfil: ' + perfil : '');
     }
     if (window._ccUid) {
       setTimeout(function() {

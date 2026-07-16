@@ -26,6 +26,7 @@ import { db, doc, getDoc } from '../scripts/firebase.js';
 
 // null = sem restrição carregada (mostra tudo).
 let _matriz = null;
+let _perfilOperacionalNome = null;
 
 /**
  * Carrega a matriz de permissões do perfil operacional do usuário atual.
@@ -52,7 +53,13 @@ export async function carregarPermissoes(ctx) {
         if (!perfilOpId) { _matriz = null; return null; }
 
         const perfilSnap = await getDoc(doc(db, 'perfis_operacionais', perfilOpId));
-        _matriz = perfilSnap.exists() ? (perfilSnap.data().permissoes || null) : null;
+        if (perfilSnap.exists()) {
+            _matriz = perfilSnap.data().permissoes || null;
+            _perfilOperacionalNome = perfilSnap.data().nome || null;
+        } else {
+            _matriz = null;
+            _perfilOperacionalNome = null;
+        }
         return _matriz;
     } catch (e) {
         console.warn('[permissoes.js] Falha ao carregar permissões — sem restrição por padrão.', e);
@@ -87,3 +94,6 @@ export function podeExcluir(moduloId) { return _permissao(moduloId, 'excluir'); 
 
 /** @returns {boolean} true se o perfil pode aprovar no módulo (fail-open). */
 export function podeAprovar(moduloId) { return _permissao(moduloId, 'aprovar'); }
+
+/** @returns {string|null} Nome do perfil operacional RBAC (ex.: 'Administrador', 'Caixa'). */
+export function getPerfilOperacionalNome() { return _perfilOperacionalNome; }
