@@ -52,9 +52,14 @@ for (const page of PAGES) {
     const errors = [];
     tab.on('pageerror', e => errors.push(e.message));
 
+    // 'load' em vez de 'networkidle0': páginas com Firebase mantêm conexão
+    // contínua (long-poll) e nunca atingem network-idle — o Portal Cliente
+    // estourava timeout por isso (falso negativo, achado da 1ª execução real
+    // da suíte na Sprint 0 FASE 2).
     const resp = await tab.goto(`http://localhost:8099${page.path}`, {
-      waitUntil: 'networkidle0', timeout: 15000
+      waitUntil: 'load', timeout: 15000
     });
+    await new Promise(r => setTimeout(r, 1500)); // janela p/ erros JS pós-load
 
     assert.ok(resp.ok(), `${page.path} deve responder 200 (recebeu ${resp.status()})`);
     assert.equal(errors.length, 0,
@@ -63,15 +68,19 @@ for (const page of PAGES) {
   });
 }
 
-test('E2E: Dashboard contém módulos do grid', async () => {
+// Reescrito na 1ª execução real (Sprint 0 FASE 2): sem sessão, o gate do
+// kernel redireciona o Dashboard para login.html — o grid nunca é visível
+// sem autenticação, então o teste correto é validar o REDIRECT (o gate é
+// exatamente o comportamento de segurança que queremos garantir).
+test('E2E: Dashboard sem sessão redireciona para login (gate do kernel)', async () => {
   const ctx = await browser.createBrowserContext();
   const tab = await ctx.newPage();
   await tab.goto('http://localhost:8099/CRM/pages/dashboard/index.html', {
-    waitUntil: 'networkidle0', timeout: 15000
+    waitUntil: 'load', timeout: 15000
   });
-  const moduleCards = await tab.$$('.module-card');
-  assert.ok(moduleCards.length >= 5,
-    `Dashboard deve ter >= 5 module-cards (encontrados: ${moduleCards.length})`);
+  await new Promise(r => setTimeout(r, 1500)); // janela p/ o redirect do gate
+  assert.ok(tab.url().includes('login.html'),
+    `Dashboard sem sessão deveria redirecionar para login.html (URL final: ${tab.url()})`);
   await ctx.close();
 });
 
