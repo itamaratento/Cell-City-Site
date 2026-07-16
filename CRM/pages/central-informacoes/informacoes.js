@@ -10,6 +10,7 @@ import { getTenantFieldValue } from "../../shared/tenant-query.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
 import { toast } from './informacoes-ui-utils.js';
 import { criptografarSenha, descriptografarSenha } from './informacoes-crypto.js';
+import { DEFAULT_TENANT_ID } from '../../shared/app-config.js';
 
 const COL = 'informacoes';
 const CAT_COL = 'categorias_informacoes';
@@ -1300,7 +1301,7 @@ async function salvarInformacao() {
                 // BUG corrigido (revisão 07/06/2026): o path era gerado 2x com Date.now(),
                 // podendo divergir em ms → storageUrl não batia com o arquivo enviado
                 // (download quebrado / arquivo órfão). Agora o path é calculado UMA vez.
-                const storagePath = `empresas/${getTenantFieldValue() || 'cellcity-master'}/docs/${Date.now()}_${arquivo.name}`;
+                const storagePath = `empresas/${getTenantFieldValue() || DEFAULT_TENANT_ID}/docs/${Date.now()}_${arquivo.name}`;
                 await uploadBytes(ref(storage, storagePath), arquivo);
                 dados.storageUrl = storagePath;
                 dados.extensao = arquivo.name.split('.').pop();

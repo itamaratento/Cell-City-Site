@@ -14,6 +14,7 @@ import { escHtml } from "../../shared/sanitize.js";
 import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
 import { openModal, closeModal, showToast } from './os-ui-utils.js';
 import { storagePrefixEmpresa, uploadPhotoToStorage, deletePhotoFromStorage } from './os-photo-storage.js';
+import { URLS, devPrefix } from '../../shared/app-config.js';
 // Services: camada de regras de negócio (ver CRM/services/)
 // Piloto P1.7 — imports descomentar à medida que as funções inline forem migradas
 // import { getStatusLabel } from "../../services/os-status.service.js";
@@ -550,7 +551,7 @@ function _renderQuickStatus(os) {
 }
 
 
-const LINK_PORTAL_WPP = 'https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html';
+const LINK_PORTAL_WPP = URLS.PORTAL_CLIENTE_PROD; // F1.2: fonte única em app-config.js
 
 function getStatusLabel(status) {
     const found = STATUS_FLOW.find(s => s.key === status);
@@ -1274,8 +1275,7 @@ function abrirPortalCliente(osId, phoneDigits) {
     return;
   }
 
-  const prefix = (location.pathname === '/dev' || location.pathname.startsWith('/dev/')) ? '/dev' : '';
-  window.open(`${prefix}/CRM/pages/portal-cliente/index.html?tel=${phoneDigits}&os=${encodeURIComponent(osId)}`, '_blank');
+  window.open(URLS.portalCliente(`?tel=${phoneDigits}&os=${encodeURIComponent(osId)}`), '_blank'); // F1.2: devPrefix centralizado
 }
 
 // ===== DADOS PARA EMISSÃO DA NOTA FISCAL =====

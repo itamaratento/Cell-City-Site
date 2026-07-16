@@ -38,12 +38,14 @@
    ou com cacheTtlMs.
    ============================================================ */
 
+import { PAGINACAO, STORAGE_KEYS } from '../shared/app-config.js';
+
 export function comApiPadrao(repo) {
   const cache = new Map(); // chaveConsulta → { ts, dados }
   const tag = `[Repo:${repo.collectionName}]`;
 
   const debugAtivo = () => {
-    try { return typeof localStorage !== 'undefined' && localStorage.getItem('cc_repo_debug') === '1'; }
+    try { return typeof localStorage !== 'undefined' && localStorage.getItem(STORAGE_KEYS.DEBUG_REPO) === '1'; }
     catch { return false; }
   };
   const log = (nivel, msg, extra) => {
@@ -95,7 +97,7 @@ export function comApiPadrao(repo) {
     validar,
     limparCache: invalidarCache,
 
-    async listarPaginado({ orderByField, direction = 'asc', pageSize = 20, cursor = null, where: whereClauses = [], ...resto } = {}) {
+    async listarPaginado({ orderByField, direction = 'asc', pageSize = PAGINACAO.PAGE_SIZE_PADRAO, cursor = null, where: whereClauses = [], ...resto } = {}) {
       if (!orderByField) return falha('listarPaginado', 'parametro-obrigatorio', 'listarPaginado exige orderByField.');
       const clausulas = [...whereClauses];
       if (cursor !== null && cursor !== undefined) {

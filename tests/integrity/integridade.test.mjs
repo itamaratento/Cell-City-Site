@@ -172,9 +172,18 @@ test('portal.js: auto-login por ?tel= existe e roteia para os-detalhe', () => {
 });
 
 test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.me', () => {
+    // F1.2 (2026-07-16): a URL passou a vir de app-config.js::URLS.portalCliente()
+    // — o invariante agora guarda as DUAS pontas: os.js chama a função central
+    // com ?tel/os, e a função central aponta para portal-cliente/index.html.
     const src = read('CRM/pages/os/os.js');
     assert.match(src, /function abrirPortalCliente\(osId, phoneDigits\)/);
-    assert.match(src, /portal-cliente\/index\.html\?tel=\$\{phoneDigits\}&os=/);
+    assert.match(src, /URLS\.portalCliente\(`\?tel=\$\{phoneDigits\}&os=/,
+        'abrirPortalCliente deve montar a URL via app-config (URLS.portalCliente) com ?tel= e &os=');
+    assert.doesNotMatch(src.match(/function abrirPortalCliente[\s\S]{0,400}/)[0], /wa\.me/,
+        'abrirPortalCliente não pode apontar para wa.me');
+    const cfg = read('CRM/shared/app-config.js');
+    assert.match(cfg, /portalCliente\(query = ''\) \{ return `\$\{devPrefix\(\)\}\/CRM\/pages\/portal-cliente\/index\.html\$\{query\}`; \}/,
+        'URLS.portalCliente (app-config) deve apontar para portal-cliente/index.html respeitando o devPrefix');
 });
 
 // Achado de 2026-07-11 (mesmo dia da Sprint de Nota Fiscal): o link colado

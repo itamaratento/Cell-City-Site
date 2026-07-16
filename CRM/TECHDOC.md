@@ -2048,3 +2048,22 @@ precedência); SW pré-cacheia ambos.
   0 hex de marca fora do DS; zoom livre em todas as páginas (WCAG 1.4.4)
 - Regra para código novo: cor/espaçamento/raio = token; `!important`
   proibido; inline style só para valor dinâmico de JS.
+
+## §37 — Configuração Global Centralizada (Sprint 1 · F1.2, 2026-07-16)
+
+`CRM/shared/app-config.js` é a fonte única de configuração global do client:
+ambiente (`ENV`, `devPrefix()` — substitui as 24 repetições de detecção `/dev`),
+`URLS` (domínio oficial, portal, navegação interna com prefixo), `DEFAULT_TENANT_ID`
+(tenant-resolver.js reexporta para compatibilidade), `TEMPOS`, `PAGINACAO`
+(consumida pelo `listarPaginado` da Camada Repository), `CACHE`, `STORAGE_KEYS`
+(registro obrigatório das chaves `cc_*`), `LOGS` (debug via `cc_repo_debug`),
+`AUDITORIA` e `FLAGS` (fachada: runtime delega a tenant-context; estáticas locais).
+
+Fronteiras deliberadas: `env-config.js` segue sendo o seletor de ambiente/projeto
+Firebase no boot (script clássico; app-config CONSOME `window.CC_ENV`);
+`firebase.js`/`auth.js`/`pages/config/config.js`/`global.css` são protegidos e não
+foram tocados; `functions/lib/config.js` é server-side (deploy isola `functions/`)
+— duplicação documentada, sincronizar manualmente. Scripts clássicos
+(brand-header, dock) acessam `window.CC_CONFIG` (side effect do módulo); enquanto
+não migram, os literais locais apontam para cá em comentário. Regra: código novo
+não cria constante global, chave `cc_` nem timeout mágico fora do app-config.

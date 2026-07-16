@@ -2,6 +2,7 @@
 // Sem dependência de estado do módulo (currentOS/DB/etc.).
 import { getFirebaseStorage } from '../../scripts/firebase.js';
 import { getTenantFieldValue } from '../../shared/tenant-query.js';
+import { DEFAULT_TENANT_ID } from '../../shared/app-config.js';
 
 function dataURLtoBlob(dataURL) {
     const [header, data] = dataURL.split(',');
@@ -16,7 +17,7 @@ function dataURLtoBlob(dataURL) {
 // canônico multiempresa; ver storage.rules). URLs legadas em os/
 // continuam válidas para leitura.
 export function storagePrefixEmpresa() {
-    return `empresas/${getTenantFieldValue() || 'cellcity-master'}`;
+    return `empresas/${getTenantFieldValue() || DEFAULT_TENANT_ID}`;
 }
 
 export async function uploadPhotoToStorage(dataURL, path) {

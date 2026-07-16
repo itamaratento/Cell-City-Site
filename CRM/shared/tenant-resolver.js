@@ -17,8 +17,11 @@
    ============================================================ */
 
 import { db, doc, getDoc } from '../scripts/firebase.js';
+import { DEFAULT_TENANT_ID } from './app-config.js';
 
-export const DEFAULT_TENANT_ID = 'cellcity-master';
+// F1.2 (2026-07-16): a constante mudou para app-config.js (fonte única de
+// config global); reexportada aqui para manter o contrato dos consumidores.
+export { DEFAULT_TENANT_ID };
 
 export async function resolveTenantFromUser(uid) {
   if (!uid) return { tenantId: DEFAULT_TENANT_ID, tenantName: 'Cell City Informática' };
