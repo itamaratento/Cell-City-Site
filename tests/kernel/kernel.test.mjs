@@ -11,7 +11,7 @@
 //   - hierarquia de permissões (temPermissao)
 //   - smoke test do fluxo completo ponta a ponta
 // ══════════════════════════════════════════════════════════════════════
-import { test, describe, beforeEach } from 'node:test';
+import { test, describe, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { setupGlobals } from './helpers/env.mjs';
@@ -75,6 +75,37 @@ describe('Kernel — boot único e onAuthStateChanged', () => {
 
     assert.equal(ctx, null);
     assert.equal(env.location.href, '/CRM/login.html');
+  });
+
+  test('initModulo() redireciona após timeout quando auth nunca resolve', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      const env = setupGlobals();
+      const kernel = await freshKernel();
+      const p = kernel.initModulo();
+      mock.timers.tick(10_000);
+      const ctx = await p;
+
+      assert.equal(ctx, null);
+      assert.equal(env.location.href, '/CRM/login.html');
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
+  test('getCtxAsync() retorna null após timeout quando auth nunca resolve', async () => {
+    mock.timers.enable({ apis: ['setTimeout'] });
+    try {
+      setupGlobals();
+      const kernel = await freshKernel();
+      const p = kernel.getCtxAsync();
+      mock.timers.tick(10_000);
+      const ctx = await p;
+
+      assert.equal(ctx, null);
+    } finally {
+      mock.timers.reset();
+    }
   });
 });
 
@@ -140,6 +171,20 @@ describe('Kernel — carregamento de sessão e tenant (empresaId)', () => {
     assert.equal(ctx.perfil, 'pendente');
     assert.equal(ctx.empresaId, EMPRESA_ID_PADRAO);
     assert.equal(firestoreMock.__raw('usuarios', 'uid-erro'), undefined, 'não deve tentar criar doc após erro de leitura');
+  });
+
+  test('falha de setDoc no primeiro acesso usa defaults sem lançar exceção (fail-safe)', async () => {
+    setupGlobals();
+    const kernel = await freshKernel();
+    firestoreMock.__setForceSetDocError(new Error('Firestore write denied'));
+
+    await authMock.__trigger({ uid: 'uid-setdoc-erro', email: 'w@cellcity.com', isAnonymous: false });
+    const ctx = await kernel.initModulo();
+
+    assert.ok(ctx, 'contexto deve resolver mesmo quando setDoc falha no primeiro acesso');
+    assert.equal(ctx.perfil, 'pendente');
+    assert.equal(ctx.empresaId, EMPRESA_ID_PADRAO);
+    assert.equal(firestoreMock.__raw('usuarios', 'uid-setdoc-erro'), undefined, 'doc não deve ter sido criado após falha de setDoc');
   });
 
   test('getEmpresaId() lança erro se chamado antes de initModulo() resolver', async () => {

@@ -78,7 +78,7 @@ jobs:
         run: npm test
         working-directory: tests/rbac
 
-      - name: Testes do Kernel (Sprint 1 — Fase 1.3: boot, autenticação, tenant, sessão)
+      - name: "Testes do Kernel (Sprint 1 — Fase 1.3 boot, autenticação, tenant, sessão)"
         run: npm test
         working-directory: tests/kernel
 

@@ -206,4 +206,29 @@ arquitetura: `CRM/scripts/KERNEL.md` · Registro em `CRM/TECHDOC.md` §36.
 
 ---
 
-*Última atualização: 2026-07-13 (Fase 15) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção). Fase 1.3 do Kernel (2026-07-16) registrada acima, sem alterar o restante deste arquivo — realinhamento completo de `PROXIMA_ETAPA.md` ao estado real pós-Fase-15 permanece pendente e fora do escopo desta Sprint.*
+## ✅ SPRINT 1 (KERNEL SAAS) — FASE 1.3.1 (2026-07-16) — CORREÇÃO PÓS-AUDITORIA
+
+Escopo travado, por instrução explícita: corrigir **somente** os achados da
+auditoria técnica da Fase 1.3 — sem funcionalidade nova, refatoração grande,
+regra de negócio, Firestore Rules, Cloud Functions ou comportamento funcional
+de módulos. Relatório: `plans/RELATORIO_KERNEL_FASE_1_3_1.md` · Registro em
+`CRM/TECHDOC.md` §37.
+
+- Corrigido YAML inválido em `.github/workflows/tests.yml` (step do Kernel —
+  `:` após "1.3" impedia parsing; CI falhava em 0s).
+- `KERNEL.md` §2/§6/§7: listener one-shot (`firebase.js`), `catalogo-publico.js`
+  e demais exceções deliberadas documentadas com precisão.
+- `kernel.js`: `clearTimeout` após `Promise.race` em `initModulo()` e
+  `getCtxAsync()` — elimina timers órfãos, sem alterar API/retorno/fluxo.
+- `tests/kernel/`: import morto removido; +3 testes (timeout real 10s ×2,
+  falha de `setDoc` no primeiro acesso) — **27/27 ✅**.
+- Reexecutado sem regressão: RBAC 164/166 (2 falhas pré-existentes),
+  Integridade 13/14 (`rsync` ausente no ambiente), Control Center 91/94
+  (estado de branch/git do ambiente) — nenhuma falha causada por esta Fase.
+- Fora do escopo (pré-existente, registrado): step Firestore Rules na CI
+  exige Java 21+; `diario.js::salvar()` reinvoca boot; `brand-header.js`
+  listener `kernel-ready` sem `{ once: true }`.
+
+---
+
+*Última atualização: 2026-07-16 (Fase 1.3.1 Kernel) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção). Fases 1.3 e 1.3.1 do Kernel registradas acima, sem alterar o restante deste arquivo — realinhamento completo de `PROXIMA_ETAPA.md` ao estado real pós-Fase-15 permanece pendente e fora do escopo desta Sprint.*

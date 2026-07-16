@@ -64,9 +64,11 @@ initModulo() (chamado por cada módulo) — Promise.race(_ready, timeout 10s)
 
 Pontos-chave da consolidação (Fase 1.3):
 
-- **Um único `onAuthStateChanged`** por página — nenhum outro módulo deve
-  registrar um segundo listener sobre o mesmo `auth` (ver §6, exceções
-  documentadas quando isso ocorre fora do domínio do Kernel).
+- **Um único `onAuthStateChanged` persistente** por página no Kernel — o
+  listener de `kernel.js` é o único que constrói contexto de sessão/RBAC
+  para módulos internos. Outros listeners sobre o mesmo `auth` existem no
+  repositório, mas são exceções documentadas (§6) — não duplicam o boot do
+  Kernel.
 - **Um único `_ready`** (Promise resolvida uma vez) — todo `initModulo()`
   chamado na mesma página aguarda a mesma resolução; não há corrida entre
   chamadas concorrentes de vários trechos do mesmo módulo.
@@ -139,19 +141,21 @@ aqui.
 
 ## 6. Exceções documentadas ao padrão único (decisão registrada, não bug)
 
-Nem todo ponto de autenticação do repositório passa por `kernel.js` — e
-isso é **intencional** nos três casos abaixo, cada um com um domínio
-diferente do CRM interno:
+Nem todo ponto de autenticação ou inicialização Firebase do repositório
+passa pelo boot de `kernel.js` — e isso é **intencional** nos casos
+abaixo, cada um com um domínio diferente do CRM interno:
 
 | Componente | Por que não usa `kernel.js` |
 |---|---|
-| `CRM/shared/session.js` | Alimenta exclusivamente a tela "Conta de Sincronização" (`pages/config/index.html`), um recurso legado de sincronização entre aparelhos (Google/e-mail) anterior ao Kernel atual, independente do RBAC de módulos. Mantém seu próprio `onAuthStateChanged` sobre o mesmo `auth` do Firebase — o SDK suporta múltiplos listeners sem conflito, mas é uma segunda árvore de estado de sessão, não duplicação do Kernel. Fora do escopo desta Fase (seria alteração de tela/fluxo funcional de um módulo específico, não do Kernel). |
+| `CRM/scripts/firebase.js` (`authReady`) | Listener **one-shot**: registra `onAuthStateChanged`, resolve a Promise `authReady` na primeira mudança de estado e **remove a si mesmo** (`unsubscribe()`). Não constrói contexto de RBAC nem interfere no `_ready` do Kernel — serve apenas `pages/portal-cliente/admin.js` e `portal.js`, que aguardam `authReady` antes de operar. Compartilha a mesma instância `auth` importada pelo Kernel, mas não é um segundo boot de módulo. |
+| `CRM/shared/session.js` | Alimenta exclusivamente a tela "Conta de Sincronização" (`pages/config/index.html`), um recurso legado de sincronização entre aparelhos (Google/e-mail) anterior ao Kernel atual, independente do RBAC de módulos. Mantém seu próprio `onAuthStateChanged` **persistente** sobre o mesmo `auth` do Firebase — o SDK suporta múltiplos listeners sem conflito, mas é uma segunda árvore de estado de sessão, não duplicação do Kernel. |
 | `CRM/pages/usuarios-permissoes/firebase-secondary.js` | Segunda instância do Firebase App (`usuarios-permissoes-secondary`), com seu próprio `Auth`, usada para criar contas/redefinir senha de terceiros **sem** encerrar a sessão do admin logado — já documentada em `CRM/TECHDOC.md` §6.9. |
+| `CRM/pages/catalogo/public/catalogo-publico.js` | Superfície **pública** do catálogo — chama `initializeApp()` com app próprio (default) para leitura anônima do Firestore, sem sessão de staff. Não é módulo interno do CRM e nunca passou por `kernel.js`. |
 | `CRM/pages/portal-cliente/*` | Portal do Cliente é uma superfície **pública**, sem sessão de staff — usa código de OS/telefone, não Firebase Auth de funcionário. Não é um módulo do CRM interno e nunca passou por `kernel.js`. |
 
-Nenhuma das três é "dívida técnica" de Kernel — são domínios de
-autenticação distintos, cada um resolvendo um problema diferente do que o
-Kernel resolve (sessão de staff do CRM interno).
+Nenhum dos casos acima é "dívida técnica" de Kernel — são domínios de
+autenticação ou inicialização distintos, cada um resolvendo um problema
+diferente do que o Kernel resolve (sessão de staff do CRM interno).
 
 ## 7. Testes automatizados
 
@@ -161,9 +165,10 @@ cópia, via `tests/kernel/loader.mjs`), cobrindo:
 - boot único (`onAuthStateChanged` registrado exatamente uma vez);
 - `initModulo()` com e sem sessão, dentro e fora de `/dev`;
 - sessão anônima nunca constrói contexto;
+- timeout real de 10s (`initModulo()` e `getCtxAsync()` sem auth, via `mock.timers`);
 - carregamento de sessão/tenant (`empresaId`, `perfil`, `nome`) a partir do
-  Firestore, inclusive primeiro acesso (`perfil:'pendente'`) e falha de
-  leitura (fail-safe, sem exceção);
+  Firestore, inclusive primeiro acesso (`perfil:'pendente'`), falha de
+  leitura e falha de `setDoc` no primeiro acesso (fail-safe, sem exceção);
 - hierarquia completa de `temPermissao()`;
 - `login()`/`logout()` (persistência, encerramento de sessão anônima
   antes do login real, `ultimo_acesso`);

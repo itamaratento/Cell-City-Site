@@ -2099,3 +2099,49 @@ antes da alteração, com o mesmo resultado).
 - 🟡 Chave `'cc_kernel_v1'` duplicada como literal em ~34 telas (§ acima) — corrigir exigiria tocar múltiplos módulos/telas simultaneamente, fora da regra desta Sprint.
 - 🟢 `shared/session.js` continua com seu próprio `onAuthStateChanged` — decisão documentada, não um defeito do Kernel.
 - 🟢 Firestore Rules / Cloud Functions não reexecutadas nesta sessão (ambiente sem `firebase-tools`/emulador configurado) — sem relação com o Kernel, e explicitamente fora do escopo desta Fase.
+
+---
+
+## §37 — Sprint 1 (Kernel SaaS), Fase 1.3.1: Correções Pós-Auditoria (2026-07-16)
+
+Escopo travado nesta Fase, por instrução explícita: corrigir **exclusivamente**
+os achados da auditoria técnica da Fase 1.3 — sem funcionalidade nova,
+refatoração grande, alteração de regra de negócio, Firestore Rules, Cloud
+Functions ou comportamento funcional de módulos. Relatório completo em
+`plans/RELATORIO_KERNEL_FASE_1_3_1.md`.
+
+### Problemas corrigidos
+
+| Achado (auditoria) | Severidade | Correção |
+|---|---|---|
+| YAML inválido em `.github/workflows/tests.yml` linha 81 (`:` após "1.3" quebrava parsing) | CRÍTICO | `name` do step colocado entre aspas duplas — workflow parseável novamente. |
+| `KERNEL.md` §2/§6 impreciso sobre "único listener" | MÉDIO | §2 distingue listener persistente do Kernel vs exceções; §6 expandido com `firebase.js` (one-shot `authReady`), `catalogo-publico.js` e demais exceções deliberadas. |
+| Lacuna de teste: timeout real de 10s não exercitado | MÉDIO | +2 testes com `mock.timers` (`initModulo` e `getCtxAsync` sem auth). |
+| Lacuna de teste: falha de `setDoc` no primeiro acesso | BAIXO | +1 teste edge case com `__setForceSetDocError` no mock Firestore. |
+| Import morto `beforeEach` em `kernel.test.mjs` | BAIXO | Removido; import de `mock` adicionado. |
+| `setTimeout` nunca limpo em `initModulo()`/`getCtxAsync()` | MÉDIO | `clearTimeout(timeoutId)` após `Promise.race` — sem alteração de API, retorno ou fluxo. |
+
+### Alterações aplicadas
+
+| Arquivo | Alteração |
+|---|---|
+| `.github/workflows/tests.yml` | Aspas no `name` do step do Kernel (correção YAML). |
+| `CRM/scripts/kernel.js` | `clearTimeout` em `initModulo()` e `getCtxAsync()` após `Promise.race`. |
+| `CRM/scripts/KERNEL.md` | §2, §6 e §7 atualizados (listener one-shot, `catalogo-publico`, cobertura de testes). |
+| `tests/kernel/kernel.test.mjs` | Import morto removido; +3 testes (2 timeout, 1 setDoc fail-safe). |
+| `tests/kernel/mocks/firestore-mock.js` | `__setForceSetDocError` para simular falha de escrita no primeiro acesso. |
+
+### Testes executados nesta Fase
+
+| Suíte | Resultado | Observação |
+|---|---|---|
+| `tests/kernel/` | **27/27 ✅** | +3 testes vs Fase 1.3 (24); suíte ~160ms (timers limpos). |
+| `tests/rbac/` | 164/166 | 2 falhas pré-existentes em `financeiro-relatorio.test.mjs` — idênticas em `main`, não relacionadas ao Kernel. |
+| `tests/integrity/integridade.test.mjs` | 13/14 | 1 falha por ausência do binário `rsync` no ambiente — infraestrutura, não código. |
+| `tests/control-center/estrutura.test.mjs` | 91/94 | 3 falhas pré-existentes por estado de branch/git do ambiente — não relacionadas ao Kernel. |
+
+Nenhuma regressão introduzida. Achados da auditoria **fora do escopo**
+(permanecem registrados, não corrigidos nesta Fase): step Firestore Rules
+na CI exige Java 21+ (`firebase-tools`); `diario.js::salvar()` reinvoca
+boot completo; `brand-header.js` sem `{ once: true }` no listener
+`kernel-ready`.

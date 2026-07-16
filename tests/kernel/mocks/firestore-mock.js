@@ -10,6 +10,7 @@ function col(name) {
 }
 
 let _forceGetDocError = null;
+let _forceSetDocError = null;
 
 export function doc(_db, colName, id) {
   return { __col: colName, __id: id };
@@ -30,6 +31,11 @@ export async function getDoc(ref) {
 }
 
 export async function setDoc(ref, data, opts) {
+  if (_forceSetDocError) {
+    const err = _forceSetDocError;
+    _forceSetDocError = null;
+    throw err;
+  }
   const c = col(ref.__col);
   c.set(ref.__id, opts?.merge ? { ...(c.get(ref.__id) || {}), ...data } : { ...data });
 }
@@ -52,6 +58,7 @@ export function serverTimestamp() {
 export function __reset() {
   store.clear();
   _forceGetDocError = null;
+  _forceSetDocError = null;
 }
 
 export function __seed(colName, id, data) {
@@ -65,4 +72,8 @@ export function __raw(colName, id) {
 
 export function __setForceGetDocError(err) {
   _forceGetDocError = err;
+}
+
+export function __setForceSetDocError(err) {
+  _forceSetDocError = err;
 }

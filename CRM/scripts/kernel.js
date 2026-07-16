@@ -153,10 +153,12 @@ function _log(msg, err) {
  * @returns {Promise<Object|null>} contexto ou null
  */
 export async function initModulo() {
+    let timeoutId;
     const ctx = await Promise.race([
         _ready,
-        new Promise(r => setTimeout(() => r(null), TIMEOUT_MS))
+        new Promise(r => { timeoutId = setTimeout(() => r(null), TIMEOUT_MS); })
     ]);
+    if (timeoutId) clearTimeout(timeoutId);
 
     if (!ctx) {
         _log('Sessão não encontrada — redirecionando para login');
@@ -219,7 +221,12 @@ export const getCtx = () => _ctx;
  * @returns {Promise<Object|null>}
  */
 export async function getCtxAsync() {
-    await Promise.race([_ready, new Promise(r => setTimeout(r, TIMEOUT_MS))]);
+    let timeoutId;
+    await Promise.race([
+        _ready,
+        new Promise(r => { timeoutId = setTimeout(r, TIMEOUT_MS); })
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
     return _ctx;
 }
 
