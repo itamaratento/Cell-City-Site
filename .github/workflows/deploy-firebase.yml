@@ -1,10 +1,15 @@
 name: Deploy Firebase (rules + indexes + functions)
 
+# Sprint 0 FASE 3 (2026-07-16): o job deployava no projeto de PRODUÇÃO
+# (--project cellcity-crm) também em pushes de develop — o MESMO vetor do
+# incidente P0 de 2026-07-14 (rules de develop quebraram main por ~2h28).
+# Nunca chegou a disparar deploy real porque FIREBASE_SA_KEY nunca foi
+# configurado (auth falha em todo run), mas o gate abaixo remove o vetor
+# antes que o secret exista. Deploy de produção SÓ a partir de main.
 on:
   push:
     branches: [main, develop]
     paths:
-      - 'firestore.rules'
       - 'CRM/firestore.rules'
       - 'CRM/firestore.indexes.json'
       - 'firebase.json'
@@ -17,6 +22,8 @@ permissions:
 
 jobs:
   deploy:
+    # Produção só a partir de main (develop continua validado por tests.yml)
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
