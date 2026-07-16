@@ -1,15 +1,15 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-13T17:13:51.784Z",
-  "commitBase": "af7a442",
+  "geradoEm": "2026-07-16T16:09:14.770Z",
+  "commitBase": "5867a06",
   "resumo": {
-    "totalPastas": 34,
-    "visiveis": 28,
+    "totalPastas": 36,
+    "visiveis": 30,
     "ocultos": 6,
     "porStatus": {
       "ok": 28,
-      "atencao": 6,
+      "atencao": 8,
       "erro": 0
     },
     "porGrupo": {
@@ -20,13 +20,13 @@
       "Financeiro": 3,
       "Infraestrutura": 4,
       "Estoque": 3,
-      "Sem grupo": 1
+      "Sem grupo": 3
     },
-    "semRbac": 1,
-    "semFirestore": 3,
+    "semRbac": 4,
+    "semFirestore": 17,
     "incompletos": 0,
-    "colecoesDistintas": 58,
-    "scoreMedio": 95,
+    "colecoesDistintas": 40,
+    "scoreMedio": 94,
     "anomaliasGlobais": 1
   },
   "anomalias": [
@@ -46,10 +46,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agenda e ações da semana (eventos, tarefas e ações comerciais).",
       "oculto": false,
-      "versao": "1.0.20",
+      "versao": "1.0.23",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 20,
+      "atualizadoEm": "2026-07-16",
+      "commits": 23,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -60,22 +60,18 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "acoes_semana",
-          "agenda",
-          "diario_eventos",
-          "diario_registros",
-          "tarefas_semana"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -95,7 +91,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 156
+          "linhas": 158
         }
       ],
       "totalArquivos": 3,
@@ -168,10 +164,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Análises sobre lançamentos do caixa.",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 15,
+      "atualizadoEm": "2026-07-16",
+      "commits": 19,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -189,9 +185,12 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -202,7 +201,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "analise.js",
-          "linhas": 355
+          "linhas": 356
         },
         {
           "arquivo": "analise.css",
@@ -210,7 +209,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 76
+          "linhas": 78
         }
       ],
       "totalArquivos": 3,
@@ -279,10 +278,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Trilha de auditoria de usuários e permissões.",
       "oculto": false,
-      "versao": "1.0.16",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 16,
+      "atualizadoEm": "2026-07-16",
+      "commits": 19,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -302,8 +301,11 @@
       },
       "dependencias": {
         "shared": [
+          "design-system.css",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -314,7 +316,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "auditoria.js",
-          "linhas": 204
+          "linhas": 205
         },
         {
           "arquivo": "auditoria.css",
@@ -322,7 +324,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 67
+          "linhas": 69
         }
       ],
       "totalArquivos": 3,
@@ -391,10 +393,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pré-OS online criada pelo próprio cliente (autoatendimento).",
       "oculto": false,
-      "versao": "1.0.21",
+      "versao": "1.0.23",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 21,
+      "atualizadoEm": "2026-07-16",
+      "commits": 23,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -405,20 +407,18 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "os",
-          "pre_os",
-          "solicitacoes_diagnostico"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -438,7 +438,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 76
+          "linhas": 78
         }
       ],
       "totalArquivos": 3,
@@ -502,10 +502,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Lançamentos de entrada e saída do caixa diário, categorias e lembretes de pagamento.",
       "oculto": false,
-      "versao": "1.0.43",
+      "versao": "1.0.47",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 43,
+      "atualizadoEm": "2026-07-16",
+      "commits": 47,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -526,11 +526,14 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "favoritos.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -541,11 +544,11 @@
       "arquivosPrincipais": [
         {
           "arquivo": "caixa.js",
-          "linhas": 811
+          "linhas": 807
         },
         {
           "arquivo": "index.html",
-          "linhas": 312
+          "linhas": 314
         },
         {
           "arquivo": "caixa.css",
@@ -618,10 +621,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Campanhas de comunicação para a base de clientes.",
       "oculto": false,
-      "versao": "1.0.17",
+      "versao": "1.0.20",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 17,
+      "atualizadoEm": "2026-07-16",
+      "commits": 20,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -634,18 +637,18 @@
         "diretas": [
           "clientes"
         ],
-        "viaRepositorio": [
-          "clientes"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -665,7 +668,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 119
+          "linhas": 121
         }
       ],
       "totalArquivos": 3,
@@ -729,10 +732,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Catálogo de produtos com vitrine pública (subpasta public/, sem login).",
       "oculto": false,
-      "versao": "1.0.35",
+      "versao": "1.0.37",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 35,
+      "atualizadoEm": "2026-07-16",
+      "commits": 37,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -743,21 +746,18 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "catalogo_config",
-          "catalogo_produtos",
-          "categorias_produtos",
-          "produtos"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "env-config.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -777,7 +777,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 184
+          "linhas": 186
         }
       ],
       "totalArquivos": 6,
@@ -841,10 +841,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agregador de alertas de todos os módulos (OS, financeiro, portal, pós-venda, sistema).",
       "oculto": false,
-      "versao": "1.0.45",
+      "versao": "1.0.48",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 45,
+      "atualizadoEm": "2026-07-16",
+      "commits": 48,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -856,46 +856,21 @@
       "colecoesFirestore": {
         "diretas": [],
         "viaRepositorio": [
-          "acoes_semana",
-          "agenda",
-          "agendamentos",
           "alarme_config",
-          "alertas_usuario",
-          "avaliacoes",
-          "central_alertas_status",
           "config",
-          "diario_eventos",
-          "diario_registros",
-          "financeiro_categorias",
-          "financeiro_fixas",
-          "financeiro_pagar",
-          "financeiro_receber",
-          "historico_diario",
-          "historico_mensal",
-          "historico_semanal",
-          "lembretes_pagamento",
-          "mensagens_portal",
-          "metadata",
-          "os",
-          "portal_eventos",
-          "posvenda_contatos",
-          "posvenda_mensagens",
-          "posvenda_rastreamento",
-          "pre_os",
-          "resumo_live",
-          "solicitacoes_diagnostico",
-          "tarefas_semana",
-          "vendas_importadas"
+          "metadata"
         ]
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -920,7 +895,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 208
+          "linhas": 210
         }
       ],
       "totalArquivos": 3,
@@ -984,10 +959,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Comandos rápidos e categorizados de operação do sistema.",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.26",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 24,
+      "atualizadoEm": "2026-07-16",
+      "commits": 26,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1000,29 +975,20 @@
         "diretas": [],
         "viaRepositorio": [
           "alarme_config",
-          "alertas_usuario",
-          "categorias_comandos",
-          "categorias_informacoes",
-          "central_alertas_status",
-          "comandos",
           "config",
-          "historico_diario",
-          "historico_mensal",
-          "historico_semanal",
-          "informacoes",
-          "metadata",
-          "resumo_live",
-          "vendas_importadas"
+          "metadata"
         ]
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1043,7 +1009,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 123
+          "linhas": 125
         }
       ],
       "totalArquivos": 3,
@@ -1107,10 +1073,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Base de conhecimento interna, informações categorizadas da operação.",
       "oculto": false,
-      "versao": "1.0.26",
+      "versao": "1.0.30",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 26,
+      "atualizadoEm": "2026-07-16",
+      "commits": 30,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1121,20 +1087,18 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "categorias_comandos",
-          "categorias_informacoes",
-          "comandos",
-          "informacoes"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1150,14 +1114,22 @@
         },
         {
           "arquivo": "informacoes.js",
-          "linhas": 1472
+          "linhas": 1455
         },
         {
           "arquivo": "index.html",
-          "linhas": 284
+          "linhas": 286
+        },
+        {
+          "arquivo": "informacoes-ui-utils.js",
+          "linhas": 17
+        },
+        {
+          "arquivo": "informacoes-crypto.js",
+          "linhas": 14
         }
       ],
-      "totalArquivos": 3,
+      "totalArquivos": 5,
       "menu": {
         "sidebarDashboard": false,
         "dock": true,
@@ -1219,10 +1191,10 @@
       "descricao": "Módulo Central de Módulos.",
       "oculto": true,
       "motivoOculto": "Autorreferência — é a própria página do catálogo.",
-      "versao": "1.0.21",
+      "versao": "1.0.22",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 21,
+      "atualizadoEm": "2026-07-16",
+      "commits": 22,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1237,9 +1209,11 @@
         "shared": [
           "brand-header.js",
           "central-modulos.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [],
         "repositorios": []
@@ -1247,7 +1221,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "index.html",
-          "linhas": 209
+          "linhas": 211
         },
         {
           "arquivo": "central-modulos-page.js",
@@ -1315,10 +1289,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Organização e automação de rotinas internas.",
       "oculto": false,
-      "versao": "1.0.42",
+      "versao": "1.0.45",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 42,
+      "atualizadoEm": "2026-07-16",
+      "commits": 45,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1329,17 +1303,17 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "central_organizacao"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1359,7 +1333,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 155
+          "linhas": 157
         }
       ],
       "totalArquivos": 3,
@@ -1433,10 +1407,10 @@
       "descricao": "Chat interno entre usuários do sistema (desativado).",
       "oculto": true,
       "motivoOculto": "DESATIVADO por decisão do dono em 2026-07-10 (TECHDOC §31): sem uso operacional; chat.js renderiza 'Módulo desativado'. Código/Rules/coleção preservados. Para reativar, ver passos no TECHDOC §31 e remover este oculto.",
-      "versao": "1.0.5",
+      "versao": "1.0.8",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 5,
+      "atualizadoEm": "2026-07-16",
+      "commits": 8,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1455,10 +1429,13 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -1469,7 +1446,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "chat.js",
-          "linhas": 200
+          "linhas": 201
         },
         {
           "arquivo": "chat.css",
@@ -1477,7 +1454,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 40
+          "linhas": 42
         }
       ],
       "totalArquivos": 3,
@@ -1541,47 +1518,30 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
       "oculto": false,
-      "versao": "1.0.22",
+      "versao": "1.0.26",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 22,
+      "atualizadoEm": "2026-07-16",
+      "commits": 26,
       "status": "atencao",
-      "score": 100,
+      "score": 90,
       "rbac": {
-        "protegido": true,
-        "mecanismos": [
-          "shared/permissoes.js"
-        ]
+        "protegido": false,
+        "mecanismos": []
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "alarme_config",
-          "alertas_usuario",
-          "central_alertas_status",
-          "config",
-          "historico_diario",
-          "historico_mensal",
-          "historico_semanal",
-          "metadata",
-          "resumo_live",
-          "vendas_importadas"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
-          "permissoes.js",
-          "sanitize.js"
+          "theme.js"
         ],
-        "scripts": [
-          "kernel.js"
-        ],
-        "repositorios": [
-          "sistema.repository.js"
-        ]
+        "scripts": [],
+        "repositorios": []
       },
       "arquivosPrincipais": [
         {
@@ -1589,15 +1549,11 @@
           "linhas": 235
         },
         {
-          "arquivo": "clientes.js",
-          "linhas": 184
-        },
-        {
           "arquivo": "index.html",
-          "linhas": 94
+          "linhas": 96
         }
       ],
-      "totalArquivos": 3,
+      "totalArquivos": 2,
       "menu": {
         "sidebarDashboard": true,
         "dock": false,
@@ -1619,7 +1575,7 @@
         },
         {
           "item": "gate de RBAC presente",
-          "ok": true
+          "ok": false
         },
         {
           "item": "usa camada Repository (ou não acessa Firestore direto)",
@@ -1648,6 +1604,10 @@
       ],
       "diagnosticos": [
         {
+          "tipo": "sem-rbac",
+          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        },
+        {
           "tipo": "alerta",
           "detalhe": "Rótulo histórico 'Clientes' não corresponde ao conteúdo real (tela de Configurações de Impressão). Correção do rótulo/conteúdo é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
         }
@@ -1663,10 +1623,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pedidos de compra e acompanhamento de recebimento.",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.29",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 24,
+      "atualizadoEm": "2026-07-16",
+      "commits": 29,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1686,10 +1646,13 @@
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -1700,7 +1663,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "compras.js",
-          "linhas": 171
+          "linhas": 174
         },
         {
           "arquivo": "compras.css",
@@ -1708,7 +1671,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 89
+          "linhas": 91
         }
       ],
       "totalArquivos": 3,
@@ -1777,10 +1740,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Tela de acesso por PIN e conta de sincronização.",
       "oculto": false,
-      "versao": "1.0.21",
+      "versao": "1.0.26",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 21,
+      "atualizadoEm": "2026-07-16",
+      "commits": 26,
       "status": "atencao",
       "score": 100,
       "rbac": {
@@ -1793,21 +1756,17 @@
         "diretas": [],
         "viaRepositorio": [
           "alarme_config",
-          "alertas_usuario",
-          "central_alertas_status",
           "config",
-          "historico_diario",
-          "historico_mensal",
-          "historico_semanal",
-          "metadata",
-          "resumo_live",
-          "vendas_importadas"
+          "metadata"
         ]
       },
       "dependencias": {
         "shared": [
+          "design-system.css",
           "permissoes.js",
-          "session.js"
+          "sanitize.js",
+          "session.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1819,18 +1778,22 @@
       "arquivosPrincipais": [
         {
           "arquivo": "config.js",
-          "linhas": 228
+          "linhas": 226
         },
         {
           "arquivo": "config.css",
           "linhas": 189
         },
         {
+          "arquivo": "impressao.js",
+          "linhas": 186
+        },
+        {
           "arquivo": "index.html",
-          "linhas": 175
+          "linhas": 177
         }
       ],
-      "totalArquivos": 3,
+      "totalArquivos": 4,
       "menu": {
         "sidebarDashboard": true,
         "dock": true,
@@ -1896,10 +1859,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Contas e números de referência da operação.",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.18",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 15,
+      "atualizadoEm": "2026-07-16",
+      "commits": 18,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1910,16 +1873,15 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "contas_numeros",
-          "crm_leads"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "date-utils.js",
+          "design-system.css",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -1939,7 +1901,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 119
+          "linhas": 121
         }
       ],
       "totalArquivos": 3,
@@ -2003,10 +1965,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Gestão de leads, chips e entradas do funil comercial (4 subtelas).",
       "oculto": false,
-      "versao": "1.0.33",
+      "versao": "1.0.37",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 33,
+      "atualizadoEm": "2026-07-16",
+      "commits": 37,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2021,19 +1983,20 @@
           "config",
           "crm_leads"
         ],
-        "viaRepositorio": [
-          "chips_cadastros"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
           "phone-utils.js",
           "sanitize.js",
-          "sidebar.js"
+          "sidebar.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2046,7 +2009,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "crm.js",
-          "linhas": 1126
+          "linhas": 1127
         },
         {
           "arquivo": "crm.css",
@@ -2062,7 +2025,7 @@
         },
         {
           "arquivo": "entrada.js",
-          "linhas": 422
+          "linhas": 423
         },
         {
           "arquivo": "chips-entrada.js",
@@ -2070,7 +2033,7 @@
         },
         {
           "arquivo": "chips.html",
-          "linhas": 230
+          "linhas": 232
         },
         {
           "arquivo": "chips.css",
@@ -2078,15 +2041,15 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 207
+          "linhas": 209
         },
         {
           "arquivo": "chips-entrada.html",
-          "linhas": 164
+          "linhas": 166
         },
         {
           "arquivo": "entrada.html",
-          "linhas": 133
+          "linhas": 135
         },
         {
           "arquivo": "chips-entrada.css",
@@ -2155,10 +2118,10 @@
       "descricao": "Módulo Gestão Empresarial.",
       "oculto": true,
       "motivoOculto": "É o shell/home do sistema (host da sidebar), não um módulo de catálogo.",
-      "versao": "1.0.131",
+      "versao": "1.0.136",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 131,
+      "atualizadoEm": "2026-07-16",
+      "commits": 136,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2191,10 +2154,13 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "favoritos.js",
           "menu-favoritos.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2208,16 +2174,16 @@
           "linhas": 3045
         },
         {
-          "arquivo": "index.html",
-          "linhas": 1308
-        },
-        {
           "arquivo": "dashboard-alarme-os.js",
-          "linhas": 989
+          "linhas": 990
         },
         {
           "arquivo": "dashboard-alertas.js",
-          "linhas": 881
+          "linhas": 882
+        },
+        {
+          "arquivo": "index.html",
+          "linhas": 754
         },
         {
           "arquivo": "sw-alarme.js",
@@ -2225,19 +2191,27 @@
         },
         {
           "arquivo": "dashboard-ui.js",
-          "linhas": 424
+          "linhas": 425
+        },
+        {
+          "arquivo": "dashboard-alertas-panel.js",
+          "linhas": 412
         },
         {
           "arquivo": "dashboard-busca.js",
-          "linhas": 198
+          "linhas": 199
+        },
+        {
+          "arquivo": "dashboard-caixa.js",
+          "linhas": 140
         },
         {
           "arquivo": "dashboard-events.js",
           "linhas": 140
         },
         {
-          "arquivo": "dashboard-caixa.js",
-          "linhas": 139
+          "arquivo": "dashboard-backup.js",
+          "linhas": 122
         },
         {
           "arquivo": "dashboard-state.js",
@@ -2256,7 +2230,7 @@
           "linhas": 22
         }
       ],
-      "totalArquivos": 13,
+      "totalArquivos": 15,
       "menu": {
         "sidebarDashboard": false,
         "dock": false,
@@ -2317,10 +2291,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Registro diário da operação com backup no Google Drive.",
       "oculto": false,
-      "versao": "1.0.25",
+      "versao": "1.0.28",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 25,
+      "atualizadoEm": "2026-07-16",
+      "commits": 28,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2333,24 +2307,20 @@
         "diretas": [
           "diario_eventos"
         ],
-        "viaRepositorio": [
-          "acoes_semana",
-          "agenda",
-          "diario_eventos",
-          "diario_registros",
-          "tarefas_semana"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "cc-sync.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "gdrive-backup.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -2370,7 +2340,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 324
+          "linhas": 326
         },
         {
           "arquivo": "diario-gdrive.js",
@@ -2439,10 +2409,10 @@
       "descricao": "Módulo Em Breve.",
       "oculto": true,
       "motivoOculto": "Página genérica 'em construção', destino de links não implementados — não é uma feature própria.",
-      "versao": "1.0.12",
+      "versao": "1.0.14",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-03",
-      "commits": 12,
+      "atualizadoEm": "2026-07-16",
+      "commits": 14,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2455,7 +2425,9 @@
       },
       "dependencias": {
         "shared": [
-          "brand-header.js"
+          "brand-header.js",
+          "design-system.css",
+          "theme.js"
         ],
         "scripts": [],
         "repositorios": []
@@ -2463,7 +2435,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "index.html",
-          "linhas": 35
+          "linhas": 37
         }
       ],
       "totalArquivos": 1,
@@ -2527,10 +2499,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Controle de produtos em estoque, entradas, saídas e alertas de reposição.",
       "oculto": false,
-      "versao": "1.0.25",
+      "versao": "1.0.29",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 25,
+      "atualizadoEm": "2026-07-16",
+      "commits": 29,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2541,21 +2513,17 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "catalogo_config",
-          "catalogo_produtos",
-          "categorias_produtos",
-          "estoque_produtos",
-          "produtos"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -2576,7 +2544,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 146
+          "linhas": 144
         }
       ],
       "totalArquivos": 3,
@@ -2641,10 +2609,10 @@
       "descricao": "Módulo em desenvolvimento. Placeholder temporário.",
       "oculto": true,
       "motivoOculto": "Ainda é placeholder ('em desenvolvimento'), sem funcionalidade real — exibir um card clicável seria tela fictícia. Reexibir quando o módulo for implementado.",
-      "versao": "1.0.2",
+      "versao": "1.0.4",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 2,
+      "atualizadoEm": "2026-07-16",
+      "commits": 4,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2657,7 +2625,9 @@
       },
       "dependencias": {
         "shared": [
-          "brand-header.js"
+          "brand-header.js",
+          "design-system.css",
+          "theme.js"
         ],
         "scripts": [],
         "repositorios": []
@@ -2665,7 +2635,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "index.html",
-          "linhas": 28
+          "linhas": 30
         }
       ],
       "totalArquivos": 1,
@@ -2729,10 +2699,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Contas a pagar/receber, despesas fixas, categorias e fechamentos.",
       "oculto": false,
-      "versao": "1.0.34",
+      "versao": "1.0.38",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 34,
+      "atualizadoEm": "2026-07-16",
+      "commits": 38,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2755,10 +2725,13 @@
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2769,7 +2742,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "financeiro.js",
-          "linhas": 1132
+          "linhas": 1133
         },
         {
           "arquivo": "financeiro.css",
@@ -2777,7 +2750,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 333
+          "linhas": 335
         }
       ],
       "totalArquivos": 3,
@@ -2846,10 +2819,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Cadastro de fornecedores, histórico de compras e tendências.",
       "oculto": false,
-      "versao": "1.0.29",
+      "versao": "1.0.33",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 29,
+      "atualizadoEm": "2026-07-16",
+      "commits": 33,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2865,19 +2838,18 @@
           "fornecedor_tendencias",
           "fornecedores_cadastro"
         ],
-        "viaRepositorio": [
-          "estoque_produtos",
-          "fornecedor_compras",
-          "fornecedor_tendencias"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -2891,7 +2863,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "fornecedor.js",
-          "linhas": 406
+          "linhas": 407
         },
         {
           "arquivo": "fornecedor.css",
@@ -2899,7 +2871,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 254
+          "linhas": 256
         }
       ],
       "totalArquivos": 3,
@@ -2963,10 +2935,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Importação de dados externos (vendas, produtos, clientes, lançamentos).",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-10",
-      "commits": 15,
+      "atualizadoEm": "2026-07-16",
+      "commits": 19,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2988,10 +2960,13 @@
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "phone-utils.js"
+          "phone-utils.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -3002,7 +2977,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "importar.js",
-          "linhas": 411
+          "linhas": 412
         },
         {
           "arquivo": "importar.css",
@@ -3010,7 +2985,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 90
+          "linhas": 92
         }
       ],
       "totalArquivos": 3,
@@ -3080,10 +3055,10 @@
       "descricao": "Módulo Diagnóstico do Sistema.",
       "oculto": true,
       "motivoOculto": "Ferramenta interna de diagnóstico, excluída do deploy (deploy-pages.yml).",
-      "versao": "1.0.5",
+      "versao": "1.0.7",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-05",
-      "commits": 5,
+      "atualizadoEm": "2026-07-16",
+      "commits": 7,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -3096,24 +3071,15 @@
         ],
         "viaRepositorio": [
           "alarme_config",
-          "alertas_usuario",
-          "caixa_lancamentos",
-          "categorias_caixa",
-          "central_alertas_status",
           "config",
-          "historico_diario",
-          "historico_mensal",
-          "historico_semanal",
-          "metadata",
-          "os",
-          "pre_os",
-          "resumo_live",
-          "solicitacoes_diagnostico",
-          "vendas_importadas"
+          "metadata"
         ]
       },
       "dependencias": {
-        "shared": [],
+        "shared": [
+          "design-system.css",
+          "theme.js"
+        ],
         "scripts": [
           "firebase.js",
           "kernel.js"
@@ -3127,7 +3093,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "index.html",
-          "linhas": 412
+          "linhas": 414
         }
       ],
       "totalArquivos": 2,
@@ -3191,10 +3157,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Visão semanal pessoal de tarefas e eventos.",
       "oculto": false,
-      "versao": "1.0.16",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 16,
+      "atualizadoEm": "2026-07-16",
+      "commits": 19,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -3205,20 +3171,16 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "acoes_semana",
-          "agenda",
-          "diario_eventos",
-          "diario_registros",
-          "tarefas_semana"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
-          "permissoes.js"
+          "permissoes.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -3238,7 +3200,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 56
+          "linhas": 58
         }
       ],
       "totalArquivos": 3,
@@ -3302,12 +3264,12 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Abertura e acompanhamento de ordens de serviço, orçamentos e status de reparo.",
       "oculto": false,
-      "versao": "1.0.81",
+      "versao": "1.0.90",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 81,
+      "atualizadoEm": "2026-07-16",
+      "commits": 90,
       "status": "atencao",
-      "score": 80,
+      "score": 90,
       "rbac": {
         "protegido": true,
         "mecanismos": [
@@ -3322,29 +3284,40 @@
           "clientes",
           "config",
           "financeiro_receber",
-          "metadata",
           "os",
           "pre_os",
           "solicitacoes_diagnostico"
         ],
-        "viaRepositorio": []
+        "viaRepositorio": [
+          "alarme_config",
+          "config",
+          "metadata"
+        ]
       },
       "dependencias": {
         "shared": [
           "date-utils.js",
+          "design-system.css",
           "permissoes.js",
           "phone-utils.js",
-          "sanitize.js"
+          "sanitize.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
+          "firebase.js",
           "kernel.js"
         ],
-        "repositorios": []
+        "repositorios": [
+          "clientes.repository.js",
+          "os.repository.js",
+          "sistema.repository.js"
+        ]
       },
       "arquivosPrincipais": [
         {
           "arquivo": "os.js",
-          "linhas": 2760
+          "linhas": 2738
         },
         {
           "arquivo": "os.css",
@@ -3352,10 +3325,18 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 378
+          "linhas": 380
+        },
+        {
+          "arquivo": "os-photo-storage.js",
+          "linhas": 41
+        },
+        {
+          "arquivo": "os-ui-utils.js",
+          "linhas": 6
         }
       ],
-      "totalArquivos": 4,
+      "totalArquivos": 6,
       "menu": {
         "sidebarDashboard": true,
         "dock": false,
@@ -3381,7 +3362,7 @@
         },
         {
           "item": "usa camada Repository (ou não acessa Firestore direto)",
-          "ok": false
+          "ok": true
         },
         {
           "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
@@ -3408,10 +3389,6 @@
         {
           "tipo": "artefato-dev",
           "detalhe": "arquivos de desenvolvimento na pasta publicada: cell-City.code-workspace"
-        },
-        {
-          "tipo": "sem-repository",
-          "detalhe": "acessa Firestore direto (10 coleções) sem usar a camada CRM/repositories/"
         }
       ]
     },
@@ -3425,10 +3402,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Painel interno do Portal do Cliente (agendamentos, mensagens, avaliações). O index.html da mesma pasta é o portal público, sem login CRM.",
       "oculto": false,
-      "versao": "1.0.29",
+      "versao": "1.0.36",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-11",
-      "commits": 29,
+      "atualizadoEm": "2026-07-16",
+      "commits": 36,
       "status": "atencao",
       "score": 80,
       "rbac": {
@@ -3443,7 +3420,6 @@
           "avaliacoes",
           "config",
           "mensagens_portal",
-          "os",
           "portal_eventos",
           "solicitacoes_diagnostico"
         ],
@@ -3451,9 +3427,11 @@
       },
       "dependencias": {
         "shared": [
+          "design-system.css",
           "env-config.js",
           "permissoes.js",
-          "phone-utils.js"
+          "phone-utils.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -3464,7 +3442,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "portal.js",
-          "linhas": 2355
+          "linhas": 2364
         },
         {
           "arquivo": "portal.css",
@@ -3472,7 +3450,7 @@
         },
         {
           "arquivo": "admin.js",
-          "linhas": 1410
+          "linhas": 1411
         },
         {
           "arquivo": "admin.css",
@@ -3480,11 +3458,11 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 244
+          "linhas": 261
         },
         {
           "arquivo": "admin.html",
-          "linhas": 150
+          "linhas": 152
         }
       ],
       "totalArquivos": 8,
@@ -3543,7 +3521,7 @@
         },
         {
           "tipo": "sem-repository",
-          "detalhe": "acessa Firestore direto (7 coleções) sem usar a camada CRM/repositories/"
+          "detalhe": "acessa Firestore direto (6 coleções) sem usar a camada CRM/repositories/"
         }
       ]
     },
@@ -3557,10 +3535,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Conteúdo técnico de apoio: soluções, softwares, tutoriais (4 subpáginas estáticas).",
       "oculto": false,
-      "versao": "1.0.19",
+      "versao": "1.0.22",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 19,
+      "atualizadoEm": "2026-07-16",
+      "commits": 22,
       "status": "atencao",
       "score": 90,
       "rbac": {
@@ -3569,20 +3547,18 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "os",
-          "pre_os",
-          "solicitacoes_diagnostico"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
           "cc-sync.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "gdrive-backup.js",
-          "portal-sync.js"
+          "portal-sync.js",
+          "theme.js"
         ],
         "scripts": [],
         "repositorios": [
@@ -3596,7 +3572,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 195
+          "linhas": 197
         }
       ],
       "totalArquivos": 10,
@@ -3665,10 +3641,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Acompanhamento pós-entrega, mensagens e avaliações de clientes.",
       "oculto": false,
-      "versao": "1.0.25",
+      "versao": "1.0.30",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 25,
+      "atualizadoEm": "2026-07-16",
+      "commits": 30,
       "status": "atencao",
       "score": 90,
       "rbac": {
@@ -3678,29 +3654,20 @@
         ]
       },
       "colecoesFirestore": {
-        "diretas": [
-          "os",
-          "posvenda_mensagens"
-        ],
-        "viaRepositorio": [
-          "os",
-          "posvenda_contatos",
-          "posvenda_mensagens",
-          "posvenda_rastreamento",
-          "pre_os",
-          "solicitacoes_diagnostico"
-        ]
+        "diretas": [],
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "permissoes.js",
-          "sanitize.js"
+          "sanitize.js",
+          "theme.js"
         ],
         "scripts": [
-          "firebase.js",
           "kernel.js"
         ],
         "repositorios": [
@@ -3715,14 +3682,14 @@
         },
         {
           "arquivo": "posvenda.js",
-          "linhas": 1073
+          "linhas": 1070
         },
         {
           "arquivo": "index.html",
-          "linhas": 131
+          "linhas": 133
         }
       ],
-      "totalArquivos": 6,
+      "totalArquivos": 5,
       "menu": {
         "sidebarDashboard": true,
         "dock": false,
@@ -3774,7 +3741,7 @@
       "diagnosticos": [
         {
           "tipo": "artefato-dev",
-          "detalhe": "arquivos de desenvolvimento na pasta publicada: ATALHOS_TECLADO.md, RELATORIO_TESTES.md, posvenda-test.html"
+          "detalhe": "arquivos de desenvolvimento na pasta publicada: ATALHOS_TECLADO.md, RELATORIO_TESTES.md"
         }
       ]
     },
@@ -3788,10 +3755,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Relatórios consolidados de caixa e ordens de serviço.",
       "oculto": false,
-      "versao": "1.0.21",
+      "versao": "1.0.23",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-09",
-      "commits": 21,
+      "atualizadoEm": "2026-07-16",
+      "commits": 23,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -3802,21 +3769,17 @@
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": [
-          "caixa_lancamentos",
-          "categorias_caixa",
-          "os",
-          "pre_os",
-          "solicitacoes_diagnostico"
-        ]
+        "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "brand-header.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "favoritos.js",
-          "permissoes.js"
+          "permissoes.js",
+          "theme.js"
         ],
         "scripts": [
           "kernel.js"
@@ -3837,7 +3800,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 184
+          "linhas": 186
         }
       ],
       "totalArquivos": 3,
@@ -3892,6 +3855,199 @@
       "diagnosticos": []
     },
     {
+      "id": "saas-admin",
+      "pasta": "saas-admin",
+      "nome": "Admin SaaS",
+      "icone": "📄",
+      "url": "/CRM/pages/saas-admin/index.html",
+      "grupo": "Sem grupo",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Admin SaaS.",
+      "oculto": false,
+      "versao": "1.0.4",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-16",
+      "commits": 4,
+      "status": "atencao",
+      "score": 80,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "design-system.css",
+          "dock.css",
+          "theme.js"
+        ],
+        "scripts": [
+          "firebase.js",
+          "kernel.js"
+        ],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "index.html",
+          "linhas": 147
+        }
+      ],
+      "totalArquivos": 1,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": false
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": false
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-rbac",
+          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        }
+      ]
+    },
+    {
+      "id": "saas-onboarding",
+      "pasta": "saas-onboarding",
+      "nome": "Onboarding SaaS",
+      "icone": "📄",
+      "url": "/CRM/pages/saas-onboarding/index.html",
+      "grupo": "Sem grupo",
+      "categoria": "Sistema Web (CRM)",
+      "descricao": "Módulo Onboarding SaaS.",
+      "oculto": false,
+      "versao": "1.0.3",
+      "autor": "Cell City",
+      "atualizadoEm": "2026-07-16",
+      "commits": 3,
+      "status": "atencao",
+      "score": 80,
+      "rbac": {
+        "protegido": false,
+        "mecanismos": []
+      },
+      "colecoesFirestore": {
+        "diretas": [],
+        "viaRepositorio": []
+      },
+      "dependencias": {
+        "shared": [
+          "design-system.css",
+          "env-config.js",
+          "theme.js"
+        ],
+        "scripts": [],
+        "repositorios": []
+      },
+      "arquivosPrincipais": [
+        {
+          "arquivo": "index.html",
+          "linhas": 180
+        }
+      ],
+      "totalArquivos": 1,
+      "menu": {
+        "sidebarDashboard": false,
+        "dock": false,
+        "catalogoVisivel": true
+      },
+      "deployExcluido": false,
+      "checklist": [
+        {
+          "item": "index.html presente",
+          "ok": true
+        },
+        {
+          "item": "sem arquivos vazios (0 bytes)",
+          "ok": true
+        },
+        {
+          "item": "imports e referências resolvem",
+          "ok": true
+        },
+        {
+          "item": "gate de RBAC presente",
+          "ok": false
+        },
+        {
+          "item": "usa camada Repository (ou não acessa Firestore direto)",
+          "ok": true
+        },
+        {
+          "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
+          "ok": true
+        },
+        {
+          "item": "sem artefatos de dev na pasta publicada",
+          "ok": true
+        },
+        {
+          "item": "atualizado nos últimos 90 dias",
+          "ok": true
+        },
+        {
+          "item": "grupo funcional definido",
+          "ok": false
+        },
+        {
+          "item": "id do catálogo igual à pasta (ou alias documentado)",
+          "ok": true
+        }
+      ],
+      "diagnosticos": [
+        {
+          "tipo": "sem-rbac",
+          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        }
+      ]
+    },
+    {
       "id": "usuarios-permissoes",
       "pasta": "usuarios-permissoes",
       "nome": "Usuários e Permissões",
@@ -3901,10 +4057,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Gestão de usuários, perfis operacionais e permissões (RBAC).",
       "oculto": false,
-      "versao": "1.0.15",
+      "versao": "1.0.19",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-13",
-      "commits": 15,
+      "atualizadoEm": "2026-07-16",
+      "commits": 19,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -3926,10 +4082,13 @@
         "shared": [
           "brand-header.js",
           "date-utils.js",
+          "design-system.css",
           "dock.css",
           "dock.js",
           "env-config.js",
-          "sidebar.js"
+          "sidebar.js",
+          "tenant-query.js",
+          "theme.js"
         ],
         "scripts": [
           "firebase.js",
@@ -3940,7 +4099,7 @@
       "arquivosPrincipais": [
         {
           "arquivo": "usuarios-permissoes.js",
-          "linhas": 820
+          "linhas": 821
         },
         {
           "arquivo": "usuarios-permissoes.css",
@@ -3948,7 +4107,7 @@
         },
         {
           "arquivo": "index.html",
-          "linhas": 220
+          "linhas": 222
         },
         {
           "arquivo": "firebase-secondary.js",
