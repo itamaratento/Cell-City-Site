@@ -3,30 +3,27 @@
 set -uo pipefail
 
 _cc_v3_log() {
-  local level="$1"
-  local component="$2"
-  local message="$3"
-  local timestamp
-  timestamp=$(date +"%Y-%m-%dT%H:%M:%S%:z")
+  local level="$1" component="$2" message="$3"
   local log_file="${CC_V3_LOGS:-/dev/null}/health-engine.log"
-
-  local color=""
-  local reset="\033[0m"
+  local ts; ts=$(date '+%Y-%m-%dT%H:%M:%S%:z')
+  local color="" reset="\033[0m"
   case "$level" in
-    error|critical) color="\033[0;31m" ;;
-    warn)           color="\033[0;33m" ;;
-    info)           color="\033[0;32m" ;;
-    debug)          color="\033[0;36m" ;;
+    error|critical) color="\033[0;31m" ;; warn) color="\033[0;33m" ;;
+    info)           color="\033[0;32m" ;; debug) color="\033[0;36m" ;;
   esac
 
   if [[ -t 1 ]]; then
-    echo -e "${color}[${timestamp}] [${level}] [${component}] ${message}${reset}"
+    echo -e "${color}[${ts}] [${level}] [${component}] ${message}${reset}"
   else
-    echo "[${timestamp}] [${level}] [${component}] ${message}"
+    echo "[${ts}] [${level}] [${component}] ${message}"
   fi
 
   if [[ -d "$(dirname "$log_file" 2>/dev/null)" ]]; then
-    echo "[${timestamp}] [${level}] [${component}] ${message}" >> "$log_file"
+    echo "[${ts}] [${level}] [${component}] ${message}" >> "$log_file"
+  fi
+  # P2.5: quando logger.sh do V3 estiver disponível, log também centralizado
+  if declare -f _v3_log >/dev/null 2>&1; then
+    _v3_log "$level" "$component" "$message" 2>/dev/null || :
   fi
 }
 
