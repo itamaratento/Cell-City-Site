@@ -255,6 +255,19 @@
   </div>
 
   <script src="portal.js?v=2.6"></script>
+  <!-- P2.2 (2026-07-16): portal.js dividido por responsabilidade — os 8
+       arquivos abaixo estendem window.Portal via Object.assign(); ordem
+       não é significativa para a API (todo Object.assign roda antes do
+       AUTO-INIT de portal.js disparar em DOMContentLoaded), mas segue a
+       ordem de navegação da tela para facilitar leitura. -->
+  <script src="portal-auth.js?v=1"></script>
+  <script src="portal-painel.js?v=1"></script>
+  <script src="portal-os.js?v=1"></script>
+  <script src="portal-garantias.js?v=1"></script>
+  <script src="portal-avaliar.js?v=1"></script>
+  <script src="portal-mensagens.js?v=1"></script>
+  <script src="portal-contato.js?v=1"></script>
+  <script src="portal-agendamento.js?v=1"></script>
 <script src="../../shared/obs-expand.js?v=20260612-1"></script>
 </body>
 </html>

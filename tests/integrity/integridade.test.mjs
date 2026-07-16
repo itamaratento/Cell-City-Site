@@ -18,7 +18,7 @@
 // Exceções conhecidas/documentadas: known-issues.json ao lado deste arquivo.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +36,21 @@ function lsFiles(pattern) {
         .filter(f => existsSync(join(ROOT, f)));
 }
 function read(f) { return readFileSync(join(ROOT, f), 'utf8'); }
+
+// Portal do Cliente foi dividido em portal.js (núcleo) + arquivos-irmãos
+// portal-*.js (P2.2, 2026-07-16 — ver cabeçalho de portal.js). Os testes
+// estruturais abaixo continuam validando o COMPORTAMENTO, não o arquivo —
+// concatena o núcleo com todo irmão presente no diretório (filesystem, não
+// `git ls-files`, para funcionar mesmo antes do commit do split).
+function readPortal() {
+    const dir = join(ROOT, 'CRM/pages/portal-cliente');
+    const nucleo = readFileSync(join(dir, 'portal.js'), 'utf8');
+    const irmaos = readdirSync(dir)
+        .filter(f => /^portal-[a-z]+\.js$/.test(f))
+        .sort()
+        .map(f => readFileSync(join(dir, f), 'utf8'));
+    return [nucleo, ...irmaos].join('\n');
+}
 
 // Remove comentários antes de escanear código — senão exemplos de uso em
 // JSDoc/comentário (ex.: kernel.js mostra `import ... from '../../scripts/
@@ -165,7 +180,7 @@ test('garantia.html: campos públicos (clientName/phone/cpf/model/defect) escapa
 // do portal.js foi verificado manualmente por rastreamento de código
 // (reaproveita doLogin()/_autenticarComDigits() já testados em produção).
 test('portal.js: auto-login por ?tel= existe e roteia para os-detalhe', () => {
-    const src = read('CRM/pages/portal-cliente/portal.js');
+    const src = readPortal();
     assert.match(src, /_autenticarComDigits\(digits\)/, 'função de login reutilizável não pode ser removida');
     assert.match(src, /paramsAuto\.get\(['"]tel['"]\)/, '_boot() precisa ler ?tel= da URL (vem de os.js::abrirPortalCliente)');
     assert.match(src, /#\/os-detalhe\/\$\{osAuto\}/, 'auto-login precisa rotear direto pra OS quando ?os= vier junto');
@@ -193,7 +208,7 @@ test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.
 // que suma de novo silenciosamente (sem harness jsdom+Firebase pra
 // portal.js — mesma limitação já registrada acima).
 test('portal.js: link da Nota Fiscal (os.nfLink) exibido em renderOSDetalhe e renderGarantias', () => {
-    const src = read('CRM/pages/portal-cliente/portal.js');
+    const src = readPortal();
     const ocorrencias = [...src.matchAll(/o\.nfLink/g)];
     assert.ok(ocorrencias.length >= 2, `esperava pelo menos 2 usos de o.nfLink (detalhe da OS + lista de garantias), achou ${ocorrencias.length}`);
     assert.match(src, /Visualizar Nota Fiscal/);
@@ -206,7 +221,7 @@ test('portal.js: link da Nota Fiscal (os.nfLink) exibido em renderOSDetalhe e re
 // (sem harness jsdom para portal.js); a lógica foi verificada manualmente
 // por rastreamento de código linha a linha nos dois pontos afetados.
 test('portal.js: OS com orçamento recusado nunca conta como garantia (nem pendente nem ativa)', () => {
-    const src = read('CRM/pages/portal-cliente/portal.js');
+    const src = readPortal();
     assert.match(src, /_STATUS_SEM_GARANTIA:\s*\[['"]orcamento_recusado['"],\s*['"]devolvido_orcamento['"]\]/,
         '_STATUS_SEM_GARANTIA precisa cobrir os 2 status de recusa (oficial + legado)');
     assert.match(src, /_emGarantia\(os\)\s*{\s*if \(this\._STATUS_SEM_GARANTIA\.includes\(os\.status\)\) return false;/,
@@ -216,7 +231,7 @@ test('portal.js: OS com orçamento recusado nunca conta como garantia (nem pende
 });
 
 test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () => {
-    const src = read('CRM/pages/portal-cliente/portal.js');
+    const src = readPortal();
     assert.match(src, /if \(o\.nfLink && this\._emGarantia\(o\)\)/,
         'bloco de Nota Fiscal dentro de acoesDoc() precisa exigir _emGarantia(o), não só nfLink');
 });
@@ -227,7 +242,7 @@ test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () =
 // depender de `expiradas` (cliente só com garantias expiradas deve ver o
 // estado vazio, já que nenhuma delas aparece de qualquer forma).
 test('portal.js: seção de Garantias Expiradas não é renderizada ao cliente', () => {
-    const src = read('CRM/pages/portal-cliente/portal.js');
+    const src = readPortal();
     assert.doesNotMatch(src, /Garantias Expiradas \(\$\{expiradas\.length\}\)/,
         'o cabeçalho "Garantias Expiradas" não pode mais ser renderizado');
     assert.doesNotMatch(src, /expiradas\.slice\(0, 5\)\.forEach/,
