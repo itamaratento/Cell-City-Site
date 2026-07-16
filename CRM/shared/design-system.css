@@ -1,0 +1,692 @@
+/* ==========================================================================
+   CELL CITY CRM — DESIGN SYSTEM OFICIAL v1.0 (P2.4)
+   ==========================================================================
+   Fonte única de verdade para tokens visuais e componentes base.
+   Carregar SEMPRE antes do CSS da página:
+     <link rel="stylesheet" href="../../shared/design-system.css">
+
+   Regras:
+   - Tokens usam prefixo --cc-* (não colidem com variáveis legadas).
+   - Componentes usam prefixo .cc-* e são 100% opt-in.
+   - Tema padrão: dark (comportamento atual do CRM).
+     [data-theme="light"] ativa o claro; [data-theme="auto"] segue o SO.
+   - Este arquivo não estiliza elementos nus (body, h1, button…) para não
+     interferir nas páginas existentes. Exceções deliberadas: scrollbar,
+     ::selection, :focus-visible e prefers-reduced-motion (a11y/polish).
+   ========================================================================== */
+
+/* ==========================================================================
+   1. TOKENS DE MARCA (imutáveis entre temas)
+   ========================================================================== */
+:root {
+  /* Cores oficiais Cell City */
+  --cc-green:        #00c853;
+  --cc-green-light:  #00e676;
+  --cc-green-dark:   #009624;
+  --cc-gold:         #ffcc00;
+  --cc-gold-dark:    #ffb300;
+
+  /* Paleta funcional */
+  --cc-blue:         #3b82f6;
+  --cc-blue-light:   #60a5fa;
+  --cc-teal:         #00bcd4;
+  --cc-purple:       #8b5cf6;
+  --cc-orange:       #ff9800;
+  --cc-amber:        #f59e0b;
+  --cc-red:          #ef4444;
+  --cc-red-light:    #f87171;
+
+  /* Glows de acento (independem do tema) */
+  --cc-green-glow:        rgba(0, 200, 83, 0.25);
+  --cc-green-glow-strong: rgba(0, 200, 83, 0.45);
+  --cc-blue-glow:         rgba(33, 150, 243, 0.20);
+  --cc-red-glow:          rgba(239, 68, 68, 0.20);
+  --cc-orange-glow:       rgba(255, 152, 0, 0.20);
+  --cc-teal-glow:         rgba(0, 188, 212, 0.20);
+
+  /* Tipografia */
+  --cc-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                  system-ui, sans-serif;
+  --cc-font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Roboto Mono',
+                  monospace;
+
+  --cc-text-xs:   0.6875rem;  /* 11px */
+  --cc-text-sm:   0.75rem;    /* 12px */
+  --cc-text-base: 0.8125rem;  /* 13px */
+  --cc-text-md:   0.875rem;   /* 14px */
+  --cc-text-lg:   1rem;       /* 16px */
+  --cc-text-xl:   1.125rem;   /* 18px */
+  --cc-text-2xl:  1.375rem;   /* 22px */
+  --cc-text-3xl:  1.75rem;    /* 28px */
+
+  --cc-weight-normal:   400;
+  --cc-weight-medium:   500;
+  --cc-weight-semibold: 600;
+  --cc-weight-bold:     700;
+  --cc-weight-black:    800;
+
+  --cc-leading-tight:  1.25;
+  --cc-leading-normal: 1.5;
+
+  /* Espaçamento — escala de 4px */
+  --cc-space-1:  4px;
+  --cc-space-2:  8px;
+  --cc-space-3:  12px;
+  --cc-space-4:  16px;
+  --cc-space-5:  20px;
+  --cc-space-6:  24px;
+  --cc-space-8:  32px;
+  --cc-space-10: 40px;
+  --cc-space-12: 48px;
+  --cc-space-16: 64px;
+
+  /* Raios */
+  --cc-radius-xs:   6px;
+  --cc-radius-sm:   8px;
+  --cc-radius-md:   12px;
+  --cc-radius-lg:   16px;
+  --cc-radius-xl:   20px;
+  --cc-radius-pill: 999px;
+
+  /* Movimento */
+  --cc-ease:            cubic-bezier(0.2, 0.8, 0.2, 1);
+  --cc-ease-material:   cubic-bezier(0.4, 0, 0.2, 1);
+  --cc-duration-fast:   150ms;
+  --cc-duration-base:   250ms;
+  --cc-duration-slow:   400ms;
+  --cc-transition-fast:   var(--cc-duration-fast) var(--cc-ease-material);
+  --cc-transition-smooth: var(--cc-duration-base) var(--cc-ease-material);
+
+  /* Camadas (z-index) */
+  --cc-z-dropdown:       1000;
+  --cc-z-sticky:         1020;
+  --cc-z-sidebar:        1030;
+  --cc-z-modal-backdrop: 1040;
+  --cc-z-modal:          1050;
+  --cc-z-toast:          1080;
+  --cc-z-tooltip:        1090;
+
+  /* Breakpoints (referência p/ JS; media queries não leem var()) */
+  --cc-bp-mobile:    480px;
+  --cc-bp-tablet:    768px;
+  --cc-bp-notebook:  1024px;
+  --cc-bp-desktop:   1440px;
+  --cc-bp-ultrawide: 1920px;
+}
+
+/* ==========================================================================
+   2. TEMA ESCURO (padrão do CRM)
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  --cc-bg:          #0a0b0d;
+  --cc-bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #0a0b0d 60%, #000 100%);
+  --cc-surface:     #121418;
+  --cc-surface-2:   #1a1d23;
+  --cc-surface-3:   #22262e;
+  --cc-glass:       rgba(20, 22, 24, 0.72);
+  --cc-glass-2:     rgba(28, 31, 36, 0.85);
+
+  --cc-border:        rgba(255, 255, 255, 0.08);
+  --cc-border-medium: rgba(255, 255, 255, 0.12);
+  --cc-border-strong: rgba(255, 255, 255, 0.16);
+  --cc-border-focus:  rgba(0, 200, 83, 0.50);
+
+  --cc-text:       #f5f7fa;
+  --cc-text-2:     #a1a8b3;
+  --cc-text-3:     #6b7280;
+  --cc-text-muted: #4b5563;
+  --cc-text-inverse: #0a0b0d;
+
+  --cc-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.40);
+  --cc-shadow-md: 0 8px 24px rgba(0, 0, 0, 0.50);
+  --cc-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+  --cc-glow-green: 0 0 0 1px rgba(0, 200, 83, 0.25), 0 4px 20px rgba(0, 200, 83, 0.15);
+  --cc-glow-hover: 0 8px 32px rgba(0, 0, 0, 0.40), 0 0 0 1px rgba(255, 255, 255, 0.08);
+
+  --cc-scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --cc-scrollbar-thumb-hover: rgba(255, 255, 255, 0.24);
+  --cc-backdrop: rgba(0, 0, 0, 0.65);
+}
+
+/* ==========================================================================
+   3. TEMA CLARO — [data-theme="light"] no <html>
+   ========================================================================== */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --cc-bg:          #f2f4f7;
+  --cc-bg-gradient: radial-gradient(ellipse at top, #f7faf8 0%, #f2f4f7 60%, #e8ebef 100%);
+  --cc-surface:     #ffffff;
+  --cc-surface-2:   #f7f8fa;
+  --cc-surface-3:   #eef0f3;
+  --cc-glass:       rgba(255, 255, 255, 0.82);
+  --cc-glass-2:     rgba(247, 248, 250, 0.92);
+
+  --cc-border:        rgba(15, 23, 42, 0.10);
+  --cc-border-medium: rgba(15, 23, 42, 0.16);
+  --cc-border-strong: rgba(15, 23, 42, 0.24);
+  --cc-border-focus:  rgba(0, 150, 36, 0.55);
+
+  --cc-text:       #111827;
+  --cc-text-2:     #4b5563;
+  --cc-text-3:     #6b7280;
+  --cc-text-muted: #9ca3af;
+  --cc-text-inverse: #ffffff;
+
+  --cc-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+  --cc-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --cc-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.16);
+  --cc-glow-green: 0 0 0 1px rgba(0, 150, 36, 0.30), 0 4px 20px rgba(0, 150, 36, 0.12);
+  --cc-glow-hover: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06);
+
+  --cc-scrollbar-thumb: rgba(15, 23, 42, 0.20);
+  --cc-scrollbar-thumb-hover: rgba(15, 23, 42, 0.35);
+  --cc-backdrop: rgba(15, 23, 42, 0.45);
+}
+
+/* ==========================================================================
+   4. TEMA AUTOMÁTICO — [data-theme="auto"] segue o sistema operacional
+   ========================================================================== */
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    color-scheme: light;
+
+    --cc-bg:          #f2f4f7;
+    --cc-bg-gradient: radial-gradient(ellipse at top, #f7faf8 0%, #f2f4f7 60%, #e8ebef 100%);
+    --cc-surface:     #ffffff;
+    --cc-surface-2:   #f7f8fa;
+    --cc-surface-3:   #eef0f3;
+    --cc-glass:       rgba(255, 255, 255, 0.82);
+    --cc-glass-2:     rgba(247, 248, 250, 0.92);
+
+    --cc-border:        rgba(15, 23, 42, 0.10);
+    --cc-border-medium: rgba(15, 23, 42, 0.16);
+    --cc-border-strong: rgba(15, 23, 42, 0.24);
+    --cc-border-focus:  rgba(0, 150, 36, 0.55);
+
+    --cc-text:       #111827;
+    --cc-text-2:     #4b5563;
+    --cc-text-3:     #6b7280;
+    --cc-text-muted: #9ca3af;
+    --cc-text-inverse: #ffffff;
+
+    --cc-shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.08);
+    --cc-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.12);
+    --cc-shadow-lg: 0 16px 48px rgba(15, 23, 42, 0.16);
+    --cc-glow-green: 0 0 0 1px rgba(0, 150, 36, 0.30), 0 4px 20px rgba(0, 150, 36, 0.12);
+    --cc-glow-hover: 0 8px 32px rgba(15, 23, 42, 0.12), 0 0 0 1px rgba(15, 23, 42, 0.06);
+
+    --cc-scrollbar-thumb: rgba(15, 23, 42, 0.20);
+    --cc-scrollbar-thumb-hover: rgba(15, 23, 42, 0.35);
+    --cc-backdrop: rgba(15, 23, 42, 0.45);
+  }
+}
+
+/* ==========================================================================
+   5. POLISH GLOBAL (únicas regras que tocam elementos nus)
+   ========================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cc-scrollbar-thumb) transparent;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--cc-scrollbar-thumb);
+  border-radius: var(--cc-radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--cc-scrollbar-thumb-hover); }
+
+::selection { background: var(--cc-green-glow-strong); }
+
+:focus-visible {
+  outline: 2px solid var(--cc-green);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ==========================================================================
+   6. UTILITÁRIOS
+   ========================================================================== */
+.cc-sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.cc-scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cc-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-mono { font-family: var(--cc-font-mono); }
+
+.cc-container {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: var(--cc-space-4);
+}
+
+@media (min-width: 1920px) {
+  .cc-container { max-width: 1720px; }
+}
+
+.cc-hide-mobile  { }
+.cc-only-mobile  { display: none; }
+@media (max-width: 768px) {
+  .cc-hide-mobile { display: none !important; }
+  .cc-only-mobile { display: initial; }
+}
+
+/* ==========================================================================
+   7. COMPONENTES BASE (opt-in, prefixo .cc-)
+   ========================================================================== */
+
+/* --- Botões ------------------------------------------------------------ */
+.cc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cc-space-2);
+  padding: var(--cc-space-2) var(--cc-space-4);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-surface-2);
+  color: var(--cc-text);
+  font-family: var(--cc-font-sans);
+  font-size: var(--cc-text-md);
+  font-weight: var(--cc-weight-semibold);
+  line-height: var(--cc-leading-tight);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background var(--cc-transition-fast),
+              border-color var(--cc-transition-fast),
+              box-shadow var(--cc-transition-fast),
+              transform var(--cc-transition-fast);
+}
+.cc-btn:hover { background: var(--cc-surface-3); border-color: var(--cc-border-strong); }
+.cc-btn:active { transform: translateY(1px); }
+.cc-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.cc-btn--primary {
+  background: var(--cc-green);
+  border-color: var(--cc-green);
+  color: var(--cc-text-inverse);
+}
+.cc-btn--primary:hover {
+  background: var(--cc-green-light);
+  border-color: var(--cc-green-light);
+  box-shadow: var(--cc-glow-green);
+}
+
+.cc-btn--ghost { background: transparent; border-color: transparent; color: var(--cc-text-2); }
+.cc-btn--ghost:hover { background: var(--cc-surface-2); color: var(--cc-text); }
+
+.cc-btn--danger {
+  background: transparent;
+  border-color: var(--cc-red);
+  color: var(--cc-red);
+}
+.cc-btn--danger:hover { background: var(--cc-red); color: #fff; }
+
+.cc-btn--sm { padding: var(--cc-space-1) var(--cc-space-3); font-size: var(--cc-text-sm); }
+.cc-btn--lg { padding: var(--cc-space-3) var(--cc-space-6); font-size: var(--cc-text-lg); }
+.cc-btn--block { width: 100%; }
+
+/* --- Campos de formulário ---------------------------------------------- */
+.cc-field { display: flex; flex-direction: column; gap: var(--cc-space-1); }
+
+.cc-label {
+  font-size: var(--cc-text-sm);
+  font-weight: var(--cc-weight-semibold);
+  color: var(--cc-text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cc-input, .cc-select, .cc-textarea {
+  width: 100%;
+  padding: var(--cc-space-2) var(--cc-space-3);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-surface);
+  color: var(--cc-text);
+  font-family: var(--cc-font-sans);
+  font-size: var(--cc-text-md);
+  line-height: var(--cc-leading-normal);
+  transition: border-color var(--cc-transition-fast),
+              box-shadow var(--cc-transition-fast);
+}
+.cc-input::placeholder, .cc-textarea::placeholder { color: var(--cc-text-3); }
+.cc-input:focus, .cc-select:focus, .cc-textarea:focus {
+  outline: none;
+  border-color: var(--cc-border-focus);
+  box-shadow: 0 0 0 3px var(--cc-green-glow);
+}
+.cc-input:disabled, .cc-select:disabled, .cc-textarea:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+.cc-textarea { resize: vertical; min-height: 80px; }
+
+/* --- Cards -------------------------------------------------------------- */
+.cc-card {
+  background: var(--cc-surface);
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  box-shadow: var(--cc-shadow-sm);
+}
+.cc-card--elevated { background: var(--cc-surface-2); box-shadow: var(--cc-shadow-md); }
+.cc-card--glass { background: var(--cc-glass); backdrop-filter: blur(12px); }
+.cc-card--interactive {
+  cursor: pointer;
+  transition: border-color var(--cc-transition-fast),
+              box-shadow var(--cc-transition-smooth),
+              transform var(--cc-transition-smooth);
+}
+.cc-card--interactive:hover {
+  border-color: var(--cc-border-strong);
+  box-shadow: var(--cc-glow-hover);
+  transform: translateY(-2px);
+}
+
+.cc-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cc-space-3);
+  padding: var(--cc-space-4);
+  border-bottom: 1px solid var(--cc-border);
+}
+.cc-card__title {
+  font-size: var(--cc-text-lg);
+  font-weight: var(--cc-weight-bold);
+  color: var(--cc-text);
+}
+.cc-card__body { padding: var(--cc-space-4); }
+.cc-card__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--cc-space-2);
+  padding: var(--cc-space-4);
+  border-top: 1px solid var(--cc-border);
+}
+
+/* --- Tabelas ------------------------------------------------------------ */
+.cc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--cc-border);
+  border-radius: var(--cc-radius-md);
+  background: var(--cc-surface);
+}
+.cc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--cc-text-md);
+}
+.cc-table th {
+  padding: var(--cc-space-3) var(--cc-space-4);
+  text-align: left;
+  font-size: var(--cc-text-sm);
+  font-weight: var(--cc-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cc-text-3);
+  border-bottom: 1px solid var(--cc-border-medium);
+  white-space: nowrap;
+}
+.cc-table td {
+  padding: var(--cc-space-3) var(--cc-space-4);
+  color: var(--cc-text-2);
+  border-bottom: 1px solid var(--cc-border);
+}
+.cc-table tbody tr:last-child td { border-bottom: none; }
+.cc-table tbody tr { transition: background var(--cc-transition-fast); }
+.cc-table tbody tr:hover { background: var(--cc-surface-2); }
+
+/* --- Modais ------------------------------------------------------------- */
+.cc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--cc-z-modal-backdrop);
+  background: var(--cc-backdrop);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cc-space-4);
+}
+.cc-modal {
+  z-index: var(--cc-z-modal);
+  width: 100%;
+  max-width: 560px;
+  max-height: min(85vh, 720px);
+  display: flex;
+  flex-direction: column;
+  background: var(--cc-surface-2);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-lg);
+  box-shadow: var(--cc-shadow-lg);
+  overflow: hidden;
+  animation: cc-modal-in var(--cc-duration-base) var(--cc-ease);
+}
+.cc-modal--sm { max-width: 400px; }
+.cc-modal--lg { max-width: 800px; }
+.cc-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cc-space-3);
+  padding: var(--cc-space-4) var(--cc-space-5);
+  border-bottom: 1px solid var(--cc-border);
+}
+.cc-modal__title { font-size: var(--cc-text-xl); font-weight: var(--cc-weight-bold); }
+.cc-modal__body { padding: var(--cc-space-5); overflow-y: auto; }
+.cc-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--cc-space-2);
+  padding: var(--cc-space-4) var(--cc-space-5);
+  border-top: 1px solid var(--cc-border);
+}
+
+@keyframes cc-modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Dropdown ----------------------------------------------------------- */
+.cc-dropdown {
+  position: absolute;
+  z-index: var(--cc-z-dropdown);
+  min-width: 180px;
+  padding: var(--cc-space-1);
+  background: var(--cc-surface-2);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-md);
+  box-shadow: var(--cc-shadow-md);
+}
+.cc-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: var(--cc-space-2);
+  width: 100%;
+  padding: var(--cc-space-2) var(--cc-space-3);
+  border: none;
+  border-radius: var(--cc-radius-xs);
+  background: transparent;
+  color: var(--cc-text-2);
+  font-size: var(--cc-text-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--cc-transition-fast), color var(--cc-transition-fast);
+}
+.cc-dropdown__item:hover { background: var(--cc-surface-3); color: var(--cc-text); }
+
+/* --- Badges e Status ----------------------------------------------------- */
+.cc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cc-space-1);
+  padding: 2px var(--cc-space-2);
+  border-radius: var(--cc-radius-pill);
+  font-size: var(--cc-text-xs);
+  font-weight: var(--cc-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+.cc-badge--success { background: var(--cc-green-glow);  color: var(--cc-green-light); border-color: var(--cc-green-glow-strong); }
+.cc-badge--warning { background: var(--cc-orange-glow); color: var(--cc-orange);      border-color: var(--cc-orange-glow); }
+.cc-badge--danger  { background: var(--cc-red-glow);    color: var(--cc-red-light);   border-color: var(--cc-red-glow); }
+.cc-badge--info    { background: var(--cc-blue-glow);   color: var(--cc-blue-light);  border-color: var(--cc-blue-glow); }
+.cc-badge--neutral { background: var(--cc-surface-3);   color: var(--cc-text-2);      border-color: var(--cc-border-medium); }
+
+[data-theme="light"] .cc-badge--success { color: var(--cc-green-dark); }
+[data-theme="light"] .cc-badge--danger  { color: #b91c1c; }
+[data-theme="light"] .cc-badge--info    { color: #1d4ed8; }
+
+.cc-status-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--cc-text-3);
+  vertical-align: middle;
+}
+.cc-status-dot--online  { background: var(--cc-green);  box-shadow: 0 0 6px var(--cc-green-glow-strong); }
+.cc-status-dot--warning { background: var(--cc-amber); }
+.cc-status-dot--offline { background: var(--cc-red); }
+
+/* --- Alertas ------------------------------------------------------------- */
+.cc-alert {
+  display: flex;
+  gap: var(--cc-space-3);
+  padding: var(--cc-space-3) var(--cc-space-4);
+  border: 1px solid var(--cc-border);
+  border-left: 3px solid var(--cc-text-3);
+  border-radius: var(--cc-radius-sm);
+  background: var(--cc-surface-2);
+  color: var(--cc-text-2);
+  font-size: var(--cc-text-md);
+  line-height: var(--cc-leading-normal);
+}
+.cc-alert--success { border-left-color: var(--cc-green);  background: rgba(0, 200, 83, 0.08); }
+.cc-alert--warning { border-left-color: var(--cc-orange); background: rgba(255, 152, 0, 0.08); }
+.cc-alert--danger  { border-left-color: var(--cc-red);    background: rgba(239, 68, 68, 0.08); }
+.cc-alert--info    { border-left-color: var(--cc-blue);   background: rgba(59, 130, 246, 0.08); }
+
+/* --- Toasts -------------------------------------------------------------- */
+.cc-toast-region {
+  position: fixed;
+  bottom: var(--cc-space-6);
+  right: var(--cc-space-6);
+  z-index: var(--cc-z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--cc-space-2);
+  max-width: min(360px, calc(100vw - var(--cc-space-8)));
+}
+.cc-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--cc-space-3);
+  padding: var(--cc-space-3) var(--cc-space-4);
+  background: var(--cc-surface-2);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-md);
+  box-shadow: var(--cc-shadow-md);
+  color: var(--cc-text);
+  font-size: var(--cc-text-md);
+  animation: cc-toast-in var(--cc-duration-base) var(--cc-ease);
+}
+.cc-toast--success { border-left: 3px solid var(--cc-green); }
+.cc-toast--danger  { border-left: 3px solid var(--cc-red); }
+.cc-toast--warning { border-left: 3px solid var(--cc-orange); }
+
+@keyframes cc-toast-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- Tooltips (via data-cc-tip) ------------------------------------------ */
+[data-cc-tip] { position: relative; }
+[data-cc-tip]::after {
+  content: attr(data-cc-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(2px);
+  z-index: var(--cc-z-tooltip);
+  padding: var(--cc-space-1) var(--cc-space-2);
+  background: var(--cc-surface-3);
+  border: 1px solid var(--cc-border-medium);
+  border-radius: var(--cc-radius-xs);
+  box-shadow: var(--cc-shadow-sm);
+  color: var(--cc-text);
+  font-size: var(--cc-text-xs);
+  font-weight: var(--cc-weight-medium);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--cc-transition-fast), transform var(--cc-transition-fast);
+}
+[data-cc-tip]:hover::after,
+[data-cc-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* --- Skeleton / loading --------------------------------------------------- */
+.cc-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--cc-surface-2);
+  border-radius: var(--cc-radius-sm);
+}
+.cc-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, var(--cc-border), transparent);
+  animation: cc-skeleton-sweep 1.4s infinite;
+}
+@keyframes cc-skeleton-sweep {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* --- Divider --------------------------------------------------------------- */
+.cc-divider {
+  border: none;
+  border-top: 1px solid var(--cc-border);
+  margin: var(--cc-space-4) 0;
+}
+
+/* ==========================================================================
+   8. RESPONSIVIDADE — grades utilitárias
+   ========================================================================== */
+.cc-grid {
+  display: grid;
+  gap: var(--cc-space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+.cc-grid--dense { grid-template-columns: repeat(auto-fill, minmax(min(180px, 100%), 1fr)); }
+.cc-grid--wide  { grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); }
+
+@media (max-width: 480px) {
+  .cc-modal { max-width: 100%; max-height: 92vh; border-radius: var(--cc-radius-md); }
+  .cc-modal__body, .cc-modal__header, .cc-modal__footer {
+    padding-inline: var(--cc-space-4);
+  }
+  .cc-toast-region { right: var(--cc-space-3); bottom: var(--cc-space-3); left: var(--cc-space-3); }
+}
