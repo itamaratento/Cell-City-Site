@@ -174,4 +174,36 @@ console — ver GUIA_MANUTENCAO).
 
 ---
 
-*Última atualização: 2026-07-13 (Fase 15) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção).*
+## ✅ SPRINT 1 (KERNEL SAAS) — FASE 1.3 (2026-07-16) — CONSOLIDAÇÃO DO KERNEL
+
+Escopo travado, por instrução explícita: exclusivamente
+`CRM/scripts/kernel.js` como único ponto oficial de inicialização — sem
+regra de negócio, Firestore Rules, Cloud Functions, telas ou fluxos
+funcionais. Relatório completo: `plans/RELATORIO_TECNICO_KERNEL_FASE_1_3.md`
+· Checklist: `plans/CHECKLIST_KERNEL_FASE_1_3.md` · Documentação de
+arquitetura: `CRM/scripts/KERNEL.md` · Registro em `CRM/TECHDOC.md` §36.
+
+- Confirmado (análise): Kernel já era o único boot real dos 32 módulos
+  operacionais — nenhuma duplicação de inicialização a corrigir dentro
+  dele. As únicas superfícies de autenticação fora do Kernel
+  (`shared/session.js`, `firebase-secondary.js`, Portal do Cliente) são
+  decisões deliberadas, documentadas formalmente (não são dívida técnica
+  do Kernel).
+- Removido código morto confirmado (zero consumidores em todo o
+  repositório): `getEmail()` e `AUTH_FLAG`.
+- Nova suíte de testes dedicada (`tests/kernel/`, 24/24 ✅), somada ao
+  passo de CI em `.github/workflows/tests.yml`.
+- Reexecutado sem regressão: RBAC 164/166 (2 falhas pré-existentes,
+  confirmadas idênticas em `main`, não relacionadas ao Kernel),
+  Integridade 13/14 (1 falha por ausência do binário `rsync` no ambiente
+  desta sessão) e Control Center 91/94 (3 falhas por estado de
+  branch/git do ambiente desta sessão) — nenhuma delas causada por esta
+  Fase.
+- Fora do escopo desta Fase, registrado como pendência futura: chave de
+  gate `'cc_kernel_v1'` duplicada como literal em ~34 telas (exigiria
+  editar múltiplas telas simultaneamente, proibido pela regra "um módulo
+  por vez" desta Sprint).
+
+---
+
+*Última atualização: 2026-07-13 (Fase 15) — V2 certificada, Fundação V3 homologada; pendências externas: SA keys em disco (🔴 monitorar), deploy de Rules (verificar estado em produção). Fase 1.3 do Kernel (2026-07-16) registrada acima, sem alterar o restante deste arquivo — realinhamento completo de `PROXIMA_ETAPA.md` ao estado real pós-Fase-15 permanece pendente e fora do escopo desta Sprint.*
