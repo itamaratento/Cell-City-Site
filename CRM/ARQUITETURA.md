@@ -67,7 +67,7 @@ outra existe no client):
 | `pages/catalogo/public/catalogo-publico.js` | nenhuma | catálogo público, zero dado sensível |
 | `garantia.html` | nenhuma | consulta pública de OS via `consultarOSPublica` (Cloud Function) |
 | `pages/saas-onboarding/index.html` | nenhuma | cadastro de empresa via `saasOnboardingCriarEmpresa` (Cloud Function) |
-| `pages/portal-cliente/index.html` + `portal.js` | **anônima própria** (`signInAnonymously` + `onAuthStateChanged` próprio, ver inventário completo abaixo) | cliente final identificado por telefone, não por conta de equipe; todas as 13 operações passam por `PortalFunctions.*` (Cloud Functions) |
+| `pages/portal-cliente/index.html` + `portal.js` (núcleo) + 8 arquivos-irmãos *(P2.2, 2026-07-16 — `portal-auth.js`, `portal-painel.js`, `portal-os.js`, `portal-garantias.js`, `portal-avaliar.js`, `portal-mensagens.js`, `portal-contato.js`, `portal-agendamento.js`, cada um `Object.assign(window.Portal, {...})`)* | **anônima própria** (`signInAnonymously` + `onAuthStateChanged` próprio, ver inventário completo abaixo) | cliente final identificado por telefone, não por conta de equipe; todas as 13 operações passam por `PortalFunctions.*` (Cloud Functions) |
 
 O gate inline (`cc_kernel_v1`) e o kernel real (`initModulo()`) são
 exclusivos do fluxo de equipe — nunca usar em página pública, e nunca
@@ -145,7 +145,7 @@ Cliente (§2.1, §6 — inventário completo em §2.1).
 | `pages/central-informacoes/informacoes.js` | storage direto da CDN — dívida: usar `getFirebaseStorage()` |
 | `garantia.html` *(Fase 1.3)* | `initializeApp` próprio, página pública sem auth (§2.1) |
 | `pages/saas-onboarding/index.html` *(Fase 1.3)* | `initializeApp` próprio, cadastro público sem auth (§2.1) |
-| `pages/portal-cliente/index.html` *(Fase 1.3)* | `initializeApp` próprio + `onAuthStateChanged` próprio (auth anônima do cliente, bounded context isolado — inventário completo em §2.1); `portal.js` (clássico, sem import) consome via `window.*` |
+| `pages/portal-cliente/index.html` *(Fase 1.3)* | `initializeApp` próprio + `onAuthStateChanged` próprio (auth anônima do cliente, bounded context isolado — inventário completo em §2.1); `portal.js` (clássico, sem import) consome via `window.*`. Dividido em núcleo + 8 arquivos-irmãos clássicos *(P2.2, 2026-07-16)* — todos carregados via `<script src>` sequencial em `index.html`, estendem `window.Portal` via `Object.assign`; ver §2.1 |
 | `pages/kernel-test/index.html` *(Fase 1.3)* | diagnóstico do kernel: `import()` dinâmico de `signOut` direto da CDN para encerrar sessão sem o redirect de `logout()` — não é um novo listener nem uma nova app |
 
 Adoção do kernel/Repository por módulo (métrica do auditor) é calculada
