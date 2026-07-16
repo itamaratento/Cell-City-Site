@@ -2032,3 +2032,19 @@ Reset externo no checkout compartilhado (fenômeno recorrente, ver §"concorrên
 - 🟢 `CRM/firestore.rules.secure` sem referência (arquivo morto candidato — Rules são audit-only neste papel).
 - 🟢 `toast()` duplicado em 14 módulos (dívida técnica de refatoração futura).
 - 🟢 Camada `CRM/services/` vazia (só README) — declarada na arquitetura, sem implementações.
+
+## §36 — Design System Oficial (P2.4, 2026-07-16)
+
+Padronização total do front-end. Fonte única de tokens visuais:
+`CRM/shared/design-system.css` (tokens `--cc-*`, temas dark/light/auto,
+componentes opt-in `.cc-*`) + `CRM/shared/theme.js` (API `CCTheme`, sem
+flash). Integrado nas 51 páginas (DS antes do CSS local, que mantém
+precedência); SW pré-cacheia ambos.
+
+- Guia oficial: `CRM/DESIGN_SYSTEM.md` (convenções para código novo — §6)
+- Relatório da sprint: `plans/P2.4_RELATORIO_PADRONIZACAO_FRONTEND.md`
+- Verificação: `npm run verificar-design-system` (5 checagens + métricas)
+- Estado: 79,8% das declarações `:root` de página resolvem em tokens;
+  0 hex de marca fora do DS; zoom livre em todas as páginas (WCAG 1.4.4)
+- Regra para código novo: cor/espaçamento/raio = token; `!important`
+  proibido; inline style só para valor dinâmico de JS.
