@@ -20,17 +20,10 @@
      ]);
    ============================================================ */
 
-import { STORAGE_KEYS } from './app-config.js';
 import { db, doc, setDoc, onSnapshot, serverTimestamp } from '../scripts/firebase.js';
 import { initModulo } from '../scripts/kernel.js';
 
 let _uid = null;
-
-/** Chaves padrão do Portal Técnico (localStorage ↔ Firestore). */
-export const PORTAL_SYNC_KEYS = {
-  tutoriais: STORAGE_KEYS.PT_TUTORIAIS,
-  favoritos: STORAGE_KEYS.PT_FAVORITOS,
-};
 
 export function syncPortalKeys(keys) {
   const watched = new Map();

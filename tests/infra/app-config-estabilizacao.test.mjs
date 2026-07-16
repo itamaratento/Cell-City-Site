@@ -107,10 +107,36 @@ test('shared ESM: sem literais cc_* soltos fora de app-config (exceto clássicos
   assert.deepEqual(violacoes, []);
 });
 
-test('portal-sync: PORTAL_SYNC_KEYS alinhado a STORAGE_KEYS', () => {
+test('portal-sync: sem export morto (PORTAL_SYNC_KEYS removido na P2.2-D — zero consumidores)', () => {
   const src = read('CRM/shared/portal-sync.js');
-  assert.match(src, /tutoriais:\s*STORAGE_KEYS\.PT_TUTORIAIS/);
-  assert.match(src, /favoritos:\s*STORAGE_KEYS\.PT_FAVORITOS/);
+  assert.doesNotMatch(src, /PORTAL_SYNC_KEYS/,
+    'export sem consumidores (portal-tecnico usa literais próprios) — não reintroduzir sem um import real');
+  assert.doesNotMatch(src, /import\s+\{[^}]*STORAGE_KEYS[^}]*\}\s+from\s+['"]\.\/app-config\.js['"]/,
+    'import de STORAGE_KEYS ficaria morto — a função syncPortalKeys recebe as chaves via parâmetro');
+});
+
+test('portal-tecnico: toda chave cc_pt_* usada nas páginas está registrada em STORAGE_KEYS', () => {
+  const cfg = read('CRM/shared/app-config.js');
+  const registradas = new Set([...cfg.matchAll(/PT_[A-Z_]+:\s*'(cc_pt_[a-z_]+)'/g)].map(m => m[1]));
+  const usadas = new Set();
+  for (const html of readdirSync(join(ROOT, 'CRM/pages/portal-tecnico'), { recursive: true })
+    .filter(f => f.endsWith('.html'))) {
+    const src = read(`CRM/pages/portal-tecnico/${html}`);
+    for (const m of src.matchAll(/['"](cc_pt_[a-z_]+)['"]/g)) usadas.add(m[1]);
+  }
+  const semRegistro = [...usadas].filter(k => !registradas.has(k));
+  assert.deepEqual(semRegistro, [],
+    `chaves cc_pt_* usadas nas páginas sem entrada correspondente em STORAGE_KEYS: ${semRegistro.join(', ')}`);
+});
+
+test('app-config: URLS.ORIGEM_DEV é fonte única (brand-header consome com fallback)', () => {
+  const cfg = read('CRM/shared/app-config.js');
+  assert.match(cfg, /ORIGEM_DEV:\s*'https:\/\/www\.cellcityinformatica\.com\.br\/dev'/);
+  const bh = read('CRM/shared/brand-header.js');
+  assert.match(bh, /_urls\.ORIGEM_PROD \|\| MAIN_ORIGIN/);
+  assert.match(bh, /_urls\.ORIGEM_DEV \|\| DEV_ORIGIN/);
+  assert.match(bh, /_cfg\.ENV\s*\)\s*return _cfg\.ENV\.isProd/,
+    'detectEnv deve preferir CC_CONFIG.ENV quando disponível (mesmo padrão de dashboardHref)');
 });
 
 test('cc-sync: coleções via COLECOES de app-config', () => {

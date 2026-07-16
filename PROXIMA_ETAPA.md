@@ -179,17 +179,20 @@ console — ver GUIA_MANUTENCAO).
 | Fase | Commit | Status |
 |------|--------|--------|
 | P2.2-B — Padronização shared | `1ff6f1e` | ✅ Concluída |
-| P2.2-C — Estabilização + testes | (este commit) | ✅ Concluída |
-| P2.2-A — Migração de páginas | diff local unstaged | ⏳ Outra frente |
+| P2.2-C — Estabilização + testes | `2e2890b` | ✅ Concluída |
+| P2.2-D — Consolidação final | (este commit) | ✅ Concluída |
+| P2.2-A — Migração de páginas | diff local unstaged (outra frente) | ⏳ Em andamento |
 
-**Validação permanente:** `npm run auditar-arquitetura` (6/6) · `npm run validar-infra-app-config` (10/10) · `node --test tests/integrity/integridade.test.mjs` (14/14).
+**Validação permanente:** `npm run auditar-arquitetura` (6/6) · `npm run validar-infra-app-config` (12/12) · `node --test tests/integrity/integridade.test.mjs` (9/14 — 5 falhas 100% em `portal.js`, divisão em andamento por outra frente, não relacionadas) · RBAC completo via `node --import tests/rbac/register-loader.mjs --test tests/rbac/*.test.mjs` (173/175 — 2 pré-existentes em `financeiro-relatorio.test.mjs`).
 
-**Arquivos bloqueados (outra frente):** `os.js`, `portal.js`, `informacoes.js` — não alterar na infra.
+**P2.2-D — infraestrutura considerada fechada:** grafo acíclico, 0 imports mortos/absolutos, 1 export morto removido (`PORTAL_SYNC_KEYS`), detecção de ambiente (`brand-header.js`) consolidada em `app-config.js` (`URLS.ORIGEM_DEV` nova), `STORAGE_KEYS` completo para as chaves `cc_pt_*` em uso. Pendências restantes documentadas em `CRM/TECHDOC.md` §42 e `plans/P2_2_D_RELATORIO_FINAL.md` (todas de baixo risco e fora da alçada desta frente: 2 exports públicos pré-existentes sem consumidor em `tenant-context.js`, fachadas `LOGS`/`AUDITORIA`/`CACHE` já documentadas na F1.2, `modulos.catalogo.json` desatualizado pela migração de páginas, `kernel.js::FLAG_AUTH` protegido).
 
-**Próximo passo recomendado:** merge/rebase da frente de páginas sobre `develop` após P2.2-C; regenerar catálogo; migrar `kernel.js` → `STORAGE_KEYS.KERNEL_GATE` quando autorizado.
+**Arquivos bloqueados (outra frente):** `os.js`, `portal.js`/`portal-auth.js`/`portal-painel.js`, `informacoes.js` — não alterar na infra.
 
-Relatórios: `plans/P2_2_INFRA_RELATORIO.md` · `plans/P2_2_C_ESTABILIZACAO.md`
+**Próximo passo recomendado:** merge/rebase da frente de páginas (P2.2-A) sobre `develop`; regenerar `modulos.catalogo.json` pós-merge; migrar `kernel.js` → `STORAGE_KEYS.KERNEL_GATE` quando autorizado; reexecutar suítes de `firestore-rules/`/`functions/`/`control-center/`/`e2e/`/`performance/` na Revisão Técnica (não exercidas na sessão da P2.2-D por indisponibilidade momentânea de recursos do ambiente).
+
+Relatórios: `plans/P2_2_INFRA_RELATORIO.md` · `plans/P2_2_C_ESTABILIZACAO.md` · `plans/P2_2_D_RELATORIO_FINAL.md`
 
 ---
 
-*Última atualização: 2026-07-16 (P2.2-C) — Infra app-config estabilizada; frente de páginas pendente de merge.*
+*Última atualização: 2026-07-16 (P2.2-D) — Infraestrutura shared/scripts/tests consolidada e fechada; frente de páginas (P2.2-A) pendente de merge.*

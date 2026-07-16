@@ -67,6 +67,9 @@ export function devPrefix() {
 export const URLS = {
   DOMINIO_OFICIAL: 'cellcityinformatica.com.br',
   ORIGEM_PROD: 'https://www.cellcityinformatica.com.br',
+  // Fonte única da origem publicada da DEVELOP (evita literal duplicado —
+  // ver brand-header.js::otherEnvUrl, P2.2-D).
+  ORIGEM_DEV: 'https://www.cellcityinformatica.com.br/dev',
   // Link EXTERNO fixo do Portal (mensagens WhatsApp p/ cliente — sempre produção)
   PORTAL_CLIENTE_PROD: 'https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html',
   CATALOGO_PUBLICO_PROD: 'https://www.cellcityinformatica.com.br/catalogo.html',
@@ -154,6 +157,9 @@ export const STORAGE_KEYS = {
   DEVICE_NICK: 'cc_device_nick',
   PT_TUTORIAIS: 'cc_pt_tutoriais',
   PT_FAVORITOS: 'cc_pt_favoritos',
+  PT_ANOTACOES: 'cc_pt_anotacoes',
+  PT_CASOS_BANCADA: 'cc_pt_casos_bancada',
+  PT_SOFTWARES: 'cc_pt_softwares',
   // diagnóstico
   DEBUG_REPO: 'cc_repo_debug',
 };

@@ -17,10 +17,13 @@
 
   // Mesma implementação publicada nos dois ambientes — o ambiente atual é
   // detectado pela URL (prefixo /dev), nunca hardcoded por branch.
+  // Literais de fallback (carregamento antes do app-config.js resolver) —
+  // fonte única em URLS.ORIGEM_PROD/ORIGEM_DEV (app-config.js, P2.2-D).
   const MAIN_ORIGIN = 'https://www.cellcityinformatica.com.br';
   const DEV_ORIGIN = 'https://www.cellcityinformatica.com.br/dev';
 
   function detectEnv() {
+    if (_cfg.ENV) return _cfg.ENV.isProd ? 'main' : 'develop';
     const p = window.location.pathname;
     return (p === '/dev' || p.startsWith('/dev/')) ? 'develop' : 'main';
   }
@@ -294,11 +297,13 @@
   // e o navegador tenta resolver "CRM" como servidor.
   function otherEnvUrl() {
     const path = window.location.pathname;
+    const origemProd = _urls.ORIGEM_PROD || MAIN_ORIGIN;
+    const origemDev = _urls.ORIGEM_DEV || DEV_ORIGIN;
     if (detectEnv() === 'develop') {
       const rest = path.replace(/^\/dev(\/|$)/, '/');
-      return MAIN_ORIGIN + rest;
+      return origemProd + rest;
     }
-    return DEV_ORIGIN + path;
+    return origemDev + path;
   }
 
   function buildEnvMenu(wrapper) {

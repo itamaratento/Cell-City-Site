@@ -2188,3 +2188,80 @@ em `kernel.js` (protegido); ~20 páginas com diff local da outra frente;
 regenerar `modulos.catalogo.json` pós-merge.
 
 Relatório: `plans/P2_2_C_ESTABILIZACAO.md`.
+
+## §42 — Consolidação Final da Infraestrutura (P2.2-D, 2026-07-16)
+
+Fechamento da P2.2. Escopo: leitura completa de `CRM/shared/`,
+`CRM/scripts/`, `tests/` (sem tocar módulos de página) + auditoria dirigida
+aos 13 arquivos centrais (`app-config`, `tenant-context/provider/resolver/query`,
+`portal-sync`, `cc-sync`, `sidebar`, `theme`, `dock`, `brand-header`,
+`favoritos`, `central-modulos`).
+
+**Achados corrigidos (pequenos, isolados, evidenciados por grep/leitura):**
+- **Export morto removido:** `PORTAL_SYNC_KEYS` (`portal-sync.js`) — criado na
+  P2.2-B, zero consumidores (as 4 páginas de `portal-tecnico/` que chamam
+  `syncPortalKeys()` passam literais próprios, nunca importaram a constante).
+  Removido junto com o import de `STORAGE_KEYS` que ficaria morto na sequência.
+- **`STORAGE_KEYS` incompleto:** 3 chaves `cc_pt_*` em uso real nas páginas de
+  `portal-tecnico/` (`cc_pt_anotacoes`, `cc_pt_casos_bancada`, `cc_pt_softwares`)
+  não estavam registradas. Adicionadas como `PT_ANOTACOES`, `PT_CASOS_BANCADA`,
+  `PT_SOFTWARES` (registro apenas — as páginas continuam com o literal próprio,
+  fora do escopo desta frente).
+- **Detecção de ambiente duplicada:** `brand-header.js::detectEnv()` e
+  `otherEnvUrl()` recalculavam localmente o que `app-config.js` já expõe
+  (`ENV.isProd`, `URLS.ORIGEM_PROD`). Passaram a preferir
+  `window.CC_CONFIG.ENV`/`URLS` quando disponível, com o mesmo literal de
+  antes como fallback — replicando o padrão já usado por `dashboardHref()`/
+  `devPathPrefix()` no mesmo arquivo (P2.2-C). Nova constante
+  `URLS.ORIGEM_DEV` em `app-config.js` (fonte única, ao lado de `ORIGEM_PROD`).
+
+**Achados registrados como pendência (não corrigidos — risco/benefício
+desfavorável para esta sprint):**
+- `tenant-context.js::getTenantName()` e `onTenantChange()` — exports públicos
+  sem consumidor encontrado em todo o client. Pré-existentes (não introduzidos
+  em P2.2), fazem parte da API pública de um módulo core (fan-in alto via
+  `tenant-provider`/`kernel`); remover API pública de um módulo tão central
+  por uma economia de poucas linhas não é proporcional ao risco de quebrar um
+  consumidor não encontrado por análise estática (ex.: import dinâmico).
+- `LOGS`, `AUDITORIA`, `CACHE`, `TEMPOS` (parcial) em `app-config.js` — fachadas
+  documentadas desde a F1.2 (§37) como preparação de adoção gradual; hoje sem
+  consumidor fora do próprio arquivo/bridge `window.CC_CONFIG`. Mantidas: é uma
+  decisão arquitetural já revisada em sprint anterior, não uma introdução
+  desta frente — reverter unilateralmente extrapolaria o papel desta sprint.
+- `modulos.catalogo.json` desatualizado (`npm run testar-central-modulos` →
+  16/17) — efeito da migração de 20 páginas para `app-config.js` (outra
+  frente, `plans/SPRINT1_F14_ADOCAO_PAGINAS_20260716.md`); regeneração é
+  responsabilidade de quem fechar aquele commit (pendência já registrada lá).
+- `kernel.js::FLAG_AUTH` ainda literal (`cc_kernel_v1`) — arquivo protegido,
+  fora de alçada desta sprint (mesma pendência da P2.2-C).
+
+**Grafo e imports:** `npm run auditar-arquitetura` → 🟢 6/6, grafo acíclico,
+0 imports quebrados/absolutos. Fan-in de `app-config.js` caiu de 29 para 28
+(reflexo da remoção do import morto em `portal-sync.js`).
+
+**Testes novos** (`tests/infra/app-config-estabilizacao.test.mjs`, 8 → 12):
+ausência do export morto `PORTAL_SYNC_KEYS`; toda chave `cc_pt_*` usada nas
+páginas de `portal-tecnico/` tem entrada em `STORAGE_KEYS`; `URLS.ORIGEM_DEV`
+existe e `brand-header.js` consome com fallback (mesmo padrão de
+`dashboardHref`).
+
+**Testes executados:** `npm run auditar-arquitetura` 6/6 · `npm run
+validar-infra-app-config` 12/12 · `node --test tests/integrity/integridade.test.mjs`
+9/14 (5 falhas 100% em `portal.js`, divisão em andamento por outra frente —
+reproduzido idêntico antes de qualquer alteração desta sessão, não é
+regressão) · RBAC completo (`--import tests/rbac/register-loader.mjs`)
+173/175 (2 pré-existentes em `financeiro-relatorio.test.mjs`, mesmas da F1.2/
+F1.4, não relacionadas) · `npm run testar-central-modulos` 16/17 (pendência
+de catálogo já descrita acima). Suítes de `firestore-rules/`/`functions/`
+(emulador) e `control-center/`/`e2e/`/`performance/` não foram exercidas nesta
+sessão por indisponibilidade momentânea de recursos do ambiente (memória/swap
+saturados por processos acumulados na sessão) — nenhuma toca os 3 arquivos
+alterados aqui; recomenda-se rodá-las na Revisão Técnica.
+
+**Arquivos alterados:** `CRM/shared/app-config.js` (+`URLS.ORIGEM_DEV`, +3
+`STORAGE_KEYS`), `CRM/shared/brand-header.js` (consolidação de ambiente),
+`CRM/shared/portal-sync.js` (remoção de export/import morto),
+`tests/infra/app-config-estabilizacao.test.mjs` (+4 testes). Nenhum módulo de
+página, `kernel.js`, Rules, Cloud Functions ou RBAC tocado.
+
+Relatório completo: `plans/P2_2_D_RELATORIO_FINAL.md`.
