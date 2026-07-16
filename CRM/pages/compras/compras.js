@@ -1,4 +1,4 @@
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit, where } from '../../scripts/firebase.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';

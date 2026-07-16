@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { accessSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 
 const DIR = path.resolve(fileURLToPath(import.meta.url), '../../..');
@@ -25,8 +26,12 @@ before(async () => {
   ], { stdio: 'ignore' });
   await new Promise(r => setTimeout(r, 2000));
 
+  // Sprint 0 FASE 1 (2026-07-16): `require` não existe em módulo ES — o
+  // ReferenceError era engolido pelo catch e TODO caminho reportava falso
+  // "Chrome not found" desde a criação deste teste (P1.6). accessSync via
+  // import resolve; a suíte roda de verdade pela primeira vez.
   const chromePaths = ['/snap/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser'];
-  const chromePath = chromePaths.find(p => { try { require('fs').accessSync(p); return true; } catch { return false; } });
+  const chromePath = chromePaths.find(p => { try { accessSync(p); return true; } catch { return false; } });
   if (!chromePath) throw new Error('Chrome not found');
 
   browser = await puppeteer.launch({
