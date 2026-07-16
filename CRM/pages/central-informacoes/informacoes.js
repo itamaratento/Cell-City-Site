@@ -8,6 +8,8 @@ import { InformacoesRepository as Informacoes, CategoriasInformacoesRepository a
 import { getStorage, ref, uploadBytes, getBytes, deleteObject } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 import { getTenantFieldValue } from "../../shared/tenant-query.js";
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
+import { toast } from './informacoes-ui-utils.js';
+import { criptografarSenha, descriptografarSenha } from './informacoes-crypto.js';
 
 const COL = 'informacoes';
 const CAT_COL = 'categorias_informacoes';
@@ -27,7 +29,6 @@ const TIPO_PARA_VALOR = {
     'Documento':'documento'
 };
 const CATEGORIAS_PADRAO = ['CRM', 'Claude', 'Programação', 'Financeiro', 'Marketing', 'Instagram', 'WhatsApp', 'Igreja', 'Outros'];
-const CRIPTOGRAFIA_KEY = 'cellcity-2026'; // Chave para criptografia local (não é seguro, apenas ofuscação)
 
 const storage = getStorage();
 
@@ -995,14 +996,8 @@ async function downloadDocumento(id) {
 }
 
 // ===== CRIPTOGRAFIA LOCAL =====
-function criptografarSenha(plaintext) {
-    return CryptoJS.AES.encrypt(plaintext, CRIPTOGRAFIA_KEY).toString();
-}
-
-function descriptografarSenha(ciphertext) {
-    const bytes = CryptoJS.AES.decrypt(ciphertext, CRIPTOGRAFIA_KEY);
-    return bytes.toString(CryptoJS.enc.Utf8);
-}
+// Movido para informacoes-crypto.js (P2.2, 2026-07-16) — sem estado do
+// módulo, importado no topo do arquivo.
 
 // ===== FORMS =====
 function abrirFormNovaInfo() {
@@ -1453,20 +1448,7 @@ function toggleSenhaVisibility(fieldId, btn) {
 }
 
 // ===== TOAST =====
-function toast(msg) {
-    const el = document.getElementById('info-toast');
-    if (!el) return;
-    el.textContent = msg;
-    el.style.display = 'block';
-    el.classList.remove('success', 'error', 'warning');
-    if (msg.includes('✅')) el.classList.add('success');
-    else if (msg.includes('❌')) el.classList.add('error');
-    else if (msg.includes('⚠️')) el.classList.add('warning');
-
-    setTimeout(() => {
-        el.style.display = 'none';
-    }, 2500);
-}
+// Movido para informacoes-ui-utils.js (P2.2, 2026-07-16).
 
 // ===== INIT =====
 init();
