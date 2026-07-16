@@ -1,8 +1,5 @@
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeEditar } from '../../shared/permissoes.js';
-// db, doc, updateDoc do SDK direto seguem só para a escrita em "os" dentro de
-// salvarEdicaoAgendamento() — fora de escopo desta migração (ver relatório).
-import { db, doc, updateDoc } from "../../scripts/firebase.js";
 import { serverTimestamp } from '../../firebase/client.js';
 import { OSRepository as OS } from '../../repositories/os.repository.js';
 import {
@@ -779,7 +776,7 @@ async function salvarEdicaoAgendamento(osId, osOriginal, updates) {
         if (updates.phone !== undefined) updateData.phone = updates.phone;
         updateData.updatedAt = serverTimestamp();
 
-        await updateDoc(doc(db, "os", osId), updateData);
+        await OS.update(osId, updateData); // P2.3.2: era updateDoc direto — último acesso Firestore fora da Camada Repository neste módulo
 
         // Atualizar in-memory — atualiza em todos os arrays de prazo
         [5, 15, 30].forEach(p => {
