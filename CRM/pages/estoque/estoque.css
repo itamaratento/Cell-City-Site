@@ -1,22 +1,22 @@
 :root {
-    --bg: #050505;
-    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --bg: var(--cc-bg);
+    --bg-gradient: var(--cc-bg-gradient);
     --surface2: rgba(25, 28, 27, 0.8);
-    --surface3: #1c1f1d;
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #ffffff;
-    --text2: #d1d5db;
-    --text3: #6b7280;
-    --green-primary: #00C853;
-    --green-light: #00E676;
-    --green-dark: #009624;
-    --green-glow: rgba(0, 200, 83, 0.25);
-    --radius-sm: 10px;
-    --radius: 14px;
-    --radius-lg: 18px;
-    --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-    --duration: 0.25s;
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green-primary: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --green-dark: var(--cc-green-dark);
+    --green-glow: var(--cc-green-glow);
+    --radius-sm: var(--cc-radius-sm);
+    --radius: var(--cc-radius-md);
+    --radius-lg: var(--cc-radius-lg);
+    --font-main: var(--cc-font-sans);
+    --ease: var(--cc-ease);
+    --duration: var(--cc-duration-base);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -179,7 +179,7 @@ body {
 }
 .est-resumo-item { flex: 1; text-align: center; }
 .est-resumo-num { display: block; font-size: 24px; font-weight: 800; color: var(--text); }
-.est-resumo-num.est-vermelho { color: #f87171; }
+.est-resumo-num.est-vermelho { color: var(--cc-red-light); }
 .est-resumo-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
 .est-resumo-div { width: 1px; background: var(--border); height: 32px; }
 
@@ -379,7 +379,7 @@ body {
     border: 1px solid rgba(248,113,113,0.3);
     border-radius: 100px;
     padding: 2px 8px;
-    color: #f87171;
+    color: var(--cc-red-light);
 }
 .est-cat-lista {
     border: 1px solid var(--border);
@@ -431,7 +431,7 @@ body {
 .est-qty-wrap { text-align: center; min-width: 40px; }
 .est-qty { display: block; font-size: 16px; font-weight: 700; }
 .est-qty-ok { color: var(--green-light); }
-.est-qty-baixo { color: #f87171; }
+.est-qty-baixo { color: var(--cc-red-light); }
 .est-qty-min { font-size: 10px; color: var(--text3); }
 
 /* AÇÕES DO CARD */

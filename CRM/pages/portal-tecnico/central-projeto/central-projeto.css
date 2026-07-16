@@ -14,13 +14,13 @@
     --cp-text: #f5f7fa;
     --cp-text2: #a1a8b3;
     --cp-text3: #6b7280;
-    --cp-green: #00c853;
-    --cp-green-light: #00e676;
+    --cp-green: var(--cc-green);
+    --cp-green-light: var(--cc-green-light);
     --cp-radius: 14px;
     --cp-radius-sm: 8px;
     --cp-gold: #ffd54f;
-    --cp-red: #ef4444;
-    --cp-blue: #60a5fa;
+    --cp-red: var(--cc-red);
+    --cp-blue: var(--cc-blue-light);
     --cp-purple: #a78bfa;
 }
 

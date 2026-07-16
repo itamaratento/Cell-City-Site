@@ -13,9 +13,9 @@
   --ent-text:     #f5f7fa;
   --ent-text2:    #a1a8b3;
   --ent-text3:    #6b7280;
-  --ent-green:    #00c853;
-  --ent-green-lt: #00e676;
-  --ent-amber:    #f59e0b;
+  --ent-green:    var(--cc-green);
+  --ent-green-lt: var(--cc-green-light);
+  --ent-amber:    var(--cc-amber);
   --ent-amber-lt: #fbbf24;
   --ent-radius:   14px;
   --ent-radius-s: 10px;

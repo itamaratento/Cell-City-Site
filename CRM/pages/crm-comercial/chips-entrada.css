@@ -2,8 +2,8 @@
 
 /* Feedback de validação do CPF */
 .cpf-feedback { font-size: 12px; font-weight: 600; margin-top: 6px; min-height: 16px; }
-.cpf-ok   { color: #00c853; }
-.cpf-erro { color: #f87171; }
+.cpf-ok   { color: var(--cc-green); }
+.cpf-erro { color: var(--cc-red-light); }
 
 /* Grid de operadora — 3 colunas */
 #oper-grid .ent-chip { min-height: 70px; font-size: 12px; }

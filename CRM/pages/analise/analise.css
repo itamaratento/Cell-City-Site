@@ -1,18 +1,18 @@
 :root {
-    --bg: #050505;
-    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --bg: var(--cc-bg);
+    --bg-gradient: var(--cc-bg-gradient);
     --surface2: rgba(25, 28, 27, 0.8);
-    --surface3: #1c1f1d;
-    --border: rgba(255,255,255,0.08);
-    --text: #ffffff;
-    --text2: #d1d5db;
-    --text3: #6b7280;
-    --green: #00C853;
-    --green-light: #00E676;
-    --red: #EF4444;
-    --yellow: #F59E0B;
-    --radius: 14px;
-    --radius-sm: 10px;
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --red: var(--cc-red);
+    --yellow: var(--cc-amber);
+    --radius: var(--cc-radius-md);
+    --radius-sm: var(--cc-radius-sm);
     --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
 }
 
@@ -101,7 +101,7 @@ body { font-family:var(--font); background:var(--bg); background-image:var(--bg-
     font-size:13px; font-weight:800; letter-spacing:.5px;
     color:#34d399; margin-bottom:6px;
 }
-.an-chart-label.secondary { color:#60a5fa; }
+.an-chart-label.secondary { color:var(--cc-blue-light); }
 
 .an-chart-wrap { width:100%; overflow:hidden; }
 .an-chart-wrap canvas { display:block; width:100% !important; }

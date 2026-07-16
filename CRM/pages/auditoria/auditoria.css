@@ -1,8 +1,8 @@
 :root {
-  --cell-green: #00c853; --cell-green-light: #00e676;
-  --bg-base: #0a0b0d; --bg-surface: #121418;
-  --bg-elevated: #1a1d23; --border-subtle: rgba(255,255,255,.06);
-  --text-primary: #f5f7fa; --text-secondary: #a1a8b3; --text-tertiary: #6b7280;
+  --cell-green: var(--cc-green); --cell-green-light: var(--cc-green-light);
+  --bg-base: var(--cc-bg); --bg-surface: var(--cc-surface);
+  --bg-elevated: var(--cc-surface-2); --border-subtle: var(--cc-border);
+  --text-primary: var(--cc-text); --text-secondary: var(--cc-text-2); --text-tertiary: var(--cc-text-3);
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;background:var(--bg-base);color:var(--text-primary);font-family:'Inter',-apple-system,sans-serif;font-size:14px;-webkit-font-smoothing:antialiased}
@@ -70,7 +70,7 @@ input,select,button,textarea{font-family:inherit}
 }
 .au-badge-info{background:rgba(99,102,241,.15);color:#a5b4fc}
 .au-badge-success{background:rgba(0,200,83,.15);color:var(--cell-green-light)}
-.au-badge-warning{background:rgba(255,179,0,.15);color:#ffb300}
+.au-badge-warning{background:rgba(255,179,0,.15);color:var(--cc-gold-dark)}
 .au-badge-danger{background:rgba(255,82,82,.15);color:#ff5252}
 
 .au-loading{display:flex;align-items:center;gap:12px;padding:24px;color:var(--text-tertiary);justify-content:center}

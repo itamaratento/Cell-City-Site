@@ -1,19 +1,19 @@
 :root {
-    --bg: #050505;
-    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --bg: var(--cc-bg);
+    --bg-gradient: var(--cc-bg-gradient);
     --surface: rgba(18, 20, 24, 0.9);
     --surface2: #1a1d23;
-    --border: rgba(255,255,255,0.08);
+    --border: var(--cc-border);
     --border-md: rgba(255,255,255,0.12);
-    --text: #f5f7fa;
-    --text2: #a1a8b3;
-    --text3: #6b7280;
-    --green: #00c853;
-    --green-light: #00e676;
-    --amber: #f59e0b;
-    --red: #ef4444;
-    --radius: 14px;
-    --ease: cubic-bezier(0.4,0,0.2,1);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --amber: var(--cc-amber);
+    --red: var(--cc-red);
+    --radius: var(--cc-radius-md);
+    --ease: var(--cc-ease);
 }
 
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -325,7 +325,7 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-nlinha-cor:hover { transform: scale(1.12); }
 .ag-nlinha-check {
     width: 18px; height: 18px; flex-shrink: 0; cursor: pointer;
-    accent-color: var(--green, #00c853);
+    accent-color: var(--green, var(--cc-green));
     border-radius: 4px;
 }
 .ag-nlinha-txt {

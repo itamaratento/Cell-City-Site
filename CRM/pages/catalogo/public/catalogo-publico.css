@@ -5,15 +5,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green:       #00c853;
-  --green-light: #00e676;
-  --bg:          #0a0b0c;
+  --green:       var(--cc-green);
+  --green-light: var(--cc-green-light);
+  --bg: var(--cc-bg);
   --bg2:         #111314;
   --bg3:         #181b1d;
-  --border:      rgba(255,255,255,0.07);
-  --text:        #e8eaed;
-  --text-muted:  #8b949e;
-  --radius:      14px;
+  --border: var(--cc-border);
+  --text: var(--cc-text);
+  --text-muted: var(--cc-text-muted);
+  --radius: var(--cc-radius-md);
 }
 
 html { scroll-behavior: smooth; }
@@ -444,7 +444,7 @@ body {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: -0.03em;
-  background: linear-gradient(180deg, #00e676 0%, #00c853 100%);
+  background: linear-gradient(180deg, var(--cc-green-light) 0%, var(--cc-green) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;

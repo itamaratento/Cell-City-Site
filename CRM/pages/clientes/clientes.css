@@ -1,24 +1,24 @@
 :root {
-    --bg: #050505;
-    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
-    --surface-solid: #111312;
+    --bg: var(--cc-bg);
+    --bg-gradient: var(--cc-bg-gradient);
+    --surface-solid: var(--cc-surface);
     --surface2: rgba(25, 28, 27, 0.8);
-    --surface3: #1c1f1d;
-    --border: rgba(255, 255, 255, 0.08);
-    --text: #ffffff;
-    --text2: #d1d5db;
-    --text3: #6b7280;
-    --green-primary: #00C853;
-    --green-light: #00E676;
-    --green-dark: #009624;
-    --green-glow: rgba(0, 200, 83, 0.25);
-    --red: #EF4444;
-    --radius-sm: 10px;
-    --radius: 14px;
-    --radius-lg: 18px;
-    --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-    --duration: 0.25s;
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green-primary: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --green-dark: var(--cc-green-dark);
+    --green-glow: var(--cc-green-glow);
+    --red: var(--cc-red);
+    --radius-sm: var(--cc-radius-sm);
+    --radius: var(--cc-radius-md);
+    --radius-lg: var(--cc-radius-lg);
+    --font-main: var(--cc-font-sans);
+    --ease: var(--cc-ease);
+    --duration: var(--cc-duration-base);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }

@@ -3,22 +3,22 @@
    ============================================================ */
 
 :root {
-  --bg: #0d0d0d;
+  --bg: var(--cc-bg);
   --surface: #1a1a1a;
   --surface2: #222;
-  --surface3: #2a2a2a;
-  --border: #2e2e2e;
+  --surface3: var(--cc-surface-3);
+  --border: var(--cc-border);
   --border2: #3a3a3a;
-  --text: #e8e8e8;
+  --text: var(--cc-text);
   --text-sec: #808080;
   --text-dim: #444;
-  --green: #00e676;
-  --blue: #58a6ff;
-  --yellow: #f0b429;
-  --red: #ff5252;
-  --purple: #bc80f0;
-  --radius: 14px;
-  --radius-sm: 8px;
+  --green: var(--cc-green);
+  --blue: var(--cc-blue);
+  --yellow: var(--cc-amber);
+  --red: var(--cc-red);
+  --purple: var(--cc-purple);
+  --radius: var(--cc-radius-md);
+  --radius-sm: var(--cc-radius-sm);
   --dock-safe: 92px; /* right:20px + ~72px largura do dock */
 }
 
@@ -382,7 +382,7 @@ body {
   font-family: 'Inter', sans-serif;
 }
 .ano-chip:hover { border-color: #555; color: var(--text); }
-.ano-chip.ativo[data-cor="0"] { border-color: #00e676; color: #00e676; background: rgba(0,230,118,.07); }
+.ano-chip.ativo[data-cor="0"] { border-color: var(--cc-green-light); color: var(--cc-green-light); background: rgba(0,230,118,.07); }
 .ano-chip.ativo[data-cor="1"] { border-color: #58a6ff; color: #58a6ff; background: rgba(88,166,255,.07); }
 .ano-chip.ativo[data-cor="2"] { border-color: #f0b429; color: #f0b429; background: rgba(240,180,41,.07); }
 .ano-chip.ativo[data-cor="3"] { border-color: #bc80f0; color: #bc80f0; background: rgba(188,128,240,.07); }

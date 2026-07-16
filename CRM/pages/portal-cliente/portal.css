@@ -6,25 +6,25 @@
 
 /* ===== CSS VARIABLES ===== */
 :root {
-  --cell-green: #00C853;
-  --cell-green-dark: #009624;
-  --cell-green-light: #69F0AE;
-  --bg-base: #0a0b0d;
+  --cell-green: var(--cc-green);
+  --cell-green-dark: var(--cc-green-dark);
+  --cell-green-light: var(--cc-green-light);
+  --bg-base: var(--cc-bg);
   --bg-primary: #0f0f13;
   --bg-secondary: #1a1a24;
-  --bg-surface: #121418;
-  --bg-elevated: #1a1d23;
+  --bg-surface: var(--cc-surface);
+  --bg-elevated: var(--cc-surface-2);
   --bg-card: #22222e;
   --bg-card-hover: #2a2a38;
-  --text-primary: #e8e8e8;
-  --text-secondary: #999;
-  --text-muted: #888;
+  --text-primary: var(--cc-text);
+  --text-secondary: var(--cc-text-2);
+  --text-muted: var(--cc-text-muted);
   --border-color: #333;
   --border-radius: 12px;
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+  --radius-sm: var(--cc-radius-sm);
+  --radius-md: var(--cc-radius-md);
+  --radius-lg: var(--cc-radius-lg);
+  --shadow: var(--cc-shadow-md);
   --shadow-hover: 0 4px 20px rgba(0,0,0,0.4);
   --shadow-card: 0 2px 8px rgba(0,0,0,0.25);
   --max-width: 480px;
@@ -236,7 +236,7 @@ html, body {
   padding: 12px;
   border: none;
   border-radius: 6px;
-  background: linear-gradient(135deg, #00C853 0%, #00A040 100%);
+  background: linear-gradient(135deg, var(--cc-green) 0%, #00A040 100%);
   color: #fff;
   font-size: 15px;
   font-weight: 700;
@@ -1909,7 +1909,7 @@ html { -webkit-tap-highlight-color: transparent; }
   padding: 12px;
   border: none;
   border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, #00C853 0%, #00A040 100%);
+  background: linear-gradient(135deg, var(--cc-green) 0%, #00A040 100%);
   color: #000;
   font-size: 14px;
   font-weight: 700;

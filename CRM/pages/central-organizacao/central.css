@@ -1,26 +1,26 @@
 :root {
-    --bg: #050505;
+    --bg: var(--cc-bg);
     --surface: #0d0f0e;
     --surface2: #111413;
-    --surface3: #181b1a;
-    --border: rgba(255,255,255,0.07);
-    --border-hover: rgba(255,255,255,0.16);
-    --text: #f0f2f1;
-    --text2: #c4c9c6;
-    --text3: #7a8480;
-    --green: #00C853;
-    --green-light: #00E676;
-    --green-glow: rgba(0,200,83,0.35);
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --border-hover: var(--cc-border-medium);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --green-glow: var(--cc-green-glow);
     --green-dim: rgba(0,200,83,0.09);
     --green-dim2: rgba(0,200,83,0.15);
     --green-border: rgba(0,200,83,0.22);
-    --red: #f87171;
+    --red: var(--cc-red);
     --red-dim: rgba(248,113,113,0.1);
     --red-border: rgba(248,113,113,0.25);
-    --radius: 16px;
-    --radius-sm: 11px;
+    --radius: var(--cc-radius-md);
+    --radius-sm: var(--cc-radius-sm);
     --radius-xs: 8px;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --font: var(--cc-font-sans);
     --shadow-card: 0 2px 12px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.6);
     --shadow-hover: 0 6px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.6);
     --transition: 220ms cubic-bezier(0.4,0,0.2,1);
@@ -135,7 +135,7 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
 
 /* ── BOTÕES FORMULÁRIO ── */
 .btn-save {
-    background:linear-gradient(135deg, #00C853, #00a844);
+    background:linear-gradient(135deg, var(--cc-green), #00a844);
     border:none; color:#000;
     font-size:14px; font-weight:800; border-radius:var(--radius-sm);
     padding:10px 22px; cursor:pointer; font-family:inherit;
@@ -143,7 +143,7 @@ h1 { font-size:17px; font-weight:800; letter-spacing:-.3px; }
     box-shadow:0 4px 14px rgba(0,200,83,0.3);
 }
 .btn-save:hover {
-    background:linear-gradient(135deg, #00E676, #00C853);
+    background:linear-gradient(135deg, var(--cc-green-light), var(--cc-green));
     box-shadow:0 6px 20px rgba(0,200,83,0.4);
     transform:translateY(-1px);
 }

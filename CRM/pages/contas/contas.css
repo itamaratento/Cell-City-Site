@@ -1,18 +1,18 @@
 :root {
-    --bg: #050505;
+    --bg: var(--cc-bg);
     --surface2: #131614;
-    --border: rgba(255,255,255,0.08);
-    --text: #fff;
-    --text2: #d1d5db;
-    --text3: #6b7280;
-    --green: #00C853;
-    --green-light: #00E676;
+    --border: var(--cc-border);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green: var(--cc-green);
+    --green-light: var(--cc-green-light);
     --green-dim: rgba(0,200,83,0.1);
     --green-border: rgba(0,200,83,0.25);
-    --red: #ef4444;
-    --radius: 14px;
-    --radius-sm: 10px;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --red: var(--cc-red);
+    --radius: var(--cc-radius-md);
+    --radius-sm: var(--cc-radius-sm);
+    --font: var(--cc-font-sans);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }

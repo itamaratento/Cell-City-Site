@@ -4,17 +4,17 @@
    operacionais e matriz de permissões por módulo.
    ============================================================ */
 :root {
-  --cell-green: #00c853;
-  --cell-green-light: #00e676;
+  --cell-green: var(--cc-green);
+  --cell-green-light: var(--cc-green-light);
   --bg-page: #0b0c0f;
-  --bg-surface: #121418;
-  --bg-hover: rgba(255,255,255,0.04);
-  --border-subtle: rgba(255,255,255,0.08);
-  --text-primary: #f5f7fa;
-  --text-secondary: #a1a8b3;
-  --text-muted: #6b7280;
+  --bg-surface: var(--cc-surface);
+  --bg-hover: var(--cc-surface-3);
+  --border-subtle: var(--cc-border);
+  --text-primary: var(--cc-text);
+  --text-secondary: var(--cc-text-2);
+  --text-muted: var(--cc-text-muted);
   --danger: #ff5252;
-  --warn: #ffb300;
+  --warn: var(--cc-gold-dark);
 }
 
 * { box-sizing: border-box; }

@@ -3,24 +3,24 @@
    Tema escuro padrão (mesmos tokens do Diário / módulos recentes)
    ============================================ */
 :root {
-  --cell-green: #00c853;
-  --cell-green-light: #00e676;
-  --cell-green-dark: #00b248;
-  --cell-gold: #ffcc00;
-  --cell-gold-dark: #ffb300;
-  --bg-base: #0a0b0d;
-  --bg-surface: #121418;
-  --bg-elevated: #1a1d23;
-  --bg-hover: #22262e;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --border-medium: rgba(255, 255, 255, 0.10);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --text-primary: #f5f7fa;
-  --text-secondary: #a1a8b3;
-  --text-tertiary: #6b7280;
-  --accent-blue: #3b82f6;
-  --accent-red: #ef4444;
-  --accent-amber: var(--cell-gold);
+  --cell-green: var(--cc-green);
+  --cell-green-light: var(--cc-green-light);
+  --cell-green-dark: var(--cc-green-dark);
+  --cell-gold: var(--cc-gold);
+  --cell-gold-dark: var(--cc-gold-dark);
+  --bg-base: var(--cc-bg);
+  --bg-surface: var(--cc-surface);
+  --bg-elevated: var(--cc-surface-2);
+  --bg-hover: var(--cc-surface-3);
+  --border-subtle: var(--cc-border);
+  --border-medium: var(--cc-border-medium);
+  --border-strong: var(--cc-border-strong);
+  --text-primary: var(--cc-text);
+  --text-secondary: var(--cc-text-2);
+  --text-tertiary: var(--cc-text-3);
+  --accent-blue: var(--cc-blue);
+  --accent-red: var(--cc-red);
+  --accent-amber: var(--cc-gold);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

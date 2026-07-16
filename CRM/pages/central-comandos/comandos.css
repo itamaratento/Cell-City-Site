@@ -4,25 +4,25 @@
    v2 — Com blocos modulares
    ============================================ */
 :root {
-    --bg: #08090a;
+    --bg: var(--cc-bg);
     --surface: rgba(22, 24, 26, 0.7);
-    --surface-solid: #141618;
+    --surface-solid: var(--cc-surface);
     --surface2: rgba(30, 33, 36, 0.8);
-    --surface3: #1e2124;
-    --border: rgba(255, 255, 255, 0.06);
-    --border-hover: rgba(255, 255, 255, 0.14);
-    --text: #f1f3f5;
-    --text2: #c7cdd2;
-    --text3: #8b9197;
-    --green-primary: #00C853;
-    --green-light: #00E676;
-    --green-dark: #00A040;
-    --blue: #2196F3;
-    --red: #ef4444;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --radius-lg: 18px;
-    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --border-hover: var(--cc-border-medium);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green-primary: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --green-dark: var(--cc-green-dark);
+    --blue: var(--cc-blue);
+    --red: var(--cc-red);
+    --radius: var(--cc-radius-md);
+    --radius-sm: var(--cc-radius-sm);
+    --radius-lg: var(--cc-radius-lg);
+    --font-mono: var(--cc-font-mono);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }

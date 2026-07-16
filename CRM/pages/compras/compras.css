@@ -1,8 +1,8 @@
 :root {
-  --cell-green:#00c853; --cell-green-light:#00e676;
-  --bg:#050505; --border:rgba(255,255,255,0.08);
-  --text:#fff; --text2:#d1d5db; --text3:#6b7280;
-  --radius:14px; --radius-sm:10px;
+  --cell-green:var(--cc-green); --cell-green-light:var(--cc-green-light);
+  --bg: var(--cc-bg); --border: var(--cc-border);
+  --text: var(--cc-text); --text2: var(--cc-text-2); --text3: var(--cc-text-3);
+  --radius: var(--cc-radius-md); --radius-sm: var(--cc-radius-sm);
   --font:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -80,7 +80,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .cr-badge-pendente{background:rgba(251,191,36,0.15);color:#fbbf24;border:1px solid rgba(251,191,36,0.25);}
 .cr-badge-pedido{background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.25);}
 .cr-badge-recebido{background:rgba(0,200,83,0.15);color:var(--cell-green-light);border:1px solid rgba(0,200,83,0.25);}
-.cr-badge-cancelado{background:rgba(248,113,113,0.15);color:#f87171;border:1px solid rgba(248,113,113,0.25);}
+.cr-badge-cancelado{background:rgba(248,113,113,0.15);color:var(--cc-red-light);border:1px solid rgba(248,113,113,0.25);}
 
 .cr-card-acoes{display:flex;gap:6px;align-items:center;}
 .cr-card-edit-btn,.cr-card-del-btn{

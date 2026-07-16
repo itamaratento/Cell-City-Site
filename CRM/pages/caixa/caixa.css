@@ -1,25 +1,25 @@
 :root {
-  --bg: #08090a;
+  --bg: var(--cc-bg);
   --surface: rgba(22, 24, 26, 0.7);
   --surface2: rgba(30, 33, 36, 0.85);
-  --surface3: #1e2124;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-hover: rgba(255, 255, 255, 0.14);
-  --border-focus: rgba(0, 200, 83, 0.45);
-  --text: #f1f3f5;
-  --text2: #adb5bd;
-  --text3: #6c757d;
-  --green: #00c853;
-  --green-light: #4ade80;
-  --green-dark: #009624;
-  --green-glow: rgba(0, 200, 83, 0.16);
-  --blue: #60a5fa;
-  --red: #f87171;
-  --radius-sm: 8px;
-  --radius: 12px;
-  --shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
-  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --surface3: var(--cc-surface-3);
+  --border: var(--cc-border);
+  --border-hover: var(--cc-border-medium);
+  --border-focus: var(--cc-border-focus);
+  --text: var(--cc-text);
+  --text2: var(--cc-text-2);
+  --text3: var(--cc-text-3);
+  --green: var(--cc-green);
+  --green-light: var(--cc-green-light);
+  --green-dark: var(--cc-green-dark);
+  --green-glow: var(--cc-green-glow);
+  --blue: var(--cc-blue);
+  --red: var(--cc-red);
+  --radius-sm: var(--cc-radius-sm);
+  --radius: var(--cc-radius-md);
+  --shadow: var(--cc-shadow-md);
+  --font-mono: var(--cc-font-mono);
+  --ease: var(--cc-ease);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -278,7 +278,7 @@ header.cx-header h1 { font-size: 18px; font-weight: 700; color: var(--green-ligh
 .ac-nome { font-size: 13px; font-weight: 600; color: var(--text); }
 .ac-info { font-size: 11px; color: var(--text3); white-space: nowrap; }
 .autocomplete-item.ac-zerado .ac-info { color: var(--red); }
-.autocomplete-item.ac-baixo .ac-info { color: #f59e0b; }
+.autocomplete-item.ac-baixo .ac-info { color: var(--cc-amber); }
 
 /* ── Produto vinculado ── */
 .produto-badge {

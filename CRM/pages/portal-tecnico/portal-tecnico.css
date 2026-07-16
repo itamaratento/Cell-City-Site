@@ -12,8 +12,8 @@
     --pt-text: #f5f7fa;
     --pt-text2: #a1a8b3;
     --pt-text3: #6b7280;
-    --pt-green: #00c853;
-    --pt-green-light: #00e676;
+    --pt-green: var(--cc-green);
+    --pt-green-light: var(--cc-green-light);
     --pt-radius: 14px;
     --pt-radius-sm: 8px;
 }

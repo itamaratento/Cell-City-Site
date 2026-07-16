@@ -1,20 +1,20 @@
 :root {
-  --bg: #050505;
-  --bg-surface: #111418;
-  --bg-elevated: #1a1d23;
-  --bg-hover: #22262e;
-  --border: rgba(255,255,255,0.08);
+  --bg: var(--cc-bg);
+  --bg-surface: var(--cc-surface);
+  --bg-elevated: var(--cc-surface-2);
+  --bg-hover: var(--cc-surface-3);
+  --border: var(--cc-border);
   --border-md: rgba(255,255,255,0.12);
-  --text: #f5f7fa;
-  --text2: #a1a8b3;
-  --text3: #6b7280;
-  --green: #00c853;
-  --green-dark: #00b248;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --ease: cubic-bezier(0.4,0,0.2,1);
+  --text: var(--cc-text);
+  --text2: var(--cc-text-2);
+  --text3: var(--cc-text-3);
+  --green: var(--cc-green);
+  --green-dark: var(--cc-green-dark);
+  --red: var(--cc-red);
+  --amber: var(--cc-amber);
+  --radius: var(--cc-radius-md);
+  --radius-sm: var(--cc-radius-sm);
+  --ease: var(--cc-ease);
 }
 
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -154,7 +154,7 @@ body {
   padding: 10px 20px; cursor: pointer;
   transition: background 150ms var(--ease);
 }
-.ms-btn-add:hover { background: #00e676; }
+.ms-btn-add:hover { background: var(--cc-green-light); }
 .ms-btn-cancel {
   background: var(--bg-hover); color: var(--text2);
   border: 1px solid var(--border); border-radius: var(--radius-sm);

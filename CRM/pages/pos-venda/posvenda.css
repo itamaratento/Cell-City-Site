@@ -1,28 +1,28 @@
 :root {
-    --bg: #050505;
-    --bg-gradient: radial-gradient(ellipse at top, #0a0f0c 0%, #050505 60%, #000000 100%);
+    --bg: var(--cc-bg);
+    --bg-gradient: var(--cc-bg-gradient);
     --surface: rgba(20, 22, 21, 0.65);
-    --surface-solid: #111312;
+    --surface-solid: var(--cc-surface);
     --surface2: rgba(25, 28, 27, 0.8);
-    --surface3: #1c1f1d;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-focus: rgba(0, 200, 83, 0.5);
-    --text: #ffffff;
-    --text2: #d1d5db;
-    --text3: #6b7280;
-    --green-primary: #00C853;
-    --green-light: #00E676;
-    --green-dark: #009624;
-    --green-glow: rgba(0, 200, 83, 0.25);
-    --yellow: #F59E0B;
-    --red: #EF4444;
-    --radius-sm: 10px;
-    --radius: 14px;
-    --radius-lg: 18px;
-    --shadow: 0 8px 24px rgba(0,0,0,0.5);
-    --font-main: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-    --duration: 0.25s;
+    --surface3: var(--cc-surface-3);
+    --border: var(--cc-border);
+    --border-focus: var(--cc-border-focus);
+    --text: var(--cc-text);
+    --text2: var(--cc-text-2);
+    --text3: var(--cc-text-3);
+    --green-primary: var(--cc-green);
+    --green-light: var(--cc-green-light);
+    --green-dark: var(--cc-green-dark);
+    --green-glow: var(--cc-green-glow);
+    --yellow: var(--cc-amber);
+    --red: var(--cc-red);
+    --radius-sm: var(--cc-radius-sm);
+    --radius: var(--cc-radius-md);
+    --radius-lg: var(--cc-radius-lg);
+    --shadow: var(--cc-shadow-md);
+    --font-main: var(--cc-font-sans);
+    --ease: var(--cc-ease);
+    --duration: var(--cc-duration-base);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -193,14 +193,14 @@ body {
 .pv-card:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
 /* Destaque ao chegar via Painel de Alertas (deep-link do sino) */
 .pv-card-highlight {
-    border-color: var(--green-primary, #00c853) !important;
-    box-shadow: 0 0 0 2px var(--green-primary, #00c853), 0 8px 24px rgba(0,200,83,0.25);
+    border-color: var(--green-primary, var(--cc-green)) !important;
+    box-shadow: 0 0 0 2px var(--green-primary, var(--cc-green)), 0 8px 24px rgba(0,200,83,0.25);
     animation: pvHighlightPulse 1s ease-out 0s 3;
 }
 @keyframes pvHighlightPulse {
-    0%   { box-shadow: 0 0 0 2px var(--green-primary, #00c853), 0 0 0 0 rgba(0,200,83,0.45); }
-    70%  { box-shadow: 0 0 0 2px var(--green-primary, #00c853), 0 0 0 10px rgba(0,200,83,0); }
-    100% { box-shadow: 0 0 0 2px var(--green-primary, #00c853), 0 0 0 0 rgba(0,200,83,0); }
+    0%   { box-shadow: 0 0 0 2px var(--green-primary, var(--cc-green)), 0 0 0 0 rgba(0,200,83,0.45); }
+    70%  { box-shadow: 0 0 0 2px var(--green-primary, var(--cc-green)), 0 0 0 10px rgba(0,200,83,0); }
+    100% { box-shadow: 0 0 0 2px var(--green-primary, var(--cc-green)), 0 0 0 0 rgba(0,200,83,0); }
 }
 .urg-ok      { border-left-color: var(--green-primary); }
 .urg-atencao { border-left-color: var(--yellow); background: rgba(245, 158, 11, 0.03); }
@@ -255,7 +255,7 @@ body {
     display: inline-block;
 }
 .urg-atencao .pv-urg-label { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-.urg-urgente .pv-urg-label { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.urg-urgente .pv-urg-label { background: rgba(239, 68, 68, 0.15); color: var(--cc-red-light); }
 
 /* ===== BOTÕES (COPIAR + WHATSAPP) ===== */
 .pv-buttons-row {
@@ -331,7 +331,7 @@ body {
 .pv-edit-btn {
     background: rgba(59, 130, 246, 0.08);
     border-color: rgba(59, 130, 246, 0.25);
-    color: #60a5fa;
+    color: var(--cc-blue-light);
 }
 .pv-edit-btn:hover {
     background: rgba(59, 130, 246, 0.18);
@@ -343,7 +343,7 @@ body {
 .pv-delete-pendente-btn {
     background: rgba(239, 68, 68, 0.08);
     border-color: rgba(239, 68, 68, 0.25);
-    color: #f87171;
+    color: var(--cc-red-light);
 }
 .pv-delete-pendente-btn:hover {
     background: rgba(239, 68, 68, 0.18);
@@ -1256,12 +1256,12 @@ body {
 
 .pv-edit-pendente-save {
     background: rgba(59, 130, 246, 0.15);
-    border-color: #3b82f6;
-    color: #60a5fa;
+    border-color: var(--cc-blue);
+    color: var(--cc-blue-light);
 }
 .pv-edit-pendente-save:hover {
     background: rgba(59, 130, 246, 0.25);
-    border-color: #60a5fa;
+    border-color: var(--cc-blue-light);
     box-shadow: 0 0 16px rgba(59, 130, 246, 0.15);
 }
 .pv-edit-pendente-save:active { transform: scale(0.98); }
@@ -1319,7 +1319,7 @@ body {
 .pv-delete-pendente-atencao {
     font-size: 13px;
     font-weight: 800;
-    color: #ef4444;
+    color: var(--cc-red);
     text-transform: uppercase;
     letter-spacing: 1px;
     margin-bottom: 10px;
@@ -1328,7 +1328,7 @@ body {
 .pv-delete-pendente-irreversivel {
     font-size: 13px !important;
     font-weight: 500 !important;
-    color: #f87171 !important;
+    color: var(--cc-red-light) !important;
     margin-bottom: 16px !important;
 }
 
@@ -1359,7 +1359,7 @@ body {
 }
 
 .pv-delete-pendente-senha label strong {
-    color: #ef4444;
+    color: var(--cc-red);
     letter-spacing: 1px;
 }
 
@@ -1380,14 +1380,14 @@ body {
 
 .pv-delete-pendente-senha input:focus {
     outline: none;
-    border-color: #ef4444;
+    border-color: var(--cc-red);
 }
 
 .pv-delete-senha-erro {
     min-height: 16px;
     font-size: 12px;
     font-weight: 600;
-    color: #ef4444;
+    color: var(--cc-red);
 }
 
 .pv-delete-pendente-footer {
@@ -1425,7 +1425,7 @@ body {
     color: #fff;
 }
 .pv-delete-pendente-confirm:hover {
-    background: #ef4444;
+    background: var(--cc-red);
     box-shadow: 0 0 16px rgba(239, 68, 68, 0.3);
 }
 .pv-delete-pendente-confirm:active { transform: scale(0.98); }

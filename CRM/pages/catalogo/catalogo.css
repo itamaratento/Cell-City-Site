@@ -5,18 +5,18 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green: #00c853;
-  --green-light: #00e676;
-  --bg: #0a0b0c;
+  --green: var(--cc-green);
+  --green-light: var(--cc-green-light);
+  --bg: var(--cc-bg);
   --bg2: #111314;
   --bg3: #181b1d;
-  --border: rgba(255,255,255,0.07);
+  --border: var(--cc-border);
   --border2: rgba(255,255,255,0.12);
-  --text: #e8eaed;
-  --text-muted: #8b949e;
-  --red: #f44336;
-  --yellow: #ffc107;
-  --radius: 12px;
+  --text: var(--cc-text);
+  --text-muted: var(--cc-text-muted);
+  --red: var(--cc-red);
+  --yellow: var(--cc-amber);
+  --radius: var(--cc-radius-md);
 }
 
 body {
