@@ -53,6 +53,7 @@ const CDN_ALLOWLIST = new Set([
   'CRM/pages/central-informacoes/informacoes.js',         // storage direto — dívida registrada (usar getFirebaseStorage)
   'CRM/pages/usuarios-permissoes/firebase-secondary.js',  // app secundário deliberado (criar usuário sem derrubar sessão)
   'CRM/pages/usuarios-permissoes/usuarios-permissoes.js', // functions/callable
+  'CRM/pages/saas-admin/firebase-secondary.js',           // Sprint 4: app secundário próprio (mesmo padrão, criar admin da empresa aprovada)
   'CRM/garantia.html',                                    // Fase 1.3: página pública (Cloud Function, sem Auth)
   'CRM/pages/saas-onboarding/index.html',                 // Fase 1.3: cadastro público de empresa (Cloud Function)
   'CRM/pages/portal-cliente/index.html',                  // Fase 1.3: app anônima do cliente — bounded context próprio.
@@ -65,6 +66,7 @@ const INIT_APP_ALLOWLIST = new Set([
   'CRM/scripts/firebase.js',
   'CRM/pages/catalogo/public/catalogo-publico.js',
   'CRM/pages/usuarios-permissoes/firebase-secondary.js',
+  'CRM/pages/saas-admin/firebase-secondary.js', // Sprint 4
   'CRM/garantia.html',                     // Fase 1.3
   'CRM/pages/saas-onboarding/index.html',  // Fase 1.3
   'CRM/pages/portal-cliente/index.html',   // Fase 1.3

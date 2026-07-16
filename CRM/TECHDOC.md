@@ -2335,3 +2335,92 @@ pré-existentes em `financeiro-relatorio.test.mjs`.
 
 **Veredito:** ✅ APROVADO PARA INTEGRAÇÃO. Relatório completo:
 `plans/F1_4_CERTIFICACAO_FINAL.md`.
+
+## §45 — Admin SaaS: Aprovação de Empresas Pendentes (Sprint 4, 2026-07-16)
+
+**Descoberta (Fase 1):** não existe nenhum documento com plano formal de
+"Sprint 4 SaaS" — toda menção a "Sprint 4" nos documentos do projeto
+(`MASTER_ROADMAP.md`, `TECHDOC.md` §7.4 etc.) se refere ao RBAC legado
+(Financeiro), já aprovado em 2026-07-08, sem relação com o SaaS. O
+`plans/SPRINT3_ONBOARDING_RELATORIO.md` (§11) e `PROXIMA_ETAPA.md`
+registravam Sprint 4 SaaS como "aguarda plano formal — não iniciar sem
+documentação". Escopo desta sprint foi **derivado de evidência de
+código**, não inventado: `functions/saas.js` (Sprint 3) já declara em
+comentário que a empresa criada pelo onboarding "nasce com status
+`pendente_aprovacao`... o operador (master_admin) aprova no
+`saas-admin`" — uma dependência explícita, já shipada, nunca
+implementada do lado do `saas-admin`. Esta sprint fecha exatamente essa
+lacuna, e só ela (nenhuma outra funcionalidade nova).
+
+**Entregas:**
+- `CRM/pages/saas-admin/index.html` deixou de ter toda a lógica inline
+  — extraída para `CRM/pages/saas-admin/saas-admin.js` (mesmo padrão do
+  `saas-onboarding` na Sprint 3), sem alterar nenhum comportamento do
+  CRUD manual de empresas já existente (`salvar`/`editar`/`desativar`).
+- Empresas com `status: 'pendente_aprovacao'` aparecem destacadas
+  (borda azul) e no topo da lista, com botões **Aprovar**/**Rejeitar**.
+- **Aprovar**: abre modal (nome/e-mail pré-preenchidos com o contato do
+  onboarding, senha temporária gerada), cria a conta Auth do
+  administrador via app secundário isolado (`firebase-secondary.js`
+  próprio do módulo — mesmo padrão de `usuarios-permissoes/firebase-secondary.js`,
+  não compartilhado entre páginas por serem módulos isolados),
+  grava `usuarios/{uid}` com `perfil: 'admin'` e `empresa_id` da
+  empresa aprovada, e muda `empresas/{id}.status` para `'ativo'` (ou
+  `'trial'` se o plano escolhido for o plano trial — `getPlano(planoId).trial`,
+  reaproveitado de `shared/saas-planos.js`).
+- **Rejeitar**: confirma e muda o status para `'rejeitada'` (mesma
+  regra das Rules já vigentes — `delete: false`, histórico preservado).
+- Ambas as ações passam a chamar `logAcao()` de
+  `CRM/shared/saas-auditoria.js` — módulo existente desde a fase PS-5,
+  sem nenhum consumidor real até esta sprint (confirmado por busca
+  textual antes de implementar). Primeira integração viva do módulo.
+- Nenhuma Cloud Function nova: as Firestore Rules vigentes (`empresas`
+  e `usuarios`, seção "KERNEL: Perfis de usuário e empresas") já
+  liberam `master_admin` para `create`/`update` cross-tenant — conferido
+  antes de implementar, para não precisar de deploy de Rules.
+
+**Fora de escopo (decisão deliberada, risco/tamanho):**
+- Mover `usuarios-permissoes/firebase-secondary.js` para `shared/` —
+  levantado como opção para evitar duplicação, descartado: o arquivo é
+  referenciado por nome em `scripts/arquitetura/auditar.mjs` (allowlist),
+  `CRM/sw.js` (precache) e pela suíte RBAC certificada (43/43 casos,
+  `tests/rbac/usuarios-permissoes.test.mjs`) — mover exigiria tocar 3+
+  módulos por uma extração de ~20 linhas já replicada de forma isolada
+  por página em todo o projeto (padrão confirmado, não uma exceção).
+  `saas-admin/firebase-secondary.js` segue o mesmo padrão isolado.
+- Política de senha (`politicas_senha`, usada em `usuarios-permissoes.js`)
+  não é aplicada à senha temporária do admin recém-aprovado — usa apenas
+  o mínimo de 6 caracteres já validado no formulário; a política
+  completa pode ser adicionada depois sem migração (campo não
+  obrigatório hoje).
+- E-mail de boas-vindas/credenciais automático — mesmo modelo do
+  `usuarios-permissoes.js` (credenciais mostradas uma vez na tela, o
+  operador comunica manualmente).
+
+**Testes:** `tests/rbac/saas-admin.test.mjs` (6 novos casos — gate
+master_admin, listagem de pendentes, aprovar plano não-trial → `ativo`,
+aprovar plano trial → `trial`, rejeitar, empresa ativa sem ações de
+aprovação), usando o harness jsdom já existente (`tests/rbac/loader.mjs`
++ mocks) sem nenhuma cópia de mock nova. Suíte RBAC completa 179/181
+(mesmas 2 falhas pré-existentes de `financeiro-relatorio`, não
+relacionadas) · `auditar-arquitetura` 6/6 (2 entradas novas na allowlist
+de CDN, documentadas) · integridade 14/14 · `validar-infra-app-config`
+12/12 · catálogo 17/17 (regenerado; `saas-admin` passa de 1 para 3
+arquivos, score 80→70 — o extrator agora detecta o acesso direto a
+`usuarios`/`empresas` que antes ficava invisível dentro do `<script>`
+inline do HTML; não é uma regressão de comportamento, é o catálogo
+enxergando corretamente o que já existia).
+
+**Pendências não bloqueantes:**
+- `saas-admin`/`saas-onboarding` continuam sem camada Repository
+  (acesso direto ao Firestore) — mesma dívida já registrada para os 27
+  módulos "em migração gradual" (métrica do `auditar-arquitetura`);
+  não é uma regressão desta sprint.
+- Teste end-to-end em navegador real (Chrome) não executado nesta
+  sessão — cobertura via jsdom (6/6) segue o mesmo nível de evidência
+  aceito para `usuarios-permissoes.js` até sua própria homologação em
+  navegador.
+
+**Veredito:** ✅ Sprint 4 concluída (escopo derivado de evidência de
+código, não de documento formal — ver Fase 1 acima). Relatório
+completo: `plans/SPRINT4_RELATORIO_FINAL.md`.

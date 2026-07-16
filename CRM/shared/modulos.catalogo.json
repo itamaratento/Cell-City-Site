@@ -1,8 +1,8 @@
 {
   "gerador": "scripts/central-modulos/gerar-catalogo.mjs",
   "versaoGerador": "1.0.0",
-  "geradoEm": "2026-07-16T23:04:44.705Z",
-  "commitBase": "721095d",
+  "geradoEm": "2026-07-16T23:41:12.417Z",
+  "commitBase": "ae14b4d",
   "resumo": {
     "totalPastas": 36,
     "visiveis": 30,
@@ -23,7 +23,7 @@
       "Sem grupo": 3
     },
     "semRbac": 4,
-    "semFirestore": 17,
+    "semFirestore": 16,
     "incompletos": 0,
     "colecoesDistintas": 40,
     "scoreMedio": 94,
@@ -46,10 +46,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agenda e ações da semana (eventos, tarefas e ações comerciais).",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.25",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 24,
+      "commits": 25,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -279,10 +279,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Trilha de auditoria de usuários e permissões.",
       "oculto": false,
-      "versao": "1.0.20",
+      "versao": "1.0.21",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 20,
+      "commits": 21,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -395,10 +395,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pré-OS online criada pelo próprio cliente (autoatendimento).",
       "oculto": false,
-      "versao": "1.0.24",
+      "versao": "1.0.25",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 24,
+      "commits": 25,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -505,10 +505,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Lançamentos de entrada e saída do caixa diário, categorias e lembretes de pagamento.",
       "oculto": false,
-      "versao": "1.0.48",
+      "versao": "1.0.49",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 48,
+      "commits": 49,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -625,10 +625,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Campanhas de comunicação para a base de clientes.",
       "oculto": false,
-      "versao": "1.0.21",
+      "versao": "1.0.22",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 21,
+      "commits": 22,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -846,10 +846,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Agregador de alertas de todos os módulos (OS, financeiro, portal, pós-venda, sistema).",
       "oculto": false,
-      "versao": "1.0.49",
+      "versao": "1.0.50",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 49,
+      "commits": 50,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -965,10 +965,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Comandos rápidos e categorizados de operação do sistema.",
       "oculto": false,
-      "versao": "1.0.27",
+      "versao": "1.0.28",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 27,
+      "commits": 28,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1080,10 +1080,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Base de conhecimento interna, informações categorizadas da operação.",
       "oculto": false,
-      "versao": "1.0.32",
+      "versao": "1.0.33",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 32,
+      "commits": 33,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -1415,10 +1415,10 @@
       "descricao": "Chat interno entre usuários do sistema (desativado).",
       "oculto": true,
       "motivoOculto": "DESATIVADO por decisão do dono em 2026-07-10 (TECHDOC §31): sem uso operacional; chat.js renderiza 'Módulo desativado'. Código/Rules/coleção preservados. Para reativar, ver passos no TECHDOC §31 e remover este oculto.",
-      "versao": "1.0.9",
+      "versao": "1.0.10",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 9,
+      "commits": 10,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1632,10 +1632,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Pedidos de compra e acompanhamento de recebimento.",
       "oculto": false,
-      "versao": "1.0.30",
+      "versao": "1.0.31",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 30,
+      "commits": 31,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -1975,10 +1975,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Gestão de leads, chips e entradas do funil comercial (4 subtelas).",
       "oculto": false,
-      "versao": "1.0.38",
+      "versao": "1.0.39",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 38,
+      "commits": 39,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2302,10 +2302,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Registro diário da operação com backup no Google Drive.",
       "oculto": false,
-      "versao": "1.0.29",
+      "versao": "1.0.30",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 29,
+      "commits": 30,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2511,10 +2511,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Controle de produtos em estoque, entradas, saídas e alertas de reposição.",
       "oculto": false,
-      "versao": "1.0.30",
+      "versao": "1.0.31",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 30,
+      "commits": 31,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2712,10 +2712,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Contas a pagar/receber, despesas fixas, categorias e fechamentos.",
       "oculto": false,
-      "versao": "1.0.39",
+      "versao": "1.0.40",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 39,
+      "commits": 40,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -2833,10 +2833,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Cadastro de fornecedores, histórico de compras e tendências.",
       "oculto": false,
-      "versao": "1.0.34",
+      "versao": "1.0.35",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 34,
+      "commits": 35,
       "status": "ok",
       "score": 100,
       "rbac": {
@@ -2950,10 +2950,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Importação de dados externos (vendas, produtos, clientes, lançamentos).",
       "oculto": false,
-      "versao": "1.0.20",
+      "versao": "1.0.21",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 20,
+      "commits": 21,
       "status": "ok",
       "score": 90,
       "rbac": {
@@ -3918,19 +3918,24 @@
       "atualizadoEm": "2026-07-16",
       "commits": 4,
       "status": "atencao",
-      "score": 80,
+      "score": 70,
       "rbac": {
         "protegido": false,
         "mecanismos": []
       },
       "colecoesFirestore": {
-        "diretas": [],
+        "diretas": [
+          "usuarios"
+        ],
         "viaRepositorio": []
       },
       "dependencias": {
         "shared": [
           "design-system.css",
           "dock.css",
+          "env-config.js",
+          "saas-auditoria.js",
+          "saas-planos.js",
           "theme.js"
         ],
         "scripts": [
@@ -3941,11 +3946,19 @@
       },
       "arquivosPrincipais": [
         {
+          "arquivo": "saas-admin.js",
+          "linhas": 249
+        },
+        {
           "arquivo": "index.html",
-          "linhas": 147
+          "linhas": 71
+        },
+        {
+          "arquivo": "firebase-secondary.js",
+          "linhas": 43
         }
       ],
-      "totalArquivos": 1,
+      "totalArquivos": 3,
       "menu": {
         "sidebarDashboard": false,
         "dock": false,
@@ -3971,7 +3984,7 @@
         },
         {
           "item": "usa camada Repository (ou não acessa Firestore direto)",
-          "ok": true
+          "ok": false
         },
         {
           "item": "alcançável por alguma navegação (ou oculto por decisão documentada)",
@@ -3998,6 +4011,10 @@
         {
           "tipo": "sem-rbac",
           "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
+        },
+        {
+          "tipo": "sem-repository",
+          "detalhe": "acessa Firestore direto (1 coleções) sem usar a camada CRM/repositories/"
         }
       ]
     },
@@ -4011,10 +4028,10 @@
       "categoria": "Sistema Web (CRM)",
       "descricao": "Módulo Onboarding SaaS.",
       "oculto": false,
-      "versao": "1.0.3",
+      "versao": "1.0.4",
       "autor": "Cell City",
       "atualizadoEm": "2026-07-16",
-      "commits": 3,
+      "commits": 4,
       "status": "atencao",
       "score": 80,
       "rbac": {
