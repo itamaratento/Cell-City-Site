@@ -20,27 +20,30 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.2: CERTIFICAÇÃO DE RELEASE
+## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.4: LIBERAÇÃO CONTROLADA
 
-A release candidata em `develop` passou pela certificação técnica final
-(Fase 2.2). Relatório: [`plans/CERTIFICACAO_RELEASE_FINAL_20260717.md`](plans/CERTIFICACAO_RELEASE_FINAL_20260717.md).
+A release candidata em `develop` @ `4080ec2` está **pronta para push**.
+Relatório: [`plans/LIBERACAO_CONTROLADA_RELEASE_20260717.md`](plans/LIBERACAO_CONTROLADA_RELEASE_20260717.md).
 
-**Linha oficial imediata:** preparar promoção controlada — **sem** executar
-push/`main`/deploy/backfill até autorização humana explícita.
+**Recomendação oficial:** 🟢 **PRONTO PARA PUSH**
+
+Working tree limpa · 7 commits à frente de `origin/develop` · suítes locais
+revalidadas (Rules 117 · Storage 11 · amostra Functions 9).
 
 ### Concluído tecnicamente (local)
 
-- Firestore Rules 117/117 · Storage 11/11 · Functions 34+/34 · RBAC 181/181
-- CI local preparada (`setup-java`, storage-rules, concurrency=1)
-- Bloqueadores de segurança da auditoria 2.2 corrigidos (senha CSPRNG,
-  PIN estático removido, XSS dashboard/OS, catálogo público tenant-scoped)
+- Fases 2.1–2.2 commitadas (CI Java, Storage, singleProjectMode, segurança)
+- Auditoria de commits / CI / backfill / promoção / smoke **preparados**
+- Sem push / main / deploy / backfill executados
 
-### Pendências exclusivamente humanas
+### Próxima ação humana (ordem rígida)
 
-1. Commit + **push** `develop` → validar CI remota
-2. **Backfill** produção (`backfill-empresa-id` → `validar-backfill` → `dados_migrados`)
-3. Promoção **`develop` → `main`** + tag
-4. Decisão S2 raiz (prova de posse em `consultarOSPublica`)
+1. **`git push origin develop`** → validar CI remota
+2. **Backfill** produção → `validar-backfill` exit 0 → `dados_migrados`
+3. Fast-forward **`develop` → `main`** + tag
+4. Deploy Firebase (só após passo 2)
+5. Smoke pós-deploy (checklist no relatório 2.4)
+6. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
 
 ### Histórico recente (não sobrescreve o acima)
 

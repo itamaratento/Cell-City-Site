@@ -3,6 +3,16 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-17 (Fase 2.4 — liberação controlada)
+
+### Docs
+- Preparação completa da liberação até o limite humano (push / backfill / main / deploy).
+- Relatório: `plans/LIBERACAO_CONTROLADA_RELEASE_20260717.md`.
+- Recomendação: **PRONTO PARA PUSH** (`develop` @ `4080ec2`, 7 commits locais).
+
+### Notes
+- Sem push, merge, tag, deploy ou backfill de produção nesta fase.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.2 — certificação de release)
 
 ### Fixed
