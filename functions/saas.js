@@ -45,7 +45,9 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
 
   const db = admin.firestore();
 
-  // Dedup pelo e-mail de contato — barreira simples contra re-submissão.
+  // Dedup pelo e-mail de contato — barreira rápida contra re-submissão
+  // (não é atômica sozinha: duas requisições concorrentes com o mesmo
+  // e-mail podem ambas passar por aqui antes de qualquer uma escrever).
   const dup = await db.collection('empresas').where('contato_email', '==', email).limit(1).get();
   if (!dup.empty) {
     throw new HttpsError('already-exists', 'Já existe um cadastro com este e-mail. Fale com o suporte.');
@@ -54,6 +56,23 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
   const empresaId = 'emp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const agora = admin.firestore.FieldValue.serverTimestamp();
   const { modulos_ativos, feature_flags } = provisionamentoPorPlano(plano);
+
+  // Reserva atômica do e-mail (achado da missão autônoma 2026-07-17:
+  // corrige a corrida do dedup acima). doc().create() falha sozinho,
+  // sem transação, se o e-mail já foi reservado por outra requisição
+  // concorrente — a checagem de cima é só um fast-path de UX; esta é
+  // a garantia real contra duas empresas nascerem com o mesmo e-mail.
+  try {
+    await db.collection('saas_email_index').doc(email).create({
+      empresa_id: empresaId,
+      criadoEm: agora,
+    });
+  } catch (e) {
+    if (e.code === 6 /* ALREADY_EXISTS */) {
+      throw new HttpsError('already-exists', 'Já existe um cadastro com este e-mail. Fale com o suporte.');
+    }
+    throw e;
+  }
 
   await db.collection('empresas').doc(empresaId).set({
     nome_fantasia: nome,

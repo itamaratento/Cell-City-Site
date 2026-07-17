@@ -17,7 +17,10 @@ after(async () => {
 });
 
 async function limpar() {
-  for (const col of ['empresas', 'saas_eventos']) {
+  // saas_email_index incluído (achado da missão autônoma 2026-07-17):
+  // reserva atômica de e-mail contra a corrida do dedup — sem limpar
+  // aqui, o teste de dedup "reaproveita" a reserva do teste anterior.
+  for (const col of ['empresas', 'saas_eventos', 'saas_email_index']) {
     const snap = await db.collection(col).get();
     await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
