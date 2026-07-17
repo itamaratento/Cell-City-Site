@@ -20,7 +20,7 @@
 // README.md, "Padrão de testes").
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, statSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, statSync, readFileSync, readdirSync, writeFileSync, rmSync, mkdirSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -597,17 +597,20 @@ test('módulo Backup e Recuperação: Validar Integridade/Listar/Informações s
 });
 
 test('módulo Backup e Recuperação: Backup das Configurações executa de verdade (seguro — só cópia local, sem rede)', () => {
-    const antes = new Set(readdirSync(join(ROOT, '_BACKUPS')).filter(n => n.startsWith('configuracoes-')));
+    // _BACKUPS/ é gitignored — em checkout limpo (CI) a pasta não existe ainda.
+    const dirBackups = join(ROOT, '_BACKUPS');
+    if (!existsSync(dirBackups)) mkdirSync(dirBackups, { recursive: true });
+    const antes = new Set(readdirSync(dirBackups).filter(n => n.startsWith('configuracoes-')));
     const saida = rodarModulo('backup-recuperacao', '8\n\n11\n0\n');
     assert.match(saida, /Backup das configurações concluído/i);
-    const depois = readdirSync(join(ROOT, '_BACKUPS')).filter(n => n.startsWith('configuracoes-'));
+    const depois = readdirSync(dirBackups).filter(n => n.startsWith('configuracoes-'));
     const novas = depois.filter(n => !antes.has(n));
     assert.equal(novas.length, 1, `esperava 1 pasta nova de configuracoes-*, achou ${novas.length}`);
     try {
-        const conteudo = readdirSync(join(ROOT, '_BACKUPS', novas[0]));
+        const conteudo = readdirSync(join(dirBackups, novas[0]));
         assert.ok(conteudo.includes('CLAUDE.md'), 'backup das configurações precisa incluir CLAUDE.md');
     } finally {
-        rmSync(join(ROOT, '_BACKUPS', novas[0]), { recursive: true, force: true });
+        rmSync(join(dirBackups, novas[0]), { recursive: true, force: true });
     }
 });
 
