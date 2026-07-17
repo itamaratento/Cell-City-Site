@@ -874,6 +874,8 @@ Configurações gerais do sistema — cada documento é uma chave/tela diferente
 
 > **`_diagnostico_temp`** (`CRM/pages/kernel-test/index.html`) não é uma coleção de dados de negócio — é usada só como alvo de um teste de leitura/escrita de conectividade (ping) na página interna de diagnóstico do kernel. Citada aqui só para constar no catálogo.
 
+> 🟠 **Achado da Fase 2.3 (2026-07-17, ainda não corrigido — decisão de produto/arquitetura, fora do escopo de um patch de Rules):** diferente de toda outra coleção deste arquivo, `config` nunca recebeu `empresa_id` nem foi migrada para um esquema de doc ID por tenant durante o PS-6 (multiempresa) — os sub-documentos (`impressao`, `horarios`, `retorno_mensagens`, `crm_pre_os_counter`, `dock_ordem`, etc.) continuam **compartilhados por TODAS as empresas da plataforma**. Na prática, hoje (só `cellcity-master` em produção) isso é invisível; assim que uma 2ª empresa real existir, ela herda/edita a MESMA config de impressão de recibo, os MESMOS horários de agendamento e o MESMO contador de Pré-OS da primeira — não é um vazamento de dado de cliente (não há PII aqui), mas é uma mistura funcional de configuração de negócio entre tenants. Corrigir exige migrar o esquema de doc ID (ex.: `config/{empresaId}_impressao`) e um backfill, não só uma regra — mesma classe de decisão que este arquivo já trata com cautela em outros achados (`plans/VALIDACAO_FINAL_PRE_MAIN_20260717.md` §pendências).
+
 ---
 
 ## 20. Auditoria e Logs

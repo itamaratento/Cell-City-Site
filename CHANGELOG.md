@@ -3,6 +3,24 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-17 (Fase 2.3 — validação final pré-main)
+
+### Fixed
+- Cloud Functions: `portalCriarAgendamento` não validava o horário contra agendamentos existentes — a checagem de "horário ocupado" só existia do lado do cliente (`portalListarHorariosOcupados`), trivialmente contornável com uma chamada direta. Aplicado o mesmo filtro (data + status ativo, escopado por empresa) como barreira real do lado do servidor.
+- CI: liga `tests/integrity/seguranca-fase22.test.mjs` (já existia no working tree, sem passo no workflow) ao `tests.yml`.
+
+### Refactored (sem mudar comportamento)
+- `functions/portal.js`: extraída `horariosOcupadosDaEmpresa()` — elimina a duplicação da query introduzida pelo fix acima.
+
+### Docs
+- `COLECOES_FIRESTORE.md` §19: novo achado 🟠 — a coleção `config` (impressão, horários, contador de Pré-OS) nunca foi migrada para um esquema por tenant; hoje compartilhada por todas as empresas da plataforma. Não corrigido (exige migração de esquema de doc ID + backfill, fora do escopo de um patch de Rules) — documentado para decisão de produto/arquitetura futura.
+- Relatório: `plans/VALIDACAO_FINAL_PRE_MAIN_20260717.md`.
+
+### Notes
+- Rules certificadas nesta fase (117/117 Firestore, 11/11 Storage) contra o conteúdo atual de `CRM/firestore.rules`/`storage.rules` — nenhum dos dois arquivos mudou desde a certificação anterior (Fase 1.9), confirmado via `git log`; não repetida sem necessidade.
+- Regressão completa: RBAC 181/181, integridade 14/14, segurança Fase 2.2 12/12, Cloud Functions do Portal 28/28 (3 novos), Control Center + onboarding + performance 108/108.
+- Push/`develop→main`/deploy produção/tag oficial **não** executados nesta fase.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.5 — acompanhamento pós-push)
 
 ### Fixed
