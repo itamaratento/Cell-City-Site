@@ -698,7 +698,14 @@ service cloud.firestore {
     }
 
     match /catalogo_produtos/{docId} {
-      allow read:   if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      // Vitrine pública (catalogo-publico.js, sem login): só a empresa
+      // dona da loja pública (cellcity-master). Outras empresas ficam
+      // isoladas — list/get público sem filtro de tenant vazaria o
+      // catálogo SaaS inteiro. Staff autenticado: mesmaEmpresa*.
+      allow read:   if (request.auth == null
+                        && resource.data.get('empresa_id', '') == 'cellcity-master'
+                        && resource.data.get('ativo', true) != false)
+                     || (request.auth != null && temAcessoLiberado() && mesmaEmpresaRead());
       allow create: if request.auth != null && temAcessoLiberado() && mesmaEmpresaCreate();
       allow update: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
       allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();

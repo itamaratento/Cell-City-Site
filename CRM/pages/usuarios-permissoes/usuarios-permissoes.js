@@ -47,12 +47,10 @@ import { formatDateTime } from '../../shared/date-utils.js';
 // Mesma região do deploy da function (functions/index.js) e do Firestore.
 const excluirUsuarioAdminFn = httpsCallable(getFunctions(getApp(), 'southamerica-east1'), 'excluirUsuarioAdmin');
 
-// Senha administrativa de confirmação de exclusão (pedido do proprietário,
-// briefing 2026-07-03). É uma trava contra exclusão acidental, NÃO uma
-// barreira de segurança: quem protege de verdade é a Cloud Function
-// excluirUsuarioAdmin (functions/index.js), que confere no servidor se
-// quem chama é admin/master_admin antes de apagar qualquer coisa.
-const SENHA_ADMIN_EXCLUSAO = '1056';
+// Confirmação de exclusão: digitar o e-mail do alvo (anti-acidente).
+// NÃO é barreira de segurança — quem protege é a Cloud Function
+// excluirUsuarioAdmin (confere admin/master_admin no servidor).
+// PIN estático no cliente foi removido (repositório público + audit 2026-07-17).
 
 // ── Catálogo de módulos (matriz de permissões) ─────────────────
 const MODULOS = [
@@ -119,10 +117,14 @@ let matrizEdicao = null;
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// Mesmo padrão de saas-admin.js (auditoria 2026-07-17): senha temporária
+// de credencial real não pode usar Math.random().
 const gerarSenhaTemp = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
   let s = '';
-  for (let i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 10; i++) s += chars[bytes[i] % chars.length];
   return s;
 };
 const fmtData = (ts) => formatDateTime(ts, { vazio: '—' });
@@ -626,7 +628,7 @@ function abrirExcluirUsuario(u) {
 
   abrirModal('Excluir usuário — ' + (u.nome_exibicao || u.email), `
     <div class="up-modal-aviso up-aviso-danger">Esta ação é <b>definitiva</b>: o cadastro e o login (Firebase Auth) do usuário serão removidos e não poderão ser recuperados.</div>
-    <div class="up-field"><label>Senha administrativa *</label><input class="up-input" id="ex-senha-admin" type="password" autocomplete="off" placeholder="Informe a senha para confirmar"></div>
+    <div class="up-field"><label>Digite o e-mail do usuário para confirmar *</label><input class="up-input" id="ex-confirma-email" type="email" autocomplete="off" placeholder="${esc(u.email || '')}"></div>
     <div class="up-modal-btns">
       <button class="up-btn" onclick="window.__upFecharModal()">Cancelar</button>
       <button class="up-btn up-btn-danger" id="ex-confirmar">Excluir definitivamente</button>
@@ -634,9 +636,10 @@ function abrirExcluirUsuario(u) {
   `);
 
   $('ex-confirmar').addEventListener('click', (e) => {
-    const senhaAdmin = $('ex-senha-admin').value;
-    if (senhaAdmin !== SENHA_ADMIN_EXCLUSAO) {
-      toast('Senha administrativa incorreta — exclusão cancelada.');
+    const digitado = ($('ex-confirma-email').value || '').trim().toLowerCase();
+    const esperado = String(u.email || '').trim().toLowerCase();
+    if (!esperado || digitado !== esperado) {
+      toast('E-mail de confirmação não confere — exclusão cancelada.');
       return;
     }
     comCarregamento(e.currentTarget, 'Excluindo...', async () => {

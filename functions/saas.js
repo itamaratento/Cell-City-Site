@@ -53,7 +53,7 @@ exports.saasOnboardingCriarEmpresa = onCall({ region: REGIAO }, async (request) 
     throw new HttpsError('already-exists', 'Já existe um cadastro com este e-mail. Fale com o suporte.');
   }
 
-  const empresaId = 'emp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const empresaId = 'emp_' + Date.now().toString(36) + require('crypto').randomBytes(3).toString('hex');
   const agora = admin.firestore.FieldValue.serverTimestamp();
   const { modulos_ativos, feature_flags } = provisionamentoPorPlano(plano);
 

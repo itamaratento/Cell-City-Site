@@ -26,7 +26,11 @@ async function limpar() {
   }
 }
 
-beforeEach(limpar);
+beforeEach(async () => {
+  const { clearRateLimitStore } = require('./lib/rate-limit.js');
+  clearRateLimitStore();
+  await limpar();
+});
 
 function comCode(codeEsperado) {
   return (err) => err.code === codeEsperado;

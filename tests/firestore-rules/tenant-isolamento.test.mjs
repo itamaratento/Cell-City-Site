@@ -345,3 +345,40 @@ test('alarme_config: usuario le/escreve doc de OUTRO usuario -> NEGADO', async (
   await assertFails(dbA().collection('alarme_config').doc('user-b').get());
   await assertFails(dbA().collection('alarme_config').doc('user-b').set({ somAtivo: false }));
 });
+
+// ── CATÁLOGO PÚBLICO (achado Fase 2.2) ───────────────────────
+// Vitrine sem login só pode ver produtos de cellcity-master.
+test('catalogo_produtos: anonimo lista cellcity-master filtrado → permitido', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const seed = ctx.firestore();
+    await seed.collection('catalogo_produtos').doc('prod-master').set({
+      nome: 'Pelicula', ativo: true, empresa_id: 'cellcity-master', ordem: 1,
+    });
+    await seed.collection('catalogo_produtos').doc('prod-b').set({
+      nome: 'Capa B', ativo: true, empresa_id: 'empresa-b', ordem: 1,
+    });
+  });
+  const anon = () => testEnv.unauthenticatedContext().firestore();
+  await assertSucceeds(
+    anon().collection('catalogo_produtos').where('empresa_id', '==', 'cellcity-master').get()
+  );
+});
+
+test('catalogo_produtos: anonimo lista sem filtro ou de outra empresa → NEGADO', async () => {
+  const anon = () => testEnv.unauthenticatedContext().firestore();
+  await assertFails(anon().collection('catalogo_produtos').get());
+  await assertFails(
+    anon().collection('catalogo_produtos').where('empresa_id', '==', 'empresa-b').get()
+  );
+});
+
+test('catalogo_produtos: empresa A le o proprio produto → permitido; o de B → NEGADO', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const seed = ctx.firestore();
+    await seed.collection('catalogo_produtos').doc('prod-a').set({
+      nome: 'Item A', ativo: true, empresa_id: 'empresa-a',
+    });
+  });
+  await assertSucceeds(dbA().collection('catalogo_produtos').doc('prod-a').get());
+  await assertFails(dbA().collection('catalogo_produtos').doc('prod-b').get());
+});

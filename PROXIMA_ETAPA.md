@@ -20,7 +20,31 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-16) — INTEGRAÇÃO E CERTIFICAÇÃO CONCLUÍDA (duas frentes)
+## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.2: CERTIFICAÇÃO DE RELEASE
+
+A release candidata em `develop` passou pela certificação técnica final
+(Fase 2.2). Relatório: [`plans/CERTIFICACAO_RELEASE_FINAL_20260717.md`](plans/CERTIFICACAO_RELEASE_FINAL_20260717.md).
+
+**Linha oficial imediata:** preparar promoção controlada — **sem** executar
+push/`main`/deploy/backfill até autorização humana explícita.
+
+### Concluído tecnicamente (local)
+
+- Firestore Rules 117/117 · Storage 11/11 · Functions 34+/34 · RBAC 181/181
+- CI local preparada (`setup-java`, storage-rules, concurrency=1)
+- Bloqueadores de segurança da auditoria 2.2 corrigidos (senha CSPRNG,
+  PIN estático removido, XSS dashboard/OS, catálogo público tenant-scoped)
+
+### Pendências exclusivamente humanas
+
+1. Commit + **push** `develop` → validar CI remota
+2. **Backfill** produção (`backfill-empresa-id` → `validar-backfill` → `dados_migrados`)
+3. Promoção **`develop` → `main`** + tag
+4. Decisão S2 raiz (prova de posse em `consultarOSPublica`)
+
+### Histórico recente (não sobrescreve o acima)
+
+A seção abaixo (2026-07-16) permanece como histórico da integração Sprint 3/4.
 
 Duas frentes trabalharam em paralelo em 2026-07-16 sobre a mesma
 `develop` (histórico linear, sem merge/branch divergente): esta frente

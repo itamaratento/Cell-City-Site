@@ -7,6 +7,7 @@ Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sem
 import { db, doc, setDoc, serverTimestamp, onSnapshot } from "../../scripts/firebase.js";
 import { podeVisualizar } from '../../shared/permissoes.js';
 import { tData } from '../../shared/tenant-query.js';
+import { escHtml } from '../../shared/sanitize.js';
 import { RBAC_CARD_PARA_MODULO_ID, dashboardShared } from './dashboard-state.js';
 
 export const dashboardUiMixin = {
@@ -413,10 +414,10 @@ export const dashboardUiMixin = {
 
     listEl.innerHTML = alerta._osData.map(os => `
       <div style="background:#1a1d1b;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:start;">
-        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${os.id}</span>
-        <span style="font-size:14px;font-weight:700;color:#fff;">${os.clientName || '—'}</span>
-        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + os.phone : 'Sem telefone'}</span>
-        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${os._dias} dia(s) ${labelDias}</span>
+        <span style="font-size:12px;font-weight:800;color:#00e676;grid-row:1/3;">${escHtml(os.id)}</span>
+        <span style="font-size:14px;font-weight:700;color:#fff;">${escHtml(os.clientName || '—')}</span>
+        <span style="font-size:12px;color:#6b7280;">${os.phone ? '📞 ' + escHtml(os.phone) : 'Sem telefone'}</span>
+        <span style="font-size:11px;color:#f59e0b;font-weight:600;grid-column:1/-1;margin-top:4px;">⏱ ${Number(os._dias) || 0} dia(s) ${labelDias}</span>
       </div>`).join('');
 
     modal.style.display = 'flex';

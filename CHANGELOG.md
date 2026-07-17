@@ -3,6 +3,20 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-17 (Fase 2.2 — certificação de release)
+
+### Fixed
+- Segurança: `gerarSenhaTemp()` em `usuarios-permissoes.js` usa `crypto.getRandomValues()` (mesmo padrão do saas-admin).
+- Segurança: removido PIN estático `1056` da exclusão de usuário — confirmação passa a exigir digitar o e-mail do alvo (a CF `excluirUsuarioAdmin` continua sendo a barreira real).
+- XSS: `escHtml` no modal de alertas do Dashboard e nos cards/busca de clientes em OS.
+- Catálogo público: Rules permitem leitura anônima **somente** de `empresa_id == cellcity-master`; cliente filtra com `where`. Evita `permission-denied` e vazamento cross-tenant.
+- Testes: `saas-onboarding` reseta rate-limit entre casos; 3 testes novos de `catalogo_produtos`.
+- IDs de empresa no onboarding SaaS: `crypto.randomBytes` em vez de `Math.random`.
+
+### Docs
+- `PROXIMA_ETAPA.md` atualizado para o estado Fase 2.2.
+- Relatório: `plans/CERTIFICACAO_RELEASE_FINAL_20260717.md`.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.1)
 
 ### Fixed

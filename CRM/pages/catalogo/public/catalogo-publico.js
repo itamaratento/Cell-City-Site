@@ -5,7 +5,7 @@
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
 import {
-  getFirestore, collection, getDocs, doc, getDoc
+  getFirestore, collection, getDocs, doc, getDoc, query, where
 } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 // ─── Config Firebase (ambiente selecionado por env-config.js) ──
@@ -71,7 +71,14 @@ async function carregarProdutos() {
   document.getElementById('cat-grid').innerHTML =
     '<div class="cat-loading"><div class="cat-spinner"></div>Carregando produtos...</div>';
   try {
-    const snap = await getDocs(collection(_db, 'catalogo_produtos'));
+    // Filtro obrigatório de tenant: a Rule pública só permite
+    // empresa_id == cellcity-master. Sem o where, o emulador/prod
+    // nega a list inteira (e abrir sem filtro seria vazamento SaaS).
+    const q = query(
+      collection(_db, 'catalogo_produtos'),
+      where('empresa_id', '==', 'cellcity-master')
+    );
+    const snap = await getDocs(q);
     _produtos = snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .filter(p => p.ativo !== false)
