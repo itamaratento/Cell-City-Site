@@ -220,6 +220,21 @@ exports.portalListarAgendamentos = onCall({ region: REGIAO }, async (request) =>
   return { lista };
 });
 
+// Horários ocupados de uma data, escopados à empresa — mesma consulta
+// usada tanto para informar o cliente (portalListarHorariosOcupados)
+// quanto para validar o próprio submit (portalCriarAgendamento).
+async function horariosOcupadosDaEmpresa(db, dataAgendamento, empresaId) {
+  const snap = await db.collection('agendamentos')
+    .where('data', '==', dataAgendamento)
+    .where('status', 'in', ['confirmado', 'aguardando'])
+    .get();
+  return snap.docs
+    .filter((d) => docDaEmpresa(d.data(), empresaId))
+    .map((d) => d.data().horario)
+    .filter(Boolean)
+    .map((h) => String(h).slice(0, 5));
+}
+
 exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
   aplicarRateLimit(request, 'escrita');
   const data = request.data || {};
@@ -250,15 +265,8 @@ exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
   // duas requisições simultâneas para o mesmo horário (sem reserva
   // atômica) — aceitável: o risco predominante corrigido é a ausência
   // total de validação, não a concorrência exata no mesmo instante.
-  const ocupadosSnap = await db.collection('agendamentos')
-    .where('data', '==', dataAgendamento)
-    .where('status', 'in', ['confirmado', 'aguardando'])
-    .get();
-  const jaOcupado = ocupadosSnap.docs.some((d) => {
-    const doc = d.data();
-    return docDaEmpresa(doc, empresaId) && String(doc.horario || '').slice(0, 5) === horario.slice(0, 5);
-  });
-  if (jaOcupado) {
+  const ocupados = await horariosOcupadosDaEmpresa(db, dataAgendamento, empresaId);
+  if (ocupados.includes(horario.slice(0, 5))) {
     throw new HttpsError('already-exists', 'Este horário já está ocupado. Escolha outro.');
   }
 
@@ -294,15 +302,7 @@ exports.portalListarHorariosOcupados = onCall({ region: REGIAO }, async (request
   }
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
-  const snap = await db.collection('agendamentos')
-    .where('data', '==', dataAgendamento)
-    .where('status', 'in', ['confirmado', 'aguardando'])
-    .get();
-  const ocupados = snap.docs
-    .filter((d) => docDaEmpresa(d.data(), empresaId))
-    .map((d) => d.data().horario)
-    .filter(Boolean)
-    .map((h) => String(h).slice(0, 5));
+  const ocupados = await horariosOcupadosDaEmpresa(db, dataAgendamento, empresaId);
   return { ocupados };
 });
 
