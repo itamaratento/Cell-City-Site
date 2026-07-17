@@ -67,6 +67,7 @@
     },
     "ui": {
       "enabled": false
-    }
+    },
+    "singleProjectMode": false
   }
 }
