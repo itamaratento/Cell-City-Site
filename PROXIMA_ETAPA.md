@@ -20,30 +20,26 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.4: LIBERAÇÃO CONTROLADA
+## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.5: CI APROVADA
 
-A release candidata em `develop` @ `4080ec2` está **pronta para push**.
-Relatório: [`plans/LIBERACAO_CONTROLADA_RELEASE_20260717.md`](plans/LIBERACAO_CONTROLADA_RELEASE_20260717.md).
+Push + CI remota concluídos em `develop` @ `fb57b47`.
+Relatório: [`plans/ACOMPANHAMENTO_LIBERACAO_20260717.md`](plans/ACOMPANHAMENTO_LIBERACAO_20260717.md).
 
-**Recomendação oficial:** 🟢 **PRONTO PARA PUSH**
+**Recomendação oficial:** 🟢 **CI APROVADA — PRONTO PARA BACKFILL**
 
-Working tree limpa · 7 commits à frente de `origin/develop` · suítes locais
-revalidadas (Rules 117 · Storage 11 · amostra Functions 9).
+### Concluído
 
-### Concluído tecnicamente (local)
-
-- Fases 2.1–2.2 commitadas (CI Java, Storage, singleProjectMode, segurança)
-- Auditoria de commits / CI / backfill / promoção / smoke **preparados**
-- Sem push / main / deploy / backfill executados
+- Push `origin/develop` (release + 3 fixes de CI ambiental)
+- Testes automatizados **success** · Pages **success** · Firebase deploy **skipped** (esperado)
+- Correções: `_BACKUPS`, `fetch-depth: 0`, materializar `main` local
 
 ### Próxima ação humana (ordem rígida)
 
-1. **`git push origin develop`** → validar CI remota
-2. **Backfill** produção → `validar-backfill` exit 0 → `dados_migrados`
-3. Fast-forward **`develop` → `main`** + tag
-4. Deploy Firebase (só após passo 2)
-5. Smoke pós-deploy (checklist no relatório 2.4)
-6. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
+1. **Backfill** produção → `validar-backfill` exit 0 → `dados_migrados`
+2. Fast-forward **`develop` → `main`** + tag
+3. Deploy Firebase (só após passo 1)
+4. Smoke pós-deploy
+5. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
 
 ### Histórico recente (não sobrescreve o acima)
 

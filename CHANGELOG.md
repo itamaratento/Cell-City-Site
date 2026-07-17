@@ -3,6 +3,20 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-17 (Fase 2.5 — acompanhamento pós-push)
+
+### Fixed
+- CI: teste Control Center cria `_BACKUPS/` se ausente (gitignored no checkout limpo).
+- CI: `fetch-depth: 0` — histórico completo para Central de IAs / git log.
+- CI: materializa branch local `main` a partir de `origin/main` (Comparar Branches).
+
+### Docs
+- Relatório: `plans/ACOMPANHAMENTO_LIBERACAO_20260717.md`.
+- Recomendação: **CI APROVADA — PRONTO PARA BACKFILL** (`develop` @ `fb57b47`).
+
+### Notes
+- Push `develop` concluído; Pages `/dev` atualizado. Sem backfill / main / deploy Firebase.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.4 — liberação controlada)
 
 ### Docs
