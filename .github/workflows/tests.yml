@@ -44,6 +44,16 @@ jobs:
           # fetch-depth: 1 quebra testes de Central de IAs (Fase 5 no log).
           fetch-depth: 0
 
+      # actions/checkout traz origin/main (com fetch-depth: 0), mas só cria
+      # refs/heads/<branch-do-evento>. Comparar Branches usa o nome curto
+      # "main" nos defaults develop↔main — sem refs/heads/main o teste falha
+      # com "Branch 'main' não encontrada" (passa localmente se main existe).
+      - name: Materializar branch main local (Control Center)
+        run: |
+          if ! git rev-parse --verify --quiet refs/heads/main >/dev/null; then
+            git branch --track main origin/main
+          fi
+
       - name: Configurar Node 20
         uses: actions/setup-node@v4
         with:
