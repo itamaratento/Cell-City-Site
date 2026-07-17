@@ -1,10 +1,10 @@
 {
   "name": "cellcity-storage-rules-tests",
   "private": true,
-  "description": "Testes de Storage Rules (@firebase/rules-unit-testing) — mesmo padrão de tests/firestore-rules/. Cobre o achado A2 (Auditoria Técnica Independente 2026-07-17): delete de paths legados restrito à empresa dona.",
+  "description": "Testes de Storage Rules \u2014 achado A2.",
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore,storage \"node --test\""
+    "test": "firebase emulators:exec --config ../../firebase.json --only firestore,storage --project cellcity-storage-test \"node --test --test-concurrency=1\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.4"

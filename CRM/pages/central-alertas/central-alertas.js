@@ -16,7 +16,7 @@ import { PosvendaContatosRepository as PosvendaContatos } from '../../repositori
 import { CentralAlertasStatusRepository as CentralAlertasStatus } from '../../repositories/sistema.repository.js';
 import { FinanceiroPagarRepository as FinanceiroPagar, FinanceiroReceberRepository as FinanceiroReceber, FinanceiroFixasRepository as FinanceiroFixas } from '../../repositories/financeiro.repository.js';
 import { escHtml as escapeHtml } from '../../shared/sanitize.js';
-import { formatDateTime } from '../../shared/date-utils.js';
+import { formatDateTime, getDeliveryDate, calcDiasDesde } from '../../shared/date-utils.js';
 
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = STORAGE_KEYS.CONFIG_ALERTAS;
@@ -147,21 +147,6 @@ async function gerarAlertas() {
     const out = [];
     const now = new Date();
 
-    const getDeliveryDate = (os) => {
-        if (Array.isArray(os.timeline)) {
-            const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-            if (entry?.date) return entry.date;
-        }
-        const ua = os.updatedAt;
-        if (!ua) return null;
-        if (typeof ua === 'string') return ua;
-        if (ua.toDate) return ua.toDate().toISOString();
-        return null;
-    };
-    const calcDias = (dateStr) => {
-        try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-
     // ── Carrega tudo em paralelo (1 única leitura de 'os', reaproveitada
     //    para pós-venda, prontos e orçamentos — evita 3 leituras repetidas) ──
     const [eventos, osDocs, contatosList, portalList, avaliacoesList, financeiroPagarList, financeiroReceberList, financeiroFixasList] = await Promise.all([
@@ -268,7 +253,7 @@ async function gerarAlertas() {
             if (os.status !== 'entregue') return;
             const dd = getDeliveryDate(os);
             if (!dd) return;
-            const dias = calcDias(dd);
+            const dias = calcDiasDesde(dd, now);
             const osId = os.id || os.firestoreId;
             [5, 15, 30].forEach(prazo => {
                 if (contatosFeitos.has(`${osId}_${prazo}`)) return;
@@ -313,8 +298,8 @@ async function gerarAlertas() {
         osList.forEach(os => {
             if (os.status === 'orcamento_enviado' || os.status === 'orcamento') {
                 osOrcamento++;
-                const ref = getDeliveryDate(os) || os.createdAt;
-                if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) osOrcamentoParado++;
+                const ref = os.updatedAt || os.createdAt;
+                if (ref && calcDiasDesde(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref), now) > 2) osOrcamentoParado++;
             }
             if (os.status === 'concluido' || os.status === 'pronto') osPronto++;
         });
@@ -416,7 +401,7 @@ async function gerarAlertas() {
             }
             if (!dataConcluido) dataConcluido = os.updatedAt;
             if (!dataConcluido) return;
-            const dias = calcDias(dataConcluido);
+            const dias = calcDiasDesde(dataConcluido);
             if (dias > 3) prontos.push({ id: os.id || os.firestoreId, clientName: os.clientName, _dias: dias });
         });
         if (prontos.length > 0) {
@@ -436,7 +421,7 @@ async function gerarAlertas() {
         const orcamentos = [];
         osList.forEach(os => {
             if (os.status !== 'orcamento' && os.status !== 'orcamento_enviado') return;
-            const dias = calcDias(os.updatedAt);
+            const dias = calcDiasDesde(os.updatedAt);
             if (dias > 2) orcamentos.push({ id: os.id || os.firestoreId, clientName: os.clientName, _dias: dias });
         });
         if (orcamentos.length > 0) {

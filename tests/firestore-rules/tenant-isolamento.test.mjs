@@ -330,3 +330,18 @@ test('pre_os: empresa A lista com filtro da própria empresa → permitido; sem 
   await assertSucceeds(dbA().collection('pre_os').where('empresa_id', '==', 'empresa-a').get());
   await assertFails(dbA().collection('pre_os').get());
 });
+
+
+// ── ALARME_CONFIG (achado 2026-07-17) ──────────────────────────
+test('alarme_config: usuario le/escreve o proprio doc -> permitido', async () => {
+  await assertSucceeds(dbA().collection('alarme_config').doc('user-a').set({ somAtivo: true }));
+  await assertSucceeds(dbA().collection('alarme_config').doc('user-a').get());
+});
+
+test('alarme_config: usuario le/escreve doc de OUTRO usuario -> NEGADO', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('alarme_config').doc('user-b').set({ somAtivo: true });
+  });
+  await assertFails(dbA().collection('alarme_config').doc('user-b').get());
+  await assertFails(dbA().collection('alarme_config').doc('user-b').set({ somAtivo: false }));
+});

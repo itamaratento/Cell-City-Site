@@ -66,3 +66,26 @@ export function formatDateFull(x, vazio = '') {
   if (!d) return vazio;
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 }
+
+
+/**
+ * Data de entrega de uma OS (garantia/pos-venda).
+ * So usa fallback updatedAt quando status === 'entregue'.
+ */
+export function getDeliveryDate(os) {
+  if (Array.isArray(os.timeline)) {
+    const entry = [...os.timeline].reverse().find(t => t.text && t.text.includes('Entregue'));
+    if (entry?.date) return entry.date;
+  }
+  if (os.status !== 'entregue') return null;
+  const ua = os.updatedAt;
+  if (!ua) return null;
+  if (typeof ua === 'string') return ua;
+  if (ua.toDate) return ua.toDate().toISOString();
+  return null;
+}
+
+/** Dias corridos desde dateStr ate now. */
+export function calcDiasDesde(dateStr, now = new Date()) {
+  try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
+}

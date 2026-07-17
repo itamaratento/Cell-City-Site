@@ -6,6 +6,7 @@ Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sem
 ============================================ */
 import { db, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
+import { getDeliveryDate, calcDiasDesde } from "../../shared/date-utils.js";
 
 export const dashboardAlertasMixin = {
   // ===== AUTOATENDIMENTO =====
@@ -258,22 +259,6 @@ export const dashboardAlertasMixin = {
     const alertas = [];
     const now = new Date();
 
-    // Helpers Pós-venda (mesma lógica do módulo posvenda.js)
-    const getDeliveryDate = (os) => {
-      if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-      }
-      const ua = os.updatedAt;
-      if (!ua) return null;
-      if (typeof ua === 'string') return ua;
-      if (ua.toDate) return ua.toDate().toISOString();
-      return null;
-    };
-    const calcDias = (dateStr) => {
-      try { return Math.floor((now - new Date(dateStr)) / 86400000); } catch { return 0; }
-    };
-
     try {
       // ===== PRIORIDADE MÁXIMA — AÇÃO DA SEMANA (VENCIDAS + horário atual + próximas) =====
       // Regras:
@@ -393,7 +378,7 @@ export const dashboardAlertasMixin = {
         if (os.status !== 'entregue') return;
         const dd = getDeliveryDate(os);
         if (!dd) return;
-        const dias = calcDias(dd);
+        const dias = calcDiasDesde(dd, now);
         const osId = os.id || os.firestoreId;
         [5, 15, 30].forEach(prazo => {
           if (contatosFeitos.has(`${osId}_${prazo}`)) return;
@@ -443,8 +428,8 @@ export const dashboardAlertasMixin = {
         // 'orcamento_enviado' = novo fluxo; 'orcamento' = OS antigas
         if (os.status === 'orcamento_enviado' || os.status === 'orcamento') {
           osOrcamento++;
-          const ref = getDeliveryDate(os) || os.createdAt;
-          if (ref && calcDias(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref)) > 2) {
+          const ref = os.updatedAt || os.createdAt;
+          if (ref && calcDiasDesde(typeof ref === 'string' ? ref : (ref.toDate ? ref.toDate().toISOString() : ref), now) > 2) {
             osOrcamentoParado++;
           }
         }
@@ -604,7 +589,7 @@ export const dashboardAlertasMixin = {
         }
         if (!dataConcluido) dataConcluido = os.updatedAt;
         if (!dataConcluido) return;
-        const dias = calcDias(dataConcluido);
+        const dias = calcDiasDesde(dataConcluido);
         if (dias > 3) prontos.push({ ...os, _dias: dias });
       });
       if (prontos.length > 0) {
@@ -629,7 +614,7 @@ export const dashboardAlertasMixin = {
       const orcamentos = [];
       orcSnap.forEach(d => {
         const os = { id: d.id, ...d.data() };
-        const dias = calcDias(os.updatedAt);
+        const dias = calcDiasDesde(os.updatedAt);
         if (dias > 2) orcamentos.push({ ...os, _dias: dias });
       });
       if (orcamentos.length > 0) {

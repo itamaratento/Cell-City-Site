@@ -45,6 +45,17 @@ jobs:
         with:
           node-version: "20"
 
+      # Causa raiz da falha 100% da CI (runs 2026-07-14 a 17): emulador
+      # Firestore/Storage e JAR Java. Sem JDK no runner, emulators:exec aborta.
+      - name: Configurar Java 21 (emuladores Firebase)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Confirmar Java disponivel
+        run: java -version
+
       - name: Instalar dependências (raiz — inclui firebase-tools)
         run: npm ci
 
@@ -63,8 +74,16 @@ jobs:
         run: npm test
         working-directory: tests/firestore-rules
 
+      - name: Instalar dependencias (tests/storage-rules/)
+        run: npm ci
+        working-directory: tests/storage-rules
+
+      - name: Testes de Storage Rules (isolamento A2 + paths canonicos)
+        run: npm test
+        working-directory: tests/storage-rules
+
       - name: Testes das Cloud Functions do Portal do Cliente
-        run: firebase emulators:exec --only firestore --project cellcity-rules-test "node --test"
+        run: firebase emulators:exec --config ../../firebase.json --only firestore --project cellcity-rules-test "node --test --test-concurrency=1"
         working-directory: tests/functions
 
       - name: Instalar dependências (tests/rbac/)

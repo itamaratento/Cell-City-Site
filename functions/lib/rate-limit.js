@@ -90,4 +90,9 @@ function aplicarRateLimit(request, tipoOperacao) {
   }
 }
 
-module.exports = { aplicarRateLimit };
+function clearRateLimitStore() {
+  rateLimitStore.clear();
+}
+
+module.exports = { aplicarRateLimit, clearRateLimitStore, LIMITES };
+

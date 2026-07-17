@@ -345,8 +345,11 @@ service cloud.firestore {
       allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
+    // Doc id = uid. Achado: faltava request.auth.uid == docId.
     match /alarme_config/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read, write:                   if request.auth != null
+                                           && request.auth.uid == docId
+                                           && temAcessoLiberado();
     }
 
     // Status (novo/lido/resolvido) dos alertas da Central de Alertas,

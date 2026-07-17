@@ -10,8 +10,12 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
+    // Null-safe: doc ausente nao derruba avaliacao com Null value error.
     function empresaDoUsuario() {
-      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('empresa_id', null);
+      return request.auth != null
+             && firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid))
+             ? firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data.get('empresa_id', null)
+             : null;
     }
 
     // ── CANÔNICO: fotos de OS por empresa ─────────────────────

@@ -40,7 +40,7 @@ function setup() {
     fsMock.__seed('financeiro_pagar', 'pag_outro', { descricao: 'Outro mês', categoria: 'Outro', vencimento: `${ano}-${mes2}-05`, valor: 999, status: 'pendente' });
     // Receitas do mês
     fsMock.__seed('financeiro_receber', 'rec_recebida', { descricao: 'Cliente A', vencimento: `${ano}-${mes}-05`, valor: 3000, status: 'recebido' });
-    fsMock.__seed('financeiro_receber', 'rec_pendente', { descricao: 'Cliente B', vencimento: `${ano}-${mes}-15`, valor: 1500, status: 'pendente' });
+    fsMock.__seed('financeiro_receber', 'rec_pendente', { descricao: 'Cliente B', vencimento: `${ano}-${mes}-${ultimoDia}`, valor: 1500, status: 'pendente' });
     // Fixas
     fsMock.__seed('financeiro_fixas', 'fix_1', { descricao: 'Internet Fixa', categoria: 'Serviços', dia: 10, valor: 200 });
     fsMock.__seed('financeiro_fixas', 'fix_2', { descricao: 'Assinatura', categoria: 'Assinatura', dia: 5, valor: 50 });

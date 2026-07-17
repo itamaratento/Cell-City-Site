@@ -10,6 +10,7 @@ import {
   normalizarEmail,
   digitosTelefone,
 } from '../../shared/saas-onboarding-validacao.js';
+import { escHtml } from '../../shared/sanitize.js';
 
 const PLANOS_VALIDOS = Object.keys(PLANOS);
 
@@ -88,11 +89,11 @@ export function initOnboarding(_firebaseApp, { criarEmpresa }) {
     const planoId = $('s-plano')?.value || dados.plano;
     const plano = PLANOS[planoId];
     $('s-resumo').innerHTML = `
-      <div><strong>Empresa:</strong> ${dados.nome}</div>
-      <div><strong>Responsável:</strong> ${dados.seuNome}</div>
-      <div><strong>E-mail:</strong> ${dados.email}</div>
-      <div><strong>WhatsApp:</strong> ${dados.whatsapp}</div>
-      <div><strong>Plano:</strong> ${plano?.nome || planoId}</div>
+      <div><strong>Empresa:</strong> ${escHtml(dados.nome)}</div>
+      <div><strong>Responsável:</strong> ${escHtml(dados.seuNome)}</div>
+      <div><strong>E-mail:</strong> ${escHtml(dados.email)}</div>
+      <div><strong>WhatsApp:</strong> ${escHtml(dados.whatsapp)}</div>
+      <div><strong>Plano:</strong> ${escHtml(plano?.nome || planoId)}</div>
       <div style="margin-top:8px;font-size:12px;color:#666;">Após aprovação do operador, você receberá instruções de acesso.</div>
     `;
   }

@@ -7,6 +7,7 @@ import {
     PosvendaMensagensRepository as PosvendaMensagens
 } from '../../repositories/posvenda.repository.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
+import { getDeliveryDate, calcDiasDesde } from '../../shared/date-utils.js';
 
 // ===== SOFT DELETE — registros logicamente excluídos =====
 // Campo `ativo: false` + `deletedAt: timestamp` oculta da listagem
@@ -113,7 +114,7 @@ async function loadData() {
         const deliveryDate = getDeliveryDate(os);
         if (!deliveryDate) return;
 
-        const dias = calcDias(deliveryDate, now);
+        const dias = calcDiasDesde(deliveryDate, now);
         const osId = os.id || os.firestoreId;
 
         // Futuros: entregue mas ainda não chegou em 5 dias
@@ -160,24 +161,6 @@ async function carregarMensagensPosvenda() {
         // Em caso de erro, os padrões já estão aplicados acima
         console.warn('⚠️ Erro ao buscar mensagens do Firestore. Usando padrão.', err);
     }
-}
-
-function getDeliveryDate(os) {
-    if (Array.isArray(os.timeline)) {
-        const entry = [...os.timeline].reverse().find(t => t.text === 'Entregue ao cliente');
-        if (entry?.date) return entry.date;
-    }
-    const ua = os.updatedAt;
-    if (!ua) return null;
-    if (typeof ua === 'string') return ua;
-    if (ua.toDate) return ua.toDate().toISOString();
-    return null;
-}
-
-function calcDias(dateStr, now) {
-    try {
-        return Math.floor((now - new Date(dateStr)) / 86400000);
-    } catch { return 0; }
 }
 
 // ===== RENDERIZAR PENDENTES =====

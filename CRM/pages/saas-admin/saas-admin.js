@@ -40,9 +40,14 @@ const STATUS_LABEL = {
 };
 
 function gerarSenhaTemp() {
+  // crypto.getRandomValues() em vez de Math.random() — achado da auditoria
+  // técnica independente 2026-07-17: Math.random() não é criptograficamente
+  // seguro, e isto gera a senha temporária de uma credencial real.
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint32Array(10);
+  crypto.getRandomValues(bytes);
   let s = '';
-  for (let i = 0; i < 10; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 10; i++) s += chars[bytes[i] % chars.length];
   return s;
 }
 

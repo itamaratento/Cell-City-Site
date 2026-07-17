@@ -32,9 +32,10 @@
 
   function getDeliveryDate(os) {
     if (Array.isArray(os.timeline)) {
-      var entry = os.timeline.slice().reverse().find(function (t) { return t.text === 'Entregue ao cliente'; });
+      var entry = os.timeline.slice().reverse().find(function (t) { return t.text && String(t.text).indexOf('Entregue') !== -1; });
       if (entry && entry.date) return entry.date;
     }
+    if (os.status !== 'entregue') return null;
     var ua = os.updatedAt;
     if (!ua) return null;
     if (typeof ua === 'string') return ua;

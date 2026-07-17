@@ -3,7 +3,7 @@
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
 // clientes.js renomeado no P2.6 que impedia o v16 de instalar).
-const CACHE = 'cellcity-crm-v19'; // v19: logo.png/logo-large.png viraram PNG reais 512/1024 (Sprint 0 FASE 1)
+const CACHE = 'cellcity-crm-v20'; // v20: remove services/*.service.js do precache (camada órfã removida — nenhum consumidor real, mesmo defeito de 404 no install que já quebrou o v16)
 
 // Arquivos do shell — carregados no install (expandido para cobrir shared + módulos principais)
 const SHELL = [
@@ -91,10 +91,6 @@ const SHELL = [
   '/CRM/repositories/sistema.repository.js',
   '/CRM/scripts/firebase.js',
   '/CRM/scripts/kernel.js',
-  '/CRM/services/format.service.js',
-  '/CRM/services/os-financeiro.service.js',
-  '/CRM/services/os-status.service.js',
-  '/CRM/services/os-timeline.service.js',
   '/CRM/shared/brand-header.js',
   '/CRM/shared/central-modulos.js',
   '/CRM/shared/date-utils.js',

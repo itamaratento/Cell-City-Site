@@ -18,3 +18,5 @@ Sistema de gestão operacional (CRM) para assistência técnica de celulares + s
 | [`GUIA_MANUTENCAO.md`](GUIA_MANUTENCAO.md) | Manutenção futura, convenções e dívida técnica conhecida |
 | [`HISTORICO_PROJETO.md`](HISTORICO_PROJETO.md) | Histórico acumulativo do projeto |
 | [`plans/`](plans/) | Planos, levantamentos e homologações por frente de trabalho |
+| [`CHANGELOG.md`](CHANGELOG.md) | Histórico resumido de mudanças |
+| [`plans/LIBERACAO_FINAL_PRODUCAO_20260717.md`](plans/LIBERACAO_FINAL_PRODUCAO_20260717.md) | Fase 2.1 — eliminação dos bloqueadores de promoção |

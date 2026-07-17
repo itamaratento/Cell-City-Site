@@ -34,6 +34,9 @@ async function limparColecao(nome) {
 }
 
 beforeEach(async () => {
+  const { clearRateLimitStore } = require('./lib/rate-limit.js');
+  clearRateLimitStore();
+
   await Promise.all([
     limparColecao('mensagens_portal'),
     limparColecao('avaliacoes'),
