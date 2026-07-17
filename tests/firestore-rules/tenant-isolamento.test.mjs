@@ -254,8 +254,12 @@ test('doc legado sem empresa_id: master_admin lê e reivindica; staff comum não
 // antes desta correção — os testes abaixo fecham essa lacuna.
 test('financeiro_categorias/itens: empresa A lê/escreve item da própria categoria → permitido', async () => {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().collection('financeiro_categorias').doc('cat-a').set({ nome: 'Cat A', empresa_id: 'empresa-a' });
-    await ctx.firestore().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a').set({ nome: 'Item A' });
+    // Reusa o mesmo handle: chamar ctx.firestore() duas vezes no mesmo
+    // callback trava as settings do SDK ("Firestore has already been
+    // started") e derruba o seed antes de a rule ser avaliada.
+    const seed = ctx.firestore();
+    await seed.collection('financeiro_categorias').doc('cat-a').set({ nome: 'Cat A', empresa_id: 'empresa-a' });
+    await seed.collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a').set({ nome: 'Item A' });
   });
   await assertSucceeds(dbA().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a').get());
   await assertSucceeds(dbA().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a-novo').set({ nome: 'Novo' }));
@@ -263,8 +267,9 @@ test('financeiro_categorias/itens: empresa A lê/escreve item da própria catego
 
 test('financeiro_categorias/itens: empresa A lê/escreve item de categoria da empresa B → NEGADO', async () => {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
-    await ctx.firestore().collection('financeiro_categorias').doc('cat-b').set({ nome: 'Cat B', empresa_id: 'empresa-b' });
-    await ctx.firestore().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b').set({ nome: 'Item B' });
+    const seed = ctx.firestore();
+    await seed.collection('financeiro_categorias').doc('cat-b').set({ nome: 'Cat B', empresa_id: 'empresa-b' });
+    await seed.collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b').set({ nome: 'Item B' });
   });
   await assertFails(dbA().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b').get());
   await assertFails(dbA().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b-forja').set({ nome: 'Forja' }));
