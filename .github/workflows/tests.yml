@@ -39,6 +39,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Control Center (estrutura.test.mjs) lê git log/histórico real —
+          # fetch-depth: 1 quebra testes de Central de IAs (Fase 5 no log).
+          fetch-depth: 0
 
       - name: Configurar Node 20
         uses: actions/setup-node@v4
