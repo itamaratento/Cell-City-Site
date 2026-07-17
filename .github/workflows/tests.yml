@@ -114,6 +114,9 @@ jobs:
       - name: Testes de integridade (imports/refs/coleções×rules — Observabilidade v1.1)
         run: node --test tests/integrity/integridade.test.mjs
 
+      - name: Regressão de segurança Fase 2.2 (escHtml/CSPRNG/PIN/catálogo público)
+        run: node --test tests/integrity/seguranca-fase22.test.mjs
+
       - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
         run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs
 
