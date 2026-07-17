@@ -202,6 +202,33 @@ test('portalCriarAgendamento: rejeita data mal formatada', async () => {
   );
 });
 
+test('portalCriarAgendamento: rejeita horário já ocupado (aguardando/confirmado)', async () => {
+  await fns.portalCriarAgendamento.run({ data: AGENDAMENTO_BASE });
+  await assert.rejects(
+    () => fns.portalCriarAgendamento.run({ data: { ...AGENDAMENTO_BASE, phoneDigits: PHONE_OUTRO } }),
+    comCode('already-exists')
+  );
+});
+
+test('portalCriarAgendamento: permite reaproveitar horário de agendamento cancelado', async () => {
+  await db.collection('agendamentos').add({
+    empresa_id: 'cellcity-master',
+    data: AGENDAMENTO_BASE.data,
+    horario: AGENDAMENTO_BASE.horario,
+    status: 'cancelado',
+  });
+  await fns.portalCriarAgendamento.run({ data: AGENDAMENTO_BASE });
+  const { lista } = await fns.portalListarAgendamentos.run({ data: { phoneDigits: PHONE } });
+  assert.equal(lista.length, 1);
+});
+
+test('portalCriarAgendamento: mesmo horário é permitido em empresas diferentes', async () => {
+  await fns.portalCriarAgendamento.run({ data: AGENDAMENTO_BASE });
+  await assert.doesNotReject(() =>
+    fns.portalCriarAgendamento.run({ data: { ...AGENDAMENTO_BASE, phoneDigits: '61977776666', empresaId: 'empresa-outra' } })
+  );
+});
+
 test('portalListarHorariosOcupados: reflete agendamentos aguardando/confirmado, ignora cancelado', async () => {
   await fns.portalCriarAgendamento.run({ data: AGENDAMENTO_BASE }); // aguardando, 09:00
   await db.collection('agendamentos').add({ data: '2026-08-10', horario: '10:00', status: 'confirmado' });

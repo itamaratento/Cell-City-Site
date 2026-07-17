@@ -240,8 +240,30 @@ exports.portalCriarAgendamento = onCall({ region: REGIAO }, async (request) => {
   if (!motivo) throw new HttpsError('invalid-argument', 'Selecione o motivo do atendimento.');
 
   const db = admin.firestore();
+  const empresaId = empresaIdDe(data);
+
+  // Achado (Fase 2.3): a function não validava o horário contra
+  // agendamentos já existentes — portalListarHorariosOcupados só informa
+  // o cliente, nada impedia o próprio submit de escolher um horário já
+  // ocupado. Mesmo filtro usado lá (data + status ativo), aplicado aqui
+  // como barreira real. Ainda existe uma janela estreita de corrida entre
+  // duas requisições simultâneas para o mesmo horário (sem reserva
+  // atômica) — aceitável: o risco predominante corrigido é a ausência
+  // total de validação, não a concorrência exata no mesmo instante.
+  const ocupadosSnap = await db.collection('agendamentos')
+    .where('data', '==', dataAgendamento)
+    .where('status', 'in', ['confirmado', 'aguardando'])
+    .get();
+  const jaOcupado = ocupadosSnap.docs.some((d) => {
+    const doc = d.data();
+    return docDaEmpresa(doc, empresaId) && String(doc.horario || '').slice(0, 5) === horario.slice(0, 5);
+  });
+  if (jaOcupado) {
+    throw new HttpsError('already-exists', 'Este horário já está ocupado. Escolha outro.');
+  }
+
   await db.collection('agendamentos').add({
-    empresa_id: empresaIdDe(data),
+    empresa_id: empresaId,
     telefone: maskPhoneServer(digits),
     telefoneDigits: digits,
     telefoneInformado,
