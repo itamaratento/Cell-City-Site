@@ -152,7 +152,7 @@ Isso complementa, não substitui, as regras permanentes já em vigor no `CLAUDE.
 
 ## Fase 3 — Consolidação da Arquitetura
 
-> ⚠️ **Aviso da auditoria de 2026-07-04:** o escopo abaixo (isolamento por `empresa_id`, `shared/tenant.js`, Central SaaS) descreve uma arquitetura multiempresa que **não existe mais no código atual**. O experimento multiempresa foi **revertido** no rollback de 2026-06-27 (não restaurado — ver [[project-saas-multiempresa]] na memória do projeto) e o sistema opera hoje em regime single-tenant; `shared/tenant.js` é código morto, sem nenhum módulo importando (confirmado em `plans/AUDITORIA_GERAL_20260704.md` §5). **Esta Fase 3 precisa de uma revisão de escopo dedicada antes de ser iniciada** — não reescrita nesta consolidação por ser uma decisão de arquitetura de longo prazo, não uma correção de auditoria. Até essa revisão, tratar o conteúdo abaixo como desatualizado.
+> ⚠️ **Atualização 2026-07-17 (auditoria técnica independente + missão autônoma de engenharia):** o aviso original desta seção (de 2026-07-04) **não reflete mais o estado do código**. Ele dizia que a arquitetura multiempresa "não existe mais", revertida no rollback de 2026-06-27 e nunca restaurada. Isso era verdade **na época** (`shared/tenant.js` foi de fato removido em `57d05f8`, 2026-07-08) — mas entre 2026-07-14 e 2026-07-17 (PS-1 a PS-6, Sprints 1-4 SaaS) o isolamento multiempresa foi **integralmente reconstruído**: `CRM/shared/tenant-provider.js`, `tenant-context.js`, `tenant-query.js`, `CRM/repositories/base.repository.tenant.js` (usado por ~48 repositórios), `functions/saas.js`, `CRM/pages/saas-admin/`, `CRM/pages/saas-onboarding/`, e as funções `mesmaEmpresaRead()`/`mesmaEmpresaCreate()`/`empresaImutavel()` em `CRM/firestore.rules` — tudo ativo em `develop`, certificado por testes automatizados contra o emulador real (`tests/firestore-rules/`), **mas ainda não promovido a `main`/produção** (decisão de negócio pendente desde o incidente de 2026-07-14, não um problema técnico). O escopo abaixo (item por item) continua desatualizado quanto aos *detalhes* — ainda descreve uma reconstrução do zero, quando na prática já existe uma base multiempresa funcional a evoluir — e segue precisando de uma revisão de escopo dedicada antes de qualquer execução, mas não deve mais ser lido como "arquitetura inexistente".
 
 **Status: ⚪ Planejada**
 
@@ -248,7 +248,7 @@ Isso complementa, não substitui, as regras permanentes já em vigor no `CLAUDE.
 
 ## Fase 6 — Escalabilidade
 
-> ⚠️ **Mesmo aviso da Fase 3 (auditoria de 2026-07-04):** o item "Multiempresa" do escopo abaixo descreve a infraestrutura `shared/tenant.js`/Central SaaS como "restaurada em 2026-06-27" — o que ocorreu de fato foi o **rollback que reverteu** essa infraestrutura nessa mesma data. O código correspondente é hoje código morto. Tratar como desatualizado até revisão dedicada (mesma pendência da Fase 3).
+> ⚠️ **Mesma atualização da Fase 3 (2026-07-17):** este aviso, como o da Fase 3, foi escrito quando a infraestrutura multiempresa era código morto (pós-rollback de 2026-06-27). Isso não é mais verdade — o isolamento multiempresa foi reconstruído entre 2026-07-14 e 2026-07-17 e está ativo em `develop`, ainda não promovido a `main`. Ver o aviso completo na Fase 3 acima. O escopo item-a-item abaixo segue precisando de revisão dedicada antes de execução (mesma pendência de antes), só a premissa de "código morto" que deixou de valer.
 
 **Status: ⚪ Planejada (visão de longo prazo)**
 

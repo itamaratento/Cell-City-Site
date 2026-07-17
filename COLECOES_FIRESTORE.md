@@ -164,6 +164,19 @@ Leads do funil de vendas CRM.
 | `criadoEm` | `timestamp` | Data de criação |
 | `atualizadoEm` | `timestamp` | Data da última atualização |
 
+### 🆕 `crm_templates`
+**Document ID:** Auto-generated
+
+Templates de mensagem WhatsApp reutilizáveis para leads do CRM Comercial
+(`CRM/pages/crm-comercial/crm.js`). Achado da auditoria técnica independente
+2026-07-17: coleção com Rule real (`CRM/firestore.rules`) e consumidor ativo,
+mas nunca tinha entrado nesta documentação.
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `nome` | `string` | Nome do template (exibido na UI) |
+| `texto` | `string` | Corpo da mensagem, com placeholders `{nome}`, `{aparelho}`, `{servico}`, `{valor}`, `{tel}`, `{obs}` |
+
 ### `chips_cadastros`
 **Document ID:** Auto-generated
 
@@ -891,10 +904,47 @@ Auditoria de ações no sistema SAAS.
 | `usuario_id` | `string` | ID do usuário |
 | *(outros campos)* | | |
 
+### 🆕 `saas_eventos`
+**Document ID:** `onboard_{empresaId}` (onboarding) ou auto-generated
+
+Trilha de eventos do ciclo de vida SaaS — hoje só o evento de onboarding
+(`functions/saas.js::saasOnboardingCriarEmpresa`). Achado da auditoria
+técnica independente 2026-07-17: Rule real (`CRM/firestore.rules`,
+tenant-scoped) e consumidor ativo, mas nunca tinha entrado nesta
+documentação (não confundir com `saas_events`/`notificacoes_saas`, abaixo).
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `tipo` | `string` | Tipo do evento: `onboarding` |
+| `empresa_id` | `string` | ID da empresa |
+| `detalhes` | `object` | Payload do evento (varia por `tipo`) |
+| `criadoEm` | `timestamp` | Data do evento |
+
+### 🆕 `saas_email_index`
+**Document ID:** o próprio e-mail de contato (ex.: `contato@empresa.com`)
+
+Índice de reserva atômica de e-mail — só existe para impedir a corrida
+(TOCTOU) do dedup de `saasOnboardingCriarEmpresa`: duas requisições
+concorrentes com o mesmo e-mail não podem mais criar 2 empresas, porque
+a segunda falha ao tentar `create()` num documento que a primeira já
+reservou. Escrito e lido só pela Cloud Function (Admin SDK, sem Rule —
+não é acessado pelo client).
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `empresa_id` | `string` | ID da empresa que reservou este e-mail |
+| `criadoEm` | `timestamp` | Data da reserva |
+
 ### `notificacoes_saas`
 **Document ID:** Auto-generated
 
-Notificações do sistema (ex: licença vencida).
+⚠️ **Código morto, confirmado na auditoria técnica independente 2026-07-17**
+— sem Rule no arquivo deployado (`CRM/firestore.rules`) e sem nenhum
+importador vivo (só era referenciada pelo antigo `CRM/shared/tenant.js`,
+já removido). Diferente das demais coleções desta seção, esta não tem
+proteção nenhuma se algum código voltar a escrevê-la sem revisar as Rules
+primeiro. Mantida aqui só como registro histórico do schema — não usar
+como referência para código novo.
 
 | Campo | Tipo | Descrição |
 |-------|------|-----------|

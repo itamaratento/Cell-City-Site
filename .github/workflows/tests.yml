@@ -100,5 +100,28 @@ jobs:
       - name: Testes de integridade (imports/refs/coleções×rules — Observabilidade v1.1)
         run: node --test tests/integrity/integridade.test.mjs
 
+      - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
+        run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs
+
+      - name: Validação de infraestrutura app-config
+        run: npm run validar-infra-app-config
+
+      - name: Catálogo de módulos (gerar + testar consistência)
+        run: npm run gerar-catalogo && npm run testar-central-modulos
+
+      - name: Testes E2E de estrutura básica (Puppeteer, Chrome headless)
+        run: node --test tests/e2e/basic-structure.test.mjs
+
       - name: Testes do Control Center (estrutura, menus, dispatch — Fase 1)
         run: node --test tests/control-center/estrutura.test.mjs
+
+      # Ausentes da CI até esta missão (achado: cobertura incompleta) —
+      # ~10min de execução total (scripts shell reais via execSync, não
+      # travamento — já confirmado em certificações anteriores), mas dão
+      # cobertura a diagnóstico/manutenção/ferramentas do Control Center
+      # que hoje só era verificada manualmente.
+      - name: Testes do Control Center (diagnóstico, ferramentas, manutenção)
+        run: |
+          node --test tests/control-center/diagnostico.test.mjs
+          node --test tests/control-center/ferramentas.test.mjs
+          node --test tests/control-center/manutencao.test.mjs
