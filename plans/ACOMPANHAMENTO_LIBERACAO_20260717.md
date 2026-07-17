@@ -1,7 +1,7 @@
 # FASE 2.5 — Acompanhamento da Liberação (Pós-Push)
 
 **Data:** 2026-07-17  
-**Branch:** `develop` @ `fb57b47` (sincronizada com `origin/develop`)  
+**Branch:** `develop` @ `a6c7a56` (sincronizada com `origin/develop`)  
 **Modo:** monitoramento CI + correção automática  
 
 > Complemento operacional: `plans/ACOMPANHAMENTO_LIBERACAO_20260717_INTERNO.md` (gitignorado).
@@ -18,14 +18,16 @@
 
 Push da release para `origin/develop` concluído. A CI remota falhou três vezes
 por causas ambientais do runner (não regressão de produto). Cada falha foi
-reproduzida, corrigida e revalidada. O run final em `fb57b47` está **100% verde**.
+reproduzida, corrigida e revalidada. Commits posteriores (docs 2.5, fix portal
+agendamento, suíte segurança Fase 2.2 na CI) também passaram.
 
 | Run | SHA | Testes | Pages | Firebase |
 |---|---|---|---|---|
-| #72 | `cc88695` | ❌ Control Center | ✅ | ⏭️ skipped |
-| #73 | `4afa002` | ❌ Control Center | ✅ | — |
-| #74 | `03d9337` | ❌ Control Center | ✅ | — |
-| **#75** | **`fb57b47`** | **✅ success** | **✅** | ⏭️ skipped |
+| — | `cc88695` | ❌ Control Center | ✅ | ⏭️ skipped |
+| — | `4afa002` | ❌ Control Center | ✅ | — |
+| — | `03d9337` | ❌ Control Center | ✅ | — |
+| — | `fb57b47` | ✅ success | ✅ | ⏭️ |
+| **atual** | **`a6c7a56`** | **✅ success** | **✅** | ⏭️ skipped |
 
 ---
 
@@ -33,9 +35,9 @@ reproduzida, corrigida e revalidada. O run final em `fb57b47` está **100% verde
 
 | Workflow | Run | Conclusão |
 |---|---|---|
-| **Testes automatizados** | [29595601789](https://github.com/itamaratento/Cell-City-Site/actions/runs/29595601789) | **success** |
-| **Deploy Pages** | [29595601665](https://github.com/itamaratento/Cell-City-Site/actions/runs/29595601665) | **success** |
-| Deploy Firebase | — | skipped (gate `main` — correto) |
+| **Testes automatizados** | [29598467563](https://github.com/itamaratento/Cell-City-Site/actions/runs/29598467563) | **success** |
+| **Deploy Pages** | [29598467319](https://github.com/itamaratento/Cell-City-Site/actions/runs/29598467319) | **success** |
+| Deploy Firebase | [29598469425](https://github.com/itamaratento/Cell-City-Site/actions/runs/29598469425) | skipped (gate `main` — correto) |
 
 Passos críticos do job `test` (todos success): Firestore Rules, Storage Rules,
 Cloud Functions, RBAC, performance, integridade, onboarding, E2E, Control Center
@@ -83,8 +85,10 @@ Não bloqueante. Runner força Node 24 nas actions; testes Node 20 do projeto OK
 | `4afa002` | Tolerar `_BACKUPS` ausente |
 | `03d9337` | Checkout com histórico completo |
 | `fb57b47` | Materializar `refs/heads/main` para Comparar Branches |
+| `773178a` | Portal: conflito de horário em `portalCriarAgendamento` |
+| `a6c7a56` | CI: suíte `seguranca-fase22` no workflow |
 
-Nenhuma alteração em Rules, Functions, Firebase deploy ou dados de produção.
+Nenhuma alteração em Rules deployadas, Firebase prod ou dados de produção.
 
 ---
 
@@ -180,8 +184,9 @@ Somente após backfill validado.
 ## 13. Parecer Técnico
 
 A liberação pós-push está tecnicamente concluída. A CI remota passou após
-correções ambientais reproducíveis. Não resta falha corrigível sem autorização
-humana. A próxima etapa é **backfill de produção**.
+correções ambientais reproducíveis; HEAD atual `a6c7a56` também verde.
+Não resta falha corrigível sem autorização humana. A próxima etapa é
+**backfill de produção**.
 
 ### 🟢 CI APROVADA — PRONTO PARA BACKFILL
 

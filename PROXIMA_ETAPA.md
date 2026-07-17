@@ -22,16 +22,16 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.5: CI APROVADA
 
-Push + CI remota concluídos em `develop` @ `fb57b47`.
+Push + CI remota concluídos em `develop` @ `a6c7a56`.
 Relatório: [`plans/ACOMPANHAMENTO_LIBERACAO_20260717.md`](plans/ACOMPANHAMENTO_LIBERACAO_20260717.md).
 
 **Recomendação oficial:** 🟢 **CI APROVADA — PRONTO PARA BACKFILL**
 
 ### Concluído
 
-- Push `origin/develop` (release + 3 fixes de CI ambiental)
+- Push `origin/develop` (release + fixes CI + portal + suíte segurança 2.2)
 - Testes automatizados **success** · Pages **success** · Firebase deploy **skipped** (esperado)
-- Correções: `_BACKUPS`, `fetch-depth: 0`, materializar `main` local
+- Correções CI: `_BACKUPS`, `fetch-depth: 0`, materializar `main` local
 
 ### Próxima ação humana (ordem rígida)
 
