@@ -38,9 +38,14 @@ Coleções: `os` (1), `clientes` (1), `estoque_produtos` (1), `agenda` (1)
 | Divergentes | **0** |
 | Erros | **0** |
 
+## Flag `dados_migrados` (atualização Fase 2.9)
+
+- Leitura Firestore REST `empresas/cellcity-master`: **`dados_migrados = true`**
+  (desde `2026-07-14T20:01:18Z`). Nenhuma escrita necessária nesta fase.
+
 ## Não executado (aguardando autorização)
 
-- `dados_migrados = true`
 - merge `develop` → `main`
 - tag
 - deploy Firebase / Rules
+- smoke tests

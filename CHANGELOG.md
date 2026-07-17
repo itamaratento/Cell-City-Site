@@ -3,6 +3,22 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-17 (Fase 2.9 — preparação promoção à main)
+
+### Docs
+- Gate pré-promoção: backfill validado, `dados_migrados=true` confirmado por leitura, CI remota verde em `a6c7a56`.
+- Relatório: `plans/PREPARACAO_PROMOCAO_MAIN_20260717.md`.
+- Recomendação: **PRONTO COM RESSALVAS** — local ahead de origin; push + CI no HEAD antes do ff `main`.
+
+### Notes
+- Sem merge/`main`/tag/deploy/smoke nesta fase.
+
+## [Unreleased] — 2026-07-17 (Backfill produção)
+
+### Ops
+- Backfill `empresa_id` em `cellcity-crm`: 4 documentos corrigidos (`os`, `clientes`, `estoque_produtos`, `agenda`); `validar-backfill` exit 0.
+- Relatório: `plans/BACKFILL_PRODUCAO_EXECUCAO_20260717.md`.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.3 — validação final pré-main)
 
 ### Fixed
