@@ -136,9 +136,19 @@ service cloud.firestore {
     // ─────────────────────────────────────────────
     // PÚBLICO: Pré-OS — cliente cria sem login (abrir-atendimento.html)
     // ─────────────────────────────────────────────
+    // Achado crítico (Auditoria Técnica Independente 2026-07-17, "pre_os
+    // sem isolamento"): read/update/delete não tinham NENHUM gate de
+    // tenant — diferente de toda outra coleção de negócio deste arquivo.
+    // Confirmado explorável: dashboard-alertas.js e dashboard-alertas-
+    // panel.js liam/escutavam pre_os sem filtro de empresa. `create`
+    // continua público (cliente não tem sessão para satisfazer
+    // mesmaEmpresaCreate()) — abrir-atendimento.html agora carimba
+    // empresa_id explicitamente no payload antes de gravar.
     match /pre_os/{docId} {
       allow create:                        if true;
-      allow read, update, delete:          if request.auth != null && temAcessoLiberado();
+      allow read:                          if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
+      allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
+      allow delete:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
     // ─────────────────────────────────────────────
@@ -232,10 +242,16 @@ service cloud.firestore {
     // PS-6: subcoleção de itens de categoria — NUNCA teve rule (caía no
     // deny-by-default). Herda o tenant do doc-pai via get() (+1 leitura),
     // sem precisar de empresa_id em cada item nem de filtro nas queries.
+    // Achado A1 (Auditoria Técnica Independente 2026-07-17): o disjunto
+    // `== null` abaixo reabria, só para esta subcoleção, exatamente o
+    // vazamento cross-tenant que `mesmaEmpresaRead()` (linhas acima)
+    // documenta ter corrigido removendo o mesmo padrão — uma categoria-pai
+    // ainda sem `empresa_id` (pré-backfill) ficava com os itens abertos a
+    // QUALQUER empresa, em vez de ilegível como o resto do arquivo exige.
+    // Removido, mesma direção segura-por-padrão já adotada acima.
     match /financeiro_categorias/{catId}/itens/{itemId} {
       allow read, write: if request.auth != null && temAcessoLiberado() &&
         (get(/databases/$(database)/documents/financeiro_categorias/$(catId)).data.get('empresa_id', null) == empresaDoUsuario() ||
-         get(/databases/$(database)/documents/financeiro_categorias/$(catId)).data.get('empresa_id', null) == null ||
          isMasterAdmin());
     }
 

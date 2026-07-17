@@ -548,6 +548,13 @@
                 const novoId = PreOS.newId();
                 const dados = {
                     id: novoId,
+                    // Página pública sem login — não há tenant-context para o
+                    // repository injetar automaticamente (achado da Auditoria
+                    // Técnica Independente 2026-07-17, item "pre_os sem
+                    // isolamento"). Carimba explicitamente a empresa padrão
+                    // (mesma convenção usada em functions/lib/empresa.js
+                    // EMPRESA_PADRAO para todo endpoint público sem sessão).
+                    empresa_id: 'cellcity-master',
                     cliente: { nome, whatsapp, cpf: cpf || null },
                     aparelho: { marca, modelo },
                     problema,

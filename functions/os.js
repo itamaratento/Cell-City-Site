@@ -50,7 +50,9 @@ function projetarCamposPublicosOS(data) {
 }
 
 exports.consultarOSPublica = onCall({ region: REGIAO }, async (request) => {
-  aplicarRateLimit(request, 'leitura');
+  // Limite dedicado, mais restrito que 'leitura' — ver rate-limit.js
+  // (resposta ao achado S2 da Auditoria Técnica Independente 2026-07-17).
+  aplicarRateLimit(request, 'consulta_os_publica');
   const osId = request.data && request.data.osId;
   if (!osId || typeof osId !== 'string' || osId.length > 30) {
     throw new HttpsError('invalid-argument', 'Informe o número da OS.');

@@ -396,7 +396,10 @@
       FB.onSnapshot(FB.query(FB.collection(db, 'solicitacoes_diagnostico'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         diagDocs = []; snap.forEach(function (d) { var s = d.data(); s._id = d.id; diagDocs.push(s); }); recompute();
       }, function (err) { console.warn('[Alertas] listener diag:', err && err.message); });
-      FB.onSnapshot(FB.collection(db, 'pre_os'), function (snap) {
+      // Achado crítico (Auditoria Técnica Independente 2026-07-17): único
+      // listener deste bloco sem o filtro de tenant já aplicado às 4
+      // coleções irmãs acima (os, posvenda_contatos, agendamentos, diag).
+      FB.onSnapshot(FB.query(FB.collection(db, 'pre_os'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         preOSDocs = []; snap.forEach(function (d) { var p = d.data(); p._id = d.id; preOSDocs.push(p); }); recompute();
       }, function (err) { console.warn('[Alertas] listener pre_os:', err && err.message); });
     } catch (e) { console.warn('[Alertas] start falhou:', e); }

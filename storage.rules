@@ -36,16 +36,24 @@ service firebase.storage {
 
     // ── LEGADO (pré-PS-6): fotos de OS da Cell City ───────────
     // Escrita fechada: código novo só escreve no path canônico.
+    // Achado A2 (Auditoria Técnica Independente 2026-07-17): `delete`
+    // aceitava QUALQUER usuário autenticado, de qualquer empresa — sem
+    // isolamento nenhum, diferente de todo o resto deste arquivo. Como
+    // estes paths legados pertencem à Cell City (comentário do topo),
+    // restringe a exclusão à própria empresa dona dos arquivos.
     match /os/{osId}/{allPaths=**} {
       allow read:   if true;
       allow write:  if false;
-      allow delete: if request.auth != null;
+      allow delete: if request.auth != null && empresaDoUsuario() == 'cellcity-master';
     }
 
     // ── LEGADO (pré-PS-6): documentos da Central de Informações ──
+    // Achado A2 (mesma auditoria): mesma correção — `delete` restrito à
+    // empresa dona dos arquivos legados; `read` permanece como estava.
     match /docs/{allPaths=**} {
-      allow read, delete: if request.auth != null;
-      allow write:        if false;
+      allow read:   if request.auth != null;
+      allow delete: if request.auth != null && empresaDoUsuario() == 'cellcity-master';
+      allow write:  if false;
     }
   }
 }

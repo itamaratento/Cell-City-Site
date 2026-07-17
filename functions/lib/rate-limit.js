@@ -61,6 +61,16 @@ const LIMITES = {
   leitura:   { ip: 60, telefone: 30 },   // consultas
   escrita:  { ip: 20, telefone: 10 },   // criar/responder
   evento:   { ip: 30, telefone: 15 },   // tracking só aceita 3 tipos
+  // Resposta à Auditoria Técnica Independente 2026-07-17 (achado S2):
+  // consultarOSPublica é a única function pública sem NENHUMA prova de
+  // posse além do osId (sequencial/previsível) — o limite genérico de
+  // 'leitura' (60/min/IP) permite raspar toda a base de OS em poucos
+  // dias. Sem quebrar os links de garantia já emitidos (só têm ?id=,
+  // decisão do dono de não exigir prova de posse adicional agora), o
+  // limite específico abaixo eleva bastante o custo de uma enumeração
+  // sequencial, mantendo folga confortável para o uso legítimo (cliente
+  // abrindo a própria garantia, no máximo algumas vezes por minuto).
+  consulta_os_publica: { ip: 8, telefone: 8 },
 };
 
 function aplicarRateLimit(request, tipoOperacao) {

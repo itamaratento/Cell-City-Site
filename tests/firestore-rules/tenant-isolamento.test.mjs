@@ -243,3 +243,85 @@ test('doc legado sem empresa_id: master_admin lê e reivindica; staff comum não
   await assertFails(dbA().collection('clientes').doc('cli-legado-3').update({ empresa_id: 'empresa-a' }));
   await assertSucceeds(dbMaster().collection('clientes').doc('cli-legado-3').update({ empresa_id: 'empresa-a' }));
 });
+
+// ── FINANCEIRO_CATEGORIAS/ITENS (achado A1, Auditoria Técnica
+// Independente 2026-07-17) ────────────────────────────────────
+//
+// A regra desta subcoleção tinha um 3º disjunto `empresa_id do doc-pai
+// == null → allow` — o mesmo padrão que a seção "DOC LEGADO" acima prova
+// ser inseguro (reabre a coleção inteira para qualquer empresa), só que
+// nunca tinha sido removido aqui. Nenhum teste cobria esta subcoleção
+// antes desta correção — os testes abaixo fecham essa lacuna.
+test('financeiro_categorias/itens: empresa A lê/escreve item da própria categoria → permitido', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('financeiro_categorias').doc('cat-a').set({ nome: 'Cat A', empresa_id: 'empresa-a' });
+    await ctx.firestore().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a').set({ nome: 'Item A' });
+  });
+  await assertSucceeds(dbA().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a').get());
+  await assertSucceeds(dbA().collection('financeiro_categorias').doc('cat-a').collection('itens').doc('item-a-novo').set({ nome: 'Novo' }));
+});
+
+test('financeiro_categorias/itens: empresa A lê/escreve item de categoria da empresa B → NEGADO', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('financeiro_categorias').doc('cat-b').set({ nome: 'Cat B', empresa_id: 'empresa-b' });
+    await ctx.firestore().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b').set({ nome: 'Item B' });
+  });
+  await assertFails(dbA().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b').get());
+  await assertFails(dbA().collection('financeiro_categorias').doc('cat-b').collection('itens').doc('item-b-forja').set({ nome: 'Forja' }));
+});
+
+test('financeiro_categorias/itens: categoria-pai legada (sem empresa_id) → item NEGADO para staff comum, PERMITIDO para master_admin (regressão do achado A1)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const seed = ctx.firestore();
+    await seed.collection('financeiro_categorias').doc('cat-legado').set({ nome: 'Cat Legado' });
+    await seed.collection('financeiro_categorias').doc('cat-legado').collection('itens').doc('item-legado').set({ nome: 'Item Legado' });
+  });
+  // Antes da correção do achado A1, esta leitura era PERMITIDA para
+  // QUALQUER empresa liberada — vazamento cross-tenant via categoria
+  // ainda não migrada. Mesma direção segura-por-padrão já usada no
+  // resto do arquivo: nega em vez de vazar.
+  await assertFails(dbA().collection('financeiro_categorias').doc('cat-legado').collection('itens').doc('item-legado').get());
+  await assertFails(dbB().collection('financeiro_categorias').doc('cat-legado').collection('itens').doc('item-legado').get());
+  await assertSucceeds(dbMaster().collection('financeiro_categorias').doc('cat-legado').collection('itens').doc('item-legado').get());
+});
+
+// ── PRE_OS (achado crítico, Auditoria Técnica Independente 2026-07-17)
+// ───────────────────────────────────────────────────────────────────
+// pre_os não tinha NENHUM gate de tenant em read/update/delete — a
+// única coleção de negócio deste arquivo nessa condição. Cliente
+// continua criando sem login (`allow create: if true`), mas agora
+// carimba empresa_id (abrir-atendimento.html); read/update/delete
+// passam a exigir mesmaEmpresaRead()/empresaImutavel() como o resto
+// do arquivo.
+test('pre_os: cliente cria sem login (create público, comportamento preservado)', async () => {
+  await assertSucceeds(
+    testEnv.unauthenticatedContext().firestore()
+      .collection('pre_os').doc('pre-publico').set({ problema: 'Tela quebrada', empresa_id: 'empresa-a' })
+  );
+});
+
+test('pre_os: empresa A lê/atualiza a própria pré-OS → permitido', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('pre_os').doc('preos-a').set({ problema: 'Tela', empresa_id: 'empresa-a', status: 'AGUARDANDO_CONVERSAO' });
+  });
+  await assertSucceeds(dbA().collection('pre_os').doc('preos-a').get());
+  await assertSucceeds(dbA().collection('pre_os').doc('preos-a').update({ status: 'VISUALIZADO' }));
+});
+
+test('pre_os: empresa A lê/atualiza/exclui pré-OS da empresa B → NEGADO (achado crítico corrigido)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('pre_os').doc('preos-b').set({ problema: 'Tela', empresa_id: 'empresa-b', status: 'AGUARDANDO_CONVERSAO' });
+  });
+  // Antes da correção, esta leitura/escrita era PERMITIDA para qualquer
+  // empresa liberada — o próprio Dashboard (dashboard-alertas.js,
+  // dashboard-alertas-panel.js) consultava/escutava pre_os sem filtro
+  // de tenant, tornando o vazamento efetivamente explorável pela UI.
+  await assertFails(dbA().collection('pre_os').doc('preos-b').get());
+  await assertFails(dbA().collection('pre_os').doc('preos-b').update({ status: 'VISUALIZADO' }));
+  await assertFails(dbA().collection('pre_os').doc('preos-b').delete());
+});
+
+test('pre_os: empresa A lista com filtro da própria empresa → permitido; sem filtro → negado', async () => {
+  await assertSucceeds(dbA().collection('pre_os').where('empresa_id', '==', 'empresa-a').get());
+  await assertFails(dbA().collection('pre_os').get());
+});

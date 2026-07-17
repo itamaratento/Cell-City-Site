@@ -15,7 +15,10 @@ export const dashboardAlertasMixin = {
 
   async _carregarContadorAutoatendimento() {
     try {
-      const q = query(collection(db, 'pre_os'), where('status', '==', 'AGUARDANDO_CONVERSAO'));
+      // Achado crítico (Auditoria Técnica Independente 2026-07-17): faltava
+      // injectTenantFilter aqui — única query de pre_os neste arquivo sem
+      // o filtro já usado em toda consulta irmã (os, agenda, diario_registros...).
+      const q = query(collection(db, 'pre_os'), ...injectTenantFilter([where('status', '==', 'AGUARDANDO_CONVERSAO')]));
 
       // Listener realtime
       onSnapshot(q, snap => {
