@@ -1,108 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "mensagens_portal",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "telefone",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "lembretes_pagamento",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "caixa_lancamentos",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "data",
-          "order": "DESCENDING"
-        },
-        {
-          "fieldPath": "__name__",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "crm_leads",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "avaliacoes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "mensagens_portal",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "solicitacoes_diagnostico",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "agendamentos",
       "queryScope": "COLLECTION",
       "fields": [
@@ -131,7 +29,7 @@
       ]
     },
     {
-      "collectionGroup": "usuarios",
+      "collectionGroup": "avaliacoes",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -139,7 +37,67 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "nome_exibicao",
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "avaliacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "telefone",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "caixa_lancamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "data",
+          "order": "DESCENDING"
+        },
+        {
+          "fieldPath": "__name__",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "catalogo_produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "ativo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ordem",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "catalogo_produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ordem",
           "order": "ASCENDING"
         }
       ]
@@ -163,7 +121,7 @@
       ]
     },
     {
-      "collectionGroup": "os",
+      "collectionGroup": "chips_cadastros",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -171,7 +129,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "createdAt",
+          "fieldPath": "criadoEm",
           "order": "DESCENDING"
         }
       ]
@@ -191,48 +149,6 @@
       ]
     },
     {
-      "collectionGroup": "estoque_produtos",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "nome",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "pre_os",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "catalogo_produtos",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "empresa_id",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "ordem",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "comandos",
       "queryScope": "COLLECTION",
       "fields": [
@@ -243,6 +159,34 @@
         {
           "fieldPath": "criadoEm",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "crm_leads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "estoque_produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nome",
+          "order": "ASCENDING"
         }
       ]
     },
@@ -261,7 +205,91 @@
       ]
     },
     {
-      "collectionGroup": "chips_cadastros",
+      "collectionGroup": "lembretes_pagamento",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mensagens_portal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "mensagens_portal",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "telefone",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "os",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "portal_eventos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tipo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "portal_eventos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "tipo",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pre_os",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -271,6 +299,34 @@
         {
           "fieldPath": "criadoEm",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "solicitacoes_diagnostico",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "usuarios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "nome_exibicao",
+          "order": "ASCENDING"
         }
       ]
     }
