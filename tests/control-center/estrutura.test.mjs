@@ -671,13 +671,17 @@ test('módulo Branches e Sincronização: Status do Repositório/Branch Atual/Hi
 });
 
 test('módulo Branches e Sincronização: Comparar Branches aceita os defaults e mostra diff real entre develop e main', () => {
-    // Em checkout de uma branch só (CI, clone --single-branch) main fica só
-    // como origin/main. Os defaults de Comparar Branches usam o nome curto
-    // "main" — materializa refs/heads/main quando necessário (idempotente).
-    try {
-        execSync('git rev-parse --verify --quiet refs/heads/main', { cwd: ROOT, stdio: 'pipe' });
-    } catch {
-        execSync('git branch --track main origin/main', { cwd: ROOT, stdio: 'pipe' });
+    // Em checkout de uma branch só (CI) apenas a branch do push existe como
+    // ref local; a outra fica só em origin/*. Os defaults de Comparar
+    // Branches usam nomes curtos "develop"/"main" — materializa AMBAS
+    // quando necessário (idempotente; push na main não traz refs/heads/develop
+    // e vice-versa — causa da main 100% vermelha de 07-14 a 07-18).
+    for (const b of ['main', 'develop']) {
+        try {
+            execSync(`git rev-parse --verify --quiet refs/heads/${b}`, { cwd: ROOT, stdio: 'pipe' });
+        } catch {
+            execSync(`git branch --track ${b} origin/${b}`, { cwd: ROOT, stdio: 'pipe' });
+        }
     }
     const saida = rodarModulo('branches-sincronizacao', '5\n\n\n\n14\n');
     assert.match(saida, /Commits exclusivos de 'develop'/);

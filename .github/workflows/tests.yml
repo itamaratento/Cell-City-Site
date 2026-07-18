@@ -48,11 +48,15 @@ jobs:
       # refs/heads/<branch-do-evento>. Comparar Branches usa o nome curto
       # "main" nos defaults develop↔main — sem refs/heads/main o teste falha
       # com "Branch 'main' não encontrada" (passa localmente se main existe).
-      - name: Materializar branch main local (Control Center)
+      - name: Materializar branches main e develop locais (Control Center)
         run: |
-          if ! git rev-parse --verify --quiet refs/heads/main >/dev/null; then
-            git branch --track main origin/main
-          fi
+          # Push na main não materializa refs/heads/develop (e vice-versa);
+          # o Comparar Branches usa nomes curtos e exige as duas (D04).
+          for b in main develop; do
+            if ! git rev-parse --verify --quiet "refs/heads/$b" >/dev/null; then
+              git branch --track "$b" "origin/$b"
+            fi
+          done
 
       - name: Configurar Node 20
         uses: actions/setup-node@v4
