@@ -44,7 +44,7 @@ if ! git clone --quiet --mirror "$SOURCE_REPO_URL" "$WORKDIR/source-mirror.git";
   echo "❌ Falha ao clonar o repositório principal."
   exit 1
 fi
-cd "$WORKDIR/source-mirror.git"
+cd "$WORKDIR/source-mirror.git" || exit 1
 
 main_commit=$(git rev-parse refs/heads/main)
 develop_commit=$(git rev-parse refs/heads/develop)
@@ -69,27 +69,22 @@ slot_index=$(( (next_seq - 1) % 3 ))
 slot="${SLOTS[$slot_index]}"
 
 if [ "$status" = "sucesso" ]; then
-  tagmsg="Backup automático semanal
-semana: $week_key
-data: $(date -u +%Y-%m-%d)
-hora: $(date -u +%H:%M:%S) UTC
-branch: develop
-commit_develop: $develop_commit
-commit_main: $main_commit
-autor: $author
-slot: $slot
-resultado: sucesso
-"
-  git tag -f -a "$slot" -m "$tagmsg" "$develop_commit" >/dev/null
-  # Nunca remove o slot anterior antes de confirmar que o novo push teve sucesso:
-  # se o push abaixo falhar, a tag remota permanece intacta na versão anterior.
-  if ! git push --quiet --force "$BACKUP_REPO_SSH" "refs/tags/$slot"; then
-    status="falha"; fail_reason="push da tag de slot ($slot) falhou"
+  # D05 (Fase 3.9, 2026-07-18): slots eram TAGS anotadas, mas a criação de
+  # tags pela deploy key passou a ser recusada no repo de backup a partir de
+  # 2026-07-12 (todas as 8 execuções da semana W28 falharam em
+  # "push da tag de slot", enquanto os pushes de branches da MESMA execução
+  # tiveram sucesso — proteção de tags adicionada entre 07-05 e 07-12).
+  # Slots agora são BRANCHES (refs/heads/<slot>); os metadados que viviam na
+  # anotação da tag já estão integralmente no manifest/automatic.json.
+  # O slot anterior nunca é removido antes do novo push ter sucesso:
+  # em falha, a branch remota permanece na versão anterior.
+  if ! git push --quiet --force "$BACKUP_REPO_SSH" "$develop_commit:refs/heads/$slot"; then
+    status="falha"; fail_reason="push da branch de slot ($slot) falhou"
   fi
 fi
 
 echo "-- Atualizando manifesto (backup-meta) --"
-cd "$WORKDIR/meta"
+cd "$WORKDIR/meta" || exit 1
 python3 - "$MANIFEST" "$week_key" "$next_seq" "$slot" "$status" "$develop_commit" "$main_commit" "$author" "$fail_reason" <<'PYEOF'
 import json, sys, datetime
 manifest_path, week, seq, slot, status, dev_commit, main_commit, author, fail_reason = sys.argv[1:10]
