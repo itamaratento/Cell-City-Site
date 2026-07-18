@@ -1,114 +1,59 @@
-# Índices Compostos Firestore — Multiempresa (PS-2)
+# Índices Compostos Firestore — Multiempresa
 
-## Estrutura Padrão
+> **Revisão 2026-07-18 (Fase 3.9):** este documento passou a refletir os
+> índices **realmente deployados** em produção (`cellcity-crm`), verificados
+> via API nesta data. A versão anterior era aspiracional (PS-2) e listava
+> índices que nunca existiram. A fonte da verdade declarativa é
+> `CRM/firestore.indexes.json`; este arquivo é o espelho documentado dela.
 
-Toda coleção com escopo por empresa precisa de índices compostos
-para consultas que combinem `empresa_id` + outros campos.
+## Estado real em produção (23 índices, todos READY em 2026-07-18)
 
-### Índice Básico (TODAS as coleções tenant)
-```
-Coleção: *
-Campos:
-  1. empresa_id  — ASC/DESC
-  2. createdAt   — DESC
-```
+### 19 índices declarados em `CRM/firestore.indexes.json`
 
-### Índices Específicos por Coleção
+| Coleção | Campos | Uso real |
+|---------|--------|----------|
+| `os` | empresa_id ASC, createdAt DESC | Pós-venda (posvenda.js) |
+| `pre_os` | empresa_id ASC, criadoEm DESC | Autoatendimento (list + listener) |
+| `clientes` | empresa_id ASC, **nome** ASC | ⚠️ **R1**: dados usam `name` (EN) — índice aponta p/ campo inexistente; nenhuma tela consulta assim hoje. Decisão pendente (Fase 3.9): trocar p/ `name` ou migrar dados |
+| `estoque_produtos` | empresa_id ASC, nome ASC | listagem ordenada |
+| `caixa_lancamentos` | empresa_id ASC, data DESC (+__name__ DESC) | Caixa (desde 2026-06-28) |
+| `catalogo_produtos` | empresa_id ASC, ordem ASC | Catálogo admin |
+| `comandos` | empresa_id ASC, criadoEm DESC | Central de Comandos |
+| `informacoes` | empresa_id ASC, criadoEm DESC | Central de Informações |
+| `chips_cadastros` | empresa_id ASC, criadoEm DESC | Chips (listener) |
+| `avaliacoes` | empresa_id ASC, createdAt DESC | Central de Alertas |
+| `crm_leads` | empresa_id ASC, criadoEm DESC | CRM Comercial |
+| `mensagens_portal` | empresa_id ASC, createdAt DESC | Portal/mensagens |
+| `mensagens_portal` | telefone ASC, createdAt DESC | CFs do Portal (por telefone) |
+| `solicitacoes_diagnostico` | empresa_id ASC, createdAt DESC | Portal/diagnóstico |
+| `agendamentos` | empresa_id ASC, createdAt DESC | Portal/agendamentos |
+| `auditoria_usuarios_permissoes` | empresa_id ASC, timestamp DESC | Auditoria RBAC |
+| `usuarios` | empresa_id ASC, nome_exibicao ASC | Gestão de usuários |
+| `chat_mensagens` | participantes CONTAINS, empresa_id ASC, criadoEm DESC | Chat interno |
+| `lembretes_pagamento` | empresa_id ASC, createdAt ASC | Financeiro |
 
-| Coleção | Campos | Uso |
-|---------|--------|-----|
-| `os` | empresa_id ASC, status ASC, createdAt DESC | Filtrar OS por status |
-| `os` | empresa_id ASC, phoneDigits ASC | Buscar OS por telefone |
-| `os` | empresa_id ASC, createdAt DESC | Listar OS recentes |
-| `caixa_lancamentos` | empresa_id ASC, tipo ASC, createdAt DESC | Filtrar receitas/despesas |
-| `caixa_lancamentos` | empresa_id ASC, data ASC | Fechamento diário |
-| `estoque_produtos` | empresa_id ASC, nome ASC | Catálogo da empresa |
-| `estoque_produtos` | empresa_id ASC, quantidade ASC | Estoque baixo |
-| `financeiro_pagar` | empresa_id ASC, status ASC, vencimento ASC | Contas a pagar |
-| `financeiro_receber` | empresa_id ASC, status ASC, vencimento ASC | Contas a receber |
-| `clientes` | empresa_id ASC, nome ASC | Busca por nome |
-| `clientes` | empresa_id ASC, phoneDigits ASC | Busca por telefone |
-| `agendamentos` | empresa_id ASC, data ASC, status ASC | Agenda por data |
-| `agendamentos` | empresa_id ASC, telefoneDigits ASC | Agenda do cliente |
-| `crm_leads` | empresa_id ASC, status ASC, createdAt DESC | Leads por status |
-| `mensagens_portal` | empresa_id ASC, lida ASC, createdAt DESC | Mensagens não lidas |
-| `portal_eventos` | empresa_id ASC, tipo ASC, createdAt DESC | Tracking por tipo |
-| `avaliacoes` | empresa_id ASC, createdAt DESC | Avaliações recentes |
-| `comandos` | empresa_id ASC, categoria ASC | Comandos por categoria |
-| `informacoes` | empresa_id ASC, categoria ASC | Informações por categoria |
-| `diario_registros` | empresa_id ASC, data DESC | Registros do diário |
-| `posvenda_contatos` | empresa_id ASC, dataContato DESC | Contatos recentes |
-| `fornecedor_compras` | empresa_id ASC, data DESC | Compras recentes |
+### 4 índices legados pré-v3.1.0 (existem em prod, fora do arquivo — inofensivos)
 
-## Formato firestore.indexes.json
+| Coleção | Campos |
+|---------|--------|
+| `portal_eventos` | tipo ASC, createdAt ASC |
+| `portal_eventos` | tipo ASC, createdAt DESC |
+| `avaliacoes` | telefone ASC, createdAt DESC |
+| `catalogo_produtos` | ativo ASC, ordem ASC |
 
-```json
-{
-  "indexes": [
-    {"collectionGroup": "os", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "createdAt", "order": "DESCENDING"}
-    ]},
-    {"collectionGroup": "os", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "status", "order": "ASCENDING"},
-      {"fieldPath": "createdAt", "order": "DESCENDING"}
-    ]},
-    {"collectionGroup": "os", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "phoneDigits", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "caixa_lancamentos", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "createdAt", "order": "DESCENDING"}
-    ]},
-    {"collectionGroup": "clientes", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "nome", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "clientes", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "phoneDigits", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "estoque_produtos", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "nome", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "financeiro_pagar", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "status", "order": "ASCENDING"},
-      {"fieldPath": "vencimento", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "financeiro_receber", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "status", "order": "ASCENDING"},
-      {"fieldPath": "vencimento", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "agendamentos", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "data", "order": "ASCENDING"}
-    ]},
-    {"collectionGroup": "mensagens_portal", "queryScope": "COLLECTION", "fields": [
-      {"fieldPath": "empresa_id", "order": "ASCENDING"},
-      {"fieldPath": "lida", "order": "ASCENDING"},
-      {"fieldPath": "createdAt", "order": "DESCENDING"}
-    ]}
-  ]
-}
-```
+## Regras de manutenção
 
-## Observações
-
-1. Índices com `empresa_id ASC, createdAt DESC` são os mais comuns e
-   devem ser criados primeiro — cobrem ~80% das queries padrão.
-
-2. Índices com 3 campos (ex.: `empresa_id + status + createdAt`)
-   são necessários quando a query usa where + orderBy em campos
-   diferentes. O Firestore exige índice composto para isso.
-
-3. Coleções do Portal do Cliente já têm índices existentes
-   (telefoneDigits + createdAt). Adicionar empresa_id a esses
-   índices requer re-criação.
-
-4. Ativar índices no Firebase Console antes de migrar dados.
-   A build de índices pode levar minutos em coleções grandes.
+1. **Toda consulta nova** de repositório tenant que combine o filtro
+   automático `empresa_id` com `orderBy` **exige** índice composto —
+   adicionar ao `CRM/firestore.indexes.json` ANTES do merge (lição do
+   incidente de índices de 2026-07-18: 7 telas quebraram em produção
+   por índices ausentes).
+2. O campo do `orderBy` deve **existir nos documentos** — o Firestore
+   exclui docs sem o campo (caso R1/clientes). Conferir o schema real
+   da coleção, não a documentação.
+3. Deploy: `firebase deploy --only firestore:indexes --project cellcity-crm`
+   (ou workflow "Deploy Firebase" na main, quando o CI tiver credencial).
+   Criação é assíncrona (estado CREATING → READY, minutos por índice).
+4. Histórico aspiracional (índices por status/vencimento/phoneDigits etc.)
+   foi movido para o planejamento — criar somente quando a consulta
+   correspondente existir no código, junto com a entrada no arquivo.
