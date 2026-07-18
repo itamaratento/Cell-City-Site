@@ -20,32 +20,26 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-18) — FASE 4.2 EXECUTADA (BLOQUEIOS EXTERNOS)
+## ✅ ESTADO ATUAL (2026-07-18) — FASE 4.2: COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
 
-Execução autônoma completa do que era possível sem escrever em produção.
-Relatório: [`plans/FASE42_EXECUCAO_AUTONOMA_v3.1.0_20260718.md`](plans/FASE42_EXECUCAO_AUTONOMA_v3.1.0_20260718.md).
+Relatório: [`plans/FASE42_COMMIT_PUSH_WIF_20260718.md`](plans/FASE42_COMMIT_PUSH_WIF_20260718.md).
 
-**Classificação oficial:** 🟡 **CERTIFICADA COM RESSALVAS**  
-(🟢 bloqueado: commit auth · IAM WIF · deploy · smoke autenticado)
+**Classificação:** 🟡 **CERTIFICADA COM RESSALVAS**
 
-### Validado nesta fase
+### Concluído (autorizado)
 
-- Rules 121/121 · Storage 14/14 · LGPD · rate-limit · smoke HTTP público
-- Prod: 23 índices READY · 16 Functions ACTIVE
-- Drift: WT≠prod (correções locais); develop `c9a0660` ≫ main `b7e260d` (14 commits)
-- WIF no workflow (D03) mas **0/5 bindings IAM** na SA `github-deploy` (confirmado gcloud)
-- CI develop @ `c9a0660`: Testes ✅ · Pages ✅
+- Commit `7633558` — segurança FASE 4.1/4.2 (25 arquivos)
+- Push `origin/develop` (`f445973..7633558`); tip atual `7b4cabb` (CI Tests ✅)
+- WIF: **5/5 bindings** na SA `github-deploy` (script OK)
 
-### Working tree
+### Bloqueado
 
-16 arquivos de segurança FASE 4.1 **não commitados** + plans untracked.
+- Push/`ff` **main** (Auto-review; necessário para Deploy Firebase)
+- Deploy produção · CONTENT_MATCH · smoke autenticado
 
-### Próxima ação humana (desbloqueio)
+### Próxima ação
 
-1. Autorizar **commit** (+ push develop) do lote de segurança  
-2. Executar `scripts/infra/wif-conceder-papeis.sh` (5 bindings — SA hoje sem papéis)  
-3. Autorizar ff develop→main / deploy  
-4. Smoke autenticado → parecer 🟢 se critérios fecharem
+Autorizar promoção `develop` → `main` (ff + push) para disparar o pipeline oficial de deploy.
 
 
 ### Histórico recente (não sobrescreve o acima)
