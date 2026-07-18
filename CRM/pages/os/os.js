@@ -15,6 +15,11 @@ import { formatDateTime as formatDate, formatDateShort } from "../../shared/date
 import { openModal, closeModal, showToast } from './os-ui-utils.js';
 import { storagePrefixEmpresa, uploadPhotoToStorage, deletePhotoFromStorage } from './os-photo-storage.js';
 import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
+import {
+    montarMensagemFinalizado,
+    msgFinalizadoPadrao,
+    templateFinalizadoInvalido,
+} from './mensagem-finalizado.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -1481,37 +1486,16 @@ async function salvarLembreteOS() {
 function copiarMensagemFinalizado() {
     if (!currentOS) return;
     const os = currentOS;
-    const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
-    const msg = (retornoMensagens.finalizado || _msgFinalizadoPadrao())
-        .replace(/\{nome\}/g, nome)
-        .replace(/\{os\}/g, os.id)
-        .replace(/\{garantia\}/g, _garantiaStr(os))
-        .replace(/\{validade\}/g, _validadeGarantiaStr(os))
-        .replace(/\{avaliacao\}/g, localStorage.getItem(STORAGE_KEYS.LINK_AVALIACAO) || '');
+    const garantiaModelo = _getSelectedWarranty(os);
+    const msg = montarMensagemFinalizado(os, {
+        template: retornoMensagens.finalizado,
+        garantiaModeloNome: garantiaModelo ? garantiaModelo.nome : null,
+    });
     _copiarComHistorico(msg, 'finalizado', '✅ Finalizado');
 }
 
-function _garantiaStr(os) {
-    const m = _getSelectedWarranty(os);
-    const d = os.prazoGarantia ?? 90;
-    return m ? d + ' dias — ' + m.nome : d + ' dias';
-}
-function _validadeGarantiaStr(os) {
-    if (!os.createdAt) return '';
-    const d = new Date(os.createdAt);
-    d.setDate(d.getDate() + (os.prazoGarantia ?? 90));
-    return d.toLocaleDateString('pt-BR');
-}
-
 function _msgFinalizadoPadrao() {
-    const link = localStorage.getItem(STORAGE_KEYS.LINK_AVALIACAO) || '';
-    return 'Olá, {nome}! 👋\n\n' +
-        'Sua Ordem de Serviço foi finalizada com sucesso.\n\n' +
-        '📋 OS Nº {os}\n\n' +
-        '🛡 Garantia: {garantia}\n' +
-        '{validade ? \'📅 Válida até: \' + {validade} : \'\n\n' +
-        'Cell City Informática' +
-        (link ? '\n\n⭐ Avalie nosso atendimento:\n' + link : '');
+    return msgFinalizadoPadrao();
 }
 
 /**
@@ -1725,6 +1709,10 @@ async function loadRetornoMensagens() {
     try {
         const snap = await getDoc(doc(db, 'config', 'retorno_mensagens'));
         retornoMensagens = snap.exists() ? snap.data() : _retornoMensagensPadrao();
+        // Template legado com expressão JS visível → substitui pelo padrão seguro
+        if (templateFinalizadoInvalido(retornoMensagens.finalizado)) {
+            retornoMensagens.finalizado = _msgFinalizadoPadrao();
+        }
     } catch(e) {
         retornoMensagens = _retornoMensagensPadrao();
     }
@@ -1939,7 +1927,7 @@ async function abrirEditarMensagensRetorno() {
         pronto_retirada: '📦 Pronto Retirada', lembrete_retirada: '🔔 Lembrete Retirada',
         orcamento_aprovado: '✅ Orçamento Aprovado', orcamento_recusado: '❌ Orçamento Recusado'
     };
-    const VARIAVEIS = '<strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{modelo}</strong>, <strong>{defeito}</strong>, <strong>{os}</strong>, <strong>{garantia}</strong>, <strong>{validade}</strong>, <strong>{avaliacao}</strong>';
+    const VARIAVEIS = '<strong>{nome}</strong>, <strong>{aparelho}</strong>, <strong>{modelo}</strong>, <strong>{servico}</strong>, <strong>{defeito}</strong>, <strong>{os}</strong>, <strong>{garantia}</strong>, <strong>{validade}</strong>, <strong>{validade_bloco}</strong>';
     const campos = CHAVES.map(k => `<div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px;">${NOMES[k]}</label><textarea id="rm-${k}" rows="3" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:12px;resize:vertical;">${esc(retornoMensagens[k] || '')}</textarea></div>`).join('');
     openModal(`<div class="modal-handle"></div>
         <h3 style="font-size:16px;font-weight:700;margin-bottom:8px;">⚙️ Editar Mensagens da OS</h3>
