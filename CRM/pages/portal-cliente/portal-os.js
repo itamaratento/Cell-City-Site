@@ -146,7 +146,7 @@ Object.assign(window.Portal, {
           <div class="os-detail-section">
             <div class="os-detail-row"><span class="os-detail-label">📱 Aparelho</span><span class="os-detail-value">${this._esc([o.brand, o.model].filter(Boolean).join(' '))}</span></div>
             ${o.imei ? `<div class="os-detail-row"><span class="os-detail-label">🔢 IMEI</span><span class="os-detail-value">${this._esc(o.imei)}</span></div>` : ''}
-            ${o.cpf ? `<div class="os-detail-row"><span class="os-detail-label">🆔 CPF</span><span class="os-detail-value">${this._esc(o.cpf)}</span></div>` : ''}
+            ${o.cpfMascarado ? `<div class="os-detail-row"><span class="os-detail-label">🆔 CPF</span><span class="os-detail-value">${this._esc(o.cpfMascarado)}</span></div>` : ''}
             <div class="os-detail-row"><span class="os-detail-label">🔧 Defeito</span><span class="os-detail-value">${this._esc(o.defect || '')}</span></div>
             ${o.observations ? `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px 16px;margin:10px 0 4px;"><div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">📝 Observações</div><div style="font-size:14px;color:#e8e8e8;white-space:pre-wrap;line-height:1.75;word-break:break-word;">${this._esc(o.observations)}</div></div>` : ''}
             <div class="os-detail-row"><span class="os-detail-label">📅 Abertura</span><span class="os-detail-value">${date}</span></div>

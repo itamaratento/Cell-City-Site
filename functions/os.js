@@ -23,9 +23,11 @@ const { normalizePhoneDigitsServer } = require('./lib/phone');
 
 // Único ponto que decide quais campos de `os/{osId}` podem sair para
 // o público sem login. NUNCA incluir aqui: password, patternSequence,
-// lockPhoto, endereço, imei1/imei2, technicalObservation.
+// lockPhoto, endereço, imei1/imei2, technicalObservation, cpf, rg.
+// FASE 4.1 (LGPD): CPF removido da whitelist; consumidores públicos
+// recebem apenas `cpfMascarado` (últimos 2 dígitos).
 const OS_CAMPOS_PUBLICOS = [
-  'id', 'clientName', 'phone', 'phoneDigits', 'cpf', 'model', 'category', 'defect', 'status',
+  'id', 'clientName', 'phone', 'phoneDigits', 'model', 'category', 'defect', 'status',
   'createdAt', 'updatedAt', 'deliveredAt', 'technician', 'garantiaId', 'prazoGarantia',
   'valor', 'valorCartao', 'observations', 'timeline',
   'orcamentoResposta', 'orcamentoDataResposta', 'orcamentoHoraResposta',
@@ -36,11 +38,20 @@ const OS_CAMPOS_PUBLICOS = [
 // `phone` formatado, o que quebra silenciosamente para qualquer OS onde os
 // dois campos não fiquem 100% consistentes (achado da homologação do Lote 2).
 
+function mascararCpf(cpf) {
+  if (cpf == null) return undefined;
+  const digits = String(cpf).replace(/\D/g, '');
+  if (digits.length < 2) return '***.***.***-**';
+  return `***.***.***-${digits.slice(-2)}`;
+}
+
 function projetarCamposPublicosOS(data) {
   const out = {};
   for (const campo of OS_CAMPOS_PUBLICOS) {
     if (data[campo] !== undefined) out[campo] = data[campo];
   }
+  const mascarado = mascararCpf(data.cpf);
+  if (mascarado !== undefined) out.cpfMascarado = mascarado;
   // relatorioTecnico só é público quando o técnico autorizou
   // explicitamente — mesma regra que garantia.html já aplica hoje.
   if (data.relatorioTecnico && data.relatorioTecnico.exibirPortal === true) {

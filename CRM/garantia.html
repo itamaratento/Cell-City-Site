@@ -582,7 +582,7 @@
                 <div class="cliente-info" style="text-align: left; border: none; padding: 16px; background: #ffffff; margin-bottom: 16px; border: 1px solid #d1d5db;">
                     <div style="font-size: 14px; color: #4b5563;"><strong>Cliente:</strong> ${escHTML(os.clientName) || 'Não informado'}</div>
                     ${os.phone ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>Telefone:</strong> ${escHTML(os.phone)}</div>` : ''}
-                    ${os.cpf ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>CPF:</strong> ${escHTML(os.cpf)}</div>` : ''}
+                    ${os.cpfMascarado ? `<div style="font-size: 14px; color: #4b5563; margin-top: 4px;"><strong>CPF:</strong> ${escHTML(os.cpfMascarado)}</div>` : ''}
                 </div>`;
 
             const dadosServicoBlock = `

@@ -327,6 +327,15 @@ test('portalResponderOrcamento: NEGA quando phoneDigits não bate com a OS (fix 
   assert.equal(depois.data().status, 'orcamento_enviado', 'a OS não deve ter sido alterada');
 });
 
+// FASE 4.1 — LGPD: CPF não sai em claro na projeção pública
+test('consultarOSPublica: CPF mascarado, nunca cpf cru', async () => {
+  await seedOS({ cpf: '123.456.789-45', clientName: 'Cliente', empresa_id: 'cellcity-master' });
+  const resp = await fns.consultarOSPublica.run({ data: { osId: 'OS-0001' } });
+  assert.equal(resp.os.cpf, undefined);
+  assert.equal(resp.os.cpfMascarado, '***.***.***-45');
+  assert.equal(resp.os.clientName, 'Cliente');
+});
+
 test('portalResponderOrcamento: rejeita OS já respondida (guarda anti-duplo)', async () => {
   await seedOS({ status: 'orcamento_aprovado' });
   await assert.rejects(

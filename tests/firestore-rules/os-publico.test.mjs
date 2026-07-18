@@ -223,6 +223,29 @@ test('write em catalogo_config/geral com staff aprovado → permitido', async ()
   await assertSucceeds(db.collection('catalogo_config').doc('geral').set({ ativo: true, empresa_id: 'cellcity-master' }));
 });
 
+// FASE 4.1 — config: whitelist pública (impressao/horarios); demais docs fechados
+test('config/impressao: get anônimo → permitido (whitelist Portal/garantia)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('config').doc('impressao').set({ loja: { nome: 'Cell City' } });
+  });
+  await assertSucceeds(testEnv.unauthenticatedContext().firestore().collection('config').doc('impressao').get());
+});
+
+test('config/crm_pre_os_counter: get anônimo → NEGADO (FASE 4.1)', async () => {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('config').doc('crm_pre_os_counter').set({ value: 1 });
+  });
+  await assertFails(testEnv.unauthenticatedContext().firestore().collection('config').doc('crm_pre_os_counter').get());
+});
+
+test('config/crm_pre_os_counter: get staff liberado → permitido', async () => {
+  await seedUsuario('staff-config', 'tecnico');
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore().collection('config').doc('crm_pre_os_counter').set({ value: 1 });
+  });
+  await assertSucceeds(testEnv.authenticatedContext('staff-config').firestore().collection('config').doc('crm_pre_os_counter').get());
+});
+
 // ── REVISÃO 2026-07-10: os módulos Chat (Sprint 15), Compras (Sprint 13),
 // Fechamento Mensal (Sprint 10) e Cadastro de Fornecedores (2026-07-09)
 // foram commitados sem rule para as suas coleções — caíam no deny-by-default

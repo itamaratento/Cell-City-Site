@@ -153,13 +153,13 @@ test('Central de Módulos: toda URL do catálogo aponta para página existente',
 // nesta mesma função; os outros 5 pontos não. Escopo só na função de render
 // (copiarGarantia() usa os mesmos campos como texto puro de clipboard, não
 // innerHTML — não é um sink de XSS).
-test('garantia.html: campos públicos (clientName/phone/cpf/model/defect) escapados em renderGarantiaHTML', () => {
+test('garantia.html: campos públicos (clientName/phone/cpfMascarado/model/defect) escapados em renderGarantiaHTML', () => {
     const full = read('CRM/garantia.html');
     const inicio = full.indexOf('function renderGarantiaHTML');
     const fim = full.indexOf('window.copiarGarantia');
     assert.ok(inicio > -1 && fim > inicio, 'renderGarantiaHTML não encontrada em garantia.html');
     const src = full.slice(inicio, fim);
-    const camposPublicos = ['clientName', 'phone', 'cpf', 'model', 'defect'];
+    const camposPublicos = ['clientName', 'phone', 'cpfMascarado', 'model', 'defect'];
     const naoEscapados = [];
     for (const campo of camposPublicos) {
         const re = new RegExp(`\\$\\{[^}]*\\bos\\.${campo}\\b[^}]*\\}`, 'g');

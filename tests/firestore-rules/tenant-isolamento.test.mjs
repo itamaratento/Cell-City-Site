@@ -292,16 +292,19 @@ test('financeiro_categorias/itens: categoria-pai legada (sem empresa_id) → ite
 
 // ── PRE_OS (achado crítico, Auditoria Técnica Independente 2026-07-17)
 // ───────────────────────────────────────────────────────────────────
-// pre_os não tinha NENHUM gate de tenant em read/update/delete — a
-// única coleção de negócio deste arquivo nessa condição. Cliente
-// continua criando sem login (`allow create: if true`), mas agora
-// carimba empresa_id (abrir-atendimento.html); read/update/delete
-// passam a exigir mesmaEmpresaRead()/empresaImutavel() como o resto
-// do arquivo.
-test('pre_os: cliente cria sem login (create público, comportamento preservado)', async () => {
+// pre_os: create público controlado (FASE 4.1) — exige empresa_id válido;
+// read/update/delete exigem mesmaEmpresaRead()/empresaImutavel().
+test('pre_os: cliente cria sem login com empresa_id → permitido', async () => {
   await assertSucceeds(
     testEnv.unauthenticatedContext().firestore()
       .collection('pre_os').doc('pre-publico').set({ problema: 'Tela quebrada', empresa_id: 'empresa-a' })
+  );
+});
+
+test('pre_os: create sem empresa_id → NEGADO (FASE 4.1)', async () => {
+  await assertFails(
+    testEnv.unauthenticatedContext().firestore()
+      .collection('pre_os').doc('pre-sem-empresa').set({ problema: 'Tela quebrada' })
   );
 });
 

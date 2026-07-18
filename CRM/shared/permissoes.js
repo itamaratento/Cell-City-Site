@@ -1,47 +1,51 @@
 /* ============================================================
-   PERMISSOES.JS — RBAC operacional (Fase 2)
+   PERMISSOES.JS — RBAC operacional (Fase 2 + FASE 4.1)
    Cell City Gestão Operacional
 
    Responsabilidade: única fonte de leitura da matriz de
    perfis_operacionais (Fase 1) para o usuário atual. Controla
-   apenas EXIBIÇÃO de UI — a segurança real continua nas
-   Firestore Rules. Não altera kernel.js nem cria listeners de
-   autenticação próprios.
+   EXIBIÇÃO de UI. A barreira de dados continua nas Firestore Rules
+   (tenant + temAcessoLiberado + admin em coleções sensíveis).
 
-   Uso padrão em cada módulo (após initModulo()):
-     import { carregarPermissoes, podeVisualizar } from '/CRM/shared/permissoes.js';
-
-     const ctx = await initModulo();
-     if (!ctx) return;
-     await carregarPermissoes(ctx);
-     if (!podeVisualizar('financeiro')) { ... }
-
-   Fail-open: qualquer ausência de dado ou falha de leitura
-   resulta em "sem restrição" (mostra tudo) — nunca oculta por
-   engano. Ver MASTER_ROADMAP.md (Fase 2) e
-   plans/fase2-sprint1-dashboard-rbac.md para o racional.
+   FASE 4.1: fail-CLOSED para usuários com perfil operacional
+   carregado — ausência de entrada no módulo ou falha de leitura
+   NÃO libera acesso. Admin/master_admin continuam sem restrição
+   de matriz (acesso total na UI). Usuários legados sem
+   perfil_operacional_id: sem restrição de matriz (compatibilidade),
+   documentado como dívida até migração completa.
    ============================================================ */
 
 import { db, doc, getDoc } from '../scripts/firebase.js';
 
-// null = sem restrição carregada (mostra tudo).
+// null = admin sem restrição OU legado sem perfil operacional.
 let _matriz = null;
 let _perfilOperacionalNome = null;
+/** true quando o usuário tem perfil operacional e a matriz foi resolvida (mesmo vazia). */
+let _rbacAtivo = false;
+/** true após carregarPermissoes concluir (sucesso ou falha). */
+let _carregado = false;
 
 /**
  * Carrega a matriz de permissões do perfil operacional do usuário atual.
  * Deve ser chamada uma única vez, logo após initModulo() resolver.
  *
  * @param {Object} ctx — contexto retornado por initModulo() (kernel.js).
- * @returns {Promise<Object|null>} matriz de permissões ou null (sem restrição).
+ * @returns {Promise<Object|null>} matriz de permissões ou null (sem restrição de matriz).
  */
 export async function carregarPermissoes(ctx) {
-    if (!ctx) { _matriz = null; return null; }
+    _carregado = false;
+    _rbacAtivo = false;
+    _matriz = null;
+    _perfilOperacionalNome = null;
 
-    // Perfil legado admin/master_admin sempre vê tudo — não altera o
-    // significado desse campo, só evita restringir quem já tem acesso total.
+    if (!ctx) {
+        _carregado = true;
+        return null;
+    }
+
+    // Perfil legado admin/master_admin sempre vê tudo.
     if (ctx.perfil === 'admin' || ctx.perfil === 'master_admin') {
-        _matriz = null;
+        _carregado = true;
         return null;
     }
 
@@ -49,22 +53,32 @@ export async function carregarPermissoes(ctx) {
         const usuarioSnap = await getDoc(doc(db, 'usuarios', ctx.uid));
         const perfilOpId = usuarioSnap.exists() ? usuarioSnap.data().perfil_operacional_id : null;
 
-        // Usuário ainda não migrado para o RBAC novo — sem restrição.
-        if (!perfilOpId) { _matriz = null; return null; }
+        // Usuário ainda não migrado para o RBAC novo — sem restrição de matriz.
+        if (!perfilOpId) {
+            _carregado = true;
+            return null;
+        }
 
         const perfilSnap = await getDoc(doc(db, 'perfis_operacionais', perfilOpId));
         if (perfilSnap.exists()) {
-            _matriz = perfilSnap.data().permissoes || null;
+            _matriz = perfilSnap.data().permissoes || {};
             _perfilOperacionalNome = perfilSnap.data().nome || null;
+            _rbacAtivo = true;
         } else {
-            _matriz = null;
+            // Perfil operacional apontado mas doc ausente — fail-closed.
+            _matriz = {};
+            _rbacAtivo = true;
             _perfilOperacionalNome = null;
         }
+        _carregado = true;
         return _matriz;
     } catch (e) {
-        console.warn('[permissoes.js] Falha ao carregar permissões — sem restrição por padrão.', e);
-        _matriz = null; // falha na leitura nunca esconde módulo por engano
-        return null;
+        console.warn('[permissoes.js] Falha ao carregar permissões — fail-closed.', e);
+        // FASE 4.1: falha na leitura NÃO abre o sistema.
+        _matriz = {};
+        _rbacAtivo = true;
+        _carregado = true;
+        return _matriz;
     }
 }
 
@@ -74,25 +88,28 @@ export function getMatrizAtual() {
 }
 
 function _permissao(moduloId, campo) {
-    if (!_matriz) return true; // sem restrição carregada — fail-open
-    const perm = _matriz[moduloId];
-    if (!perm) return true; // módulo ainda sem entrada na matriz — fail-open
-    return perm[campo] !== false;
+    // Ainda não carregou: negar (evita flash de menu liberado).
+    if (!_carregado) return false;
+    // Sem RBAC operacional ativo (admin ou legado): liberado.
+    if (!_rbacAtivo) return true;
+    const perm = _matriz && _matriz[moduloId];
+    if (!perm) return false; // fail-closed: módulo sem entrada
+    return perm[campo] === true; // exige true explícito
 }
 
-/** @returns {boolean} true se o perfil pode visualizar o módulo (fail-open). */
+/** @returns {boolean} true se o perfil pode visualizar o módulo. */
 export function podeVisualizar(moduloId) { return _permissao(moduloId, 'visualizar'); }
 
-/** @returns {boolean} true se o perfil pode criar no módulo (fail-open). */
+/** @returns {boolean} true se o perfil pode criar no módulo. */
 export function podeCriar(moduloId) { return _permissao(moduloId, 'criar'); }
 
-/** @returns {boolean} true se o perfil pode editar no módulo (fail-open). */
+/** @returns {boolean} true se o perfil pode editar no módulo. */
 export function podeEditar(moduloId) { return _permissao(moduloId, 'editar'); }
 
-/** @returns {boolean} true se o perfil pode excluir no módulo (fail-open). */
+/** @returns {boolean} true se o perfil pode excluir no módulo. */
 export function podeExcluir(moduloId) { return _permissao(moduloId, 'excluir'); }
 
-/** @returns {boolean} true se o perfil pode aprovar no módulo (fail-open). */
+/** @returns {boolean} true se o perfil pode aprovar no módulo. */
 export function podeAprovar(moduloId) { return _permissao(moduloId, 'aprovar'); }
 
 /** @returns {string|null} Nome do perfil operacional RBAC (ex.: 'Administrador', 'Caixa'). */

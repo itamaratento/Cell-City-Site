@@ -44,8 +44,14 @@ after(async () => {
 const storageMaster = () => testEnv.authenticatedContext('user-master').storage();
 const storageA = () => testEnv.authenticatedContext('user-a').storage();
 
-test('os/ legado: leitura publica (sem login) -> permitido', async () => {
-  await assertSucceeds(testEnv.unauthenticatedContext().storage().ref('os/OS-0001/foto.jpg').getDownloadURL());
+// FASE 4.1: Storage OS — leitura exige autenticação + mesma empresa.
+// URLs com token já emitidas continuam válidas; getDownloadURL anônimo falha.
+test('os/ legado: leitura sem login -> NEGADO (FASE 4.1)', async () => {
+  await assertFails(testEnv.unauthenticatedContext().storage().ref('os/OS-0001/foto.jpg').getDownloadURL());
+});
+
+test('os/ legado: leitura autenticada pela empresa dona -> permitido', async () => {
+  await assertSucceeds(storageMaster().ref('os/OS-0001/foto.jpg').getDownloadURL());
 });
 
 test('os/ legado: write continua fechado', async () => {
@@ -82,11 +88,17 @@ test('docs/ legado: delete por OUTRA empresa -> NEGADO (A2)', async () => {
   await assertFails(storageA().ref('docs/manual2.pdf').delete());
 });
 
-// Leitura canônica de fotos de OS e PUBLICA por design (Portal/garantia).
-test('canonico os/: leitura publica (cross-tenant) -> permitido (design Portal)', async () => {
+// FASE 4.1: leitura canônica de fotos de OS NÃO é mais pública.
+test('canonico os/: leitura anonima -> NEGADO (FASE 4.1)', async () => {
+  await assertFails(testEnv.unauthenticatedContext().storage().ref('empresas/empresa-a/os/OS-A-1/foto.jpg').getDownloadURL());
+});
+
+test('canonico os/: leitura pela propria empresa -> permitido', async () => {
   await assertSucceeds(storageA().ref('empresas/empresa-a/os/OS-A-1/foto.jpg').getDownloadURL());
-  await assertSucceeds(storageMaster().ref('empresas/empresa-a/os/OS-A-1/foto.jpg').getDownloadURL());
-  await assertSucceeds(testEnv.unauthenticatedContext().storage().ref('empresas/empresa-a/os/OS-A-1/foto.jpg').getDownloadURL());
+});
+
+test('canonico os/: leitura cross-tenant -> NEGADO', async () => {
+  await assertFails(storageMaster().ref('empresas/empresa-a/os/OS-A-1/foto.jpg').getDownloadURL());
 });
 
 test('canonico os/: empresa A escreve/exclui proprios arquivos -> permitido', async () => {

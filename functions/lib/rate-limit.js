@@ -70,7 +70,9 @@ const LIMITES = {
   // limite específico abaixo eleva bastante o custo de uma enumeração
   // sequencial, mantendo folga confortável para o uso legítimo (cliente
   // abrindo a própria garantia, no máximo algumas vezes por minuto).
-  consulta_os_publica: { ip: 8, telefone: 8 },
+  consulta_os_publica: { ip: 5, telefone: 5 },
+  // FASE 4.1: enumeração por osId sequencial — limite ainda mais baixo.
+  // PoP forte / publicToken opaco = médio prazo (não quebra links ?id=).
 };
 
 function aplicarRateLimit(request, tipoOperacao) {

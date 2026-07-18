@@ -126,26 +126,26 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
-    // PÚBLICO: Config — leitura de doc único (garantia.html lê config/impressao)
+    // Config — FASE 4.1: fechado ao público genérico.
+    // Docs públicos necessários ao Portal/garantia (impressao, horarios)
+    // só via whitelist de get; demais docs exigem staff liberado.
+    // Write nunca é público. (Antes: allow get: if true em QUALQUER docId.)
     // ─────────────────────────────────────────────
     match /config/{docId} {
-      allow get:                           if true;
+      allow get:                           if docId in ['impressao', 'horarios']
+                                           || (request.auth != null && temAcessoLiberado());
       allow list, write:                   if request.auth != null && temAcessoLiberado();
     }
 
     // ─────────────────────────────────────────────
-    // PÚBLICO: Pré-OS — cliente cria sem login (abrir-atendimento.html)
+    // Pré-OS — create público controlado (abrir-atendimento.html).
+    // FASE 4.1: create exige empresa_id válido + campos mínimos; sem
+    // `if true` irrestrito. Read/update/delete continuam tenant-scoped.
     // ─────────────────────────────────────────────
-    // Achado crítico (Auditoria Técnica Independente 2026-07-17, "pre_os
-    // sem isolamento"): read/update/delete não tinham NENHUM gate de
-    // tenant — diferente de toda outra coleção de negócio deste arquivo.
-    // Confirmado explorável: dashboard-alertas.js e dashboard-alertas-
-    // panel.js liam/escutavam pre_os sem filtro de empresa. `create`
-    // continua público (cliente não tem sessão para satisfazer
-    // mesmaEmpresaCreate()) — abrir-atendimento.html agora carimba
-    // empresa_id explicitamente no payload antes de gravar.
     match /pre_os/{docId} {
-      allow create:                        if true;
+      allow create:                        if request.resource.data.empresa_id is string
+                                           && request.resource.data.empresa_id.matches('^[a-z0-9][a-z0-9-]{2,39}$')
+                                           && request.resource.data.keys().hasAll(['empresa_id']);
       allow read:                          if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
       allow update:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead() && empresaImutavel();
       allow delete:                        if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
@@ -162,8 +162,13 @@ service cloud.firestore {
       allow delete: if request.auth != null && temAcessoLiberado() && mesmaEmpresaRead();
     }
 
+    // FASE 4.1: metadata não é público. `counter` (numeração de OS) precisa
+    // de escrita por qualquer staff liberado; demais docs só admin/master.
     match /metadata/{docId} {
-      allow read, write:                   if request.auth != null && temAcessoLiberado();
+      allow read:                          if request.auth != null && temAcessoLiberado();
+      allow write:                         if request.auth != null && temAcessoLiberado()
+                                           && (docId == 'counter'
+                                               || usuarioAtual().perfil in ['admin', 'master_admin']);
     }
 
     // ─────────────────────────────────────────────

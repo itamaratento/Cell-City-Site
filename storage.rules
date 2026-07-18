@@ -7,6 +7,11 @@ rules_version = '2';
 // gravadas nos documentos; pertencem todos à Cell City (única empresa
 // da era single-tenant). O catch-all antigo (qualquer autenticado lia
 // e escrevia em QUALQUER path do bucket) foi removido — deny-by-default.
+//
+// FASE 4.1: leitura de fotos de OS deixou de ser pública (`if true`).
+// URLs de download já emitidas (com token) continuam válidas; novas
+// leituras via SDK exigem auth + mesma empresa. Portal/garantia usam
+// campos projetados pelas Cloud Functions, não getDownloadURL anônimo.
 service firebase.storage {
   match /b/{bucket}/o {
 
@@ -19,10 +24,8 @@ service firebase.storage {
     }
 
     // ── CANÔNICO: fotos de OS por empresa ─────────────────────
-    // Leitura pública: o Portal do Cliente e garantia.html exibem as
-    // fotos por URL direta (mesma exposição do modelo legado).
     match /empresas/{empresaId}/os/{osId}/{allPaths=**} {
-      allow read:   if true;
+      allow read:   if request.auth != null && empresaDoUsuario() == empresaId;
       allow write:  if request.auth != null
                     && empresaDoUsuario() == empresaId
                     && request.resource.size < 5 * 1024 * 1024
@@ -39,21 +42,14 @@ service firebase.storage {
     }
 
     // ── LEGADO (pré-PS-6): fotos de OS da Cell City ───────────
-    // Escrita fechada: código novo só escreve no path canônico.
-    // Achado A2 (Auditoria Técnica Independente 2026-07-17): `delete`
-    // aceitava QUALQUER usuário autenticado, de qualquer empresa — sem
-    // isolamento nenhum, diferente de todo o resto deste arquivo. Como
-    // estes paths legados pertencem à Cell City (comentário do topo),
-    // restringe a exclusão à própria empresa dona dos arquivos.
+    // FASE 4.1: read autenticado + empresa dona (cellcity-master).
     match /os/{osId}/{allPaths=**} {
-      allow read:   if true;
+      allow read:   if request.auth != null && empresaDoUsuario() == 'cellcity-master';
       allow write:  if false;
       allow delete: if request.auth != null && empresaDoUsuario() == 'cellcity-master';
     }
 
     // ── LEGADO (pré-PS-6): documentos da Central de Informações ──
-    // Achado A2 (mesma auditoria): mesma correção — `delete` restrito à
-    // empresa dona dos arquivos legados; `read` permanece como estava.
     match /docs/{allPaths=**} {
       allow read:   if request.auth != null;
       allow delete: if request.auth != null && empresaDoUsuario() == 'cellcity-master';

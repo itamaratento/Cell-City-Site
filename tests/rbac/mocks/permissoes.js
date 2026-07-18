@@ -1,7 +1,8 @@
 // Mock de shared/permissoes.js — só a borda; testa o branching real do
 // código chamador (estoque.js, caixa.js, crm.js, etc.), não a implementação
 // real de permissoes.js (que não é tocada por este mock).
-let _matriz = null;      // null = módulo não migrado (fail-open total)
+let _matriz = null;      // null = legado / admin nos testes (sem restrição de matriz)
+
 let _adminLegado = false;
 
 export async function carregarPermissoes(_ctx) {
@@ -10,10 +11,10 @@ export async function carregarPermissoes(_ctx) {
 
 function check(moduloId, verbo) {
     if (_adminLegado) return true;
-    if (_matriz === null) return true;
+    if (_matriz === null) return true; // legado / cenário sem RBAC nos testes
     const m = _matriz[moduloId];
-    if (!m) return true; // módulo específico não migrado: fail-open
-    return !!m[verbo];
+    if (!m) return false; // FASE 4.1 fail-closed
+    return m[verbo] === true;
 }
 
 export function podeVisualizar(m) { return check(m, 'visualizar'); }

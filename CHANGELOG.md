@@ -3,6 +3,45 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [Unreleased] — 2026-07-18 (Fase 4.1 — correção segurança pré-recertificação)
+
+### Security
+- Firestore: `config` get restrito a whitelist `impressao`/`horarios` (+ staff); `pre_os` create exige `empresa_id`; `metadata` write restrito.
+- Storage: fotos de OS deixam de ser `read: if true` — exigem auth + mesma empresa.
+- LGPD: CPF removido de `OS_CAMPOS_PUBLICOS`; público recebe `cpfMascarado`.
+- RBAC UI: `permissoes.js` passa a fail-closed com perfil operacional ativo.
+- Portal: rate `consulta_os_publica` 8→5/min (PoP opaco = médio prazo).
+
+### Fixed
+- `CRM/firestore.indexes.json` alinhado à produção (23 composites).
+
+### Docs
+- Relatório: `plans/CORRECAO_RECERTIFICACAO_FASE41_v3.1.0_20260718.md`.
+- Parecer: **ainda COM RESSALVAS** até deploy + Actions + smoke.
+
+### Notes
+- Sem deploy/push/tag nesta fase.
+
+## [Unreleased] — 2026-07-18 (Fase 4.0 — encerramento operacional v3.1.0)
+
+### Docs
+- Encerramento operacional: gates smoke autenticado e Deploy Actions permanecem dependência humana (sem credencial/`gh` neste ambiente).
+- Parecer mantido: **CERTIFICADA COM RESSALVAS**.
+- Relatório: `plans/ENCERRAMENTO_OPERACIONAL_FASE40_v3.1.0_20260718.md`.
+
+### Notes
+- Sem merge/`main`/tag/deploy/secret nesta fase.
+
+## [Unreleased] — 2026-07-18 (Fase 3.8 — homologação final v3.1.0)
+
+### Docs
+- Homologação final: infra revalidada (Rules/Functions/23 índices READY); smoke HTTP público 16/16.
+- Parecer: **CERTIFICADA COM RESSALVAS** — smoke autenticado, RBAC runtime e `FIREBASE_SA_KEY`/Actions deploy ainda pendentes.
+- Relatório: `plans/HOMOLOGACAO_FINAL_FASE38_v3.1.0_20260718.md`.
+
+### Notes
+- Sem merge/`main`/tag/deploy/secret nesta fase.
+
 ## [Unreleased] — 2026-07-17 (Fase 2.9 — preparação promoção à main)
 
 ### Docs
