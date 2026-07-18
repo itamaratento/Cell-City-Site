@@ -1483,14 +1483,25 @@ async function salvarLembreteOS() {
 }
 
 // ===== MENSAGEM FINALIZADO =====
-function copiarMensagemFinalizado() {
+async function copiarMensagemFinalizado() {
     if (!currentOS) return;
+    if (!Object.keys(retornoMensagens).length) await loadRetornoMensagens();
     const os = currentOS;
     const garantiaModelo = _getSelectedWarranty(os);
+    // Sempre monta via motor puro: template legado inválido é descartado lá dentro.
     const msg = montarMensagemFinalizado(os, {
         template: retornoMensagens.finalizado,
         garantiaModeloNome: garantiaModelo ? garantiaModelo.nome : null,
     });
+    if (/\{validade\s*\?/.test(msg) || /validade \?/.test(msg)) {
+        // Rede de segurança absoluta — nunca copiar ternário JS para o cliente
+        const seguro = montarMensagemFinalizado(os, {
+            template: null,
+            garantiaModeloNome: garantiaModelo ? garantiaModelo.nome : null,
+        });
+        _copiarComHistorico(seguro, 'finalizado', '✅ Finalizado');
+        return;
+    }
     _copiarComHistorico(msg, 'finalizado', '✅ Finalizado');
 }
 
@@ -1710,8 +1721,18 @@ async function loadRetornoMensagens() {
         const snap = await getDoc(doc(db, 'config', 'retorno_mensagens'));
         retornoMensagens = snap.exists() ? snap.data() : _retornoMensagensPadrao();
         // Template legado com expressão JS visível → substitui pelo padrão seguro
+        // e persiste no Firestore para não voltar a aparecer após F5 / outro dispositivo.
         if (templateFinalizadoInvalido(retornoMensagens.finalizado)) {
             retornoMensagens.finalizado = _msgFinalizadoPadrao();
+            try {
+                await setDoc(doc(db, 'config', 'retorno_mensagens'), {
+                    ...retornoMensagens,
+                    finalizado: retornoMensagens.finalizado,
+                    updatedAt: new Date().toISOString(),
+                }, { merge: true });
+            } catch (persistErr) {
+                console.warn('[OS] Não foi possível persistir template finalizado corrigido:', persistErr);
+            }
         }
     } catch(e) {
         retornoMensagens = _retornoMensagensPadrao();
