@@ -878,11 +878,12 @@ test('módulo Banco de Dados: Índices não acusa mais duplicado na raiz (arquiv
     assert.doesNotMatch(saida, /Arquivo duplicado/);
 });
 
-test('módulo Banco de Dados: Firestore Rules identifica sintaxe válida e os 3 "if true" documentados como acesso público', () => {
+test('módulo Banco de Dados: Firestore Rules identifica sintaxe válida e o único "if true" remanescente (catalogo_config, vitrine pública — FASE 4.1 fechou config e pre_os)', () => {
     const saida = rodarModulo('banco-dados', '4\n1\n\n11\n0\n');
     assert.match(saida, /Sintaxe \(heurística\)/);
-    assert.match(saida, /Permissões abertas.*3 linha\(s\)/);
-    assert.match(saida, /config:\d+/);
+    assert.match(saida, /Permissões abertas.*1 linha\(s\)/);
+    assert.match(saida, /catalogo_config:\d+/);
+    assert.doesNotMatch(saida, /\bpre_os:\d+/);
 });
 
 test('módulo Banco de Dados: Integridade e Estatísticas rodam de verdade e nunca travam, com ou sem gcloud', () => {
