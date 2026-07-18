@@ -203,6 +203,76 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "pre_os",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "catalogo_produtos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ordem",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "comandos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "informacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "chips_cadastros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEm",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []
