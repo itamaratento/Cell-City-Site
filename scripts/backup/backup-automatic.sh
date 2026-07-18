@@ -59,8 +59,22 @@ if ! git push --quiet "$BACKUP_REPO_SSH" refs/heads/main:refs/heads/main refs/he
   status="falha"; fail_reason="push de branches (main/develop) falhou"
 fi
 
-if [ "$status" = "sucesso" ] && ! git push --quiet "$BACKUP_REPO_SSH" --tags; then
-  status="falha"; fail_reason="push de tags falhou"
+if [ "$status" = "sucesso" ]; then
+  # A proteção de tags do repo de backup (ativa desde ~2026-07-12) recusa
+  # criação de tags novas pela deploy key — um "push --tags" monolítico
+  # derrubaria o backup inteiro na primeira tag nova (ex.: v3.1.0).
+  # Espelha tag a tag: recusas viram AVISO no manifesto (o conteúdo crítico
+  # — branches — já foi salvo acima) até o bypass da deploy key ser
+  # configurado no ruleset do Cell-City-Backup.
+  tags_nao_espelhadas=""
+  while IFS= read -r t; do
+    if ! git push --quiet "$BACKUP_REPO_SSH" "refs/tags/$t"; then
+      tags_nao_espelhadas="$tags_nao_espelhadas $t"
+    fi
+  done < <(git tag)
+  if [ -n "$tags_nao_espelhadas" ]; then
+    fail_reason="aviso: tags não espelhadas (proteção de tags no repo de backup):$tags_nao_espelhadas"
+  fi
 fi
 
 last_seq=$(python3 -c "import json;d=json.load(open('$MANIFEST'));print(d['last_seq'] or 0)")
