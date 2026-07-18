@@ -20,25 +20,31 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-17) — FASE 3.1: DEVELOP CERTIFICADA
+## ✅ ESTADO ATUAL (2026-07-17/18) — FASE 3.4: MAIN PROMOVIDA · DEPLOY FIREBASE BLOQUEADO
 
-Push + CI remota verdes em `develop` @ `a455533`.
-Relatório: [`plans/PUSH_DEVELOP_CI_20260717.md`](plans/PUSH_DEVELOP_CI_20260717.md).
+`main` = tag **`v3.1.0`** = `b7e260d` (promoção Fase 3.2 concluída).
+Deploy Firebase da release **falhou por secret `FIREBASE_SA_KEY` ausente** — causa única confirmada 2x (Fases 3.3 e 3.4).
+Relatórios: [`plans/PROMOCAO_MAIN_20260717.md`](plans/PROMOCAO_MAIN_20260717.md) · [`plans/DIAGNOSTICO_DEPLOY_FIREBASE_20260717.md`](plans/DIAGNOSTICO_DEPLOY_FIREBASE_20260717.md) · [`plans/FASE34_RESTABELECIMENTO_DEPLOY_20260717.md`](plans/FASE34_RESTABELECIMENTO_DEPLOY_20260717.md).
 
-**Recomendação oficial:** 🟢 **DEVELOP CERTIFICADA — PRONTO PARA PROMOÇÃO À MAIN**
+**Recomendação oficial:** 🟡 **DEPLOY BLOQUEADO — AGUARDANDO OPERADOR (secret)**
 
-### Concluído
+### ⚠️ ATENÇÃO — NÃO repetir a promoção
 
-- `origin/develop` sincronizado com HEAD local
-- Testes automatizados **success** · Pages **success** · Firebase **skipped**
-- Backfill produção + `dados_migrados=true` (fases anteriores)
+A promoção `develop`→`main` + tag **JÁ FOI FEITA**. Não re-promover. `develop` está à frente da `main` apenas com docs de release.
+
+### Riscos ativos
+
+- 🔴 **Janela de inconsistência**: Pages da `main` já serve código v3.1.0; Rules/Functions do Firebase continuam pré-v3.1.0 até o deploy sair.
+- 🟡 Testes automatizados vermelhos na `main` @ `b7e260d` — artefato do harness de CI (Comparar Branches sem `refs/heads/develop` no checkout de push na main); mesma árvore verde na develop; fix validado aguarda autorização (Fase 3.4 §1b).
+- 🟡 Reset externo recorreu em 2026-07-17/18 apagando modificações não commitadas — commitar imediato, sempre com pathspec.
 
 ### Próxima ação humana (ordem rígida)
 
-1. Autorizar fast-forward **`develop` → `main`** + tag
-2. Deploy Firebase / Rules
-3. Smoke pós-deploy
-4. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
+1. **Operador:** configurar secret `FIREBASE_SA_KEY` (GitHub → Settings → Secrets → Actions)
+2. **Operador:** disparar "Deploy Firebase" na `main` (Run workflow) — ou autorizar acesso `gh`/API para a IA disparar
+3. Validação pós-deploy + smoke + certificação final (Etapas 5–7 da Fase 3.4)
+4. Autorizar fix de CI (Comparar Branches) na `develop`
+5. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
 
 ### Histórico recente (não sobrescreve o acima)
 
