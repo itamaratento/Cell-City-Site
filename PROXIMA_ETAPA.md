@@ -20,32 +20,25 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-17) — FASE 2.9: PREPARAÇÃO PROMOÇÃO À MAIN
+## ✅ ESTADO ATUAL (2026-07-17) — FASE 3.1: DEVELOP CERTIFICADA
 
-Gate de preparação à promoção concluído.
-Relatório: [`plans/PREPARACAO_PROMOCAO_MAIN_20260717.md`](plans/PREPARACAO_PROMOCAO_MAIN_20260717.md).
+Push + CI remota verdes em `develop` @ `a455533`.
+Relatório: [`plans/PUSH_DEVELOP_CI_20260717.md`](plans/PUSH_DEVELOP_CI_20260717.md).
 
-**Recomendação oficial:** 🟡 **PRONTO COM RESSALVAS**
+**Recomendação oficial:** 🟢 **DEVELOP CERTIFICADA — PRONTO PARA PROMOÇÃO À MAIN**
 
 ### Concluído
 
-- Backfill produção ✅ (4 docs) + `validar-backfill` exit 0
-- `empresas/cellcity-master.dados_migrados` = **`true`** (confirmado por leitura; sem escrita necessária)
-- CI remota verde em `origin/develop` @ `a6c7a56`
-- Working tree limpa em `develop`
-
-### Ressalva bloqueante para promoção imediata
-
-- Local **à frente 7** de `origin/develop` — HEAD `0547fcb` **sem** CI remota
-- Exige: `git push origin develop` → CI verde → só então authorize `develop`→`main`
+- `origin/develop` sincronizado com HEAD local
+- Testes automatizados **success** · Pages **success** · Firebase **skipped**
+- Backfill produção + `dados_migrados=true` (fases anteriores)
 
 ### Próxima ação humana (ordem rígida)
 
-1. Push `develop` (commits docs/refactor locais) → validar CI
-2. Fast-forward **`develop` → `main`** + tag (autorização específica)
-3. Deploy Firebase / Rules (só após main)
-4. Smoke pós-deploy
-5. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
+1. Autorizar fast-forward **`develop` → `main`** + tag
+2. Deploy Firebase / Rules
+3. Smoke pós-deploy
+4. (Opcional) Decisão S2 raiz (`consultarOSPublica`)
 
 ### Histórico recente (não sobrescreve o acima)
 
