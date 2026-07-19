@@ -49,7 +49,23 @@ jobs:
         run: firebase deploy --only firestore:indexes --project cellcity-crm --force
 
       - name: Deploy Storage Rules
-        run: firebase deploy --only storage --project cellcity-crm --force
+        # Fase 4.2 (2026-07-19): o projeto NÃO tem Firebase Storage
+        # configurado (nenhum bucket vinculado — verificado via API
+        # firebasestorage; criar o bucket exige plano Blaze, decisão do
+        # dono). O `firebase deploy --only storage` falha nesse cenário e
+        # derrubava o job inteiro, pulando o deploy das Cloud Functions.
+        # Guard: só deploya storage.rules quando existir bucket vinculado;
+        # quando o dono configurar o Storage, o passo volta a rodar sozinho.
+        run: |
+          BUCKETS=$(curl -s -H "Authorization: Bearer $(gcloud auth print-access-token)" \
+            "https://firebasestorage.googleapis.com/v1beta/projects/cellcity-crm/buckets")
+          COUNT=$(echo "$BUCKETS" | python3 -c "import json,sys; print(len(json.load(sys.stdin).get('buckets',[])))")
+          if [ "$COUNT" = "0" ]; then
+            echo "⚠️ Firebase Storage sem bucket vinculado — deploy de storage.rules PULADO."
+            echo "   Para ativar: console Firebase > Storage > Get Started (exige Blaze)."
+            exit 0
+          fi
+          firebase deploy --only storage --project cellcity-crm --force
 
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project cellcity-crm --force
