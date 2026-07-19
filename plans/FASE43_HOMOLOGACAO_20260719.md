@@ -54,3 +54,24 @@ STATUS FINAL................. 🟢 HOMOLOGADA
 2. **Runtime Node.js 20 das Functions**: depreciado em 2026-04-30, **descomissiona 2026-10-30** — planejar upgrade para nodejs22 antes disso (mudança em Functions ⇒ exige autorização).
 3. **Bug no harness `homologar-performance`**: o parser espera o reporter *spec* (`ℹ pass N`) mas `node --test` em spawn não-TTY emite TAP (`# pass N`) ⇒ suítes com exit 0 aparecem como ❌ "NaN pass/NaN fail" e a recomendação final sai REPROVADO indevidamente. Corrigir parser em `scripts/homologacao/lib/tests-runner.mjs`.
 4. Bypass de tags do Cell-City-Backup (item de UI, não-fatal).
+
+---
+
+## VALIDAÇÃO FINAL DA RELEASE v3.2.0 (adendo, 2026-07-19)
+
+**Evidência arquivada — GitHub Actions:**
+
+```
+Workflow..................... Testes automatizados
+Run ID....................... 29694988124
+Branch/Commit................ main @ d650464 (== tag v3.2.0)
+Conclusion................... SUCCESS
+URL.......................... https://github.com/itamaratento/Cell-City-Site/actions/runs/29694988124
+```
+
+Sem regressões. Observação operacional: o passo "Testes do Control Center
+(diagnóstico, ferramentas, manutenção)" levou vários minutos além do run
+anterior (7 min totais em 29694090446) — lentidão de runner, concluiu verde;
+se recorrer, avaliar assinatura nova em `scripts/release/known_flakes.json`.
+
+### STATUS FINAL: 🟢 RELEASE v3.2.0 VALIDADA
