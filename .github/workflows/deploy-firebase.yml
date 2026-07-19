@@ -67,6 +67,13 @@ jobs:
           fi
           firebase deploy --only storage --project cellcity-crm --force
 
+      # Fase 4.3 (2026-07-19): o CLI carrega o código das functions no
+      # runner para descobrir o que deployar — sem node_modules o run
+      # 29693959000 falhou ("Couldn't find firebase-functions package").
+      - name: Instalar dependências das Functions
+        run: npm ci
+        working-directory: functions
+
       - name: Deploy Cloud Functions
         run: firebase deploy --only functions --project cellcity-crm --force
 
