@@ -2496,3 +2496,39 @@ scripts de homologação).
 **Veredito:** ✅ **INTEGRAÇÃO E CERTIFICAÇÃO CONCLUÍDA** — as duas
 frentes são compatíveis, sem regressão, sem conflito arquitetural.
 Relatório completo: `plans/CERTIFICACAO_INTEGRACAO_20260716.md`.
+
+## §47 — Fase 4: Segurança em Produção + CI/CD Firebase Operacional (v3.2.0, 2026-07-18/19)
+
+**Escopo:** Fases 4.1→4.3 — endurecimento de Rules/Functions em produção
+e primeiro pipeline de deploy Firebase totalmente funcional via CI.
+
+**Entregas:**
+- Firestore Rules endurecidas (whitelist `config`, `pre_os` com
+  `empresa_id`, LGPD `cpfMascarado`, RBAC fail-closed) deployadas em
+  produção **via CI com WIF** (sem chave de service account no GitHub).
+- Cloud Functions 16/16 em produção com rate-limit S2 (5/min), fonte
+  idêntica ao repo (verificação byte a byte via bucket gcf-v2-sources).
+- `deploy-firebase.yml`: guard de Storage (projeto sem bucket — passo
+  pula com aviso) + `npm ci` em `functions/` antes do deploy.
+
+**Lições permanentes:**
+1. O projeto **não possui bucket Firebase Storage** — releases de
+   storage.rules criados via REST apontavam para bucket inexistente
+   (inócuos). Criar bucket novo exige plano Blaze (decisão do dono,
+   BL-009). O achado A2 nunca teve exposição real.
+2. O filtro de `paths` do Deploy Firebase não cobre `.github/**` nem
+   `plans/**`: promoções docs/CI-only exigem `workflow_dispatch`.
+3. `firebase deploy --only functions` exige `functions/node_modules`
+   no ambiente que executa (o CLI carrega o código para descobrir o
+   que deployar).
+4. O CLI pula functions sem mudança de código ("Skipped — No changes
+   detected"), tornando o pipeline idempotente e o "Skipped" uma
+   evidência válida de sincronização prod==repo.
+5. Runtime nodejs20 depreciado; descomissionamento em 2026-10-30
+   (BL-007 com plano de migração para nodejs22).
+6. Parser do harness `homologar-performance` reprova indevidamente em
+   ambiente não-TTY (TAP vs spec reporter) — BL-008; conferir exit code
+   antes de confiar no veredito.
+
+**Homologação:** `plans/FASE43_HOMOLOGACAO_20260719.md` — 🟢 HOMOLOGADA,
+main == develop == `8fb4d3e`, tag `v3.2.0`.

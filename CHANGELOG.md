@@ -3,6 +3,29 @@
 Histórico resumido das mudanças relevantes do Cell City CRM SaaS.
 O histórico completo permanece em `git log` e nos relatórios de `plans/`.
 
+## [v3.2.0] — 2026-07-19 (Fase 4 encerrada — segurança em produção + CI/CD Firebase operacional)
+
+> Release que efetiva em produção os itens de segurança listados como
+> `[Unreleased]` na Fase 4.1 (abaixo) e torna o pipeline de deploy
+> totalmente operacional. Homologação: `plans/FASE43_HOMOLOGACAO_20260719.md`.
+
+### Security
+- Firestore Rules endurecidas da Fase 4.1 **deployadas em produção via CI** (ruleset == repo byte a byte; probes anônimos fail-closed; `catalogo_config` get público preservado).
+- Cloud Functions com rate-limit S2 (5/min) **em produção** (16/16, fonte == repo).
+- Confirmado que o achado A2 (Storage `read: if true`) nunca teve exposição real: o projeto não possui bucket Firebase Storage.
+
+### Added
+- Primeiro deploy Firebase 100% via CI da história do projeto (WIF, run 29694108479): Rules + Indexes + Functions + validação via API.
+- Guard no passo de Storage do `deploy-firebase.yml`: sem bucket vinculado, pula com aviso; volta a deployar sozinho quando o bucket existir.
+- Passo `npm ci` em `functions/` no workflow (CLI exige node_modules no runner).
+
+### Fixed
+- Deploy de Functions no CI falhava por dependências ausentes ("Couldn't find firebase-functions package").
+
+### Notes
+- Promoções docs/CI-only NÃO disparam o Deploy Firebase (filtro de `paths`); usar `workflow_dispatch` na main quando necessário.
+- Backlog registrado: BL-007 (runtime nodejs22 até 2026-10-30), BL-008 (parser do harness), BL-009 (decisão bucket Storage/Blaze), BL-010 (tags do Cell-City-Backup).
+
 ## [Unreleased] — 2026-07-18 (Fase 4.1 — correção segurança pré-recertificação)
 
 ### Security

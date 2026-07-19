@@ -231,3 +231,40 @@ RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado 
 ---
 
 *Novos itens de backlog devem ser adicionados abaixo, com numeração sequencial BL-XXX.*
+
+---
+
+## BL-007 — Upgrade do runtime das Cloud Functions: nodejs20 → nodejs22 (PRAZO REAL)
+
+**Origem:** aviso do Firebase CLI no deploy CI de 2026-07-19 (Fase 4.3): Node.js 20 depreciado em 2026-04-30, **descomissionamento em 2026-10-30** — após essa data novos deploys serão bloqueados.
+**Prioridade sugerida:** alta (tem prazo externo); executar com folga, idealmente até setembro/2026.
+**Autorização:** mexe em Cloud Functions ⇒ exige autorização explícita do dono antes de implementar.
+
+### Plano de migração (planejamento — Fase 4, item de encerramento)
+
+1. **Pré-checagem:** confirmar suporte a nodejs22 nas dependências de `functions/package.json` (firebase-functions, firebase-admin — atualizar se preciso).
+2. **Mudanças:** `functions/package.json` → `"engines": {"node": "22"}`; conferir se `firebase.json` (`functions[].runtime: nodejs20`) precisa ir a `nodejs22`; alinhar Node dos workflows (`tests.yml` usa Node 20 no runner).
+3. **Testes:** suíte completa local + CI (emulador roda no Node do runner); atenção a diferenças de ICU/timezone.
+4. **Deploy:** promoção normal via CI (pipeline da Fase 4.3); primeiro deploy recria as 16 functions no novo runtime (sem "Skipped").
+5. **Rollback:** reverter commit e redeployar (runtime volta junto); functions v2 mantêm revisões no Cloud Run.
+
+## BL-008 — Harness `homologar-performance` reprova indevidamente (parser TAP vs spec)
+
+**Origem:** Fase 4.3 (2026-07-19) — harness marcou 4 suítes como ❌ "NaN pass/NaN fail" com exit 0, e emitiu REPROVADO com todos os testes passando (RBAC 181/181 confirmado manualmente).
+**Prioridade sugerida:** média (afeta confiabilidade do veredito automático, não o produto).
+
+### Causa e correção sugerida
+
+`scripts/homologacao/lib/tests-runner.mjs` (`parseNodeTestSummary`) só entende o reporter *spec* (`ℹ pass N`), mas `node --test` sob `spawnSync` (não-TTY) emite TAP (`# pass N`). Corrigir: aceitar os dois formatos (ou forçar `--test-reporter=spec` no spawn) e tratar `exitCode === 0` como aprovação quando o parse falhar, registrando aviso.
+
+## BL-009 — Decisão: criar bucket Firebase Storage (exige Blaze)
+
+**Origem:** Fase 4.3 (2026-07-19) — constatado que o projeto **nunca teve** bucket Firebase Storage; releases de storage.rules apontavam para bucket inexistente. Upload de fotos de OS depende disso para existir de verdade.
+**Prioridade sugerida:** decisão administrativa do dono (custo: exige plano Blaze desde out/2024 para buckets novos).
+**Nota técnica:** o workflow de deploy já está preparado — quando o bucket existir, o passo de Storage aplica `storage.rules` (já endurecidas, A2) automaticamente.
+
+## BL-010 — Cell-City-Backup: bypass da deploy key no ruleset de proteção de tags
+
+**Origem:** D05 (Fase 4.1, 2026-07-18) — proteção de tags no repo Cell-City-Backup impede a deploy key de espelhar tags (ex.: v3.1.0+); slots de backup viraram branches (funcional). Item de UI do GitHub (plano free não expõe via API).
+**Prioridade sugerida:** baixa (não-fatal; backups semanais estão verdes).
+**Ação:** no GitHub UI do Cell-City-Backup: Settings → Rules → ruleset de tags → adicionar a deploy key ao bypass list; depois validar espelhamento de tags no próximo backup.
