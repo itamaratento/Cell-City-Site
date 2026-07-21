@@ -51,12 +51,14 @@ evidências.
    estratégia de verificação, artefatos previstos.
 4. **Execução** — alterações pequenas e compreensíveis, revisão
    contínua, coerência com o planejado, decisões significativas
-   registradas.
+   registradas; preservar compatibilidade, reduzir acoplamento,
+   eliminar redundâncias, manter padronização.
 5. **Verificação** — estratégia compatível com a natureza do trabalho
    (funcional, integração, regressão, desempenho, segurança, revisão
    documental).
 6. **Consolidação** — reunir entregas, referências, pendências e
-   recomendações ao final.
+   recomendações ao final; cada entrega permanece independente das
+   próximas.
 7. **Encerramento** — depois, o projeto volta ao estado de espera até
    nova iniciativa autorizada.
 
