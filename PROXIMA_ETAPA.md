@@ -20,21 +20,25 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-21) — CICLO v3.2.0 ENCERRADO · AGUARDANDO PRÓXIMO BACKLOG
+## ⏳ ESTADO ATUAL (2026-07-21) — ESPERA CONTROLADA · GOVERNANÇA DE BASELINE
 
-**Linha base:** commit **`b663a13`** · Release **v3.2.0** · ADR-AUTH-001 **Alternativa A**  
-Abertura do próximo ciclo: [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](plans/CICLO_ABERTURA_POS_V320_20260721.md)  
-Certificação final: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md) (docs 6.4 ainda **não commitadas** em `b663a13`)
+Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BASELINE_V320_20260721.md) · Abertura: [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](plans/CICLO_ABERTURA_POS_V320_20260721.md) · Certificação: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
 
-**Classificação da release:** 🟡 Homologada com ressalvas · B1/B2 resolvidos · B3 encerrado por ADR · BL-011 dívida consciente · **6.2-B não aberta**
+| Referência | Commit | Uso |
+|------------|--------|-----|
+| **Baseline Funcional Certificada** | **`b663a13`** | Certificação / código / ADR / critérios da v3.2.0 |
+| **HEAD Documental** | **`c64dae7`** | Docs 6.4 + abertura do ciclo (sem impacto funcional) |
+
+**Release:** v3.2.0 · 🟡 Homologada com ressalvas · ADR-AUTH-001 **Alternativa A** · BL-011 dívida consciente · **6.2-B não aberta**  
+**Desenvolvimento:** ⏸ espera controlada · próximo ciclo **não iniciado**
 
 ### Congelamento
 
 | Item | Status |
 |------|--------|
 | Homologação funcional 6.x | ✅ encerrada |
-| Código / Rules / Functions nesta abertura | ✅ intocados |
-| Próximo ciclo de desenvolvimento | ⏳ **não iniciado** — falta backlog + autorização |
+| Diff `b663a13`→`c64dae7` | ✅ só documentação |
+| Próximo ciclo | ⏳ aguarda backlog + autorização |
 
 ### Inventário aberto (fora da homologação)
 
@@ -46,13 +50,11 @@ Certificação final: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](pl
 | Migração legados `perfil_operacional_id` | opcional |
 | Revisão ADR / 6.2-B | eventual; exige auth Rules |
 
-Cartões de priorização (objetivo/escopo/riscos/aceite): ver documento de abertura acima.
-
 ### Próxima ação
 
 1. Dono escolhe **um** backlog e autoriza explicitamente.  
-2. Só então: Script Mestre da iniciativa + plano operacional/testes/aceite (doc própria).  
-3. (Housekeeping) commit docs ETAPA 6.4 quando autorizado — não é início de ciclo.  
+2. Só então: Script Mestre da iniciativa (doc própria; não reutilizar scripts 6.x sem revisão).  
+3. Em auditorias: “certificado?” → `b663a13` · “HEAD documental?” → `c64dae7`.  
 4. Até lá: **proibido** código · Rules · CF · IAM · deploy · merge · tag · alterar ADR.
 
 ### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE

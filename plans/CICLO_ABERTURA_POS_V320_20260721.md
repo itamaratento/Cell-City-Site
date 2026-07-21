@@ -179,3 +179,12 @@ Proibido: alterar código · Rules · Functions · IAM · deploy · merge · tag
 ```
 
 Housekeeping opcional (não é início de ciclo): commit das docs ETAPA 6.4 quando o dono autorizar.
+
+---
+
+## Adendo — Governança da baseline (2026-07-21)
+
+Ver [`GOVERNANCA_BASELINE_V320_20260721.md`](GOVERNANCA_BASELINE_V320_20260721.md).
+
+As docs 6.4 / abertura foram versionadas no **HEAD Documental** `c64dae7`.  
+A **Baseline Funcional Certificada** permanece `b663a13`.

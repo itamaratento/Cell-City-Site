@@ -2651,7 +2651,7 @@ Functions, IAM, deploy, merge ou tag.
 
 ## §52 — Encerramento do ciclo v3.2.0 e abertura do próximo (2026-07-21)
 
-**Linha base técnica:** commit `b663a13` · Release v3.2.0 · ADR-AUTH-001 Alternativa A.
+**Baseline Funcional Certificada:** commit `b663a13` · Release v3.2.0 · ADR-AUTH-001 Alternativa A.
 
 **Documento:** [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](../plans/CICLO_ABERTURA_POS_V320_20260721.md)
 
@@ -2659,3 +2659,15 @@ Ciclo de homologação/release **encerrado**. Próximo ciclo de desenvolvimento
 **não iniciado** — aguarda escolha de backlog (BL-007 / 009 / 010 / opcionais)
 e autorização explícita. Sem alteração de código, Rules, Functions, deploy,
 merge ou tag nesta abertura.
+
+## §53 — Governança da baseline (2026-07-21)
+
+**Documento:** [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](../plans/GOVERNANCA_BASELINE_V320_20260721.md)
+
+| Nome oficial | Commit | Papel |
+|--------------|--------|-------|
+| Baseline Funcional Certificada | `b663a13` | Certificação v3.2.0 |
+| HEAD Documental | `c64dae7` | Docs 6.4 + abertura (sem impacto funcional) |
+
+Diff `b663a13`→`c64dae7`: somente documentação. Não exige nova homologação.
+Evitar usar “HEAD” ou “baseline” sem qualificar qual das duas referências.
