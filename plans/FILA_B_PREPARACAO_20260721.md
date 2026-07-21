@@ -225,3 +225,73 @@ Continua exigindo **autorização explícita** (Cloud Functions = módulo críti
 | B | Pré-checagem BL-007 + inventários ✅ |
 
 Sem implementação. Próximo ganho útil na FILA B (se ainda desejado): rascunho de diff esperado para BL-007 (texto only) ou auditoria de desatualização linha a linha do `MASTER_ROADMAP.md` — ainda sem editar o roadmap até autorização documental.
+
+---
+
+## 11. Rascunho de diff esperado — BL-007 (texto only; NÃO aplicar)
+
+Arquivos previstos quando autorizado:
+
+### `functions/package.json`
+```diff
+-  "engines": { "node": "20" }
++  "engines": { "node": "22" }
+```
+
+### `firebase.json`
+```diff
+-      "runtime": "nodejs20"
++      "runtime": "nodejs22"
+```
+
+### `.github/workflows/tests.yml`
+```diff
+-          node-version: "20"
++          node-version: "22"
+```
+
+### `deploy-firebase.yml`
+Não fixa Node do runner hoje (só `npm ci` em `functions/` + Firebase CLI). Runtime efetivo vem de `firebase.json` / `engines`. Opcional: pin explícito Node 22 no job para alinhar ao CI de testes.
+
+### Fora do diff mínimo
+- Bump `firebase-functions` / `firebase-admin` — só se testes/CLI exigirem.
+- Docs: BACKLOG BL-007 → ✅ + TECHDOC § breve + PROXIMA.
+
+### Ordem segura pós-autorização
+DEV (emulador + deploy DEV se processo permitir) → CI verde → `main`/prod via workflow existente.
+
+---
+
+## 12. Auditoria `MASTER_ROADMAP.md` × realidade 2026-07-21 (sem editar)
+
+**Arquivo:** 428 linhas · banner “Atualizado em **2026-07-08**” · última seção situacional vista: **2026-07-13**.
+
+| Afirmação no roadmap | Realidade operacional (PROXIMA / ADR / v3.2.0) | Gap |
+|----------------------|-----------------------------------------------|-----|
+| Objetivo: “Fase 2 em andamento” | RBAC UI integrado; release **v3.2.0** homologada; ADR Alternativa A | Desatualizado |
+| Fase 2 status “🔵 Em andamento” | Sprints RBAC já concluídos na prática; enforcement Rules≠matriz = **dívida consciente (BL-011)** | Status errado |
+| Diagrama “Fase 2 🔵 Em andamento” (~L324) | Idem | Desatualizado |
+| Não menciona v3.2.0 / Fase 4 CI WIF / BL-007..011 | Existe em PROXIMA/BACKLOG/TECHDOC | Lacuna |
+| Não menciona ADR-AUTH-001 | Modelo oficial de autorização | Lacuna |
+| Fonte de verdade imediata | Deve continuar sendo `PROXIMA_ETAPA.md` (já declarado no próprio roadmap) | OK — mitiga parcialmente |
+
+**Recomendação FILA B:** quando houver autorização **documental** (não é FILA A), acrescentar seção “Situação em 2026-07-21” + corrigir status Fase 2 / ponteiro a ADR e BL-007 — **um** patch no roadmap, sem duplicar PROXIMA.
+
+**Não feito agora:** edição do `MASTER_ROADMAP.md` (evita mudança normativa sem pedido explícito).
+
+---
+
+## 13. Estado ao fim desta continuação
+
+| Item | Status |
+|------|--------|
+| FILA A | Bloqueada |
+| Diff BL-007 (rascunho) | ✅ §11 |
+| Gaps MASTER_ROADMAP | ✅ §12 (lista; arquivo intocado) |
+| Código / Rules / CF | Intocados |
+
+```
+⏸ ESPERA CONTROLADA
+FILA B: preparação aprofundada
+Aguardando auth FILA A ou auth documental do roadmap
+```
