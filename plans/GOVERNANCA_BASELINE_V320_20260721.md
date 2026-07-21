@@ -89,5 +89,9 @@ Evitar “HEAD” ou “baseline” sem qualificação.
 
 ## Declaração
 
-- **`b663a13`** = Baseline Funcional Certificada da Release v3.2.0.  
-- **`c64dae7`** = HEAD Documental subsequente, sem impacto funcional conhecido.
+- **`b663a13`** = Baseline Funcional Certificada da Release v3.2.0 (fixo — não muda).
+- **`c64dae7`** = HEAD Documental **no momento em que este documento foi escrito**
+  (fotografia, não ponteiro vivo — ver `PADROES_DOCUMENTACAO.md` §Certificação).
+  Novos commits só-documentação avançam o HEAD Documental real sem invalidar
+  esta certificação; o valor **atual** é mantido em `PROXIMA_ETAPA.md`, não
+  reescrito aqui a cada commit.

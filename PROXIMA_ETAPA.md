@@ -27,7 +27,7 @@ Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BAS
 | Referência | Commit | Uso |
 |------------|--------|-----|
 | **Baseline Funcional Certificada** | **`b663a13`** | Certificação / código / ADR / critérios da v3.2.0 |
-| **HEAD Documental** | **`c64dae7`** | Docs 6.4 + abertura do ciclo (sem impacto funcional) |
+| **HEAD Documental** | **`ce2e725`** | Docs 6.4 + abertura do ciclo (sem impacto funcional) |
 
 **Release:** v3.2.0 · 🟡 Homologada com ressalvas · ADR-AUTH-001 **Alternativa A** · BL-011 dívida consciente · **6.2-B não aberta**  
 **Desenvolvimento:** ⏸ espera controlada · próximo ciclo **não iniciado**
@@ -37,7 +37,7 @@ Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BAS
 | Item | Status |
 |------|--------|
 | Homologação funcional 6.x | ✅ encerrada |
-| Diff `b663a13`→`c64dae7` | ✅ só documentação |
+| Diff `b663a13`→`ce2e725` | ✅ só documentação |
 | Próximo ciclo | ⏳ aguarda backlog + autorização |
 
 ### Inventário aberto (fora da homologação)
@@ -54,7 +54,7 @@ Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BAS
 
 1. Dono escolhe **um** backlog e autoriza explicitamente.  
 2. Só então: Script Mestre da iniciativa (doc própria; não reutilizar scripts 6.x sem revisão).  
-3. Em auditorias: “certificado?” → `b663a13` · “HEAD documental?” → `c64dae7`.  
+3. Em auditorias: “certificado?” → `b663a13` · “HEAD documental?” → `ce2e725`.  
 4. Até lá: **proibido** código · Rules · CF · IAM · deploy · merge · tag · alterar ADR.
 
 ### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
