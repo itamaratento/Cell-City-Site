@@ -1,8 +1,17 @@
 # Proposta — Framework Mestre Autônomo de Execução Contínua
 
 **Data:** 2026-07-21
-**Status:** 🔵 **PROPOSTA — NÃO ADOTADA COMO OFICIAL**
+**Status:** 🔵 **PROPOSTA ORIGINAL — NÃO ADOTADA COMO OFICIAL** (ver nota de revisão abaixo)
 **Origem:** texto recebido do dono (via sessão Cursor/"ChatGPT" concorrente) nesta mesma sessão de encerramento da v3.2.0.
+
+> **Atualização — mesma data:** uma versão revisada desta proposta
+> ("Edição 4.0", texto reformulado) foi recebida depois, corrigindo
+> exatamente o problema apontado abaixo — subordina-se explicitamente a
+> `ENGINEERING.md`/`CLAUDE.md` e só se aplica a um backlog já
+> autorizado. Essa versão **foi adotada** como
+> [`GUIA_CONDUCAO_CICLOS.md`](../GUIA_CONDUCAO_CICLOS.md). Este arquivo
+> permanece só como registro histórico da primeira tentativa e do
+> motivo da rejeição inicial.
 
 ---
 
