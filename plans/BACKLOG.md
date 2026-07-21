@@ -272,3 +272,37 @@ RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado 
 **Origem:** D05 (Fase 4.1, 2026-07-18) — proteção de tags no repo Cell-City-Backup impede a deploy key de espelhar tags (ex.: v3.1.0+); slots de backup viraram branches (funcional). Item de UI do GitHub (plano free não expõe via API).
 **Prioridade sugerida:** baixa (não-fatal; backups semanais estão verdes).
 **Ação:** no GitHub UI do Cell-City-Backup: Settings → Rules → ruleset de tags → adicionar a deploy key ao bypass list; depois validar espelhamento de tags no próximo backup.
+
+## BL-011 — 🟡 Firestore Rules ≠ matriz `perfis_operacionais` (dívida consciente — ADR-AUTH-001)
+
+**Status (2026-07-21, ETAPA 6.2-C):** **decisão arquitetural Alternativa A** registrada em [`plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md) e `CRM/TECHDOC.md` §50. **Não é bug bloqueador.** Rules = auth + tenant; RBAC operacional = aplicação. Evolução B/híbrido só com autorização explícita de Rules (processo BL-006).
+
+**Origem:** Homologação funcional pós-BL-008 (2026-07-21) — Etapa 6 (RBAC Runtime). Relatório: `plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md`; evidências `evidencias/etapa6-rbac-runtime-20260721-084209/` e `evidencias/etapa61-remediacao-20260721/`.
+**Severidade:** 🟡 média (dívida consciente / residual de cliente adulterado com token de staff).
+**Prioridade sugerida:** baixa — só reabrir se o dono autorizar Alternativa B ou híbrido (ETAPA 6.2-B).
+**Autorização:** qualquer mudança em `CRM/firestore.rules` continua exigindo autorização explícita.
+
+### A falha
+
+`CRM/firestore.rules` (ex.: `os`, linhas 112-126; padrão idêntico em `financeiro_*`/`caixa_lancamentos`/`estoque_*`) exige, para `create`/`update`/`delete`, apenas:
+
+```
+request.auth != null && temAcessoLiberado() && mesmaEmpresa*()
+```
+
+`temAcessoLiberado()` (linhas 18-21) só verifica que o documento `usuarios/{uid}` existe e `perfil != 'pendente'` — **nunca consulta `perfis_operacionais` nem `perfil_operacional_id`**. A matriz de criar/editar/excluir/aprovar por perfil existe e funciona na camada de UI (`CRM/shared/permissoes.js`), mas não tem equivalente nas Rules.
+
+**Impacto:** qualquer usuário autenticado ativo da mesma empresa pode criar/editar/excluir registros dessas coleções via chamada direta ao Firestore (client SDK/REST), independentemente do que a matriz do seu perfil operacional permita na UI — mesma classe de risco do BL-006 (restrição só client-side, sem Rule equivalente), mas sem o vetor de auto-escalada de privilégio daquele caso (aqui não há elevação de perfil, só bypass de ação dentro do próprio nível de acesso).
+
+**Comprovado na Etapa 6** (evidência real, navegador + Firestore DEV): perfis Técnico/Atendente/Financeiro conseguiram `create`+`delete` de um documento de teste em `os` via client SDK, mesmo com a matriz de UI restringindo essas ações para alguns desses perfis.
+
+**Achados relacionados na mesma apuração (Etapa 6.1):**
+- Não existe usuário/perfil "sem permissão" (matriz vazia) no DEV para testar o cenário fail-closed — criação está fora do escopo autorizado até decisão do dono.
+- Usuário `cellcitygerente@gmail.com` (perfil legado `gerente`, UID `w6s8K7bxTKShF2apJCK5zOZZ4Bi2`, criado 2026-07-03) não tem `perfil_operacional_id` associado → fail-open de matriz por compatibilidade legada, não corrupção.
+
+### Regras para quando for decidido/implementado
+
+- **Não é regressão desta release** — não bloquear v3.2.0 nem tratar como incidente de produção; é uma característica do modelo presente desde a Fase 2 (RBAC aplicado nos módulos), agora medida pela primeira vez.
+- Três alternativas avaliadas (detalhe completo na certificação linkada): **(A)** manter Rules = tenant+auth e aceitar formalmente que a matriz é só UI; **(B)** Rules replicam a matriz completa (`get()` de `perfis_operacionais` em toda coleção de negócio — mais seguro, mais caro em leituras, mais complexo); **(C)** modelo híbrido, só nas operações de maior risco (ex.: delete de OS, escrita financeira/caixa/estoque). Recomendação técnica: **C**, faseado por módulo (alinhado ao princípio "um módulo por vez" do projeto).
+- Se a opção B/C for autorizada: processo formal completo (planejamento → aprovação → backup de `CRM/firestore.rules` → testes no emulador `tests/firestore-rules/` → deploy DEV → verificação via API → aceite formal do dono → só então promoção a produção), mesmo padrão usado no BL-006.
+- Provisionamento de dados de teste (usuário restrito, vínculo do Gerente) é de baixo risco e pode ser autorizado independentemente da decisão de arquitetura — desbloqueia a cobertura de teste sem mexer em Rules.

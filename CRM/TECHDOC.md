@@ -2530,8 +2530,11 @@ e primeiro pipeline de deploy Firebase totalmente funcional via CI.
    ambiente não-TTY (TAP vs spec reporter) — BL-008; conferir exit code
    antes de confiar no veredito.
 
-**Homologação:** `plans/FASE43_HOMOLOGACAO_20260719.md` — 🟢 HOMOLOGADA,
-main == develop == `8fb4d3e`, tag `v3.2.0`.
+**Homologação infra (Fase 4.3):** `plans/FASE43_HOMOLOGACAO_20260719.md`.
+Tag `v3.2.0` → `d650464`. Homologação funcional (smoke DEV + matriz RBAC
+Runtime, Etapa 6 executada em 2026-07-21, veredito 🔴 REPROVADA por
+achado real — ver §49/BL-011): ver `PROXIMA_ETAPA.md` para o estado
+completo.
 
 ## §48 — BL-008: correção do parser do harness `homologar-performance` (2026-07-21)
 
@@ -2585,3 +2588,51 @@ nenhum módulo de produto. Nenhum arquivo protegido tocado.
 **Pendências:** BL-007 (nodejs22), BL-009 (bucket Storage, decisão do
 dono) e BL-010 (bypass da deploy key no GitHub) seguem em aberto, sem
 mudança neste item.
+
+## §49 — Homologação funcional pós-BL-008: Etapas 5/6/6.1/6.3 e BL-011 (2026-07-21)
+
+**Escopo:** continuação da homologação funcional da v3.2.0 a pedido do
+dono, envolvendo duas sessões concorrentes no mesmo working tree
+(Claude Code e um agente via Cursor que se identifica como "ChatGPT"
+nos próprios relatórios). Registro consolidado e reconciliado em
+[`plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md`](../plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md)
+— este parágrafo é só o ponteiro; os detalhes completos (cronologia,
+achados auditados individualmente, matriz de riscos, avaliação de
+Rules, decisão arquitetural com 3 alternativas) estão lá, não
+duplicados aqui.
+
+**Resultado resumido:**
+
+- Diagnóstico de IAM da Service Account DEV: nenhum defeito encontrado.
+- Smoke autenticado DEV (Etapa 5): 🟢 aprovado, 3 execuções reais.
+- RBAC Runtime multi-perfil (Etapa 6 / 6.3): B1/B2 resolvidos na 6.2-A
+  (perfil Sem permissão + Gerente vinculado). Achado B3 (Rules ≠ matriz)
+  confirmado e **reclassificado na ETAPA 6.2-C** — ver §50 / ADR-AUTH-001.
+- Uma narrativa de "contaminação de variáveis de ambiente" circulou em
+  rascunho não commitado — investigada e **não confirmada** por
+  nenhuma evidência; não deve ser tratada como incidente real.
+
+**Status (atualizado 6.2-C):** homologação funcional alinhada ao modelo
+oficial **Alternativa A** (Rules = auth+tenant; RBAC = aplicação).
+Produção intocada nesta etapa.
+
+## §50 — ADR-AUTH-001: modelo oficial de autorização (ETAPA 6.2-C, 2026-07-21)
+
+**Decisão:** **Alternativa A** — Firestore Rules = autenticação +
+tenant/empresa (+ gates pontuais); matriz RBAC operacional =
+exclusivamente camada da aplicação (`CRM/shared/permissoes.js`).
+
+**Documento:** [`plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](../plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md)
+
+**Consequências:**
+
+- B3 deixa de ser bug bloqueador; passa a **decisão arquitetural**.
+- BL-011 = dívida consciente / evolução opcional (não bloqueia aceite ETAPA 6).
+- Critério oficial: UI deve respeitar a matriz; Rules devem garantir auth +
+  `temAcessoLiberado` + isolamento por empresa. **Não** exige espelhamento
+  da matriz nas Rules.
+- ETAPA 6.2-B (rewrite Rules) **não** iniciada; só se o dono autorizar
+  Alternativa B ou híbrido no futuro.
+
+**Escopo da etapa:** documentação apenas — sem alteração de Rules,
+Functions, IAM, deploy, merge ou tag.

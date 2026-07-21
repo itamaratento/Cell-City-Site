@@ -20,18 +20,28 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-21) — RELEASE v3.2.0 EM PRODUÇÃO · BL-008 CORRIGIDO
+## 🟢 ESTADO ATUAL (2026-07-21) — RELEASE v3.2.0 · AUTORIZAÇÃO OFICIAL = ALTERNATIVA A (ETAPA 6.2-C)
 
-Relatório: [`plans/FASE43_HOMOLOGACAO_20260719.md`](plans/FASE43_HOMOLOGACAO_20260719.md) (release) · `CRM/TECHDOC.md` §47–48.
+ADR: [`plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md) · TECHDOC §50 · Certificação Etapa 6: [`plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md`](plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md) · Release/infra: [`plans/FASE43_HOMOLOGACAO_20260719.md`](plans/FASE43_HOMOLOGACAO_20260719.md).
 
-**Classificação:** 🟢 **v3.2.0 HOMOLOGADA E EM PRODUÇÃO**
+**Classificação:** 🟢 **modelo de autorização documentado (Alternativa A)** · infra v3.2.0 em produção · B3/BL-011 = decisão arquitetural (não bug) · ETAPA 6.2-B **não** aberta
+
+### Decisão ETAPA 6.2-C (2026-07-21)
+
+| Item | Decisão |
+|------|---------|
+| Modelo | **A** — Rules = Auth + Tenant/Empresa (+ gates pontuais); RBAC matriz = aplicação |
+| B3 | Deixa de ser bug → **decisão arquitetural documentada** |
+| BL-011 | 🟡 dívida consciente / evolução opcional |
+| Código / Rules / deploy | **Sem alteração** nesta etapa |
 
 ### Concluído desde a seção anterior (2026-07-18 → 2026-07-21)
 
-- Promoção `develop` → `main` autorizada e concluída; tag `v3.2.0` = `d650464`; `main` avançou +1 commit (`0ec12c0`, evidência do CI arquivada).
-- Deploy Firebase via CI **100% verde pela 1ª vez** (WIF, sem chave de service account no GitHub) — Rules/Functions endurecidas (LGPD `cpfMascarado`, RBAC fail-closed, rate-limit S2) já em produção.
-- Smoke autenticado em DEV (harness oficial, Chrome headless real): ✅ login/dashboard/central de alertas/cache/multiaba, @ commit `878f141`.
-- **BL-008 corrigido** (2026-07-21, commit `d5c38b7`): parser do harness `homologar-performance` reconhecia só o reporter "spec" e reprovava RBAC/Polling gating com `NaN pass/NaN fail` mesmo 100% passando; agora aceita TAP também. Bônus corrigido junto: `audit.mjs` cortava o 1º caractere do 1º arquivo listado no relatório. Ver TECHDOC §48.
+- Promoção `develop` → `main`; tag `v3.2.0` = `d650464`; deploy Firebase CI verde (WIF).
+- Smoke autenticado DEV (Etapa 5) ✅ · BL-008 corrigido · IAM SA DEV sem defeito.
+- **6.2-A** ✅ dados DEV (Sem permissão + Gerente vinculado).
+- **6.3** 🟡 B1/B2 OK; B3 observado e depois reclassificado na **6.2-C**.
+- **6.2-C** ✅ ADR-AUTH-001 + TECHDOC §50 + BACKLOG/PROXIMA sincronizados.
 
 ### Backlog remanescente
 
@@ -41,37 +51,14 @@ Relatório: [`plans/FASE43_HOMOLOGACAO_20260719.md`](plans/FASE43_HOMOLOGACAO_20
 | BL-008 — parser do harness (TAP vs spec) | ✅ corrigido 2026-07-21 |
 | BL-009 — bucket Firebase Storage (exige Blaze) | ⏳ decisão administrativa do dono (custo) |
 | BL-010 — ruleset GitHub / bypass da deploy key (Cell-City-Backup) | ⏳ ação manual do dono no GitHub UI |
-
-### Verificação adicional feita nesta sessão (2026-07-21, pós-BL-008)
-
-Auditoria de IAM (somente leitura) da Service Account
-`firebase-adminsdk-fbsvc@cellcity-crm-dev.iam.gserviceaccount.com`:
-**nenhum defeito encontrado** — roles de projeto
-(`iam.serviceAccountTokenCreator`, `firebaseauth.admin`,
-`firebase.admin`, `firebase.sdkAdminServiceAgent`) e APIs
-(`iamcredentials`, `identitytoolkit`, `securetoken`, `iam`) todas
-presentes/habilitadas. Confirmado empiricamente: harness rodado com
-navegador real duas vezes, perfis `admin` e `tecnico` — login,
-Dashboard, Firestore (11 e 31 requisições respectivamente) e RBAC OK
-nos dois, zero erro de console. `Firestore Rules`/`Cloud Functions
-(Portal)` continuam ❌ **só nesta máquina local**, por `ENOSPC`
-(limite de inotify watchers) — mesmo bloqueio de ambiente já
-documentado em 2026-07-16 (ver seção "Sprint 3" abaixo), não é IAM nem
-regressão de código; a mesma suíte já passa em CI.
-
-RBAC runtime multi-perfil em navegador (6 perfis, leitura/escrita/
-fail-closed) **não foi construído como harness novo** nesta sessão —
-contrariaria o padrão já estabelecido do projeto de homologar RBAC via
-jsdom/mocks (não Puppeteer), e seria escopo novo não solicitado.
-A suíte automatizada `tests/rbac` (181/181) já cobre isso; os dois
-perfis testados em navegador real acima são evidência adicional, não
-substituição desse padrão.
+| BL-011 — Rules ≠ matriz `perfis_operacionais` | 🟡 **ADR-AUTH-001 Alternativa A** — dívida consciente; 6.2-B só se dono autorizar B/híbrido |
 
 ### Próxima ação
 
-Nenhuma pendência técnica bloqueante identificada para a v3.2.0. Itens
-restantes (BL-007/009/010) dependem de decisão ou ação do dono.
-
+1. ~~Decisão BL-011 / 6.2-C~~ ✅ **Alternativa A** (ADR-AUTH-001).  
+2. (Opcional) Formalizar encerramento 🟢 da homologação funcional ETAPA 6 com critérios do ADR (UI+tenant; sem exigir matriz nas Rules).  
+3. BL-007 / BL-009 / BL-010 — com o dono.  
+4. **Não** iniciar 6.2-B sem autorização explícita de Rules.
 
 ### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
 
