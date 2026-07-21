@@ -295,3 +295,178 @@ DEV (emulador + deploy DEV se processo permitir) → CI verde → `main`/prod vi
 FILA B: preparação aprofundada
 Aguardando auth FILA A ou auth documental do roadmap
 ```
+
+---
+
+## 14. Pré-checagem BL-009 — Storage / Blaze (texto only)
+
+### Situação
+
+| Item | Achado |
+|------|--------|
+| Bucket Firebase Storage | **Ausente** (guard no `deploy-firebase.yml` pula storage se count=0) |
+| `storage.rules` no repo | ✅ Existe (raiz) — endurecidas (auth + empresa; fotos OS) |
+| Pipeline | Já aplica rules **quando** bucket existir |
+| Dependência de custo | Plano **Blaze** para criar bucket novo |
+
+### Consumidores no código (quebrados/inúteis sem bucket)
+
+| Arquivo | Uso |
+|---------|-----|
+| `CRM/pages/os/os-photo-storage.js` | `uploadBytes` fotos OS |
+| `CRM/pages/central-informacoes/informacoes.js` | upload/getBytes/delete Storage |
+| `CRM/scripts/firebase.js` | expõe `getStorage` / `uploadBytes` |
+
+### Checklist quando autorizado (decisão Blaze + criar bucket)
+
+1. Decisão administrativa de custo (prod e/ou DEV).  
+2. Console Firebase → Storage → Get Started (criar bucket default).  
+3. Próximo deploy `main` aplica `storage.rules` automaticamente (guard deixa de pular).  
+4. Validar DEV (se bucket DEV separado) e PROD: upload foto OS + leitura com usuário autenticado mesma empresa.  
+5. CORS: revisar `cors.json` (BACKLOG já nota domínio sem `www`).  
+6. Homologação: 1 upload + 1 download + deny anônimo.
+
+### Estimativa
+
+- Decisão de negócio: **bloqueante** (dono).  
+- Técnico pós-decisão: **S** (criar bucket + smoke).
+
+---
+
+## 15. Pré-checagem BL-010 — Bypass deploy key (texto only)
+
+### Situação
+
+| Item | Achado |
+|------|--------|
+| Repo | `Cell-City-Backup` |
+| Problema | Ruleset de tags impede deploy key de criar tags; slots viraram **branches** (workaround funcional) |
+| API | Plano free → rulesets **não** inspecionáveis/alteráveis via API |
+| Severidade | Baixa / não-fatal (backups semanais OK) |
+
+### Checklist (só UI GitHub — dono admin)
+
+1. Abrir `Cell-City-Backup` → Settings → Rules → ruleset de **tags**.  
+2. Adicionar a **deploy key** à lista de bypass.  
+3. Rodar workflow de backup manual (ou aguardar domingo).  
+4. Critério de aceite: manifesto/backup espelha **tag** (ex. `v3.2.0`), não só branch de slot.
+
+### Estimativa
+
+**XS** (minutos de UI) — zero código neste monorepo.
+
+---
+
+## 16. Rascunho textual — seção roadmap (NÃO aplicar em `MASTER_ROADMAP.md`)
+
+Texto sugerido para autorização documental futura:
+
+```markdown
+## Situação em 2026-07-21 — Release v3.2.0; espera controlada
+
+- Release **v3.2.0** em produção; homologação funcional 🟡 com ressalvas
+  (ETAPA 6.4). Baseline Funcional Certificada: `b663a13`.
+- Modelo de autorização oficial: **ADR-AUTH-001 Alternativa A**
+  (Rules = auth+tenant; RBAC matriz = aplicação). BL-011 = dívida consciente.
+- Estado operacional: **espera controlada** — ver `PROXIMA_ETAPA.md`.
+- Backlog imediato (não autorizado automaticamente): BL-007 (nodejs22),
+  BL-009 (Storage/Blaze), BL-010 (bypass tags backup).
+- Fase 2 (RBAC UI nos módulos): tratar como **concluída na prática**;
+  enforcement server-side da matriz permanece fora do critério oficial (ADR A).
+
+Fonte de verdade imediata continua sendo `PROXIMA_ETAPA.md`.
+```
+
+Também corrigir no mesmo patch (quando autorizado): status Fase 2 “Em andamento” → concluída (UI) + ponteiro ADR.
+
+---
+
+## 17. Estado ao fim desta continuação
+
+| Item | Status |
+|------|--------|
+| HEAD observado | `a7340e3` (working tree com FILA_B modificado localmente) |
+| BL-009 prep | ✅ §14 |
+| BL-010 prep | ✅ §15 |
+| Draft roadmap | ✅ §16 (não aplicado) |
+| FILA A | Bloqueada |
+| Código | Intocado |
+
+```
+⏸ ESPERA CONTROLADA
+FILA B: 007/009/010 preparados em texto
+Próximo: autorização FILA A ou patch documental do roadmap
+```
+
+---
+
+## 18. Rascunhos — Script Mestre por backlog (ativar só com auth)
+
+Não são documentos normativos separados até o dono autorizar o BL; ficam aqui para não duplicar arquivos.
+
+### Script Mestre BL-007 (nodejs22)
+
+1. **Objetivo:** runtime CF/CI em Node 22 antes de 2026-10-30.  
+2. **Escopo:** `functions/package.json` · `firebase.json` · `tests.yml` (+ opcional pin no deploy).  
+3. **Fora:** Rules, Storage, produto UI.  
+4. **Riscos:** redeploy 16 functions; regressão onCall portal/OS/saas.  
+5. **Testes:** `tests/functions/*` · homolog portal smoke · CI `tests.yml`.  
+6. **Aceite:** engines/runtime 22; CI verde; onCall smoke DEV; rollback documentado.  
+7. **Rollback:** reverter 20 + redeploy.  
+8. **Diff:** ver §11.
+
+### Script Mestre BL-009 (Storage/Blaze)
+
+1. **Objetivo:** bucket real + rules aplicadas; uploads OS/informações funcionais.  
+2. **Escopo:** decisão Blaze · criar bucket · (opcional) CORS · smoke upload.  
+3. **Fora:** mudança de `storage.rules` salvo correção factual.  
+4. **Riscos:** custo Blaze; CORS; path multiempresa.  
+5. **Testes:** `tests/storage-rules/` · upload OS autenticado · deny anônimo.  
+6. **Aceite:** bucket>0 na API; deploy storage não pulado; 1 foto OS OK.  
+7. **CORS gap conhecido:** `cors.json` tem `www.cellcityinformatica.com.br` e firebaseapp/web.app/localhost — **não** tem `https://cellcityinformatica.com.br` (sem www). Incluir no checklist se o domínio bare for usado.  
+8. **Consumidores:** §14.
+
+### Script Mestre BL-010 (bypass tags backup)
+
+1. **Objetivo:** espelhar tags no `Cell-City-Backup`.  
+2. **Escopo:** só GitHub UI (ruleset tags → bypass deploy key).  
+3. **Fora:** este monorepo.  
+4. **Aceite:** backup espelha tag (ex. v3.2.0).  
+5. **Passos:** §15.
+
+---
+
+## 19. Métricas de testes (contagem bruta de arquivos)
+
+| Suíte | Arquivos (aprox.) |
+|-------|-------------------|
+| `tests/rbac/` | 936 |
+| `tests/firestore-rules/` | 826 |
+| `tests/storage-rules/` | 825 (incl. node_modules locais da pasta) |
+| `tests/functions/` | 3 |
+| demais | ≤4 cada |
+
+Útil para BL-007 (focar `tests/functions` + smoke) e BL-009 (`storage-rules` + smoke real).
+
+### Módulos com import de `permissoes`
+
+~30 arquivos em `CRM/pages/**` importam permissões (RBAC UI difundido) — consistente com ADR Alternativa A.
+
+---
+
+## 20. Esgotamento da FILA B (neste ciclo de espera)
+
+| Preparação | Status |
+|------------|--------|
+| Inventários gerais | ✅ |
+| Riscos + backlog refinado | ✅ |
+| BL-007 pré-checagem + diff | ✅ |
+| BL-009 / BL-010 prep | ✅ |
+| Gaps MASTER_ROADMAP + draft seção | ✅ |
+| Scripts Mestre rascunho A | ✅ §18 |
+| Implementação FILA A | ❌ sem auth |
+| Editar MASTER_ROADMAP / código | ❌ sem auth |
+
+**Próximo trabalho útil real:** autorização de BL-007 (prazo), BL-009 (custo) ou BL-010 (UI), **ou** autorização documental para atualizar o roadmap.
+
+Continuar gerando só auditoria genérica a partir daqui teria retorno baixo e risco de duplicação documental.
