@@ -6,10 +6,18 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 function parseNodeTestSummary(output) {
-  const pass = Number((/ℹ pass (\d+)/.exec(output) || [])[1] ?? NaN);
-  const fail = Number((/ℹ fail (\d+)/.exec(output) || [])[1] ?? NaN);
-  const durationMs = Number((/ℹ duration_ms ([\d.]+)/.exec(output) || [])[1] ?? NaN);
-  const failedTests = [...new Set([...output.matchAll(/^✖ (.+?) \(\d/gm)].map(m => m[1]))];
+  // node --test emite dois formatos de resumo dependendo do reporter que o
+  // runtime escolhe: "spec" (TTY, prefixo ℹ) ou TAP (sem TTY — é o que
+  // spawnSync recebe, já que stdout é um pipe). BL-008: o parser só entendia
+  // "spec" e reprovava toda suíte com resumo "NaN pass/NaN fail" mesmo com
+  // exitCode 0 e todos os testes passando. Aceita os dois formatos.
+  const pass = Number((/ℹ pass (\d+)/.exec(output) || /^# pass (\d+)/m.exec(output) || [])[1] ?? NaN);
+  const fail = Number((/ℹ fail (\d+)/.exec(output) || /^# fail (\d+)/m.exec(output) || [])[1] ?? NaN);
+  const durationMs = Number((/ℹ duration_ms ([\d.]+)/.exec(output) || /^# duration_ms ([\d.]+)/m.exec(output) || [])[1] ?? NaN);
+  const failedTests = [...new Set([
+    ...[...output.matchAll(/^✖ (.+?) \(\d/gm)].map(m => m[1]),        // reporter spec
+    ...[...output.matchAll(/^not ok \d+ - (.+)$/gm)].map(m => m[1].trim()), // TAP
+  ])];
   return { pass, fail, durationMs, failedTests };
 }
 
@@ -27,8 +35,13 @@ function runSuite(cwd, cmd, args, env) {
   const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
   const output = `${r.stdout || ''}\n${r.stderr || ''}`;
   const parsed = parseNodeTestSummary(output);
-  const ok = Number.isFinite(parsed.pass) && Number.isFinite(parsed.fail) && parsed.fail === 0;
-  return { ok, pass: parsed.pass, fail: parsed.fail, ms: parsed.durationMs, failedTests: parsed.failedTests, exitCode: r.status, rawTail: output.slice(-2000) };
+  const parsedOk = Number.isFinite(parsed.pass) && Number.isFinite(parsed.fail);
+  // BL-008: se mesmo os dois formatos conhecidos (spec/TAP) não baterem —
+  // ex.: um runner futuro muda o resumo de novo — não reprova às cegas; usa
+  // o exit code do processo como sinal e registra aviso explícito no relatório.
+  const ok = parsedOk ? parsed.fail === 0 : r.status === 0;
+  const warning = parsedOk ? undefined : `resumo não reconhecido pelo parser (formato inesperado do runner) — aprovação baseada só no exit code (${r.status})`;
+  return { ok, pass: parsed.pass, fail: parsed.fail, ms: parsed.durationMs, failedTests: parsed.failedTests, exitCode: r.status, warning, rawTail: output.slice(-2000) };
 }
 
 export function runTests({ cwd = process.cwd(), filesToCheck = [] } = {}) {

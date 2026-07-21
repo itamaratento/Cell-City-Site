@@ -2532,3 +2532,56 @@ e primeiro pipeline de deploy Firebase totalmente funcional via CI.
 
 **Homologação:** `plans/FASE43_HOMOLOGACAO_20260719.md` — 🟢 HOMOLOGADA,
 main == develop == `8fb4d3e`, tag `v3.2.0`.
+
+## §48 — BL-008: correção do parser do harness `homologar-performance` (2026-07-21)
+
+**Escopo:** item de backlog aberto no §47 (lição 6) — nenhuma alteração
+de produto, só na ferramenta de homologação (`scripts/homologacao/`).
+
+**Causa raiz confirmada:** `node --test` emite o resumo em dois
+formatos possíveis dependendo se stdout é um TTY — reporter "spec"
+(prefixo `ℹ`) ou TAP (`# pass N` / `# fail N`). Rodando via
+`spawnSync` (sem TTY, é sempre o caso do harness), o runtime emite TAP;
+`parseNodeTestSummary()` só reconhecia "spec", então toda suíte via
+`node --test` (RBAC, Polling gating) virava `NaN pass/NaN fail` e
+`ok: false` mesmo com `exitCode 0` e 100% dos testes passando —
+reproduzido e confirmado com a suíte RBAC real (181/181).
+
+**Correção (`scripts/homologacao/lib/tests-runner.mjs`):**
+- `parseNodeTestSummary()` aceita os dois formatos (spec e TAP), tanto
+  para `pass`/`fail`/`duration_ms` quanto para a lista de testes que
+  falharam (`✖ nome (Nms)` vs `not ok N - nome`).
+- `runSuite()` só reprova pelo `exitCode` quando **nenhum** dos dois
+  formatos é reconhecido (defesa contra um 3º formato futuro) —
+  registra um aviso explícito (`warning`) em vez de aprovar/reprovar em
+  silêncio.
+- `report.mjs` passa esse aviso para "Riscos e pendências" (🟡, não
+  bloqueante) e não imprime mais `NaN pass/NaN fail` na tabela quando o
+  parser cai nesse caminho.
+
+**Achado adicional durante a validação (`scripts/homologacao/lib/audit.mjs`):**
+o helper `git()` aplicava `.trim()` na saída inteira de
+`git status --porcelain` antes de dividir em linhas — como o parsing
+das linhas é posicional (`line.slice(3)`, formato `XY arquivo`), isso
+cortava o espaço inicial só da **primeira** linha da string toda,
+comendo o 1º caractere do 1º arquivo modificado/não rastreado listado
+no relatório (ex.: `CRM/git-info.json` virava `RM/git-info.json`).
+Corrigido para aparar só o fim da saída (`\n` final do processo), nunca
+o início.
+
+**Validação:** suíte real rodada de ponta a ponta
+(`HOMOLOG_SKIP_BROWSER=1 npm run homologar-performance`) antes e depois
+da correção — RBAC (181/181) e Polling gating (4/4) passam a aparecer
+corretamente como ✅ com contagem real; lista de arquivos modificados
+no relatório passa a mostrar os nomes completos. Firestore Rules/Cloud
+Functions continuam ❌ neste ambiente por falta de emulador
+autenticado/porta livre — limitação de ambiente local, não relacionada
+a este fix (o harness reporta a falha corretamente, sem aprovar às
+cegas).
+
+**Risco:** nenhum — mudança isolada em ferramenta de teste, não afeta
+nenhum módulo de produto. Nenhum arquivo protegido tocado.
+
+**Pendências:** BL-007 (nodejs22), BL-009 (bucket Storage, decisão do
+dono) e BL-010 (bypass da deploy key no GitHub) seguem em aberto, sem
+mudança neste item.

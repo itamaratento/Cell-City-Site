@@ -248,7 +248,7 @@ RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado 
 4. **Deploy:** promoção normal via CI (pipeline da Fase 4.3); primeiro deploy recria as 16 functions no novo runtime (sem "Skipped").
 5. **Rollback:** reverter commit e redeployar (runtime volta junto); functions v2 mantêm revisões no Cloud Run.
 
-## BL-008 — Harness `homologar-performance` reprova indevidamente (parser TAP vs spec)
+## BL-008 — Harness `homologar-performance` reprova indevidamente (parser TAP vs spec) — ✅ CORRIGIDO (2026-07-21)
 
 **Origem:** Fase 4.3 (2026-07-19) — harness marcou 4 suítes como ❌ "NaN pass/NaN fail" com exit 0, e emitiu REPROVADO com todos os testes passando (RBAC 181/181 confirmado manualmente).
 **Prioridade sugerida:** média (afeta confiabilidade do veredito automático, não o produto).
@@ -256,6 +256,10 @@ RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado 
 ### Causa e correção sugerida
 
 `scripts/homologacao/lib/tests-runner.mjs` (`parseNodeTestSummary`) só entende o reporter *spec* (`ℹ pass N`), mas `node --test` sob `spawnSync` (não-TTY) emite TAP (`# pass N`). Corrigir: aceitar os dois formatos (ou forçar `--test-reporter=spec` no spawn) e tratar `exitCode === 0` como aprovação quando o parse falhar, registrando aviso.
+
+### Correção aplicada (2026-07-21)
+
+`parseNodeTestSummary()` passou a reconhecer os dois formatos (spec e TAP), inclusive para a lista de testes que falharam; `runSuite()` só cai no fallback por `exitCode` quando nenhum dos dois formatos bate, registrando `warning` explícito (nunca aprova em silêncio). Bônus encontrado durante a validação: `audit.mjs` tinha um bug relacionado (`.trim()` da saída inteira do `git status --porcelain` comia o 1º caractere do 1º arquivo listado) — corrigido junto. Validado rodando a suíte real de ponta a ponta antes/depois (RBAC 181/181 e Polling gating 4/4 voltam a aparecer como ✅ com contagem real). Detalhe técnico completo em `CRM/TECHDOC.md` §48. Nenhum arquivo protegido tocado; sem autorização adicional exigida (fora dos 10 gatilhos do Modo Acelerado Autônomo).
 
 ## BL-009 — Decisão: criar bucket Firebase Storage (exige Blaze)
 
