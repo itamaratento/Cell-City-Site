@@ -20,29 +20,65 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-18) — FASE 4.2: COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
+## ✅ ESTADO ATUAL (2026-07-21) — RELEASE v3.2.0 EM PRODUÇÃO · BL-008 CORRIGIDO
 
-Relatório: [`plans/FASE42_COMMIT_PUSH_WIF_20260718.md`](plans/FASE42_COMMIT_PUSH_WIF_20260718.md).
+Relatório: [`plans/FASE43_HOMOLOGACAO_20260719.md`](plans/FASE43_HOMOLOGACAO_20260719.md) (release) · `CRM/TECHDOC.md` §47–48.
 
-**Classificação:** 🟡 **CERTIFICADA COM RESSALVAS**
+**Classificação:** 🟢 **v3.2.0 HOMOLOGADA E EM PRODUÇÃO**
 
-### Concluído (autorizado)
+### Concluído desde a seção anterior (2026-07-18 → 2026-07-21)
 
-- Commit `7633558` — segurança FASE 4.1/4.2 (25 arquivos)
-- Push `origin/develop` (`f445973..7633558`); tip atual `7b4cabb` (CI Tests ✅)
-- WIF: **5/5 bindings** na SA `github-deploy` (script OK)
+- Promoção `develop` → `main` autorizada e concluída; tag `v3.2.0` = `d650464`; `main` avançou +1 commit (`0ec12c0`, evidência do CI arquivada).
+- Deploy Firebase via CI **100% verde pela 1ª vez** (WIF, sem chave de service account no GitHub) — Rules/Functions endurecidas (LGPD `cpfMascarado`, RBAC fail-closed, rate-limit S2) já em produção.
+- Smoke autenticado em DEV (harness oficial, Chrome headless real): ✅ login/dashboard/central de alertas/cache/multiaba, @ commit `878f141`.
+- **BL-008 corrigido** (2026-07-21, commit `d5c38b7`): parser do harness `homologar-performance` reconhecia só o reporter "spec" e reprovava RBAC/Polling gating com `NaN pass/NaN fail` mesmo 100% passando; agora aceita TAP também. Bônus corrigido junto: `audit.mjs` cortava o 1º caractere do 1º arquivo listado no relatório. Ver TECHDOC §48.
 
-### Bloqueado
+### Backlog remanescente
 
-- Push/`ff` **main** (Auto-review; necessário para Deploy Firebase)
-- Deploy produção · CONTENT_MATCH · smoke autenticado
+| Item | Status |
+|------|--------|
+| BL-007 — nodejs22 (Cloud Functions) | ⏳ prazo 2026-10-30; mexe em CF, exige autorização explícita do dono |
+| BL-008 — parser do harness (TAP vs spec) | ✅ corrigido 2026-07-21 |
+| BL-009 — bucket Firebase Storage (exige Blaze) | ⏳ decisão administrativa do dono (custo) |
+| BL-010 — ruleset GitHub / bypass da deploy key (Cell-City-Backup) | ⏳ ação manual do dono no GitHub UI |
+
+### Verificação adicional feita nesta sessão (2026-07-21, pós-BL-008)
+
+Auditoria de IAM (somente leitura) da Service Account
+`firebase-adminsdk-fbsvc@cellcity-crm-dev.iam.gserviceaccount.com`:
+**nenhum defeito encontrado** — roles de projeto
+(`iam.serviceAccountTokenCreator`, `firebaseauth.admin`,
+`firebase.admin`, `firebase.sdkAdminServiceAgent`) e APIs
+(`iamcredentials`, `identitytoolkit`, `securetoken`, `iam`) todas
+presentes/habilitadas. Confirmado empiricamente: harness rodado com
+navegador real duas vezes, perfis `admin` e `tecnico` — login,
+Dashboard, Firestore (11 e 31 requisições respectivamente) e RBAC OK
+nos dois, zero erro de console. `Firestore Rules`/`Cloud Functions
+(Portal)` continuam ❌ **só nesta máquina local**, por `ENOSPC`
+(limite de inotify watchers) — mesmo bloqueio de ambiente já
+documentado em 2026-07-16 (ver seção "Sprint 3" abaixo), não é IAM nem
+regressão de código; a mesma suíte já passa em CI.
+
+RBAC runtime multi-perfil em navegador (6 perfis, leitura/escrita/
+fail-closed) **não foi construído como harness novo** nesta sessão —
+contrariaria o padrão já estabelecido do projeto de homologar RBAC via
+jsdom/mocks (não Puppeteer), e seria escopo novo não solicitado.
+A suíte automatizada `tests/rbac` (181/181) já cobre isso; os dois
+perfis testados em navegador real acima são evidência adicional, não
+substituição desse padrão.
 
 ### Próxima ação
 
-Autorizar promoção `develop` → `main` (ff + push) para disparar o pipeline oficial de deploy.
+Nenhuma pendência técnica bloqueante identificada para a v3.2.0. Itens
+restantes (BL-007/009/010) dependem de decisão ou ação do dono.
 
 
-### Histórico recente (não sobrescreve o acima)
+### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
+
+Relatório: [`plans/FASE42_COMMIT_PUSH_WIF_20260718.md`](plans/FASE42_COMMIT_PUSH_WIF_20260718.md). Classificação na época: 🟡 CERTIFICADA COM RESSALVAS (commit `7633558`, WIF 5/5 bindings, deploy main ainda bloqueado por Auto-review). Todos os bloqueios dessa seção foram resolvidos nas Fases 4.2/4.3 seguintes — ver seção "ESTADO ATUAL" acima.
+
+
+### Histórico recente — thread SaaS Onboarding/Admin (não sobrescreve o acima; não auditado nesta sessão de 2026-07-21)
 
 A seção abaixo (2026-07-16) permanece como histórico da integração Sprint 3/4.
 
@@ -149,4 +185,6 @@ não criar novo roadmap" nesta missão):**
 
 ---
 
-*Última atualização: 2026-07-16 — Integração e certificação das frentes Sprint 3/4 SaaS + F1.4 concluída. Nenhuma nova funcionalidade, Sprint ou roadmap aberto nesta missão (por instrução explícita).*
+*Seção acima (PRÓXIMA TAREFA RECOMENDADA / RISCOS ATUAIS / ITENS PENDENTES): última atualização 2026-07-16 — Integração e certificação das frentes Sprint 3/4 SaaS + F1.4 concluída. Nenhuma nova funcionalidade, Sprint ou roadmap aberto nesta missão (por instrução explícita). Thread SaaS não revisitado na atualização de 2026-07-21 (ver "ESTADO ATUAL" no topo do arquivo, que é sobre a linha Fase 4/v3.2.0 — thread independente).*
+
+*Estado geral do arquivo atualizado em 2026-07-21 — ver "ESTADO ATUAL" no topo: release v3.2.0 em produção, BL-008 corrigido, IAM DEV auditado sem defeito encontrado.*
