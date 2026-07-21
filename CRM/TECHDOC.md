@@ -2636,3 +2636,26 @@ exclusivamente camada da aplicação (`CRM/shared/permissoes.js`).
 
 **Escopo da etapa:** documentação apenas — sem alteração de Rules,
 Functions, IAM, deploy, merge ou tag.
+
+## §51 — Certificação final Release v3.2.0 (ETAPA 6.4, 2026-07-21)
+
+**Parecer único:** [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](../plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
+
+**Classificação:** 🟡 **HOMOLOGADA COM RESSALVAS**
+
+- B1/B2 resolvidos (6.2-A); B3 encerrado por ADR-AUTH-001 Alternativa A (6.2-C).
+- Critérios oficiais: UI = matriz; Rules = auth + tenant/empresa + gates.
+- Ressalvas: BL-011 (dívida consciente), fail-open legado sem
+  `perfil_operacional_id`, BL-007/009/010 — não são defeitos da Release.
+- Sem alteração de código, Rules, Functions, deploy, merge ou tag nesta etapa.
+
+## §52 — Encerramento do ciclo v3.2.0 e abertura do próximo (2026-07-21)
+
+**Linha base técnica:** commit `b663a13` · Release v3.2.0 · ADR-AUTH-001 Alternativa A.
+
+**Documento:** [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](../plans/CICLO_ABERTURA_POS_V320_20260721.md)
+
+Ciclo de homologação/release **encerrado**. Próximo ciclo de desenvolvimento
+**não iniciado** — aguarda escolha de backlog (BL-007 / 009 / 010 / opcionais)
+e autorização explícita. Sem alteração de código, Rules, Functions, deploy,
+merge ou tag nesta abertura.

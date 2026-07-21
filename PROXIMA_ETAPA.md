@@ -20,45 +20,40 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## 🟢 ESTADO ATUAL (2026-07-21) — RELEASE v3.2.0 · AUTORIZAÇÃO OFICIAL = ALTERNATIVA A (ETAPA 6.2-C)
+## ⏳ ESTADO ATUAL (2026-07-21) — CICLO v3.2.0 ENCERRADO · AGUARDANDO PRÓXIMO BACKLOG
 
-ADR: [`plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md) · TECHDOC §50 · Certificação Etapa 6: [`plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md`](plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md) · Release/infra: [`plans/FASE43_HOMOLOGACAO_20260719.md`](plans/FASE43_HOMOLOGACAO_20260719.md).
+**Linha base:** commit **`b663a13`** · Release **v3.2.0** · ADR-AUTH-001 **Alternativa A**  
+Abertura do próximo ciclo: [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](plans/CICLO_ABERTURA_POS_V320_20260721.md)  
+Certificação final: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md) (docs 6.4 ainda **não commitadas** em `b663a13`)
 
-**Classificação:** 🟢 **modelo de autorização documentado (Alternativa A)** · infra v3.2.0 em produção · B3/BL-011 = decisão arquitetural (não bug) · ETAPA 6.2-B **não** aberta
+**Classificação da release:** 🟡 Homologada com ressalvas · B1/B2 resolvidos · B3 encerrado por ADR · BL-011 dívida consciente · **6.2-B não aberta**
 
-### Decisão ETAPA 6.2-C (2026-07-21)
-
-| Item | Decisão |
-|------|---------|
-| Modelo | **A** — Rules = Auth + Tenant/Empresa (+ gates pontuais); RBAC matriz = aplicação |
-| B3 | Deixa de ser bug → **decisão arquitetural documentada** |
-| BL-011 | 🟡 dívida consciente / evolução opcional |
-| Código / Rules / deploy | **Sem alteração** nesta etapa |
-
-### Concluído desde a seção anterior (2026-07-18 → 2026-07-21)
-
-- Promoção `develop` → `main`; tag `v3.2.0` = `d650464`; deploy Firebase CI verde (WIF).
-- Smoke autenticado DEV (Etapa 5) ✅ · BL-008 corrigido · IAM SA DEV sem defeito.
-- **6.2-A** ✅ dados DEV (Sem permissão + Gerente vinculado).
-- **6.3** 🟡 B1/B2 OK; B3 observado e depois reclassificado na **6.2-C**.
-- **6.2-C** ✅ ADR-AUTH-001 + TECHDOC §50 + BACKLOG/PROXIMA sincronizados.
-
-### Backlog remanescente
+### Congelamento
 
 | Item | Status |
 |------|--------|
-| BL-007 — nodejs22 (Cloud Functions) | ⏳ prazo 2026-10-30; mexe em CF, exige autorização explícita do dono |
-| BL-008 — parser do harness (TAP vs spec) | ✅ corrigido 2026-07-21 |
-| BL-009 — bucket Firebase Storage (exige Blaze) | ⏳ decisão administrativa do dono (custo) |
-| BL-010 — ruleset GitHub / bypass da deploy key (Cell-City-Backup) | ⏳ ação manual do dono no GitHub UI |
-| BL-011 — Rules ≠ matriz `perfis_operacionais` | 🟡 **ADR-AUTH-001 Alternativa A** — dívida consciente; 6.2-B só se dono autorizar B/híbrido |
+| Homologação funcional 6.x | ✅ encerrada |
+| Código / Rules / Functions nesta abertura | ✅ intocados |
+| Próximo ciclo de desenvolvimento | ⏳ **não iniciado** — falta backlog + autorização |
+
+### Inventário aberto (fora da homologação)
+
+| Item | Nota |
+|------|------|
+| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
+| BL-009 Storage/Blaze | decisão de custo |
+| BL-010 bypass deploy key backup | ação manual GitHub |
+| Migração legados `perfil_operacional_id` | opcional |
+| Revisão ADR / 6.2-B | eventual; exige auth Rules |
+
+Cartões de priorização (objetivo/escopo/riscos/aceite): ver documento de abertura acima.
 
 ### Próxima ação
 
-1. ~~Decisão BL-011 / 6.2-C~~ ✅ **Alternativa A** (ADR-AUTH-001).  
-2. (Opcional) Formalizar encerramento 🟢 da homologação funcional ETAPA 6 com critérios do ADR (UI+tenant; sem exigir matriz nas Rules).  
-3. BL-007 / BL-009 / BL-010 — com o dono.  
-4. **Não** iniciar 6.2-B sem autorização explícita de Rules.
+1. Dono escolhe **um** backlog e autoriza explicitamente.  
+2. Só então: Script Mestre da iniciativa + plano operacional/testes/aceite (doc própria).  
+3. (Housekeeping) commit docs ETAPA 6.4 quando autorizado — não é início de ciclo.  
+4. Até lá: **proibido** código · Rules · CF · IAM · deploy · merge · tag · alterar ADR.
 
 ### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
 

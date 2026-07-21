@@ -330,3 +330,13 @@ Documento: [`ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](ADR_AUTH_001_MODELO_A
 
 B3 / BL-011 = **decisão arquitetural documentada**, não bug bloqueador.
 ETAPA 6.2-B **não** iniciada.
+
+---
+
+## 14. Adendo — ETAPA 6.4 (2026-07-21)
+
+Parecer final da Release: [`CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
+
+**Classificação:** 🟡 **HOMOLOGADA COM RESSALVAS**  
+Este documento (6.3) permanece como certificação da cadeia de evidências;
+a **6.4** é o parecer único oficial da Release v3.2.0.
