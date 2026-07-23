@@ -60,7 +60,16 @@ Backup pré-alteração: `_BACKUPS/15-PRE-KERNEL-FASE-1.3-DEVELOP-20260723/` (lo
 | `node --check CRM/scripts/kernel.js` | OK |
 | YAML `tests.yml` | OK |
 | Integrity (subconjunto HTML/coleções/catálogo) | 3/3 OK |
-| Integrity completa (`rsync` simulado) | ⚠ hang ambiental neste runner — não regressão Kernel; suíte já conhecida sensível a `rsync`/tmp |
+| **CI `origin/develop` `1b55878`** | **success** — [run 30027932174](https://github.com/itamaratento/Cell-City-Site/actions/runs/30027932174) |
+
+## 4.1 Continuidade pós-commit (modo contínuo)
+
+| Ação | Status |
+|------|--------|
+| Push `a524551` + `1b55878` | ✅ `origin/develop` |
+| CI Testes automatizados | ✅ success |
+| Fechar PR #1 via CLI | ⏸ BT-S1-01 (`gh` ausente) — não bloqueia Sprint |
+| Backlog técnico | ✅ `plans/BACKLOG_TECNICO_POS_SPRINT1_20260723.md` |
 
 ## 5. Auditoria da Sprint
 
@@ -91,5 +100,7 @@ Backup pré-alteração: `_BACKUPS/15-PRE-KERNEL-FASE-1.3-DEVELOP-20260723/` (lo
 
 ## 9. Critério de encerramento
 
-Sprint 1 (F1.1–F1.4) **completa** em `develop`: requisitos implementados,
-testados e documentados. Gap F1.3 consolidação fechado sem regressão de tenant.
+Sprint 1 (F1.1–F1.4) **completa** em `develop` (`1b55878`): requisitos
+implementados, testados, documentados, **pushados** e **CI verde**.
+
+**Estado:** ENCERRADA.
