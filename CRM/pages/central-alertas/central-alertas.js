@@ -393,10 +393,11 @@ async function gerarAlertas() {
     try {
         const prontos = [];
         osList.forEach(os => {
-            if (os.status !== 'concluido') return;
+            // DT-22: status legado `pronto` equivale a `concluido` (STATUS_LEGACY em os.js)
+            if (os.status !== 'concluido' && os.status !== 'pronto') return;
             let dataConcluido = null;
             if (Array.isArray(os.timeline)) {
-                const entry = [...os.timeline].reverse().find(t => typeof t.text === 'string' && t.text.includes('→ Concluído'));
+                const entry = [...os.timeline].reverse().find(t => typeof t.text === 'string' && (t.text.includes('→ Concluído') || t.text.includes('→ Pronto')));
                 if (entry?.date) dataConcluido = entry.date;
             }
             if (!dataConcluido) dataConcluido = os.updatedAt;

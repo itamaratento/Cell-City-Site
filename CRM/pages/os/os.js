@@ -2205,7 +2205,7 @@ function showClientDetail(phone) {
 
         html += `<div class="premium-list" style="margin-top:16px;">${clientOrders.map(os => `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.model||''}</div><div class="os-card-info">${(os.defect||'').substring(0, 50)}${(os.defect||'').length >50?'...':''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)}</span></div></div>`).join('')}</div>`;
 
-        html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient('${client.phone||''}','${client.name||''}')">➕ Nova O.S. para este cliente</button></div>`;
+        html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient(${escHtml(JSON.stringify(client.phone||''))},${escHtml(JSON.stringify(client.name||''))})">➕ Nova O.S. para este cliente</button></div>`;
         
         c.innerHTML = html; 
         showScreen('client-detail');

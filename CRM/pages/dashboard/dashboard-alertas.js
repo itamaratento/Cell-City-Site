@@ -574,8 +574,9 @@ export const dashboardAlertasMixin = {
 
     // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
     try {
+      // DT-22: incluir status legado `pronto` (equivale a concluido)
       const prontoSnap = await getDocs(
-        query(collection(db, 'os'), ...injectTenantFilter([where('status', '==', 'concluido')]))
+        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['concluido', 'pronto'])]))
       );
       const prontos = [];
       prontoSnap.forEach(d => {
@@ -583,7 +584,7 @@ export const dashboardAlertasMixin = {
         let dataConcluido = null;
         if (Array.isArray(os.timeline)) {
           const entry = [...os.timeline].reverse().find(t =>
-            typeof t.text === 'string' && t.text.includes('→ Concluído')
+            typeof t.text === 'string' && (t.text.includes('→ Concluído') || t.text.includes('→ Pronto'))
           );
           if (entry?.date) dataConcluido = entry.date;
         }

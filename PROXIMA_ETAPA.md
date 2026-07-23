@@ -20,10 +20,32 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-23) — Sprint 1 Fundação SaaS CONCLUÍDA
+## ⏳ ESTADO ATUAL (2026-07-23) — Pacote P1 segurança DT-20/DT-22 em andamento/entregue
+
+**Última entrega de código:** XSS `startOSForClient` + alerta legado `pronto` (Central Alertas + Dashboard).  
+**Relatório:** [`plans/PACOTE_P1_DT20_DT22_20260723.md`](plans/PACOTE_P1_DT20_DT22_20260723.md)
+
+### Inventário aberto
+
+| Item | Nota |
+|------|------|
+| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
+| BL-009 Storage/Blaze | decisão de custo |
+| BL-010 bypass deploy key backup | ação manual GitHub |
+| DT-10…14 cota Firestore / `limitTo` | próximo pacote sugerido |
+| BT-S1-05 arquivar `plans/AUDITORIA_*` | higiene documental |
+
+### Próxima ação sugerida
+
+1. Pacote cota (`limitTo` / hotspots financeiro + alertas) — exige auth se escopo amplo.  
+2. Ou BL-007 (auth CF explícita).
+
+---
+
+## Histórico — Sprint 1 Fundação SaaS CONCLUÍDA (2026-07-23)
 
 **Autorização:** execução integral da Sprint 1 (Fundação do SaaS).  
-**Entrega:** fechamento F1.3 consolidação do Kernel em `develop` (sem merge do PR #1 — evitada regressão de tenant).  
+**Entrega:** fechamento F1.3 consolidação do Kernel em `develop` (PR #1 fechado como superseded).  
 **Relatório:** [`plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`](plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md)
 
 | Fase Sprint 1 | Status |
@@ -33,7 +55,7 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 | F1.3 Auditor (A2) + consolidação Kernel/docs/testes/CI | ✅ |
 | F1.4 Adoção páginas | ✅ |
 
-**Baseline funcional certificada (v3.2.0):** `b663a13` (inalterada por esta entrega — mudança pontual em Kernel + testes/docs/CI).
+**Baseline funcional certificada (v3.2.0):** `b663a13`.
 
 ### Inventário aberto (fora da Sprint 1)
 
@@ -42,13 +64,13 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 | BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
 | BL-009 Storage/Blaze | decisão de custo |
 | BL-010 bypass deploy key backup | ação manual GitHub |
-| PR #1 draft Kernel | **fechar** — conteúdo portado; merge direto regressaria tenant |
+| PR #1 draft Kernel | ✅ fechado 2026-07-23 |
 | Migração legados `perfil_operacional_id` | opcional |
 
 ### Próxima ação
 
-1. Push/commit da entrega Sprint 1 (se pendente).  
-2. Fechar PR #1 no GitHub com referência ao relatório.  
+1. ~~Push/commit da entrega Sprint 1~~ ✅  
+2. ~~Fechar PR #1~~ ✅  
 3. Dono escolhe próximo backlog e autoriza explicitamente.
 
 ---
