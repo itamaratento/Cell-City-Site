@@ -20,25 +20,31 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-23) — Pacote P1 segurança DT-20/DT-22 em andamento/entregue
+## ⏳ ESTADO ATUAL (2026-07-23) — Continuidade: cota + BL-007
 
-**Última entrega de código:** XSS `startOSForClient` + alerta legado `pronto` (Central Alertas + Dashboard).  
-**Relatório:** [`plans/PACOTE_P1_DT20_DT22_20260723.md`](plans/PACOTE_P1_DT20_DT22_20260723.md)
+**Última entrega:** tetos `limit`/`limitTo` nos hotspots + config **nodejs22** (BL-007).  
+**Relatório:** [`plans/PACOTE_COTA_BL007_20260723.md`](plans/PACOTE_COTA_BL007_20260723.md)
 
-### Inventário aberto
+### Inventário aberto (bloqueios / decisão)
 
 | Item | Nota |
 |------|------|
-| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
-| BL-009 Storage/Blaze | decisão de custo |
-| BL-010 bypass deploy key backup | ação manual GitHub |
-| DT-10…14 cota Firestore / `limitTo` | próximo pacote sugerido |
+| BL-007 deploy CF | Config ✅ — falta **deploy** Functions para runtime 22 em PROD/DEV |
+| **BL-009** Storage/Blaze | ⛔ bloqueio: decisão de custo do dono |
+| **BL-010** bypass deploy key | ⛔ bloqueio: ação manual GitHub UI |
+| DT-14 paginação completa pages | residual (listarPaginado ainda pouco usado) |
 | BT-S1-05 arquivar `plans/AUDITORIA_*` | higiene documental |
 
-### Próxima ação sugerida
+### Critério desta continuidade
 
-1. Pacote cota (`limitTo` / hotspots financeiro + alertas) — exige auth se escopo amplo.  
-2. Ou BL-007 (auth CF explícita).
+Pacotes da ordem sugerida pós–Sprint 1 (PR#1 → segurança → **cota** → **BL-007**) concluídos no código. BL-009/010 não são implementáveis sem decisão/ação externa.
+
+---
+
+## Histórico — Pacote P1 segurança DT-20/DT-22 (2026-07-23)
+
+**Entrega:** XSS `startOSForClient` + alerta legado `pronto`.  
+**Relatório:** [`plans/PACOTE_P1_DT20_DT22_20260723.md`](plans/PACOTE_P1_DT20_DT22_20260723.md)
 
 ---
 
@@ -61,17 +67,11 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 | Item | Nota |
 |------|------|
-| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
+| BL-007 nodejs22 | ✅ config 2026-07-23 (deploy CF pendente) |
 | BL-009 Storage/Blaze | decisão de custo |
 | BL-010 bypass deploy key backup | ação manual GitHub |
 | PR #1 draft Kernel | ✅ fechado 2026-07-23 |
 | Migração legados `perfil_operacional_id` | opcional |
-
-### Próxima ação
-
-1. ~~Push/commit da entrega Sprint 1~~ ✅  
-2. ~~Fechar PR #1~~ ✅  
-3. Dono escolhe próximo backlog e autoriza explicitamente.
 
 ---
 

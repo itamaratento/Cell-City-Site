@@ -459,7 +459,7 @@ window.PortalAdmin = {
       // A-1: consulta s\u00f3 por igualdade (\u00edndice autom\u00e1tico); filtra/ordena por data no cliente.
       const hojeTime = hoje.getTime();
       const snapAcessos = await getDocs(
-        query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'acesso'))
+        query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'acesso'), limit(200))
       );
 
       let acessosHoje = 0;
@@ -480,8 +480,8 @@ window.PortalAdmin = {
       });
 
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'))),
-        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps')))
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'), limit(200))),
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps'), limit(200)))
       ]);
 
       return {
@@ -1262,7 +1262,8 @@ window.PortalAdmin = {
       const snapAcessos = await getDocs(query(
         collection(db, 'portal_eventos'),
         ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []),
-        where('tipo', '==', 'acesso')
+        where('tipo', '==', 'acesso'),
+        limit(200)
       ));
 
       // ⚡ OTIMIZAÇÃO #13: Single-pass nos dados (tudo em 1 forEach)
@@ -1332,8 +1333,8 @@ window.PortalAdmin = {
 
       // Cliques (paralelo)
       const [snapWa, snapMaps] = await Promise.all([
-        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'))),
-        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps')))
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_whatsapp'), limit(200))),
+        getDocs(query(collection(db, 'portal_eventos'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : []), where('tipo', '==', 'clique_maps'), limit(200)))
       ]);
 
       return {

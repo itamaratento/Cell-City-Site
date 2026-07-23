@@ -5,7 +5,7 @@
 //  Status (novo/lido/resolvido) é por usuário, sincronizado em tempo real
 //  via Firestore (mesmo padrão de 'notas_usuarios' usado no dock).
 // ============================================
-import { STORAGE_KEYS } from '../../shared/app-config.js';
+import { STORAGE_KEYS, PAGINACAO } from '../../shared/app-config.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from '../../firebase/client.js';
@@ -21,6 +21,7 @@ import { formatDateTime, getDeliveryDate, calcDiasDesde } from '../../shared/dat
 const STATUS_COL = 'central_alertas_status';
 const CONFIG_KEY = STORAGE_KEYS.CONFIG_ALERTAS;
 const REFRESH_MS = 300000;
+const LIMITE_LISTA = PAGINACAO.LIMITE_LISTA_PADRAO;
 
 const PRIORIDADE_ORDEM = { critico: 0, atencao: 1, crm: 2 };
 const STATUS_LABEL = { novo: '🆕 Novo', lido: '👁️ Lido', resolvido: '✅ Resolvido' };
@@ -78,7 +79,7 @@ function diasAtras(dias) {
 // ── Ação da Semana — leitura da coleção 'agenda' (mesma regra do Dashboard) ──
 async function lerAgenda() {
     try {
-        const snap = await Agenda.list();
+        const snap = await Agenda.list({ limitTo: LIMITE_LISTA });
         const eventos = [];
         const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -151,13 +152,13 @@ async function gerarAlertas() {
     //    para pós-venda, prontos e orçamentos — evita 3 leituras repetidas) ──
     const [eventos, osDocs, contatosList, portalList, avaliacoesList, financeiroPagarList, financeiroReceberList, financeiroFixasList] = await Promise.all([
         lerAgenda(),
-        OS.list(),
-        PosvendaContatos.list(),
-        MensagensPortal.list({ where: [['lida', '==', false]] }).catch(e => { console.warn('Central de Alertas — mensagens_portal:', e); return null; }),
+        OS.list({ limitTo: LIMITE_LISTA }),
+        PosvendaContatos.list({ limitTo: LIMITE_LISTA }),
+        MensagensPortal.list({ where: [['lida', '==', false]], limitTo: LIMITE_LISTA }).catch(e => { console.warn('Central de Alertas — mensagens_portal:', e); return null; }),
         Avaliacoes.list({ orderByField: 'createdAt', direction: 'desc', limitTo: 5 }).catch(e => { console.warn('Central de Alertas — avaliacoes:', e); return null; }),
-        FinanceiroPagar.list().catch(e => { console.warn('Central de Alertas — financeiro_pagar:', e); return []; }),
-        FinanceiroReceber.list().catch(e => { console.warn('Central de Alertas — financeiro_receber:', e); return []; }),
-        FinanceiroFixas.list().catch(e => { console.warn('Central de Alertas — financeiro_fixas:', e); return []; })
+        FinanceiroPagar.list({ limitTo: LIMITE_LISTA }).catch(e => { console.warn('Central de Alertas — financeiro_pagar:', e); return []; }),
+        FinanceiroReceber.list({ limitTo: LIMITE_LISTA }).catch(e => { console.warn('Central de Alertas — financeiro_receber:', e); return []; }),
+        FinanceiroFixas.list({ limitTo: LIMITE_LISTA }).catch(e => { console.warn('Central de Alertas — financeiro_fixas:', e); return []; })
     ]);
 
     const osList = osDocs.map(d => ({ firestoreId: d.id, ...d }));

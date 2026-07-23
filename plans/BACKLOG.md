@@ -234,11 +234,12 @@ RBAC-06 do checklist de homologação passa a ter resultado esperado atualizado 
 
 ---
 
-## BL-007 — Upgrade do runtime das Cloud Functions: nodejs20 → nodejs22 (PRAZO REAL)
+## BL-007 — Upgrade do runtime das Cloud Functions: nodejs20 → nodejs22 — ✅ CONFIG APLICADA (2026-07-23)
 
-**Origem:** aviso do Firebase CLI no deploy CI de 2026-07-19 (Fase 4.3): Node.js 20 depreciado em 2026-04-30, **descomissionamento em 2026-10-30** — após essa data novos deploys serão bloqueados.
-**Prioridade sugerida:** alta (tem prazo externo); executar com folga, idealmente até setembro/2026.
-**Autorização:** mexe em Cloud Functions ⇒ exige autorização explícita do dono antes de implementar.
+**Status:** engines/`firebase.json`/CI → **nodejs22**. Runtime em **produção** aplica no próximo deploy de Functions.
+**Relatório:** [`plans/PACOTE_COTA_BL007_20260723.md`](PACOTE_COTA_BL007_20260723.md)
+
+**Origem:** aviso do Firebase CLI no deploy CI de 2026-07-19 (Fase 4.3): Node.js 20 depreciado em 2026-04-30, **descomissionamento em 2026-10-30** — após essa data novos deploys seriam bloqueados.
 
 ### Plano de migração (planejamento — Fase 4, item de encerramento)
 

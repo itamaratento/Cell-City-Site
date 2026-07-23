@@ -60,10 +60,10 @@ jobs:
             fi
           done
 
-      - name: Configurar Node 20
+      - name: Configurar Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       # Causa raiz da falha 100% da CI (runs 2026-07-14 a 17): emulador
       # Firestore/Storage e JAR Java. Sem JDK no runner, emulators:exec aborta.
@@ -126,6 +126,9 @@ jobs:
 
       - name: Regressão de segurança Fase 2.2 (escHtml/CSPRNG/PIN/catálogo público)
         run: node --test tests/integrity/seguranca-fase22.test.mjs
+
+      - name: Regressão de cota Firestore (limites hotspots) + BL-007 engines
+        run: node --test tests/integrity/cota-limites.test.mjs
 
       - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
         run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs

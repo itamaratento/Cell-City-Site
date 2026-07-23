@@ -1,5 +1,5 @@
-import { URLS } from '../../shared/app-config.js';
-import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query } from '../../scripts/firebase.js';
+import { URLS, PAGINACAO } from '../../shared/app-config.js';
+import { db, collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp, query, limit } from '../../scripts/firebase.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
@@ -10,6 +10,7 @@ const COL_PAGAR   = 'financeiro_pagar';
 const COL_FIXAS   = 'financeiro_fixas';
 const COL_RECEBER = 'financeiro_receber';
 const COL_CATS    = 'financeiro_categorias';
+const LIMITE_LISTA = PAGINACAO.LIMITE_LISTA_PADRAO;
 
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
 const hoje = () => new Date().toISOString().slice(0, 10);
@@ -65,9 +66,9 @@ document.querySelectorAll('[data-s2]').forEach(btn => {
 async function carregar() {
     try {
         const [sp, sf, sr] = await Promise.all([
-            getDocs(query(collection(db, COL_PAGAR), ...injectTenantFilter([]))),
-            getDocs(query(collection(db, COL_FIXAS), ...injectTenantFilter([]))),
-            getDocs(query(collection(db, COL_RECEBER), ...injectTenantFilter([])))
+            getDocs(query(collection(db, COL_PAGAR), ...injectTenantFilter([]), limit(LIMITE_LISTA))),
+            getDocs(query(collection(db, COL_FIXAS), ...injectTenantFilter([]), limit(LIMITE_LISTA))),
+            getDocs(query(collection(db, COL_RECEBER), ...injectTenantFilter([]), limit(LIMITE_LISTA)))
         ]);
         dadosPagar   = []; sp.forEach(d => dadosPagar.push({ id: d.id, ...d.data() }));
         dadosFixas   = []; sf.forEach(d => dadosFixas.push({ id: d.id, ...d.data() }));
@@ -385,7 +386,7 @@ async function recarregar(col) {
         const m = colMap[col];
         if (!m) return;
         // Otimização: reler apenas a coleção afetada (não todas as 3)
-        const sp = await getDocs(query(collection(db, m.col), ...injectTenantFilter([])));
+        const sp = await getDocs(query(collection(db, m.col), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
         const arr = [];
         sp.forEach(d => arr.push({ id: d.id, ...d.data() }));
         if (m.calc) arr.forEach((c, i) => { arr[i] = calcStatus(c, m.calc); });
@@ -690,12 +691,12 @@ let dadosCustom = {};      // {catId: [{id, descricao, valor, vencimento, status
 
 async function carregarCategorias() {
     try {
-        const snap = await getDocs(query(collection(db, COL_CATS), ...injectTenantFilter([])));
+        const snap = await getDocs(query(collection(db, COL_CATS), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
         categoriasCustom = [];
         snap.forEach(d => categoriasCustom.push({ id: d.id, ...d.data() }));
         categoriasCustom.sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
         for (const cat of categoriasCustom) {
-            const s = await getDocs(collection(db, `${COL_CATS}/${cat.id}/itens`));
+            const s = await getDocs(query(collection(db, `${COL_CATS}/${cat.id}/itens`), limit(LIMITE_LISTA)));
             dadosCustom[cat.id] = [];
             s.forEach(d => dadosCustom[cat.id].push({ id: d.id, ...d.data() }));
             dadosCustom[cat.id] = dadosCustom[cat.id].map(c => calcStatus(c, 'pago'));
@@ -928,7 +929,7 @@ let dadosFechamentos = {}; // {mesKey: {receita, despesa, saldo, ...}}
 
 async function carregarFechamentos() {
     try {
-        const snap = await getDocs(query(collection(db, COL_FECHAMENTOS), ...injectTenantFilter([])));
+        const snap = await getDocs(query(collection(db, COL_FECHAMENTOS), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
         dadosFechamentos = {};
         snap.forEach(d => { dadosFechamentos[d.id] = { id: d.id, ...d.data() }; });
     } catch { dadosFechamentos = {}; }
