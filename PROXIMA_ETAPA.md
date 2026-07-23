@@ -20,7 +20,40 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-21) — ESPERA CONTROLADA · GOVERNANÇA DE BASELINE
+## ⏳ ESTADO ATUAL (2026-07-23) — Sprint 1 Fundação SaaS CONCLUÍDA
+
+**Autorização:** execução integral da Sprint 1 (Fundação do SaaS).  
+**Entrega:** fechamento F1.3 consolidação do Kernel em `develop` (sem merge do PR #1 — evitada regressão de tenant).  
+**Relatório:** [`plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`](plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md)
+
+| Fase Sprint 1 | Status |
+|---------------|--------|
+| F1.1 Arquitetura | ✅ |
+| F1.2 app-config | ✅ |
+| F1.3 Auditor (A2) + consolidação Kernel/docs/testes/CI | ✅ |
+| F1.4 Adoção páginas | ✅ |
+
+**Baseline funcional certificada (v3.2.0):** `b663a13` (inalterada por esta entrega — mudança pontual em Kernel + testes/docs/CI).
+
+### Inventário aberto (fora da Sprint 1)
+
+| Item | Nota |
+|------|------|
+| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
+| BL-009 Storage/Blaze | decisão de custo |
+| BL-010 bypass deploy key backup | ação manual GitHub |
+| PR #1 draft Kernel | **fechar** — conteúdo portado; merge direto regressaria tenant |
+| Migração legados `perfil_operacional_id` | opcional |
+
+### Próxima ação
+
+1. Push/commit da entrega Sprint 1 (se pendente).  
+2. Fechar PR #1 no GitHub com referência ao relatório.  
+3. Dono escolhe próximo backlog e autoriza explicitamente.
+
+---
+
+## Histórico — ESTADO (2026-07-21) — ESPERA CONTROLADA · GOVERNANÇA DE BASELINE
 
 Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BASELINE_V320_20260721.md) · Abertura: [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](plans/CICLO_ABERTURA_POS_V320_20260721.md) · Certificação: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
 
@@ -30,7 +63,7 @@ Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BAS
 | **HEAD Documental** | **`ce2e725`** | Docs 6.4 + abertura do ciclo (sem impacto funcional) |
 
 **Release:** v3.2.0 · 🟡 Homologada com ressalvas · ADR-AUTH-001 **Alternativa A** · BL-011 dívida consciente · **6.2-B não aberta**  
-**Desenvolvimento:** ⏸ espera controlada · próximo ciclo **não iniciado**
+**Desenvolvimento:** ⏸ espera controlada · próximo ciclo **não iniciado** *(histórico — supersedido pela autorização Sprint 1 em 2026-07-23)*
 
 ### Congelamento
 

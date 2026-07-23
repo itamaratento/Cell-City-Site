@@ -163,10 +163,12 @@ function _log(msg, err) {
  * @returns {Promise<Object|null>} contexto ou null
  */
 export async function initModulo() {
+    let timeoutId;
     const ctx = await Promise.race([
         _ready,
-        new Promise(r => setTimeout(() => r(null), TIMEOUT_MS))
+        new Promise(r => { timeoutId = setTimeout(() => r(null), TIMEOUT_MS); })
     ]);
+    if (timeoutId) clearTimeout(timeoutId);
 
     if (!ctx) {
         _log('Sessão não encontrada — redirecionando para login');
@@ -230,7 +232,12 @@ export const getCtx = () => _ctx;
  * @returns {Promise<Object|null>}
  */
 export async function getCtxAsync() {
-    await Promise.race([_ready, new Promise(r => setTimeout(r, TIMEOUT_MS))]);
+    let timeoutId;
+    await Promise.race([
+        _ready,
+        new Promise(r => { timeoutId = setTimeout(r, TIMEOUT_MS); })
+    ]);
+    if (timeoutId) clearTimeout(timeoutId);
     return _ctx;
 }
 
@@ -239,9 +246,6 @@ export const getUser = () => _ctx?.user ?? null;
 
 /** UID do usuário ou null. */
 export const getUid = () => _ctx?.uid ?? null;
-
-/** E-mail do usuário ou string vazia. */
-export const getEmail = () => _ctx?.email ?? '';
 
 /** Nome de exibição do usuário. */
 export const getNome = () => _ctx?.nome ?? '';
@@ -283,8 +287,5 @@ export function temPermissao(perfilMinimo) {
     return atual >= minimo;
 }
 
-// ── Chave de gate (uso interno dos módulos) ────────────────────
-// O gate HTML de cada módulo pode verificar esta chave para evitar
-// flash de conteúdo antes do redirect. A segurança real está no
-// Firebase Auth — esta flag é apenas UX.
-export const AUTH_FLAG = FLAG_AUTH;
+// Nota (F1.3 consolidação 2026-07-23): getEmail() e AUTH_FLAG removidos —
+// zero consumidores no repositório. E-mail via ctx.email; flag UX = 'cc_kernel_v1'.

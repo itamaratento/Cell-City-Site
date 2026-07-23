@@ -11,9 +11,11 @@ name: Testes automatizados
 # SDK mockada em memória (mesmo princípio da homologação da Camada
 # Repository); substituem os harnesses ad-hoc descartados nos sprints
 # anteriores (Sprint 2, Sprint 3, re-homologação de 2026-07-07 — ver
-# CRM/TECHDOC.md §7.3). tests/performance/ (padrão de gating polling/aba
-# oculta, Fase 1 do plano de performance) não usa Firestore nem DOM real —
-# só Node puro, mesmo princípio do RBAC.
+# CRM/TECHDOC.md §7.3). tests/kernel/ (Sprint 1 — Fase 1.3) testa o código
+# real de CRM/scripts/kernel.js (boot, auth, tenant, sessão, permissões).
+# tests/performance/ (padrão de gating polling/aba oculta, Fase 1 do plano
+# de performance) não usa Firestore nem DOM real — só Node puro, mesmo
+# princípio do RBAC.
 #
 # A homologação em navegador real (Fase 3 de scripts/homologacao/) NÃO roda
 # aqui — exige credencial do DEV e Chrome real, fora do escopo de uma CI que
@@ -111,6 +113,10 @@ jobs:
       - name: Testes de RBAC (Fase 2 — CRM/Entrada/Chips/Agenda/Estoque/Caixa/Financeiro)
         run: npm test
         working-directory: tests/rbac
+
+      - name: "Testes do Kernel (Sprint 1 — Fase 1.3 boot, autenticação, tenant, sessão)"
+        run: npm test
+        working-directory: tests/kernel
 
       - name: Testes de performance (padrão de gating polling/aba oculta)
         run: node --test tests/performance/polling-gating.test.mjs

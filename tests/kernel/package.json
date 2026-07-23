@@ -1,0 +1,10 @@
+{
+  "name": "cellcity-kernel-tests",
+  "private": true,
+  "description": "Testes persistidos do Kernel (Sprint 1 — Fase 1.3, consolidação). Node + node:test, importando o CÓDIGO REAL de CRM/scripts/kernel.js via loader ESM (tests/kernel/loader.mjs) — sem cópia, mesmo princípio já usado em tests/rbac/. Só a borda do SDK (Firebase Auth/Firestore) é mockada em memória.",
+  "type": "module",
+  "scripts": {
+    "test": "node --import ./register-loader.mjs --test *.test.mjs"
+  },
+  "devDependencies": {}
+}

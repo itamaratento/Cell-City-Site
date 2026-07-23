@@ -21,10 +21,13 @@
 
 ## 2. Autenticação e bootstrap de módulo (`scripts/kernel.js`)
 
+> Documentação oficial do ciclo de vida e contrato de API:
+> [`CRM/scripts/KERNEL.md`](scripts/KERNEL.md) (Sprint 1 · F1.3).
+
 Todo módulo segue o mesmo padrão de inicialização:
 
 ```javascript
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js'; // caminho relativo (H-008)
 
 const ctx = await initModulo();
 if (!ctx) return; // não autenticado → kernel.js já redirecionou para /CRM/login.html
@@ -32,13 +35,14 @@ if (!ctx) return; // não autenticado → kernel.js já redirecionou para /CRM/l
 // ctx.uid        — UID Firebase do usuário
 // ctx.email      — e-mail
 // ctx.nome       — nome de exibição
-// ctx.empresaId  — empresa ativa (single-store: 'cellcity-master')
-// ctx.perfil     — admin | gerente | tecnico | atendente | caixa
+// ctx.empresaId  — empresa ativa (via tenant-resolver / DEFAULT_TENANT_ID)
+// ctx.perfil     — admin | gerente | tecnico | atendente | … | pendente
 ```
 
-- `kernel.js` mantém um único `onAuthStateChanged` global (`_ready` Promise, timeout de 10s).
+- `kernel.js` mantém um único `onAuthStateChanged` global (`_ready` Promise, timeout de 10s com `clearTimeout`).
+- Após `_buildContext`, chama `initTenant(ctx, empresaId)` (`tenant-provider`) — não hardcodar `EMPRESA_ID` no núcleo.
 - Gate visual nos `<head>` dos módulos: `localStorage.cc_kernel_v1 === '1'` evita flash de conteúdo antes do redirect — **não é mecanismo de segurança**, isso é papel das Firestore Rules.
-- Multiempresa (`tenant.js`, `empresa_id` em queries) foi **revertido**; não usar como referência — a maioria das coleções de negócio (`os`, `clientes`, `posvenda_contatos`, `mensagens_portal`, `avaliacoes`, `agenda`) não filtra por `empresa_id`.
+- Suíte dedicada: `tests/kernel/` (código real do Kernel, SDK mockado).
 
 Outros pontos de entrada compartilhados, incluídos via `<script>`/`<script type="module">` em quase toda página de módulo:
 - `shared/brand-header.js` — injeta o cabeçalho padrão (`#crm-brand-bar`) com logo + título centralizado.
@@ -2671,3 +2675,22 @@ merge ou tag nesta abertura.
 
 Diff `b663a13`→`c64dae7`: somente documentação. Não exige nova homologação.
 Evitar usar “HEAD” ou “baseline” sem qualificar qual das duas referências.
+
+## §54 — Sprint 1 F1.3 fechamento em develop (2026-07-23)
+
+**Contexto:** a consolidação documental/testes do Kernel (PR #1 draft,
+branch `cursor/kernel-consolidation-phase-1-3-d9b9`) **não** foi mergeada
+porque o head do PR revertia PS-1/PS-2 (`initTenant` / `DEFAULT_TENANT_ID`)
+para `EMPRESA_ID` hardcoded. O trabalho útil foi **portado** sobre o Kernel
+atual de `develop`.
+
+| Entrega | Status |
+|---------|--------|
+| `CRM/scripts/KERNEL.md` | ✅ (ciclo de vida com tenant-provider) |
+| `tests/kernel/` 27/27 | ✅ (mocks de Auth/Firestore + tenant) |
+| Remoção `getEmail` / `AUTH_FLAG` | ✅ (zero consumidores) |
+| `clearTimeout` em `initModulo` / `getCtxAsync` | ✅ |
+| CI step Kernel (nome YAML entre aspas) | ✅ (sobre workflow com Java 21) |
+| F1.1 auditor / F1.2 app-config / F1.4 páginas / A2 F1.3 auditor | ✅ já em `develop` |
+
+Relatório: `plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`.
