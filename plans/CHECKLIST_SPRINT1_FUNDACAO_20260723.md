@@ -26,6 +26,14 @@
 
 ## Fora de escopo (explícito F1.3)
 
-- [ ] Unificar `shared/session.js` ao Kernel
-- [ ] Centralizar literal `'cc_kernel_v1'` em ~34 HTMLs
-- [ ] Fechar/reabrir PR #1 no GitHub (ação de governança do dono)
+- [ ] Unificar `shared/session.js` ao Kernel → BT-S1-03
+- [ ] Centralizar literal `'cc_kernel_v1'` em ~34 HTMLs → BT-S1-04
+- [x] Push `develop` (`a524551` → `origin/develop`) — feito 2026-07-23
+- [ ] Fechar/reabrir PR #1 no GitHub → **BT-S1-01** (bloqueio de ferramenta: `gh` ausente; não bloqueia Sprint)
+
+## Continuidade 2026-07-23 (modo contínuo)
+
+- [x] Revalidar `tests/kernel` 27/27
+- [x] Push remoto
+- [x] Backlog técnico documentado (`plans/BACKLOG_TECNICO_POS_SPRINT1_20260723.md`)
+- [x] Critério de encerramento Sprint 1: requisitos F1.1–F1.4 concluídos
