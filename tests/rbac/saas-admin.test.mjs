@@ -125,3 +125,27 @@ test('SaaS Admin: rejeitar empresa pendente marca status rejeitada e loga audito
     assert.equal(auditoria.length, 1);
     assert.equal(auditoria[0].acao, 'empresa_rejeitada');
 });
+
+test('SaaS Admin: CRUD salvar() provisiona modulos_ativos/feature_flags do plano (Sprint 2)', async () => {
+    const h = await abrir(
+        { uid: 'master1', perfil: 'master_admin', empresaId: 'cellcity-master' },
+        []
+    );
+    assert.ok(h.window.SaaSAdmin, 'API SaaSAdmin deve estar no window');
+    h.window.SaaSAdmin.mostrarForm();
+    await new Promise((r) => setTimeout(r, 30));
+    h.document.getElementById('f-id').value = 'emp_manual_1';
+    h.document.getElementById('f-nome').value = 'Loja Manual';
+    h.document.getElementById('f-razao').value = 'Loja Manual Ltda';
+    h.document.getElementById('f-plano').value = 'basico';
+    h.document.getElementById('f-status').value = 'ativo';
+    await h.window.SaaSAdmin.salvar();
+    await new Promise((r) => setTimeout(r, 80));
+
+    const empresa = fsMock.__raw('empresas', 'emp_manual_1');
+    assert.ok(empresa, 'empresa deve ter sido gravada');
+    assert.equal(empresa.dados_migrados, true);
+    assert.ok(Array.isArray(empresa.modulos_ativos), 'modulos_ativos do plano basico');
+    assert.ok(empresa.modulos_ativos.includes('os'));
+    assert.equal(empresa.feature_flags.whatsapp, true);
+});

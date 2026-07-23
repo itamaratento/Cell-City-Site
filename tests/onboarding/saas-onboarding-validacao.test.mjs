@@ -7,7 +7,7 @@ import {
   normalizarEmail,
   digitosTelefone,
 } from '../../CRM/shared/saas-onboarding-validacao.js';
-import { PLANOS } from '../../CRM/shared/saas-planos.js';
+import { PLANOS, provisionamentoPorPlano as provisionamentoClient } from '../../CRM/shared/saas-planos.js';
 import { provisionamentoPorPlano, PLANOS_VALIDOS } from '../../functions/lib/saas-planos.js';
 
 const PLANOS_IDS = Object.keys(PLANOS);
@@ -69,6 +69,16 @@ test('provisionamentoPorPlano: enterprise tem modulos null (todos)', () => {
 
 test('PLANOS_VALIDOS espelha catálogo client', () => {
   assert.deepEqual([...PLANOS_VALIDOS].sort(), [...PLANOS_IDS].sort());
+});
+
+test('provisionamentoPorPlano client espelha functions (Sprint 2)', () => {
+  for (const id of PLANOS_IDS) {
+    assert.deepEqual(
+      provisionamentoClient(id),
+      provisionamentoPorPlano(id),
+      `parity plano=${id}`,
+    );
+  }
 });
 
 test('saas-onboarding.js existe e importa dependências esperadas', () => {

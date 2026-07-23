@@ -2694,3 +2694,30 @@ atual de `develop`.
 | F1.1 auditor / F1.2 app-config / F1.4 páginas / A2 F1.3 auditor | ✅ já em `develop` |
 
 Relatório: `plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`.
+
+## §55 — Sprint 2 Cadastro de Empresas / Tenants (2026-07-23)
+
+**Numeração:** série operacional pós–Fundação (S1 Fundação → **S2 Cadastro**).
+Não confundir com a Sprint 2 SaaS legada (Portal split, já concluída) nem
+com a Sprint 2 RBAC (§7.2).
+
+**Problema:** o onboarding via CF (`saasOnboardingCriarEmpresa`) já gravava
+`modulos_ativos` / `feature_flags` a partir do plano; o CRUD manual do
+`saas-admin` gravava só metadados (nome, plano, status), deixando empresas
+criadas pelo operador sem o mesmo contrato de provisionamento. A listagem
+também lia a coleção `empresas` sem `limit`.
+
+**Entregas:**
+- `CRM/shared/saas-planos.js`: `featureFlagsObject` + `provisionamentoPorPlano`
+  (espelho de `functions/lib/saas-planos.js`).
+- `CRM/pages/saas-admin/saas-admin.js`: `salvar()` aplica provisionamento do
+  plano; `carregar()` usa `orderBy('nome_fantasia')` +
+  `limit(PAGINACAO.LIMITE_LISTA_PADRAO)`.
+- Testes: CRUD provisiona (`tests/rbac/saas-admin.test.mjs`); parity
+  client↔functions (`tests/onboarding/saas-onboarding-validacao.test.mjs`).
+
+**Fora de escopo:** redesign do wizard, usuários/convites, CNPJ/billing,
+PS5-003, BL-009/010, promoção a produção, e-mail de boas-vindas.
+
+Relatórios: `plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`,
+`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`.

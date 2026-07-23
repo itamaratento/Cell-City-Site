@@ -20,10 +20,12 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-23) — Continuidade: cota + BL-007
+## ⏳ ESTADO ATUAL (2026-07-23) — Sprint 2 Cadastro de Empresas CONCLUÍDA
 
-**Última entrega:** tetos `limit`/`limitTo` nos hotspots + config **nodejs22** (BL-007).  
-**Relatório:** [`plans/PACOTE_COTA_BL007_20260723.md`](plans/PACOTE_COTA_BL007_20260723.md)
+**Última entrega:** paridade de provisionamento plano→módulos/flags no CRUD `saas-admin` + limit na lista + docs/testes.  
+**Relatórios:** [`plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md) · [`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md)
+
+> **Numeração:** esta S2 (Cadastro Tenants) é da série operacional pós–Fundação. A S2 legada do SaaS no repo é o Portal split (já concluída).
 
 ### Inventário aberto (bloqueios / decisão)
 
@@ -32,12 +34,15 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 | BL-007 deploy CF | Config ✅ — falta **deploy** Functions para runtime 22 em PROD/DEV |
 | **BL-009** Storage/Blaze | ⛔ bloqueio: decisão de custo do dono |
 | **BL-010** bypass deploy key | ⛔ bloqueio: ação manual GitHub UI |
-| DT-14 paginação completa pages | residual (listarPaginado ainda pouco usado) |
-| BT-S1-05 arquivar `plans/AUDITORIA_*` | higiene documental |
+| E2E onboard→approve / emulador CF | residual de ambiente |
+| Próxima sprint (nova série) | S3 polish wizard / S4 usuários — **aguarda autorização** |
 
-### Critério desta continuidade
+---
 
-Pacotes da ordem sugerida pós–Sprint 1 (PR#1 → segurança → **cota** → **BL-007**) concluídos no código. BL-009/010 não são implementáveis sem decisão/ação externa.
+## Histórico — Continuidade pós–S1: cota + BL-007 (2026-07-23)
+
+**Entrega:** tetos `limit`/`limitTo` + config **nodejs22**.  
+**Relatório:** [`plans/PACOTE_COTA_BL007_20260723.md`](plans/PACOTE_COTA_BL007_20260723.md)
 
 ---
 
