@@ -20,22 +20,29 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-23) — Sprint 2 Cadastro de Empresas CONCLUÍDA
+## ⏳ ESTADO ATUAL (2026-07-25) — Sprint 3 Polish do Wizard CONCLUÍDA
 
-**Última entrega:** paridade de provisionamento plano→módulos/flags no CRUD `saas-admin` + limit na lista + docs/testes.  
-**Relatórios:** [`plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md) · [`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md)
+**Última entrega:** Enter avança passo, foco automático, região de erro acessível (`role="alert"`), indicador de passos com `aria-current`, `maxlength` nativo — wizard de onboarding sem novas funcionalidades de negócio.  
+**Relatório:** [`plans/SPRINT3_POLISH_WIZARD_20260725.md`](plans/SPRINT3_POLISH_WIZARD_20260725.md)
 
-> **Numeração:** esta S2 (Cadastro Tenants) é da série operacional pós–Fundação. A S2 legada do SaaS no repo é o Portal split (já concluída).
+> **Numeração:** esta S3 (Polish do Wizard) é da série operacional pós–Fundação (S1 Fundação → S2 Cadastro → **S3 Polish**). Não confundir com a Sprint 3 SaaS legada (Onboarding kickoff, §43) nem com a Sprint 3 RBAC (§7.3).
 
 ### Inventário aberto (bloqueios / decisão)
 
 | Item | Nota |
 |------|------|
-| BL-007 deploy CF | Config ✅ — falta **deploy** Functions para runtime 22 em PROD/DEV |
+| BL-007 deploy CF | Config ✅ — falta **deploy** Functions para runtime 22 em PROD/DEV (backup `_BACKUPS/19-PRE-BL007-DEPLOY-20260725/` de hoje indica preparo por outra sessão, não commitado) |
 | **BL-009** Storage/Blaze | ⛔ bloqueio: decisão de custo do dono |
 | **BL-010** bypass deploy key | ⛔ bloqueio: ação manual GitHub UI |
 | E2E onboard→approve / emulador CF | residual de ambiente |
-| Próxima sprint (nova série) | S3 polish wizard / S4 usuários — **aguarda autorização** |
+| Próxima sprint (nova série) | **S4 usuários/convites — aguarda autorização e levantamento de escopo** |
+
+---
+
+## Histórico — Sprint 2 Cadastro de Empresas CONCLUÍDA (2026-07-23)
+
+**Entrega:** paridade de provisionamento plano→módulos/flags no CRUD `saas-admin` + limit na lista + docs/testes.  
+**Relatórios:** [`plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md) · [`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md)
 
 ---
 

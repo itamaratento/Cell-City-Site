@@ -2721,3 +2721,38 @@ PS5-003, BL-009/010, promoção a produção, e-mail de boas-vindas.
 
 Relatórios: `plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`,
 `plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`.
+
+## §56 — Sprint 3 Polish do Wizard de Onboarding (2026-07-25)
+
+**Numeração:** série operacional pós–Fundação (S1 Fundação → S2 Cadastro →
+**S3 Polish do Wizard**). Não confundir com a Sprint 3 SaaS legada (Onboarding
+kickoff, §43) nem com a Sprint 3 RBAC (§7.3).
+
+**Escopo:** item "redesign do wizard" explicitamente deixado fora da Sprint 2
+(§55 acima) — só UX/acessibilidade do wizard existente, sem novas
+funcionalidades de negócio.
+
+**Entregas:**
+- `CRM/pages/saas-onboarding/saas-onboarding.js`: Enter no teclado avança o
+  passo atual (`keydown` isolado, sem alterar os `onclick` existentes); foco
+  automático no primeiro campo ao carregar e a cada `irPara(step)`; foco
+  automático na região de erro; `aria-current`/`aria-valuenow`/`aria-label`
+  dinâmicos no indicador de passos.
+- `CRM/pages/saas-onboarding/index.html`: `role="alert"` + `aria-live` +
+  `tabindex="-1"` em `#s-erro`; `role="progressbar"` no indicador; `maxlength`
+  nativo alinhado aos limites já validados em `saas-onboarding-validacao.js`
+  (nome/responsável 80, e-mail 120).
+- Teste de UI do wizard (jsdom) — inexistente antes: `tests/onboarding/saas-onboarding-wizard.test.mjs`
+  (10/10), com `package.json`/jsdom escopado ao diretório (mesmo padrão de
+  `tests/rbac/`/`tests/storage-rules/`).
+
+**Fora de escopo (deliberado):** usuários/convites, CNPJ/billing, e-mail de
+boas-vindas, máscara de digitação no campo WhatsApp (avaliada e descartada por
+risco desproporcional).
+
+**Testes:** `tests/onboarding/saas-onboarding-wizard.test.mjs` (10/10, novo);
+`tests/onboarding/saas-onboarding-validacao.test.mjs` (11/11); integridade +
+segurança + cota (34/34); RBAC (182/182); Kernel (27/27); `auditar-arquitetura`
+🟢 íntegra. Zero regressão.
+
+Relatório: `plans/SPRINT3_POLISH_WIZARD_20260725.md`.

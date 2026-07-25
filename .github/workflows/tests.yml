@@ -133,6 +133,14 @@ jobs:
       - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
         run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs
 
+      - name: Instalar dependências (tests/onboarding/)
+        run: npm ci
+        working-directory: tests/onboarding
+
+      - name: Testes de UI do wizard de onboarding SaaS (jsdom — Sprint 3 Polish)
+        run: node --test saas-onboarding-wizard.test.mjs
+        working-directory: tests/onboarding
+
       - name: Validação de infraestrutura app-config
         run: npm run validar-infra-app-config
 
