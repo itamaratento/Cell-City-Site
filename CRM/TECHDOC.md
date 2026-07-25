@@ -2756,3 +2756,24 @@ segurança + cota (34/34); RBAC (182/182); Kernel (27/27); `auditar-arquitetura`
 🟢 íntegra. Zero regressão.
 
 Relatório: `plans/SPRINT3_POLISH_WIZARD_20260725.md`.
+
+## §57 — BL-007 Deploy Cloud Functions Node.js 22 (2026-07-25)
+
+**Contexto:** a config (`functions/package.json` engines 22, `firebase.json`
+runtime `nodejs22`, CI Node 22) já estava em `develop` desde o pacote
+cota+BL-007 (`9beab31`), mas o runtime efetivo em nuvem permanecia
+`nodejs20` até o redeploy.
+
+**Execução autorizada:**
+1. Deploy DEV (`cellcity-crm-dev`) — 16/16 Gen2 → Node.js 22.
+2. Smoke DEV (`portalObterNomeCliente` 200, `consultarOSPublica` 404 esperado,
+   `portalListarHorariosOcupados` 200).
+3. Deploy PROD (`cellcity-crm`) — 16/16 Gen2 → Node.js 22.
+4. Smoke PROD — mesmos resultados; amostra `gcloud describe` confirma
+   `buildConfig.runtime=nodejs22` e `state=ACTIVE`.
+
+**Residual:** SA de produção sem permissão de Cloud Logging (smoke HTTP
+substituiu a validação por logs). Bump de `firebase-functions` **não** feito
+(aviso do CLI; fora do escopo mínimo).
+
+Relatório: `plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`.

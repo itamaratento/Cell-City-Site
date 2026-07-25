@@ -20,22 +20,28 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-25) — Sprint 3 Polish do Wizard CONCLUÍDA
+## ⏳ ESTADO ATUAL (2026-07-25) — BL-007 deploy Node.js 22 CONCLUÍDO
 
-**Última entrega:** Enter avança passo, foco automático, região de erro acessível (`role="alert"`), indicador de passos com `aria-current`, `maxlength` nativo — wizard de onboarding sem novas funcionalidades de negócio.  
-**Relatório:** [`plans/SPRINT3_POLISH_WIZARD_20260725.md`](plans/SPRINT3_POLISH_WIZARD_20260725.md)
-
-> **Numeração:** esta S3 (Polish do Wizard) é da série operacional pós–Fundação (S1 Fundação → S2 Cadastro → **S3 Polish**). Não confundir com a Sprint 3 SaaS legada (Onboarding kickoff, §43) nem com a Sprint 3 RBAC (§7.3).
+**Última entrega:** 16 Cloud Functions republicadas em **DEV** (`cellcity-crm-dev`) e **PROD** (`cellcity-crm`) com runtime **nodejs22**; smoke HTTP OK.  
+**Relatório:** [`plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`](plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md)
 
 ### Inventário aberto (bloqueios / decisão)
 
 | Item | Nota |
 |------|------|
-| BL-007 deploy CF | Config ✅ — falta **deploy** Functions para runtime 22 em PROD/DEV (backup `_BACKUPS/19-PRE-BL007-DEPLOY-20260725/` de hoje indica preparo por outra sessão, não commitado) |
+| **BL-007** nodejs22 | ✅ config + **deploy DEV/PROD** 2026-07-25 |
 | **BL-009** Storage/Blaze | ⛔ bloqueio: decisão de custo do dono |
 | **BL-010** bypass deploy key | ⛔ bloqueio: ação manual GitHub UI |
 | E2E onboard→approve / emulador CF | residual de ambiente |
+| IAM Logging SA prod | residual: SA sem `logging.viewer` (smoke HTTP cobriu) |
 | Próxima sprint (nova série) | **S4 usuários/convites — aguarda autorização e levantamento de escopo** |
+
+---
+
+## Histórico — Sprint 3 Polish do Wizard CONCLUÍDA (2026-07-25)
+
+**Entrega:** Enter avança passo, foco automático, região de erro acessível, `aria-current`, `maxlength` nativo.  
+**Relatório:** [`plans/SPRINT3_POLISH_WIZARD_20260725.md`](plans/SPRINT3_POLISH_WIZARD_20260725.md)
 
 ---
 

@@ -23,7 +23,9 @@ Constante: `PAGINACAO.LIMITE_LISTA_PADRAO` (200) de `app-config.js`.
 | `firebase.json` runtime | nodejs20 | **nodejs22** |
 | `.github/workflows/tests.yml` | Node 20 | **Node 22** |
 
-**Deploy:** o runtime em produção só muda no próximo deploy de Functions (CI/pipeline). Código/config prontos.
+**Deploy:** ✅ concluído em 2026-07-25 (DEV + PROD) — ver
+[`plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`](BL007_DEPLOY_ENCERRAMENTO_20260725.md).
+Config estava pronta desde este pacote; o runtime em nuvem só mudou no redeploy.
 
 ## Bloqueios objetivos (não executáveis aqui)
 
