@@ -2806,3 +2806,8 @@ F3 UI admin → F4 página aceite → F5 homologação/docs. Exigem autorizaçã
 explícita (Rules e Cloud Functions são módulos críticos).
 
 Plano completo: `plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`.
+
+**Encerramento F0 (2026-07-27):** documentação publicada em `develop`
+(`121b2e7`); CI Testes Automatizados + Deploy Pages ✅. Estado operacional:
+*Fase 0 concluída e publicada; implementação pendente de autorização.*
+Fases F1–F5 bloqueadas até autorização específica.

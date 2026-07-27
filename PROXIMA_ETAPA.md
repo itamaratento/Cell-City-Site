@@ -20,21 +20,22 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4 FASE 0 APROVADA (sem implementação)
+## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4: Fase 0 concluída e publicada; implementação pendente de autorização
 
-**Última atividade:** decisões de produto F0 registradas (convite por link+token; sem senha temp; TTL 7d; reenvio invalida; auditoria).  
+**Última atividade:** documentação F0 publicada em `origin/develop` (`121b2e7`); CI Testes + Pages ✅.  
 **Plano:** [`plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`](plans/SPRINT4_USUARIOS_CONVITES_PLANO.md)  
 **Pareceres:** [`BL009`](plans/BL009_PARECER_TECNICO_20260727.md) · [`BL010`](plans/BL010_CHECKLIST_VALIDACAO_20260727.md)
 
-**Baseline:** develop estável · **código de produto não alterado nesta fase**
+**Estado S4:** **Fase 0 concluída e publicada; implementação pendente de autorização.**  
+F1–F5 permanecem **bloqueadas** até autorização específica (Rules / CF / UI / aceite / homologação).
 
-### Próximo gate
+### Próximo gate (bloqueado)
 
 | Item | Nota |
 |------|------|
-| **S4 F1** Rules + índices | ⏳ aguarda autorização explícita |
-| **S4 F2** Cloud Functions | ⏳ aguarda autorização explícita |
-| **S4 F3–F5** UI + aceite + docs | após F1/F2 |
+| **S4 F1** Rules + índices | ⛔ aguarda autorização explícita |
+| **S4 F2** Cloud Functions | ⛔ aguarda autorização explícita |
+| **S4 F3–F5** UI + aceite + docs | ⛔ após F1/F2 |
 
 ### Inventário aberto (paralelo)
 
