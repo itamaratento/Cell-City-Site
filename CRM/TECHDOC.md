@@ -2811,3 +2811,25 @@ Plano completo: `plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`.
 (`121b2e7`); CI Testes Automatizados + Deploy Pages ✅. Estado operacional:
 *Fase 0 concluída e publicada; implementação pendente de autorização.*
 Fases F1–F5 bloqueadas até autorização específica.
+
+## §59 — Sprint 4 Fase 1 · Rules + Índices de Convites (2026-07-27)
+
+**Status:** implementado no repositório (sem deploy de Rules/índices nesta
+sessão — publicação em nuvem exige autorização explícita).
+
+**Rules (`CRM/firestore.rules`):** novo `match /convites/{conviteId}`:
+- `read`: autenticado + `temAcessoLiberado` + (`master_admin` **ou** `admin`
+  com `empresa_id` do recurso igual ao do usuário);
+- `create` / `update` / `delete`: `false` (somente Admin SDK / Cloud Functions).
+
+**Índices (`CRM/firestore.indexes.json`):**
+- `empresa_id` + `status` + `criado_em` DESC (lista admin);
+- `empresa_id` + `email_normalizado` + `status` (dedupe pendente).
+
+**Testes:** `tests/firestore-rules/convites.test.mjs` (17 casos) + regressão
+BL-006; suíte Rules completa 138/138 no emulador.
+
+**Não alterado:** Kernel, Cloud Functions, UI, `usuarios/{uid}` (BL-006),
+fluxo saas-admin.
+
+Relatório: `plans/SPRINT4_FASE1_RULES_INDEXES_20260727.md`.

@@ -149,6 +149,42 @@
       ]
     },
     {
+      "collectionGroup": "convites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "email_normalizado",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "convites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criado_em",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "comandos",
       "queryScope": "COLLECTION",
       "fields": [
