@@ -20,21 +20,33 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-25) — BL-007 deploy Node.js 22 CONCLUÍDO
+## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4 PLANEJADA (sem implementação)
 
-**Última entrega:** 16 Cloud Functions republicadas em **DEV** (`cellcity-crm-dev`) e **PROD** (`cellcity-crm`) com runtime **nodejs22**; smoke HTTP OK.  
-**Relatório:** [`plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`](plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md)
+**Última atividade:** levantamento técnico S4 usuários/convites + pareceres BL-009/BL-010 (read-only / docs).  
+**Plano S4:** [`plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`](plans/SPRINT4_USUARIOS_CONVITES_PLANO.md)  
+**BL-009 parecer:** [`plans/BL009_PARECER_TECNICO_20260727.md`](plans/BL009_PARECER_TECNICO_20260727.md)  
+**BL-010 checklist:** [`plans/BL010_CHECKLIST_VALIDACAO_20260727.md`](plans/BL010_CHECKLIST_VALIDACAO_20260727.md)
 
-### Inventário aberto (bloqueios / decisão)
+**Baseline:** `9b11e82` · CI Testes + Pages ✅ · **nenhuma implementação de S4 iniciada**
+
+### Inventário aberto
 
 | Item | Nota |
 |------|------|
-| **BL-007** nodejs22 | ✅ config + **deploy DEV/PROD** 2026-07-25 |
-| **BL-009** Storage/Blaze | ⛔ bloqueio: decisão de custo do dono |
-| **BL-010** bypass deploy key | ⛔ bloqueio: ação manual GitHub UI |
-| E2E onboard→approve / emulador CF | residual de ambiente |
-| IAM Logging SA prod | residual: SA sem `logging.viewer` (smoke HTTP cobriu) |
-| Próxima sprint (nova série) | **S4 usuários/convites — aguarda autorização e levantamento de escopo** |
+| **Sprint 4** usuários/convites | 📋 plano pronto — **aguarda F0 (decisões produto) + auth Rules/CF** |
+| **BL-007** nodejs22 | ✅ deploy DEV/PROD |
+| **BL-009** Storage/Blaze | ⛔ decisão de custo — parecer 2026-07-27 |
+| **BL-010** bypass deploy key | ⛔ ação manual GitHub UI — checklist validado em docs |
+| E2E / emulador CF | residual de ambiente |
+| IAM Logging SA prod | residual opcional |
+| `CRM/git-info.json` local | artefato regenerável (sujo no working tree; não é conflito) |
+
+---
+
+## Histórico — BL-007 deploy Node.js 22 CONCLUÍDO (2026-07-25)
+
+**Entrega:** 16 Cloud Functions DEV+PROD em **nodejs22**; smoke HTTP OK.  
+**Relatório:** [`plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`](plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md)
 
 ---
 
