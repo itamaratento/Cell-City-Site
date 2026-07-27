@@ -2777,3 +2777,32 @@ substituiu a validação por logs). Bump de `firebase-functions` **não** feito
 (aviso do CLI; fora do escopo mínimo).
 
 Relatório: `plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`.
+
+## §58 — Sprint 4 Usuários e Convites · Fase 0 (2026-07-27)
+
+**Numeração:** série operacional (S1 Fundação → S2 Cadastro → S3 Polish →
+**S4 Usuários/Convites**). Não confundir com a Sprint 4 SaaS legada
+(aprovação de empresas, §45) nem com a Sprint 4 RBAC Financeiro (§7.4).
+
+**Status:** Fase 0 (arquitetura e escopo) **aprovada** — **sem implementação
+de código** nesta seção.
+
+**Decisões de produto (F0):**
+- Remover criação de usuário com senha temporária no módulo tenant.
+- Convite por **link único + token** (uso único; TTL **7 dias**).
+- Reenvio gera novo token e invalida o anterior.
+- Não enviar senhas por e-mail; convidado define a própria senha no cadastro.
+- Somente Owner/Admin (kernel `admin` / `master_admin`) convida.
+- Perfil RBAC aplicado **somente após** conclusão do cadastro/aceite.
+- Auditoria de todos os eventos de convite.
+
+**Arquitetura (resumo):** coleção `convites` (token armazenado como hash);
+mutações e aceite via Cloud Functions (Admin SDK); client não escreve
+campos privilegiados em `usuarios` (preserva BL-006); MVP entrega o link
+na UI (copiar) — e-mail automático do link fora do escopo mínimo.
+
+**Fases seguintes (não iniciadas):** F1 Rules+índices → F2 Functions →
+F3 UI admin → F4 página aceite → F5 homologação/docs. Exigem autorização
+explícita (Rules e Cloud Functions são módulos críticos).
+
+Plano completo: `plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`.

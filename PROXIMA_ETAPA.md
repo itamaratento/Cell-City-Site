@@ -20,26 +20,29 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4 PLANEJADA (sem implementação)
+## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4 FASE 0 APROVADA (sem implementação)
 
-**Última atividade:** levantamento técnico S4 usuários/convites + pareceres BL-009/BL-010 (read-only / docs).  
-**Plano S4:** [`plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`](plans/SPRINT4_USUARIOS_CONVITES_PLANO.md)  
-**BL-009 parecer:** [`plans/BL009_PARECER_TECNICO_20260727.md`](plans/BL009_PARECER_TECNICO_20260727.md)  
-**BL-010 checklist:** [`plans/BL010_CHECKLIST_VALIDACAO_20260727.md`](plans/BL010_CHECKLIST_VALIDACAO_20260727.md)
+**Última atividade:** decisões de produto F0 registradas (convite por link+token; sem senha temp; TTL 7d; reenvio invalida; auditoria).  
+**Plano:** [`plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`](plans/SPRINT4_USUARIOS_CONVITES_PLANO.md)  
+**Pareceres:** [`BL009`](plans/BL009_PARECER_TECNICO_20260727.md) · [`BL010`](plans/BL010_CHECKLIST_VALIDACAO_20260727.md)
 
-**Baseline:** `9b11e82` · CI Testes + Pages ✅ · **nenhuma implementação de S4 iniciada**
+**Baseline:** develop estável · **código de produto não alterado nesta fase**
 
-### Inventário aberto
+### Próximo gate
 
 | Item | Nota |
 |------|------|
-| **Sprint 4** usuários/convites | 📋 plano pronto — **aguarda F0 (decisões produto) + auth Rules/CF** |
-| **BL-007** nodejs22 | ✅ deploy DEV/PROD |
-| **BL-009** Storage/Blaze | ⛔ decisão de custo — parecer 2026-07-27 |
-| **BL-010** bypass deploy key | ⛔ ação manual GitHub UI — checklist validado em docs |
-| E2E / emulador CF | residual de ambiente |
-| IAM Logging SA prod | residual opcional |
-| `CRM/git-info.json` local | artefato regenerável (sujo no working tree; não é conflito) |
+| **S4 F1** Rules + índices | ⏳ aguarda autorização explícita |
+| **S4 F2** Cloud Functions | ⏳ aguarda autorização explícita |
+| **S4 F3–F5** UI + aceite + docs | após F1/F2 |
+
+### Inventário aberto (paralelo)
+
+| Item | Nota |
+|------|------|
+| **BL-007** | ✅ |
+| **BL-009** Storage/Blaze | ⛔ decisão de custo |
+| **BL-010** deploy key | ⛔ ação manual GitHub UI |
 
 ---
 
