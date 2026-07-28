@@ -20,22 +20,21 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ⏳ ESTADO ATUAL (2026-07-27) — Sprint 4 Fase 1 (Rules+índices) IMPLEMENTADA; F2+ pendente de autorização
+## ⏳ ESTADO ATUAL (2026-07-28) — Sprint 4 F1 publicada em nuvem (Rules+índices); F2 pendente
 
-**Última atividade:** Rules `convites` + 2 índices + testes emulador 138/138.  
-**Relatório F1:** [`plans/SPRINT4_FASE1_RULES_INDEXES_20260727.md`](plans/SPRINT4_FASE1_RULES_INDEXES_20260727.md)  
-**Plano F0:** [`plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`](plans/SPRINT4_USUARIOS_CONVITES_PLANO.md)
+**Última atividade:** deploy Rules+índices `convites` em **DEV** e **PROD**.  
+**Relatório:** [`plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md`](plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md)
 
-**Estado S4:** Fase 0 publicada · **Fase 1 implementada no repo** · deploy Rules/índices em nuvem e F2–F5 **aguardam autorização**.
+**Estado S4:** F0 ✅ · F1 código ✅ (`df7e48b`) · **F1 nuvem Rules/índices ✅** (PROD: 1 índice ainda CREATING) · **F2–F5 ⛔**
 
 ### Gates
 
 | Item | Nota |
 |------|------|
-| **S4 F1** Rules + índices (código) | ✅ |
-| **Deploy Rules/indexes DEV→PROD** | ⏳ aguarda autorização de publicação |
+| **S4 F1** código | ✅ `df7e48b` |
+| **Deploy Rules/indexes DEV** | ✅ |
+| **Deploy Rules/indexes PROD** | ✅ Rules; índices 1 READY + 1 CREATING |
 | **S4 F2** Cloud Functions | ⛔ aguarda autorização explícita |
-| **S4 F3–F5** | ⛔ após F2 |
 
 ### Inventário aberto (paralelo)
 
@@ -47,9 +46,9 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## Histórico — Sprint 4 Fase 0 concluída e publicada (2026-07-27)
+## Histórico — Sprint 4 Fase 1 código publicado (2026-07-27)
 
-Documentação F0 em `121b2e7` · CI verde · estado “implementação pendente de autorização”.
+`df7e48b` · CI verde · sem deploy nuvem naquele passo.
 
 ---
 

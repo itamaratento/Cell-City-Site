@@ -2833,3 +2833,8 @@ BL-006; suíte Rules completa 138/138 no emulador.
 fluxo saas-admin.
 
 Relatório: `plans/SPRINT4_FASE1_RULES_INDEXES_20260727.md`.
+
+**Publicação em nuvem (2026-07-28):** Rules+índices deployados em
+`cellcity-crm-dev` e `cellcity-crm` (PROD via API REST — SA sem
+`firebase deploy :test`). Verificação byte-a-byte do release ativo com
+`match /convites`. Detalhe: `plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md`.
