@@ -76,6 +76,8 @@ export const dashboardEventsMixin = {
     if (!navEl) return;
 
     const ORDER_KEY = 'cc_sidebar_order';
+    // Home enxuta: os 7 primários ficam fixos no topo (ordem canônica).
+    const PRIMARIOS = ['os', 'caixa', 'estoque', 'compras', 'central-alertas', 'clientes', 'relatorios'];
 
     const saveOrder = () => {
       const sids = [...navEl.querySelectorAll('.sidebar-item[data-sid]')].map(el => el.dataset.sid);
@@ -83,12 +85,21 @@ export const dashboardEventsMixin = {
     };
 
     const restoreOrder = () => {
+      // Sempre reaplica os 7 primeiro (ignora ordem antiga que misturava tudo)
+      const toggle = document.getElementById('sidebar-mais-toggle');
+      const mais = document.getElementById('sidebar-mais-itens');
+      PRIMARIOS.forEach(sid => {
+        const el = navEl.querySelector(`.sidebar-item[data-sid="${sid}"]`);
+        if (el) navEl.insertBefore(el, toggle || mais || null);
+      });
+      if (toggle && mais) navEl.insertBefore(toggle, mais);
       try {
         const saved = JSON.parse(localStorage.getItem(ORDER_KEY) || '[]');
-        if (!saved.length) return;
-        saved.forEach(sid => {
-          const el = navEl.querySelector(`[data-sid="${sid}"]`);
-          if (el) navEl.appendChild(el);
+        if (!saved.length || !mais) return;
+        const resto = saved.filter(sid => !PRIMARIOS.includes(sid));
+        resto.forEach(sid => {
+          const el = mais.querySelector(`[data-sid="${sid}"]`) || navEl.querySelector(`[data-sid="${sid}"]`);
+          if (el && mais.contains(el)) mais.appendChild(el);
         });
       } catch (_) {}
     };

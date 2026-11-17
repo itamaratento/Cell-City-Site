@@ -85,113 +85,123 @@
 
     <div class="sidebar-nav" id="sidebar-nav">
 
-      <a class="sidebar-item sidebar-item--os" href="../os/index.html" data-sid="os" data-tip="Ordem de Serviço" draggable="true">
+      <!-- 7 primários (mesma ordem da home) -->
+      <a class="sidebar-item sidebar-item--os" href="../os/index.html" data-sid="os" data-home-tier="primario" data-tip="Ordem de Serviço" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">📦</span>
         <span class="sidebar-label">OS</span>
       </a>
 
-      <a class="sidebar-item" href="../caixa/index.html" data-sid="caixa" data-tip="Caixa" draggable="true">
+      <a class="sidebar-item" href="../caixa/index.html" data-sid="caixa" data-home-tier="primario" data-tip="Caixa" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">💰</span>
         <span class="sidebar-label">Caixa</span>
       </a>
 
-      <a class="sidebar-item sidebar-item--new" href="../central-comandos/index.html" data-sid="central-comandos" data-tip="Central de Comandos" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">⚡</span>
-        <span class="sidebar-label">Central de Comandos</span>
-      </a>
-
-      <button class="sidebar-item sidebar-item--util" id="dock-notas" data-sid="notas" data-tip="Bloco de Notas" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">📋</span>
-        <span class="sidebar-label">Notas</span>
-      </button>
-
-      <a class="sidebar-item" href="../financeiro/index.html" data-sid="financeiro" data-tip="Financeiro" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">💹</span>
-        <span class="sidebar-label">Financeiro</span>
-      </a>
-
-      <a class="sidebar-item sidebar-item--new" href="../crm-comercial/index.html" data-sid="crm-comercial" data-tip="CRM Comercial" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">🎯</span>
-        <span class="sidebar-label">CRM Comercial</span>
-      </a>
-
-      <a class="sidebar-item" href="../clientes/index.html" data-sid="clientes" data-tip="Clientes" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">👥</span>
-        <span class="sidebar-label">Clientes</span>
-      </a>
-
-      <a class="sidebar-item" href="../estoque/index.html" data-sid="estoque" data-tip="Estoque" draggable="true">
+      <a class="sidebar-item" href="../estoque/index.html" data-sid="estoque" data-home-tier="primario" data-tip="Estoque" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">📱</span>
         <span class="sidebar-label">Estoque</span>
       </a>
 
-      <a class="sidebar-item sidebar-item--new" href="../compras/index.html" data-sid="compras" data-tip="Compras" draggable="true">
+      <a class="sidebar-item sidebar-item--new" href="../compras/index.html" data-sid="compras" data-home-tier="primario" data-tip="Compras" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">🛒</span>
         <span class="sidebar-label">Compras</span>
       </a>
 
-      <a class="sidebar-item" href="../fornecedor/index.html" data-sid="fornecedor" data-tip="Fornecedor" draggable="true">
+      <a class="sidebar-item" href="../central-alertas/index.html" data-sid="central-alertas" data-home-tier="primario" data-tip="Central de Alertas" draggable="true">
         <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">🏭</span>
-        <span class="sidebar-label">Fornecedor</span>
+        <span class="sidebar-icon">🔔</span>
+        <span class="sidebar-label">Central de Alertas</span>
       </a>
 
-      <a class="sidebar-item" href="../pos-venda/index.html" data-sid="pos-venda" data-tip="Pós-venda" draggable="true">
+      <a class="sidebar-item" href="../clientes/index.html" data-sid="clientes" data-home-tier="primario" data-tip="Clientes" draggable="true">
         <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">💝</span>
-        <span class="sidebar-label">Pós-venda</span>
+        <span class="sidebar-icon">👥</span>
+        <span class="sidebar-label">Clientes</span>
       </a>
 
-      <a class="sidebar-item" href="../config/index.html" data-sid="config" data-tip="Configurações" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">⚙️</span>
-        <span class="sidebar-label">Configurações</span>
-      </a>
-
-      <a class="sidebar-item" href="../relatorios/index.html" data-sid="relatorios" data-tip="Relatórios" draggable="true">
+      <a class="sidebar-item" href="../relatorios/index.html" data-sid="relatorios" data-home-tier="primario" data-tip="Relatórios" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">📊</span>
         <span class="sidebar-label">Relatórios</span>
       </a>
 
-      <a class="sidebar-item" href="../acaodasemana/index.html" data-sid="agenda" data-tip="Agenda" draggable="true">
+      <button type="button" class="sidebar-mais-toggle" id="sidebar-mais-toggle" title="Mais módulos" aria-expanded="false">
+        <span class="sidebar-icon">➕</span>
+        <span class="sidebar-label">Mais</span>
+      </button>
+
+      <div class="sidebar-mais-itens" id="sidebar-mais-itens" hidden>
+
+      <button class="sidebar-item sidebar-item--util" id="dock-notas" data-sid="notas" data-home-tier="mais" data-tip="Bloco de Notas" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">📋</span>
+        <span class="sidebar-label">Notas</span>
+      </button>
+
+      <a class="sidebar-item" href="../financeiro/index.html" data-sid="financeiro" data-home-tier="mais" data-tip="Financeiro" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">💹</span>
+        <span class="sidebar-label">Financeiro</span>
+      </a>
+
+      <a class="sidebar-item sidebar-item--new" href="../crm-comercial/index.html" data-sid="crm-comercial" data-home-tier="mais" data-tip="CRM Comercial" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">🎯</span>
+        <span class="sidebar-label">CRM Comercial</span>
+      </a>
+
+      <a class="sidebar-item sidebar-item--new" href="../central-comandos/index.html" data-sid="central-comandos" data-home-tier="mais" data-tip="Central de Comandos" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">⚡</span>
+        <span class="sidebar-label">Central de Comandos</span>
+      </a>
+
+      <a class="sidebar-item" href="../fornecedor/index.html" data-sid="fornecedor" data-home-tier="mais" data-tip="Fornecedor" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">🏭</span>
+        <span class="sidebar-label">Fornecedor</span>
+      </a>
+
+      <a class="sidebar-item" href="../pos-venda/index.html" data-sid="pos-venda" data-home-tier="mais" data-tip="Pós-venda" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">💝</span>
+        <span class="sidebar-label">Pós-venda</span>
+      </a>
+
+      <a class="sidebar-item" href="../config/index.html" data-sid="config" data-home-tier="mais" data-tip="Configurações" draggable="true">
+        <span class="drag-handle">⠿</span>
+        <span class="sidebar-icon">⚙️</span>
+        <span class="sidebar-label">Configurações</span>
+      </a>
+
+      <a class="sidebar-item" href="../acaodasemana/index.html" data-sid="agenda" data-home-tier="mais" data-tip="Agenda" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">📅</span>
         <span class="sidebar-label">Agenda</span>
       </a>
 
-      <a class="sidebar-item" href="../portal-tecnico/index.html" data-sid="portal-tecnico" data-tip="Portal Técnico" draggable="true">
+      <a class="sidebar-item" href="../portal-tecnico/index.html" data-sid="portal-tecnico" data-home-tier="mais" data-tip="Portal Técnico" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">🔓</span>
         <span class="sidebar-label">Portal Técnico</span>
       </a>
 
-      <a class="sidebar-item" href="../central-organizacao/index.html" data-sid="central-automacao" data-tip="Central de Automação" draggable="true">
+      <a class="sidebar-item" href="../central-organizacao/index.html" data-sid="central-automacao" data-home-tier="mais" data-tip="Central de Automação" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">⚡</span>
         <span class="sidebar-label">Central de Automação</span>
       </a>
 
-      <a class="sidebar-item" href="../portal-cliente/admin.html" data-sid="portal-cliente" data-tip="Portal do Cliente" draggable="true">
+      <a class="sidebar-item" href="../portal-cliente/admin.html" data-sid="portal-cliente" data-home-tier="mais" data-tip="Portal do Cliente" draggable="true">
         <span class="drag-handle">⠿</span>
         <span class="sidebar-icon">🔷</span>
         <span class="sidebar-label">Portal do Cliente</span>
       </a>
 
-      <a class="sidebar-item" href="../config/index.html" data-sid="config" data-tip="Configurações" draggable="true">
-        <span class="drag-handle">⠿</span>
-        <span class="sidebar-icon">⚙️</span>
-        <span class="sidebar-label">Configurações</span>
-      </a>
+      </div><!-- /sidebar-mais-itens -->
 
     </div><!-- /sidebar-nav -->
 
@@ -230,12 +240,11 @@
       </div>
     </section>
 
-    <!-- MÓDULOS PRINCIPAIS -->
-    <section class="modules-section">
-      <div class="modules-grid">
+    <!-- MÓDULOS — home enxuta: 7 em destaque; demais em Mais módulos (nada apagado) -->
+    <section class="modules-section" id="modules-section">
+      <div class="modules-grid modules-grid--primarios" id="modules-grid-primarios">
 
-        <!-- OS — destaque máximo -->
-        <div class="module-card" data-module="os">
+        <div class="module-card" data-module="os" data-home-tier="primario">
           <div class="module-icon">📦</div>
           <div class="module-info">
             <h3>Ordem de Serviço</h3>
@@ -243,7 +252,7 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="caixa">
+        <div class="module-card" data-module="caixa" data-home-tier="primario">
           <div class="module-icon">💰</div>
           <div class="module-info">
             <h3>Caixa</h3>
@@ -251,39 +260,7 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="central-alertas">
-          <div class="module-icon">🔔</div>
-          <div class="module-info">
-            <h3>Central de Alertas</h3>
-            <p class="module-sub" id="alertas-card-sub">Sem pendências</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="central-comandos">
-          <div class="module-icon">⚡</div>
-          <div class="module-info">
-            <h3>Central de Comandos</h3>
-            <p class="module-sub">Ferramentas e atalhos</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="crm-comercial">
-          <div class="module-icon">🎯</div>
-          <div class="module-info">
-            <h3>CRM Comercial</h3>
-            <p class="module-sub">Leads, orçamentos e oportunidades</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="clientes">
-          <div class="module-icon">👥</div>
-          <div class="module-info">
-            <h3>Clientes</h3>
-            <p class="module-sub">Base de clientes</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="estoque">
+        <div class="module-card" data-module="estoque" data-home-tier="primario">
           <div class="module-icon">📱</div>
           <div class="module-info">
             <h3>Estoque</h3>
@@ -291,16 +268,7 @@
           </div>
         </div>
 
-        <!-- Linha 2 -->
-        <div class="module-card" data-module="financeiro">
-          <div class="module-icon">💹</div>
-          <div class="module-info">
-            <h3>Financeiro</h3>
-            <p class="module-sub">Controle financeiro</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="compras">
+        <div class="module-card" data-module="compras" data-home-tier="primario">
           <div class="module-icon">🛒</div>
           <div class="module-info">
             <h3>Compras</h3>
@@ -308,81 +276,23 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="fornecedor">
-          <div class="module-icon">🏭</div>
+        <div class="module-card" data-module="central-alertas" data-home-tier="primario">
+          <div class="module-icon">🔔</div>
           <div class="module-info">
-            <h3>Fornecedor</h3>
-            <p class="module-sub">Gestão de fornecedores</p>
+            <h3>Central de Alertas</h3>
+            <p class="module-sub" id="alertas-card-sub">Sem pendências</p>
           </div>
         </div>
 
-        <div class="module-card" data-module="pos-venda">
-          <div class="module-icon">💝</div>
+        <div class="module-card" data-module="clientes" data-home-tier="primario">
+          <div class="module-icon">👥</div>
           <div class="module-info">
-            <h3>Pós-venda</h3>
-            <p class="module-sub">Fidelização &amp; Garantia</p>
+            <h3>Clientes</h3>
+            <p class="module-sub">Base de clientes</p>
           </div>
         </div>
 
-        <div class="module-card" data-module="config">
-          <div class="module-icon">⚙️</div>
-          <div class="module-info">
-            <h3>Configurações</h3>
-            <p class="module-sub">PIN, conta e sincronização</p>
-          </div>
-        </div>
-
-        <!-- Linha 3 -->
-        <div class="module-card" data-module="contas">
-          <div class="module-icon">📇</div>
-          <div class="module-info">
-            <h3>Contas &amp; Números</h3>
-            <p class="module-sub">Chips, e-mails, perfis e contas</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="portal-cliente">
-          <div class="module-icon">🔷</div>
-          <div class="module-info">
-            <h3>Portal do Cliente</h3>
-            <p class="module-sub">Acesso do cliente</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="portal-tecnico">
-          <div class="module-icon">🔓</div>
-          <div class="module-info">
-            <h3>Portal Técnico</h3>
-            <p class="module-sub">FRP, firmwares e soluções</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="central-organizacao">
-          <div class="module-icon">⚡</div>
-          <div class="module-info">
-            <h3>Central de Automação</h3>
-            <p class="module-sub">WhatsApp, ferramentas &amp; histórico</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="central-informacoes">
-          <div class="module-icon">📚</div>
-          <div class="module-info">
-            <h3>Central de Informações</h3>
-            <p class="module-sub">Comandos, sites, senhas e mais</p>
-          </div>
-        </div>
-
-        <!-- Linha 4 -->
-        <div class="module-card" data-module="catalogo">
-          <div class="module-icon">🛍️</div>
-          <div class="module-info">
-            <h3>Catálogo</h3>
-            <p class="module-sub">Produtos e vendas via WhatsApp</p>
-          </div>
-        </div>
-
-        <div class="module-card" data-module="relatorios">
+        <div class="module-card" data-module="relatorios" data-home-tier="primario">
           <div class="module-icon">📊</div>
           <div class="module-info">
             <h3>Relatórios</h3>
@@ -390,7 +300,109 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="diario">
+      </div><!-- /modules-grid-primarios -->
+
+      <details class="mais-modulos" id="mais-modulos">
+        <summary class="mais-modulos-summary">➕ Mais módulos</summary>
+        <div class="modules-grid modules-grid--mais" id="modules-grid-mais">
+
+        <div class="module-card" data-module="financeiro" data-home-tier="mais">
+          <div class="module-icon">💹</div>
+          <div class="module-info">
+            <h3>Financeiro</h3>
+            <p class="module-sub">Controle financeiro</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="fornecedor" data-home-tier="mais">
+          <div class="module-icon">🏭</div>
+          <div class="module-info">
+            <h3>Fornecedor</h3>
+            <p class="module-sub">Gestão de fornecedores</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="pos-venda" data-home-tier="mais">
+          <div class="module-icon">💝</div>
+          <div class="module-info">
+            <h3>Pós-venda</h3>
+            <p class="module-sub">Fidelização &amp; Garantia</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="config" data-home-tier="mais">
+          <div class="module-icon">⚙️</div>
+          <div class="module-info">
+            <h3>Configurações</h3>
+            <p class="module-sub">PIN, conta e sincronização</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="contas" data-home-tier="mais">
+          <div class="module-icon">📇</div>
+          <div class="module-info">
+            <h3>Contas &amp; Números</h3>
+            <p class="module-sub">Chips, e-mails, perfis e contas</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="portal-cliente" data-home-tier="mais">
+          <div class="module-icon">🔷</div>
+          <div class="module-info">
+            <h3>Portal do Cliente</h3>
+            <p class="module-sub">Acesso do cliente</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="portal-tecnico" data-home-tier="mais">
+          <div class="module-icon">🔓</div>
+          <div class="module-info">
+            <h3>Portal Técnico</h3>
+            <p class="module-sub">FRP, firmwares e soluções</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="central-organizacao" data-home-tier="mais">
+          <div class="module-icon">⚡</div>
+          <div class="module-info">
+            <h3>Central de Automação</h3>
+            <p class="module-sub">WhatsApp, ferramentas &amp; histórico</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="central-comandos" data-home-tier="mais">
+          <div class="module-icon">⚡</div>
+          <div class="module-info">
+            <h3>Central de Comandos</h3>
+            <p class="module-sub">Ferramentas e atalhos</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="central-informacoes" data-home-tier="mais">
+          <div class="module-icon">📚</div>
+          <div class="module-info">
+            <h3>Central de Informações</h3>
+            <p class="module-sub">Comandos, sites, senhas e mais</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="catalogo" data-home-tier="mais">
+          <div class="module-icon">🛍️</div>
+          <div class="module-info">
+            <h3>Catálogo</h3>
+            <p class="module-sub">Produtos e vendas via WhatsApp</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="crm-comercial" data-home-tier="mais">
+          <div class="module-icon">🎯</div>
+          <div class="module-info">
+            <h3>CRM Comercial</h3>
+            <p class="module-sub">Leads, orçamentos e oportunidades</p>
+          </div>
+        </div>
+
+        <div class="module-card" data-module="diario" data-home-tier="mais">
           <div class="module-icon">📔</div>
           <div class="module-info">
             <h3>Diário</h3>
@@ -398,7 +410,7 @@
           </div>
         </div>
 
-        <div class="module-card" data-module="auditoria">
+        <div class="module-card" data-module="auditoria" data-home-tier="mais">
           <div class="module-icon">🔍</div>
           <div class="module-info">
             <h3>Auditoria</h3>
@@ -406,8 +418,7 @@
           </div>
         </div>
 
-        <!-- Autoatendimento — mantido para compatibilidade -->
-        <div class="module-card" data-module="autoatendimento">
+        <div class="module-card" data-module="autoatendimento" data-home-tier="mais">
           <div class="module-icon">🤖</div>
           <div class="module-info">
             <h3>Autoatendimento</h3>
@@ -415,8 +426,7 @@
           </div>
         </div>
 
-        <!-- Ação da Semana / Agenda — card esperado por dashboard-alertas.js e dashboard.css -->
-        <div class="module-card" data-module="acaodasemana">
+        <div class="module-card" data-module="acaodasemana" data-home-tier="mais">
           <div class="module-icon">📅</div>
           <div class="module-info">
             <h3>Agenda</h3>
@@ -424,7 +434,8 @@
           </div>
         </div>
 
-      </div><!-- /modules-grid -->
+        </div><!-- /modules-grid-mais -->
+      </details>
     </section>
 
   </main><!-- /main-content -->

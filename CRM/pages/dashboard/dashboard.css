@@ -2753,13 +2753,59 @@ body {
 .modules-section {
   flex: 1;
 }
-/* Grid 5 colunas */
+/* Grid de módulos — home enxuta: 4 cols → 2 linhas nos 7 primários (~1366px) */
 .modules-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   align-items: start;
 }
+.modules-grid--primarios {
+  grid-template-columns: repeat(4, 1fr);
+}
+.modules-grid--primarios .module-card {
+  min-height: 168px;
+}
+.modules-grid--mais {
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 12px;
+}
+.mais-modulos {
+  margin-top: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: var(--bg-surface);
+  padding: 0 14px 14px;
+}
+.mais-modulos-summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+  padding: 14px 4px;
+  user-select: none;
+}
+.mais-modulos-summary::-webkit-details-marker { display: none; }
+.mais-modulos[open] .mais-modulos-summary { color: var(--cell-green, #00C853); }
+
+.sidebar-mais-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #9ca3af);
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+.sidebar-mais-toggle:hover { background: rgba(255,255,255,0.04); color: var(--text-primary, #fff); }
+.sidebar-mais-itens { display: flex; flex-direction: column; gap: 2px; }
+.sidebar-mais-itens[hidden] { display: none !important; }
 
 /* Cards da nova grade */
 .modules-grid .module-card {
@@ -2825,12 +2871,14 @@ body {
   right: 10px;
 }
 
-/* ===== MODO COMPACTO V2 ===== */
-.modo-compacto .modules-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; }
-.modo-compacto .modules-grid .module-card { min-height: 100px; padding: 12px 8px; }
-.modo-compacto .modules-grid .module-card .module-icon { font-size: 22px; }
-.modo-compacto .modules-grid .module-card .module-info h3 { font-size: 12px; }
-.modo-compacto .modules-grid .module-card .module-sub { display: none; }
+/* ===== MODO COMPACTO V2 — home enxuta mantém 4 cols / cards maiores ===== */
+.modo-compacto .modules-grid { grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.modo-compacto .modules-grid--primarios .module-card { min-height: 150px; padding: 18px 12px; }
+.modo-compacto .modules-grid .module-card .module-icon { font-size: 28px; }
+.modo-compacto .modules-grid .module-card .module-info h3 { font-size: 14px; }
+.modo-compacto .modules-grid--primarios .module-card .module-sub { display: block; }
+.modo-compacto .modules-grid--mais .module-card { min-height: 110px; padding: 12px 8px; }
+.modo-compacto .modules-grid--mais .module-card .module-sub { display: none; }
 
 /* ===== RESPONSIVO V2 ===== */
 @media (max-width: 1200px) {

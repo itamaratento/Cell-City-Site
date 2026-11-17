@@ -1,4 +1,4 @@
-// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16)
+// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump home enxuta)
 // SHELL regenerado a partir do fechamento transitivo REAL de imports das
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
