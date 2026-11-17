@@ -23,7 +23,7 @@ export function msgFinalizadoPadrao() {
     '🔗\n' +
     PORTAL_CLIENTE_URL +
     '\n\n' +
-    '📱 Para acessar use o telefone da OS e o código de 4 dígitos (últimos 4 do CPF ou o código informado pela loja).\n\n' +
+    '📱 Para acessar utilize o mesmo telefone informado na Ordem de Serviço.\n\n' +
     '━━━━━━━━━━━━━━━━━━\n\n' +
     'Obrigado por escolher a Cell City Informática.\n\n' +
     'Estamos à disposição sempre que precisar.\n\n' +

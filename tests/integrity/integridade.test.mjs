@@ -179,15 +179,11 @@ test('garantia.html: campos públicos (clientName/phone/cpfMascarado/model/defec
 // tests/rbac/os.test.mjs (lado do CRM, com mutation test provado); o lado
 // do portal.js foi verificado manualmente por rastreamento de código
 // (reaproveita doLogin()/_autenticarComDigits() já testados em produção).
-test('portal.js: link ?tel=&os= pré-preenche login e exige código (sem auto-login só com telefone)', () => {
+test('portal.js: auto-login por ?tel= existe e roteia para os-detalhe', () => {
     const src = readPortal();
-    assert.match(src, /_autenticarComDigits\(digits,\s*codigo\)/, 'login exige telefone + código de 4 dígitos');
+    assert.match(src, /_autenticarComDigits\(digits\)/, 'função de login reutilizável não pode ser removida');
     assert.match(src, /paramsAuto\.get\(['"]tel['"]\)/, '_boot() precisa ler ?tel= da URL (vem de os.js::abrirPortalCliente)');
-    assert.match(src, /_pendingLogin/, 'link da OS deve guardar telefone/os pendentes para pré-preencher o formulário');
-    assert.match(src, /#\/os-detalhe\/\$\{os(?:Auto|Destino)\}/, 'após login válido, ?os= deve rotear para o detalhe da OS');
-    // Não pode mais autenticar só com digits da URL (brecha: qualquer um com o telefone entrava)
-    assert.doesNotMatch(src, /_autenticarComDigits\(digitsAuto\)\s*;/,
-        'não pode autenticar automaticamente só com ?tel= da URL');
+    assert.match(src, /#\/os-detalhe\/\$\{osAuto\}/, 'auto-login precisa rotear direto pra OS quando ?os= vier junto');
 });
 
 test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.me', () => {
@@ -242,12 +238,19 @@ test('portal.js: garantia ativa só após data de entrega (não conta da criaç�
         'fallback que contava prazo da criação via garantiaId precisa ter sido removido');
 });
 
-test('portal.js: logout sem confirm() nativo; login exige código de 4 dígitos', () => {
+test('portal.js: logout sem confirm() nativo; login só com telefone', () => {
     const src = readPortal();
     assert.doesNotMatch(src, /logout\(\)\s*\{\s*if\s*\(\s*!?\s*confirm\(/,
         'logout não pode mais usar confirm() nativo do navegador');
-    assert.match(src, /login-codigo/, 'formulário de login precisa do campo de código de acesso');
-    assert.match(src, /codigoAcesso/, 'sessão/login precisa tratar codigoAcesso');
+    assert.doesNotMatch(src, /login-codigo/, 'login não deve pedir código/CPF (decisão do dono: só telefone)');
+    assert.match(src, /id="login-phone"/, 'formulário de login precisa do campo de telefone');
+});
+
+test('portal.js: detalhe da OS não exibe observations (só defect)', () => {
+    const src = readPortal();
+    assert.doesNotMatch(src, /o\.observations\s*\?/,
+        'portal não deve renderizar o campo observations (recados internos)');
+    assert.match(src, /o\.defect/, 'portal continua mostrando o defeito relatado');
 });
 
 test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () => {

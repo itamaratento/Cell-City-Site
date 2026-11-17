@@ -2,9 +2,6 @@
    PORTAL-AUTH.JS — Login e sincronização de OS do Portal do Cliente
    P2.2 (2026-07-16): extraído de portal.js (split por responsabilidade).
    Estende window.Portal — carregar DEPOIS de portal.js no index.html.
-
-   Segurança (2026-11): login exige telefone + código de 4 dígitos
-   (últimos 4 do CPF da OS, ou portalAccessCode gerado na criação).
    ============================================ */
 Object.assign(window.Portal, {
   // ===== LOGIN =====
@@ -18,10 +15,6 @@ Object.assign(window.Portal, {
     document.body.classList.remove('portal-logged');
     console.log('[Portal] Footer/WhatsApp ocultados (header global permanece visível)');
 
-    const pendingTel = this._pendingLogin?.tel
-      ? this._phoneMask(this._pendingLogin.tel)
-      : '';
-
     const el = document.getElementById('app-content');
     if (!el) {
       console.error('[Portal] ERRO: #app-content não encontrado no DOM!');
@@ -33,22 +26,12 @@ Object.assign(window.Portal, {
         <!-- Card central -->
         <div class="login-card">
           <h1>Portal do Cliente</h1>
-          <p>Acesse com seu telefone e o código de 4 dígitos</p>
+          <p>Acesse sua área exclusiva utilizando seu telefone</p>
           <div class="login-form-box">
             <div class="login-form-group">
               <input type="tel" id="login-phone" class="login-input"
                      placeholder="Telefone" maxlength="15"
-                     inputmode="numeric" autocomplete="tel"
-                     value="${this._esc(pendingTel)}">
-            </div>
-            <div class="login-form-group">
-              <input type="password" id="login-codigo" class="login-input"
-                     placeholder="Código de acesso (4 dígitos)" maxlength="4"
-                     inputmode="numeric" autocomplete="one-time-code"
-                     pattern="[0-9]*">
-              <span class="login-hint" id="login-hint">
-                4 últimos dígitos do CPF ou o código informado pela loja
-              </span>
+                     inputmode="numeric" autocomplete="tel">
               <span class="login-error" id="login-error"></span>
             </div>
             <button id="btn-login" class="login-btn" onclick="Portal.doLogin()">
@@ -65,76 +48,73 @@ Object.assign(window.Portal, {
 
     // Máscara de telefone
     const input = document.getElementById('login-phone');
-    const codigoInput = document.getElementById('login-codigo');
-    if (!input || !codigoInput) {
-      console.error('[Portal] ERRO: campos de login não encontrados após render!');
+    if (!input) {
+      console.error('[Portal] ERRO: #login-phone não encontrado após render!');
       return;
     }
     input.addEventListener('input', (e) => {
       e.target.value = window.PhoneUtils.maskPhone(e.target.value);
       document.getElementById('login-error').textContent = '';
     });
-    codigoInput.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
-      document.getElementById('login-error').textContent = '';
-    });
 
-    // Enter: do telefone → foca código; do código → login
+    // Enter para logar
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        codigoInput.focus();
-      }
-    });
-    codigoInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.doLogin();
     });
 
-    setTimeout(() => {
-      if (pendingTel) codigoInput.focus();
-      else input.focus();
-    }, 300);
+    setTimeout(() => input.focus(), 300);
   },
 
-  // Núcleo do login — telefone + código de 4 dígitos (CPF ou portalAccessCode).
-  // Usado por doLogin() e, após o link ?tel=&os=, pelo formulário já pré-preenchido
-  // (NÃO autentica sozinho só com o telefone da URL).
-  async _autenticarComDigits(digits, codigo) {
-    const formatted = this._phoneMask(digits);
-    const codigoNorm = String(codigo || '').replace(/\D/g, '').slice(0, 4);
-    if (codigoNorm.length !== 4) return false;
+  // Núcleo do login, sem dependência do formulário — usado tanto por
+  // doLogin() (telefone digitado pelo cliente) quanto pelo auto-login vindo
+  // da OS no CRM (?tel=<digits> na URL, ver _boot() e os.js::abrirPortalCliente()).
+  // Retorna true se encontrou cliente/OS e criou sessão; false se não achou nada.
+  async _autenticarComDigits(digits) {
+    const formatted = this._phoneMask(digits); // formato canônico (exibição na sessão)
 
+    false && console.log('[Portal] Buscando cliente — digits:', digits, 'formatted:', formatted); // PII desabilitado PS-6
+
+    // Busca do nome em clientes via Cloud Function (Admin SDK).
     let clientName = '';
+    try {
+      const resp = await window.PortalFunctions.obterNomeCliente({ phoneDigits: digits });
+      clientName = (resp.data && resp.data.name) || '';
+      false && console.log('[Portal] Nome do cliente (Cloud Function):', clientName, '| phoneDigits:', digits);
+    } catch (errCliente) {
+      console.warn('[Portal] Não foi possível obter o nome do cliente (portalObterNomeCliente):', errCliente);
+    }
+
+    // Busca OS do cliente pelo telefone — via Cloud Function.
     let osCount = 0;
     try {
-      const resp = await window.PortalFunctions.autenticar({
-        phoneDigits: digits,
-        codigoAcesso: codigoNorm,
-        osId: this._pendingLogin?.os || null,
-      });
-      if (!resp.data || !resp.data.ok) return false;
-      clientName = resp.data.clientName || '';
-      osCount = resp.data.osCount || 0;
-    } catch (err) {
-      console.warn('[Portal] Falha na autenticação do portal:', err?.code || err);
+      const respOS = await window.PortalFunctions.consultarOSPorTelefone({ phoneDigits: digits });
+      osCount = ((respOS.data && respOS.data.lista) || []).length;
+    } catch (errOS) {
+      console.warn('[Portal] Não foi possível consultar OS no login:', errOS);
+    }
+    console.log('[Portal] OSs encontradas (Cloud Function):', osCount);
+
+    if (osCount === 0 && !clientName) {
+      false && console.log('[Portal] Nenhum resultado para o telefone:', formatted); // PII desabilitado PS-6
       return false;
     }
 
-    // Cria sessão (codigoAcesso fica na sessão para as consultas seguintes)
+    // Cria sessão
     this.session = {
       telefone: formatted,
       telefoneDigits: digits,
-      clientName: clientName || 'Cliente',
-      osCount,
-      codigoAcesso: codigoNorm,
+      clientName: clientName || `Cliente`,
+      osCount
     };
     sessionStorage.setItem('portal_session', JSON.stringify(this.session));
 
+    // Tracking de acesso (ETAPA 3)
     this._registrarEvento('acesso', {
       telefone: this.session.telefone,
       clientName: this.session.clientName
     });
 
+    // Escuta OS em tempo real
     this._listenOS();
     this._carregarMensagens();
     this._carregarAgendamentos();
@@ -143,46 +123,40 @@ Object.assign(window.Portal, {
 
   async doLogin() {
     const input = document.getElementById('login-phone');
-    const codigoInput = document.getElementById('login-codigo');
     const errorEl = document.getElementById('login-error');
     const btn = document.getElementById('btn-login');
     const loading = document.getElementById('btn-login-loading');
 
+    // Normaliza o telefone: extrai apenas dígitos
     const raw = input.value.replace(/\D/g, '');
-    const codigo = (codigoInput?.value || '').replace(/\D/g, '');
 
     if (raw.length < 10 || raw.length > 11) {
-      errorEl.textContent = 'Digite um telefone válido com DDD';
+      errorEl.textContent = '📞 Digite um telefone válido com DDD';
       input.focus();
       return;
     }
-    if (codigo.length !== 4) {
-      errorEl.textContent = 'Digite o código de acesso com 4 dígitos';
-      codigoInput?.focus();
-      return;
-    }
 
+    // Mostra loading
     btn.style.display = 'none';
     loading.style.display = '';
     errorEl.textContent = '';
 
     try {
       const digits = this._phoneDigits(raw);
-      const ok = await this._autenticarComDigits(digits, codigo);
+      const ok = await this._autenticarComDigits(digits);
       if (!ok) {
         btn.style.display = '';
         loading.style.display = 'none';
-        errorEl.textContent = 'Telefone ou código inválidos. Confira e tente de novo.';
+        errorEl.textContent = '❌ Nenhum serviço encontrado com este telefone.';
         return;
       }
-      const osDestino = this._pendingLogin?.os;
-      this._pendingLogin = null;
-      location.hash = osDestino ? `#/os-detalhe/${osDestino}` : '#painel';
+      // Vai para o painel
+      location.hash = '#painel';
     } catch (err) {
       console.error('[Portal] Erro no login:', err);
       btn.style.display = '';
       loading.style.display = 'none';
-      errorEl.textContent = 'Erro ao conectar. Tente novamente.';
+      errorEl.textContent = '❌ Erro ao conectar. Tente novamente.';
     }
   },
 
@@ -192,14 +166,7 @@ Object.assign(window.Portal, {
       console.warn('[Portal] _listenOS() cancelado — sessão sem telefone');
       return;
     }
-    // PS-6: o onSnapshot direto em `os` foi substituído por polling via
-    // Cloud Function (consultarOSPorTelefonePublica) — era a última
-    // dependência que obrigava as Rules a manter `list` de /os aberto a
-    // qualquer sessão autenticada (inclusive anônima), expondo TODOS os
-    // campos de TODAS as OS (senha/padrão/foto de desbloqueio, endereço,
-    // IMEI) a quem soubesse chamar a API. Perde-se o push em tempo real;
-    // o intervalo de 60s cobre o caso de uso (cliente acompanhando a
-    // própria OS) com custo de leitura menor que o listener.
+    // Polling via Cloud Function (consultarOSPorTelefonePublica).
     if (this.unsubscribeOS) this.unsubscribeOS();
     const timer = setInterval(() => this._fetchOS(), 60000);
     this.unsubscribeOS = () => clearInterval(timer);
@@ -209,24 +176,12 @@ Object.assign(window.Portal, {
   async _fetchOS() {
     if (!this.session) return;
     const digits = this.session.telefoneDigits || this._phoneDigits(this.session.telefone);
-    const codigo = this.session.codigoAcesso;
-    if (!codigo) {
-      console.warn('[Portal] Sessão sem código de acesso — forçando logout');
-      this.logout();
-      return;
-    }
     let lista = [];
     try {
-      const resp = await window.PortalFunctions.consultarOSPorTelefone({
-        phoneDigits: digits,
-        codigoAcesso: codigo,
-      });
+      const resp = await window.PortalFunctions.consultarOSPorTelefone({ phoneDigits: digits });
       lista = (resp.data && resp.data.lista) || [];
     } catch (err) {
       console.warn('[Portal] Erro ao atualizar OS via Cloud Function:', err);
-      if (err?.code === 'functions/permission-denied' || err?.code === 'permission-denied') {
-        this.logout();
-      }
       return;
     }
     this.currentOS = lista.map(os => ({ firestoreId: os.id, ...os }));

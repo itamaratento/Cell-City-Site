@@ -65,14 +65,10 @@
           '<div class="login-container">' +
           '<div class="login-card">' +
           '<h1>Portal do Cliente</h1>' +
-          '<p>Acesse com seu telefone e o código de 4 dígitos</p>' +
+          '<p>Acesse sua área exclusiva utilizando seu telefone</p>' +
           '<div class="login-form-box">' +
           '<div class="login-form-group">' +
           '<input type="tel" id="login-phone" class="login-input" placeholder="Telefone" maxlength="15" inputmode="numeric" autocomplete="tel">' +
-          '</div>' +
-          '<div class="login-form-group">' +
-          '<input type="password" id="login-codigo" class="login-input" placeholder="Código de acesso (4 dígitos)" maxlength="4" inputmode="numeric" autocomplete="one-time-code">' +
-          '<span class="login-hint" id="login-hint">4 últimos dígitos do CPF ou o código informado pela loja</span>' +
           '<span class="login-error" id="login-error"></span>' +
           '</div>' +
           '<button id="btn-login" class="login-btn" onclick="Portal.doLogin()">Entrar</button>' +
@@ -106,7 +102,7 @@
     <div class="login-container">
       <div class="login-card">
         <h1>Portal do Cliente</h1>
-        <p>Acesse com seu telefone e o código de 4 dígitos</p>
+        <p>Acesse sua área exclusiva utilizando seu telefone</p>
         <div class="login-form-box">
           <div class="loading-spinner" style="padding:20px 0;"><span class="spinner"></span></div>
         </div>
@@ -205,7 +201,6 @@
       return (data = {}) => fn({ ...data, empresaId: EMPRESA_ID });
     };
     window.PortalFunctions = {
-      autenticar: call('portalAutenticar'),
       obterNomeCliente: call('portalObterNomeCliente'),
       listarMensagens: call('portalListarMensagens'),
       enviarMensagem: call('portalEnviarMensagem'),
@@ -220,7 +215,6 @@
       responderOrcamento: call('portalResponderOrcamento'),
       // PS-6: login e atualização de OS também via Cloud Function —
       // permitiu fechar o `list` público de /os nas Rules.
-      // Agora exige codigoAcesso (4 dígitos) além do telefone.
       consultarOSPorTelefone: call('consultarOSPorTelefonePublica'),
     };
 
@@ -256,13 +250,13 @@
     </div>
   </div>
 
-  <script src="portal.js?v=2.7"></script>
+  <script src="portal.js?v=2.8"></script>
   <!-- P2.2 (2026-07-16): portal.js dividido por responsabilidade — os 8
        arquivos abaixo estendem window.Portal via Object.assign(); ordem
        não é significativa para a API (todo Object.assign roda antes do
        AUTO-INIT de portal.js disparar em DOMContentLoaded), mas segue a
        ordem de navegação da tela para facilitar leitura. -->
-  <script src="portal-auth.js?v=2"></script>
+  <script src="portal-auth.js?v=3"></script>
   <script src="portal-painel.js?v=1"></script>
   <script src="portal-os.js?v=2"></script>
   <script src="portal-garantias.js?v=2"></script>

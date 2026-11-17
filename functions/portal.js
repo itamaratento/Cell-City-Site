@@ -25,11 +25,6 @@ const { REGIAO } = require('./lib/config');
 const { aplicarRateLimit } = require('./lib/rate-limit');
 const { empresaIdDe, docDaEmpresa } = require('./lib/empresa');
 const { maskPhoneServer, validarPhoneDigitsServer } = require('./lib/phone');
-const {
-  normalizarCodigoAcesso,
-  verificarCodigoAcessoOS,
-  algumaOSAceitaCodigo,
-} = require('./lib/portal-access');
 
 // Achado da homologação do Lote 2: o encoder de resposta do onCall
 // (`encode()` em firebase-functions/lib/common/providers/https.js) achata
@@ -73,76 +68,6 @@ function projetarCamposPortal(colecao, doc) {
   }
   return out;
 }
-
-// ---- Login do Portal (telefone + código de 4 dígitos) ----
-//
-// Antes: só o telefone bastava (UI e consultarOSPorTelefonePublica).
-// Agora: exige os 4 últimos do CPF (quando a OS tem CPF) ou o
-// portalAccessCode gerado na criação da OS. Mensagem de erro genérica
-// para não revelar se o telefone existe.
-exports.portalAutenticar = onCall({ region: REGIAO }, async (request) => {
-  aplicarRateLimit(request, 'portal_auth');
-  const data = request.data || {};
-  const digits = validarPhoneDigitsServer(data.phoneDigits);
-  const codigo = normalizarCodigoAcesso(data.codigoAcesso);
-  if (codigo.length !== 4) {
-    throw new HttpsError('invalid-argument', 'Informe o código de acesso de 4 dígitos.');
-  }
-
-  const empresaId = empresaIdDe(data);
-  const db = admin.firestore();
-  const osId = typeof data.osId === 'string' ? data.osId.trim().slice(0, 30) : '';
-
-  let listaOS = [];
-  if (osId) {
-    const snap = await db.collection('os').doc(osId).get();
-    if (snap.exists && docDaEmpresa(snap.data(), empresaId)) {
-      const os = snap.data();
-      const phoneOs = String(os.phoneDigits || '').replace(/\D/g, '');
-      // OS do link deve pertencer ao telefone informado
-      if (phoneOs === digits && verificarCodigoAcessoOS(os, codigo)) {
-        listaOS = [os];
-      }
-    }
-    // Se o osId do link não bater, tenta pelo telefone (cliente pode
-    // ter digitado o código de outra OS do mesmo número).
-    if (listaOS.length === 0) {
-      const snapTel = await db.collection('os').where('phoneDigits', '==', digits).limit(50).get();
-      listaOS = snapTel.docs
-        .map((d) => d.data())
-        .filter((os) => docDaEmpresa(os, empresaId));
-      if (!algumaOSAceitaCodigo(listaOS, codigo)) {
-        throw new HttpsError('permission-denied', 'Telefone ou código de acesso inválidos.');
-      }
-    }
-  } else {
-    const snapTel = await db.collection('os').where('phoneDigits', '==', digits).limit(50).get();
-    listaOS = snapTel.docs
-      .map((d) => d.data())
-      .filter((os) => docDaEmpresa(os, empresaId));
-    if (listaOS.length === 0 || !algumaOSAceitaCodigo(listaOS, codigo)) {
-      throw new HttpsError('permission-denied', 'Telefone ou código de acesso inválidos.');
-    }
-  }
-
-  let clientName = '';
-  try {
-    const snapCli = await db.collection('clientes').doc(digits).get();
-    if (snapCli.exists && docDaEmpresa(snapCli.data(), empresaId)) {
-      clientName = snapCli.data().name || '';
-    }
-  } catch (_) { /* nome é opcional */ }
-  if (!clientName) {
-    clientName = (listaOS[0] && listaOS[0].clientName) || '';
-  }
-
-  return {
-    ok: true,
-    clientName: clientName || 'Cliente',
-    osCount: listaOS.length,
-    phoneMasked: maskPhoneServer(digits),
-  };
-});
 
 // ---- Nome do cliente (login) ----
 //

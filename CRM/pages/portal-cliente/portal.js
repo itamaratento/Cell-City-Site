@@ -143,24 +143,18 @@ window.Portal = {
     console.log('[Portal] location.hash:', location.hash);
     false && console.log('[Portal] sessionStorage.portal_session:', sessionStorage.getItem('portal_session')); // PII desabilitado — SEC-CONSOLE-001 (logava telefone da sessão)
 
-    // Restaura sessão — sessões antigas só com telefone (sem codigoAcesso)
-    // são descartadas: o segundo fator passou a ser obrigatório.
+    // Tenta restaurar sessão
     const saved = sessionStorage.getItem('portal_session');
     if (saved) {
       try {
         this.session = JSON.parse(saved);
+        // Sessões salvas antes da padronização de telefone não têm telefoneDigits.
         if (!this.session.telefoneDigits && this.session.telefone) {
           this.session.telefoneDigits = this._phoneDigits(this.session.telefone);
         }
-        if (!this.session.codigoAcesso || String(this.session.codigoAcesso).replace(/\D/g, '').length !== 4) {
-          console.log('[Portal] Sessão antiga sem código de acesso — descartada');
-          this.session = null;
-          sessionStorage.removeItem('portal_session');
-        } else {
-          this._listenOS();
-          this._carregarMensagens();
-          this._carregarAgendamentos();
-        }
+        this._listenOS();
+        this._carregarMensagens();
+        this._carregarAgendamentos();
       } catch {
         console.warn('[Portal] Erro ao fazer parse da sessão');
         this.session = null;
@@ -169,24 +163,20 @@ window.Portal = {
       console.log('[Portal] Nenhuma sessão salva');
     }
 
-    // Link da OS no CRM / WhatsApp (?tel=<digits>&os=<osId>): NÃO autentica
-    // sozinho. Só pré-preenche o telefone e pede o código de 4 dígitos.
-    // Se já houver sessão válida do mesmo telefone (com código), vai direto.
+    // Auto-login vindo da Ordem de Serviço no CRM — botão "Portal do Cliente"
+    // em CRM/pages/os/os.js::abrirPortalCliente(), que abre esta página com
+    // ?tel=<phoneDigits>&os=<osId>.
     const paramsAuto = new URLSearchParams(location.search);
     const telAuto = paramsAuto.get('tel');
     if (telAuto) {
       const digitsAuto = this._phoneDigits(telAuto);
-      const osAuto = paramsAuto.get('os');
-      this._pendingLogin = { tel: digitsAuto, os: osAuto || null };
-      const mesmoCliente = this.session
-        && this.session.telefoneDigits === digitsAuto
-        && this.session.codigoAcesso;
-      if (mesmoCliente) {
+      const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
+      if (!mesmoCliente) {
+        await this._autenticarComDigits(digitsAuto);
+      }
+      if (this.session) {
+        const osAuto = paramsAuto.get('os');
         location.hash = osAuto ? `#/os-detalhe/${osAuto}` : '#/painel';
-      } else {
-        this.session = null;
-        sessionStorage.removeItem('portal_session');
-        location.hash = '#/login';
       }
       history.replaceState(null, '', location.pathname + (location.hash || ''));
     }
@@ -346,7 +336,6 @@ window.Portal = {
     this.currentOS = [];
     this.currentMsgs = [];
     this.currentAgendamentos = [];
-    this._pendingLogin = null;
     sessionStorage.removeItem('portal_session');
     location.hash = '#/login';
   },
