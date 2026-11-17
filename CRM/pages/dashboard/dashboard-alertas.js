@@ -176,10 +176,14 @@ export const dashboardAlertasMixin = {
           // e NÃO deve aparecer na Central de Alertas / Ação da Semana.
           if (dados.alertaDashboard !== true) return;
 
+          // Compromisso futuro (ex.: retorno automático de OS daqui a 3 dias)
+          // NÃO alimenta o painel — só entra no dia ou se já estiver atrasado.
+          if (dia > hojeISO) return;
+
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
-          // Gera evento para a DATA ORIGINAL (passada, hoje ou futura)
-          // Se for passada, aparecerá como atrasada no Dashboard
+          // Gera evento para a DATA ORIGINAL (hoje ou passada).
+          // Se for passada, aparecerá como atrasada no Dashboard.
           gerarEventosDoDia(dia, horaPadrao);
         }
       });
@@ -226,32 +230,63 @@ export const dashboardAlertasMixin = {
       .sort((a, b) => a.ts - b.ts)[0] || null;
   },
 
-  // ===== AGENDA — card do Dashboard: destaca ENQUANTO tarefa não for concluída =====
-  // ⚠ Regras de prioridade:
-  //   1. Tarefas VENCIDAS (qualquer dia passado, não concluídas)
-  //   2. Tarefas do HORÁRIO ATUAL (hoje, janela 0–5 min)
-  //   3. Tarefas PRÓXIMAS (hoje, 6–15 min)
-  // O card SÓ para de destacar quando TODAS as tarefas vencidas forem concluídas
-  // ===== DESTAQUE NO CARD DO MÓDULO AÇÃO DA SEMANA =====
-  // Apenas adiciona/remove classe visual — sem som, sem sobrepor a Central de Alertas
+  // ===== AGENDA — card do Dashboard: destaque discreto (hoje + atrasados) =====
+  // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
+  // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
+  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado).
+  _destaqueAgendaAtivo() {
+    try {
+      const v = localStorage.getItem('cc_destacar_agenda');
+      if (v === null || v === undefined || v === '') return true; // padrão ligado
+      return v !== '0' && v !== 'false';
+    } catch {
+      return true;
+    }
+  },
+
   atualizarCardAcaoSemana() {
     const verificar = async () => {
       const card = document.querySelector('.module-card[data-module="acaodasemana"]');
       if (!card) return;
+      const sub = card.querySelector('.module-sub');
+      const destacar = this._destaqueAgendaAtivo();
+
+      if (!destacar) {
+        card.classList.remove('acao-vencida');
+        if (sub) sub.textContent = 'Ação da Semana';
+        return;
+      }
+
       const eventos = await this._lerAgenda();
-      const agora = Date.now();
       const hojeISO = new Date().toISOString().slice(0, 10);
-      const temVencidas = (eventos || []).some(e => {
+      // Só hoje ou atrasado (não concluído). Futuro não conta.
+      const pendentes = (eventos || []).filter(e => {
         if (e.concluido || !e.data) return false;
-        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
-        return e.data < hojeISO;
+        return e.data <= hojeISO;
       });
-      card.classList.toggle('acao-vencida', temVencidas);
+      const countHoje = pendentes.filter(e => e.data === hojeISO).length;
+      const countAtrasadas = pendentes.filter(e => e.data < hojeISO).length;
+      const temDestaque = pendentes.length > 0;
+
+      card.classList.toggle('acao-vencida', temDestaque);
+      if (sub) {
+        if (!temDestaque) {
+          sub.textContent = 'Ação da Semana';
+        } else {
+          const parts = [];
+          if (countAtrasadas) parts.push(`${countAtrasadas} atrasada${countAtrasadas > 1 ? 's' : ''}`);
+          if (countHoje) parts.push(`${countHoje} hoje`);
+          sub.textContent = parts.join(' · ');
+        }
+      }
     };
     verificar();
     // Não relê com a aba oculta — o refresh ao voltar o foco (abaixo) já cobre esse caso.
     setInterval(() => { if (!document.hidden) verificar(); }, 300000);
     window.addEventListener('focus', verificar);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'cc_destacar_agenda') verificar();
+    });
   },
 
   // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====

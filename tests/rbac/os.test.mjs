@@ -224,8 +224,8 @@ test('NF: máscara de CNPJ formata enquanto digita', async () => {
     assert.equal(input.value, '11.444.777/0001-61');
 });
 
-// ── Botão Portal do Cliente (substitui o clique-no-telefone que abria
-// WhatsApp) — ver abrirPortalCliente() em os.js e ticket de 2026-07-11.
+// ── Telefone clicável → Portal do Cliente; ícone 📞 separado com tel:
+// (substitui o antigo 🏠 ao lado do número). Ver renderPhonePortalLinks().
 test('OS detalhe: telefone não abre mais WhatsApp, abre abrirPortalCliente()', async () => {
     const { document, window } = setup();
     await importFresh(MOD_URL);
@@ -235,6 +235,8 @@ test('OS detalhe: telefone não abre mais WhatsApp, abre abrirPortalCliente()', 
     assert.doesNotMatch(content, /wa\.me/, 'não pode restar nenhum link wa.me no detalhe da OS');
     assert.match(content, /onclick="abrirPortalCliente\('os_1','11999998888'\);return false;"/);
     assert.match(content, /title="Abrir Portal do Cliente"/);
+    assert.doesNotMatch(content, /Abrir Portal do Cliente">[^<]*🏠/, 'ícone casa removido — o telefone já abre o Portal');
+    assert.match(content, /href="tel:11999998888"/, 'ícone 📞 separado deve ligar via tel:');
 });
 
 test('abrirPortalCliente: abre o Portal com tel e os na URL, sem WhatsApp', async () => {
