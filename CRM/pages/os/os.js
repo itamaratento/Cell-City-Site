@@ -1,4 +1,4 @@
-import { initModulo } from '../../scripts/kernel.js';
+import { initModulo, getNome, getUser } from '../../scripts/kernel.js';
 import { db, collection, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 import { tData } from "../../shared/tenant-query.js";
 // P2.3.2: núcleo de persistência (objeto DB) migrado para a Camada Repository.
@@ -1942,13 +1942,12 @@ function renderWppHistoricoPanel() {
 
 // ===== CENTRAL DE RETORNO =====
 
+/** Nome do operador nos retornos/WPP. Nunca pergunta (sem prompt/alert). */
 function getOperadorNome() {
-    let nome = localStorage.getItem(STORAGE_KEYS.OPERADOR_NOME);
-    if (!nome) {
-        nome = prompt('Seu nome (será registrado nos retornos):') || 'Responsável';
-        if (nome !== 'Responsável') localStorage.setItem(STORAGE_KEYS.OPERADOR_NOME, nome);
-    }
-    return nome;
+    // Perfil CRM (ex.: "Master Admin" no topo) → Auth displayName → Itamar → Responsável
+    const logado = (getNome() || '').trim() || (getUser()?.displayName || '').trim();
+    if (logado) return logado;
+    return 'Itamar' || 'Responsável';
 }
 
 async function loadRetornoMensagens() {
