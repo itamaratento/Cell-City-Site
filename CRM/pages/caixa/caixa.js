@@ -14,6 +14,11 @@ import {
     breakdownLocais,
 } from './loja-feira.js';
 import { camposDataLancamento } from './caixa-data.js';
+import {
+    buscarProdutosPorNome,
+    montarPayloadVendaRapida,
+    parseVendasFeiraTexto,
+} from './venda-rapida.js';
 
 // ── Constantes ────────────────────────────────────────────────
 const COL_LANCAMENTOS = 'caixa_lancamentos';
@@ -40,6 +45,8 @@ let _produtoVinculado = null;  // { id, nome, custo, venda, vendaFeira, quantida
 let _cacheProdutos   = [];
 let _vendaPendente   = null;   // dados do form aguardando cadastro de produto
 let _confirmResolve  = null;
+let _vrProduto       = null;   // produto selecionado na venda rápida
+let _feiraPrevia     = null;   // linhas ok da prévia de importação Feira
 
 /** Substitui diálogos nativos do browser (travam automação) por modal na página. */
 function confirmarCaixa(titulo, corpo, txtBtn = 'Confirmar') {
@@ -110,6 +117,7 @@ async function init() {
     carregarMetaSemanal();
     _cacheProdutos = await carregarProdutosEstoque();
     setupAutocomplete();
+    setupVendaRapida();
 }
 
 // ── Categorias ────────────────────────────────────────────────
@@ -934,6 +942,152 @@ async function _executarSalvamento({ tipo, descricao, categoria, valor, custo, d
     showToast('Lançamento salvo.');
     console.log('[CAIXA] Lançamento salvo.');
 }
+
+// ── Venda rápida ───────────────────────────────────────────────
+function setupVendaRapida() {
+    const inp = document.getElementById('vr-busca');
+    const drop = document.getElementById('vr-autocomplete');
+    if (!inp || !drop) return;
+    inp.addEventListener('input', () => {
+        const termo = inp.value.trim();
+        const matches = buscarProdutosPorNome(_cacheProdutos, termo, 10);
+        if (!matches.length) { drop.style.display = 'none'; return; }
+        const local = normalizarLocal(document.getElementById('vr-local')?.value);
+        drop.innerHTML = matches.map(p => {
+            const preco = precoSugerido(p, local);
+            return `<div class="autocomplete-item" data-id="${esc(p.id)}">
+                <span class="ac-nome">${esc(p.nome || '')}</span>
+                <span class="ac-info">${p.quantidade || 0} un · ${formatarMoeda(preco)}</span>
+            </div>`;
+        }).join('');
+        drop.style.display = 'block';
+        drop.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('mousedown', e => {
+                e.preventDefault();
+                const p = _cacheProdutos.find(x => x.id === item.dataset.id);
+                if (!p) return;
+                _vrProduto = p;
+                inp.value = p.nome || '';
+                const sel = document.getElementById('vr-produto-sel');
+                if (sel) {
+                    sel.style.display = 'block';
+                    const loc = normalizarLocal(document.getElementById('vr-local')?.value);
+                    sel.textContent = `📦 ${p.nome} · ${formatarMoeda(precoSugerido(p, loc))} · estoque ${p.quantidade || 0}`;
+                }
+                drop.style.display = 'none';
+            });
+        });
+    });
+    inp.addEventListener('blur', () => setTimeout(() => { drop.style.display = 'none'; }, 150));
+    document.getElementById('vr-local')?.addEventListener('change', () => {
+        if (!_vrProduto) return;
+        const sel = document.getElementById('vr-produto-sel');
+        const loc = normalizarLocal(document.getElementById('vr-local')?.value);
+        if (sel) sel.textContent = `📦 ${_vrProduto.nome} · ${formatarMoeda(precoSugerido(_vrProduto, loc))} · estoque ${_vrProduto.quantidade || 0}`;
+    });
+}
+
+window.salvarVendaRapida = async function () {
+    if (!podeCriar('caixa')) return showToast('Sem permissão.');
+    try {
+        const payload = montarPayloadVendaRapida({
+            produto: _vrProduto,
+            local: document.getElementById('vr-local')?.value,
+            quantidade: document.getElementById('vr-qty')?.value,
+            dataYYYYMMDD: hoje(),
+        });
+        _produtoVinculado = _vrProduto;
+        const qtyEl = document.getElementById('qty-venda');
+        if (qtyEl) qtyEl.value = String(payload.quantidade);
+        await _executarSalvamento(payload);
+        _vrProduto = null;
+        const inp = document.getElementById('vr-busca');
+        if (inp) inp.value = '';
+        const sel = document.getElementById('vr-produto-sel');
+        if (sel) { sel.style.display = 'none'; sel.textContent = ''; }
+        const q = document.getElementById('vr-qty');
+        if (q) q.value = '1';
+        showToast('⚡ Venda rápida salva.');
+    } catch (e) {
+        showToast(e.message || 'Erro na venda rápida.');
+    }
+};
+
+window.preverImportFeira = function () {
+    const texto = document.getElementById('feira-import-texto')?.value || '';
+    const { ok, erros } = parseVendasFeiraTexto(texto);
+    _feiraPrevia = ok;
+    const box = document.getElementById('feira-import-previa');
+    const btn = document.getElementById('btn-gravar-feira');
+    if (!box) return;
+    if (!ok.length && !erros.length) {
+        box.innerHTML = 'Cole ao menos uma linha.';
+        if (btn) btn.style.display = 'none';
+        return;
+    }
+    const total = ok.reduce((s, l) => s + l.valor, 0);
+    let html = `<strong>${ok.length} venda(s)</strong> · total ${formatarMoeda(total)} (local: Feira)<ul style="margin:8px 0 0;padding-left:18px;">`;
+    ok.forEach(l => {
+        html += `<li>${esc(l.descricao)} — ${formatarMoeda(l.valor)}</li>`;
+    });
+    html += '</ul>';
+    if (erros.length) {
+        html += `<div style="color:var(--red,#ef4444);margin-top:8px;">${erros.map(esc).join('<br>')}</div>`;
+    }
+    box.innerHTML = html;
+    if (btn) btn.style.display = ok.length ? '' : 'none';
+};
+
+window.gravarImportFeira = async function () {
+    if (!podeCriar('caixa')) return showToast('Sem permissão.');
+    if (!_feiraPrevia || !_feiraPrevia.length) return showToast('Gere a prévia antes.');
+    const okConf = await confirmarCaixa(
+        'Importar Feira',
+        `Gravar ${_feiraPrevia.length} venda(s) no Caixa (local Feira)?`,
+        'Gravar'
+    );
+    if (!okConf) return;
+    const data = hoje();
+    let gravados = 0;
+    try {
+        for (const linha of _feiraPrevia) {
+            const camposData = camposDataLancamento(data);
+            await addDoc(collection(db, COL_LANCAMENTOS), {
+                tipo: 'entrada',
+                descricao: linha.descricao,
+                categoria: 'Vendas',
+                valor: linha.valor,
+                custo: 0,
+                lucro: linha.valor,
+                localVenda: LOCAL_FEIRA,
+                data: camposData.dia,
+                ...camposData,
+                obs: linha.obs || 'Importado da Feira',
+                empresa_id: _empresaId,
+                criadoEm: serverTimestamp(),
+            });
+            // Tenta vincular estoque pelo nome (baixa 1×qty se achar)
+            const prod = _cacheProdutos.find(p =>
+                String(p.nome || '').toLowerCase() === String(linha.nomeProduto || '').toLowerCase()
+            );
+            if (prod?.id) {
+                try { await descontarEstoqueLocal(prod.id, linha.quantidade || 1); } catch (_) {}
+            }
+            gravados++;
+        }
+        _feiraPrevia = null;
+        const btn = document.getElementById('btn-gravar-feira');
+        if (btn) btn.style.display = 'none';
+        const ta = document.getElementById('feira-import-texto');
+        if (ta) ta.value = '';
+        const box = document.getElementById('feira-import-previa');
+        if (box) box.innerHTML = `✅ ${gravados} venda(s) gravadas na Feira.`;
+        showToast(`✅ ${gravados} vendas importadas`);
+    } catch (e) {
+        console.error('[CAIXA] import Feira:', e);
+        showToast('Erro ao gravar importação.');
+    }
+};
 
 // ── Start ─────────────────────────────────────────────────────
 if (document.readyState === 'loading') {
