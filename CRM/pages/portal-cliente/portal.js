@@ -31,6 +31,7 @@ var STATUS_LABEL = {
   'em_reparo':            { label: 'Em Reparo',            cor: '#FF6D00', icon: '🛠️' },
   'testes_finais':        { label: 'Testes Finais',        cor: '#a78bfa', icon: '🧪' },
   'concluido':            { label: 'Concluído',            cor: '#00C853', icon: '✅' },
+  'aguardando_retirada':  { label: 'Aguardando Retirada',  cor: '#F59E0B', icon: '📦' },
   'entregue':             { label: 'Entregue',             cor: '#78909C', icon: '🎉' },
   // ===== Compatibilidade com OS antigas =====
   'aguardando_peca':      { label: 'Aguardando Peça',      cor: '#42A5F5', icon: '🔵' },

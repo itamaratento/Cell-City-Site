@@ -252,8 +252,14 @@ body {
 .status-acoes-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
 .status-acao-btn { border: none; border-radius: var(--radius-sm); padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 800; color: #000; line-height: 1.2; }
 .status-acao-pronto { background: #22c55e; }
+.status-acao-aguardando { background: #f59e0b; }
 .status-acao-entregue { background: #38bdf8; }
 .status-acao-select { background: var(--surface3); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); padding: 8px 10px; font-size: 12px; font-weight: 700; cursor: pointer; max-width: 100%; }
+.os-silencio-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+.os-silencio-btn, .os-silencio-reativar { border: 1px solid var(--border); background: var(--surface3); color: var(--text); border-radius: var(--radius-sm); padding: 7px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.os-silencio-selo { font-size: 12px; font-weight: 700; color: #fbbf24; background: rgba(251,191,36,0.12); border: 1px solid rgba(251,191,36,0.35); border-radius: 100px; padding: 4px 10px; }
+.os-silencio-opcao { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+.status-aguardando_retirada { background: rgba(245,158,11,0.15); color: #fbbf24; }
 .status-aguardando_aprovacao { background: rgba(245,158,11,0.15); color: #fbbf24; }
 .status-orcamento_enviado { background: rgba(245,158,11,0.15); color: #fbbf24; }
 .status-orcamento_aprovado { background: rgba(76,175,80,0.15); color: #66bb6a; }
