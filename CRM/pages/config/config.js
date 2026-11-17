@@ -67,10 +67,10 @@ const PAINEL_DOC_ID = 'painel';
 function lerDestacarAgenda() {
     try {
         const v = localStorage.getItem(DESTACAR_AGENDA_KEY);
-        if (v === null || v === undefined || v === '') return true;
-        return v !== '0' && v !== 'false';
+        if (v === null || v === undefined || v === '') return false; // padrão desligado
+        return v === '1' || v === 'true';
     } catch {
-        return true;
+        return false;
     }
 }
 
@@ -87,6 +87,9 @@ async function carregarDestacarAgenda() {
         const snap = await Config.getById(PAINEL_DOC_ID);
         if (snap && typeof snap.destacarAgenda === 'boolean') {
             localStorage.setItem(DESTACAR_AGENDA_KEY, snap.destacarAgenda ? '1' : '0');
+        } else {
+            // Doc/campo ausente → padrão desligado (sem destaque no card)
+            localStorage.setItem(DESTACAR_AGENDA_KEY, '0');
         }
     } catch (e) {
         console.warn('Preferência Destacar Agenda: usando cache local', e);

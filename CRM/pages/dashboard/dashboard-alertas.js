@@ -233,8 +233,9 @@ export const dashboardAlertasMixin = {
   // ===== AGENDA — card do Dashboard: destaque discreto (hoje + atrasados) =====
   // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
   // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
-  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado),
+  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: DESLIGADO),
   // espelhada em Firestore `config/painel.destacarAgenda` para valer em todos os PCs.
+  // Se o doc/campo não existir → false (sem destaque/piscar).
   //
   // Contagem do card também ignora (só visual — NÃO apaga/altera documentos de agenda/OS):
   //  1) qualquer lembrete atrasado há mais de 3 dias (conta no dia e até +3);
@@ -243,10 +244,10 @@ export const dashboardAlertasMixin = {
   _destaqueAgendaAtivo() {
     try {
       const v = localStorage.getItem('cc_destacar_agenda');
-      if (v === null || v === undefined || v === '') return true; // padrão ligado
-      return v !== '0' && v !== 'false';
+      if (v === null || v === undefined || v === '') return false; // padrão desligado
+      return v === '1' || v === 'true';
     } catch {
-      return true;
+      return false;
     }
   },
 
@@ -256,11 +257,11 @@ export const dashboardAlertasMixin = {
     this._destacarAgendaSynced = true;
     try {
       const snap = await getDoc(doc(db, 'config', 'painel'));
-      if (snap.exists()) {
-        const v = snap.data().destacarAgenda;
-        if (typeof v === 'boolean') {
-          localStorage.setItem('cc_destacar_agenda', v ? '1' : '0');
-        }
+      if (snap.exists() && typeof snap.data().destacarAgenda === 'boolean') {
+        localStorage.setItem('cc_destacar_agenda', snap.data().destacarAgenda ? '1' : '0');
+      } else {
+        // Doc/campo ausente → padrão desligado
+        localStorage.setItem('cc_destacar_agenda', '0');
       }
     } catch (e) {
       console.warn('[Agenda] preferência online indisponível; usando local:', e);
