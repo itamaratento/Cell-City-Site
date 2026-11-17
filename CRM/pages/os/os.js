@@ -29,6 +29,14 @@ import {
     acessoriosTexto,
     badgeFaltaSenhaHtml,
 } from './entrada-rapida.js';
+import {
+    STATUS_AGUARDANDO_RETIRADA,
+    OPCOES_SILENCIO,
+    isSilencioAtivo,
+    payloadLimparSilencio,
+    payloadSilenciar,
+    textoSeloSilencio,
+} from './os-parada-silencio.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -557,7 +565,7 @@ function goBack() { guardNavigation(() => { screenHistory.pop(); showScreen(scre
 function formatPhone(v) { return maskPhone(v); }
 function getCategoryLabel(cat) { return { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora' }[cat] || cat; }
 function getCategoryIcon(cat) { return { celular: '📱', notebook: '💻', impressora: '🖨️' }[cat] || ''; }
-// ===== FLUXO DE STATUS (9 etapas — padrão Cell City) =====
+// ===== FLUXO DE STATUS (10 etapas — padrão Cell City) =====
 const STATUS_FLOW = [
     { key: 'recebido',             label: 'Recebido',             color: 'var(--blue)' },
     { key: 'em_analise',           label: 'Em análise',           color: 'var(--blue)' },
@@ -567,6 +575,7 @@ const STATUS_FLOW = [
     { key: 'em_reparo',            label: 'Em reparo',            color: 'var(--orange)' },
     { key: 'testes_finais',        label: 'Testes finais',        color: '#a78bfa' },
     { key: 'concluido',            label: 'Concluído',            color: 'var(--green)' },
+    { key: STATUS_AGUARDANDO_RETIRADA, label: 'Aguardando retirada', color: '#f59e0b' },
     { key: 'entregue',             label: 'Entregue',             color: 'var(--text3)' }
 ];
 // Mapeia status antigos (OS já gravadas) para os rótulos novos, sem migração forçada.
@@ -590,16 +599,18 @@ function _renderAcaoBtn(os) {
     return '';
 }
 
-/** Atalhos de STATUS no topo: Pronto / Entregue + seletor para pular etapas. */
+/** Atalhos de STATUS no topo: Pronto / Aguardando retirada / Entregue + seletor. */
 function _renderStatusAcoes(os) {
     if (!podeEditar('os')) return '';
     const st = os.status || '';
     const terminal = STATUS_TERMINAIS.includes(st);
-    const jaPronto = st === 'concluido' || st === 'pronto' || terminal;
+    const jaPronto = st === 'concluido' || st === 'pronto' || st === STATUS_AGUARDANDO_RETIRADA || terminal;
+    const jaAguardando = st === STATUS_AGUARDANDO_RETIRADA || terminal;
     const jaEntregue = st === 'entregue' || st === 'orcamento_recusado' || st === 'devolvido_orcamento';
 
     const btnPronto = jaPronto ? '' : `<button type="button" class="status-acao-btn status-acao-pronto" onclick="changeStatus('concluido')" title="Marca a OS como Concluído (Pronto) e oferece imprimir garantia">✅ Pronto</button>`;
-    const btnEntregue = jaEntregue ? '' : `<button type="button" class="status-acao-btn status-acao-entregue" onclick="changeStatus('entregue')" title="Marca a OS como Entregue">📦 Entregue</button>`;
+    const btnAguardando = jaAguardando ? '' : `<button type="button" class="status-acao-btn status-acao-aguardando" onclick="changeStatus('${STATUS_AGUARDANDO_RETIRADA}')" title="Cliente já avisado — sai do alerta de OS paradas">📦 Aguardando retirada</button>`;
+    const btnEntregue = jaEntregue ? '' : `<button type="button" class="status-acao-btn status-acao-entregue" onclick="changeStatus('entregue')" title="Marca a OS como Entregue">✅ Entregue</button>`;
 
     const opts = STATUS_FLOW.map(s =>
         `<option value="${s.key}"${s.key === st ? ' selected' : ''}>${s.label}</option>`
@@ -607,7 +618,22 @@ function _renderStatusAcoes(os) {
     const seletor = `<select class="status-acao-select" aria-label="Mudar status" onchange="if(this.value){changeStatus(this.value);this.selectedIndex=0;}">
         <option value="">Mudar status ▾</option>${opts}</select>`;
 
-    return `<div class="status-acoes-bar">${btnPronto}${btnEntregue}${seletor}</div>`;
+    return `<div class="status-acoes-bar">${btnPronto}${btnAguardando}${btnEntregue}${seletor}</div>${_renderSilencioBar(os)}`;
+}
+
+function _renderSilencioBar(os) {
+    if (!podeEditar('os')) return '';
+    if (STATUS_TERMINAIS.includes(os.status || '')) return '';
+    if (isSilencioAtivo(os)) {
+        const selo = escHtml(textoSeloSilencio(os));
+        return `<div class="os-silencio-bar">
+            <span class="os-silencio-selo">${selo}</span>
+            <button type="button" class="os-silencio-reativar" onclick="reativarAlertaOS()">🔔 Reativar alerta</button>
+        </div>`;
+    }
+    return `<div class="os-silencio-bar">
+        <button type="button" class="os-silencio-btn" onclick="abrirModalSilenciarAlerta()">🔕 Silenciar alerta</button>
+    </div>`;
 }
 
 // Quick-status: mostra os próximos status lógicos como botões de 1 clique
@@ -622,7 +648,8 @@ function _renderQuickStatus(os) {
         'orcamento_aprovado':   ['em_reparo'],
         'em_reparo':            ['testes_finais'],
         'testes_finais':        ['concluido'],
-        'concluido':            ['entregue'],
+        'concluido':            [STATUS_AGUARDANDO_RETIRADA, 'entregue'],
+        [STATUS_AGUARDANDO_RETIRADA]: ['entregue'],
         'aguardando_peca':      ['em_reparo'],
         'orcamento':            ['orcamento_enviado'],
         'aguardando_aprovacao': ['orcamento_enviado'],
@@ -1393,6 +1420,8 @@ async function changeStatus(newStatus) {
     const old = currentOS.status;
     currentOS.status = newStatus;
     currentOS.updatedAt = new Date().toISOString();
+    // Mudança de status limpa silêncio do alerta de parada/cobrança
+    Object.assign(currentOS, payloadLimparSilencio());
     currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
     await saveCurrentOS();
     renderDetail();
@@ -1401,6 +1430,58 @@ async function changeStatus(newStatus) {
     // Pronto (concluído) ou Entregue → oferecer impressão da garantia
     if (newStatus === 'concluido' || newStatus === 'entregue') offerPrintGarantia();
 }
+
+/** Modal in-page: silenciar alerta de OS parada / cobrança (sem confirm/prompt). */
+window.abrirModalSilenciarAlerta = function abrirModalSilenciarAlerta() {
+    if (!currentOS || !podeEditar('os')) return;
+    const opts = OPCOES_SILENCIO.map((o, i) =>
+        `<label class="os-silencio-opcao"><input type="radio" name="silencio-opcao" value="${escHtml(o.key)}"${i === 0 ? ' checked' : ''}> ${escHtml(o.label)}</label>`
+    ).join('');
+    openModal(`<div class="modal-handle"></div>
+<h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">🔕 Silenciar alerta</h3>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px;">A OS some do sininho pelo prazo escolhido. Mudar o status reativa automaticamente.</p>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">${opts}</div>
+<label style="display:block;font-size:12px;color:var(--text2);margin-bottom:6px;">Motivo</label>
+<input id="silencio-motivo" type="text" maxlength="200" placeholder="Ex.: cliente não veio buscar" style="width:100%;padding:10px 12px;margin-bottom:14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;box-sizing:border-box;">
+<button type="button" onclick="confirmarSilenciarAlerta()" class="premium-btn" style="width:100%;margin-bottom:8px;">Silenciar</button>
+<button type="button" onclick="closeModal()" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Cancelar</button>`);
+};
+
+window.confirmarSilenciarAlerta = async function confirmarSilenciarAlerta() {
+    if (!currentOS) return;
+    const opcao = document.querySelector('input[name="silencio-opcao"]:checked')?.value;
+    const motivo = document.getElementById('silencio-motivo')?.value || '';
+    let payload;
+    try {
+        payload = payloadSilenciar(opcao, motivo, getOperadorNome());
+    } catch (e) {
+        return showToast(e.message || 'Preencha o motivo.');
+    }
+    Object.assign(currentOS, payload);
+    currentOS.updatedAt = new Date().toISOString();
+    currentOS.timeline = currentOS.timeline || [];
+    currentOS.timeline.push({
+        date: currentOS.updatedAt,
+        text: `Alerta silenciado (${opcao === 'ate_status' ? 'até mudar status' : opcao + ' dias'}): ${payload.silenciadoMotivo}`,
+    });
+    closeModal();
+    await saveCurrentOS();
+    renderDetail();
+    showToast('🔕 Alerta silenciado');
+    window.markSaved();
+};
+
+window.reativarAlertaOS = async function reativarAlertaOS() {
+    if (!currentOS || !podeEditar('os')) return;
+    Object.assign(currentOS, payloadLimparSilencio());
+    currentOS.updatedAt = new Date().toISOString();
+    currentOS.timeline = currentOS.timeline || [];
+    currentOS.timeline.push({ date: currentOS.updatedAt, text: 'Alerta de OS reativado' });
+    await saveCurrentOS();
+    renderDetail();
+    showToast('🔔 Alerta reativado');
+    window.markSaved();
+};
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 
@@ -1467,6 +1548,7 @@ async function markDelivered() {
     window.markUnsaved();
     currentOS.status = 'entregue';
     currentOS.updatedAt = new Date().toISOString();
+    Object.assign(currentOS, payloadLimparSilencio());
     currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
     await saveCurrentOS();
     renderDetail();
@@ -1495,7 +1577,7 @@ async function markDelivered() {
     }
     offerPrintGarantia();
 }
-async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
+async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); Object.assign(currentOS, payloadLimparSilencio()); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
 function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone; showClientDetail(currentOS.phone); } }

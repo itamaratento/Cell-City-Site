@@ -330,8 +330,12 @@
   }
 
   // OS em andamento sem mudança de status há mais de 15 dias
+  // `aguardando_retirada` sai deste alerta e entra no lembrete de cobrança (30 dias).
   var STATUS_TERMINAIS_OS = { entregue: 1, orcamento_recusado: 1, devolvido_orcamento: 1 };
+  var STATUS_AGUARDANDO_RETIRADA = 'aguardando_retirada';
   var ultimosParadas = [];
+  var ultimosCobranca = [];
+  function opsHelper() { return window.OSParadaSilencio || null; }
   function dataUltimaMudancaStatus(os) {
     if (Array.isArray(os.timeline)) {
       for (var i = os.timeline.length - 1; i >= 0; i--) {
@@ -345,15 +349,58 @@
     }
     return os.createdAt || os.updatedAt || null;
   }
+  function silencioAtivoLocal(os) {
+    var H = opsHelper();
+    if (H && typeof H.isSilencioAtivo === 'function') return !!H.isSilencioAtivo(os);
+    var ate = os && os.silenciadoAte;
+    if (!os || !(os.silenciadoMotivo || os.silenciadoPor || ate)) return false;
+    if (ate == null || ate === '' || ate === 'ate_status') return true;
+    var t = Date.parse(ate);
+    return !isNaN(t) && t > Date.now();
+  }
   function osParadasPendentes() {
     var out = [];
+    var H = opsHelper();
     osDocs.forEach(function (os) {
       var st = os.status || '';
       if (STATUS_TERMINAIS_OS[st]) return;
       var base = dataUltimaMudancaStatus(os);
       if (!base) return;
       var dias = calcDias(base);
-      if (dias < 15) return;
+      var alerta;
+      if (H && typeof H.deveAlertarParada === 'function') {
+        alerta = H.deveAlertarParada(os, dias);
+      } else {
+        alerta = st !== STATUS_AGUARDANDO_RETIRADA && !silencioAtivoLocal(os) && dias >= 15;
+      }
+      if (!alerta) return;
+      out.push({
+        osId: os.id || os._id,
+        clientName: os.clientName || 'Cliente',
+        model: os.model || '',
+        dias: dias,
+        status: st
+      });
+    });
+    out.sort(function (a, b) { return b.dias - a.dias; });
+    return out;
+  }
+  function osCobrancaRetiradaPendentes() {
+    var out = [];
+    var H = opsHelper();
+    osDocs.forEach(function (os) {
+      var st = os.status || '';
+      if (st !== STATUS_AGUARDANDO_RETIRADA) return;
+      var base = dataUltimaMudancaStatus(os);
+      if (!base) return;
+      var dias = calcDias(base);
+      var alerta;
+      if (H && typeof H.deveAlertarCobrancaRetirada === 'function') {
+        alerta = H.deveAlertarCobrancaRetirada(os, dias);
+      } else {
+        alerta = !silencioAtivoLocal(os) && dias >= 30;
+      }
+      if (!alerta) return;
       out.push({
         osId: os.id || os._id,
         clientName: os.clientName || 'Cliente',
@@ -366,6 +413,7 @@
     return out;
   }
   function paradaKey(it) { return 'parada|' + (it.osId || ''); }
+  function cobrancaKey(it) { return 'cobranca|' + (it.osId || ''); }
   function paradaItemHTML(it) {
     var url = '../../pages/os/index.html#os-' + encodeURIComponent(it.osId || '');
     return '<div class="aprov-item" data-key="' + esc(paradaKey(it)) + '" style="border-left:3px solid #ef4444;">'
@@ -373,6 +421,18 @@
       + '<div class="aprov-item-cli">' + esc(it.clientName) + '</div>'
       + (it.model ? '<div class="aprov-item-meta">' + esc(it.model) + '</div>' : '')
       + '<div class="aprov-item-dec" style="color:#ef4444;">⏸ Parada há ' + it.dias + ' dias sem mudança de status</div>'
+      + '<div class="aprov-pv-acoes">'
+      + '<a class="aprov-pv-abrir-btn" href="' + esc(url) + '">📂 Abrir</a>'
+      + '</div>'
+      + '</div>';
+  }
+  function cobrancaItemHTML(it) {
+    var url = '../../pages/os/index.html#os-' + encodeURIComponent(it.osId || '');
+    return '<div class="aprov-item" data-key="' + esc(cobrancaKey(it)) + '" style="border-left:3px solid #f59e0b;">'
+      + '<div class="aprov-item-os">' + esc(it.osId || 'OS') + '</div>'
+      + '<div class="aprov-item-cli">' + esc(it.clientName) + '</div>'
+      + (it.model ? '<div class="aprov-item-meta">' + esc(it.model) + '</div>' : '')
+      + '<div class="aprov-item-dec" style="color:#f59e0b;">💰 Aguardando retirada — cobrar há ' + it.dias + ' dias</div>'
       + '<div class="aprov-pv-acoes">'
       + '<a class="aprov-pv-abrir-btn" href="' + esc(url) + '">📂 Abrir</a>'
       + '</div>'
@@ -412,8 +472,9 @@
     });
     var agendaPend = agendaPendentes();
     var paradaPend = osParadasPendentes();
-    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend; ultimosAgenda = agendaPend; ultimosParadas = paradaPend;
-    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + agendaPend.length + paradaPend.length;
+    var cobrancaPend = osCobrancaRetiradaPendentes();
+    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend; ultimosAgenda = agendaPend; ultimosParadas = paradaPend; ultimosCobranca = cobrancaPend;
+    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + agendaPend.length + paradaPend.length + cobrancaPend.length;
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline-flex' : 'none';
     if (sino) sino.classList.toggle('tem-alerta', total > 0);
@@ -424,7 +485,8 @@
               || diagPend.some(function (s) { return !jaSoou[diagKey(s)]; })
               || preOSPend.some(function (p) { return !jaSoou[preOSKey(p)]; })
               || agendaPend.some(function (it) { return !jaSoou[agendaKey(it)]; })
-              || paradaPend.some(function (it) { return !jaSoou[paradaKey(it)]; });
+              || paradaPend.some(function (it) { return !jaSoou[paradaKey(it)]; })
+              || cobrancaPend.some(function (it) { return !jaSoou[cobrancaKey(it)]; });
       if (novo) beep();
     }
     aprovPend.forEach(function (os) { jaSoou[keyOf(os)] = true; });
@@ -434,6 +496,7 @@
     preOSPend.forEach(function (p) { jaSoou[preOSKey(p)] = true; });
     agendaPend.forEach(function (it) { jaSoou[agendaKey(it)] = true; });
     paradaPend.forEach(function (it) { jaSoou[paradaKey(it)] = true; });
+    cobrancaPend.forEach(function (it) { jaSoou[cobrancaKey(it)] = true; });
     firstLoad = false;
     if (!total) {
       body.innerHTML = '<div class="aprov-vazio">Nenhum alerta pendente de visualização.</div>';
@@ -442,6 +505,7 @@
       var html = '';
       if (agendaPend.length) html += '<div class="aprov-secao">📅 Agenda / Retornos</div>' + agendaPend.map(agendaItemHTML).join('');
       if (paradaPend.length) html += '<div class="aprov-secao">⏸ OS paradas (+15 dias)</div>' + paradaPend.map(paradaItemHTML).join('');
+      if (cobrancaPend.length) html += '<div class="aprov-secao">💰 Cobrança — aguardando retirada (+30 dias)</div>' + cobrancaPend.map(cobrancaItemHTML).join('');
       if (preOSPend.length) html += '<div class="aprov-secao">🆕 Novos Atendimentos do Site</div>' + preOSPend.map(preOSItemHTML).join('');
       if (diagPend.length) html += '<div class="aprov-secao">🔧 Solicitações de Diagnóstico</div>' + diagPend.map(diagItemHTML).join('');
       if (agPend.length) html += '<div class="aprov-secao">📅 Agendamentos</div>' + agPend.map(agItemHTML).join('');

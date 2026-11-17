@@ -51,8 +51,8 @@ Object.assign(window.Portal, {
   },
 
   // ===== STATUS PROGRESS =====
-  // Ordem oficial do fluxo (8 etapas).
-  STATUS_ORDER: ['recebido','em_analise','orcamento_enviado','orcamento_aprovado','em_reparo','testes_finais','concluido','entregue'],
+  // Ordem oficial do fluxo (9 etapas + aguardando retirada).
+  STATUS_ORDER: ['recebido','em_analise','orcamento_enviado','orcamento_aprovado','em_reparo','testes_finais','concluido','aguardando_retirada','entregue'],
 
   // Mapeia status antigos (OS já gravadas) para a etapa equivalente do fluxo novo.
   _getLockTypeLabel(type) {
@@ -81,7 +81,7 @@ Object.assign(window.Portal, {
 
   _statusProgress(status) {
     const ORDER = this.STATUS_ORDER;
-    const LABELS = ['Recebida','Em análise','Orçamento enviado','Orçamento aprovado','Em reparo','Testes finais','Concluída','Entregue'];
+    const LABELS = ['Recebida','Em análise','Orçamento enviado','Orçamento aprovado','Em reparo','Testes finais','Concluída','Aguardando retirada','Entregue'];
     const idx = ORDER.indexOf(this._normStatus(status));
     if (idx === -1) return { percent: 0, label: (STATUS_LABEL[status] && STATUS_LABEL[status].label) || status || '—' };
     const pct = Math.round((idx / (ORDER.length - 1)) * 100);
@@ -158,7 +158,7 @@ Object.assign(window.Portal, {
     `;
 
     // Banner de Pronto para Retirada
-    if (o.status === 'concluido' || o.status === 'pronto') {
+    if (o.status === 'concluido' || o.status === 'pronto' || o.status === 'aguardando_retirada') {
       html += `
         <a href="${MAPS_URL}" target="_blank" class="pronto-banner" style="text-decoration:none;display:flex;margin-bottom:12px;">
           <div class="pronto-banner-icon">🟢</div>
@@ -399,7 +399,7 @@ Object.assign(window.Portal, {
   // ===== STATUS STEPS HTML =====
   _statusStepsHTML(status) {
     const ORDER = this.STATUS_ORDER;
-    const LABELS = ['📥', '🔍', '📋', '👍', '🛠️', '🧪', '✅', '🎉'];
+    const LABELS = ['📥', '🔍', '📋', '👍', '🛠️', '🧪', '✅', '📦', '🎉'];
     const idx = ORDER.indexOf(this._normStatus(status));
     if (idx === -1) return '';
     let html = '';
