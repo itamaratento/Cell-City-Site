@@ -56,6 +56,7 @@ window.copiarCampoNF = copiarCampoNF;
 window.copiarTodosDadosNF = copiarTodosDadosNF;
 window.salvarDadosNotaFiscal = salvarDadosNotaFiscal;
 window.printOS = printOS;
+window.printOSEscolherTermos = printOSEscolherTermos;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
 window.generateWarrantyLink = generateWarrantyLink;
@@ -661,11 +662,21 @@ async function saveOS() {
 
         showToast(`✅ ${osId} criada com sucesso!`);
         window.markSaved();
-        showScreen('home');
+        currentOS = os;
+        mostrarPosCriacaoOS(os);
     } catch (e) {
         console.error('❌ Erro ao criar OS:', e);
         showToast(`❌ Erro ao criar OS: ${e.message || e.code || 'verifique o console'}`);
     }
+}
+
+function mostrarPosCriacaoOS(os) {
+    openModal(`<div class="modal-handle"></div>
+<h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">✅ ${escHtml(os.id)} criada</h3>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via do cliente ou feche para continuar.</p>
+<button type="button" onclick="closeModal();printOS();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir OS</button>
+<button type="button" onclick="closeModal();showScreen('home');" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>
+<button type="button" onclick="printOSEscolherTermos()" style="width:100%;margin-top:10px;padding:8px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">Trocar termos de garantia…</button>`);
 }
 
 function enrichClientData(phone, base) {
@@ -930,7 +941,7 @@ function renderDetail() {
     
     html += _renderDadosNotaFiscalCard(os);
 
-    html += `<div class="detail-actions"><button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button>${podeExcluir('os') ? `<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>` : ''}`;
+    html += `<div class="detail-actions"><button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="printOSEscolherTermos()" style="color:var(--text3);font-size:11px">Trocar termos</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button>${podeExcluir('os') ? `<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>` : ''}`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -1581,25 +1592,116 @@ function _populateWarrantySelect(selectId, selectedId) {
 }
 
 /**
- * Tenta carregar configuração de garantias do Firestore como fallback
- * quando o localStorage não tem dados. Se encontrar, sincroniza para localStorage.
+ * Carrega config de impressão do Firestore (fonte da verdade entre PCs)
+ * e sincroniza no localStorage. Fallback: cache local.
  */
 async function _fetchWarrantyConfigFromFirestore() {
     try {
         const configDocRef = doc(db, "config", "impressao");
         const configDoc = await getDoc(configDocRef);
         if (configDoc.exists()) {
-            const data = configDoc.data();
-            if (Array.isArray(data.garantias) && data.garantias.length > 0) {
-                // Sincroniza para localStorage para uso futuro
-                localStorage.setItem(STORAGE_KEYS.CONFIG_IMPRESSAO, JSON.stringify(data));
-                return data;
-            }
+            const data = configDoc.data() || {};
+            const sync = {
+                loja: data.loja || null,
+                logo: data.logo || '',
+                garantias: Array.isArray(data.garantias) ? data.garantias : []
+            };
+            try {
+                localStorage.setItem(STORAGE_KEYS.CONFIG_IMPRESSAO, JSON.stringify(sync));
+            } catch (e) { /* quota / privado */ }
+            return sync;
         }
     } catch (e) {
-        console.warn('⚠️ [Garantia] Não foi possível buscar config do Firestore:', e);
+        console.warn('⚠️ [Impressão] Não foi possível buscar config do Firestore:', e);
     }
+    try {
+        const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO);
+        if (c) return JSON.parse(c);
+    } catch (e) {}
     return null;
+}
+
+function _lerPrintConfigLocal() {
+    try {
+        const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO);
+        if (c) return JSON.parse(c);
+    } catch (e) {}
+    return { logo: '', garantias: [], loja: {} };
+}
+
+async function _ensurePrintConfig() {
+    const remote = await _fetchWarrantyConfigFromFirestore();
+    return remote || _lerPrintConfigLocal();
+}
+
+function _defaultGarantiaIds(os, garantias) {
+    const list = Array.isArray(garantias) ? garantias : [];
+    if (!list.length) return [];
+    if (os?.garantiaId != null) {
+        const match = list.find(g => String(g.id) === String(os.garantiaId));
+        if (match) return [String(match.id)];
+    }
+    const padroes = list.filter(g => g.padrao).map(g => String(g.id));
+    if (padroes.length) return padroes;
+    return [String(list[0].id)];
+}
+
+function _portalLinkImpressao(os) {
+    const tel = _phoneDigitsOS(os);
+    const base = URLS.PORTAL_CLIENTE_PROD;
+    const q = [];
+    if (tel) q.push('tel=' + encodeURIComponent(tel));
+    if (os?.id) q.push('os=' + encodeURIComponent(os.id));
+    return q.length ? `${base}?${q.join('&')}` : base;
+}
+
+/** QR via API leve (só imagem) — sem lib JS. Falha silenciosa se offline. */
+function _qrImgHtml(url) {
+    const src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=' + encodeURIComponent(url);
+    return `<img class="os-print-qr" src="${src}" width="100" height="100" alt="QR Portal" style="width:100px;height:100px;image-rendering:pixelated">`;
+}
+
+function _printViaIframe(html) {
+    let iframe = document.getElementById('os-print-frame');
+    if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'os-print-frame';
+        iframe.setAttribute('aria-hidden', 'true');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none;';
+        document.body.appendChild(iframe);
+    }
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    const win = iframe.contentWindow;
+    const doPrint = () => {
+        try { win.focus(); win.print(); } catch (e) {
+            console.warn('[Impressão] falha ao imprimir:', e);
+            showToast('❌ Não foi possível abrir a impressão');
+        }
+    };
+    const imgs = Array.from(doc.images || []);
+    if (!imgs.length) {
+        setTimeout(doPrint, 60);
+        return;
+    }
+    let pending = imgs.length;
+    let printed = false;
+    const tryPrint = () => {
+        if (printed) return;
+        printed = true;
+        doPrint();
+    };
+    const tick = () => { if (--pending <= 0) tryPrint(); };
+    imgs.forEach(img => {
+        if (img.complete) tick();
+        else {
+            img.addEventListener('load', tick, { once: true });
+            img.addEventListener('error', tick, { once: true });
+        }
+    });
+    setTimeout(tryPrint, 2500);
 }
 
 /**
@@ -2048,27 +2150,37 @@ async function sendWarrantyWhatsApp() {
     showToast('📲 Abrindo WhatsApp...');
 }
 
-function printOS() {
+/** Um clique: imprime com termos padrão (sem modal). */
+async function printOS() {
+    if (!currentOS) return;
+    showToast('🖨️ Preparando impressão…');
+    const cfg = await _ensurePrintConfig();
+    const ids = _defaultGarantiaIds(currentOS, cfg.garantias || []);
+    _executePrint(ids, cfg);
+}
+
+/** Opcional: escolher quais termos de garantia entram na folha. */
+async function printOSEscolherTermos() {
     if (!currentOS) return;
     const os = currentOS;
-    let cfg = { logo: '', garantias: [] };
-    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
+    const cfg = await _ensurePrintConfig();
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    const defaultIds = new Set(_defaultGarantiaIds(os, garantias));
     const checksHtml = garantias.length ? `
         <div style="margin-bottom:16px">
             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00E676;margin-bottom:10px">Termos de Garantia</div>
             <div style="display:flex;flex-direction:column;gap:8px">
                 ${garantias.map(g => `
                 <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#1c1f1d;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
-                    <input type="checkbox" class="print-gar-chk" data-id="${g.id}" ${(os.garantiaId && g.id === os.garantiaId) || (!os.garantiaId && g.padrao) ? 'checked' : ''} style="width:18px;height:18px;accent-color:#00C853;cursor:pointer;flex-shrink:0">
-                    <span style="font-size:13px;color:#d1d5db">${g.nome}</span>
+                    <input type="checkbox" class="print-gar-chk" data-id="${escHtml(String(g.id))}" ${defaultIds.has(String(g.id)) ? 'checked' : ''} style="width:18px;height:18px;accent-color:#00C853;cursor:pointer;flex-shrink:0">
+                    <span style="font-size:13px;color:#d1d5db">${escHtml(g.nome || '')}</span>
                 </label>`).join('')}
             </div>
-        </div>` : '';
+        </div>` : '<p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Nenhum termo cadastrado em Config → Impressão.</p>';
     document.getElementById('modal-content').innerHTML = `
         <div onclick="event.stopPropagation()">
         <div class="modal-handle"></div>
-        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Imprimir OS ${currentOS.id}</h3>
+        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Imprimir OS ${escHtml(currentOS.id)}</h3>
         ${checksHtml}
         <button onclick="event.stopPropagation();window._executePrint()" style="width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#009624);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
             🖨️ Imprimir
@@ -2108,29 +2220,113 @@ function highlightWarrantyTerms(text) {
     return result;
 }
 
-window._executePrint = function() {
+window._executePrint = function(selectedIds, cfgArg) {
     if (!currentOS) return;
     const os = currentOS;
-    let cfg = { logo: '', garantias: [] };
-    try { const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO); if (c) cfg = JSON.parse(c); } catch {}
+    const cfg = cfgArg || _lerPrintConfigLocal();
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
-    const selectedIds = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
-    const selecionadas = garantias.filter(g => selectedIds.includes(String(g.id)));
-    closeModal();
+    let ids = Array.isArray(selectedIds) ? selectedIds.map(String) : null;
+    if (!ids) {
+        ids = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
+    }
+    const selecionadas = garantias.filter(g => ids.includes(String(g.id)));
+    try { closeModal(); } catch (e) {}
+
     const loja = cfg.loja || {};
-    const lojaNome = loja.nome || 'Cell City Informática';
-    const lojaEnd  = loja.endereco || '';
-    const lojaWa   = loja.whatsapp || '';
-    const lojaCnpj = loja.cnpj || '';
-    const logoHtml = cfg.logo ? `<div style="text-align:center;margin-bottom:10px"><img src="${cfg.logo}" style="max-height:80px;max-width:220px;object-fit:contain"></div>` : '';
-    const cabecalhoHtml = `<h1 style="text-align:center;font-size:16px;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:6px">${lojaNome}</h1>${lojaEnd?`<p style="text-align:center;font-size:10px;margin-bottom:2px">${lojaEnd}</p>`:''}${lojaWa?`<p style="text-align:center;font-size:10px;margin-bottom:2px">WhatsApp: ${lojaWa}</p>`:''}${lojaCnpj?`<p style="text-align:center;font-size:10px;margin-bottom:8px">CNPJ: ${lojaCnpj}</p>`:''}`;
-    const garantiasHtml = selecionadas.length ? `<div style="margin-top:14px;border-top:1px dashed #ccc;padding-top:10px"><div style="font-weight:bold;font-size:11px;margin-bottom:8px;text-transform:uppercase">Termos de Garantia</div>${selecionadas.map(g => `<div style="margin-bottom:10px"><b style="font-size:11px">${g.nome}:</b><br><span style="font-size:10px;line-height:1.5">${g.texto}</span></div>`).join('')}</div>` : '';
-    const w = window.open('', '_blank', 'noopener');
-    const statusHtml = os.status === 'entregue' ? `<div class="row"><span class="label">Status:</span><span style="font-weight:bold">ENTREGUE</span></div>` : `<div class="row"><span class="label">Status:</span><span>${getStatusLabel(os.status)}</span></div>`;
-    const garantiasHtmlAjustado = selecionadas.length ? `<div style="margin-top:14px;border-top:1px dashed #ccc;padding-top:10px"><div style="font-weight:bold;font-size:11px;margin-bottom:8px;text-transform:uppercase">Termos de Garantia</div>${selecionadas.map(g => `<div style="margin-bottom:10px"><b style="font-size:11px">${g.nome}:</b><br><span style="font-size:10px;line-height:1.5">${highlightWarrantyTerms(g.texto)}</span></div>`).join('')}</div>` : '';
-    w.document.write(`<!DOCTYPE html><html><head><title>${escHtml(os.id)}</title><style>body{font-family:monospace;padding:20px;max-width:400px;margin:0 auto}.row{display:flex;justify-content:space-between;padding:4px 0;font-size:12px}.label{font-weight:bold}.section{margin-top:12px;border-top:1px dashed #ccc;padding-top:6px}.footer{text-align:center;margin-top:20px;font-size:10px}@media print{button{display:none}}</style></head><body>${logoHtml}${cabecalhoHtml}<div class="row"><span class="label">O.S.:</span><span>${escHtml(os.id)}</span></div><div class="row"><span class="label">Data:</span><span>${formatDate(os.createdAt)}</span></div><div class="section"><div class="row"><span class="label">Cliente:</span><span>${escHtml(os.clientName)}</span></div><div class="row"><span class="label">Telefone:</span><span>${escHtml(os.phone)}</span></div>${os.cpf?`<div class="row"><span class="label">CPF:</span><span>${escHtml(os.cpf)}</span></div>`:''}${os.cep||os.endereco?`<div class="row"><span class="label">Endereço:</span><span>${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento?` - ${escHtml(os.complemento)}`:''}</span></div><div class="row"><span class="label">Bairro:</span><span>${escHtml(os.bairro||'')}</span></div><div class="row"><span class="label">Cidade/UF:</span><span>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}</span></div><div class="row"><span class="label">CEP:</span><span>${escHtml(os.cep||'')}</span></div>`:''}<div class="row"><span class="label">Aparelho:</span><span>${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</span></div>${os.imei?`<div class="row"><span class="label">IMEI:</span><span>${escHtml(os.imei)}</span></div>`:''}<div class="row"><span class="label">Defeito:</span><span>${escHtml(os.defect||'')}</span></div>${os.valor?`<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`:''}${os.patternSequence&&os.patternSequence.length?`<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i=>i+1).join('→')}</span></div>`:''}${os.observations?`<div class="row"><span class="label">Obs:</span><span>${escHtml(os.observations)}</span></div>`:''}</div><div class="section">${statusHtml}</div>${garantiasHtmlAjustado}<div class="footer" style="margin-top:30px"><div style="text-align:center;margin-bottom:20px"><p style="margin:0;font-size:10px">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p><p style="margin:30px 0 10px 0;border-top:1px solid #000;padding-top:10px;min-height:40px;font-size:11px;font-weight:bold">Assinatura do Cliente</p><p style="margin-top:15px;font-size:10px">Data da entrega: ___/___/____</p></div><div style="text-align:center;margin-top:20px;border-top:1px dashed #ccc;padding-top:10px;font-size:9px"><p style="margin:0;font-style:italic;color:#333">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p></div></div></body></html>`);
-    w.document.close();
-    w.print();
+    const lojaNome = escHtml(loja.nome || 'Cell City Informática');
+    const lojaEnd  = escHtml(loja.endereco || '');
+    const lojaWa   = escHtml(loja.whatsapp || '');
+    const lojaCnpj = escHtml(loja.cnpj || '');
+    const logoHtml = cfg.logo
+        ? `<div class="logo-wrap"><img src="${cfg.logo}" alt="Logo"></div>`
+        : '';
+    const cabecalhoHtml = `<h1 class="shop-name">${lojaNome}</h1>`
+        + (lojaEnd ? `<p class="shop-meta">${lojaEnd}</p>` : '')
+        + (lojaWa ? `<p class="shop-meta">WhatsApp: ${lojaWa}</p>` : '')
+        + (lojaCnpj ? `<p class="shop-meta">CNPJ: ${lojaCnpj}</p>` : '');
+    const statusHtml = os.status === 'entregue'
+        ? `<div class="row"><span class="label">Status:</span><span class="strong">ENTREGUE</span></div>`
+        : `<div class="row"><span class="label">Status:</span><span>${escHtml(getStatusLabel(os.status))}</span></div>`;
+    const garantiasHtmlAjustado = selecionadas.length
+        ? `<div class="section"><div class="section-title">Termos de Garantia</div>${selecionadas.map(g =>
+            `<div class="gar-block"><b>${escHtml(g.nome || '')}:</b><br><span class="gar-txt">${highlightWarrantyTerms(escHtml(g.texto || ''))}</span></div>`
+          ).join('')}</div>`
+        : '';
+    const portalUrl = _portalLinkImpressao(os);
+    const portalUrlEsc = escHtml(portalUrl);
+    const portalBlock = `<div class="section portal-block">
+      <div class="portal-txt">
+        <div class="section-title">Acompanhe seu conserto pelo celular</div>
+        <p class="portal-link">${portalUrlEsc}</p>
+      </div>
+      <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
+    </div>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(os.id)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;margin:0;padding:12px 16px;max-width:720px}
+  .logo-wrap{text-align:center;margin-bottom:8px}
+  .logo-wrap img{max-height:64px;max-width:200px;object-fit:contain}
+  .shop-name{text-align:center;font-size:15px;border-bottom:2px solid #000;padding-bottom:6px;margin:0 0 4px}
+  .shop-meta{text-align:center;font-size:10px;margin:0 0 2px}
+  .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px}
+  .label{font-weight:700;flex-shrink:0}
+  .strong{font-weight:700}
+  .section{margin-top:10px;border-top:1px dashed #999;padding-top:8px}
+  .section-title{font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px}
+  .gar-block{margin-bottom:8px}
+  .gar-txt{font-size:10px;line-height:1.45}
+  .portal-block{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .portal-txt{flex:1;min-width:0}
+  .portal-link{font-size:9px;word-break:break-all;margin:4px 0 0;line-height:1.35}
+  .portal-qr{flex-shrink:0}
+  .footer{text-align:center;margin-top:18px;font-size:10px}
+  .sign{margin:28px 0 8px;border-top:1px solid #000;padding-top:8px;font-size:11px;font-weight:700}
+  .hint{margin-top:12px;border-top:1px dashed #ccc;padding-top:8px;font-size:9px;font-style:italic}
+  @page{margin:8mm}
+  @media print{
+    body{padding:0;max-width:none}
+  }
+  /* Térmica 80mm / rolo estreito */
+  @media print and (max-width:90mm){
+    body{font-size:11px;padding:2mm}
+    .shop-name{font-size:13px}
+    .row{font-size:11px;flex-wrap:wrap}
+    .portal-block{flex-direction:column;align-items:flex-start}
+    .os-print-qr{width:88px!important;height:88px!important}
+    .logo-wrap img{max-height:48px}
+  }
+</style></head><body>
+${logoHtml}${cabecalhoHtml}
+<div class="row"><span class="label">O.S.:</span><span>${escHtml(os.id)}</span></div>
+<div class="row"><span class="label">Data:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
+<div class="section">
+<div class="row"><span class="label">Cliente:</span><span>${escHtml(os.clientName || '')}</span></div>
+<div class="row"><span class="label">Telefone:</span><span>${escHtml(os.phone || '')}</span></div>
+${os.cpf ? `<div class="row"><span class="label">CPF:</span><span>${escHtml(os.cpf)}</span></div>` : ''}
+${os.cep || os.endereco ? `<div class="row"><span class="label">Endereço:</span><span>${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ' - ' + escHtml(os.complemento) : ''}</span></div>
+<div class="row"><span class="label">Bairro:</span><span>${escHtml(os.bairro || '')}</span></div>
+<div class="row"><span class="label">Cidade/UF:</span><span>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}</span></div>
+<div class="row"><span class="label">CEP:</span><span>${escHtml(os.cep || '')}</span></div>` : ''}
+<div class="row"><span class="label">Aparelho:</span><span>${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</span></div>
+${os.imei ? `<div class="row"><span class="label">IMEI:</span><span>${escHtml(os.imei)}</span></div>` : ''}
+<div class="row"><span class="label">Defeito:</span><span>${escHtml(os.defect || '')}</span></div>
+${os.valor ? `<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>` : ''}
+${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i + 1).join('→')}</span></div>` : ''}
+</div>
+<div class="section">${statusHtml}</div>
+${garantiasHtmlAjustado}
+${portalBlock}
+<div class="footer">
+  <p style="margin:0">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p>
+  <p class="sign">Assinatura do Cliente</p>
+  <p style="margin:8px 0 0;font-size:10px">Data da entrega: ___/___/____</p>
+  <p class="hint">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p>
+</div>
+</body></html>`;
+
+    _printViaIframe(html);
 };
 
 // ===== CLIENTS (MÓDULO COMPLETO) =====
