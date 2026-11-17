@@ -4,11 +4,18 @@ Etapa 6 da refatoração modular: relógio, calendário, notas, config de alerta
 grid de módulos (RBAC), navegação e modal de OS do alerta.
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, doc, setDoc, serverTimestamp, onSnapshot } from "../../scripts/firebase.js";
+import { db, doc, getDoc, setDoc, serverTimestamp, onSnapshot } from "../../scripts/firebase.js";
 import { podeVisualizar } from '../../shared/permissoes.js';
 import { tData } from '../../shared/tenant-query.js';
 import { escHtml } from '../../shared/sanitize.js';
 import { RBAC_CARD_PARA_MODULO_ID, dashboardShared } from './dashboard-state.js';
+import {
+  HOME_MODULOS_PRIMARIOS,
+  PAINEL_CAMPO_MAIS,
+  lerMaisModulosAbertoLocal,
+  gravarMaisModulosAbertoLocal,
+  maisModulosAbertoFromPainel,
+} from './dashboard-home-enxuto.js';
 
 export const dashboardUiMixin = {
   // ===== RELÓGIO & DATA COMPLETA =====
@@ -221,7 +228,7 @@ export const dashboardUiMixin = {
     this.renderCalendar();
   },
 
-  // ===== MÓDULOS =====
+  // ===== MÓDULOS (home enxuta + preferência online config/painel) =====
   setupModules() {
     document.querySelectorAll('.module-card[data-module]').forEach(card => {
       const moduloId = RBAC_CARD_PARA_MODULO_ID[card.getAttribute('data-module')];
@@ -234,6 +241,73 @@ export const dashboardUiMixin = {
         this.navigateTo(module);
       });
     });
+    this._aplicarHomeEnxuta();
+  },
+
+  _aplicarHomeEnxuta() {
+    const detalhes = document.getElementById('mais-modulos');
+    const sidebarToggle = document.getElementById('sidebar-mais-toggle');
+    const sidebarMais = document.getElementById('sidebar-mais-itens');
+
+    const aplicarAberto = (aberto) => {
+      if (detalhes) detalhes.open = !!aberto;
+      if (sidebarMais) sidebarMais.hidden = !aberto;
+      if (sidebarToggle) sidebarToggle.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+      gravarMaisModulosAbertoLocal(!!aberto);
+    };
+
+    // Local imediato; Firestore sincroniza nos dois PCs
+    aplicarAberto(lerMaisModulosAbertoLocal());
+    this._syncMaisModulosFromFirestore().then((online) => {
+      if (typeof online === 'boolean') aplicarAberto(online);
+    });
+
+    if (detalhes && !detalhes.dataset.enxutoBound) {
+      detalhes.dataset.enxutoBound = '1';
+      detalhes.addEventListener('toggle', () => {
+        const aberto = !!detalhes.open;
+        aplicarAberto(aberto);
+        this._persistMaisModulosOnline(aberto);
+      });
+    }
+    if (sidebarToggle && !sidebarToggle.dataset.enxutoBound) {
+      sidebarToggle.dataset.enxutoBound = '1';
+      sidebarToggle.addEventListener('click', () => {
+        const aberto = !(sidebarMais && !sidebarMais.hidden);
+        aplicarAberto(aberto);
+        this._persistMaisModulosOnline(aberto);
+      });
+    }
+
+    // Garante ordem canônica dos 7 no grid (caso HTML mude)
+    const grid = document.getElementById('modules-grid-primarios');
+    if (grid) {
+      HOME_MODULOS_PRIMARIOS.forEach(id => {
+        const el = grid.querySelector(`.module-card[data-module="${id}"]`);
+        if (el) grid.appendChild(el);
+      });
+    }
+  },
+
+  async _syncMaisModulosFromFirestore() {
+    try {
+      const snap = await getDoc(doc(db, 'config', 'painel'));
+      return maisModulosAbertoFromPainel(snap.exists() ? snap.data() : null);
+    } catch (e) {
+      console.warn('[Home enxuta] preferência online indisponível; usando local:', e);
+      return null;
+    }
+  },
+
+  async _persistMaisModulosOnline(aberto) {
+    try {
+      await setDoc(doc(db, 'config', 'painel'), {
+        [PAINEL_CAMPO_MAIS]: !!aberto,
+        atualizadoEm: serverTimestamp(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('[Home enxuta] falha ao salvar preferência online:', e);
+    }
   },
 
   navigateTo(module) {
