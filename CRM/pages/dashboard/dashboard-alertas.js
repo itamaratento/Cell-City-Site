@@ -237,7 +237,7 @@ export const dashboardAlertasMixin = {
   // espelhada em Firestore `config/painel.destacarAgenda` para valer em todos os PCs.
   //
   // Contagem do card também ignora (só visual — NÃO apaga/altera documentos de agenda/OS):
-  //  1) qualquer lembrete atrasado há mais de 7 dias;
+  //  1) qualquer lembrete atrasado há mais de 3 dias (conta no dia e até +3);
   //  2) lembretes automáticos "🔔 Retorno OS: …" cuja OS já está encerrada
   //     (entregue / finalizada / cancelada-recusada).
   _destaqueAgendaAtivo() {
@@ -322,8 +322,8 @@ export const dashboardAlertasMixin = {
     let candidatos = (eventos || []).filter(e => {
       if (e.concluido || !e.data) return false;
       if (e.data > hojeISO) return false;
-      // Qualquer lembrete atrasado há mais de 7 dias sai da contagem do card.
-      if (e.data < hojeISO && this._diasAtrasoAgenda(e.data, hojeISO) > 7) return false;
+      // Conta no dia e até 3 dias após; depois disso sai da contagem do card.
+      if (e.data < hojeISO && this._diasAtrasoAgenda(e.data, hojeISO) > 3) return false;
       return true;
     });
 
