@@ -329,6 +329,56 @@
     });
   }
 
+  // OS em andamento sem mudança de status há mais de 15 dias
+  var STATUS_TERMINAIS_OS = { entregue: 1, orcamento_recusado: 1, devolvido_orcamento: 1 };
+  var ultimosParadas = [];
+  function dataUltimaMudancaStatus(os) {
+    if (Array.isArray(os.timeline)) {
+      for (var i = os.timeline.length - 1; i >= 0; i--) {
+        var t = os.timeline[i];
+        if (!t || !t.date) continue;
+        var txt = String(t.text || '');
+        if (txt.indexOf('Status:') === 0 || txt.indexOf('O.S. criada') === 0 || txt.indexOf('Entregue') === 0 || txt.indexOf('Aparelho devolvido') === 0) {
+          return t.date;
+        }
+      }
+    }
+    return os.createdAt || os.updatedAt || null;
+  }
+  function osParadasPendentes() {
+    var out = [];
+    osDocs.forEach(function (os) {
+      var st = os.status || '';
+      if (STATUS_TERMINAIS_OS[st]) return;
+      var base = dataUltimaMudancaStatus(os);
+      if (!base) return;
+      var dias = calcDias(base);
+      if (dias < 15) return;
+      out.push({
+        osId: os.id || os._id,
+        clientName: os.clientName || 'Cliente',
+        model: os.model || '',
+        dias: dias,
+        status: st
+      });
+    });
+    out.sort(function (a, b) { return b.dias - a.dias; });
+    return out;
+  }
+  function paradaKey(it) { return 'parada|' + (it.osId || ''); }
+  function paradaItemHTML(it) {
+    var url = '../../pages/os/index.html#os-' + encodeURIComponent(it.osId || '');
+    return '<div class="aprov-item" data-key="' + esc(paradaKey(it)) + '" style="border-left:3px solid #ef4444;">'
+      + '<div class="aprov-item-os">' + esc(it.osId || 'OS') + '</div>'
+      + '<div class="aprov-item-cli">' + esc(it.clientName) + '</div>'
+      + (it.model ? '<div class="aprov-item-meta">' + esc(it.model) + '</div>' : '')
+      + '<div class="aprov-item-dec" style="color:#ef4444;">⏸ Parada há ' + it.dias + ' dias sem mudança de status</div>'
+      + '<div class="aprov-pv-acoes">'
+      + '<a class="aprov-pv-abrir-btn" href="' + esc(url) + '">📂 Abrir</a>'
+      + '</div>'
+      + '</div>';
+  }
+
   function recompute() {
     if (!badge) return;
     var vistos = getVistos();
@@ -361,8 +411,9 @@
       return tb - ta;
     });
     var agendaPend = agendaPendentes();
-    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend; ultimosAgenda = agendaPend;
-    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + agendaPend.length;
+    var paradaPend = osParadasPendentes();
+    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend; ultimosAgenda = agendaPend; ultimosParadas = paradaPend;
+    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + agendaPend.length + paradaPend.length;
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline-flex' : 'none';
     if (sino) sino.classList.toggle('tem-alerta', total > 0);
@@ -372,7 +423,8 @@
               || agPend.some(function (a) { return !jaSoou[agKey(a)]; })
               || diagPend.some(function (s) { return !jaSoou[diagKey(s)]; })
               || preOSPend.some(function (p) { return !jaSoou[preOSKey(p)]; })
-              || agendaPend.some(function (it) { return !jaSoou[agendaKey(it)]; });
+              || agendaPend.some(function (it) { return !jaSoou[agendaKey(it)]; })
+              || paradaPend.some(function (it) { return !jaSoou[paradaKey(it)]; });
       if (novo) beep();
     }
     aprovPend.forEach(function (os) { jaSoou[keyOf(os)] = true; });
@@ -381,6 +433,7 @@
     diagPend.forEach(function (s) { jaSoou[diagKey(s)] = true; });
     preOSPend.forEach(function (p) { jaSoou[preOSKey(p)] = true; });
     agendaPend.forEach(function (it) { jaSoou[agendaKey(it)] = true; });
+    paradaPend.forEach(function (it) { jaSoou[paradaKey(it)] = true; });
     firstLoad = false;
     if (!total) {
       body.innerHTML = '<div class="aprov-vazio">Nenhum alerta pendente de visualização.</div>';
@@ -388,6 +441,7 @@
     } else {
       var html = '';
       if (agendaPend.length) html += '<div class="aprov-secao">📅 Agenda / Retornos</div>' + agendaPend.map(agendaItemHTML).join('');
+      if (paradaPend.length) html += '<div class="aprov-secao">⏸ OS paradas (+15 dias)</div>' + paradaPend.map(paradaItemHTML).join('');
       if (preOSPend.length) html += '<div class="aprov-secao">🆕 Novos Atendimentos do Site</div>' + preOSPend.map(preOSItemHTML).join('');
       if (diagPend.length) html += '<div class="aprov-secao">🔧 Solicitações de Diagnóstico</div>' + diagPend.map(diagItemHTML).join('');
       if (agPend.length) html += '<div class="aprov-secao">📅 Agendamentos</div>' + agPend.map(agItemHTML).join('');

@@ -124,6 +124,9 @@ jobs:
       - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
         run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs
 
+      - name: Testes de mensagem OS (criação + finalizado)
+        run: node --test tests/os/*.test.mjs
+
       - name: Validação de infraestrutura app-config
         run: npm run validar-infra-app-config
 

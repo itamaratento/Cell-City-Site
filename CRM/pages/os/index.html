@@ -113,27 +113,28 @@
         <!-- TELA FORMULÁRIO NOVA OS -->
         <div id="screen-form" class="screen">
             <!-- ===== Accordion (Nova OS) — abertos por padrão ===== -->
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;padding:0 4px;">
-                <label style="font-size:13px;font-weight:600;color:var(--text2);">Categoria:</label>
-                <select id="f-category-select" onchange="if(this.value)startOS(this.value)" style="flex:1;max-width:220px;padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:inherit;font-size:13px;">
+            <div class="form-section" id="nova-os-categoria-box" style="margin-bottom:14px;padding:14px 16px;border:2px solid var(--green-primary);border-radius:var(--radius);background:var(--surface2);">
+                <label for="f-category-select" style="display:block;font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px;">📦 Categoria do aparelho</label>
+                <select id="f-category-select" onchange="aplicarCategoriaForm(this.value)" style="width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-family:inherit;font-size:15px;font-weight:700;">
                     <option value="celular">📱 Celular</option>
                     <option value="notebook">💻 Notebook</option>
                     <option value="impressora">🖨️ Impressora</option>
                 </select>
+                <div id="f-categoria-hint" style="display:none;margin-top:8px;font-size:12px;color:var(--text2);"></div>
             </div>
             <div class="form-section accordion">
                 <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>👤 Dados do Cliente</span><span class="accordion-arrow">▼</span></button>
                 <div class="accordion-content"><div class="accordion-content-inner">
                     <div class="form-group"><label>Nome <span class="optional">*</span></label><input type="text" id="f-nome" placeholder="Nome completo"></div>
-                    <div class="form-group"><label>Telefone <span class="optional">*</span></label><input type="tel" id="f-telefone" placeholder="(00) 00000-0000"></div>
+                    <div class="form-group"><label>Telefone <span class="optional">*</span></label><input type="tel" id="f-telefone" placeholder="(00) 00000-0000"><div id="f-cliente-hint" style="display:none;margin-top:6px;font-size:12px;color:var(--green-light);font-weight:600;">Cliente encontrado</div></div>
                     <div class="form-group"><label>CPF <span class="optional">(opcional)</span></label><input type="text" id="f-cpf" placeholder="000.000.000-00" maxlength="14" oninput="cpfMask(this)"></div>
                 </div></div>
             </div>
             <div class="form-section accordion">
                 <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>📱 Dados do Aparelho</span><span class="accordion-arrow">▼</span></button>
                 <div class="accordion-content"><div class="accordion-content-inner">
-                    <div class="form-group"><label>Modelo <span class="optional">*</span></label><input type="text" id="f-modelo" placeholder="Ex: iPhone 11"></div>
-                    <div class="form-group"><label>Defeito relatado <span class="optional">*</span></label><textarea id="f-defeito" rows="3" placeholder="Descreva o problema..."></textarea></div>
+                    <div class="form-group"><label>Modelo <span class="optional">*</span></label><input type="text" id="f-modelo" placeholder="Ex: iPhone 11" oninput="sugerirCategoriaDoModelo(this.value)"></div>
+                    <div class="form-group"><label>Defeito relatado <span class="optional">*</span></label><textarea id="f-defeito" rows="3" placeholder="Só o problema do aparelho. Recados internos vão em Observações."></textarea></div>
                     <div class="accordion accordion-sub collapsed">
                         <button type="button" class="accordion-header accordion-subheader" onclick="toggleAccordion(this)" aria-expanded="false"><span>Mais informações</span><span class="accordion-arrow">▶</span></button>
                         <div class="accordion-content"><div class="accordion-content-inner">

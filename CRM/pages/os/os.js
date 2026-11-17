@@ -20,6 +20,10 @@ import {
     msgFinalizadoPadrao,
     templateFinalizadoInvalido,
 } from './mensagem-finalizado.js';
+import {
+    montarMensagemCriacao,
+    sugerirCategoriaPorModelo,
+} from './mensagem-criacao.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -103,6 +107,9 @@ window.copiarMensagemRetorno = copiarMensagemRetorno;
 window.abrirEditarMensagensRetorno = abrirEditarMensagensRetorno;
 window.salvarMensagensRetorno = salvarMensagensRetorno;
 window.copiarMensagemFinalizado = copiarMensagemFinalizado;
+window.copiarMensagemCriacao = copiarMensagemCriacao;
+window.aplicarCategoriaForm = aplicarCategoriaForm;
+window.sugerirCategoriaDoModelo = sugerirCategoriaDoModelo;
 window.saveObsRapida = saveObsRapida;
 window.abrirLembreteOS = abrirLembreteOS;
 window.fecharLembreteOS = fecharLembreteOS;
@@ -644,8 +651,38 @@ function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="$
 
 
 // ===== CREATE OS =====
+function aplicarCategoriaForm(cat, opts = {}) {
+    if (!cat) return;
+    currentCategory = cat;
+    const sel = document.getElementById('f-category-select');
+    if (sel && sel.value !== cat) sel.value = cat;
+    const hint = document.getElementById('f-categoria-hint');
+    if (hint) {
+        if (opts.sugerida) {
+            hint.style.display = 'block';
+            hint.textContent = 'Sugestão pelo modelo: ' + (getCategoryLabel(cat) || cat);
+        } else {
+            hint.style.display = 'none';
+            hint.textContent = '';
+        }
+    }
+    renderEntryCondicoes({});
+    renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []);
+}
+
+function sugerirCategoriaDoModelo(texto) {
+    const sug = sugerirCategoriaPorModelo(texto);
+    if (!sug) {
+        const hint = document.getElementById('f-categoria-hint');
+        if (hint) { hint.style.display = 'none'; hint.textContent = ''; }
+        return;
+    }
+    if (sug === currentCategory) return;
+    aplicarCategoriaForm(sug, { sugerida: true });
+}
+
 function startOS(cat) {
-    currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null;
+    tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null;
     ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90';
     const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = '';
@@ -655,8 +692,8 @@ function startOS(cat) {
     const pprev = document.getElementById('photo-preview'); if (pprev) pprev.innerHTML = '';
     const summary = document.getElementById('pattern-summary'); if (summary) summary.style.display = 'none';
     ['f-aviso-tela','f-aviso-tampa'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
-    renderEntryCondicoes({});
-    renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []);
+    const clienteHint = document.getElementById('f-cliente-hint'); if (clienteHint) clienteHint.style.display = 'none';
+    aplicarCategoriaForm(cat || 'celular');
     window.markSaved(); showScreen('form');
     const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100);
 }
@@ -753,13 +790,25 @@ async function saveOS() {
     }
 }
 
+/** Pós-criação: mensagem WhatsApp + impressão de Entrada. */
 function mostrarPosCriacaoOS(os) {
+    const msg = montarMensagemCriacao(os);
+    const msgEsc = escHtml(msg).replace(/\n/g, '<br>');
     openModal(`<div class="modal-handle"></div>
 <h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">✅ ${escHtml(os.id)} criada</h3>
-<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima o <b>recibo de entrada</b> para o cliente assinar.</p>
-<button type="button" onclick="closeModal();printOSEntrada(1);" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Entrada</button>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px;">Mensagem pronta para o cliente · imprima o recibo de entrada</p>
+<div id="msg-criacao-preview" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-size:13px;line-height:1.45;color:var(--text);max-height:32vh;overflow:auto;white-space:normal;margin-bottom:12px;">${msgEsc}</div>
+<button type="button" onclick="copiarMensagemCriacao()" class="premium-btn" style="width:100%;margin-bottom:8px;">📋 Copiar mensagem</button>
+<button type="button" onclick="closeModal();printOSEntrada(1);" class="premium-btn" style="width:100%;margin-bottom:8px;background:linear-gradient(135deg,#0ea5e9,#0284c7);">🖨️ Imprimir Entrada</button>
 <button type="button" onclick="closeModal();printOSEntrada(2);" style="width:100%;padding:10px;margin-bottom:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);font-weight:600;">🖨️ 2 vias (loja + cliente)</button>
 <button type="button" onclick="closeModal();showScreen('home');" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>`);
+}
+
+function copiarMensagemCriacao() {
+    const os = currentOS;
+    if (!os) return;
+    const msg = montarMensagemCriacao(os);
+    _copiarComHistorico(msg, 'criacao', '📋 Criação');
 }
 
 function enrichClientData(phone, base) {
@@ -919,7 +968,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}${_renderStatusAcoes(os)}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Só copia texto — não muda status">📋 Msg Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia texto — não muda status">📋 Msg Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Abrir painel de retornos / copiar mensagens">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia mensagem de pronto — não muda status">📋 Msg Pronto</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}${_renderStatusAcoes(os)}<div class="central-comunicacao-btns"><button onclick="copiarMensagemCriacao()" style="background:var(--surface3);border:1px solid var(--border);padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:var(--text);" title="Copia a mensagem de abertura da OS">📋 Copiar mensagem</button><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Só copia texto — não muda status">📋 Msg Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia texto — não muda status">📋 Msg Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Abrir painel de retornos / copiar mensagens">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia mensagem de pronto — não muda status">📋 Msg Pronto</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -3336,18 +3385,40 @@ async function init() {
     const headers = document.querySelectorAll('.header'); if (headers.length > 1) { for (let i = 1; i < headers.length; i++) headers[i].remove(); }
     ensureMenuTitle();
     const phoneInput = document.getElementById('f-telefone'); if (phoneInput) {
-        phoneInput.addEventListener('input', e => e.target.value = formatPhone(e.target.value));
+        phoneInput.addEventListener('input', e => {
+            e.target.value = formatPhone(e.target.value);
+            const hint = document.getElementById('f-cliente-hint');
+            if (hint) hint.style.display = 'none';
+        });
         phoneInput.addEventListener('blur', function() {
             const raw = this.value.replace(/\D/g, '');
-            if (raw.length < 10) return;
-            const historico = DB.getOS().filter(o => o.phoneDigits === raw || normalizePhoneDigits(o.phone) === raw);
-            if (!historico.length) return;
-            const ultima = historico.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
+            const hint = document.getElementById('f-cliente-hint');
+            if (raw.length < 10) { if (hint) hint.style.display = 'none'; return; }
+            const matchDigits = (d) => d === raw || normalizePhoneDigits(d) === raw;
+            const cliente = DB.getClients().find(cl =>
+                matchDigits(cl.phoneDigits || '') || matchDigits(cl.phone || '')
+            );
+            const historico = DB.getOS().filter(o =>
+                matchDigits(o.phoneDigits || '') || matchDigits(o.phone || '')
+            );
+            const ultima = historico.length
+                ? historico.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))[0]
+                : null;
+            if (!cliente && !ultima) { if (hint) hint.style.display = 'none'; return; }
+
             const nomeEl = document.getElementById('f-nome');
-            if (nomeEl && !nomeEl.value && ultima.clientName) nomeEl.value = ultima.clientName;
-            if (ultima.brand) { const el = document.getElementById('f-marca'); if (el && !el.value) el.value = ultima.brand; }
-            if (ultima.model) { const el = document.getElementById('f-modelo'); if (el && !el.value) el.value = ultima.model; }
-            showToast('📋 Cliente encontrado: ' + (ultima.clientName || '') + ' — último OS: ' + (ultima.id || ''));
+            const cpfEl = document.getElementById('f-cpf');
+            const nomeFonte = (cliente && cliente.name) || (ultima && ultima.clientName) || '';
+            const cpfFonte = (cliente && cliente.cpf) || (ultima && ultima.cpf) || '';
+            if (nomeEl && !nomeEl.value.trim() && nomeFonte) nomeEl.value = nomeFonte;
+            if (cpfEl && !cpfEl.value.trim() && cpfFonte) {
+                cpfEl.value = cpfFonte;
+                if (typeof cpfMask === 'function') cpfMask(cpfEl);
+            }
+            // Marca/modelo só de OS anterior, sem sobrescrever o que já foi digitado
+            if (ultima && ultima.brand) { const el = document.getElementById('f-marca'); if (el && !el.value) el.value = ultima.brand; }
+            if (ultima && ultima.model) { const el = document.getElementById('f-modelo'); if (el && !el.value) el.value = ultima.model; }
+            if (hint) hint.style.display = 'block';
         });
     }
     const logoEl = document.querySelector('.header-logo');

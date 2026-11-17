@@ -3,7 +3,10 @@
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
 // clientes.js renomeado no P2.6 que impedia o v16 de instalar).
-const CACHE = 'cellcity-crm-v22'; // v22: painel do sininho com lembretes da Agenda + dashboard-alertas-panel.js no SHELL. v21: dashboard.css/alertas Agenda.
+// Cache bust automático no deploy: __GIT_SHA__ é substituído pelo SHA curto
+// do commit em .github/workflows/deploy-pages.yml (artefato publicado).
+// No repositório/local o placeholder permanece — cada deploy gera um CACHE novo.
+const CACHE = 'cellcity-crm-__GIT_SHA__';
 
 // Arquivos do shell — carregados no install (expandido para cobrir shared + módulos principais)
 const SHELL = [
@@ -69,6 +72,8 @@ const SHELL = [
   '/CRM/pages/financeiro/financeiro.js',
   '/CRM/pages/fornecedor/fornecedor.js',
   '/CRM/pages/importar/importar.js',
+  '/CRM/pages/os/mensagem-criacao.js',
+  '/CRM/pages/os/mensagem-finalizado.js',
   '/CRM/pages/os/os-photo-storage.js',
   '/CRM/pages/os/os-ui-utils.js',
   '/CRM/pages/os/os.js',
