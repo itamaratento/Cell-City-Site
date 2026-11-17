@@ -27,7 +27,10 @@ const inpCat      = document.getElementById('est-inp-cat');
 const inpQty      = document.getElementById('est-inp-qty');
 const inpMin      = document.getElementById('est-inp-min');
 const inpVenda    = document.getElementById('est-inp-venda');
+const inpVendaFeira = document.getElementById('est-inp-venda-feira');
 const inpCusto    = document.getElementById('est-inp-custo');
+const inpFornecedor = document.getElementById('est-inp-fornecedor');
+const inpPedido   = document.getElementById('est-inp-pedido');
 const formTitulo  = document.getElementById('est-form-titulo');
 const toastEl     = document.getElementById('est-toast');
 const searchEl    = document.getElementById('est-search');
@@ -39,6 +42,27 @@ function toast(msg) {
     toastEl.classList.add('visivel');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toastEl.classList.remove('visivel'), 2200);
+}
+
+/** Modal de confirmação na página (sem confirm() nativo). */
+function confirmarEstoque(titulo, corpo, txtBtn = 'Confirmar') {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('est-confirm-overlay');
+        const btnOk = document.getElementById('est-confirm-ok');
+        const btnNo = document.getElementById('est-confirm-cancel');
+        document.getElementById('est-confirm-titulo').textContent = titulo;
+        document.getElementById('est-confirm-body').textContent = corpo;
+        btnOk.textContent = txtBtn;
+        overlay.style.display = 'flex';
+        const fechar = (res) => {
+            overlay.style.display = 'none';
+            btnOk.onclick = null;
+            btnNo.onclick = null;
+            resolve(res);
+        };
+        btnOk.onclick = () => fechar(true);
+        btnNo.onclick = () => fechar(false);
+    });
 }
 
 // ── toggle busca ───────────────────────────────────────────────────
@@ -72,7 +96,10 @@ async function carregar() {
                     quantidade: Number(p.quantidade || 0),
                     quantidadeMinima: Number(p.quantidadeMinima || 1),
                     venda: Number(p.venda || 0),
-                    custo: Number(p.custo || 0)
+                    vendaFeira: Number(p.vendaFeira || 0),
+                    custo: Number(p.custo || 0),
+                    fornecedor: p.fornecedor || '',
+                    pedidoCompra: p.pedidoCompra || ''
                 });
             });
         }
@@ -173,8 +200,11 @@ function renderCard(p, fmt) {
         <div class="est-card-info">
             <div class="est-card-nome">${escHtml(p.nome || p.description || '—')}</div>
             <div class="est-card-meta">
-                <span class="est-card-preco">${fmt(p.venda)}</span>
+                <span class="est-card-preco">Loja ${fmt(p.venda)}</span>
+                ${Number(p.vendaFeira) > 0 ? `<span class="est-card-preco est-card-feira">Feira ${fmt(p.vendaFeira)}</span>` : ''}
                 ${p.custo ? `<span class="est-card-custo">Custo: ${fmt(p.custo)}</span>` : ''}
+                ${p.fornecedor ? `<span class="est-card-custo">Fornec.: ${escHtml(p.fornecedor)}</span>` : ''}
+                ${p.pedidoCompra ? `<span class="est-card-custo">Ped.: ${escHtml(p.pedidoCompra)}</span>` : ''}
             </div>
         </div>
         <div class="est-card-qty-area">
@@ -201,7 +231,10 @@ function abrirFormNovo() {
     inpQty.value   = '0';
     inpMin.value   = '1';
     inpVenda.value = '';
+    if (inpVendaFeira) inpVendaFeira.value = '';
     inpCusto.value = '';
+    if (inpFornecedor) inpFornecedor.value = '';
+    if (inpPedido) inpPedido.value = '';
     formEl.style.display = 'flex';
     btnNovo.style.display = 'none';
     inpNome.focus();
@@ -217,7 +250,10 @@ function abrirFormEdicao(id) {
     inpQty.value   = p.quantidade ?? 0;
     inpMin.value   = p.quantidadeMinima ?? 1;
     inpVenda.value = p.venda || '';
+    if (inpVendaFeira) inpVendaFeira.value = p.vendaFeira || '';
     inpCusto.value = p.custo || '';
+    if (inpFornecedor) inpFornecedor.value = p.fornecedor || '';
+    if (inpPedido) inpPedido.value = p.pedidoCompra || '';
     formEl.style.display = 'flex';
     btnNovo.style.display = 'none';
     inpNome.focus();
@@ -240,7 +276,10 @@ async function salvarProduto() {
         quantidade:       Number(inpQty.value) || 0,
         quantidadeMinima: Number(inpMin.value) || 1,
         venda:            Number(inpVenda.value) || 0,
+        vendaFeira:       Number(inpVendaFeira?.value) || 0,
         custo:            Number(inpCusto.value) || 0,
+        fornecedor:       (inpFornecedor?.value || '').trim(),
+        pedidoCompra:     (inpPedido?.value || '').trim(),
         atualizadoEm:     serverTimestamp()
     };
 
@@ -256,7 +295,8 @@ async function salvarProduto() {
 }
 
 async function excluir(id) {
-    if (!confirm('Excluir este produto do estoque?')) return;
+    const ok = await confirmarEstoque('Excluir produto', 'Excluir este produto do estoque?', 'Excluir');
+    if (!ok) return;
     try {
         await Estoque.remove(id);
         toast('🗑️ Produto removido.');
@@ -314,7 +354,9 @@ function filtrar() {
     if (!q) { render(produtos); return; }
     render(produtos.filter(p =>
         (p.nome || p.description || '').toLowerCase().includes(q) ||
-        (p.categoria || '').toLowerCase().includes(q)
+        (p.categoria || '').toLowerCase().includes(q) ||
+        (p.fornecedor || '').toLowerCase().includes(q) ||
+        (p.pedidoCompra || '').toLowerCase().includes(q)
     ));
 }
 
