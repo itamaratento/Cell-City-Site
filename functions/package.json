@@ -2,7 +2,7 @@
   "name": "cellcity-functions",
   "description": "Cloud Functions do Cell City CRM — só ações que exigem Admin SDK (sem equivalente seguro no client SDK).",
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "main": "index.js",
   "dependencies": {
