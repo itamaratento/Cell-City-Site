@@ -1,15 +1,22 @@
 import { URLS } from '../../shared/app-config.js';
-import { serverTimestamp } from '../../firebase/client.js';
+import { db, collection, getDocs, query, where, limit, serverTimestamp } from '../../firebase/client.js';
 import { EstoqueRepository as Estoque } from '../../repositories/estoque.repository.js';
 import { ProdutosRepository as Produtos } from '../../repositories/produtos.repository.js';
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from '../../shared/sanitize.js';
+import { injectTenantFilter } from '../../shared/tenant-query.js';
+import {
+    dataISODiasAtras,
+    montarListaComprarProximoPedido,
+} from './reposicao.js';
 
 const COL = 'estoque_produtos'; // nova coleção dedicada ao estoque
+const COL_CAIXA = 'caixa_lancamentos';
 
 let produtos = [];
 let editandoId = null;
+let lancamentos30d = [];
 
 const CAT_ICON = {
     'Cabo': '🔌', 'Capinha': '📱', 'Película': '🛡️', 'Carregador': '⚡',
@@ -82,6 +89,54 @@ toggleListaBtn?.addEventListener('click', () => {
 });
 
 // ── carregar ───────────────────────────────────────────────────────
+async function carregarVendas30d() {
+    const desde = dataISODiasAtras(30);
+    try {
+        // Filtra por data (string YYYY-MM-DD) + tenant; limite evita varredura total (§9).
+        const q = query(
+            collection(db, COL_CAIXA),
+            ...injectTenantFilter([where('data', '>=', desde)]),
+            limit(400)
+        );
+        const snap = await getDocs(q);
+        lancamentos30d = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+        console.warn('[Estoque] vendas 30d indisponíveis:', e);
+        lancamentos30d = [];
+    }
+}
+
+function renderReposicao(listaProdutos) {
+    const sec = document.getElementById('est-reposicao');
+    const box = document.getElementById('est-reposicao-lista');
+    if (!sec || !box) return;
+    const itens = montarListaComprarProximoPedido({
+        produtos: listaProdutos,
+        lancamentos: lancamentos30d,
+        topN: 8,
+    });
+    if (!itens.length) {
+        sec.hidden = true;
+        box.innerHTML = '';
+        return;
+    }
+    sec.hidden = false;
+    box.innerHTML = itens.map(it => {
+        const motivo = it.motivo === 'abaixo_minimo'
+            ? `<span class="est-repo-tag est-repo-tag-min">abaixo do mín.</span>`
+            : `<span class="est-repo-tag est-repo-tag-top">mais vendido</span>`;
+        const vend = it.vendidos30d > 0 ? `<span class="est-repo-vend">vendidos 30d: ${it.vendidos30d}</span>` : '';
+        return `<div class="est-repo-item">
+            <div class="est-repo-nome">${escHtml(it.nome)}</div>
+            <div class="est-repo-meta">
+                <span>qtd ${it.quantidade} · mín ${it.quantidadeMinima}</span>
+                ${vend}
+                ${motivo}
+            </div>
+        </div>`;
+    }).join('');
+}
+
 async function carregar() {
     try {
         produtos = await Estoque.list();
@@ -106,6 +161,7 @@ async function carregar() {
     } catch {
         produtos = [];
     }
+    await carregarVendas30d();
     document.getElementById('est-loading').style.display = 'none';
     render(produtos);
 }
@@ -122,6 +178,7 @@ function atualizarResumo(lista) {
 // ── render ─────────────────────────────────────────────────────────
 function render(lista) {
     atualizarResumo(lista);
+    renderReposicao(lista);
     const container = document.getElementById('est-cats-container');
     const emptyEl   = document.getElementById('est-empty');
 

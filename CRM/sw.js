@@ -74,6 +74,7 @@ const SHELL = [
   '/CRM/pages/dashboard/dashboard-utils.js',
   '/CRM/pages/dashboard/dashboard.js',
   '/CRM/pages/estoque/estoque.js',
+  '/CRM/pages/estoque/reposicao.js',
   '/CRM/pages/financeiro/financeiro.js',
   '/CRM/pages/fornecedor/fornecedor.js',
   '/CRM/pages/importar/importar.js',
