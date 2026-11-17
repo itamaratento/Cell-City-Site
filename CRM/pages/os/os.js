@@ -59,6 +59,8 @@ window.printOS = printOSEntrada; // alias: Entrada é o fluxo padrão
 window.printOSEntrada = printOSEntrada;
 window.printOSSaida = printOSSaida;
 window.printOSEscolherTermos = printOSEscolherTermos;
+window.offerPrintGarantia = offerPrintGarantia;
+window.confirmarPrintGarantia = confirmarPrintGarantia;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
 window.generateWarrantyLink = generateWarrantyLink;
@@ -570,6 +572,49 @@ function updateStats() {
 // ===== CHECKLIST & PHOTOS =====
 function getChecklistTemplate(cat) { const b = ['Tela / Display','Câmera frontal','Câmera traseira','Botões / Teclado','Carregador / Bateria','Wi-Fi / Bluetooth','Alto-falante','Microfone']; return cat === 'celular' ? [...b, 'Slot SIM/SD', 'Sensor de proximidade', 'Leitor digital'] : cat === 'notebook' ? [...b, 'Trackpad', 'Portas USB', 'Leitor de cartão', 'Webcam'] : cat === 'impressora' ? ['Cabeçote de impressão','Cartuchos / Toner','Bandeja de papel','Conexão USB/Wi-Fi','Display/Painel','Rolos de alimentação'] : b; }
 
+/** Itens compactos do recibo de entrada (tri-estado: ok | defeito | nao). */
+const ENTRY_CONDICOES_ITEMS = [
+    { key: 'tela', label: 'Tela' },
+    { key: 'cameras', label: 'Câmeras' },
+    { key: 'som', label: 'Som / alto-falante' },
+    { key: 'microfone', label: 'Microfone' },
+    { key: 'wifi', label: 'Wi-Fi' },
+    { key: 'chip', label: 'Chip / rede' },
+    { key: 'bateria', label: 'Bateria' },
+    { key: 'carregamento', label: 'Carregamento' },
+    { key: 'botoes', label: 'Botões' },
+    { key: 'externo', label: 'Condições externas' }
+];
+
+const AVISO_TELA_TEXTO = 'Após a instalação da nova tela, recomendamos atualizar o sistema ou, se necessário, formatar o celular para garantir melhor reconhecimento e desempenho da tela.';
+const AVISO_TAMPA_TEXTO = 'Para realizar o reparo, precisamos remover a tampa traseira e, devido à cola forte, há risco de leves danos. Garantimos o máximo cuidado para minimizar impactos, mas informamos para sua ciência antes de prosseguir.';
+
+function renderEntryCondicoes(valores) {
+    const box = document.getElementById('entry-condicoes');
+    if (!box) return;
+    const map = valores && typeof valores === 'object' ? valores : {};
+    box.innerHTML = ENTRY_CONDICOES_ITEMS.map(it => {
+        const v = map[it.key] || 'nao';
+        return `<label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text2);">
+<span style="font-weight:600;color:var(--text);">${it.label}</span>
+<select data-cond-key="${it.key}" class="entry-cond-sel" style="padding:6px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;">
+<option value="ok" ${v === 'ok' ? 'selected' : ''}>✓ OK</option>
+<option value="defeito" ${v === 'defeito' ? 'selected' : ''}>✗ Defeito</option>
+<option value="nao" ${v === 'nao' ? 'selected' : ''}>— Não testado</option>
+</select></label>`;
+    }).join('');
+}
+
+function lerEntryCondicoesDoForm() {
+    const out = {};
+    ENTRY_CONDICOES_ITEMS.forEach(it => { out[it.key] = 'nao'; });
+    document.querySelectorAll('.entry-cond-sel').forEach(sel => {
+        const k = sel.getAttribute('data-cond-key');
+        if (k) out[k] = sel.value === 'ok' || sel.value === 'defeito' ? sel.value : 'nao';
+    });
+    return out;
+}
+
 function renderChecklist(cid, items, key, checked = []) { const c = document.getElementById(cid); if (!c) return; c.innerHTML = items.map((item, i) => `<div class="checklist-item"><input type="checkbox" id="${key}-${i}" ${checked.includes(i) ? 'checked' : ''} onchange="updateChecklistItem('${key}', ${i}, this.checked)"><label for="${key}-${i}" style="cursor:pointer;flex:1">${item}</label></div>`).join(''); }
 
 async function updateChecklistItem(type, index, value) { if (!currentOS) return; const key = type === 'entry' ? 'entryChecklist' : 'exitChecklist'; if (!currentOS[key]) currentOS[key] = []; value ? !currentOS[key].includes(index) && currentOS[key].push(index) : currentOS[key] = currentOS[key].filter(i => i !== index); await saveCurrentOS(); }
@@ -582,13 +627,32 @@ function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="$
 
 
 // ===== CREATE OS =====
-function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100); }
+function startOS(cat) {
+    currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null;
+    ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90';
+    const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = '';
+    const lock = document.getElementById('lock-type'); if (lock) { lock.value = 'Numerica'; toggleLockType(); }
+    ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const prev = document.getElementById('lock-photo-preview'); if (prev) prev.innerHTML = '';
+    const pprev = document.getElementById('photo-preview'); if (pprev) pprev.innerHTML = '';
+    const summary = document.getElementById('pattern-summary'); if (summary) summary.style.display = 'none';
+    ['f-aviso-tela','f-aviso-tampa'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+    renderEntryCondicoes({});
+    renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []);
+    window.markSaved(); showScreen('form');
+    const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100);
+}
 
 async function saveOS() {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
     const [nome, telefone, marca, modelo, imei, defeito, tecnico, senha, obs, lockType, cpf, cep, endereco, numero, complemento, bairro, cidade, estado] = ['f-nome','f-telefone','f-marca','f-modelo','f-imei','f-defeito','f-tecnico','f-senha','f-obs','lock-type','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado'].map(getVal);
     const valor = parseFloat((document.getElementById('f-valor')?.value || '').replace(',', '.')) || 0;
+    const sinal = parseFloat((document.getElementById('f-sinal')?.value || '').replace(',', '.')) || 0;
     const valorCartao = parseFloat((document.getElementById('f-valor-cartao')?.value || '').replace(',', '.')) || 0;
+    const avisoTela = !!document.getElementById('f-aviso-tela')?.checked;
+    const avisoTampa = !!document.getElementById('f-aviso-tampa')?.checked;
+    const entryCondicoes = lerEntryCondicoesDoForm();
     const garantiaDias = parseInt(document.getElementById('f-garantia')?.value, 10) || 90;
     const garantiaId = document.getElementById('f-garantia-modelo')?.value || '';
     const imei1 = (document.getElementById('f-imei1')?.value || '').trim();
@@ -634,9 +698,9 @@ async function saveOS() {
             id: osId, category: currentCategory, clientName: nome, phone: telefoneCanon, phoneDigits, cpf: cpf || null, cep: cep || null,
             endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null,
             cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito,
-            valor, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
+            valor, sinal: sinal || 0, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
             password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls,
-            entryChecklist: entryChecked, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
+            entryChecklist: entryChecked, entryCondicoes, avisoTela, avisoTampa, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
             garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
             orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
             timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }],
@@ -675,8 +739,9 @@ async function saveOS() {
 function mostrarPosCriacaoOS(os) {
     openModal(`<div class="modal-handle"></div>
 <h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">✅ ${escHtml(os.id)} criada</h3>
-<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via de <b>entrada</b> para o cliente assinar.</p>
-<button type="button" onclick="closeModal();printOSEntrada();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Entrada</button>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima o <b>recibo de entrada</b> para o cliente assinar.</p>
+<button type="button" onclick="closeModal();printOSEntrada(1);" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Entrada</button>
+<button type="button" onclick="closeModal();printOSEntrada(2);" style="width:100%;padding:10px;margin-bottom:8px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;color:var(--text);font-weight:600;">🖨️ 2 vias (loja + cliente)</button>
 <button type="button" onclick="closeModal();showScreen('home');" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>`);
 }
 
@@ -1183,7 +1248,20 @@ async function saveOSEdit() {
 
 function renderChecklistHTML(key, items, checked, readonly) { return items.map((item, i) => `<div class="checklist-item"><input type="checkbox" ${checked.includes(i) ? 'checked' : ''} ${readonly ? 'disabled' : `onchange="updateChecklistItem('${key}', ${i}, this.checked)"`}><label style="cursor:${readonly ? 'default' : 'pointer'};flex:1">${item}</label></div>`).join(''); }
 
-async function changeStatus(newStatus) { if (!currentOS) return; window.markUnsaved(); const old = currentOS.status; currentOS.status = newStatus; currentOS.updatedAt = new Date().toISOString(); currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` }); await saveCurrentOS(); renderDetail(); showToast(`✅ ${getStatusLabel(newStatus)}`); window.markSaved(); }
+async function changeStatus(newStatus) {
+    if (!currentOS) return;
+    window.markUnsaved();
+    const old = currentOS.status;
+    currentOS.status = newStatus;
+    currentOS.updatedAt = new Date().toISOString();
+    currentOS.timeline.push({ date: new Date().toISOString(), text: `Status: ${getStatusLabel(old)} → ${getStatusLabel(newStatus)}` });
+    await saveCurrentOS();
+    renderDetail();
+    showToast(`✅ ${getStatusLabel(newStatus)}`);
+    window.markSaved();
+    // "Finalizado" (concluído) → oferecer impressão da garantia
+    if (newStatus === 'concluido') offerPrintGarantia();
+}
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
 
@@ -1276,11 +1354,7 @@ async function markDelivered() {
             console.error(e);
         }
     }
-    openModal(`<div class="modal-handle"></div>
-<h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">📦 OS entregue</h3>
-<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via de <b>saída / garantia</b> para o cliente.</p>
-<button type="button" onclick="closeModal();printOSSaida();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Saída/Garantia</button>
-<button type="button" onclick="closeModal()" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Agora não</button>`);
+    offerPrintGarantia();
 }
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
@@ -2187,49 +2261,64 @@ async function sendWarrantyWhatsApp() {
     showToast('📲 Abrindo WhatsApp...');
 }
 
-/** CSS compartilhado — A4 + térmica ~80mm. */
-function _printCssCompartilhado() {
+/** CSS — recibo compacto + folha de garantia; A4 e térmica ~80mm. */
+function _printCssCompartilhado(modo) {
+    const compact = modo === 'entrada'
+        ? `body{padding:8px 10px;max-width:420px;font-size:11px}
+.shop-name{font-size:13px;padding-bottom:4px;margin-bottom:2px}
+.doc-title{font-size:12px;margin:6px 0 4px}
+.row{font-size:11px;padding:2px 0}
+.gar-item{font-size:10px;margin:0 0 5px;line-height:1.35}
+.faixa{font-size:10px;padding:6px 4px}`
+        : '';
     return `*{box-sizing:border-box}
-body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;margin:0;padding:12px 16px;max-width:720px}
-.logo-wrap{text-align:center;margin-bottom:8px}
-.logo-wrap img{max-height:64px;max-width:200px;object-fit:contain}
-.shop-name{text-align:center;font-size:15px;border-bottom:2px solid #000;padding-bottom:6px;margin:0 0 4px}
+body{font-family:Arial,Helvetica,sans-serif;color:#000;background:#fff;margin:0;padding:12px 16px;max-width:720px}
+.logo-wrap{text-align:center;margin-bottom:6px}
+.logo-wrap img{max-height:56px;max-width:180px;object-fit:contain}
+.shop-name{text-align:center;font-size:15px;font-weight:800;border-bottom:2px solid #000;padding-bottom:6px;margin:0 0 3px;text-transform:uppercase}
 .shop-meta{text-align:center;font-size:10px;margin:0 0 2px}
-.doc-title{text-align:center;font-size:13px;font-weight:800;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em}
-.row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px}
-.label{font-weight:700;flex-shrink:0}
-.strong{font-weight:700}
-.section{margin-top:10px;border-top:1px dashed #999;padding-top:8px}
-.section-title{font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px}
-.chk-row{font-size:11px;padding:2px 0;display:flex;gap:8px;align-items:flex-start}
-.chk-box{font-weight:700;width:22px;flex-shrink:0}
-.gar-block{margin-bottom:8px}
-.gar-txt{font-size:10px;line-height:1.45}
-.portal-block{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.doc-title{text-align:center;font-size:13px;font-weight:800;margin:8px 0 6px;text-transform:uppercase;letter-spacing:.03em}
+.via-tag{text-align:right;font-size:9px;font-weight:700;color:#444;margin:0 0 4px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:2px 0;font-size:12px;border-bottom:1px dotted #ccc}
+.row:last-child{border-bottom:0}
+.label{font-weight:700;flex-shrink:0;min-width:110px}
+.section{margin-top:8px;border-top:1px dashed #999;padding-top:6px}
+.section-title{font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:4px}
+.chk-row{font-size:10px;padding:1px 0}
+.obs-fix{font-size:9px;line-height:1.35;margin:8px 0 0;text-align:left}
+.portal-block{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;border-top:1px dashed #999;padding-top:6px}
 .portal-txt{flex:1;min-width:0}
-.portal-link{font-size:9px;word-break:break-all;margin:4px 0 0;line-height:1.35}
+.portal-link{font-size:8px;word-break:break-all;margin:3px 0 0;line-height:1.3}
 .portal-qr{flex-shrink:0}
-.aviso{font-size:11px;line-height:1.4;margin:8px 0 0}
-.footer{text-align:center;margin-top:18px;font-size:10px}
-.sign{margin:28px 0 8px;border-top:1px solid #000;padding-top:8px;font-size:11px;font-weight:700}
-.hint{margin-top:12px;border-top:1px dashed #ccc;padding-top:8px;font-size:9px;font-style:italic}
+.gar-item{font-size:11px;margin:0 0 7px;line-height:1.4}
+.gar-item .n{font-weight:800}
+.hl{background:#FFD700;color:#000;font-weight:700;padding:0 2px}
+.red-item{color:#c00;font-weight:700}
+.faixa{margin-top:10px;border:2px solid #000;background:#FFD700;font-weight:800;font-size:11px;text-align:center;padding:8px 6px;text-transform:uppercase}
+.sign-row{display:flex;justify-content:space-between;gap:12px;margin-top:18px;font-size:11px}
+.sign-line{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center;min-height:28px}
+.page-break{page-break-after:always;break-after:page;height:0;margin:0;border:0}
 @page{margin:8mm}
 @media print{body{padding:0;max-width:none}}
 @media print and (max-width:90mm){
-  body{font-size:11px;padding:2mm}
-  .shop-name{font-size:13px}
-  .row{font-size:11px;flex-wrap:wrap}
+  body{font-size:10px;padding:2mm;max-width:none}
+  .shop-name{font-size:12px}
+  .row{font-size:10px;flex-wrap:wrap}
+  .label{min-width:80px}
   .portal-block{flex-direction:column;align-items:flex-start}
-  .os-print-qr{width:88px!important;height:88px!important}
-  .logo-wrap img{max-height:48px}
-}`;
+  .os-print-qr{width:80px!important;height:80px!important}
+  .logo-wrap img{max-height:40px}
+  .faixa{font-size:9px;padding:5px}
+}
+${compact}`;
 }
 
-function _printCabecalhoHtml(cfg) {
+function _printCabecalhoHtml(cfg, tituloLoja) {
     const loja = cfg.loja || {};
+    const nome = tituloLoja || loja.nome || 'CELL CITY INFORMÁTICA';
     const logoHtml = cfg.logo ? `<div class="logo-wrap"><img src="${cfg.logo}" alt="Logo"></div>` : '';
     return logoHtml
-        + `<h1 class="shop-name">${escHtml(loja.nome || 'Cell City Informática')}</h1>`
+        + `<h1 class="shop-name">${escHtml(nome)}</h1>`
         + (loja.endereco ? `<p class="shop-meta">${escHtml(loja.endereco)}</p>` : '')
         + (loja.whatsapp ? `<p class="shop-meta">WhatsApp: ${escHtml(loja.whatsapp)}</p>` : '')
         + (loja.cnpj ? `<p class="shop-meta">CNPJ: ${escHtml(loja.cnpj)}</p>` : '');
@@ -2237,38 +2326,12 @@ function _printCabecalhoHtml(cfg) {
 
 function _printPortalBlock(os) {
     const portalUrl = _portalLinkImpressao(os);
-    return `<div class="section portal-block">
+    return `<div class="portal-block">
   <div class="portal-txt">
     <div class="section-title">Acompanhe seu conserto pelo celular</div>
     <p class="portal-link">${escHtml(portalUrl)}</p>
   </div>
   <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
-</div>`;
-}
-
-function _printDadosClienteAparelho(os, opts = {}) {
-    const imei = os.imei || os.imei1 || '';
-    const imei2 = os.imei2 || '';
-    let valorHtml = '';
-    if (opts.incluirValor !== false) {
-        if (os.valor) valorHtml += `<div class="row"><span class="label">Valor / Orçamento:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`;
-        if (os.orc1Desc || os.orc1Valor) {
-            valorHtml += `<div class="row"><span class="label">Orç. 1:</span><span>${escHtml(os.orc1Desc || '')}${os.orc1Valor ? ' — R$ ' + Number(os.orc1Valor).toFixed(2) : ''}</span></div>`;
-        }
-        if (os.orc2Desc || os.orc2Valor) {
-            valorHtml += `<div class="row"><span class="label">Orç. 2:</span><span>${escHtml(os.orc2Desc || '')}${os.orc2Valor ? ' — R$ ' + Number(os.orc2Valor).toFixed(2) : ''}</span></div>`;
-        }
-    }
-    return `<div class="section">
-<div class="row"><span class="label">Cliente:</span><span>${escHtml(os.clientName || '')}</span></div>
-<div class="row"><span class="label">Telefone:</span><span>${escHtml(os.phone || '')}</span></div>
-${os.cpf ? `<div class="row"><span class="label">CPF:</span><span>${escHtml(os.cpf)}</span></div>` : ''}
-<div class="row"><span class="label">Aparelho:</span><span>${escHtml([os.brand, os.model].filter(Boolean).join(' ') || getCategoryLabel(os.category) || '')}</span></div>
-${os.brand && os.model ? '' : (os.brand ? `<div class="row"><span class="label">Marca:</span><span>${escHtml(os.brand)}</span></div>` : '')}
-${imei ? `<div class="row"><span class="label">IMEI:</span><span>${escHtml(imei)}</span></div>` : ''}
-${imei2 ? `<div class="row"><span class="label">IMEI 2:</span><span>${escHtml(imei2)}</span></div>` : ''}
-<div class="row"><span class="label">Defeito relatado:</span><span>${escHtml(os.defect || '')}</span></div>
-${valorHtml}
 </div>`;
 }
 
@@ -2279,160 +2342,304 @@ function _senhaInformadaSimNao(os) {
     return temSenha ? 'sim' : 'não';
 }
 
-function _checklistEntradaPrintHtml(os) {
+function _checklistEntradaResumo(os) {
     const items = getChecklistTemplate(os.category || 'celular');
     const checked = Array.isArray(os.entryChecklist) ? os.entryChecklist.map(Number) : [];
-    if (!items.length) return '<p class="aviso">Checklist não disponível.</p>';
-    return items.map((label, i) => {
+    const linhas = items.map((label, i) => {
         const ok = checked.includes(i);
-        return `<div class="chk-row"><span class="chk-box">${ok ? '[X]' : '[ ]'}</span><span>${escHtml(label)}</span></div>`;
-    }).join('');
+        return `<div class="chk-row">${ok ? '☑' : '☐'} ${escHtml(label)}</div>`;
+    });
+    return linhas.join('') || '<div class="chk-row">—</div>';
 }
 
-/**
- * Destaca termos críticos nos textos de garantia (via do cliente).
- */
+function _acessoriosDoChecklist(os) {
+    const items = getChecklistTemplate(os.category || 'celular');
+    const checked = Array.isArray(os.entryChecklist) ? os.entryChecklist.map(Number) : [];
+    const re = /sim|sd|chip|cart[aã]o|capa|capinha|carregador|fone|cabo/i;
+    const found = items.filter((label, i) => checked.includes(i) && re.test(label));
+    // Slot SIM/SD marcado → mencionar chip/cartão
+    const simIdx = items.findIndex(l => /sim|sd/i.test(l));
+    if (simIdx >= 0 && checked.includes(simIdx) && !found.some(f => /sim|sd|chip/i.test(f))) {
+        found.push('Chip / cartão de memória (no aparelho)');
+    }
+    return found.length ? found.join(', ') : '';
+}
+
+function _problemaConstatado(os) {
+    const partes = [];
+    if (os.orc1Desc) partes.push(os.orc1Desc + (os.orc1Valor ? ` (R$ ${Number(os.orc1Valor).toFixed(2)})` : ''));
+    if (os.orc2Desc) partes.push(os.orc2Desc + (os.orc2Valor ? ` (R$ ${Number(os.orc2Valor).toFixed(2)})` : ''));
+    return partes.join(' / ');
+}
+
+function _tituloGarantiaServico(os) {
+    const cat = String(os.category || '').toLowerCase();
+    if (cat === 'notebook' || cat === 'impressora') {
+        return 'CELL CITY INFORMÁTICA (GARANTIA DO SERVIÇO)';
+    }
+    return 'CELL CITY CELULAR (GARANTIA DO SERVIÇO)';
+}
+
+/** Escolhe modelo de garantia pela categoria / OS. */
+function _sugerirModeloGarantia(os, garantias) {
+    const list = Array.isArray(garantias) ? garantias : [];
+    if (!list.length) return null;
+    if (os?.garantiaId != null) {
+        const byId = list.find(g => String(g.id) === String(os.garantiaId));
+        if (byId) return byId;
+    }
+    const cat = String(os?.category || '').toLowerCase();
+    const nome = (g) => String(g.nome || '').toLowerCase();
+    if (cat === 'notebook') {
+        return list.find(g => /notebook/.test(nome(g))) || list.find(g => g.padrao) || list[0];
+    }
+    if (cat === 'impressora') {
+        return list.find(g => /impressora/.test(nome(g))) || list.find(g => g.padrao) || list[0];
+    }
+    // celular: Geral ou Tela (padrão do sistema)
+    return list.find(g => g.padrao)
+        || list.find(g => /geral/.test(nome(g)))
+        || list.find(g => /tela/.test(nome(g)))
+        || list[0];
+}
+
+function _termosGarantiaPadrao(dias) {
+    const d = Number.isFinite(Number(dias)) ? Number(dias) : 90;
+    return [
+        `A empresa garante seus serviços por um período de ${d} dias, contados a partir da data da retirada do aparelho.`,
+        'A garantia não cobre MAU USO.',
+        'A empresa não se responsabiliza por problemas posteriores que não condizem com o serviço realizado no ato da entrega do aparelho (instalação de aplicativos, jogos e pornografia podem danificar o sistema).',
+        'A garantia não cobre qualquer eventualidade que aconteça devido a fenômenos estranhos ou ações indevidas, tais como: arranhões, quebra espontânea, colocar no bolso ou bolsa, danos durante o carregamento, quedas, exposição à umidade, ou qualquer outra situação similar.',
+        'Observação: manchas, listras, tela branca, cor diferente, ausência de imagem ou tela trincada são sinais de mau uso. Por favor, confira seu aparelho no ato da entrega!',
+        'Prazo para análise da garantia: 72 horas. Será cobrada uma taxa de serviço de 80 reais caso o problema não seja relacionado ao serviço solicitado.'
+    ];
+}
+
+/** Quebra texto do modelo em itens numerados; item 1 recebe {dias}. */
+function _itensTermosGarantia(modelo, dias) {
+    const d = Number.isFinite(Number(dias)) ? Number(dias) : 90;
+    const raw = String(modelo?.texto || '').trim();
+    if (!raw) return _termosGarantiaPadrao(d);
+
+    let parts = raw.split(/\n+/).map(s => s.trim()).filter(Boolean);
+    if (parts.length === 1) {
+        parts = raw.split(/(?=\d+\s*[.)\-–])/).map(s => s.trim()).filter(Boolean);
+    }
+    if (parts.length < 2) parts = [raw];
+
+    return parts.map((p, i) => {
+        let t = p.replace(/^\d+\s*[.)\-–]\s*/, '');
+        if (i === 0) {
+            t = t
+                .replace(/\{dias\}/gi, String(d))
+                .replace(/\b\d+\s*\(?noventa\)?\s*dias\b/gi, `${d} dias`)
+                .replace(/\b90\s*dias\b/gi, `${d} dias`);
+            if (!/\d+\s*dias/i.test(t) && /garante|garantia|per[ií]odo/i.test(t)) {
+                t = `A empresa garante seus serviços por um período de ${d} dias, contados a partir da data da retirada do aparelho.`;
+            }
+        }
+        return t;
+    });
+}
+
 function highlightWarrantyTerms(text) {
     if (!text) return text;
-    const HL = 'style="background:#FFD700;color:#000;font-weight:700;padding:0 2px;border-radius:2px;"';
-    const BOLD = 'style="font-weight:700;"';
-    const primary = ['MAU USO', 'NÃO COBRE', 'NAO COBRE', '72 HORAS', 'R\\$ 80,00'];
-    let result = text.replace(new RegExp(`(${primary.join('|')})`, 'gi'), `<span ${HL}>$1</span>`);
-    const secondary = [
-        'QUEDA', 'QUEDAS', 'IMPACTO', 'IMPACTOS',
-        'LÍQUIDOS', 'LIQUIDOS', 'OXIDAÇÃO', 'OXIDACAO', 'PRESSÃO', 'PRESSAO',
-        'TRINCA', 'TRINCAS', 'QUEBRA', 'QUEBRAS',
-        'PELÍCULA', 'PELICULA', 'PELÍCULAS', 'PELICULAS'
-    ];
-    result = result.replace(new RegExp(`(${secondary.join('|')})`, 'gi'), `<span ${BOLD}>$1</span>`);
+    let result = text;
+    // Amarelo: MAU USO, 72 horas, 80 reais
+    result = result.replace(/\bMAU USO\b/gi, '<span class="hl">MAU USO</span>');
+    result = result.replace(/\b72\s*horas?\b/gi, '<span class="hl">$&</span>');
+    result = result.replace(/\b80\s*reais?\b/gi, '<span class="hl">$&</span>');
+    result = result.replace(/R\$\s*80([.,]00)?/gi, '<span class="hl">$&</span>');
     return result;
 }
 
-function _montarDocImpressao({ titulo, os, cfg, corpoHtml, footerHtml }) {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(titulo)} — ${escHtml(os.id || '')}</title>
-<style>${_printCssCompartilhado()}</style></head><body>
-${_printCabecalhoHtml(cfg)}
-<div class="doc-title">${escHtml(titulo)}</div>
-<div class="row"><span class="label">O.S.:</span><span>${escHtml(os.id || '')}</span></div>
-${corpoHtml}
+function _htmlItensGarantia(itens) {
+    return itens.map((t, i) => {
+        const n = i + 1;
+        const esc = highlightWarrantyTerms(escHtml(t));
+        const cls = n === 5 ? 'gar-item red-item' : 'gar-item';
+        return `<div class="${cls}"><span class="n">${n}.</span> ${esc}</div>`;
+    }).join('');
+}
+
+/** Modal: Imprimir garantia? (Finalizado / Entregue) — sem confirm() nativo. */
+async function offerPrintGarantia() {
+    if (!currentOS) return;
+    const cfg = await _ensurePrintConfig();
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    const sugerido = _sugerirModeloGarantia(currentOS, garantias);
+    const opts = garantias.length
+        ? garantias.map(g =>
+            `<option value="${escHtml(String(g.id))}" ${sugerido && String(g.id) === String(sugerido.id) ? 'selected' : ''}>${escHtml(g.nome || 'Modelo')}</option>`
+          ).join('')
+        : '<option value="">Padrão (texto da loja)</option>';
+    openModal(`<div class="modal-handle"></div>
+<h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">Imprimir garantia para o cliente?</h3>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:12px;">Via de saída com os termos do modelo de garantia.</p>
+<label style="display:block;font-size:12px;color:var(--text2);margin-bottom:6px;">Modelo de garantia</label>
+<select id="print-gar-modelo" style="width:100%;padding:10px 12px;margin-bottom:14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:13px;">${opts}</select>
+<button type="button" onclick="confirmarPrintGarantia()" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir</button>
+<button type="button" onclick="closeModal()" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Agora não</button>`);
+}
+
+function confirmarPrintGarantia() {
+    const sel = document.getElementById('print-gar-modelo');
+    const id = sel ? sel.value : '';
+    closeModal();
+    printOSSaida(id || null);
+}
+
+function _simboloCondicao(v) {
+    if (v === 'ok') return '✓';
+    if (v === 'defeito') return '✗';
+    return '—';
+}
+
+/** Checklist compacto 2 colunas (só condições do recibo). Nunca imprime senha/padrão. */
+function _checklistCondicoesHtml(os) {
+    const map = (os && os.entryCondicoes && typeof os.entryCondicoes === 'object') ? os.entryCondicoes : {};
+    const cells = ENTRY_CONDICOES_ITEMS.map(it => {
+        const v = map[it.key] || 'nao';
+        return `<div class="cond-cell"><span class="cond-mark">${_simboloCondicao(v)}</span> ${escHtml(it.label)}</div>`;
+    }).join('');
+    return `<div class="cond-grid">${cells}</div>`;
+}
+
+function _blocoValoresEntrada(os) {
+    const total = Number(os.valor) || 0;
+    const sinal = Number(os.sinal || os.sinalPago || os.valorSinal || os.entradaPago) || 0;
+    // Só imprime números se houver valor preenchido (> 0). Sem valor: frase padrão.
+    if (total > 0) {
+        const restante = Math.max(0, total - sinal);
+        let html = `<div class="row"><span class="label">Total</span><span>R$ ${total.toFixed(2)}</span></div>`;
+        if (sinal > 0) {
+            html += `<div class="row"><span class="label">Entrada</span><span>R$ ${sinal.toFixed(2)}</span></div>`;
+            html += `<div class="row"><span class="label">Restante</span><span>R$ ${restante.toFixed(2)}</span></div>`;
+        }
+        return html;
+    }
+    return `<div class="row valores-msg"><span>Valor: a definir após diagnóstico (orçamento grátis, em até 24h)</span></div>`;
+}
+
+function _avisosEntradaHtml(os) {
+    const parts = [];
+    if (os.avisoTela) parts.push(`<p class="aviso-print">• ${escHtml(AVISO_TELA_TEXTO)}</p>`);
+    if (os.avisoTampa) parts.push(`<p class="aviso-print">• ${escHtml(AVISO_TAMPA_TEXTO)}</p>`);
+    if (!parts.length) return '';
+    return `<div class="section"><div class="section-title">Avisos</div>${parts.join('')}</div>`;
+}
+
+/** A) RECIBO DE ENTRADA — básico, meia A4. Sem senha/padrão. */
+async function printOSEntrada(vias) {
+    if (!currentOS) return;
+    const nVias = vias === 2 ? 2 : 1;
+    showToast('🖨️ Preparando recibo de Entrada…');
+    const cfg = await _ensurePrintConfig();
+    const os = currentOS;
+    const imei = os.imei || os.imei1 || '';
+    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || (os.model || '');
+    const dataEntrada = formatDate(os.createdAt);
+
+    const bloco = `
+<div class="row"><span class="label">Cliente</span><span>${escHtml(os.clientName || '')}</span></div>
+<div class="row"><span class="label">Fone</span><span>${escHtml(os.phone || '')}</span></div>
+${os.cpf ? `<div class="row"><span class="label">CPF</span><span>${escHtml(os.cpf)}</span></div>` : ''}
+<div class="row"><span class="label">Aparelho</span><span>${escHtml(aparelho)}</span></div>
+${imei ? `<div class="row"><span class="label">IMEI</span><span>${escHtml(imei)}</span></div>` : ''}
+<div class="row"><span class="label">Defeito</span><span>${escHtml(os.defect || '')}</span></div>
+${_blocoValoresEntrada(os)}
+<div class="section">
+  <div class="section-title">Checklist</div>
+  ${_checklistCondicoesHtml(os)}
+</div>
+${_avisosEntradaHtml(os)}
 ${_printPortalBlock(os)}
-${footerHtml}
-</body></html>`;
+<div class="sign-row">
+  <div class="sign-line">Técnico${os.technician ? ': ' + escHtml(os.technician) : ''}</div>
+  <div class="sign-line">Cliente</div>
+</div>
+<div class="row" style="border:0;margin-top:8px;"><span class="label">Data de entrada</span><span>${escHtml(dataEntrada)}</span></div>`;
+
+    const viaLabels = nVias === 2 ? ['VIA LOJA', 'VIA CLIENTE'] : [''];
+    const pages = viaLabels.map((via, idx) => `
+<div class="recibo-entrada">
+  ${via ? `<div class="via-tag">${via}</div>` : ''}
+  ${_printCabecalhoHtml(cfg, 'CELL CITY INFORMÁTICA')}
+  <div class="doc-title">RECIBO DE ENTRADA – OS Nº ${escHtml(os.id || '')}</div>
+  ${bloco}
+</div>${idx < viaLabels.length - 1 ? '<div class="page-break"></div>' : ''}`).join('');
+
+    const extraCss = `.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:10px}
+.cond-cell{display:flex;gap:5px;align-items:flex-start}
+.cond-mark{font-weight:800;width:12px;flex-shrink:0}
+.aviso-print{font-size:9px;line-height:1.35;margin:4px 0 0}
+.valores-msg{font-size:11px;font-weight:600}
+body.entrada-basic,.recibo-entrada{max-width:480px}`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo Entrada ${escHtml(os.id || '')}</title>
+<style>${_printCssCompartilhado('entrada')}${extraCss}</style></head><body>${pages}</body></html>`;
+    _printViaIframe(html);
 }
 
-/** A) Via ENTRADA — quando o cliente deixa o aparelho. Sem termos longos. */
-async function printOSEntrada() {
+/** B) SAÍDA / GARANTIA — layout da folha oficial do dono. */
+async function printOSSaida(modeloId) {
     if (!currentOS) return;
-    showToast('🖨️ Preparando via de Entrada…');
-    const cfg = await _ensurePrintConfig();
-    const os = currentOS;
-    const corpo = `
-<div class="row"><span class="label">Data/Hora:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
-${_printDadosClienteAparelho(os)}
-<div class="section">
-  <div class="row"><span class="label">Senha informada:</span><span>${_senhaInformadaSimNao(os)}</span></div>
-</div>
-<div class="section">
-  <div class="section-title">Checklist de Entrada</div>
-  ${_checklistEntradaPrintHtml(os)}
-</div>
-<p class="aviso"><b>Aparelho recebido para análise/conserto. Prazo de orçamento: 24h.</b></p>`;
-    const footer = `<div class="footer">
-  <p style="margin:0">Declaro ter entregue o aparelho nas condições descritas nesta ordem de serviço.</p>
-  <p class="sign">Assinatura do Cliente</p>
-  <p style="margin:8px 0 0;font-size:10px">Data: ___/___/____</p>
-</div>`;
-    _printViaIframe(_montarDocImpressao({
-        titulo: 'Via de Entrada',
-        os, cfg,
-        corpoHtml: corpo,
-        footerHtml: footer
-    }));
-}
-
-/** B) Via SAÍDA / GARANTIA — na entrega. Com termos cadastrados. */
-async function printOSSaida(selectedIds) {
-    if (!currentOS) return;
-    showToast('🖨️ Preparando via de Saída/Garantia…');
+    showToast('🖨️ Preparando garantia…');
     const cfg = await _ensurePrintConfig();
     const os = currentOS;
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
-    let ids = Array.isArray(selectedIds) ? selectedIds.map(String) : _defaultGarantiaIds(os, garantias);
-    const selecionadas = garantias.filter(g => ids.includes(String(g.id)));
-    const dataEntrega = os.status === 'entregue'
-        ? formatDate(os.updatedAt || os.createdAt)
-        : formatDate(new Date().toISOString());
-    const prazo = Number.isFinite(Number(os.prazoGarantia)) ? Number(os.prazoGarantia) : 90;
+    let modelo = null;
+    if (modeloId != null && modeloId !== '') {
+        modelo = garantias.find(g => String(g.id) === String(modeloId)) || null;
+    }
+    if (!modelo) modelo = _sugerirModeloGarantia(os, garantias);
+    const dias = Number.isFinite(Number(os.prazoGarantia)) ? Number(os.prazoGarantia) : 90;
+    const itens = _itensTermosGarantia(modelo, dias);
+    const dataEntrega = formatDate(
+        (os.status === 'entregue' ? (os.updatedAt || os.createdAt) : new Date().toISOString())
+    ).split(' ')[0];
+    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || (os.model || '');
     const servico = (os.defect || '').trim() || 'Não especificado';
-    const garantiasHtml = selecionadas.length
-        ? `<div class="section"><div class="section-title">Termos de Garantia</div>${selecionadas.map(g =>
-            `<div class="gar-block"><b>${escHtml(g.nome || '')}:</b><br><span class="gar-txt">${highlightWarrantyTerms(escHtml(g.texto || ''))}</span></div>`
-          ).join('')}</div>`
-        : '';
-    const corpo = `
-<div class="row"><span class="label">Abertura:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
-<div class="row"><span class="label">Entrega:</span><span>${escHtml(dataEntrega)}</span></div>
-${_printDadosClienteAparelho(os)}
+    const valorTxt = os.valor ? `R$ ${Number(os.valor).toFixed(2)}` : '—';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Garantia ${escHtml(os.id || '')}</title>
+<style>${_printCssCompartilhado('saida')}</style></head><body>
+${_printCabecalhoHtml(cfg, _tituloGarantiaServico(os))}
+<div class="doc-title">${escHtml(_tituloGarantiaServico(os))}</div>
+${modelo && modelo.nome ? `<p class="shop-meta" style="margin-bottom:8px">Modelo: ${escHtml(modelo.nome)}</p>` : ''}
+<div class="row"><span class="label">Nome</span><span>${escHtml(os.clientName || '')}</span></div>
+<div class="row"><span class="label">Telefone</span><span>${escHtml(os.phone || '')}</span></div>
+<div class="row"><span class="label">Nº OS</span><span>${escHtml(os.id || '')}</span></div>
+<div class="row"><span class="label">Aparelho</span><span>${escHtml(aparelho)}</span></div>
+<div class="row"><span class="label">Serviço realizado</span><span>${escHtml(servico)}</span></div>
+<div class="row"><span class="label">Valor</span><span>${valorTxt}</span></div>
+<div class="row"><span class="label">Data de entrega</span><span>${escHtml(dataEntrega)}</span></div>
 <div class="section">
-  <div class="row"><span class="label">Serviço realizado:</span><span>${escHtml(servico)}</span></div>
-  ${os.valor ? `<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>` : ''}
-  <div class="row"><span class="label">Prazo de garantia:</span><span>${prazo > 0 ? prazo + ' dias' : 'Sem garantia'}</span></div>
+  <div class="section-title">Termos de garantia</div>
+  ${_htmlItensGarantia(itens)}
 </div>
-${garantiasHtml}`;
-    const footer = `<div class="footer">
-  <p style="margin:0"><b>Recebi o aparelho funcionando</b> e estou ciente dos termos de garantia.</p>
-  <p class="sign">Assinatura do Cliente</p>
-  <p style="margin:8px 0 0;font-size:10px">Data da entrega: ___/___/____</p>
-  <p class="hint">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p>
-</div>`;
+${_printPortalBlock(os)}
+<div class="sign-row">
+  <div class="sign-line">Data: ___/___/___</div>
+  <div class="sign-line">Assinatura (ciente)</div>
+</div>
+<div class="faixa">Favor verificar as funcionalidades de seu aparelho antes de recebê-lo.</div>
+</body></html>`;
     try { closeModal(); } catch (e) {}
-    _printViaIframe(_montarDocImpressao({
-        titulo: 'Via de Saída / Garantia',
-        os, cfg,
-        corpoHtml: corpo,
-        footerHtml: footer
-    }));
+    _printViaIframe(html);
 }
 
-/** Opcional: escolher termos antes da via de Saída. */
+/** Trocar modelo / imprimir saída com seletor. */
 async function printOSEscolherTermos() {
-    if (!currentOS) return;
-    const os = currentOS;
-    const cfg = await _ensurePrintConfig();
-    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
-    const defaultIds = new Set(_defaultGarantiaIds(os, garantias));
-    const checksHtml = garantias.length ? `
-        <div style="margin-bottom:16px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00E676;margin-bottom:10px">Termos de Garantia (Saída)</div>
-            <div style="display:flex;flex-direction:column;gap:8px">
-                ${garantias.map(g => `
-                <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#1c1f1d;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
-                    <input type="checkbox" class="print-gar-chk" data-id="${escHtml(String(g.id))}" ${defaultIds.has(String(g.id)) ? 'checked' : ''} style="width:18px;height:18px;accent-color:#00C853;cursor:pointer;flex-shrink:0">
-                    <span style="font-size:13px;color:#d1d5db">${escHtml(g.nome || '')}</span>
-                </label>`).join('')}
-            </div>
-        </div>` : '<p style="font-size:13px;color:var(--text2);margin-bottom:12px;">Nenhum termo cadastrado em Config → Impressão.</p>';
-    document.getElementById('modal-content').innerHTML = `
-        <div onclick="event.stopPropagation()">
-        <div class="modal-handle"></div>
-        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Saída/Garantia — ${escHtml(currentOS.id)}</h3>
-        ${checksHtml}
-        <button onclick="event.stopPropagation();window._executePrintSaida()" style="width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#009624);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
-            🖨️ Imprimir Saída/Garantia
-        </button>
-        </div>`;
-    document.getElementById('modal-overlay').classList.add('active');
+    await offerPrintGarantia();
 }
 
 window._executePrintSaida = function() {
-    const ids = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
-    printOSSaida(ids);
+    confirmarPrintGarantia();
 };
 
-/** Compat: impressão genérica antiga → Saída com termos do modal/padrão. */
-window._executePrint = function(selectedIds, cfgArg) {
-    if (Array.isArray(selectedIds)) printOSSaida(selectedIds);
-    else printOSSaida();
+window._executePrint = function() {
+    printOSSaida();
 };
 
 // ===== CLIENTS (MÓDULO COMPLETO) =====

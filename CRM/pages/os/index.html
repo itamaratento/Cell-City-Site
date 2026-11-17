@@ -175,7 +175,19 @@
             <div class="form-section accordion">
                 <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="true"><span>📋 Checklist de Entrada</span><span class="accordion-arrow">▼</span></button>
                 <div class="accordion-content"><div class="accordion-content-inner">
-                    <div id="entry-checklist"></div>
+                    <div id="entry-condicoes" style="display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-bottom:12px;"></div>
+                    <p style="font-size:11px;color:var(--text3);margin:0 0 10px;">✓ OK · ✗ defeito · — não testado (recibo)</p>
+                    <div id="entry-checklist" style="opacity:.85"></div>
+                    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px;">
+                        <label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--text2);cursor:pointer;line-height:1.35;">
+                            <input type="checkbox" id="f-aviso-tela" style="margin-top:3px;flex-shrink:0;">
+                            <span>Aviso impresso: após instalar nova tela, recomendar atualizar o sistema ou formatar.</span>
+                        </label>
+                        <label style="display:flex;gap:10px;align-items:flex-start;font-size:12px;color:var(--text2);cursor:pointer;line-height:1.35;">
+                            <input type="checkbox" id="f-aviso-tampa" style="margin-top:3px;flex-shrink:0;">
+                            <span>Aviso impresso: remoção da tampa traseira / risco de leves danos pela cola.</span>
+                        </label>
+                    </div>
                 </div></div>
             </div>
 
@@ -192,7 +204,8 @@
             <div class="form-section accordion collapsed">
                 <button type="button" class="form-section-title accordion-header" onclick="toggleAccordion(this)" aria-expanded="false"><span>🛠️ Serviço</span><span class="accordion-arrow">▶</span></button>
                 <div class="accordion-content"><div class="accordion-content-inner">
-                    <div class="form-group"><label>Valor do Orçamento (à vista / PIX) <span class="optional">(opcional)</span></label><input type="number" id="f-valor" placeholder="0,00" inputmode="decimal" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Valor total (orçamento) <span class="optional">(opcional)</span></label><input type="number" id="f-valor" placeholder="0,00" inputmode="decimal" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Entrada / sinal pago <span class="optional">(opcional)</span></label><input type="number" id="f-sinal" placeholder="0,00" inputmode="decimal" min="0" step="0.01"></div>
                     <div class="form-group" id="f-valor-cartao-group" style="display:none;"><label>Valor Cartão <span class="optional">(opcional, preparado p/ futura implementação)</span></label><input type="number" id="f-valor-cartao" placeholder="0,00" inputmode="decimal" min="0" step="0.01" disabled></div>
                     <div class="form-group"><label>Técnico responsável <span class="optional">(opcional)</span></label><input type="text" id="f-tecnico" placeholder="Nome do técnico"></div>
                     <div class="form-group"><label>IMEI 1 <span class="optional">(opcional)</span></label><input type="text" id="f-imei1" placeholder="IMEI 1 (até 15 dígitos)" inputmode="numeric" maxlength="15"></div>
