@@ -119,16 +119,33 @@ Papel de Estratégia
   ↓ define estratégia/escopo da Sprint
 Papel de Desenvolvimento
   ↓ implementa Sprint
-Commit em develop
+Commit / PR → develop
   ↓
-Papel de Revisão Técnica
+Deploy Pages /dev + Firebase DEV (cellcity-crm-dev)
+  ↓
+Teste do dono em https://…/dev/CRM/
+  ↓
+Aprovação explícita do dono
+  ↓
+Papel de Revisão Técnica (quando designado)
   ↓ revisão técnica + testes
 develop → main
   ↓
-Tag
+Tag + Deploy Pages (produção) + Firebase prod
   ↓
 Release
 ```
+
+### Regra develop-first (desde 2026-11-17)
+
+1. **Toda mudança de produto começa em `develop`** e é publicada em
+   `/dev` (GitHub Pages) apontando ao projeto Firebase **`cellcity-crm-dev`**.
+2. O dono testa no CRM DEV. **Sem aprovação explícita, nada sobe para `main`.**
+3. Produção (`main` + `cellcity-crm` + site na raiz) só recebe o que já
+   passou por develop/DEV.
+4. Ações irreversíveis ou que gerem custo (buckets GCS, IAM, export/import
+   Firestore em massa, etc.) **param e perguntam** antes de executar —
+   ver `scripts/backup/firestore/README.md`.
 
 ## Processo de Qualidade
 
@@ -136,17 +153,19 @@ O fluxo abaixo é **obrigatório** em toda Sprint, independentemente de
 qual IA (ou pessoa) exerce cada papel:
 
 ```
-Desenvolvimento
+Desenvolvimento (develop / DEV)
   ↓
-Revisão Técnica
+Teste do dono em /dev
   ↓
-Testes
+Revisão Técnica (quando designada)
+  ↓
+Testes automatizados
   ↓
 Homologação
   ↓
-Aprovação
+Aprovação explícita do dono
   ↓
-Produção
+Produção (main)
 ```
 
 A ferramenta/IA utilizada em cada etapa não faz parte da arquitetura
