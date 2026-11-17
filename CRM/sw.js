@@ -3,7 +3,7 @@
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
 // clientes.js renomeado no P2.6 que impedia o v16 de instalar).
-const CACHE = 'cellcity-crm-v21'; // v21: força atualização do painel (dashboard.css sem piscar + dashboard-alertas.js filtros Agenda). v20: remove services/*.service.js do precache.
+const CACHE = 'cellcity-crm-v22'; // v22: painel do sininho com lembretes da Agenda + dashboard-alertas-panel.js no SHELL. v21: dashboard.css/alertas Agenda.
 
 // Arquivos do shell — carregados no install (expandido para cobrir shared + módulos principais)
 const SHELL = [
@@ -56,6 +56,7 @@ const SHELL = [
   '/CRM/pages/config/impressao.js',
   '/CRM/pages/dashboard/dashboard-alarme-os.js',
   '/CRM/pages/dashboard/dashboard-alertas.js',
+  '/CRM/pages/dashboard/dashboard-alertas-panel.js',
   '/CRM/pages/dashboard/dashboard-busca.js',
   '/CRM/pages/dashboard/dashboard-caixa.js',
   '/CRM/pages/dashboard/dashboard-events.js',
