@@ -72,7 +72,10 @@ test('OS matriz total (tudo true): categorias visíveis; detalhe com editar/excl
     assert.match(content, /saveInternalObservation\(\)/);
     assert.match(content, /saveObservation\(\)/);
     assert.match(content, /saveTechObservation\(\)/);
-    assert.match(content, /markDelivered\(\)/); // status 'em_reparo' não é terminal
+    // Atalhos de status (Pronto/Entregue) — não usa mais markDelivered() no topo
+    assert.match(content, /changeStatus\('entregue'\)/);
+    assert.match(content, /changeStatus\('concluido'\)/);
+    assert.match(content, /Mudar status/);
     assert.match(content, /onclick="changeStatus/);
 });
 
