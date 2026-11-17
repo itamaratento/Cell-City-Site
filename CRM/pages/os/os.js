@@ -2341,8 +2341,19 @@ function _printCabecalhoHtml(cfg, tituloLoja) {
         + (loja.cnpj ? `<p class="shop-meta">CNPJ: ${escHtml(loja.cnpj)}</p>` : '');
 }
 
-function _printPortalBlock(os) {
+function _printPortalBlock(os, opts = {}) {
     const portalUrl = _portalLinkImpressao(os);
+    // Entrada: QR + texto curto (sem URL longa). Saída: mantém link completo.
+    if (opts.entrada) {
+        return `<div class="portal-block">
+  <div class="portal-txt">
+    <div class="section-title">ACOMPANHE SEU CONSERTO PELO CELULAR</div>
+    <p class="portal-hint">www.cellcityinformatica.com.br → Portal do Cliente</p>
+    <p class="portal-hint2">Entre com o seu número de telefone e acompanhe o andamento do seu aparelho.</p>
+  </div>
+  <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
+</div>`;
+    }
     return `<div class="portal-block">
   <div class="portal-txt">
     <div class="section-title">Acompanhe seu conserto pelo celular</div>
@@ -2350,6 +2361,27 @@ function _printPortalBlock(os) {
   </div>
   <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
 </div>`;
+}
+
+/** Nº da OS para impressão: sem prefixo "OS-". */
+function _osNumeroImpressao(id) {
+    return String(id || '').replace(/^OS-?/i, '').trim() || String(id || '');
+}
+
+/** Marca + modelo sem repetir a marca (ex.: "HP" + "HP tanque…" → "HP tanque…"). */
+function _aparelhoLabel(os) {
+    const brand = String(os?.brand || '').trim();
+    const model = String(os?.model || '').trim();
+    if (!brand) return model;
+    if (!model) return brand;
+    if (model.toLowerCase().startsWith(brand.toLowerCase())) return model;
+    return `${brand} ${model}`;
+}
+
+/** Valor em formato BR: R$ 620,00 */
+function _fmtReaisBR(n) {
+    const v = Number(n) || 0;
+    return 'R$ ' + v.toFixed(2).replace('.', ',');
 }
 
 function _senhaInformadaSimNao(os) {
@@ -2512,9 +2544,32 @@ function _simboloCondicao(v) {
     return '—';
 }
 
-/** Checklist compacto 2 colunas (só condições do recibo). Nunca imprime senha/padrão. */
-function _checklistCondicoesHtml(os) {
+/**
+ * Checklist do recibo por categoria (getChecklistTemplate).
+ * Sem nenhum item marcado → uma linha "não realizado na entrada".
+ * Celular com entryCondicoes (ok/defeito) ainda imprime o grid tri-estado.
+ */
+function _checklistEntradaPrintHtml(os) {
+    const items = getChecklistTemplate(os.category || 'celular');
+    const checked = Array.isArray(os.entryChecklist)
+        ? os.entryChecklist.map(Number).filter(n => Number.isFinite(n) && n >= 0)
+        : [];
     const map = (os && os.entryCondicoes && typeof os.entryCondicoes === 'object') ? os.entryCondicoes : {};
+    const temCond = Object.keys(map).some(k => map[k] === 'ok' || map[k] === 'defeito');
+
+    if (!checked.length && !temCond) {
+        return `<p class="checklist-vazio">Checklist: não realizado na entrada</p>`;
+    }
+
+    if (checked.length) {
+        const cells = items.map((label, i) => {
+            const mark = checked.includes(i) ? '✓' : '—';
+            return `<div class="cond-cell"><span class="cond-mark">${mark}</span> ${escHtml(label)}</div>`;
+        }).join('');
+        return `<div class="cond-grid">${cells}</div>`;
+    }
+
+    // Formulário de criação (entryCondicoes) — típico celular
     const cells = ENTRY_CONDICOES_ITEMS.map(it => {
         const v = map[it.key] || 'nao';
         return `<div class="cond-cell"><span class="cond-mark">${_simboloCondicao(v)}</span> ${escHtml(it.label)}</div>`;
@@ -2528,14 +2583,20 @@ function _blocoValoresEntrada(os) {
     // Só imprime números se houver valor preenchido (> 0). Sem valor: frase padrão.
     if (total > 0) {
         const restante = Math.max(0, total - sinal);
-        let html = `<div class="row"><span class="label">Total</span><span>R$ ${total.toFixed(2)}</span></div>`;
+        let html = `<div class="row"><span class="label">Total</span><span>${_fmtReaisBR(total)}</span></div>`;
         if (sinal > 0) {
-            html += `<div class="row"><span class="label">Entrada</span><span>R$ ${sinal.toFixed(2)}</span></div>`;
-            html += `<div class="row"><span class="label">Restante</span><span>R$ ${restante.toFixed(2)}</span></div>`;
+            html += `<div class="row"><span class="label">Entrada</span><span>${_fmtReaisBR(sinal)}</span></div>`;
+            html += `<div class="row"><span class="label">Restante</span><span>${_fmtReaisBR(restante)}</span></div>`;
         }
         return html;
     }
     return `<div class="row valores-msg"><span>Valor: a definir após diagnóstico (orçamento grátis, em até 24h)</span></div>`;
+}
+
+function _rodapeEntradaHtml(os) {
+    const total = Number(os.valor) || 0;
+    const orc = total > 0 ? '' : `<p class="rodape-linha">Orçamento em até 24h.</p>`;
+    return `<div class="rodape-entrada">${orc}<p class="rodape-fixo">Aparelhos com mais de 3 meses na loja serão vendidos para custear as despesas. Não nos responsabilizamos por cartão de memória e chips deixados nos aparelhos.</p></div>`;
 }
 
 function _avisosEntradaHtml(os) {
@@ -2554,8 +2615,9 @@ async function printOSEntrada(vias) {
     const cfg = await _ensurePrintConfig();
     const os = currentOS;
     const imei = os.imei || os.imei1 || '';
-    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || (os.model || '');
+    const aparelho = _aparelhoLabel(os);
     const dataEntrada = formatDate(os.createdAt);
+    const osNum = _osNumeroImpressao(os.id);
 
     const bloco = `
 <div class="row"><span class="label">Cliente</span><span>${escHtml(os.clientName || '')}</span></div>
@@ -2567,33 +2629,44 @@ ${imei ? `<div class="row"><span class="label">IMEI</span><span>${escHtml(imei)}
 ${_blocoValoresEntrada(os)}
 <div class="section">
   <div class="section-title">Checklist</div>
-  ${_checklistCondicoesHtml(os)}
+  ${_checklistEntradaPrintHtml(os)}
 </div>
 ${_avisosEntradaHtml(os)}
-${_printPortalBlock(os)}
+${_printPortalBlock(os, { entrada: true })}
 <div class="sign-row">
   <div class="sign-line">Técnico${os.technician ? ': ' + escHtml(os.technician) : ''}</div>
   <div class="sign-line">Cliente</div>
 </div>
-<div class="row" style="border:0;margin-top:8px;"><span class="label">Data de entrada</span><span>${escHtml(dataEntrada)}</span></div>`;
+<div class="row" style="border:0;margin-top:8px;"><span class="label">Data de entrada</span><span>${escHtml(dataEntrada)}</span></div>
+${_rodapeEntradaHtml(os)}`;
 
     const viaLabels = nVias === 2 ? ['VIA LOJA', 'VIA CLIENTE'] : [''];
     const pages = viaLabels.map((via, idx) => `
 <div class="recibo-entrada">
   ${via ? `<div class="via-tag">${via}</div>` : ''}
   ${_printCabecalhoHtml(cfg, 'CELL CITY INFORMÁTICA')}
-  <div class="doc-title">RECIBO DE ENTRADA – OS Nº ${escHtml(os.id || '')}</div>
+  <div class="doc-title">ORDEM DE SERVIÇO Nº ${escHtml(osNum)}</div>
+  <div class="doc-subtitle">Comprovante de entrada</div>
   ${bloco}
 </div>${idx < viaLabels.length - 1 ? '<div class="page-break"></div>' : ''}`).join('');
 
-    const extraCss = `.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:10px}
+    const extraCss = `.doc-title{font-size:16px;margin:8px 0 2px;letter-spacing:.02em}
+.doc-subtitle{text-align:center;font-size:11px;font-weight:600;margin:0 0 8px;color:#222}
+.cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:10px}
 .cond-cell{display:flex;gap:5px;align-items:flex-start}
 .cond-mark{font-weight:800;width:12px;flex-shrink:0}
+.checklist-vazio{font-size:10px;margin:2px 0 0;font-weight:600}
 .aviso-print{font-size:9px;line-height:1.35;margin:4px 0 0}
 .valores-msg{font-size:11px;font-weight:600}
+.portal-hint{font-size:10px;font-weight:700;margin:3px 0 0}
+.portal-hint2{font-size:9px;line-height:1.3;margin:3px 0 0}
+.rodape-entrada{margin-top:10px;border-top:1px dashed #999;padding-top:6px}
+.rodape-linha{font-size:10px;font-weight:700;margin:0 0 4px}
+.rodape-fixo{font-size:8px;line-height:1.3;margin:0;color:#222}
+.sign-row{margin-top:12px}
 body.entrada-basic,.recibo-entrada{max-width:480px}`;
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo Entrada ${escHtml(os.id || '')}</title>
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Entrada ${escHtml(osNum)}</title>
 <style>${_printCssCompartilhado('entrada')}${extraCss}</style></head><body>${pages}</body></html>`;
     _printViaIframe(html);
 }
