@@ -1,4 +1,4 @@
-// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump varredura modais)
+// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump estoque reposição)
 // SHELL regenerado a partir do fechamento transitivo REAL de imports das
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
@@ -74,6 +74,7 @@ const SHELL = [
   '/CRM/pages/dashboard/dashboard-utils.js',
   '/CRM/pages/dashboard/dashboard.js',
   '/CRM/pages/estoque/estoque.js',
+  '/CRM/pages/estoque/reposicao.js',
   '/CRM/pages/financeiro/financeiro.js',
   '/CRM/pages/fornecedor/fornecedor.js',
   '/CRM/pages/importar/importar.js',

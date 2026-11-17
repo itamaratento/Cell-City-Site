@@ -187,6 +187,49 @@ body {
 .est-resumo-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; }
 .est-resumo-div { width: 1px; background: var(--border); height: 32px; }
 
+/* COMPRAR NO PRÓXIMO PEDIDO */
+.est-reposicao {
+    background: rgba(245, 158, 11, 0.06);
+    border: 1px solid rgba(245, 158, 11, 0.28);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+.est-reposicao-titulo {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 2px;
+}
+.est-reposicao-sub {
+    font-size: 12px;
+    color: var(--text3);
+    margin: 0 0 12px;
+}
+.est-reposicao-lista { display: flex; flex-direction: column; gap: 8px; }
+.est-repo-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+}
+.est-repo-nome { font-size: 14px; font-weight: 700; color: var(--text); }
+.est-repo-meta {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    margin-top: 4px; font-size: 11px; color: var(--text3);
+}
+.est-repo-tag {
+    font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .3px; padding: 2px 7px; border-radius: 999px;
+}
+.est-repo-tag-min { background: rgba(239, 68, 68, 0.15); color: #fca5a5; }
+.est-repo-tag-top { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+.est-repo-vend { color: var(--text2); }
+@media (max-width: 360px) {
+    .est-reposicao { padding: 12px; }
+    .est-repo-meta { gap: 6px; }
+}
+
 /* TOOLBAR WRAPPER */
 .est-toolbar-wrapper {
     display: flex;
