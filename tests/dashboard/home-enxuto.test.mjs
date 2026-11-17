@@ -1,5 +1,5 @@
 /**
- * Home enxuta do Dashboard — 7 módulos + Mais módulos + preferência painel.
+ * Home enxuta do Dashboard — 8 módulos + Mais módulos + preferência painel.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -18,17 +18,20 @@ const HTML = readFileSync(join(__dirname, '../../CRM/pages/dashboard/index.html'
 const UI = readFileSync(join(__dirname, '../../CRM/pages/dashboard/dashboard-ui.js'), 'utf8');
 const CSS = readFileSync(join(__dirname, '../../CRM/pages/dashboard/dashboard.css'), 'utf8');
 const SW = readFileSync(join(__dirname, '../../CRM/sw.js'), 'utf8');
+const CLI_HTML = readFileSync(join(__dirname, '../../CRM/pages/clientes/index.html'), 'utf8');
+const CFG_HTML = readFileSync(join(__dirname, '../../CRM/pages/config/index.html'), 'utf8');
+const IMP_HTML = readFileSync(join(__dirname, '../../CRM/pages/config/impressao.html'), 'utf8');
 
-test('HOME_MODULOS_PRIMARIOS: exatamente 7 na ordem pedida', () => {
+test('HOME_MODULOS_PRIMARIOS: exatamente 8 na ordem pedida', () => {
   assert.deepEqual(HOME_MODULOS_PRIMARIOS, [
-    'os', 'caixa', 'estoque', 'compras', 'central-alertas', 'clientes', 'relatorios',
+    'os', 'caixa', 'estoque', 'compras', 'central-alertas', 'clientes', 'pos-venda', 'relatorios',
   ]);
 });
 
-test('ordenarComPrimariosPrimeiro coloca os 7 no topo', () => {
-  const ids = ['financeiro', 'clientes', 'os', 'diario', 'caixa', 'relatorios'];
+test('ordenarComPrimariosPrimeiro coloca os 8 no topo', () => {
+  const ids = ['financeiro', 'clientes', 'os', 'diario', 'caixa', 'relatorios', 'pos-venda'];
   assert.deepEqual(ordenarComPrimariosPrimeiro(ids), [
-    'os', 'caixa', 'clientes', 'relatorios', 'financeiro', 'diario',
+    'os', 'caixa', 'clientes', 'pos-venda', 'relatorios', 'financeiro', 'diario',
   ]);
 });
 
@@ -39,22 +42,24 @@ test('maisModulosAbertoFromPainel lê config/painel', () => {
   assert.equal(maisModulosAbertoFromPainel({ [PAINEL_CAMPO_MAIS]: false }), false);
 });
 
-test('HTML: grid primário com 7 + details Mais módulos com extras', () => {
+test('HTML: grid primário com 8 + details Mais módulos com extras', () => {
   assert.match(HTML, /modules-grid--primarios/);
   assert.match(HTML, /id="mais-modulos"/);
   assert.match(HTML, /Mais módulos/);
   for (const id of HOME_MODULOS_PRIMARIOS) {
     assert.match(HTML, new RegExp(`data-module="${id}"[^>]*data-home-tier="primario"|data-home-tier="primario"[^>]*data-module="${id}"`));
   }
-  // Extras escondidos (não apagados)
-  for (const id of ['financeiro', 'fornecedor', 'pos-venda', 'config', 'portal-cliente', 'diario', 'auditoria', 'acaodasemana']) {
+  // Pós-venda não fica em "mais"
+  assert.doesNotMatch(HTML, /data-module="pos-venda"[^>]*data-home-tier="mais"|data-home-tier="mais"[^>]*data-module="pos-venda"/);
+  for (const id of ['financeiro', 'fornecedor', 'config', 'portal-cliente', 'diario', 'auditoria', 'acaodasemana']) {
     assert.match(HTML, new RegExp(`data-module="${id}"`));
     assert.match(HTML, new RegExp(`data-module="${id}"[^>]*data-home-tier="mais"|data-home-tier="mais"[^>]*data-module="${id}"`));
   }
 });
 
-test('sidebar: 7 primários + toggle Mais', () => {
+test('sidebar: 8 primários + toggle Mais', () => {
   assert.match(HTML, /data-sid="central-alertas"/);
+  assert.match(HTML, /data-sid="pos-venda"[^>]*data-home-tier="primario"|data-home-tier="primario"[^>]*data-sid="pos-venda"/);
   assert.match(HTML, /id="sidebar-mais-toggle"/);
   assert.match(HTML, /id="sidebar-mais-itens"/);
   const primIdx = HOME_MODULOS_PRIMARIOS.map(id => HTML.indexOf(`data-sid="${id}"`));
@@ -62,6 +67,18 @@ test('sidebar: 7 primários + toggle Mais', () => {
   for (let i = 1; i < primIdx.length; i++) {
     assert.ok(primIdx[i] > primIdx[i - 1], `ordem sidebar quebrada em ${HOME_MODULOS_PRIMARIOS[i]}`);
   }
+});
+
+test('Clientes: lista real (não Impressora); Impressão em Config', () => {
+  assert.match(CLI_HTML, /<title>Cell City — Clientes<\/title>/);
+  assert.match(CLI_HTML, /id="cli-search"/);
+  assert.match(CLI_HTML, /clientes\.js/);
+  assert.doesNotMatch(CLI_HTML, /impressao\.js|Impressora|loja-nome/);
+  assert.match(IMP_HTML, /Impressão e Garantias/);
+  assert.match(IMP_HTML, /loja-nome/);
+  assert.match(IMP_HTML, /impressao\.js/);
+  assert.match(CFG_HTML, /impressao\.html/);
+  assert.match(CFG_HTML, /Impressão e Garantias/);
 });
 
 test('UI persiste preferência em config/painel', () => {
@@ -76,6 +93,6 @@ test('CSS home enxuta: 4 colunas / cards maiores', () => {
   assert.match(CSS, /min-height:\s*168px|min-height:\s*150px/);
 });
 
-test('SW bump comentário home enxuta', () => {
-  assert.match(SW, /home enxuta|__GIT_SHA__/);
+test('SW bump comentário home clientes/pos-venda', () => {
+  assert.match(SW, /home clientes|pos-venda|__GIT_SHA__/);
 });

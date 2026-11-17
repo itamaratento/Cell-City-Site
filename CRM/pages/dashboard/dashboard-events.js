@@ -76,8 +76,8 @@ export const dashboardEventsMixin = {
     if (!navEl) return;
 
     const ORDER_KEY = 'cc_sidebar_order';
-    // Home enxuta: os 7 primários ficam fixos no topo (ordem canônica).
-    const PRIMARIOS = ['os', 'caixa', 'estoque', 'compras', 'central-alertas', 'clientes', 'relatorios'];
+    // Home enxuta: os 8 primários ficam fixos no topo (ordem canônica).
+    const PRIMARIOS = ['os', 'caixa', 'estoque', 'compras', 'central-alertas', 'clientes', 'pos-venda', 'relatorios'];
 
     const saveOrder = () => {
       const sids = [...navEl.querySelectorAll('.sidebar-item[data-sid]')].map(el => el.dataset.sid);

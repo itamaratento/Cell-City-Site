@@ -1816,8 +1816,9 @@ testes commitados nas Sprints 16–19 nunca passaram:
 - Analise/PosVenda inicializam via `DOMContentLoaded` e os testes não
   passavam `{ document }` ao `importFresh()` — o init nunca rodava;
 - PosVenda procurava `.posv-tabs` (classe real: `.pv-tabs`);
-- `pages/clientes/` é a tela de **Config de Impressão** (gate no módulo
-  'config', com redirect) — teste reescrito para o comportamento real.
+- `pages/clientes/` é a **lista real de clientes** (busca + ficha OS);
+  `pages/config/impressao.html` é **Impressão e Garantias** (gate no módulo
+  'config', com redirect) — testes RBAC cobrem os dois.
 
 Todos reescritos para asseverar o comportamento real (redirect via
 `getCapturedHref()` + conteúdo renderizado pelo boot). +2 testes de RBAC

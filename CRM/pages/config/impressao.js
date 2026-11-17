@@ -1,5 +1,5 @@
-// Módulo: Configurações de Impressão
-// Migrado de CRM/pages/clientes/clientes.js (nome enganoso) — P2.6 2026-07-16
+// Módulo: Impressão e Garantias (Configurações)
+// HTML em pages/config/impressao.html (antes vivia em pages/clientes/ por engano).
 import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar } from '../../shared/permissoes.js';
 import { serverTimestamp } from "../../firebase/client.js";

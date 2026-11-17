@@ -35,8 +35,14 @@
       "nome": "Clientes",
       "icone": "👥",
       "grupo": "Comercial",
-      "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
-      "alerta": "Rótulo histórico 'Clientes' não corresponde ao conteúdo real (tela de Configurações de Impressão). Correção do rótulo/conteúdo é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
+      "descricao": "Lista de clientes com busca por nome/telefone; abre a ficha unificada (OS, garantias, Caixa)."
+    },
+    "impressao": {
+      "nome": "Impressão e Garantias",
+      "icone": "🖨️",
+      "grupo": "Sistema",
+      "descricao": "Dados da loja, logo e modelos de garantia por categoria (em Configurações).",
+      "url": "/CRM/pages/config/impressao.html"
     },
     "estoque": {
       "nome": "Estoque",
