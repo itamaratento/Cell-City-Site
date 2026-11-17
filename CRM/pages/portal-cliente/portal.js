@@ -152,11 +152,6 @@ window.Portal = {
         if (!this.session.telefoneDigits && this.session.telefone) {
           this.session.telefoneDigits = this._phoneDigits(this.session.telefone);
         }
-        false && console.log('[Portal] Sessão restaurada:', JSON.stringify(this.session));
-        false && console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
-
-        // Inicia listeners em tempo real para a sessão restaurada
-        false && console.log('[AUDIT:BOOT] Iniciando _listenOS() e _carregarMensagens() para sessão restaurada');
         this._listenOS();
         this._carregarMensagens();
         this._carregarAgendamentos();
@@ -170,26 +165,19 @@ window.Portal = {
 
     // Auto-login vindo da Ordem de Serviço no CRM — botão "Portal do Cliente"
     // em CRM/pages/os/os.js::abrirPortalCliente(), que abre esta página com
-    // ?tel=<phoneDigits>&os=<osId>. Evita a equipe pesquisar o cliente
-    // manualmente: o telefone já é dado conhecido (o da própria OS).
-    // Se a sessão restaurada já é do mesmo telefone, não repete a consulta —
-    // só pula direto pra rota da OS (equivalente ao "cliente já logado").
+    // ?tel=<phoneDigits>&os=<osId>.
     const paramsAuto = new URLSearchParams(location.search);
     const telAuto = paramsAuto.get('tel');
     if (telAuto) {
       const digitsAuto = this._phoneDigits(telAuto);
       const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
       if (!mesmoCliente) {
-        false && console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto); // PII desabilitado PS-6
         await this._autenticarComDigits(digitsAuto);
       }
       if (this.session) {
         const osAuto = paramsAuto.get('os');
         location.hash = osAuto ? `#/os-detalhe/${osAuto}` : '#/painel';
       }
-      // Remove telefone/os da URL visível — não deixa esses dados na barra
-      // de endereço nem sobrevivendo a um refresh (a sessão já está no
-      // sessionStorage, que é a fonte de verdade a partir daqui).
       history.replaceState(null, '', location.pathname + (location.hash || ''));
     }
 
@@ -341,8 +329,8 @@ window.Portal = {
   },
 
   // ===== LOGOUT =====
+  // Saída direta — sem confirm()/alert() nativos do navegador.
   logout() {
-    if (!confirm('Deseja sair do Portal do Cliente?')) return;
     if (this.unsubscribeOS) this.unsubscribeOS();
     this.session = null;
     this.currentOS = [];

@@ -577,6 +577,7 @@ function renderPhotoPreview() { const c = document.getElementById('photo-preview
 function removePhoto(i) { tempPhotos.splice(i, 1); renderPhotoPreview(); }
 function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="${src}" style="width:100%;border-radius:8px;">`); }
 
+
 // ===== CREATE OS =====
 function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100); }
 
@@ -817,6 +818,7 @@ function renderDetail() {
     const os = currentOS; const c = document.getElementById('detail-content'); if (!os) return;
     hasUnsavedChanges = false;
     const clients = DB.getClients(); const client = clients.find(cl => cl.phone === os.phone);
+
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     const garantiaModelo = _getSelectedWarranty(os);
     const garantiaNome = garantiaModelo ? garantiaModelo.nome : '';
@@ -1264,9 +1266,7 @@ function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text
 
 // Abre o Portal do Cliente já autenticado no telefone desta OS, direto na
 // própria OS (?tel=<phoneDigits>&os=<osId>) — evita a equipe pesquisar o
-// cliente manualmente. Ver Portal.js::_boot() para o auto-login. O telefone
-// é o próprio dado já gravado na OS (mesmo campo que a busca do Portal usa
-// para localizar o cliente), não uma nova pesquisa por telefone digitado.
+// cliente manualmente. Ver Portal.js::_boot() para o auto-login.
 function abrirPortalCliente(osId, phoneDigits) {
   if (!phoneDigits || phoneDigits.length < 10) {
     showToast('❌ Telefone da OS inválido — não é possível abrir o Portal do Cliente.');

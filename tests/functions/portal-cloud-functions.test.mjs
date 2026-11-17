@@ -58,6 +58,28 @@ function comCode(codeEsperado) {
   return (err) => err.code === codeEsperado;
 }
 
+// ===== Projeção pública de OS (privacidade) =====
+
+test('consultarOSPorTelefonePublica: login só com telefone; observations não vazam', async () => {
+  await db.collection('os').doc('OS-0001').set({
+    id: 'OS-0001',
+    phoneDigits: PHONE,
+    defect: 'tela quebrada',
+    observations: 'RECADO INTERNO NÃO DEVE SAIR',
+    technicalObservation: 'nota técnica interna',
+    internalObservation: 'obs interna',
+    empresa_id: 'cellcity-master',
+  });
+  const ok = await fns.consultarOSPorTelefonePublica.run({
+    data: { phoneDigits: PHONE },
+  });
+  assert.equal(ok.lista.length, 1);
+  assert.equal(ok.lista[0].defect, 'tela quebrada');
+  assert.equal(ok.lista[0].observations, undefined);
+  assert.equal(ok.lista[0].technicalObservation, undefined);
+  assert.equal(ok.lista[0].internalObservation, undefined);
+});
+
 // ===== Nome do cliente (login) =====
 // Fix definitivo do HOTFIX P0 (2026-07-06): substitui o getDoc direto de
 // clientes/{phoneDigits} no client (bloqueado por temAcessoLiberado() nas
