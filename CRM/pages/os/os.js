@@ -17,6 +17,7 @@ import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir 
 import { escHtml } from "../../shared/sanitize.js";
 import { formatDateTime as formatDate, formatDateShort } from "../../shared/date-utils.js";
 import { openModal, closeModal, showToast } from './os-ui-utils.js';
+import { uiConfirm, uiPrompt, uiAlert } from '../../shared/ui-dialog.js';
 import { storagePrefixEmpresa, uploadPhotoToStorage, deletePhotoFromStorage } from './os-photo-storage.js';
 import { URLS, devPrefix, STORAGE_KEYS } from '../../shared/app-config.js';
 import {
@@ -426,8 +427,8 @@ function showPatternSequence() {
     openModal(`<div class="modal-handle"></div><h3 style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text);text-align:center;">🔢 Sequência do Padrão</h3><div style="background:var(--surface2);padding:20px;border-radius:var(--radius);text-align:center;margin-bottom:16px;"><div style="font-size:24px;font-weight:800;color:var(--green-light);font-family:var(--font-mono);">${seq}</div><div style="font-size:12px;color:var(--text3);margin-top:8px;">${window.tempPatternSequence.length} pontos conectados</div></div><button type="button" onclick="closeModal()" style="width:100%;padding:12px;background:var(--green-primary);border:none;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:#000;font-weight:700;">Fechar</button>`);
 }
 
-function clearPattern() {
-    if (!confirm('Deseja limpar o padrão registrado?')) return;
+async function clearPattern() {
+    if (!(await uiConfirm({ title: 'Limpar padrão', body: 'Deseja limpar o padrão registrado?' }))) return;
     window.tempPatternSequence = null;
     const s = document.getElementById('pattern-summary'); if (s) s.style.display = 'none';
     showToast('🗑️ Padrão removido');
@@ -489,8 +490,14 @@ window.markSaved = () => { hasUnsavedChanges = false; updateSaveUI(); };
 window.addEventListener('beforeunload', e => { if (hasUnsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
 
 function guardNavigation(callback) {
-    if (hasUnsavedChanges && !confirm('Existem alterações não salvas. Deseja sair mesmo assim?')) return false;
-    callback(); return true;
+    if (!hasUnsavedChanges) { callback(); return true; }
+    uiConfirm({
+        title: 'Alterações não salvas',
+        body: 'Existem alterações não salvas. Deseja sair mesmo assim?',
+        okText: 'Sair',
+        danger: true,
+    }).then(ok => { if (ok) callback(); });
+    return false;
 }
 
 // ===== DATA LAYER =====
@@ -1609,25 +1616,32 @@ async function markDelivered() {
     renderDetail();
     showToast('✅ Entregue');
     window.markSaved();
-    if (currentOS.valor && currentOS.valor > 0 && confirm(`Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`)) {
-        try {
-            await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({
-                tipo: 'entrada',
-                descricao: 'OS ' + (currentOS.id || '') + ' - ' + (currentOS.clientName || '') + ' - ' + (currentOS.model || ''),
-                categoria: 'Vendas',
-                valor: (parseFloat(currentOS.valor) || 0),
-                custo: 0,
-                lucro: (parseFloat(currentOS.valor) || 0),
-                data: new Date().toISOString().slice(0, 10),
-                dataISO: new Date().toISOString(),
-                ano: new Date().getFullYear(),
-                criadoEm: serverTimestamp(),
-                osId: currentOS.id
-            }));
-            showToast('💰 Pagamento registrado no Caixa!');
-        } catch (e) {
-            showToast('Erro ao registrar pagamento');
-            console.error(e);
+    if (currentOS.valor && currentOS.valor > 0) {
+        const okPag = await uiConfirm({
+            title: 'Registrar no Caixa?',
+            body: `Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`,
+            okText: 'Registrar',
+        });
+        if (okPag) {
+            try {
+                await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({
+                    tipo: 'entrada',
+                    descricao: 'OS ' + (currentOS.id || '') + ' - ' + (currentOS.clientName || '') + ' - ' + (currentOS.model || ''),
+                    categoria: 'Vendas',
+                    valor: (parseFloat(currentOS.valor) || 0),
+                    custo: 0,
+                    lucro: (parseFloat(currentOS.valor) || 0),
+                    data: new Date().toISOString().slice(0, 10),
+                    dataISO: new Date().toISOString(),
+                    ano: new Date().getFullYear(),
+                    criadoEm: serverTimestamp(),
+                    osId: currentOS.id
+                }));
+                showToast('💰 Pagamento registrado no Caixa!');
+            } catch (e) {
+                showToast('Erro ao registrar pagamento');
+                console.error(e);
+            }
         }
     }
     offerPrintGarantia();
@@ -1640,8 +1654,17 @@ function openClientFromOS() { if(currentOS) { currentClientPhone=currentOS.phone
 async function saveCurrentOS() { if (!currentOS) return; await DB.updateOS(currentOS); }
 
 async function deleteOS(id) {
-    const c = prompt("Digite 77 para confirmar a exclusão");
-    if (c !== "77") { alert("Exclusão cancelada."); return; }
+    const c = await uiPrompt({
+        title: 'Excluir OS',
+        body: 'Digite 77 para confirmar a exclusão',
+        placeholder: '77',
+        okText: 'Excluir',
+        danger: true,
+    });
+    if (c !== '77') {
+        if (c !== null) await uiAlert({ title: 'Cancelado', body: 'Exclusão cancelada.' });
+        return;
+    }
     try {
         const osData = localOS.find(o => o.id === id);
         await deleteDoc(doc(db, "os", id));
@@ -1657,7 +1680,7 @@ async function deleteOS(id) {
         else { updateStats(); renderList(); }
         showToast("🗑️ OS excluída.");
         window.markSaved();
-    } catch(e) { console.error(e); alert("Erro ao excluir."); }
+    } catch(e) { console.error(e); await uiAlert({ title: 'Erro', body: 'Erro ao excluir.' }); }
 }
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/55${normalizePhoneDigits(os.phone)}?text=${encodeURIComponent(text)}`, '_blank'); }
@@ -2355,7 +2378,7 @@ async function marcarRetorno(tipo) {
     r.proximoRetorno = r.proximoRetorno || '';
 
     if (r.status[tipo]) {
-        if (!confirm('Deseja desmarcar este item?')) return;
+        if (!(await uiConfirm({ title: 'Desmarcar', body: 'Deseja desmarcar este item?' }))) return;
         r.status[tipo] = false;
     } else {
         const operador = getOperadorNome();
@@ -3190,7 +3213,7 @@ function editClient(phone) { editClientFromDetail(phone); }
 async function saveClientEdit(oldPhone) {
     const n = document.getElementById('edit-name').value.trim();
     const p = document.getElementById('edit-phone').value.trim();
-    if (!n || !p) return alert("Preencha os campos.");
+    if (!n || !p) { showToast('⚠️ Preencha os campos.'); return; }
     try {
         const oldClient = DB.getClients().find(cl => cl.phone === oldPhone) || {};
         const oldDocId = oldClient.phoneDigits || normalizePhoneDigits(oldPhone);
@@ -3206,15 +3229,24 @@ async function saveClientEdit(oldPhone) {
         showToast("✅ Cliente atualizado.");
         window.markSaved();
         showClientDetail(pCanon);
-    } catch(e) { console.error(e); alert("Erro ao atualizar."); }
+    } catch(e) { console.error(e); showToast('Erro ao atualizar.'); }
 }
 
 async function deleteClient(phone) {
-    const confirmCode = prompt("Digite 77 para confirmar a exclusão do cliente");
-    if (confirmCode !== "77") { alert("Exclusão cancelada."); return; }
+    const confirmCode = await uiPrompt({
+        title: 'Excluir cliente',
+        body: 'Digite 77 para confirmar a exclusão do cliente',
+        placeholder: '77',
+        okText: 'Excluir',
+        danger: true,
+    });
+    if (confirmCode !== '77') {
+        if (confirmCode !== null) await uiAlert({ title: 'Cancelado', body: 'Exclusão cancelada.' });
+        return;
+    }
     const client = DB.getClients().find(c => c.phone === phone);
     const docId = (client && client.phoneDigits) || normalizePhoneDigits(phone) || phone.trim();
-    if (!docId) { alert("ID do cliente inválido."); return; }
+    if (!docId) { await uiAlert({ title: 'Erro', body: 'ID do cliente inválido.' }); return; }
     try {
         await deleteDoc(doc(db, "clientes", docId));
         localClients = localClients.filter(c => c.phone !== docId);
@@ -3222,7 +3254,11 @@ async function deleteClient(phone) {
         showToast("🗑️ Cliente excluído com sucesso.");
     } catch (e) {
         console.error("❌ Erro ao excluir do Firestore:", e);
-        if (e.code === 'not-found') { alert("Cliente não encontrado no banco."); } else { alert("Erro ao excluir do Firestore."); }
+        if (e.code === 'not-found') {
+            await uiAlert({ title: 'Erro', body: 'Cliente não encontrado no banco.' });
+        } else {
+            await uiAlert({ title: 'Erro', body: 'Erro ao excluir do Firestore.' });
+        }
     }
 }
 

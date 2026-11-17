@@ -5,6 +5,7 @@ import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir 
 import { escHtml as esc } from '../../shared/sanitize.js';
 import { formatDateOnly } from '../../shared/date-utils.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
+import { uiConfirm } from '../../shared/ui-dialog.js';
 
 const COL_COMPRAS = 'compras_pedidos';
 const fmt = v => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
@@ -131,7 +132,13 @@ async function salvar() {
 }
 
 async function excluir(id) {
-  if (!confirm('Excluir este pedido?')) return;
+  const ok = await uiConfirm({
+    title: 'Excluir pedido',
+    body: 'Excluir este pedido?',
+    okText: 'Excluir',
+    danger: true,
+  });
+  if (!ok) return;
   try {
     await deleteDoc(doc(db, COL_COMPRAS, id));
     dados = dados.filter(c => c.id !== id);

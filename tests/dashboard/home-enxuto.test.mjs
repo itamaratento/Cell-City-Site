@@ -93,6 +93,6 @@ test('CSS home enxuta: 4 colunas / cards maiores', () => {
   assert.match(CSS, /min-height:\s*168px|min-height:\s*150px/);
 });
 
-test('SW bump comentário home clientes/pos-venda', () => {
-  assert.match(SW, /home clientes|pos-venda|__GIT_SHA__/);
+test('SW bump comentário (placeholder ou varredura)', () => {
+  assert.match(SW, /varredura modais|home clientes|pos-venda|__GIT_SHA__/);
 });
