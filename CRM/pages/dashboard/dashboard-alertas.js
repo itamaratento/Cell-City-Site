@@ -4,7 +4,7 @@ Etapa 9 da refatoração modular: agenda/ação da semana, autoatendimento, diá
 e o motor de geração de alertas (pós-venda, OS, meta, portal, avaliações).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
 import { getDeliveryDate, calcDiasDesde } from "../../shared/date-utils.js";
 
@@ -233,15 +233,113 @@ export const dashboardAlertasMixin = {
   // ===== AGENDA — card do Dashboard: destaque discreto (hoje + atrasados) =====
   // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
   // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
-  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado).
+  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: DESLIGADO),
+  // espelhada em Firestore `config/painel.destacarAgenda` para valer em todos os PCs.
+  // Se o doc/campo não existir → false (sem destaque/piscar).
+  //
+  // Contagem do card também ignora (só visual — NÃO apaga/altera documentos de agenda/OS):
+  //  1) qualquer lembrete atrasado há mais de 3 dias (conta no dia e até +3);
+  //  2) lembretes automáticos "🔔 Retorno OS: …" cuja OS já está encerrada
+  //     (entregue / finalizada / cancelada-recusada).
   _destaqueAgendaAtivo() {
     try {
       const v = localStorage.getItem('cc_destacar_agenda');
-      if (v === null || v === undefined || v === '') return true; // padrão ligado
-      return v !== '0' && v !== 'false';
+      if (v === null || v === undefined || v === '') return false; // padrão desligado
+      return v === '1' || v === 'true';
     } catch {
-      return true;
+      return false;
     }
+  },
+
+  // Lê a preferência online uma vez por sessão do card e espelha no localStorage.
+  async _syncDestacarAgendaFromFirestore() {
+    if (this._destacarAgendaSynced) return;
+    this._destacarAgendaSynced = true;
+    try {
+      const snap = await getDoc(doc(db, 'config', 'painel'));
+      if (snap.exists() && typeof snap.data().destacarAgenda === 'boolean') {
+        localStorage.setItem('cc_destacar_agenda', snap.data().destacarAgenda ? '1' : '0');
+      } else {
+        // Doc/campo ausente → padrão desligado
+        localStorage.setItem('cc_destacar_agenda', '0');
+      }
+    } catch (e) {
+      console.warn('[Agenda] preferência online indisponível; usando local:', e);
+    }
+  },
+
+  _isLembreteRetornoOS(titulo) {
+    return /Retorno\s+OS\s*:/i.test(String(titulo || ''));
+  },
+
+  _osIdDoRetorno(titulo) {
+    const m = String(titulo || '').match(/Retorno\s+OS\s*:\s*([A-Za-z0-9_-]+)/i);
+    return m ? m[1] : '';
+  },
+
+  _osEncerradaParaAgenda(status) {
+    const s = String(status || '').toLowerCase();
+    // Entregue / Finalizada (concluído) / Cancelada-recusada (terminais da OS).
+    return s === 'entregue'
+      || s === 'concluido' || s === 'pronto'
+      || s === 'orcamento_recusado' || s === 'devolvido_orcamento'
+      || s === 'cancelada' || s === 'cancelado';
+  },
+
+  _diasAtrasoAgenda(dataISO, hojeISO) {
+    if (!dataISO || !hojeISO || dataISO >= hojeISO) return 0;
+    const a = new Date(dataISO + 'T00:00:00').getTime();
+    const b = new Date(hojeISO + 'T00:00:00').getTime();
+    if (isNaN(a) || isNaN(b)) return 0;
+    return Math.floor((b - a) / 86400000);
+  },
+
+  // Cache curto do mapa OS-id → status (mesma janela do refresh do card).
+  // Só leitura — nunca escreve/atualiza documentos.
+  async _mapaStatusOSParaAgenda() {
+    const TTL_MS = 300000;
+    if (this._osStatusCacheMap && (Date.now() - (this._osStatusCacheAt || 0)) < TTL_MS) {
+      return this._osStatusCacheMap;
+    }
+    const map = new Map();
+    try {
+      const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
+      snap.forEach(d => {
+        const o = d.data() || {};
+        const id = o.id || d.id;
+        if (id) map.set(String(id), o.status || '');
+      });
+    } catch (e) {
+      console.warn('[Agenda] falha ao ler status das OS para o card:', e);
+    }
+    this._osStatusCacheMap = map;
+    this._osStatusCacheAt = Date.now();
+    return map;
+  },
+
+  // Filtra pendências do CARD (não muta agenda nem OS).
+  async _filtrarPendentesCardAgenda(eventos) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    let candidatos = (eventos || []).filter(e => {
+      if (e.concluido || !e.data) return false;
+      if (e.data > hojeISO) return false;
+      // Conta no dia e até 3 dias após; depois disso sai da contagem do card.
+      if (e.data < hojeISO && this._diasAtrasoAgenda(e.data, hojeISO) > 3) return false;
+      return true;
+    });
+
+    const precisaStatus = candidatos.some(e => this._isLembreteRetornoOS(e.titulo));
+    if (!precisaStatus) return candidatos;
+
+    const statusPorId = await this._mapaStatusOSParaAgenda();
+    return candidatos.filter(e => {
+      if (!this._isLembreteRetornoOS(e.titulo)) return true;
+      const osId = this._osIdDoRetorno(e.titulo);
+      if (!osId) return true;
+      const st = statusPorId.get(osId);
+      if (st == null || st === undefined) return true; // OS sumiu → não esconde por engano
+      return !this._osEncerradaParaAgenda(st);
+    });
   },
 
   atualizarCardAcaoSemana() {
@@ -249,6 +347,7 @@ export const dashboardAlertasMixin = {
       const card = document.querySelector('.module-card[data-module="acaodasemana"]');
       if (!card) return;
       const sub = card.querySelector('.module-sub');
+      await this._syncDestacarAgendaFromFirestore();
       const destacar = this._destaqueAgendaAtivo();
 
       if (!destacar) {
@@ -259,11 +358,7 @@ export const dashboardAlertasMixin = {
 
       const eventos = await this._lerAgenda();
       const hojeISO = new Date().toISOString().slice(0, 10);
-      // Só hoje ou atrasado (não concluído). Futuro não conta.
-      const pendentes = (eventos || []).filter(e => {
-        if (e.concluido || !e.data) return false;
-        return e.data <= hojeISO;
-      });
+      const pendentes = await this._filtrarPendentesCardAgenda(eventos);
       const countHoje = pendentes.filter(e => e.data === hojeISO).length;
       const countAtrasadas = pendentes.filter(e => e.data < hojeISO).length;
       const temDestaque = pendentes.length > 0;
