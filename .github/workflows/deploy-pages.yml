@@ -63,8 +63,9 @@ jobs:
 
       - name: Stamp Service Worker cache (SHA do commit → CRM/sw.js)
         # Evita PCs com CSS/JS antigos quando o CACHE do SW não era bumpado
-        # à mão. Substitui o placeholder __GIT_SHA__ no artefato (não no repo).
-        # main e develop usam o SHA do respectivo checkout.
+        # à mão. Preferência: placeholder __GIT_SHA__ (main). Fallback: branch
+        # legada (ex.: develop ainda com cellcity-crm-vNN) — reescreve a linha
+        # const CACHE no artefato. main e develop usam o SHA do respectivo checkout.
         run: |
           set -euo pipefail
           stamp_sw() {
@@ -75,13 +76,22 @@ jobs:
               echo "❌ Ausente: $sw"
               exit 1
             fi
-            if ! grep -q '__GIT_SHA__' "$sw"; then
-              echo "❌ Placeholder __GIT_SHA__ não encontrado em $sw — abortando."
+            if grep -q '__GIT_SHA__' "$sw"; then
+              sed -i "s/__GIT_SHA__/${sha}/g" "$sw"
+              if grep -q '__GIT_SHA__' "$sw"; then
+                echo "❌ Substituição do SHA falhou em $sw"
+                exit 1
+              fi
+            elif grep -qE "const CACHE = 'cellcity-crm-" "$sw"; then
+              # develop (ou outra ref) ainda sem placeholder — força CACHE com SHA
+              sed -i -E "s/const CACHE = 'cellcity-crm-[^']*'/const CACHE = 'cellcity-crm-${sha}'/" "$sw"
+              echo "⚠️  Placeholder ausente em $sw — CACHE legado atualizado para SHA ${sha}"
+            else
+              echo "❌ Não foi possível stamp o CACHE em $sw (sem __GIT_SHA__ nem const CACHE)"
               exit 1
             fi
-            sed -i "s/__GIT_SHA__/${sha}/g" "$sw"
-            if grep -q '__GIT_SHA__' "$sw"; then
-              echo "❌ Substituição do SHA falhou em $sw"
+            if ! grep -q "cellcity-crm-${sha}" "$sw"; then
+              echo "❌ CACHE não contém SHA ${sha} em $sw"
               exit 1
             fi
             echo "✅ $sw → CACHE com SHA ${sha}"
