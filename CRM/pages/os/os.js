@@ -2341,15 +2341,29 @@ function _printCabecalhoHtml(cfg, tituloLoja) {
         + (loja.cnpj ? `<p class="shop-meta">CNPJ: ${escHtml(loja.cnpj)}</p>` : '');
 }
 
+/**
+ * Bloco Portal + QR (sem URL longa).
+ * opts.modo: 'entrada' | 'saida' | (default = saída-compatível com link legado)
+ */
 function _printPortalBlock(os, opts = {}) {
     const portalUrl = _portalLinkImpressao(os);
-    // Entrada: QR + texto curto (sem URL longa). Saída: mantém link completo.
-    if (opts.entrada) {
+    const modo = opts.modo || (opts.entrada ? 'entrada' : opts.saida ? 'saida' : '');
+    if (modo === 'entrada' || modo === 'saida') {
+        const titulo = modo === 'saida'
+            ? 'ACESSE SUA GARANTIA PELO CELULAR'
+            : 'ACOMPANHE SEU CONSERTO PELO CELULAR';
+        const passo3 = modo === 'saida'
+            ? 'Pronto: veja sua ordem de serviço e sua garantia. Ou aponte a câmera do celular para o QR code.'
+            : 'Pronto: acompanhe o andamento do seu aparelho. Ou aponte a câmera do celular para o QR code.';
         return `<div class="portal-block">
   <div class="portal-txt">
-    <div class="section-title">ACOMPANHE SEU CONSERTO PELO CELULAR</div>
-    <p class="portal-hint">www.cellcityinformatica.com.br → Portal do Cliente</p>
-    <p class="portal-hint2">Entre com o seu número de telefone e acompanhe o andamento do seu aparelho.</p>
+    <div class="section-title">${titulo}</div>
+    <p class="portal-site">www.cellcityinformatica.com.br</p>
+    <ol class="portal-steps">
+      <li>Entre no site e clique em Portal do Cliente</li>
+      <li>Digite o seu número de telefone</li>
+      <li>${passo3}</li>
+    </ol>
   </div>
   <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
 </div>`;
@@ -2382,6 +2396,13 @@ function _aparelhoLabel(os) {
 function _fmtReaisBR(n) {
     const v = Number(n) || 0;
     return 'R$ ' + v.toFixed(2).replace('.', ',');
+}
+
+/** Data impressão dd/mm/aaaa (sem hora, sem vírgula). */
+function _fmtDataImpressao(iso) {
+    const d = iso ? new Date(iso) : new Date();
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 function _senhaInformadaSimNao(os) {
@@ -2616,7 +2637,7 @@ async function printOSEntrada(vias) {
     const os = currentOS;
     const imei = os.imei || os.imei1 || '';
     const aparelho = _aparelhoLabel(os);
-    const dataEntrada = formatDate(os.createdAt);
+    const dataEntrada = _fmtDataImpressao(os.createdAt);
     const osNum = _osNumeroImpressao(os.id);
 
     const bloco = `
@@ -2632,7 +2653,7 @@ ${_blocoValoresEntrada(os)}
   ${_checklistEntradaPrintHtml(os)}
 </div>
 ${_avisosEntradaHtml(os)}
-${_printPortalBlock(os, { entrada: true })}
+${_printPortalBlock(os, { modo: 'entrada' })}
 <div class="sign-row">
   <div class="sign-line">Técnico${os.technician ? ': ' + escHtml(os.technician) : ''}</div>
   <div class="sign-line">Cliente</div>
@@ -2658,8 +2679,9 @@ ${_rodapeEntradaHtml(os)}`;
 .checklist-vazio{font-size:10px;margin:2px 0 0;font-weight:600}
 .aviso-print{font-size:9px;line-height:1.35;margin:4px 0 0}
 .valores-msg{font-size:11px;font-weight:600}
-.portal-hint{font-size:10px;font-weight:700;margin:3px 0 0}
-.portal-hint2{font-size:9px;line-height:1.3;margin:3px 0 0}
+.portal-site{font-size:13px;font-weight:800;margin:4px 0 2px;letter-spacing:.01em}
+.portal-steps{margin:4px 0 0;padding-left:16px;font-size:9px;line-height:1.35}
+.portal-steps li{margin:0 0 2px}
 .rodape-entrada{margin-top:10px;border-top:1px dashed #999;padding-top:6px}
 .rodape-linha{font-size:10px;font-weight:700;margin:0 0 4px}
 .rodape-fixo{font-size:8px;line-height:1.3;margin:0;color:#222}
@@ -2685,17 +2707,23 @@ async function printOSSaida(modeloId) {
     if (!modelo) modelo = _sugerirModeloGarantia(os, garantias);
     const dias = Number.isFinite(Number(os.prazoGarantia)) ? Number(os.prazoGarantia) : 90;
     const itens = _itensTermosGarantia(modelo, dias);
-    const dataEntrega = formatDate(
-        (os.status === 'entregue' ? (os.updatedAt || os.createdAt) : new Date().toISOString())
-    ).split(' ')[0];
-    const aparelho = [os.brand, os.model].filter(Boolean).join(' ') || (os.model || '');
+    // Entregue → data da OS; senão → hoje. Sempre dd/mm/aaaa (sem hora/vírgula).
+    const dataEntrega = _fmtDataImpressao(
+        os.status === 'entregue' ? (os.updatedAt || os.createdAt) : new Date().toISOString()
+    );
+    const aparelho = _aparelhoLabel(os);
     const servico = (os.defect || '').trim() || 'Não especificado';
-    const valorTxt = os.valor ? `R$ ${Number(os.valor).toFixed(2)}` : '—';
+    const valorTxt = (Number(os.valor) > 0) ? _fmtReaisBR(os.valor) : '—';
+    const tituloGarantia = _tituloGarantiaServico(os);
+
+    // Título UMA vez no cabeçalho (após o logo), depois endereço — sem doc-title duplicado.
+    const extraCss = `.portal-site{font-size:15px;font-weight:800;margin:4px 0 2px;letter-spacing:.01em}
+.portal-steps{margin:4px 0 0;padding-left:18px;font-size:10px;line-height:1.4}
+.portal-steps li{margin:0 0 3px}`;
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Garantia ${escHtml(os.id || '')}</title>
-<style>${_printCssCompartilhado('saida')}</style></head><body>
-${_printCabecalhoHtml(cfg, _tituloGarantiaServico(os))}
-<div class="doc-title">${escHtml(_tituloGarantiaServico(os))}</div>
+<style>${_printCssCompartilhado('saida')}${extraCss}</style></head><body>
+${_printCabecalhoHtml(cfg, tituloGarantia)}
 ${modelo && modelo.nome ? `<p class="shop-meta" style="margin-bottom:8px">Modelo: ${escHtml(modelo.nome)}</p>` : ''}
 <div class="row"><span class="label">Nome</span><span>${escHtml(os.clientName || '')}</span></div>
 <div class="row"><span class="label">Telefone</span><span>${escHtml(os.phone || '')}</span></div>
@@ -2708,7 +2736,7 @@ ${modelo && modelo.nome ? `<p class="shop-meta" style="margin-bottom:8px">Modelo
   <div class="section-title">Termos de garantia</div>
   ${_htmlItensGarantia(itens)}
 </div>
-${_printPortalBlock(os)}
+${_printPortalBlock(os, { modo: 'saida' })}
 <div class="sign-row">
   <div class="sign-line">Data: ___/___/___</div>
   <div class="sign-line">Assinatura (ciente)</div>
