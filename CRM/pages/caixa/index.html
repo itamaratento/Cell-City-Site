@@ -70,6 +70,46 @@
       </button>
     </section>
 
+    <!-- VENDA RÁPIDA -->
+    <section class="form-section" id="secao-venda-rapida">
+      <div class="form-section-title">⚡ Venda rápida</div>
+      <p style="font-size:12px;color:var(--text2);margin:0 0 10px;">Digite parte do nome do produto, escolha Loja/Feira e quantidade — salva com 1 clique.</p>
+      <div class="campo-grupo">
+        <label>Produto do estoque</label>
+        <div class="campo-desc-wrap">
+          <input type="text" id="vr-busca" placeholder="Ex: carregador, película, cabo…" autocomplete="off">
+          <div id="vr-autocomplete" class="autocomplete-dropdown"></div>
+        </div>
+        <div id="vr-produto-sel" style="display:none;margin-top:8px;font-size:13px;color:var(--green-light);font-weight:700;"></div>
+      </div>
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Local</label>
+          <select id="vr-local">
+            <option value="loja">🏪 Loja Cell City</option>
+            <option value="feira">🎪 Feira da Marreta</option>
+          </select>
+        </div>
+        <div class="campo-grupo">
+          <label>Qtd</label>
+          <input type="number" id="vr-qty" value="1" min="1" max="9999">
+        </div>
+      </div>
+      <button type="button" class="btn-salvar" id="btn-venda-rapida" onclick="salvarVendaRapida()" style="margin-top:4px;">💾 Salvar venda</button>
+    </section>
+
+    <!-- IMPORTAR VENDAS DA FEIRA -->
+    <section class="form-section" id="secao-import-feira">
+      <div class="form-section-title">🎪 Importar vendas da Feira</div>
+      <p style="font-size:12px;color:var(--text2);margin:0 0 8px;">Cole uma venda por linha: <code>Nome, qtd, preço</code> ou <code>Nome, preço</code>. Prévia antes de gravar.</p>
+      <textarea id="feira-import-texto" rows="4" placeholder="Carregador USB, 2, 45&#10;Película A10, 25&#10;Cabo Type-C 1 30" style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button type="button" class="btn-salvar" onclick="preverImportFeira()" style="flex:1;min-width:140px;">👁️ Prévia</button>
+        <button type="button" class="btn-salvar" id="btn-gravar-feira" onclick="gravarImportFeira()" style="flex:1;min-width:140px;display:none;">✅ Gravar na Feira</button>
+      </div>
+      <div id="feira-import-previa" style="margin-top:10px;font-size:13px;color:var(--text2);line-height:1.5;"></div>
+    </section>
+
     <!-- NOVO LANÇAMENTO -->
     <section class="form-section" id="bloco-padrao-2">
       <div class="form-section-title">➕ Novo Lançamento</div>
