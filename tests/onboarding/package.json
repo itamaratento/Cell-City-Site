@@ -1,0 +1,11 @@
+{
+  "name": "cellcity-onboarding-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

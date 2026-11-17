@@ -80,3 +80,20 @@ export function temFeature(planoId, featureId) {
   const plano = getPlano(planoId);
   return plano.features.includes(featureId);
 }
+
+/** Espelho do contrato de functions/lib/saas-planos.js — sync manual. */
+export function featureFlagsObject(features) {
+  return Object.fromEntries((features || []).map((f) => [f, true]));
+}
+
+/**
+ * Provisiona módulos e flags a gravar em empresas/{id} (paridade com
+ * saasOnboardingCriarEmpresa). Usado pelo CRUD manual do saas-admin.
+ */
+export function provisionamentoPorPlano(planoId) {
+  const plano = getPlano(planoId);
+  return {
+    modulos_ativos: plano.modulos,
+    feature_flags: featureFlagsObject(plano.features),
+  };
+}

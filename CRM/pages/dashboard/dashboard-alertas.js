@@ -7,6 +7,9 @@ Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sem
 import { db, collection, getDocs, getDoc, doc, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
 import { getDeliveryDate, calcDiasDesde } from "../../shared/date-utils.js";
+import { PAGINACAO } from "../../shared/app-config.js";
+
+const LIMITE_LISTA = PAGINACAO.LIMITE_LISTA_PADRAO;
 
 export const dashboardAlertasMixin = {
   // ===== AUTOATENDIMENTO =====
@@ -74,7 +77,7 @@ export const dashboardAlertasMixin = {
   // "HH:MM descrição" viram compromissos com horário para o Dashboard.
   async _lerAgenda() {
     try {
-      const snap = await getDocs(query(collection(db, 'agenda'), ...injectTenantFilter([])));
+      const snap = await getDocs(query(collection(db, 'agenda'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
       const eventos = [];
       const hojeISO = new Date().toISOString().slice(0, 10);
 
@@ -490,8 +493,8 @@ export const dashboardAlertasMixin = {
         });
       }
 
-      const osSnap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
-      const contatosSnap = await getDocs(query(collection(db, 'posvenda_contatos'), ...injectTenantFilter([])));
+      const osSnap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
+      const contatosSnap = await getDocs(query(collection(db, 'posvenda_contatos'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
 
       const contatosFeitos = new Set();
       contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
@@ -619,7 +622,7 @@ export const dashboardAlertasMixin = {
       // ===== PRIORIDADE 4 — PORTAL DO CLIENTE =====
       try {
         const portalMsgsSnap = await getDocs(
-          query(collection(db, 'mensagens_portal'), ...injectTenantFilter([where('lida', '==', false)]))
+          query(collection(db, 'mensagens_portal'), ...injectTenantFilter([where('lida', '==', false)]), limit(LIMITE_LISTA))
         );
         const msgsNaoLidas = [];
         portalMsgsSnap.forEach(d => msgsNaoLidas.push({ id: d.id, ...d.data() }));
@@ -704,8 +707,9 @@ export const dashboardAlertasMixin = {
 
     // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
     try {
+      // DT-22: incluir status legado `pronto` (equivale a concluido)
       const prontoSnap = await getDocs(
-        query(collection(db, 'os'), ...injectTenantFilter([where('status', '==', 'concluido')]))
+        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['concluido', 'pronto'])]), limit(LIMITE_LISTA))
       );
       const prontos = [];
       prontoSnap.forEach(d => {
@@ -713,7 +717,7 @@ export const dashboardAlertasMixin = {
         let dataConcluido = null;
         if (Array.isArray(os.timeline)) {
           const entry = [...os.timeline].reverse().find(t =>
-            typeof t.text === 'string' && t.text.includes('→ Concluído')
+            typeof t.text === 'string' && (t.text.includes('→ Concluído') || t.text.includes('→ Pronto'))
           );
           if (entry?.date) dataConcluido = entry.date;
         }
@@ -739,7 +743,7 @@ export const dashboardAlertasMixin = {
     // ===== ORÇAMENTOS SEM RESPOSTA =====
     try {
       const orcSnap = await getDocs(
-        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['orcamento', 'orcamento_enviado'])]))
+        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['orcamento', 'orcamento_enviado'])]), limit(LIMITE_LISTA))
       );
       const orcamentos = [];
       orcSnap.forEach(d => {

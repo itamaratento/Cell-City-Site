@@ -20,29 +20,143 @@ Se o usuário enviar apenas **`CC`** ou **`CONTINUAR`**:
 
 ---
 
-## ✅ ESTADO ATUAL (2026-07-18) — FASE 4.2: COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
+## ⏳ ESTADO ATUAL (2026-07-28) — Sprint 4 F1 publicada em nuvem (Rules+índices); F2 pendente
 
-Relatório: [`plans/FASE42_COMMIT_PUSH_WIF_20260718.md`](plans/FASE42_COMMIT_PUSH_WIF_20260718.md).
+**Última atividade:** deploy Rules+índices `convites` em **DEV** e **PROD**.  
+**Relatório:** [`plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md`](plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md)
 
-**Classificação:** 🟡 **CERTIFICADA COM RESSALVAS**
+**Estado S4:** F0 ✅ · F1 código ✅ (`df7e48b`) · **F1 nuvem Rules/índices ✅** (PROD: 1 índice ainda CREATING) · **F2–F5 ⛔**
 
-### Concluído (autorizado)
+### Gates
 
-- Commit `7633558` — segurança FASE 4.1/4.2 (25 arquivos)
-- Push `origin/develop` (`f445973..7633558`); tip atual `7b4cabb` (CI Tests ✅)
-- WIF: **5/5 bindings** na SA `github-deploy` (script OK)
+| Item | Nota |
+|------|------|
+| **S4 F1** código | ✅ `df7e48b` |
+| **Deploy Rules/indexes DEV** | ✅ |
+| **Deploy Rules/indexes PROD** | ✅ Rules; índices 1 READY + 1 CREATING |
+| **S4 F2** Cloud Functions | ⛔ aguarda autorização explícita |
 
-### Bloqueado
+### Inventário aberto (paralelo)
 
-- Push/`ff` **main** (Auto-review; necessário para Deploy Firebase)
-- Deploy produção · CONTENT_MATCH · smoke autenticado
+| Item | Nota |
+|------|------|
+| **BL-007** | ✅ |
+| **BL-009** Storage/Blaze | ⛔ decisão de custo |
+| **BL-010** deploy key | ⛔ ação manual GitHub UI |
+
+---
+
+## Histórico — Sprint 4 Fase 1 código publicado (2026-07-27)
+
+`df7e48b` · CI verde · sem deploy nuvem naquele passo.
+
+---
+
+## Histórico — BL-007 deploy Node.js 22 CONCLUÍDO (2026-07-25)
+
+**Entrega:** 16 Cloud Functions DEV+PROD em **nodejs22**; smoke HTTP OK.  
+**Relatório:** [`plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`](plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md)
+
+---
+
+## Histórico — Sprint 3 Polish do Wizard CONCLUÍDA (2026-07-25)
+
+**Entrega:** Enter avança passo, foco automático, região de erro acessível, `aria-current`, `maxlength` nativo.  
+**Relatório:** [`plans/SPRINT3_POLISH_WIZARD_20260725.md`](plans/SPRINT3_POLISH_WIZARD_20260725.md)
+
+---
+
+## Histórico — Sprint 2 Cadastro de Empresas CONCLUÍDA (2026-07-23)
+
+**Entrega:** paridade de provisionamento plano→módulos/flags no CRUD `saas-admin` + limit na lista + docs/testes.  
+**Relatórios:** [`plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md) · [`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`](plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md)
+
+---
+
+## Histórico — Continuidade pós–S1: cota + BL-007 (2026-07-23)
+
+**Entrega:** tetos `limit`/`limitTo` + config **nodejs22**.  
+**Relatório:** [`plans/PACOTE_COTA_BL007_20260723.md`](plans/PACOTE_COTA_BL007_20260723.md)
+
+---
+
+## Histórico — Pacote P1 segurança DT-20/DT-22 (2026-07-23)
+
+**Entrega:** XSS `startOSForClient` + alerta legado `pronto`.  
+**Relatório:** [`plans/PACOTE_P1_DT20_DT22_20260723.md`](plans/PACOTE_P1_DT20_DT22_20260723.md)
+
+---
+
+## Histórico — Sprint 1 Fundação SaaS CONCLUÍDA (2026-07-23)
+
+**Autorização:** execução integral da Sprint 1 (Fundação do SaaS).  
+**Entrega:** fechamento F1.3 consolidação do Kernel em `develop` (PR #1 fechado como superseded).  
+**Relatório:** [`plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`](plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md)
+
+| Fase Sprint 1 | Status |
+|---------------|--------|
+| F1.1 Arquitetura | ✅ |
+| F1.2 app-config | ✅ |
+| F1.3 Auditor (A2) + consolidação Kernel/docs/testes/CI | ✅ |
+| F1.4 Adoção páginas | ✅ |
+
+**Baseline funcional certificada (v3.2.0):** `b663a13`.
+
+### Inventário aberto (fora da Sprint 1)
+
+| Item | Nota |
+|------|------|
+| BL-007 nodejs22 | ✅ config 2026-07-23 (deploy CF pendente) |
+| BL-009 Storage/Blaze | decisão de custo |
+| BL-010 bypass deploy key backup | ação manual GitHub |
+| PR #1 draft Kernel | ✅ fechado 2026-07-23 |
+| Migração legados `perfil_operacional_id` | opcional |
+
+---
+
+## Histórico — ESTADO (2026-07-21) — ESPERA CONTROLADA · GOVERNANÇA DE BASELINE
+
+Governança: [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](plans/GOVERNANCA_BASELINE_V320_20260721.md) · Abertura: [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](plans/CICLO_ABERTURA_POS_V320_20260721.md) · Certificação: [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
+
+| Referência | Commit | Uso |
+|------------|--------|-----|
+| **Baseline Funcional Certificada** | **`b663a13`** | Certificação / código / ADR / critérios da v3.2.0 |
+| **HEAD Documental** | **`ce2e725`** | Docs 6.4 + abertura do ciclo (sem impacto funcional) |
+
+**Release:** v3.2.0 · 🟡 Homologada com ressalvas · ADR-AUTH-001 **Alternativa A** · BL-011 dívida consciente · **6.2-B não aberta**  
+**Desenvolvimento:** ⏸ espera controlada · próximo ciclo **não iniciado** *(histórico — supersedido pela autorização Sprint 1 em 2026-07-23)*
+
+### Congelamento
+
+| Item | Status |
+|------|--------|
+| Homologação funcional 6.x | ✅ encerrada |
+| Diff `b663a13`→`ce2e725` | ✅ só documentação |
+| Próximo ciclo | ⏳ aguarda backlog + autorização |
+
+### Inventário aberto (fora da homologação)
+
+| Item | Nota |
+|------|------|
+| BL-007 nodejs22 | prazo 2026-10-30; exige auth CF |
+| BL-009 Storage/Blaze | decisão de custo |
+| BL-010 bypass deploy key backup | ação manual GitHub |
+| Migração legados `perfil_operacional_id` | opcional |
+| Revisão ADR / 6.2-B | eventual; exige auth Rules |
 
 ### Próxima ação
 
-Autorizar promoção `develop` → `main` (ff + push) para disparar o pipeline oficial de deploy.
+1. Dono escolhe **um** backlog e autoriza explicitamente.  
+2. Só então: Script Mestre da iniciativa (doc própria; não reutilizar scripts 6.x sem revisão).  
+3. Em auditorias: “certificado?” → `b663a13` · “HEAD documental?” → `ce2e725`.  
+4. Até lá: **proibido** código · Rules · CF · IAM · deploy · merge · tag · alterar ADR.
+
+### Histórico — FASE 4.2 (2026-07-18): COMMIT+PUSH+WIF OK · DEPLOY MAIN PENDENTE
+
+Relatório: [`plans/FASE42_COMMIT_PUSH_WIF_20260718.md`](plans/FASE42_COMMIT_PUSH_WIF_20260718.md). Classificação na época: 🟡 CERTIFICADA COM RESSALVAS (commit `7633558`, WIF 5/5 bindings, deploy main ainda bloqueado por Auto-review). Todos os bloqueios dessa seção foram resolvidos nas Fases 4.2/4.3 seguintes — ver seção "ESTADO ATUAL" acima.
 
 
-### Histórico recente (não sobrescreve o acima)
+### Histórico recente — thread SaaS Onboarding/Admin (não sobrescreve o acima; não auditado nesta sessão de 2026-07-21)
 
 A seção abaixo (2026-07-16) permanece como histórico da integração Sprint 3/4.
 
@@ -149,4 +263,6 @@ não criar novo roadmap" nesta missão):**
 
 ---
 
-*Última atualização: 2026-07-16 — Integração e certificação das frentes Sprint 3/4 SaaS + F1.4 concluída. Nenhuma nova funcionalidade, Sprint ou roadmap aberto nesta missão (por instrução explícita).*
+*Seção acima (PRÓXIMA TAREFA RECOMENDADA / RISCOS ATUAIS / ITENS PENDENTES): última atualização 2026-07-16 — Integração e certificação das frentes Sprint 3/4 SaaS + F1.4 concluída. Nenhuma nova funcionalidade, Sprint ou roadmap aberto nesta missão (por instrução explícita). Thread SaaS não revisitado na atualização de 2026-07-21 (ver "ESTADO ATUAL" no topo do arquivo, que é sobre a linha Fase 4/v3.2.0 — thread independente).*
+
+*Estado geral do arquivo atualizado em 2026-07-21 — ver "ESTADO ATUAL" no topo: release v3.2.0 em produção, BL-008 corrigido, IAM DEV auditado sem defeito encontrado.*

@@ -1,0 +1,80 @@
+name: Workflows Keepalive
+
+# GitHub desliga workflows agendados após ~60 dias sem atividade no repo.
+# Este job (quinzenal + manual):
+#  1) Reabilita workflows críticos se estiverem disabled_inactivity
+#  2) Falha de forma visível se o last-ok do backup Firestore (prod) estiver
+#     velho — desde que BACKUP_FIRESTORE_PROD_ENABLED=true
+# Não grava dados de clientes.
+
+on:
+  schedule:
+    - cron: '0 12 1,15 * *' # dia 1 e 15, 12:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: write
+  id-token: write
+
+concurrency:
+  group: cellcity-workflows-keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reabilitar workflows desligados por inatividade
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "== Workflows (estado) =="
+          gh api "repos/${{ github.repository }}/actions/workflows" --jq \
+            '.workflows[] | select(.path|startswith(".github/workflows/")) | "\(.state)\t\(.path)\t\(.name)"'
+
+          for path in \
+            .github/workflows/backup-weekly.yml \
+            .github/workflows/backup-firestore.yml \
+            .github/workflows/workflows-keepalive.yml \
+            .github/workflows/deploy-pages.yml \
+            .github/workflows/tests.yml
+          do
+            state=$(gh api "repos/${{ github.repository }}/actions/workflows" --jq \
+              --arg p "$path" '.workflows[] | select(.path==$p) | .state' || true)
+            id=$(gh api "repos/${{ github.repository }}/actions/workflows" --jq \
+              --arg p "$path" '.workflows[] | select(.path==$p) | .id' || true)
+            if [ -z "$id" ]; then
+              echo "ℹ️  $path ainda não existe nesta ref — ok"
+              continue
+            fi
+            echo "→ $path state=$state id=$id"
+            if [ "$state" = "disabled_inactivity" ] || [ "$state" = "disabled_manually" ]; then
+              echo "   Reabilitando…"
+              gh api -X PUT "repos/${{ github.repository }}/actions/workflows/${id}/enable"
+              echo "   ✅ reabilitado"
+            fi
+          done
+
+      - name: Checar frescor do backup Firestore (prod), se ligado
+        if: ${{ vars.BACKUP_FIRESTORE_PROD_ENABLED == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Auth GCP + verify last-ok
+        if: ${{ vars.BACKUP_FIRESTORE_PROD_ENABLED == 'true' }}
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: cellcity-crm
+          workload_identity_provider: projects/645609867368/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-firestore-backup@cellcity-crm.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        if: ${{ vars.BACKUP_FIRESTORE_PROD_ENABLED == 'true' }}
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: verify-last-ok prod
+        if: ${{ vars.BACKUP_FIRESTORE_PROD_ENABLED == 'true' }}
+        run: |
+          chmod +x scripts/backup/firestore/*.sh
+          ENV=prod MAX_AGE_DAYS=10 ./scripts/backup/firestore/verify-last-ok.sh

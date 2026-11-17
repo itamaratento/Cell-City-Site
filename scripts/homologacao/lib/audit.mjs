@@ -11,7 +11,13 @@ import { dirname, basename, join } from 'node:path';
 export const PROTECTED_BASENAMES = ['firebase.js', 'auth.js', 'config.js', 'global.css'];
 
 function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+  // Só apara espaço em branco no FIM da saída (o "\n" final do processo).
+  // Nunca no início: `git status --porcelain` usa colunas de largura fixa
+  // (ex.: " M arquivo") e um `.trim()` geral cortava o espaço inicial só da
+  // primeira linha da string inteira, deslocando o parsing por posição em
+  // `runAudit()` e comendo o 1º caractere do 1º arquivo modificado/não
+  // rastreado da lista (achado ao validar a correção do BL-008).
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).replace(/\s+$/, '');
 }
 
 function parseAheadBehind(cwd, branch) {

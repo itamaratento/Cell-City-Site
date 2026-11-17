@@ -10,8 +10,9 @@ name: Backup Semanal (Cell City)
 # execução automática real só começa após a promoção deste arquivo para 'main'.
 #
 # P1.5 (2026-07-15): backup semanal manual disponível via workflow_dispatch.
-# Para ativar o cron automático, fazer squash merge de develop → main
-# (conforme regra do projeto — quem desenvolve não promove).
+# 2026-11-17: GitHub pode desligar schedules após ~60d sem atividade
+# (estado disabled_inactivity). Reabilitar com `gh workflow enable` e/ou
+# o job workflows-keepalive.yml. workflow_dispatch continua disponível.
 on:
   schedule:
     - cron: '0 */3 * * 0' # a cada 3h, somente aos domingos (UTC)

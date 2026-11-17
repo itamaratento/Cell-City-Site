@@ -30,25 +30,25 @@
 </head>
 <body>
   <div class="onboard-card">
-    <div class="step-indicator" id="steps">
-      <span class="step-dot active" data-step="1"></span>
+    <div class="step-indicator" id="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" aria-label="Passo 1 de 3">
+      <span class="step-dot active" data-step="1" aria-current="step"></span>
       <span class="step-dot" data-step="2"></span>
       <span class="step-dot" data-step="3"></span>
     </div>
 
-    <div id="s-erro" class="error" style="display:none;"></div>
+    <div id="s-erro" class="error" style="display:none;" role="alert" aria-live="assertive" tabindex="-1"></div>
 
     <div class="step active" data-step="1">
       <h1>🚀 Criar Conta</h1>
       <p class="sub">Configure sua empresa no Cell City CRM</p>
       <label for="s-nome">Nome da Empresa *</label>
-      <input id="s-nome" placeholder="Ex: Minha Loja de Celulares" autocomplete="organization">
+      <input id="s-nome" placeholder="Ex: Minha Loja de Celulares" autocomplete="organization" maxlength="80">
       <label for="s-seu-nome">Seu Nome *</label>
-      <input id="s-seu-nome" placeholder="Ex: João Silva" autocomplete="name">
+      <input id="s-seu-nome" placeholder="Ex: João Silva" autocomplete="name" maxlength="80">
       <label for="s-email">Seu E-mail *</label>
-      <input id="s-email" type="email" placeholder="joao@minhaloja.com.br" autocomplete="email">
+      <input id="s-email" type="email" placeholder="joao@minhaloja.com.br" autocomplete="email" maxlength="120">
       <label for="s-whatsapp">Celular / WhatsApp *</label>
-      <input id="s-whatsapp" placeholder="(62) 99999-9999" autocomplete="tel">
+      <input id="s-whatsapp" placeholder="(62) 99999-9999" autocomplete="tel" maxlength="20">
       <button type="button" class="btn btn-primary" onclick="Onboarding.avancar(1)">Continuar →</button>
     </div>
 

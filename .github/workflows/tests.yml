@@ -11,9 +11,11 @@ name: Testes automatizados
 # SDK mockada em memória (mesmo princípio da homologação da Camada
 # Repository); substituem os harnesses ad-hoc descartados nos sprints
 # anteriores (Sprint 2, Sprint 3, re-homologação de 2026-07-07 — ver
-# CRM/TECHDOC.md §7.3). tests/performance/ (padrão de gating polling/aba
-# oculta, Fase 1 do plano de performance) não usa Firestore nem DOM real —
-# só Node puro, mesmo princípio do RBAC.
+# CRM/TECHDOC.md §7.3). tests/kernel/ (Sprint 1 — Fase 1.3) testa o código
+# real de CRM/scripts/kernel.js (boot, auth, tenant, sessão, permissões).
+# tests/performance/ (padrão de gating polling/aba oculta, Fase 1 do plano
+# de performance) não usa Firestore nem DOM real — só Node puro, mesmo
+# princípio do RBAC.
 #
 # A homologação em navegador real (Fase 3 de scripts/homologacao/) NÃO roda
 # aqui — exige credencial do DEV e Chrome real, fora do escopo de uma CI que
@@ -58,10 +60,10 @@ jobs:
             fi
           done
 
-      - name: Configurar Node 20
+      - name: Configurar Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       # Causa raiz da falha 100% da CI (runs 2026-07-14 a 17): emulador
       # Firestore/Storage e JAR Java. Sem JDK no runner, emulators:exec aborta.
@@ -112,6 +114,10 @@ jobs:
         run: npm test
         working-directory: tests/rbac
 
+      - name: "Testes do Kernel (Sprint 1 — Fase 1.3 boot, autenticação, tenant, sessão)"
+        run: npm test
+        working-directory: tests/kernel
+
       - name: Testes de performance (padrão de gating polling/aba oculta)
         run: node --test tests/performance/polling-gating.test.mjs
 
@@ -121,8 +127,19 @@ jobs:
       - name: Regressão de segurança Fase 2.2 (escHtml/CSPRNG/PIN/catálogo público)
         run: node --test tests/integrity/seguranca-fase22.test.mjs
 
+      - name: Regressão de cota Firestore (limites hotspots) + BL-007 engines
+        run: node --test tests/integrity/cota-limites.test.mjs
+
       - name: Testes de validação do onboarding SaaS (puros, sem Firestore)
         run: node --test tests/onboarding/saas-onboarding-validacao.test.mjs
+
+      - name: Instalar dependências (tests/onboarding/)
+        run: npm ci
+        working-directory: tests/onboarding
+
+      - name: Testes de UI do wizard de onboarding SaaS (jsdom — Sprint 3 Polish)
+        run: node --test saas-onboarding-wizard.test.mjs
+        working-directory: tests/onboarding
 
       - name: Testes de mensagem OS (criação + finalizado)
         run: node --test tests/os/*.test.mjs

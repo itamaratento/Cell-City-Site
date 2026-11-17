@@ -21,10 +21,13 @@
 
 ## 2. Autenticação e bootstrap de módulo (`scripts/kernel.js`)
 
+> Documentação oficial do ciclo de vida e contrato de API:
+> [`CRM/scripts/KERNEL.md`](scripts/KERNEL.md) (Sprint 1 · F1.3).
+
 Todo módulo segue o mesmo padrão de inicialização:
 
 ```javascript
-import { initModulo } from '/CRM/scripts/kernel.js';
+import { initModulo } from '../../scripts/kernel.js'; // caminho relativo (H-008)
 
 const ctx = await initModulo();
 if (!ctx) return; // não autenticado → kernel.js já redirecionou para /CRM/login.html
@@ -32,13 +35,14 @@ if (!ctx) return; // não autenticado → kernel.js já redirecionou para /CRM/l
 // ctx.uid        — UID Firebase do usuário
 // ctx.email      — e-mail
 // ctx.nome       — nome de exibição
-// ctx.empresaId  — empresa ativa (single-store: 'cellcity-master')
-// ctx.perfil     — admin | gerente | tecnico | atendente | caixa
+// ctx.empresaId  — empresa ativa (via tenant-resolver / DEFAULT_TENANT_ID)
+// ctx.perfil     — admin | gerente | tecnico | atendente | … | pendente
 ```
 
-- `kernel.js` mantém um único `onAuthStateChanged` global (`_ready` Promise, timeout de 10s).
+- `kernel.js` mantém um único `onAuthStateChanged` global (`_ready` Promise, timeout de 10s com `clearTimeout`).
+- Após `_buildContext`, chama `initTenant(ctx, empresaId)` (`tenant-provider`) — não hardcodar `EMPRESA_ID` no núcleo.
 - Gate visual nos `<head>` dos módulos: `localStorage.cc_kernel_v1 === '1'` evita flash de conteúdo antes do redirect — **não é mecanismo de segurança**, isso é papel das Firestore Rules.
-- Multiempresa (`tenant.js`, `empresa_id` em queries) foi **revertido**; não usar como referência — a maioria das coleções de negócio (`os`, `clientes`, `posvenda_contatos`, `mensagens_portal`, `avaliacoes`, `agenda`) não filtra por `empresa_id`.
+- Suíte dedicada: `tests/kernel/` (código real do Kernel, SDK mockado).
 
 Outros pontos de entrada compartilhados, incluídos via `<script>`/`<script type="module">` em quase toda página de módulo:
 - `shared/brand-header.js` — injeta o cabeçalho padrão (`#crm-brand-bar`) com logo + título centralizado.
@@ -2530,5 +2534,307 @@ e primeiro pipeline de deploy Firebase totalmente funcional via CI.
    ambiente não-TTY (TAP vs spec reporter) — BL-008; conferir exit code
    antes de confiar no veredito.
 
-**Homologação:** `plans/FASE43_HOMOLOGACAO_20260719.md` — 🟢 HOMOLOGADA,
-main == develop == `8fb4d3e`, tag `v3.2.0`.
+**Homologação infra (Fase 4.3):** `plans/FASE43_HOMOLOGACAO_20260719.md`.
+Tag `v3.2.0` → `d650464`. Homologação funcional (smoke DEV + matriz RBAC
+Runtime, Etapa 6 executada em 2026-07-21, veredito 🔴 REPROVADA por
+achado real — ver §49/BL-011): ver `PROXIMA_ETAPA.md` para o estado
+completo.
+
+## §48 — BL-008: correção do parser do harness `homologar-performance` (2026-07-21)
+
+**Escopo:** item de backlog aberto no §47 (lição 6) — nenhuma alteração
+de produto, só na ferramenta de homologação (`scripts/homologacao/`).
+
+**Causa raiz confirmada:** `node --test` emite o resumo em dois
+formatos possíveis dependendo se stdout é um TTY — reporter "spec"
+(prefixo `ℹ`) ou TAP (`# pass N` / `# fail N`). Rodando via
+`spawnSync` (sem TTY, é sempre o caso do harness), o runtime emite TAP;
+`parseNodeTestSummary()` só reconhecia "spec", então toda suíte via
+`node --test` (RBAC, Polling gating) virava `NaN pass/NaN fail` e
+`ok: false` mesmo com `exitCode 0` e 100% dos testes passando —
+reproduzido e confirmado com a suíte RBAC real (181/181).
+
+**Correção (`scripts/homologacao/lib/tests-runner.mjs`):**
+- `parseNodeTestSummary()` aceita os dois formatos (spec e TAP), tanto
+  para `pass`/`fail`/`duration_ms` quanto para a lista de testes que
+  falharam (`✖ nome (Nms)` vs `not ok N - nome`).
+- `runSuite()` só reprova pelo `exitCode` quando **nenhum** dos dois
+  formatos é reconhecido (defesa contra um 3º formato futuro) —
+  registra um aviso explícito (`warning`) em vez de aprovar/reprovar em
+  silêncio.
+- `report.mjs` passa esse aviso para "Riscos e pendências" (🟡, não
+  bloqueante) e não imprime mais `NaN pass/NaN fail` na tabela quando o
+  parser cai nesse caminho.
+
+**Achado adicional durante a validação (`scripts/homologacao/lib/audit.mjs`):**
+o helper `git()` aplicava `.trim()` na saída inteira de
+`git status --porcelain` antes de dividir em linhas — como o parsing
+das linhas é posicional (`line.slice(3)`, formato `XY arquivo`), isso
+cortava o espaço inicial só da **primeira** linha da string toda,
+comendo o 1º caractere do 1º arquivo modificado/não rastreado listado
+no relatório (ex.: `CRM/git-info.json` virava `RM/git-info.json`).
+Corrigido para aparar só o fim da saída (`\n` final do processo), nunca
+o início.
+
+**Validação:** suíte real rodada de ponta a ponta
+(`HOMOLOG_SKIP_BROWSER=1 npm run homologar-performance`) antes e depois
+da correção — RBAC (181/181) e Polling gating (4/4) passam a aparecer
+corretamente como ✅ com contagem real; lista de arquivos modificados
+no relatório passa a mostrar os nomes completos. Firestore Rules/Cloud
+Functions continuam ❌ neste ambiente por falta de emulador
+autenticado/porta livre — limitação de ambiente local, não relacionada
+a este fix (o harness reporta a falha corretamente, sem aprovar às
+cegas).
+
+**Risco:** nenhum — mudança isolada em ferramenta de teste, não afeta
+nenhum módulo de produto. Nenhum arquivo protegido tocado.
+
+**Pendências:** BL-007 (nodejs22), BL-009 (bucket Storage, decisão do
+dono) e BL-010 (bypass da deploy key no GitHub) seguem em aberto, sem
+mudança neste item.
+
+## §49 — Homologação funcional pós-BL-008: Etapas 5/6/6.1/6.3 e BL-011 (2026-07-21)
+
+**Escopo:** continuação da homologação funcional da v3.2.0 a pedido do
+dono, envolvendo duas sessões concorrentes no mesmo working tree
+(Claude Code e um agente via Cursor que se identifica como "ChatGPT"
+nos próprios relatórios). Registro consolidado e reconciliado em
+[`plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md`](../plans/CERTIFICACAO_ETAPA63_HOMOLOGACAO_FUNCIONAL_20260721.md)
+— este parágrafo é só o ponteiro; os detalhes completos (cronologia,
+achados auditados individualmente, matriz de riscos, avaliação de
+Rules, decisão arquitetural com 3 alternativas) estão lá, não
+duplicados aqui.
+
+**Resultado resumido:**
+
+- Diagnóstico de IAM da Service Account DEV: nenhum defeito encontrado.
+- Smoke autenticado DEV (Etapa 5): 🟢 aprovado, 3 execuções reais.
+- RBAC Runtime multi-perfil (Etapa 6 / 6.3): B1/B2 resolvidos na 6.2-A
+  (perfil Sem permissão + Gerente vinculado). Achado B3 (Rules ≠ matriz)
+  confirmado e **reclassificado na ETAPA 6.2-C** — ver §50 / ADR-AUTH-001.
+- Uma narrativa de "contaminação de variáveis de ambiente" circulou em
+  rascunho não commitado — investigada e **não confirmada** por
+  nenhuma evidência; não deve ser tratada como incidente real.
+
+**Status (atualizado 6.2-C):** homologação funcional alinhada ao modelo
+oficial **Alternativa A** (Rules = auth+tenant; RBAC = aplicação).
+Produção intocada nesta etapa.
+
+## §50 — ADR-AUTH-001: modelo oficial de autorização (ETAPA 6.2-C, 2026-07-21)
+
+**Decisão:** **Alternativa A** — Firestore Rules = autenticação +
+tenant/empresa (+ gates pontuais); matriz RBAC operacional =
+exclusivamente camada da aplicação (`CRM/shared/permissoes.js`).
+
+**Documento:** [`plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md`](../plans/ADR_AUTH_001_MODELO_AUTORIZACAO_20260721.md)
+
+**Consequências:**
+
+- B3 deixa de ser bug bloqueador; passa a **decisão arquitetural**.
+- BL-011 = dívida consciente / evolução opcional (não bloqueia aceite ETAPA 6).
+- Critério oficial: UI deve respeitar a matriz; Rules devem garantir auth +
+  `temAcessoLiberado` + isolamento por empresa. **Não** exige espelhamento
+  da matriz nas Rules.
+- ETAPA 6.2-B (rewrite Rules) **não** iniciada; só se o dono autorizar
+  Alternativa B ou híbrido no futuro.
+
+**Escopo da etapa:** documentação apenas — sem alteração de Rules,
+Functions, IAM, deploy, merge ou tag.
+
+## §51 — Certificação final Release v3.2.0 (ETAPA 6.4, 2026-07-21)
+
+**Parecer único:** [`plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md`](../plans/CERTIFICACAO_ETAPA64_RELEASE_V320_20260721.md)
+
+**Classificação:** 🟡 **HOMOLOGADA COM RESSALVAS**
+
+- B1/B2 resolvidos (6.2-A); B3 encerrado por ADR-AUTH-001 Alternativa A (6.2-C).
+- Critérios oficiais: UI = matriz; Rules = auth + tenant/empresa + gates.
+- Ressalvas: BL-011 (dívida consciente), fail-open legado sem
+  `perfil_operacional_id`, BL-007/009/010 — não são defeitos da Release.
+- Sem alteração de código, Rules, Functions, deploy, merge ou tag nesta etapa.
+
+## §52 — Encerramento do ciclo v3.2.0 e abertura do próximo (2026-07-21)
+
+**Baseline Funcional Certificada:** commit `b663a13` · Release v3.2.0 · ADR-AUTH-001 Alternativa A.
+
+**Documento:** [`plans/CICLO_ABERTURA_POS_V320_20260721.md`](../plans/CICLO_ABERTURA_POS_V320_20260721.md)
+
+Ciclo de homologação/release **encerrado**. Próximo ciclo de desenvolvimento
+**não iniciado** — aguarda escolha de backlog (BL-007 / 009 / 010 / opcionais)
+e autorização explícita. Sem alteração de código, Rules, Functions, deploy,
+merge ou tag nesta abertura.
+
+## §53 — Governança da baseline (2026-07-21)
+
+**Documento:** [`plans/GOVERNANCA_BASELINE_V320_20260721.md`](../plans/GOVERNANCA_BASELINE_V320_20260721.md)
+
+| Nome oficial | Commit | Papel |
+|--------------|--------|-------|
+| Baseline Funcional Certificada | `b663a13` | Certificação v3.2.0 |
+| HEAD Documental | `c64dae7` | Docs 6.4 + abertura (sem impacto funcional) |
+
+Diff `b663a13`→`c64dae7`: somente documentação. Não exige nova homologação.
+Evitar usar “HEAD” ou “baseline” sem qualificar qual das duas referências.
+
+## §54 — Sprint 1 F1.3 fechamento em develop (2026-07-23)
+
+**Contexto:** a consolidação documental/testes do Kernel (PR #1 draft,
+branch `cursor/kernel-consolidation-phase-1-3-d9b9`) **não** foi mergeada
+porque o head do PR revertia PS-1/PS-2 (`initTenant` / `DEFAULT_TENANT_ID`)
+para `EMPRESA_ID` hardcoded. O trabalho útil foi **portado** sobre o Kernel
+atual de `develop`.
+
+| Entrega | Status |
+|---------|--------|
+| `CRM/scripts/KERNEL.md` | ✅ (ciclo de vida com tenant-provider) |
+| `tests/kernel/` 27/27 | ✅ (mocks de Auth/Firestore + tenant) |
+| Remoção `getEmail` / `AUTH_FLAG` | ✅ (zero consumidores) |
+| `clearTimeout` em `initModulo` / `getCtxAsync` | ✅ |
+| CI step Kernel (nome YAML entre aspas) | ✅ (sobre workflow com Java 21) |
+| F1.1 auditor / F1.2 app-config / F1.4 páginas / A2 F1.3 auditor | ✅ já em `develop` |
+
+Relatório: `plans/SPRINT1_FUNDACAO_SAAS_ENCERRAMENTO_20260723.md`.
+
+## §55 — Sprint 2 Cadastro de Empresas / Tenants (2026-07-23)
+
+**Numeração:** série operacional pós–Fundação (S1 Fundação → **S2 Cadastro**).
+Não confundir com a Sprint 2 SaaS legada (Portal split, já concluída) nem
+com a Sprint 2 RBAC (§7.2).
+
+**Problema:** o onboarding via CF (`saasOnboardingCriarEmpresa`) já gravava
+`modulos_ativos` / `feature_flags` a partir do plano; o CRUD manual do
+`saas-admin` gravava só metadados (nome, plano, status), deixando empresas
+criadas pelo operador sem o mesmo contrato de provisionamento. A listagem
+também lia a coleção `empresas` sem `limit`.
+
+**Entregas:**
+- `CRM/shared/saas-planos.js`: `featureFlagsObject` + `provisionamentoPorPlano`
+  (espelho de `functions/lib/saas-planos.js`).
+- `CRM/pages/saas-admin/saas-admin.js`: `salvar()` aplica provisionamento do
+  plano; `carregar()` usa `orderBy('nome_fantasia')` +
+  `limit(PAGINACAO.LIMITE_LISTA_PADRAO)`.
+- Testes: CRUD provisiona (`tests/rbac/saas-admin.test.mjs`); parity
+  client↔functions (`tests/onboarding/saas-onboarding-validacao.test.mjs`).
+
+**Fora de escopo:** redesign do wizard, usuários/convites, CNPJ/billing,
+PS5-003, BL-009/010, promoção a produção, e-mail de boas-vindas.
+
+Relatórios: `plans/SPRINT2_CADASTRO_EMPRESAS_20260723.md`,
+`plans/SPRINT2_CADASTRO_EMPRESAS_ENCERRAMENTO_20260723.md`.
+
+## §56 — Sprint 3 Polish do Wizard de Onboarding (2026-07-25)
+
+**Numeração:** série operacional pós–Fundação (S1 Fundação → S2 Cadastro →
+**S3 Polish do Wizard**). Não confundir com a Sprint 3 SaaS legada (Onboarding
+kickoff, §43) nem com a Sprint 3 RBAC (§7.3).
+
+**Escopo:** item "redesign do wizard" explicitamente deixado fora da Sprint 2
+(§55 acima) — só UX/acessibilidade do wizard existente, sem novas
+funcionalidades de negócio.
+
+**Entregas:**
+- `CRM/pages/saas-onboarding/saas-onboarding.js`: Enter no teclado avança o
+  passo atual (`keydown` isolado, sem alterar os `onclick` existentes); foco
+  automático no primeiro campo ao carregar e a cada `irPara(step)`; foco
+  automático na região de erro; `aria-current`/`aria-valuenow`/`aria-label`
+  dinâmicos no indicador de passos.
+- `CRM/pages/saas-onboarding/index.html`: `role="alert"` + `aria-live` +
+  `tabindex="-1"` em `#s-erro`; `role="progressbar"` no indicador; `maxlength`
+  nativo alinhado aos limites já validados em `saas-onboarding-validacao.js`
+  (nome/responsável 80, e-mail 120).
+- Teste de UI do wizard (jsdom) — inexistente antes: `tests/onboarding/saas-onboarding-wizard.test.mjs`
+  (10/10), com `package.json`/jsdom escopado ao diretório (mesmo padrão de
+  `tests/rbac/`/`tests/storage-rules/`).
+
+**Fora de escopo (deliberado):** usuários/convites, CNPJ/billing, e-mail de
+boas-vindas, máscara de digitação no campo WhatsApp (avaliada e descartada por
+risco desproporcional).
+
+**Testes:** `tests/onboarding/saas-onboarding-wizard.test.mjs` (10/10, novo);
+`tests/onboarding/saas-onboarding-validacao.test.mjs` (11/11); integridade +
+segurança + cota (34/34); RBAC (182/182); Kernel (27/27); `auditar-arquitetura`
+🟢 íntegra. Zero regressão.
+
+Relatório: `plans/SPRINT3_POLISH_WIZARD_20260725.md`.
+
+## §57 — BL-007 Deploy Cloud Functions Node.js 22 (2026-07-25)
+
+**Contexto:** a config (`functions/package.json` engines 22, `firebase.json`
+runtime `nodejs22`, CI Node 22) já estava em `develop` desde o pacote
+cota+BL-007 (`9beab31`), mas o runtime efetivo em nuvem permanecia
+`nodejs20` até o redeploy.
+
+**Execução autorizada:**
+1. Deploy DEV (`cellcity-crm-dev`) — 16/16 Gen2 → Node.js 22.
+2. Smoke DEV (`portalObterNomeCliente` 200, `consultarOSPublica` 404 esperado,
+   `portalListarHorariosOcupados` 200).
+3. Deploy PROD (`cellcity-crm`) — 16/16 Gen2 → Node.js 22.
+4. Smoke PROD — mesmos resultados; amostra `gcloud describe` confirma
+   `buildConfig.runtime=nodejs22` e `state=ACTIVE`.
+
+**Residual:** SA de produção sem permissão de Cloud Logging (smoke HTTP
+substituiu a validação por logs). Bump de `firebase-functions` **não** feito
+(aviso do CLI; fora do escopo mínimo).
+
+Relatório: `plans/BL007_DEPLOY_ENCERRAMENTO_20260725.md`.
+
+## §58 — Sprint 4 Usuários e Convites · Fase 0 (2026-07-27)
+
+**Numeração:** série operacional (S1 Fundação → S2 Cadastro → S3 Polish →
+**S4 Usuários/Convites**). Não confundir com a Sprint 4 SaaS legada
+(aprovação de empresas, §45) nem com a Sprint 4 RBAC Financeiro (§7.4).
+
+**Status:** Fase 0 (arquitetura e escopo) **aprovada** — **sem implementação
+de código** nesta seção.
+
+**Decisões de produto (F0):**
+- Remover criação de usuário com senha temporária no módulo tenant.
+- Convite por **link único + token** (uso único; TTL **7 dias**).
+- Reenvio gera novo token e invalida o anterior.
+- Não enviar senhas por e-mail; convidado define a própria senha no cadastro.
+- Somente Owner/Admin (kernel `admin` / `master_admin`) convida.
+- Perfil RBAC aplicado **somente após** conclusão do cadastro/aceite.
+- Auditoria de todos os eventos de convite.
+
+**Arquitetura (resumo):** coleção `convites` (token armazenado como hash);
+mutações e aceite via Cloud Functions (Admin SDK); client não escreve
+campos privilegiados em `usuarios` (preserva BL-006); MVP entrega o link
+na UI (copiar) — e-mail automático do link fora do escopo mínimo.
+
+**Fases seguintes (não iniciadas):** F1 Rules+índices → F2 Functions →
+F3 UI admin → F4 página aceite → F5 homologação/docs. Exigem autorização
+explícita (Rules e Cloud Functions são módulos críticos).
+
+Plano completo: `plans/SPRINT4_USUARIOS_CONVITES_PLANO.md`.
+
+**Encerramento F0 (2026-07-27):** documentação publicada em `develop`
+(`121b2e7`); CI Testes Automatizados + Deploy Pages ✅. Estado operacional:
+*Fase 0 concluída e publicada; implementação pendente de autorização.*
+Fases F1–F5 bloqueadas até autorização específica.
+
+## §59 — Sprint 4 Fase 1 · Rules + Índices de Convites (2026-07-27)
+
+**Status:** implementado no repositório (sem deploy de Rules/índices nesta
+sessão — publicação em nuvem exige autorização explícita).
+
+**Rules (`CRM/firestore.rules`):** novo `match /convites/{conviteId}`:
+- `read`: autenticado + `temAcessoLiberado` + (`master_admin` **ou** `admin`
+  com `empresa_id` do recurso igual ao do usuário);
+- `create` / `update` / `delete`: `false` (somente Admin SDK / Cloud Functions).
+
+**Índices (`CRM/firestore.indexes.json`):**
+- `empresa_id` + `status` + `criado_em` DESC (lista admin);
+- `empresa_id` + `email_normalizado` + `status` (dedupe pendente).
+
+**Testes:** `tests/firestore-rules/convites.test.mjs` (17 casos) + regressão
+BL-006; suíte Rules completa 138/138 no emulador.
+
+**Não alterado:** Kernel, Cloud Functions, UI, `usuarios/{uid}` (BL-006),
+fluxo saas-admin.
+
+Relatório: `plans/SPRINT4_FASE1_RULES_INDEXES_20260727.md`.
+
+**Publicação em nuvem (2026-07-28):** Rules+índices deployados em
+`cellcity-crm-dev` e `cellcity-crm` (PROD via API REST — SA sem
+`firebase deploy :test`). Verificação byte-a-byte do release ativo com
+`match /convites`. Detalhe: `plans/SPRINT4_F1_DEPLOY_RULES_INDEXES_20260728.md`.

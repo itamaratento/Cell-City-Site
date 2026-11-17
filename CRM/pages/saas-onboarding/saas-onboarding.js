@@ -24,10 +24,27 @@ function mostrarErro(msg) {
   if (msg) {
     el.textContent = msg;
     el.style.display = 'block';
+    el.focus();
   } else {
     el.textContent = '';
     el.style.display = 'none';
   }
+}
+
+const STEP_LABELS = { 1: 'Dados da empresa', 2: 'Escolha do plano', 3: 'Confirmação' };
+
+function focarPrimeiroCampo(step) {
+  const alvo = document.querySelector(`.step[data-step="${step}"] input, .step[data-step="${step}"] select`);
+  alvo?.focus();
+}
+
+function ativarAvancoPorEnter(inputId, avancarStep) {
+  $(inputId)?.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      window.Onboarding?.avancar(avancarStep);
+    }
+  });
 }
 
 function montarSelectPlanos() {
@@ -75,14 +92,22 @@ export function initOnboarding(_firebaseApp, { criarEmpresa }) {
 
   function irPara(step) {
     document.querySelectorAll('.step').forEach((s) => s.classList.remove('active'));
-    document.querySelectorAll('.step-dot').forEach((d) => d.classList.remove('active', 'done'));
+    document.querySelectorAll('.step-dot').forEach((d) => { d.classList.remove('active', 'done'); d.removeAttribute('aria-current'); });
     const target = step === 4 ? 'success' : step;
     document.querySelector(`.step[data-step="${target}"]`)?.classList.add('active');
     for (let i = 1; i < step; i++) {
       document.querySelector(`.step-dot[data-step="${i}"]`)?.classList.add('done');
     }
-    document.querySelector(`.step-dot[data-step="${Math.min(step, 3)}"]`)?.classList.add('active');
+    const dotAtual = Math.min(step, 3);
+    document.querySelector(`.step-dot[data-step="${dotAtual}"]`)?.classList.add('active');
+    document.querySelector(`.step-dot[data-step="${dotAtual}"]`)?.setAttribute('aria-current', 'step');
+    const indicador = $('steps');
+    if (indicador) {
+      indicador.setAttribute('aria-valuenow', String(dotAtual));
+      indicador.setAttribute('aria-label', `Passo ${dotAtual} de 3: ${STEP_LABELS[dotAtual] || ''}`);
+    }
     dados.currentStep = step;
+    if (step <= 3) focarPrimeiroCampo(step);
   }
 
   function montarResumo() {
@@ -156,4 +181,8 @@ export function initOnboarding(_firebaseApp, { criarEmpresa }) {
   };
 
   $('btn-login')?.addEventListener('click', () => window.Onboarding.irParaLogin());
+
+  ['s-nome', 's-seu-nome', 's-email', 's-whatsapp'].forEach((id) => ativarAvancoPorEnter(id, 1));
+  ativarAvancoPorEnter('s-plano', 2);
+  focarPrimeiroCampo(1);
 }

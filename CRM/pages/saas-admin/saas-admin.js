@@ -1,15 +1,17 @@
 /* ============================================================
-   SAAS-ADMIN.JS — Console do Operador da Plataforma (Sprint 4)
+   SAAS-ADMIN.JS — Console do Operador da Plataforma
    Cell City Gestão Empresarial
 
-   CRUD de empresas (Sprint 1, extraído do <script> inline do
-   index.html) + fluxo de aprovação de empresas criadas pelo
-   onboarding self-service (Sprint 3).
+   CRUD de empresas (cadastro de tenants) + fluxo de aprovação de
+   empresas criadas pelo onboarding self-service.
+
+   Sprint 2 (2026-07-23) — Cadastro de Empresas (Tenants): paridade de
+   provisionamento plano→modulos_ativos/feature_flags no CRUD manual,
+   alinhada à CF saasOnboardingCriarEmpresa.
 
    Dependência declarada em functions/saas.js (saasOnboardingCriarEmpresa):
    "a empresa nasce com status 'pendente_aprovacao'... o operador
-   (master_admin) aprova no saas-admin" — esta é a primeira
-   implementação desse lado da promessa.
+   (master_admin) aprova no saas-admin".
 
    Aprovar uma empresa pendente:
    1. Cria a conta Auth do responsável (firebase-secondary.js, app
@@ -18,16 +20,17 @@
       perfil 'admin' (primeiro usuário da empresa, dono da conta).
    3. Atualiza empresas/{id}.status para 'ativo' (ou 'trial' se o
       plano escolhido for trial) e registra data/quem aprovou.
-   4. Loga em auditoria_saas via shared/saas-auditoria.js (módulo já
-      existente desde PS-5, sem nenhum consumidor até esta sprint).
+   4. Loga em auditoria_saas via shared/saas-auditoria.js.
    ============================================================ */
 import { initModulo } from '../../scripts/kernel.js';
-import { db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, serverTimestamp } from '../../scripts/firebase.js';
-import { getPlano } from '../../shared/saas-planos.js';
+import { db, collection, getDocs, doc, setDoc, updateDoc, query, orderBy, limit, serverTimestamp } from '../../scripts/firebase.js';
+import { getPlano, provisionamentoPorPlano } from '../../shared/saas-planos.js';
+import { PAGINACAO } from '../../shared/app-config.js';
 import { logAcao } from '../../shared/saas-auditoria.js';
 import { criarContaSecundaria } from './firebase-secondary.js';
 
 const COL = 'empresas';
+const LIMITE_LISTA = PAGINACAO.LIMITE_LISTA_PADRAO;
 
 const STATUS_LABEL = {
   ativo: 'ativo',
@@ -91,7 +94,7 @@ export function initSaasAdmin() {
   }
 
   async function carregar() {
-    const snap = await getDocs(query(collection(db, COL), orderBy('nome_fantasia')));
+    const snap = await getDocs(query(collection(db, COL), orderBy('nome_fantasia'), limit(LIMITE_LISTA)));
     const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     // Pendentes de aprovação sempre no topo — é a fila de trabalho do operador.
     lista.sort((a, b) => (a.status === 'pendente_aprovacao' ? 0 : 1) - (b.status === 'pendente_aprovacao' ? 0 : 1));
@@ -121,12 +124,16 @@ export function initSaasAdmin() {
     const id = document.getElementById('f-id').value.trim();
     if (!id) { alert('ID da empresa é obrigatório'); return; }
     const editando = document.getElementById('f-id').disabled;
+    const plano = document.getElementById('f-plano').value;
+    const { modulos_ativos, feature_flags } = provisionamentoPorPlano(plano);
     const dados = {
       nome_fantasia: document.getElementById('f-nome').value.trim(),
       razao_social: document.getElementById('f-razao').value.trim(),
-      plano: document.getElementById('f-plano').value,
+      plano,
       status: document.getElementById('f-status').value,
       data_vencimento: document.getElementById('f-vencimento').value || null,
+      modulos_ativos,
+      feature_flags,
       atualizadoEm: serverTimestamp(),
     };
     // Empresa NOVA nasce sem dado legado → filtros tenant ativos.

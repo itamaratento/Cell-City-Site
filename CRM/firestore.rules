@@ -620,6 +620,27 @@ service cloud.firestore {
     }
 
     // ─────────────────────────────────────────────
+    // SPRINT 4 · F1 (2026-07-27): Convites de usuário
+    // Ciclo de vida (criar/reenviar/cancelar/aceitar) é exclusivo de
+    // Cloud Functions (Admin SDK) — F2. Client: só LEITURA para
+    // admin/master_admin da mesma empresa (lista no módulo
+    // usuarios-permissoes). Escrita client = sempre negada (inclui
+    // admin) para impedir forja de token_hash/status/empresa_id.
+    // Convidado NÃO lê convites pelo client (redeem só via CF).
+    // BL-006 em usuarios/{uid} permanece intacto (aceite = Admin SDK).
+    // ─────────────────────────────────────────────
+    match /convites/{conviteId} {
+      allow read: if request.auth != null &&
+        temAcessoLiberado() &&
+        (
+          isMasterAdmin() ||
+          (usuarioAtual().perfil == 'admin' &&
+           resource.data.get('empresa_id', null) == empresaDoUsuario())
+        );
+      allow create, update, delete: if false;
+    }
+
+    // ─────────────────────────────────────────────
     // PRIVADO: CRM Comercial — leads/pré-orçamentos
     // ─────────────────────────────────────────────
     match /crm_leads/{docId} {

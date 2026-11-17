@@ -31,6 +31,7 @@ export function buildReport({ audit, tests, browser, knownIssues = [], meta = {}
     if (s.ok === false && (!s.failedTests || s.failedTests.length === 0)) {
       blockers.push(`Etapa "${s.name}" falhou sem detalhar testes individuais (${s.error || `exit ${s.exitCode}`})`);
     }
+    if (s.warning) warnings.push(`Etapa "${s.name}": ${s.warning}`);
   }
 
   if (!audit.workingTreeClean) {
@@ -56,7 +57,9 @@ export function buildReport({ audit, tests, browser, knownIssues = [], meta = {}
 
   const testsSummaryRows = tests.steps.map(s => {
     const status = s.ok === false ? '❌' : (s.ok === true ? '✅' : '⚠️');
-    const detalhe = s.pass !== undefined ? `${s.pass} pass / ${s.fail} fail` : (s.files ? `${s.files.length} arquivo(s)` : '—');
+    const detalhe = Number.isFinite(s.pass)
+      ? `${s.pass} pass / ${s.fail} fail`
+      : (s.files ? `${s.files.length} arquivo(s)` : (s.warning ? `exit ${s.exitCode} (resumo não reconhecido)` : '—'));
     const ms = Number.isFinite(s.ms) ? `${Math.round(s.ms)}ms` : '—';
     return `| ${s.name} | ${status} | ${detalhe} | ${ms} |`;
   }).join('\n');

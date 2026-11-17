@@ -119,6 +119,30 @@ test('os.js: cards de cliente e busca global escapam nome/telefone', () => {
         'interpolação crua de cl.name no card não pode voltar');
 });
 
+test('os.js: startOSForClient não interpola phone/name crus no onclick (DT-20)', () => {
+    const codigo = stripJsComments(read('CRM/pages/os/os.js'));
+    assert.ok(!/startOSForClient\('\$\{client\.(phone|name)/.test(codigo),
+        'onclick com phone/name crus reabre XSS em atributo HTML');
+    assert.ok(codigo.includes('escHtml(JSON.stringify(client.phone'),
+        'phone deve ir via escHtml(JSON.stringify(...))');
+    assert.ok(codigo.includes('escHtml(JSON.stringify(client.name'),
+        'name deve ir via escHtml(JSON.stringify(...))');
+});
+
+test('central-alertas: aparelhos não retirados incluem status legado pronto (DT-22)', () => {
+    const codigo = stripJsComments(read('CRM/pages/central-alertas/central-alertas.js'));
+    assert.ok(/os\.status\s*!==\s*'concluido'\s*&&\s*os\.status\s*!==\s*'pronto'/.test(codigo)
+        || /os\.status\s*===\s*'pronto'/.test(codigo),
+        'filtro deve aceitar status legado pronto além de concluido');
+});
+
+test('dashboard-alertas: query de não retirados inclui pronto (DT-22)', () => {
+    const codigo = stripJsComments(read('CRM/pages/dashboard/dashboard-alertas.js'));
+    assert.ok(/where\(\s*'status'\s*,\s*'in'\s*,\s*\[\s*'concluido'\s*,\s*'pronto'\s*\]\s*\)/.test(codigo)
+        || /'concluido'\s*,\s*'pronto'/.test(codigo),
+        'query Firestore deve incluir pronto via in [...]');
+});
+
 // ── 6. Catálogo público: filtro do client casa com a Rule ────────────
 test('catalogo-publico: client filtra empresa_id == cellcity-master', () => {
     const codigo = stripJsComments(read('CRM/pages/catalogo/public/catalogo-publico.js'));

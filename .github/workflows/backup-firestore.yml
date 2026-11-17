@@ -1,0 +1,115 @@
+name: Backup Firestore (GCS)
+
+# Export gerenciado Firestore → GCS. NÃO grava dados de clientes no GitHub.
+# Schedule só dispara a partir da branch padrão (main). Até o dono ligar
+# a variável BACKUP_FIRESTORE_PROD_ENABLED=true, o job de produção NÃO exporta.
+# Testes em DEV: workflow_dispatch com environment=dev (a partir de develop).
+
+on:
+  schedule:
+    # Domingos 06:00 UTC (~03:00 BRT)
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente alvo (dev = cellcity-crm-dev; prod = cellcity-crm)'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+      dry_run:
+        description: 'Só validar auth/bucket (não exporta)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cellcity-backup-firestore
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.gates.outputs.skip }}
+    env:
+      TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'prod' }}
+    steps:
+      - name: Gates de segurança
+        id: gates
+        run: |
+          set -euo pipefail
+          echo "Evento: ${{ github.event_name }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Alvo: ${TARGET_ENV}"
+
+          DRY=0
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            DRY=1
+          fi
+          echo "dry_run=$DRY" >> "$GITHUB_OUTPUT"
+
+          if [ "${TARGET_ENV}" = "prod" ]; then
+            if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+              echo "❌ Produção só a partir de main (ref atual: ${{ github.ref }})."
+              exit 1
+            fi
+            if [ "${{ vars.BACKUP_FIRESTORE_PROD_ENABLED }}" != "true" ]; then
+              echo "⏸ Produção desligada (vars.BACKUP_FIRESTORE_PROD_ENABLED != true)."
+              echo "   Fluxo: testar em develop/DEV → aprovação do dono → ligar a variável na main."
+              if [ "${{ github.event_name }}" = "schedule" ]; then
+                echo "skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              exit 1
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.gates.outputs.skip != 'true'
+
+      - name: Autenticar GCP (WIF) — produção
+        if: steps.gates.outputs.skip != 'true' && env.TARGET_ENV == 'prod'
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: cellcity-crm
+          workload_identity_provider: projects/645609867368/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-firestore-backup@cellcity-crm.iam.gserviceaccount.com
+
+      - name: Autenticar GCP (WIF) — DEV
+        if: steps.gates.outputs.skip != 'true' && env.TARGET_ENV == 'dev'
+        uses: google-github-actions/auth@v2
+        with:
+          # Exige vars.BACKUP_FIRESTORE_DEV_WIF_PROVIDER + setup no projeto DEV.
+          # Até lá: teste local CONFIRM=YES ./scripts/backup/firestore/test-restore-dev.sh
+          project_id: cellcity-crm-dev
+          workload_identity_provider: ${{ vars.BACKUP_FIRESTORE_DEV_WIF_PROVIDER }}
+          service_account: github-firestore-backup@cellcity-crm-dev.iam.gserviceaccount.com
+
+      - name: Setup gcloud
+        if: steps.gates.outputs.skip != 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Export Firestore → GCS
+        if: steps.gates.outputs.skip != 'true'
+        env:
+          ENV: ${{ env.TARGET_ENV }}
+          DRY_RUN: ${{ steps.gates.outputs.dry_run }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/backup/firestore/*.sh
+          ENV="$ENV" DRY_RUN="$DRY_RUN" RUN_URL="$RUN_URL" \
+            ./scripts/backup/firestore/export.sh
+
+      - name: Verificar last-ok
+        if: steps.gates.outputs.skip != 'true' && steps.gates.outputs.dry_run != '1'
+        env:
+          ENV: ${{ env.TARGET_ENV }}
+        run: ENV="$ENV" ./scripts/backup/firestore/verify-last-ok.sh
