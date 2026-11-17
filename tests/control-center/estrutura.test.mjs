@@ -457,7 +457,13 @@ test('módulo Desenvolvimento: Status/Git Status/Diff/Log/Alterações Locais mo
     // português ("No ramo", pt_BR.UTF-8, locale real desta máquina); o
     // regex original só aceitava inglês e falhava em qualquer sistema em
     // português (corrigido na certificação CCC-V1.0-FINAL-001).
-    assert.match(saida, /On branch|Your branch|No ramo|Seu ramo/, 'Git Status precisa mostrar a saída real de "git status"');
+    // Em PRs do GitHub Actions o checkout é merge ref → HEAD detached
+    // ("HEAD detached at pull/N/merge"), sem "On branch" — aceitar também.
+    assert.match(
+        saida,
+        /On branch|Your branch|No ramo|Seu ramo|HEAD detached/,
+        'Git Status precisa mostrar a saída real de "git status"'
+    );
     assert.match(saida, /14 ► Voltar/, 'Desenvolvimento tem 13 itens reais — Voltar precisa ser "14"');
 });
 

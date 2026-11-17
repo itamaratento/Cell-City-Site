@@ -4,7 +4,7 @@ Etapa 9 da refatoração modular: agenda/ação da semana, autoatendimento, diá
 e o motor de geração de alertas (pós-venda, OS, meta, portal, avaliações).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
 import { getDeliveryDate, calcDiasDesde } from "../../shared/date-utils.js";
 import { PAGINACAO } from "../../shared/app-config.js";
@@ -179,10 +179,14 @@ export const dashboardAlertasMixin = {
           // e NÃO deve aparecer na Central de Alertas / Ação da Semana.
           if (dados.alertaDashboard !== true) return;
 
+          // Compromisso futuro (ex.: retorno automático de OS daqui a 3 dias)
+          // NÃO alimenta o painel — só entra no dia ou se já estiver atrasado.
+          if (dia > hojeISO) return;
+
           const horaPadrao = /^\d{1,2}:\d{2}$/.test(dados.alertaHora || '') ? dados.alertaHora : '';
 
-          // Gera evento para a DATA ORIGINAL (passada, hoje ou futura)
-          // Se for passada, aparecerá como atrasada no Dashboard
+          // Gera evento para a DATA ORIGINAL (hoje ou passada).
+          // Se for passada, aparecerá como atrasada no Dashboard.
           gerarEventosDoDia(dia, horaPadrao);
         }
       });
@@ -229,32 +233,158 @@ export const dashboardAlertasMixin = {
       .sort((a, b) => a.ts - b.ts)[0] || null;
   },
 
-  // ===== AGENDA — card do Dashboard: destaca ENQUANTO tarefa não for concluída =====
-  // ⚠ Regras de prioridade:
-  //   1. Tarefas VENCIDAS (qualquer dia passado, não concluídas)
-  //   2. Tarefas do HORÁRIO ATUAL (hoje, janela 0–5 min)
-  //   3. Tarefas PRÓXIMAS (hoje, 6–15 min)
-  // O card SÓ para de destacar quando TODAS as tarefas vencidas forem concluídas
-  // ===== DESTAQUE NO CARD DO MÓDULO AÇÃO DA SEMANA =====
-  // Apenas adiciona/remove classe visual — sem som, sem sobrepor a Central de Alertas
+  // ===== AGENDA — card do Dashboard: destaque discreto (hoje + atrasados) =====
+  // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
+  // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
+  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: DESLIGADO),
+  // espelhada em Firestore `config/painel.destacarAgenda` para valer em todos os PCs.
+  // Se o doc/campo não existir → false (sem destaque/piscar).
+  //
+  // Contagem do card também ignora (só visual — NÃO apaga/altera documentos de agenda/OS):
+  //  1) qualquer lembrete atrasado há mais de 3 dias (conta no dia e até +3);
+  //  2) lembretes automáticos "🔔 Retorno OS: …" cuja OS já está encerrada
+  //     (entregue / finalizada / cancelada-recusada).
+  _destaqueAgendaAtivo() {
+    try {
+      const v = localStorage.getItem('cc_destacar_agenda');
+      if (v === null || v === undefined || v === '') return false; // padrão desligado
+      return v === '1' || v === 'true';
+    } catch {
+      return false;
+    }
+  },
+
+  // Lê a preferência online uma vez por sessão do card e espelha no localStorage.
+  async _syncDestacarAgendaFromFirestore() {
+    if (this._destacarAgendaSynced) return;
+    this._destacarAgendaSynced = true;
+    try {
+      const snap = await getDoc(doc(db, 'config', 'painel'));
+      if (snap.exists() && typeof snap.data().destacarAgenda === 'boolean') {
+        localStorage.setItem('cc_destacar_agenda', snap.data().destacarAgenda ? '1' : '0');
+      } else {
+        // Doc/campo ausente → padrão desligado
+        localStorage.setItem('cc_destacar_agenda', '0');
+      }
+    } catch (e) {
+      console.warn('[Agenda] preferência online indisponível; usando local:', e);
+    }
+  },
+
+  _isLembreteRetornoOS(titulo) {
+    return /Retorno\s+OS\s*:/i.test(String(titulo || ''));
+  },
+
+  _osIdDoRetorno(titulo) {
+    const m = String(titulo || '').match(/Retorno\s+OS\s*:\s*([A-Za-z0-9_-]+)/i);
+    return m ? m[1] : '';
+  },
+
+  _osEncerradaParaAgenda(status) {
+    const s = String(status || '').toLowerCase();
+    // Entregue / Finalizada (concluído) / Cancelada-recusada (terminais da OS).
+    return s === 'entregue'
+      || s === 'concluido' || s === 'pronto'
+      || s === 'orcamento_recusado' || s === 'devolvido_orcamento'
+      || s === 'cancelada' || s === 'cancelado';
+  },
+
+  _diasAtrasoAgenda(dataISO, hojeISO) {
+    if (!dataISO || !hojeISO || dataISO >= hojeISO) return 0;
+    const a = new Date(dataISO + 'T00:00:00').getTime();
+    const b = new Date(hojeISO + 'T00:00:00').getTime();
+    if (isNaN(a) || isNaN(b)) return 0;
+    return Math.floor((b - a) / 86400000);
+  },
+
+  // Cache curto do mapa OS-id → status (mesma janela do refresh do card).
+  // Só leitura — nunca escreve/atualiza documentos.
+  async _mapaStatusOSParaAgenda() {
+    const TTL_MS = 300000;
+    if (this._osStatusCacheMap && (Date.now() - (this._osStatusCacheAt || 0)) < TTL_MS) {
+      return this._osStatusCacheMap;
+    }
+    const map = new Map();
+    try {
+      const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
+      snap.forEach(d => {
+        const o = d.data() || {};
+        const id = o.id || d.id;
+        if (id) map.set(String(id), o.status || '');
+      });
+    } catch (e) {
+      console.warn('[Agenda] falha ao ler status das OS para o card:', e);
+    }
+    this._osStatusCacheMap = map;
+    this._osStatusCacheAt = Date.now();
+    return map;
+  },
+
+  // Filtra pendências do CARD (não muta agenda nem OS).
+  async _filtrarPendentesCardAgenda(eventos) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    let candidatos = (eventos || []).filter(e => {
+      if (e.concluido || !e.data) return false;
+      if (e.data > hojeISO) return false;
+      // Conta no dia e até 3 dias após; depois disso sai da contagem do card.
+      if (e.data < hojeISO && this._diasAtrasoAgenda(e.data, hojeISO) > 3) return false;
+      return true;
+    });
+
+    const precisaStatus = candidatos.some(e => this._isLembreteRetornoOS(e.titulo));
+    if (!precisaStatus) return candidatos;
+
+    const statusPorId = await this._mapaStatusOSParaAgenda();
+    return candidatos.filter(e => {
+      if (!this._isLembreteRetornoOS(e.titulo)) return true;
+      const osId = this._osIdDoRetorno(e.titulo);
+      if (!osId) return true;
+      const st = statusPorId.get(osId);
+      if (st == null || st === undefined) return true; // OS sumiu → não esconde por engano
+      return !this._osEncerradaParaAgenda(st);
+    });
+  },
+
   atualizarCardAcaoSemana() {
     const verificar = async () => {
       const card = document.querySelector('.module-card[data-module="acaodasemana"]');
       if (!card) return;
+      const sub = card.querySelector('.module-sub');
+      await this._syncDestacarAgendaFromFirestore();
+      const destacar = this._destaqueAgendaAtivo();
+
+      if (!destacar) {
+        card.classList.remove('acao-vencida');
+        if (sub) sub.textContent = 'Ação da Semana';
+        return;
+      }
+
       const eventos = await this._lerAgenda();
-      const agora = Date.now();
       const hojeISO = new Date().toISOString().slice(0, 10);
-      const temVencidas = (eventos || []).some(e => {
-        if (e.concluido || !e.data) return false;
-        if (e.hora) return new Date(`${e.data}T${e.hora}:00`).getTime() < agora;
-        return e.data < hojeISO;
-      });
-      card.classList.toggle('acao-vencida', temVencidas);
+      const pendentes = await this._filtrarPendentesCardAgenda(eventos);
+      const countHoje = pendentes.filter(e => e.data === hojeISO).length;
+      const countAtrasadas = pendentes.filter(e => e.data < hojeISO).length;
+      const temDestaque = pendentes.length > 0;
+
+      card.classList.toggle('acao-vencida', temDestaque);
+      if (sub) {
+        if (!temDestaque) {
+          sub.textContent = 'Ação da Semana';
+        } else {
+          const parts = [];
+          if (countAtrasadas) parts.push(`${countAtrasadas} atrasada${countAtrasadas > 1 ? 's' : ''}`);
+          if (countHoje) parts.push(`${countHoje} hoje`);
+          sub.textContent = parts.join(' · ');
+        }
+      }
     };
     verificar();
     // Não relê com a aba oculta — o refresh ao voltar o foco (abaixo) já cobre esse caso.
     setInterval(() => { if (!document.hidden) verificar(); }, 300000);
     window.addEventListener('focus', verificar);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'cc_destacar_agenda') verificar();
+    });
   },
 
   // ===== CENTRAL DE ALERTAS — verifica Pós-venda, OS e Caixa =====

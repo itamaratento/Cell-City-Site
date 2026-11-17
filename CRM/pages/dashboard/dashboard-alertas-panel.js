@@ -15,6 +15,8 @@
   var PREOS_VISTOS_KEY = 'cc_preos_vistos';
   var preOSDocs = [];
   var ultimosPreOS = [];
+  var agendaDocs = [];
+  var ultimosAgenda = [];
 
   function getVistos() { try { return JSON.parse(localStorage.getItem(VISTOS_KEY) || '[]'); } catch (e) { return []; } }
   function setVistos(a) { try { localStorage.setItem(VISTOS_KEY, JSON.stringify(a)); } catch (e) {} }
@@ -231,6 +233,152 @@
       + '</div>';
   }
 
+  // ===== AGENDA — lembretes com horário (Retorno OS + notas HH:MM) =====
+  // Aparecem no sininho no dia do lembrete e até 3 dias depois.
+  // "Tarefa realizada" grava notas[i].concluido = true no doc da agenda.
+  function agendaKey(it) { return 'agenda|' + (it.docId || '') + '|' + String(it.notaIdx); }
+  function hojeISOLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function diasEntreISO(a, b) {
+    try {
+      return Math.floor((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+    } catch (e) { return 999; }
+  }
+  function notasDeAgenda(dados) {
+    if (Array.isArray(dados.notas)) return dados.notas.map(function (n) { return n || {}; });
+    if (typeof dados.texto === 'string') {
+      return dados.texto.split(/\r?\n+/).map(function (s) {
+        return { texto: String(s || '').trim(), concluido: false };
+      }).filter(function (n) { return !!n.texto; });
+    }
+    return [];
+  }
+  function agendaPendentes() {
+    var hoje = hojeISOLocal();
+    var out = [];
+    agendaDocs.forEach(function (docu) {
+      var dia = docu.data || docu._id;
+      if (!dia || !/^\d{4}-\d{2}-\d{2}$/.test(dia)) return;
+      if (dia > hoje) return; // futuro não entra
+      var dias = diasEntreISO(dia, hoje);
+      if (dias < 0 || dias > 3) return; // só no dia e até +3
+      var notas = notasDeAgenda(docu);
+      notas.forEach(function (n, idx) {
+        if (!n || n.concluido) return;
+        var txt = String(n.texto || '');
+        var m = txt.match(/^\s*(\d{1,2}:\d{2})\b/);
+        if (!m) return; // só notas com horário HH:MM
+        var titulo = txt.replace(/^\s*\d{1,2}:\d{2}\s*/, '').trim() || txt;
+        out.push({
+          docId: docu._id,
+          data: dia,
+          notaIdx: idx,
+          hora: m[1],
+          titulo: titulo,
+          dias: dias,
+          isRetornoOS: /Retorno\s+OS\s*:/i.test(titulo)
+        });
+      });
+    });
+    out.sort(function (a, b) {
+      if (a.data !== b.data) return a.data < b.data ? -1 : 1;
+      return String(a.hora).localeCompare(String(b.hora));
+    });
+    return out;
+  }
+  function agendaItemHTML(it) {
+    var dl = 'data-agendadoc="' + esc(it.docId) + '" data-notaidx="' + esc(String(it.notaIdx)) + '"';
+    var atraso = it.dias === 0 ? 'Hoje' : (it.dias === 1 ? '1 dia atrás' : it.dias + ' dias atrás');
+    var cor = it.dias === 0 ? '#3b82f6' : '#f59e0b';
+    return '<div class="aprov-item" data-key="' + esc(agendaKey(it)) + '" style="border-left:3px solid ' + cor + ';">'
+      + '<div class="aprov-item-cli">📅 ' + esc(it.titulo) + '</div>'
+      + '<div class="aprov-item-meta">⏰ ' + esc(it.hora) + ' • 📆 ' + fmtDataAg(it.data) + ' • ' + esc(atraso) + '</div>'
+      + '<div class="aprov-item-dec" style="color:' + cor + ';">' + (it.isRetornoOS ? '🔔 Retorno OS pendente' : '📌 Lembrete da Agenda') + '</div>'
+      + '<div class="aprov-pv-acoes">'
+      + '<button class="aprov-agenda-feito-btn" ' + dl + '>✅ Tarefa realizada</button>'
+      + '</div>'
+      + '</div>';
+  }
+  function marcarAgendaRealizada(docId, notaIdx) {
+    if (!docId && docId !== 0) return;
+    var idx = parseInt(notaIdx, 10);
+    if (isNaN(idx) || idx < 0) return;
+    if (!confirm('Marcar este lembrete como realizado?\n\nEle some do sininho e fica concluído na Agenda.')) return;
+    var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
+    if (!dbx || !FB || !FB.setDoc || !FB.getDoc) {
+      alert('Firestore indisponível.');
+      return;
+    }
+    var ref = FB.doc(dbx, 'agenda', docId);
+    FB.getDoc(ref).then(function (snap) {
+      if (!snap.exists()) { alert('Lembrete não encontrado na Agenda.'); return; }
+      var dados = snap.data() || {};
+      var notas = Array.isArray(dados.notas) ? dados.notas.map(function (n) { return n ? Object.assign({}, n) : {}; }) : notasDeAgenda(dados);
+      if (!notas[idx]) { alert('Nota não encontrada.'); return; }
+      notas[idx].concluido = true;
+      var payload = { notas: notas };
+      if (window.ccTenant && window.ccTenant.tData) payload = window.ccTenant.tData(payload);
+      return FB.setDoc(ref, payload, { merge: true });
+    }).then(function () {
+      // onSnapshot da agenda atualiza ultimosAgenda/recompute
+    }).catch(function (e) {
+      console.warn('[Alertas] erro concluir agenda:', e && e.message);
+      alert('Não foi possível marcar como realizado.');
+    });
+  }
+
+  // OS em andamento sem mudança de status há mais de 15 dias
+  var STATUS_TERMINAIS_OS = { entregue: 1, orcamento_recusado: 1, devolvido_orcamento: 1 };
+  var ultimosParadas = [];
+  function dataUltimaMudancaStatus(os) {
+    if (Array.isArray(os.timeline)) {
+      for (var i = os.timeline.length - 1; i >= 0; i--) {
+        var t = os.timeline[i];
+        if (!t || !t.date) continue;
+        var txt = String(t.text || '');
+        if (txt.indexOf('Status:') === 0 || txt.indexOf('O.S. criada') === 0 || txt.indexOf('Entregue') === 0 || txt.indexOf('Aparelho devolvido') === 0) {
+          return t.date;
+        }
+      }
+    }
+    return os.createdAt || os.updatedAt || null;
+  }
+  function osParadasPendentes() {
+    var out = [];
+    osDocs.forEach(function (os) {
+      var st = os.status || '';
+      if (STATUS_TERMINAIS_OS[st]) return;
+      var base = dataUltimaMudancaStatus(os);
+      if (!base) return;
+      var dias = calcDias(base);
+      if (dias < 15) return;
+      out.push({
+        osId: os.id || os._id,
+        clientName: os.clientName || 'Cliente',
+        model: os.model || '',
+        dias: dias,
+        status: st
+      });
+    });
+    out.sort(function (a, b) { return b.dias - a.dias; });
+    return out;
+  }
+  function paradaKey(it) { return 'parada|' + (it.osId || ''); }
+  function paradaItemHTML(it) {
+    var url = '../../pages/os/index.html#os-' + encodeURIComponent(it.osId || '');
+    return '<div class="aprov-item" data-key="' + esc(paradaKey(it)) + '" style="border-left:3px solid #ef4444;">'
+      + '<div class="aprov-item-os">' + esc(it.osId || 'OS') + '</div>'
+      + '<div class="aprov-item-cli">' + esc(it.clientName) + '</div>'
+      + (it.model ? '<div class="aprov-item-meta">' + esc(it.model) + '</div>' : '')
+      + '<div class="aprov-item-dec" style="color:#ef4444;">⏸ Parada há ' + it.dias + ' dias sem mudança de status</div>'
+      + '<div class="aprov-pv-acoes">'
+      + '<a class="aprov-pv-abrir-btn" href="' + esc(url) + '">📂 Abrir</a>'
+      + '</div>'
+      + '</div>';
+  }
+
   function recompute() {
     if (!badge) return;
     var vistos = getVistos();
@@ -262,8 +410,10 @@
       var tb = (b.criadoEm && b.criadoEm.seconds) || (new Date(b.criadoEmISO || 0).getTime() / 1000) || 0;
       return tb - ta;
     });
-    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend;
-    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length;
+    var agendaPend = agendaPendentes();
+    var paradaPend = osParadasPendentes();
+    ultimosAprov = aprovPend; ultimosPv = pvPend; ultimosAg = agPend; ultimosDiag = diagPend; ultimosPreOS = preOSPend; ultimosAgenda = agendaPend; ultimosParadas = paradaPend;
+    var total = aprovPend.length + pvPend.length + agPend.length + diagPend.length + preOSPend.length + agendaPend.length + paradaPend.length;
     badge.textContent = total;
     badge.style.display = total > 0 ? 'inline-flex' : 'none';
     if (sino) sino.classList.toggle('tem-alerta', total > 0);
@@ -272,7 +422,9 @@
               || pvPend.some(function (it) { return !jaSoou[pvKey(it)]; })
               || agPend.some(function (a) { return !jaSoou[agKey(a)]; })
               || diagPend.some(function (s) { return !jaSoou[diagKey(s)]; })
-              || preOSPend.some(function (p) { return !jaSoou[preOSKey(p)]; });
+              || preOSPend.some(function (p) { return !jaSoou[preOSKey(p)]; })
+              || agendaPend.some(function (it) { return !jaSoou[agendaKey(it)]; })
+              || paradaPend.some(function (it) { return !jaSoou[paradaKey(it)]; });
       if (novo) beep();
     }
     aprovPend.forEach(function (os) { jaSoou[keyOf(os)] = true; });
@@ -280,12 +432,16 @@
     agPend.forEach(function (a) { jaSoou[agKey(a)] = true; });
     diagPend.forEach(function (s) { jaSoou[diagKey(s)] = true; });
     preOSPend.forEach(function (p) { jaSoou[preOSKey(p)] = true; });
+    agendaPend.forEach(function (it) { jaSoou[agendaKey(it)] = true; });
+    paradaPend.forEach(function (it) { jaSoou[paradaKey(it)] = true; });
     firstLoad = false;
     if (!total) {
       body.innerHTML = '<div class="aprov-vazio">Nenhum alerta pendente de visualização.</div>';
       footer.style.display = 'none';
     } else {
       var html = '';
+      if (agendaPend.length) html += '<div class="aprov-secao">📅 Agenda / Retornos</div>' + agendaPend.map(agendaItemHTML).join('');
+      if (paradaPend.length) html += '<div class="aprov-secao">⏸ OS paradas (+15 dias)</div>' + paradaPend.map(paradaItemHTML).join('');
       if (preOSPend.length) html += '<div class="aprov-secao">🆕 Novos Atendimentos do Site</div>' + preOSPend.map(preOSItemHTML).join('');
       if (diagPend.length) html += '<div class="aprov-secao">🔧 Solicitações de Diagnóstico</div>' + diagPend.map(diagItemHTML).join('');
       if (agPend.length) html += '<div class="aprov-secao">📅 Agendamentos</div>' + agPend.map(agItemHTML).join('');
@@ -351,6 +507,8 @@
       if (visto) { marcarVisto(visto.dataset.key); return; }
       var feito = e.target.closest('.aprov-pv-feito-btn');
       if (feito) { marcarTarefaRealizada(findPv(feito.dataset.osid, feito.dataset.prazo)); return; }
+      var agendaFeito = e.target.closest('.aprov-agenda-feito-btn');
+      if (agendaFeito) { marcarAgendaRealizada(agendaFeito.dataset.agendadoc, agendaFeito.dataset.notaidx); return; }
       var abrir = e.target.closest('.aprov-pv-abrir-btn, .aprov-pv-link');
       if (abrir) { abrirRegistroPv(abrir.dataset.osid, abrir.dataset.prazo); return; }
       var agC = e.target.closest('.aprov-ag-confirmar-btn');
@@ -403,6 +561,9 @@
       FB.onSnapshot(FB.query(FB.collection(db, 'pre_os'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
         preOSDocs = []; snap.forEach(function (d) { var p = d.data(); p._id = d.id; preOSDocs.push(p); }); recompute();
       }, function (err) { console.warn('[Alertas] listener pre_os:', err && err.message); });
+      FB.onSnapshot(FB.query(FB.collection(db, 'agenda'), ...(window.ccTenant ? window.ccTenant.injectTenantFilter([]) : [])), function (snap) {
+        agendaDocs = []; snap.forEach(function (d) { var a = d.data(); a._id = d.id; agendaDocs.push(a); }); recompute();
+      }, function (err) { console.warn('[Alertas] listener agenda:', err && err.message); });
     } catch (e) { console.warn('[Alertas] start falhou:', e); }
   }
 

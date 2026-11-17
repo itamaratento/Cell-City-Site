@@ -6,7 +6,7 @@
   <title>Portal do Cliente — Cell City</title>
   <link rel="stylesheet" href="../../shared/design-system.css">
   <script src="../../shared/theme.js"></script>
-  <link rel="stylesheet" href="portal.css?v=2.4">
+  <link rel="stylesheet" href="portal.css?v=2.5">
   <script src="../../../js/header-component.js" defer></script>
 
   <!-- Firebase SDK (compat) v10.8.0 -->
@@ -60,13 +60,9 @@
         if (ftr) ftr.style.display = 'none';
         if (wa)  wa.style.display  = 'none';
 
-        // Renderiza login manualmente (HTML duplicado do portal.js por segurança)
+        // Renderiza login manualmente (HTML alinhado a portal-auth.js)
         el.innerHTML =
           '<div class="login-container">' +
-          '<div class="login-header">' +
-          '<img src="../../assets/logo.svg" alt="Cell City" class="login-logo-img" onclick="window.location.href=\'/\'">' +
-          '<a href="/" class="login-btn-home">HOME Voltar ao Site</a>' +
-          '</div>' +
           '<div class="login-card">' +
           '<h1>Portal do Cliente</h1>' +
           '<p>Acesse sua área exclusiva utilizando seu telefone</p>' +
@@ -254,16 +250,16 @@
     </div>
   </div>
 
-  <script src="portal.js?v=2.6"></script>
+  <script src="portal.js?v=2.8"></script>
   <!-- P2.2 (2026-07-16): portal.js dividido por responsabilidade — os 8
        arquivos abaixo estendem window.Portal via Object.assign(); ordem
        não é significativa para a API (todo Object.assign roda antes do
        AUTO-INIT de portal.js disparar em DOMContentLoaded), mas segue a
        ordem de navegação da tela para facilitar leitura. -->
-  <script src="portal-auth.js?v=1"></script>
+  <script src="portal-auth.js?v=3"></script>
   <script src="portal-painel.js?v=1"></script>
-  <script src="portal-os.js?v=1"></script>
-  <script src="portal-garantias.js?v=1"></script>
+  <script src="portal-os.js?v=2"></script>
+  <script src="portal-garantias.js?v=2"></script>
   <script src="portal-avaliar.js?v=1"></script>
   <script src="portal-mensagens.js?v=1"></script>
   <script src="portal-contato.js?v=1"></script>

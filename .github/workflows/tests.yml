@@ -141,6 +141,9 @@ jobs:
         run: node --test saas-onboarding-wizard.test.mjs
         working-directory: tests/onboarding
 
+      - name: Testes de mensagem OS (criação + finalizado)
+        run: node --test tests/os/*.test.mjs
+
       - name: Validação de infraestrutura app-config
         run: npm run validar-infra-app-config
 

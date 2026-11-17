@@ -61,6 +61,47 @@ jobs:
             site-develop/ _site/dev/
           touch _site/.nojekyll
 
+      - name: Stamp Service Worker cache (SHA do commit → CRM/sw.js)
+        # Evita PCs com CSS/JS antigos quando o CACHE do SW não era bumpado
+        # à mão. Preferência: placeholder __GIT_SHA__ (main). Fallback: branch
+        # legada (ex.: develop ainda com cellcity-crm-vNN) — reescreve a linha
+        # const CACHE no artefato. main e develop usam o SHA do respectivo checkout.
+        run: |
+          set -euo pipefail
+          stamp_sw() {
+            local root="$1"
+            local sha="$2"
+            local sw="$root/CRM/sw.js"
+            if [ ! -f "$sw" ]; then
+              echo "❌ Ausente: $sw"
+              exit 1
+            fi
+            if grep -q '__GIT_SHA__' "$sw"; then
+              sed -i "s/__GIT_SHA__/${sha}/g" "$sw"
+              if grep -q '__GIT_SHA__' "$sw"; then
+                echo "❌ Substituição do SHA falhou em $sw"
+                exit 1
+              fi
+            elif grep -qE "const CACHE = 'cellcity-crm-" "$sw"; then
+              # develop (ou outra ref) ainda sem placeholder — força CACHE com SHA
+              sed -i -E "s/const CACHE = 'cellcity-crm-[^']*'/const CACHE = 'cellcity-crm-${sha}'/" "$sw"
+              echo "⚠️  Placeholder ausente em $sw — CACHE legado atualizado para SHA ${sha}"
+            else
+              echo "❌ Não foi possível stamp o CACHE em $sw (sem __GIT_SHA__ nem const CACHE)"
+              exit 1
+            fi
+            if ! grep -q "cellcity-crm-${sha}" "$sw"; then
+              echo "❌ CACHE não contém SHA ${sha} em $sw"
+              exit 1
+            fi
+            echo "✅ $sw → CACHE com SHA ${sha}"
+            grep -n "const CACHE" "$sw" || true
+          }
+          MAIN_SHA=$(git -C site-main rev-parse --short HEAD)
+          DEV_SHA=$(git -C site-develop rev-parse --short HEAD)
+          stamp_sw _site "$MAIN_SHA"
+          stamp_sw _site/dev "$DEV_SHA"
+
       - name: Validar artefato antes de publicar
         # Incidente 2026-07-11: excludes do rsync sem âncora de raiz apagaram
         # CRM/pages/ e CRM/scripts/ inteiros do artefato — o deploy "funcionou"

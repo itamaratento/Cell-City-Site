@@ -1268,14 +1268,10 @@ body {
 /* Esconde o ícone do painel de alertas/dicas (a pedido: sem ícones) */
 .alert-cat-icon { display: none !important; }
 
-/* ===== AÇÃO DA SEMANA — card piscando quando há tarefa no horário ===== */
+/* ===== AGENDA — destaque fixo discreto (hoje/atrasado; sem animação) ===== */
 .module-card[data-module="acaodasemana"].acao-vencida {
-  border-color: rgba(239, 68, 68, 0.7);
-  animation: acaoVencidaPulse 1.4s ease-in-out infinite;
-}
-@keyframes acaoVencidaPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.40); border-color: rgba(239,68,68,0.55); }
-  50%      { box-shadow: 0 0 14px 3px rgba(239,68,68,0.28); border-color: rgba(239,68,68,0.95); }
+  border-color: rgba(239, 68, 68, 0.55);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.22);
 }
 .module-card[data-module="acaodasemana"].acao-vencida .module-sub {
   color: var(--cc-red);

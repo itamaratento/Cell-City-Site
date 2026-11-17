@@ -61,10 +61,63 @@ async function init() {
     }
 }
 
+const DESTACAR_AGENDA_KEY = 'cc_destacar_agenda';
+const PAINEL_DOC_ID = 'painel';
+
+function lerDestacarAgenda() {
+    try {
+        const v = localStorage.getItem(DESTACAR_AGENDA_KEY);
+        if (v === null || v === undefined || v === '') return false; // padrão desligado
+        return v === '1' || v === 'true';
+    } catch {
+        return false;
+    }
+}
+
+function sincronizarPrefPainel() {
+    const chk = document.getElementById('cfg-destacar-agenda');
+    if (!chk) return;
+    chk.checked = lerDestacarAgenda();
+}
+
+// Preferência da loja: localStorage (rápido) + Firestore config/painel (mesmo
+// padrão do PIN/impressão — vale em todos os computadores autenticados).
+async function carregarDestacarAgenda() {
+    try {
+        const snap = await Config.getById(PAINEL_DOC_ID);
+        if (snap && typeof snap.destacarAgenda === 'boolean') {
+            localStorage.setItem(DESTACAR_AGENDA_KEY, snap.destacarAgenda ? '1' : '0');
+        } else {
+            // Doc/campo ausente → padrão desligado (sem destaque no card)
+            localStorage.setItem(DESTACAR_AGENDA_KEY, '0');
+        }
+    } catch (e) {
+        console.warn('Preferência Destacar Agenda: usando cache local', e);
+    }
+    sincronizarPrefPainel();
+}
+
+async function salvarDestacarAgenda(ligado) {
+    try {
+        localStorage.setItem(DESTACAR_AGENDA_KEY, ligado ? '1' : '0');
+    } catch (e) {
+        console.warn('Não foi possível salvar preferência Destacar Agenda (local):', e);
+    }
+    try {
+        await Config.set(PAINEL_DOC_ID, {
+            destacarAgenda: !!ligado,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
+    } catch (e) {
+        console.warn('Não foi possível salvar preferência Destacar Agenda (online):', e);
+    }
+}
+
 function mostrarLogado() {
     showScreen('logado');
     const btnAlt = document.getElementById('btn-alterar');
     if (btnAlt) btnAlt.style.display = 'block';
+    carregarDestacarAgenda();
 }
 
 // ===== NAVEGAÇÃO =====
@@ -104,6 +157,7 @@ async function verificarPin() {
         tentativas = 0;
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
+        carregarDestacarAgenda();
     } else {
         tentativas++;
         showError('pin-error', `PIN incorreto${tentativas >= 3 ? ' — use Redefinir PIN abaixo' : ''}`);
@@ -167,6 +221,7 @@ async function salvarPin(pin) {
         pinSalvo = pin;
         showScreen('logado');
         document.getElementById('btn-alterar').style.display = 'block';
+        carregarDestacarAgenda();
     } catch (err) {
         console.error('❌ Erro ao salvar PIN:', err);
         showError('pin-novo-error', 'Erro ao salvar. Tente novamente.');
@@ -222,4 +277,9 @@ function clearError(id) {
 // ===== EVENT LISTENERS =====
 document.addEventListener('DOMContentLoaded', () => {
     init();
+    const chk = document.getElementById('cfg-destacar-agenda');
+    if (chk) {
+        carregarDestacarAgenda();
+        chk.addEventListener('change', () => { salvarDestacarAgenda(chk.checked); });
+    }
 });

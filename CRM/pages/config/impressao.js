@@ -42,10 +42,24 @@ async function init() {
     try {
         const snap = await Config.getById(CONFIG_DOC_ID);
         if (snap) {
-            config = snap;
+            config = {
+                loja: snap.loja || DEFAULT_LOJA,
+                logo: snap.logo || '',
+                garantias: Array.isArray(snap.garantias) && snap.garantias.length
+                    ? snap.garantias
+                    : DEFAULT_GARANTIAS
+            };
         } else {
             config = { loja: DEFAULT_LOJA, logo: '', garantias: DEFAULT_GARANTIAS };
         }
+        // Espelha no localStorage para a impressão da OS em qualquer PC
+        try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({
+                loja: config.loja,
+                logo: config.logo || '',
+                garantias: config.garantias || []
+            }));
+        } catch {}
     } catch {
         const cached = localStorage.getItem(CACHE_KEY);
         config = cached ? JSON.parse(cached) : { loja: DEFAULT_LOJA, logo: '', garantias: DEFAULT_GARANTIAS };

@@ -23,13 +23,15 @@ const { normalizePhoneDigitsServer } = require('./lib/phone');
 
 // Único ponto que decide quais campos de `os/{osId}` podem sair para
 // o público sem login. NUNCA incluir aqui: password, patternSequence,
-// lockPhoto, endereço, imei1/imei2, technicalObservation, cpf, rg.
+// lockPhoto, endereço, imei1/imei2, technicalObservation, cpf, rg,
+// internalObservation, observations (obs. internas da equipe —
+// Portal mostra só `defect`).
 // FASE 4.1 (LGPD): CPF removido da whitelist; consumidores públicos
 // recebem apenas `cpfMascarado` (últimos 2 dígitos).
 const OS_CAMPOS_PUBLICOS = [
   'id', 'clientName', 'phone', 'phoneDigits', 'model', 'category', 'defect', 'status',
   'createdAt', 'updatedAt', 'deliveredAt', 'technician', 'garantiaId', 'prazoGarantia',
-  'valor', 'valorCartao', 'observations', 'timeline',
+  'valor', 'valorCartao', 'timeline',
   'orcamentoResposta', 'orcamentoDataResposta', 'orcamentoHoraResposta',
 ];
 // `phoneDigits` já é derivável de `phone` (ambos públicos, mesmo dado em dois
