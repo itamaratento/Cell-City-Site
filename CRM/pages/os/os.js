@@ -1,4 +1,4 @@
-import { initModulo, getNome, getUser } from '../../scripts/kernel.js';
+import { initModulo, getNome } from '../../scripts/kernel.js';
 import { db, collection, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
 import { tData } from "../../shared/tenant-query.js";
 // P2.3.2: núcleo de persistência (objeto DB) migrado para a Camada Repository.
@@ -1944,9 +1944,10 @@ function renderWppHistoricoPanel() {
 
 /** Nome do operador nos retornos/WPP. Nunca pergunta (sem prompt/alert). */
 function getOperadorNome() {
-    // Perfil CRM (ex.: "Master Admin" no topo) → Auth displayName → Itamar → Responsável
-    const logado = (getNome() || '').trim() || (getUser()?.displayName || '').trim();
+    // getNome() = perfil CRM (topo) ou displayName/email do Auth (kernel).
+    const logado = (getNome() || '').trim();
     if (logado) return logado;
+    // Fallbacks fixos: Itamar → Responsável
     return 'Itamar' || 'Responsável';
 }
 
