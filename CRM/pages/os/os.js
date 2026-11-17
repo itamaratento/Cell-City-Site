@@ -512,17 +512,34 @@ const STATUS_LEGACY = {
 };
 // Status que encerram a OS (saem de "em andamento").
 const STATUS_TERMINAIS = ['entregue', 'orcamento_recusado', 'devolvido_orcamento'];
-// Botao de acao principal (Entregue / Devolver) no topo do detalhe
+// Devolver aparelho (orçamento) — Entregue/Pronto ficam em _renderStatusAcoes
 function _renderAcaoBtn(os) {
     if (!podeEditar('os')) return '';
     const aguardandoAprov = os.status === 'orcamento_enviado' || os.status === 'orcamento' || os.status === 'aguardando_aprovacao';
     if (aguardandoAprov) {
         return '<div style="margin:8px 0;"><button class="btn" onclick="markOrcamentoDevolvido()" style="background:#a78bfa;color:#000;font-weight:800;width:100%;padding:10px;">📋 Devolver Aparelho</button></div>';
     }
-    if (!STATUS_TERMINAIS.includes(os.status)) {
-        return '<div style="margin:8px 0;"><button class="btn btn-success" onclick="markDelivered()" style="width:100%;padding:10px;">📦 Entregue</button></div>';
-    }
     return '';
+}
+
+/** Atalhos de STATUS no topo: Pronto / Entregue + seletor para pular etapas. */
+function _renderStatusAcoes(os) {
+    if (!podeEditar('os')) return '';
+    const st = os.status || '';
+    const terminal = STATUS_TERMINAIS.includes(st);
+    const jaPronto = st === 'concluido' || st === 'pronto' || terminal;
+    const jaEntregue = st === 'entregue' || st === 'orcamento_recusado' || st === 'devolvido_orcamento';
+
+    const btnPronto = jaPronto ? '' : `<button type="button" class="status-acao-btn status-acao-pronto" onclick="changeStatus('concluido')" title="Marca a OS como Concluído (Pronto) e oferece imprimir garantia">✅ Pronto</button>`;
+    const btnEntregue = jaEntregue ? '' : `<button type="button" class="status-acao-btn status-acao-entregue" onclick="changeStatus('entregue')" title="Marca a OS como Entregue">📦 Entregue</button>`;
+
+    const opts = STATUS_FLOW.map(s =>
+        `<option value="${s.key}"${s.key === st ? ' selected' : ''}>${s.label}</option>`
+    ).join('');
+    const seletor = `<select class="status-acao-select" aria-label="Mudar status" onchange="if(this.value){changeStatus(this.value);this.selectedIndex=0;}">
+        <option value="">Mudar status ▾</option>${opts}</select>`;
+
+    return `<div class="status-acoes-bar">${btnPronto}${btnEntregue}${seletor}</div>`;
 }
 
 // Quick-status: mostra os próximos status lógicos como botões de 1 clique
@@ -902,7 +919,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}${_renderStatusAcoes(os)}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Só copia texto — não muda status">📋 Msg Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia texto — não muda status">📋 Msg Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Abrir painel de retornos / copiar mensagens">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia mensagem de pronto — não muda status">📋 Msg Pronto</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -1259,8 +1276,8 @@ async function changeStatus(newStatus) {
     renderDetail();
     showToast(`✅ ${getStatusLabel(newStatus)}`);
     window.markSaved();
-    // "Finalizado" (concluído) → oferecer impressão da garantia
-    if (newStatus === 'concluido') offerPrintGarantia();
+    // Pronto (concluído) ou Entregue → oferecer impressão da garantia
+    if (newStatus === 'concluido' || newStatus === 'entregue') offerPrintGarantia();
 }
 
 async function saveObservation() { const t = document.getElementById('os-observations').value; if (!currentOS) return; currentOS.observations = t; await updateDoc(doc(db, "os", currentOS.id), { observations: t, updatedAt: new Date().toISOString() }); showToast("✅ Observações salvas."); window.markSaved(); }
@@ -1643,10 +1660,10 @@ async function copiarMensagemFinalizado() {
             template: null,
             garantiaModeloNome: garantiaModelo ? garantiaModelo.nome : null,
         });
-        _copiarComHistorico(seguro, 'finalizado', '✅ Finalizado');
+        _copiarComHistorico(seguro, 'finalizado', '📋 Msg Pronto');
         return;
     }
-    _copiarComHistorico(msg, 'finalizado', '✅ Finalizado');
+    _copiarComHistorico(msg, 'finalizado', '📋 Msg Pronto');
 }
 
 function _msgFinalizadoPadrao() {
@@ -1862,7 +1879,7 @@ function copyMessageToClipboard() {
     const message = (retornoMensagens.cliente || _msgClientePadrao())
         .replace(/\{nome\}/g, nome).replace(/\{os\}/g, os.id);
 
-    _copiarComHistorico(message, 'cliente', '👤 Cliente');
+    _copiarComHistorico(message, 'cliente', '📋 Msg Cliente');
 }
 
 function _msgClientePadrao() {
@@ -1897,7 +1914,7 @@ function copySupplierMessage() {
         .replace(/\{modelo\}/g, [os.brand, os.model].filter(Boolean).join(' ') || 'aparelho')
         .replace(/\{defeito\}/g, (os.defect || '').replace(/^trocar\s+/i, '').replace(/\s+e\s+/gi, ' + '))
         .replace(/\{os\}/g, os.id);
-    _copiarComHistorico(msg, 'fornecedor', '🏭 Fornecedor');
+    _copiarComHistorico(msg, 'fornecedor', '📋 Msg Fornecedor');
 }
 
 function _msgFornecedorPadrao() {
