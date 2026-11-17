@@ -55,7 +55,9 @@ window.maskCnpj = maskCnpj;
 window.copiarCampoNF = copiarCampoNF;
 window.copiarTodosDadosNF = copiarTodosDadosNF;
 window.salvarDadosNotaFiscal = salvarDadosNotaFiscal;
-window.printOS = printOS;
+window.printOS = printOSEntrada; // alias: Entrada é o fluxo padrão
+window.printOSEntrada = printOSEntrada;
+window.printOSSaida = printOSSaida;
 window.printOSEscolherTermos = printOSEscolherTermos;
 window.sendWarrantyWhatsApp = sendWarrantyWhatsApp;
 window.copyWarrantyToClipboard = copyWarrantyToClipboard;
@@ -673,10 +675,9 @@ async function saveOS() {
 function mostrarPosCriacaoOS(os) {
     openModal(`<div class="modal-handle"></div>
 <h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">✅ ${escHtml(os.id)} criada</h3>
-<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via do cliente ou feche para continuar.</p>
-<button type="button" onclick="closeModal();printOS();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir OS</button>
-<button type="button" onclick="closeModal();showScreen('home');" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>
-<button type="button" onclick="printOSEscolherTermos()" style="width:100%;margin-top:10px;padding:8px;background:none;border:none;color:var(--text3);font-size:12px;cursor:pointer;text-decoration:underline;">Trocar termos de garantia…</button>`);
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via de <b>entrada</b> para o cliente assinar.</p>
+<button type="button" onclick="closeModal();printOSEntrada();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Entrada</button>
+<button type="button" onclick="closeModal();showScreen('home');" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Fechar</button>`);
 }
 
 function enrichClientData(phone, base) {
@@ -941,7 +942,7 @@ function renderDetail() {
     
     html += _renderDadosNotaFiscalCard(os);
 
-    html += `<div class="detail-actions"><button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOS()" style="color:var(--text2)">🖨️ Imprimir</button><button class="btn btn-ghost" onclick="printOSEscolherTermos()" style="color:var(--text3);font-size:11px">Trocar termos</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button>${podeExcluir('os') ? `<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>` : ''}`;
+    html += `<div class="detail-actions"><button class="btn btn-secondary" onclick="openClientFromOS()">Ver Cliente</button></div><button class="btn btn-ghost" onclick="printOSEntrada()" style="color:var(--text2)">🖨️ Entrada</button><button class="btn btn-ghost" onclick="printOSSaida()" style="color:var(--green)">🖨️ Saída/Garantia</button><button class="btn btn-ghost" onclick="printOSEscolherTermos()" style="color:var(--text3);font-size:11px">Trocar termos</button><button class="btn btn-ghost" onclick="generateWarrantyLink()" style="color:#2196F3">🔗 Link Garantia</button><button class="btn btn-ghost" onclick="copyWarrantyToClipboard()" style="color:#FF9800">📋 Copiar Garantia</button><button class="btn btn-ghost" onclick="sendWarrantyWhatsApp()" style="color:#25D366">📩 Enviar Garantia</button><button class="btn btn-ghost" onclick="shareWhatsApp()" style="color:var(--green)">💬 WhatsApp</button>${podeExcluir('os') ? `<button class="btn btn-ghost" onclick="deleteOS('${os.id}')" style="color:var(--red)">🗑️ Excluir OS</button>` : ''}`;
     c.innerHTML = html;
     updateSaveUI();
 }
@@ -1244,7 +1245,43 @@ function addPhotoToOS() {
     input.click();
 }
 
-async function markDelivered() { if(!currentOS) return; window.markUnsaved(); currentOS.status='entregue'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Entregue ao cliente'}); await saveCurrentOS(); renderDetail(); showToast('✅ Entregue'); window.markSaved(); if(currentOS.valor && currentOS.valor > 0 && confirm(`Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`)) { try { await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({ tipo:'entrada', descricao:'OS '+(currentOS.id||'')+' - '+ (currentOS.clientName||'') + ' - ' + (currentOS.model||''), categoria:'Vendas', valor:(parseFloat(currentOS.valor)||0), custo:0, lucro:(parseFloat(currentOS.valor)||0), data:new Date().toISOString().slice(0,10), dataISO:new Date().toISOString(), ano:new Date().getFullYear(), criadoEm:serverTimestamp(), osId:currentOS.id })); showToast('💰 Pagamento registrado no Caixa!'); } catch(e) { showToast('Erro ao registrar pagamento'); console.error(e); } } }
+async function markDelivered() {
+    if (!currentOS) return;
+    window.markUnsaved();
+    currentOS.status = 'entregue';
+    currentOS.updatedAt = new Date().toISOString();
+    currentOS.timeline.push({ date: new Date().toISOString(), text: 'Entregue ao cliente' });
+    await saveCurrentOS();
+    renderDetail();
+    showToast('✅ Entregue');
+    window.markSaved();
+    if (currentOS.valor && currentOS.valor > 0 && confirm(`Registrar pagamento de R$ ${Number(currentOS.valor).toFixed(2)} no Caixa?`)) {
+        try {
+            await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({
+                tipo: 'entrada',
+                descricao: 'OS ' + (currentOS.id || '') + ' - ' + (currentOS.clientName || '') + ' - ' + (currentOS.model || ''),
+                categoria: 'Vendas',
+                valor: (parseFloat(currentOS.valor) || 0),
+                custo: 0,
+                lucro: (parseFloat(currentOS.valor) || 0),
+                data: new Date().toISOString().slice(0, 10),
+                dataISO: new Date().toISOString(),
+                ano: new Date().getFullYear(),
+                criadoEm: serverTimestamp(),
+                osId: currentOS.id
+            }));
+            showToast('💰 Pagamento registrado no Caixa!');
+        } catch (e) {
+            showToast('Erro ao registrar pagamento');
+            console.error(e);
+        }
+    }
+    openModal(`<div class="modal-handle"></div>
+<h3 style="font-size:16px;font-weight:800;margin-bottom:8px;color:var(--text);text-align:center;">📦 OS entregue</h3>
+<p style="font-size:13px;color:var(--text2);text-align:center;margin-bottom:16px;">Imprima a via de <b>saída / garantia</b> para o cliente.</p>
+<button type="button" onclick="closeModal();printOSSaida();" class="premium-btn" style="width:100%;margin-bottom:8px;">🖨️ Imprimir Saída/Garantia</button>
+<button type="button" onclick="closeModal()" style="width:100%;padding:12px;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-size:13px;color:var(--text);font-weight:600;">Agora não</button>`);
+}
 async function markOrcamentoDevolvido() { if(!currentOS) return; window.markUnsaved(); currentOS.status='devolvido_orcamento'; currentOS.updatedAt=new Date().toISOString(); currentOS.timeline.push({date:new Date().toISOString(),text:'Aparelho devolvido — Orçamento (sem serviço)'}); await saveCurrentOS(); updateStats(); renderDetail(); showToast('📋 Aparelho devolvido'); window.markSaved(); }
 window.markOrcamentoDevolvido = markOrcamentoDevolvido;
 
@@ -2150,16 +2187,214 @@ async function sendWarrantyWhatsApp() {
     showToast('📲 Abrindo WhatsApp...');
 }
 
-/** Um clique: imprime com termos padrão (sem modal). */
-async function printOS() {
-    if (!currentOS) return;
-    showToast('🖨️ Preparando impressão…');
-    const cfg = await _ensurePrintConfig();
-    const ids = _defaultGarantiaIds(currentOS, cfg.garantias || []);
-    _executePrint(ids, cfg);
+/** CSS compartilhado — A4 + térmica ~80mm. */
+function _printCssCompartilhado() {
+    return `*{box-sizing:border-box}
+body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;margin:0;padding:12px 16px;max-width:720px}
+.logo-wrap{text-align:center;margin-bottom:8px}
+.logo-wrap img{max-height:64px;max-width:200px;object-fit:contain}
+.shop-name{text-align:center;font-size:15px;border-bottom:2px solid #000;padding-bottom:6px;margin:0 0 4px}
+.shop-meta{text-align:center;font-size:10px;margin:0 0 2px}
+.doc-title{text-align:center;font-size:13px;font-weight:800;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+.row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px}
+.label{font-weight:700;flex-shrink:0}
+.strong{font-weight:700}
+.section{margin-top:10px;border-top:1px dashed #999;padding-top:8px}
+.section-title{font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px}
+.chk-row{font-size:11px;padding:2px 0;display:flex;gap:8px;align-items:flex-start}
+.chk-box{font-weight:700;width:22px;flex-shrink:0}
+.gar-block{margin-bottom:8px}
+.gar-txt{font-size:10px;line-height:1.45}
+.portal-block{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.portal-txt{flex:1;min-width:0}
+.portal-link{font-size:9px;word-break:break-all;margin:4px 0 0;line-height:1.35}
+.portal-qr{flex-shrink:0}
+.aviso{font-size:11px;line-height:1.4;margin:8px 0 0}
+.footer{text-align:center;margin-top:18px;font-size:10px}
+.sign{margin:28px 0 8px;border-top:1px solid #000;padding-top:8px;font-size:11px;font-weight:700}
+.hint{margin-top:12px;border-top:1px dashed #ccc;padding-top:8px;font-size:9px;font-style:italic}
+@page{margin:8mm}
+@media print{body{padding:0;max-width:none}}
+@media print and (max-width:90mm){
+  body{font-size:11px;padding:2mm}
+  .shop-name{font-size:13px}
+  .row{font-size:11px;flex-wrap:wrap}
+  .portal-block{flex-direction:column;align-items:flex-start}
+  .os-print-qr{width:88px!important;height:88px!important}
+  .logo-wrap img{max-height:48px}
+}`;
 }
 
-/** Opcional: escolher quais termos de garantia entram na folha. */
+function _printCabecalhoHtml(cfg) {
+    const loja = cfg.loja || {};
+    const logoHtml = cfg.logo ? `<div class="logo-wrap"><img src="${cfg.logo}" alt="Logo"></div>` : '';
+    return logoHtml
+        + `<h1 class="shop-name">${escHtml(loja.nome || 'Cell City Informática')}</h1>`
+        + (loja.endereco ? `<p class="shop-meta">${escHtml(loja.endereco)}</p>` : '')
+        + (loja.whatsapp ? `<p class="shop-meta">WhatsApp: ${escHtml(loja.whatsapp)}</p>` : '')
+        + (loja.cnpj ? `<p class="shop-meta">CNPJ: ${escHtml(loja.cnpj)}</p>` : '');
+}
+
+function _printPortalBlock(os) {
+    const portalUrl = _portalLinkImpressao(os);
+    return `<div class="section portal-block">
+  <div class="portal-txt">
+    <div class="section-title">Acompanhe seu conserto pelo celular</div>
+    <p class="portal-link">${escHtml(portalUrl)}</p>
+  </div>
+  <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
+</div>`;
+}
+
+function _printDadosClienteAparelho(os, opts = {}) {
+    const imei = os.imei || os.imei1 || '';
+    const imei2 = os.imei2 || '';
+    let valorHtml = '';
+    if (opts.incluirValor !== false) {
+        if (os.valor) valorHtml += `<div class="row"><span class="label">Valor / Orçamento:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>`;
+        if (os.orc1Desc || os.orc1Valor) {
+            valorHtml += `<div class="row"><span class="label">Orç. 1:</span><span>${escHtml(os.orc1Desc || '')}${os.orc1Valor ? ' — R$ ' + Number(os.orc1Valor).toFixed(2) : ''}</span></div>`;
+        }
+        if (os.orc2Desc || os.orc2Valor) {
+            valorHtml += `<div class="row"><span class="label">Orç. 2:</span><span>${escHtml(os.orc2Desc || '')}${os.orc2Valor ? ' — R$ ' + Number(os.orc2Valor).toFixed(2) : ''}</span></div>`;
+        }
+    }
+    return `<div class="section">
+<div class="row"><span class="label">Cliente:</span><span>${escHtml(os.clientName || '')}</span></div>
+<div class="row"><span class="label">Telefone:</span><span>${escHtml(os.phone || '')}</span></div>
+${os.cpf ? `<div class="row"><span class="label">CPF:</span><span>${escHtml(os.cpf)}</span></div>` : ''}
+<div class="row"><span class="label">Aparelho:</span><span>${escHtml([os.brand, os.model].filter(Boolean).join(' ') || getCategoryLabel(os.category) || '')}</span></div>
+${os.brand && os.model ? '' : (os.brand ? `<div class="row"><span class="label">Marca:</span><span>${escHtml(os.brand)}</span></div>` : '')}
+${imei ? `<div class="row"><span class="label">IMEI:</span><span>${escHtml(imei)}</span></div>` : ''}
+${imei2 ? `<div class="row"><span class="label">IMEI 2:</span><span>${escHtml(imei2)}</span></div>` : ''}
+<div class="row"><span class="label">Defeito relatado:</span><span>${escHtml(os.defect || '')}</span></div>
+${valorHtml}
+</div>`;
+}
+
+function _senhaInformadaSimNao(os) {
+    const temSenha = !!(String(os.password || '').trim())
+        || (Array.isArray(os.patternSequence) && os.patternSequence.length > 0)
+        || (os.lockType && os.lockType !== 'Sem senha' && os.lockType !== 'sem senha');
+    return temSenha ? 'sim' : 'não';
+}
+
+function _checklistEntradaPrintHtml(os) {
+    const items = getChecklistTemplate(os.category || 'celular');
+    const checked = Array.isArray(os.entryChecklist) ? os.entryChecklist.map(Number) : [];
+    if (!items.length) return '<p class="aviso">Checklist não disponível.</p>';
+    return items.map((label, i) => {
+        const ok = checked.includes(i);
+        return `<div class="chk-row"><span class="chk-box">${ok ? '[X]' : '[ ]'}</span><span>${escHtml(label)}</span></div>`;
+    }).join('');
+}
+
+/**
+ * Destaca termos críticos nos textos de garantia (via do cliente).
+ */
+function highlightWarrantyTerms(text) {
+    if (!text) return text;
+    const HL = 'style="background:#FFD700;color:#000;font-weight:700;padding:0 2px;border-radius:2px;"';
+    const BOLD = 'style="font-weight:700;"';
+    const primary = ['MAU USO', 'NÃO COBRE', 'NAO COBRE', '72 HORAS', 'R\\$ 80,00'];
+    let result = text.replace(new RegExp(`(${primary.join('|')})`, 'gi'), `<span ${HL}>$1</span>`);
+    const secondary = [
+        'QUEDA', 'QUEDAS', 'IMPACTO', 'IMPACTOS',
+        'LÍQUIDOS', 'LIQUIDOS', 'OXIDAÇÃO', 'OXIDACAO', 'PRESSÃO', 'PRESSAO',
+        'TRINCA', 'TRINCAS', 'QUEBRA', 'QUEBRAS',
+        'PELÍCULA', 'PELICULA', 'PELÍCULAS', 'PELICULAS'
+    ];
+    result = result.replace(new RegExp(`(${secondary.join('|')})`, 'gi'), `<span ${BOLD}>$1</span>`);
+    return result;
+}
+
+function _montarDocImpressao({ titulo, os, cfg, corpoHtml, footerHtml }) {
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(titulo)} — ${escHtml(os.id || '')}</title>
+<style>${_printCssCompartilhado()}</style></head><body>
+${_printCabecalhoHtml(cfg)}
+<div class="doc-title">${escHtml(titulo)}</div>
+<div class="row"><span class="label">O.S.:</span><span>${escHtml(os.id || '')}</span></div>
+${corpoHtml}
+${_printPortalBlock(os)}
+${footerHtml}
+</body></html>`;
+}
+
+/** A) Via ENTRADA — quando o cliente deixa o aparelho. Sem termos longos. */
+async function printOSEntrada() {
+    if (!currentOS) return;
+    showToast('🖨️ Preparando via de Entrada…');
+    const cfg = await _ensurePrintConfig();
+    const os = currentOS;
+    const corpo = `
+<div class="row"><span class="label">Data/Hora:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
+${_printDadosClienteAparelho(os)}
+<div class="section">
+  <div class="row"><span class="label">Senha informada:</span><span>${_senhaInformadaSimNao(os)}</span></div>
+</div>
+<div class="section">
+  <div class="section-title">Checklist de Entrada</div>
+  ${_checklistEntradaPrintHtml(os)}
+</div>
+<p class="aviso"><b>Aparelho recebido para análise/conserto. Prazo de orçamento: 24h.</b></p>`;
+    const footer = `<div class="footer">
+  <p style="margin:0">Declaro ter entregue o aparelho nas condições descritas nesta ordem de serviço.</p>
+  <p class="sign">Assinatura do Cliente</p>
+  <p style="margin:8px 0 0;font-size:10px">Data: ___/___/____</p>
+</div>`;
+    _printViaIframe(_montarDocImpressao({
+        titulo: 'Via de Entrada',
+        os, cfg,
+        corpoHtml: corpo,
+        footerHtml: footer
+    }));
+}
+
+/** B) Via SAÍDA / GARANTIA — na entrega. Com termos cadastrados. */
+async function printOSSaida(selectedIds) {
+    if (!currentOS) return;
+    showToast('🖨️ Preparando via de Saída/Garantia…');
+    const cfg = await _ensurePrintConfig();
+    const os = currentOS;
+    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
+    let ids = Array.isArray(selectedIds) ? selectedIds.map(String) : _defaultGarantiaIds(os, garantias);
+    const selecionadas = garantias.filter(g => ids.includes(String(g.id)));
+    const dataEntrega = os.status === 'entregue'
+        ? formatDate(os.updatedAt || os.createdAt)
+        : formatDate(new Date().toISOString());
+    const prazo = Number.isFinite(Number(os.prazoGarantia)) ? Number(os.prazoGarantia) : 90;
+    const servico = (os.defect || '').trim() || 'Não especificado';
+    const garantiasHtml = selecionadas.length
+        ? `<div class="section"><div class="section-title">Termos de Garantia</div>${selecionadas.map(g =>
+            `<div class="gar-block"><b>${escHtml(g.nome || '')}:</b><br><span class="gar-txt">${highlightWarrantyTerms(escHtml(g.texto || ''))}</span></div>`
+          ).join('')}</div>`
+        : '';
+    const corpo = `
+<div class="row"><span class="label">Abertura:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
+<div class="row"><span class="label">Entrega:</span><span>${escHtml(dataEntrega)}</span></div>
+${_printDadosClienteAparelho(os)}
+<div class="section">
+  <div class="row"><span class="label">Serviço realizado:</span><span>${escHtml(servico)}</span></div>
+  ${os.valor ? `<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>` : ''}
+  <div class="row"><span class="label">Prazo de garantia:</span><span>${prazo > 0 ? prazo + ' dias' : 'Sem garantia'}</span></div>
+</div>
+${garantiasHtml}`;
+    const footer = `<div class="footer">
+  <p style="margin:0"><b>Recebi o aparelho funcionando</b> e estou ciente dos termos de garantia.</p>
+  <p class="sign">Assinatura do Cliente</p>
+  <p style="margin:8px 0 0;font-size:10px">Data da entrega: ___/___/____</p>
+  <p class="hint">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p>
+</div>`;
+    try { closeModal(); } catch (e) {}
+    _printViaIframe(_montarDocImpressao({
+        titulo: 'Via de Saída / Garantia',
+        os, cfg,
+        corpoHtml: corpo,
+        footerHtml: footer
+    }));
+}
+
+/** Opcional: escolher termos antes da via de Saída. */
 async function printOSEscolherTermos() {
     if (!currentOS) return;
     const os = currentOS;
@@ -2168,7 +2403,7 @@ async function printOSEscolherTermos() {
     const defaultIds = new Set(_defaultGarantiaIds(os, garantias));
     const checksHtml = garantias.length ? `
         <div style="margin-bottom:16px">
-            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00E676;margin-bottom:10px">Termos de Garantia</div>
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#00E676;margin-bottom:10px">Termos de Garantia (Saída)</div>
             <div style="display:flex;flex-direction:column;gap:8px">
                 ${garantias.map(g => `
                 <label style="display:flex;align-items:center;gap:10px;padding:10px;background:#1c1f1d;border:1px solid rgba(255,255,255,0.08);border-radius:10px;cursor:pointer">
@@ -2180,153 +2415,24 @@ async function printOSEscolherTermos() {
     document.getElementById('modal-content').innerHTML = `
         <div onclick="event.stopPropagation()">
         <div class="modal-handle"></div>
-        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Imprimir OS ${escHtml(currentOS.id)}</h3>
+        <h3 style="margin-bottom:16px;color:#00E676">🖨️ Saída/Garantia — ${escHtml(currentOS.id)}</h3>
         ${checksHtml}
-        <button onclick="event.stopPropagation();window._executePrint()" style="width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#009624);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
-            🖨️ Imprimir
+        <button onclick="event.stopPropagation();window._executePrintSaida()" style="width:100%;padding:14px;background:linear-gradient(135deg,#00C853,#009624);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+            🖨️ Imprimir Saída/Garantia
         </button>
         </div>`;
     document.getElementById('modal-overlay').classList.add('active');
 }
 
-/**
- * Destaca automaticamente termos críticos em textos de garantia.
- * Usa inline styles para funcionar em janelas de impressão.
- *
- * Prioridade Máxima (fundo amarelo + negrito):
- *   MAU USO, NÃO COBRE, 72 HORAS, R$ 80,00
- * Prioridade Secundária (apenas negrito):
- *   QUEDA, QUEDAS, IMPACTO, IMPACTOS,
- *   LÍQUIDOS, OXIDAÇÃO, PRESSÃO,
- *   TRINCA, TRINCAS, QUEBRA, QUEBRAS
- */
-function highlightWarrantyTerms(text) {
-    if (!text) return text;
-    const HL = 'style="background:#FFD700;color:#000;font-weight:700;padding:0 2px;border-radius:2px;"';
-    const BOLD = 'style="font-weight:700;"';
+window._executePrintSaida = function() {
+    const ids = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
+    printOSSaida(ids);
+};
 
-    // 1° Prioridade Máxima: fundo amarelo + negrito
-    const primary = ['MAU USO', 'NÃO COBRE', '72 HORAS', 'R\\$ 80,00'];
-    let result = text.replace(new RegExp(`(${primary.join('|')})`, 'gi'), `<span ${HL}>$1</span>`);
-
-    // 2° Prioridade Secundária: apenas negrito
-    const secondary = [
-        'QUEDA', 'QUEDAS', 'IMPACTO', 'IMPACTOS',
-        'LÍQUIDOS', 'OXIDAÇÃO', 'PRESSÃO',
-        'TRINCA', 'TRINCAS', 'QUEBRA', 'QUEBRAS'
-    ];
-    result = result.replace(new RegExp(`(${secondary.join('|')})`, 'gi'), `<span ${BOLD}>$1</span>`);
-
-    return result;
-}
-
+/** Compat: impressão genérica antiga → Saída com termos do modal/padrão. */
 window._executePrint = function(selectedIds, cfgArg) {
-    if (!currentOS) return;
-    const os = currentOS;
-    const cfg = cfgArg || _lerPrintConfigLocal();
-    const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
-    let ids = Array.isArray(selectedIds) ? selectedIds.map(String) : null;
-    if (!ids) {
-        ids = [...document.querySelectorAll('.print-gar-chk:checked')].map(c => String(c.dataset.id));
-    }
-    const selecionadas = garantias.filter(g => ids.includes(String(g.id)));
-    try { closeModal(); } catch (e) {}
-
-    const loja = cfg.loja || {};
-    const lojaNome = escHtml(loja.nome || 'Cell City Informática');
-    const lojaEnd  = escHtml(loja.endereco || '');
-    const lojaWa   = escHtml(loja.whatsapp || '');
-    const lojaCnpj = escHtml(loja.cnpj || '');
-    const logoHtml = cfg.logo
-        ? `<div class="logo-wrap"><img src="${cfg.logo}" alt="Logo"></div>`
-        : '';
-    const cabecalhoHtml = `<h1 class="shop-name">${lojaNome}</h1>`
-        + (lojaEnd ? `<p class="shop-meta">${lojaEnd}</p>` : '')
-        + (lojaWa ? `<p class="shop-meta">WhatsApp: ${lojaWa}</p>` : '')
-        + (lojaCnpj ? `<p class="shop-meta">CNPJ: ${lojaCnpj}</p>` : '');
-    const statusHtml = os.status === 'entregue'
-        ? `<div class="row"><span class="label">Status:</span><span class="strong">ENTREGUE</span></div>`
-        : `<div class="row"><span class="label">Status:</span><span>${escHtml(getStatusLabel(os.status))}</span></div>`;
-    const garantiasHtmlAjustado = selecionadas.length
-        ? `<div class="section"><div class="section-title">Termos de Garantia</div>${selecionadas.map(g =>
-            `<div class="gar-block"><b>${escHtml(g.nome || '')}:</b><br><span class="gar-txt">${highlightWarrantyTerms(escHtml(g.texto || ''))}</span></div>`
-          ).join('')}</div>`
-        : '';
-    const portalUrl = _portalLinkImpressao(os);
-    const portalUrlEsc = escHtml(portalUrl);
-    const portalBlock = `<div class="section portal-block">
-      <div class="portal-txt">
-        <div class="section-title">Acompanhe seu conserto pelo celular</div>
-        <p class="portal-link">${portalUrlEsc}</p>
-      </div>
-      <div class="portal-qr">${_qrImgHtml(portalUrl)}</div>
-    </div>`;
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escHtml(os.id)}</title>
-<style>
-  *{box-sizing:border-box}
-  body{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;margin:0;padding:12px 16px;max-width:720px}
-  .logo-wrap{text-align:center;margin-bottom:8px}
-  .logo-wrap img{max-height:64px;max-width:200px;object-fit:contain}
-  .shop-name{text-align:center;font-size:15px;border-bottom:2px solid #000;padding-bottom:6px;margin:0 0 4px}
-  .shop-meta{text-align:center;font-size:10px;margin:0 0 2px}
-  .row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px}
-  .label{font-weight:700;flex-shrink:0}
-  .strong{font-weight:700}
-  .section{margin-top:10px;border-top:1px dashed #999;padding-top:8px}
-  .section-title{font-weight:700;font-size:11px;text-transform:uppercase;margin-bottom:6px}
-  .gar-block{margin-bottom:8px}
-  .gar-txt{font-size:10px;line-height:1.45}
-  .portal-block{display:flex;align-items:center;justify-content:space-between;gap:10px}
-  .portal-txt{flex:1;min-width:0}
-  .portal-link{font-size:9px;word-break:break-all;margin:4px 0 0;line-height:1.35}
-  .portal-qr{flex-shrink:0}
-  .footer{text-align:center;margin-top:18px;font-size:10px}
-  .sign{margin:28px 0 8px;border-top:1px solid #000;padding-top:8px;font-size:11px;font-weight:700}
-  .hint{margin-top:12px;border-top:1px dashed #ccc;padding-top:8px;font-size:9px;font-style:italic}
-  @page{margin:8mm}
-  @media print{
-    body{padding:0;max-width:none}
-  }
-  /* Térmica 80mm / rolo estreito */
-  @media print and (max-width:90mm){
-    body{font-size:11px;padding:2mm}
-    .shop-name{font-size:13px}
-    .row{font-size:11px;flex-wrap:wrap}
-    .portal-block{flex-direction:column;align-items:flex-start}
-    .os-print-qr{width:88px!important;height:88px!important}
-    .logo-wrap img{max-height:48px}
-  }
-</style></head><body>
-${logoHtml}${cabecalhoHtml}
-<div class="row"><span class="label">O.S.:</span><span>${escHtml(os.id)}</span></div>
-<div class="row"><span class="label">Data:</span><span>${escHtml(formatDate(os.createdAt))}</span></div>
-<div class="section">
-<div class="row"><span class="label">Cliente:</span><span>${escHtml(os.clientName || '')}</span></div>
-<div class="row"><span class="label">Telefone:</span><span>${escHtml(os.phone || '')}</span></div>
-${os.cpf ? `<div class="row"><span class="label">CPF:</span><span>${escHtml(os.cpf)}</span></div>` : ''}
-${os.cep || os.endereco ? `<div class="row"><span class="label">Endereço:</span><span>${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ' - ' + escHtml(os.complemento) : ''}</span></div>
-<div class="row"><span class="label">Bairro:</span><span>${escHtml(os.bairro || '')}</span></div>
-<div class="row"><span class="label">Cidade/UF:</span><span>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}</span></div>
-<div class="row"><span class="label">CEP:</span><span>${escHtml(os.cep || '')}</span></div>` : ''}
-<div class="row"><span class="label">Aparelho:</span><span>${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</span></div>
-${os.imei ? `<div class="row"><span class="label">IMEI:</span><span>${escHtml(os.imei)}</span></div>` : ''}
-<div class="row"><span class="label">Defeito:</span><span>${escHtml(os.defect || '')}</span></div>
-${os.valor ? `<div class="row"><span class="label">Valor:</span><span>R$ ${Number(os.valor).toFixed(2)}</span></div>` : ''}
-${os.patternSequence && os.patternSequence.length ? `<div class="row"><span class="label">Padrão:</span><span>${os.patternSequence.map(i => i + 1).join('→')}</span></div>` : ''}
-</div>
-<div class="section">${statusHtml}</div>
-${garantiasHtmlAjustado}
-${portalBlock}
-<div class="footer">
-  <p style="margin:0">Declaro ter recebido o aparelho e estar ciente dos termos de garantia.</p>
-  <p class="sign">Assinatura do Cliente</p>
-  <p style="margin:8px 0 0;font-size:10px">Data da entrega: ___/___/____</p>
-  <p class="hint">Confira todas as funcionalidades do aparelho antes de deixar a loja.</p>
-</div>
-</body></html>`;
-
-    _printViaIframe(html);
+    if (Array.isArray(selectedIds)) printOSSaida(selectedIds);
+    else printOSSaida();
 };
 
 // ===== CLIENTS (MÓDULO COMPLETO) =====
