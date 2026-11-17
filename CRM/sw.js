@@ -3,7 +3,7 @@
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
 // clientes.js renomeado no P2.6 que impedia o v16 de instalar).
-const CACHE = 'cellcity-crm-v20'; // v20: remove services/*.service.js do precache (camada órfã removida — nenhum consumidor real, mesmo defeito de 404 no install que já quebrou o v16)
+const CACHE = 'cellcity-crm-v21'; // v21: força atualização do painel (dashboard.css sem piscar + dashboard-alertas.js filtros Agenda). v20: remove services/*.service.js do precache.
 
 // Arquivos do shell — carregados no install (expandido para cobrir shared + módulos principais)
 const SHELL = [

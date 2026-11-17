@@ -4,7 +4,7 @@ Etapa 9 da refatoração modular: agenda/ação da semana, autoatendimento, diá
 e o motor de geração de alertas (pós-venda, OS, meta, portal, avaliações).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, onSnapshot, query, where, orderBy, limit } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
 import { getDeliveryDate, calcDiasDesde } from "../../shared/date-utils.js";
 
@@ -233,9 +233,10 @@ export const dashboardAlertasMixin = {
   // ===== AGENDA — card do Dashboard: destaque discreto (hoje + atrasados) =====
   // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
   // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
-  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado).
+  // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado),
+  // espelhada em Firestore `config/painel.destacarAgenda` para valer em todos os PCs.
   //
-  // Contagem do card também ignora (só visual — NÃO apaga/altera Firestore):
+  // Contagem do card também ignora (só visual — NÃO apaga/altera documentos de agenda/OS):
   //  1) qualquer lembrete atrasado há mais de 7 dias;
   //  2) lembretes automáticos "🔔 Retorno OS: …" cuja OS já está encerrada
   //     (entregue / finalizada / cancelada-recusada).
@@ -246,6 +247,23 @@ export const dashboardAlertasMixin = {
       return v !== '0' && v !== 'false';
     } catch {
       return true;
+    }
+  },
+
+  // Lê a preferência online uma vez por sessão do card e espelha no localStorage.
+  async _syncDestacarAgendaFromFirestore() {
+    if (this._destacarAgendaSynced) return;
+    this._destacarAgendaSynced = true;
+    try {
+      const snap = await getDoc(doc(db, 'config', 'painel'));
+      if (snap.exists()) {
+        const v = snap.data().destacarAgenda;
+        if (typeof v === 'boolean') {
+          localStorage.setItem('cc_destacar_agenda', v ? '1' : '0');
+        }
+      }
+    } catch (e) {
+      console.warn('[Agenda] preferência online indisponível; usando local:', e);
     }
   },
 
@@ -328,6 +346,7 @@ export const dashboardAlertasMixin = {
       const card = document.querySelector('.module-card[data-module="acaodasemana"]');
       if (!card) return;
       const sub = card.querySelector('.module-sub');
+      await this._syncDestacarAgendaFromFirestore();
       const destacar = this._destaqueAgendaAtivo();
 
       if (!destacar) {
