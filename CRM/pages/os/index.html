@@ -112,6 +112,17 @@
 
         <!-- TELA FORMULÁRIO NOVA OS -->
         <div id="screen-form" class="screen">
+            <!-- Entrada por texto — cola frase e preenche o formulário -->
+            <div class="form-section" id="entrada-texto-box" style="margin-bottom:14px;padding:14px 16px;border:1px dashed var(--border);border-radius:var(--radius);background:var(--surface2);">
+                <label for="f-entrada-texto" style="display:block;font-size:13px;font-weight:800;color:var(--text);margin-bottom:6px;">⚡ Entrada por texto</label>
+                <p style="font-size:12px;color:var(--text2);margin:0 0 8px;line-height:1.4;">Cole uma frase (ex.: Maria, 62 99999-9999, A10, não liga, troca de tela, senha 111) e preencha o formulário.</p>
+                <textarea id="f-entrada-texto" rows="2" placeholder="Nome, telefone, modelo, defeito, senha…" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-family:inherit;font-size:13px;box-sizing:border-box;resize:vertical;"></textarea>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+                    <button type="button" class="premium-btn" id="btn-aplicar-entrada-texto" onclick="aplicarEntradaTexto()" style="flex:1;min-width:140px;padding:10px 14px;font-size:13px;">Preencher formulário</button>
+                    <button type="button" onclick="document.getElementById('f-entrada-texto').value='';" style="padding:10px 14px;font-size:12px;font-weight:700;background:var(--surface3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);cursor:pointer;">Limpar</button>
+                </div>
+                <div id="f-entrada-texto-hint" style="display:none;margin-top:8px;font-size:12px;color:var(--green-light);font-weight:600;"></div>
+            </div>
             <!-- ===== Accordion (Nova OS) — abertos por padrão ===== -->
             <div class="form-section" id="nova-os-categoria-box" style="margin-bottom:14px;padding:14px 16px;border:2px solid var(--green-primary);border-radius:var(--radius);background:var(--surface2);">
                 <label for="f-category-select" style="display:block;font-size:14px;font-weight:800;color:var(--text);margin-bottom:8px;">📦 Categoria do aparelho</label>

@@ -37,6 +37,7 @@ import {
     payloadSilenciar,
     textoSeloSilencio,
 } from './os-parada-silencio.js';
+import { parseEntradaTextoOS, aplicarEntradaTextoNoForm } from './entrada-texto.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -123,6 +124,7 @@ window.copiarMensagemFinalizado = copiarMensagemFinalizado;
 window.copiarMensagemCriacao = copiarMensagemCriacao;
 window.aplicarCategoriaForm = aplicarCategoriaForm;
 window.sugerirCategoriaDoModelo = sugerirCategoriaDoModelo;
+window.aplicarEntradaTexto = aplicarEntradaTexto;
 window.saveObsRapida = saveObsRapida;
 window.abrirLembreteOS = abrirLembreteOS;
 window.fecharLembreteOS = fecharLembreteOS;
@@ -758,6 +760,36 @@ function aplicarCategoriaForm(cat, opts = {}) {
     renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []);
 }
 
+/** Preenche Nova OS a partir do campo "Entrada por texto". */
+function aplicarEntradaTexto() {
+    const ta = document.getElementById('f-entrada-texto');
+    const hint = document.getElementById('f-entrada-texto-hint');
+    const texto = ta?.value || '';
+    const parsed = parseEntradaTextoOS(texto);
+    if (!parsed.camposPreenchidos.length) {
+        if (hint) {
+            hint.style.display = 'block';
+            hint.style.color = 'var(--yellow, #fbbf24)';
+            hint.textContent = 'Não consegui ler a frase. Use vírgulas: nome, telefone, modelo, defeito, senha…';
+        }
+        return showToast('⚠️ Não consegui interpretar o texto');
+    }
+    aplicarEntradaTextoNoForm(parsed);
+    if (parsed.categoria && typeof window.aplicarCategoriaForm === 'function') {
+        window.aplicarCategoriaForm(parsed.categoria);
+    } else if (parsed.categoria) {
+        aplicarCategoriaForm(parsed.categoria);
+    }
+    if (parsed.modelo) sugerirCategoriaDoModelo(parsed.modelo);
+    window.markUnsaved?.();
+    if (hint) {
+        hint.style.display = 'block';
+        hint.style.color = 'var(--green-light)';
+        hint.textContent = `Preenchido: ${parsed.camposPreenchidos.join(', ')}`;
+    }
+    showToast(`✅ Preenchido: ${parsed.camposPreenchidos.join(', ')}`);
+}
+
 function sugerirCategoriaDoModelo(texto) {
     const sug = sugerirCategoriaPorModelo(texto);
     if (!sug) {
@@ -782,6 +814,8 @@ function startOS(cat) {
     ['f-aviso-tela','f-aviso-tampa'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     limparAcessoriosForm();
     const clienteHint = document.getElementById('f-cliente-hint'); if (clienteHint) clienteHint.style.display = 'none';
+    const entradaTxt = document.getElementById('f-entrada-texto'); if (entradaTxt) entradaTxt.value = '';
+    const entradaHint = document.getElementById('f-entrada-texto-hint'); if (entradaHint) entradaHint.style.display = 'none';
     aplicarCategoriaForm(cat || 'celular');
     restaurarMaisDetalhesNovaOS();
     window.markSaved(); showScreen('form');
