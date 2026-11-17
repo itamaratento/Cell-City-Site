@@ -1,7 +1,6 @@
 :root {
     --bg: var(--cc-bg);
     --bg-gradient: var(--cc-bg-gradient);
-    --surface-solid: var(--cc-surface);
     --surface2: rgba(25, 28, 27, 0.8);
     --surface3: var(--cc-surface-3);
     --border: var(--cc-border);
@@ -10,9 +9,6 @@
     --text3: var(--cc-text-3);
     --green-primary: var(--cc-green);
     --green-light: var(--cc-green-light);
-    --green-dark: var(--cc-green-dark);
-    --green-glow: var(--cc-green-glow);
-    --red: var(--cc-red);
     --radius-sm: var(--cc-radius-sm);
     --radius: var(--cc-radius-md);
     --radius-lg: var(--cc-radius-lg);
@@ -44,10 +40,6 @@ body {
     backdrop-filter: blur(16px);
     min-height: 54px;
 }
-.header::before {
-    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--green-primary), transparent); opacity: 0.6;
-}
 
 #crm-brand-bar { position: relative; }
 #crm-brand-bar .crm-page-title {
@@ -60,163 +52,110 @@ body {
     font-weight: 800 !important;
 }
 
-.cfg-content {
-    padding: 20px;
+.cli-content {
+    padding: 16px;
     padding-bottom: 100px;
-    max-width: 860px;
+    max-width: 720px;
     margin: 0 auto;
 }
 
-.cfg-section {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    padding: 18px;
-    margin-bottom: 20px;
-}
-.cfg-section-title {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--green-light);
+.cli-search-wrap {
+    position: relative;
     margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
 }
-.cfg-hint { font-size: 12px; color: var(--text3); margin-top: 8px; }
-
-.cfg-form-group { margin-bottom: 14px; }
-.cfg-form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text2);
-    margin-bottom: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-.cfg-form-group input {
-    width: 100%;
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    color: var(--text);
+.cli-search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 14px;
+    pointer-events: none;
+}
+.cli-search {
+    width: 100%;
+    padding: 12px 14px 12px 40px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 15px;
     font-family: var(--font-main);
     outline: none;
-    transition: border-color var(--duration) var(--ease);
 }
-.cfg-form-group input:focus { border-color: var(--green-primary); }
+.cli-search:focus { border-color: var(--green-primary); }
 
-.cfg-logo-area { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-.cfg-logo-preview {
-    width: 100%; max-width: 280px; height: 120px;
-    background: var(--surface3);
-    border: 2px dashed rgba(255,255,255,0.12);
-    border-radius: var(--radius);
-    display: flex; align-items: center; justify-content: center; overflow: hidden;
+.cli-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 32px 12px;
+    color: var(--text3);
+    font-size: 13px;
 }
-.cfg-logo-preview img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.cfg-logo-placeholder { font-size: 13px; color: var(--text3); }
-.cfg-logo-actions { display: flex; gap: 10px; }
-.cfg-btn-upload {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 10px 18px;
-    background: rgba(0, 200, 83, 0.08);
-    border: 1px solid rgba(0, 200, 83, 0.3);
-    border-radius: var(--radius-sm);
-    color: var(--green-light);
-    font-size: 13px; font-weight: 700; cursor: pointer;
-    transition: all var(--duration) var(--ease);
+.cli-spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-top-color: var(--green-primary);
+    border-radius: 50%;
+    animation: cli-spin 0.7s linear infinite;
 }
-.cfg-btn-upload:hover { background: rgba(0, 200, 83, 0.15); border-color: var(--green-primary); }
-.cfg-btn-upload input { display: none; }
-.cfg-btn-remove {
-    padding: 10px 16px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    border-radius: var(--radius-sm);
-    color: var(--red); font-size: 13px; font-weight: 700; cursor: pointer;
-    transition: all var(--duration) var(--ease);
-    font-family: var(--font-main);
-}
-.cfg-btn-remove:hover { background: rgba(239, 68, 68, 0.15); }
+@keyframes cli-spin { to { transform: rotate(360deg); } }
 
-.cfg-garantia {
-    background: var(--surface3);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 14px; margin-bottom: 12px;
-    transition: border-color var(--duration) var(--ease);
+.cli-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
-.cfg-garantia:focus-within { border-color: rgba(0, 200, 83, 0.4); }
-.cfg-garantia-header { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-.cfg-gar-nome {
-    flex: 1;
+
+.cli-card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
     background: var(--surface2);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px;
-    color: var(--text); font-size: 14px; font-weight: 700;
-    font-family: var(--font-main); outline: none;
-    transition: border-color var(--duration) var(--ease);
-}
-.cfg-gar-nome:focus { border-color: var(--green-primary); }
-.cfg-toggle-padrao { display: flex; align-items: center; gap: 5px; cursor: pointer; flex-shrink: 0; }
-.cfg-toggle-padrao input { width: 16px; height: 16px; accent-color: var(--green-primary); cursor: pointer; }
-.cfg-toggle-label { font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
-.cfg-toggle-padrao:has(input:checked) .cfg-toggle-label { color: var(--green-light); }
-.cfg-btn-del {
-    width: 36px; height: 36px;
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.25);
-    border-radius: var(--radius-sm);
-    color: var(--red); font-size: 15px; cursor: pointer;
-    transition: all var(--duration) var(--ease);
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0; font-family: var(--font-main);
-}
-.cfg-btn-del:hover { background: rgba(239, 68, 68, 0.18); }
-.cfg-gar-texto {
-    width: 100%;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    color: var(--text2); font-size: 13px;
-    font-family: var(--font-main);
-    line-height: 1.5; resize: vertical; min-height: 80px;
-    outline: none; transition: border-color var(--duration) var(--ease);
-}
-.cfg-gar-texto:focus { border-color: var(--green-primary); }
-
-.cfg-btn-add {
-    width: 100%; padding: 12px;
-    background: transparent;
-    border: 1px dashed rgba(255,255,255,0.15);
     border-radius: var(--radius);
-    color: var(--text3); font-size: 14px; font-weight: 700;
-    font-family: var(--font-main); cursor: pointer;
-    transition: all var(--duration) var(--ease); margin-top: 4px;
+    padding: 14px 16px;
+    transition: border-color var(--duration) var(--ease), background var(--duration) var(--ease);
 }
-.cfg-btn-add:hover { border-color: var(--green-primary); color: var(--green-light); background: rgba(0,200,83,0.04); }
-
-.cfg-btn-save {
-    width: 100%; padding: 16px;
-    background: linear-gradient(135deg, var(--green-primary), var(--green-dark));
-    border: none; border-radius: var(--radius);
-    color: white; font-size: 16px; font-weight: 700;
-    font-family: var(--font-main); cursor: pointer;
-    box-shadow: 0 6px 20px var(--green-glow);
-    transition: all var(--duration) var(--ease);
+.cli-card:hover,
+.cli-card:focus-visible {
+    border-color: rgba(0, 200, 83, 0.45);
+    background: rgba(0, 200, 83, 0.06);
+    outline: none;
 }
-.cfg-btn-save:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,83,0.4); }
-.cfg-btn-save:active { transform: scale(0.98); }
-.cfg-btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+.cli-card-name {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+}
+.cli-card-phone {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 4px;
+}
+.cli-card-meta {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 6px;
+    font-weight: 600;
+}
 
-.cfg-toast {
+.cli-empty {
+    text-align: center;
+    padding: 40px 16px;
+    color: var(--text3);
+}
+.cli-empty-icon { font-size: 36px; margin-bottom: 8px; }
+.cli-empty-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text2);
+    margin-bottom: 6px;
+}
+.cli-empty-sub { font-size: 13px; line-height: 1.45; max-width: 320px; margin: 0 auto; }
+
+.cli-toast {
     position: fixed; bottom: 24px; left: 50%;
     transform: translateX(-50%) translateY(100px);
     background: rgba(15,17,16,0.95); color: var(--text);
@@ -227,8 +166,10 @@ body {
     border: 1px solid var(--green-primary);
     pointer-events: none; white-space: nowrap;
 }
-.cfg-toast.show { transform: translateX(-50%) translateY(0); }
+.cli-toast.show { transform: translateX(-50%) translateY(0); }
 
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+@media (max-width: 400px) {
+    .cli-content { padding: 12px; }
+    .cli-card { padding: 12px; }
+    .cli-card-name { font-size: 14px; }
+}

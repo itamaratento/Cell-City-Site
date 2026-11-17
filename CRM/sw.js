@@ -1,4 +1,4 @@
-// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump home enxuta)
+// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump home clientes/pos-venda)
 // SHELL regenerado a partir do fechamento transitivo REAL de imports das
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
@@ -31,6 +31,7 @@ const SHELL = [
   '/CRM/pages/analise/index.html',
   '/CRM/pages/importar/index.html',
   '/CRM/pages/config/index.html',
+  '/CRM/pages/config/impressao.html',
   '/CRM/pages/pos-venda/index.html',
   '/CRM/pages/usuarios-permissoes/index.html',
   '/CRM/pages/central-alertas/index.html',
@@ -46,6 +47,7 @@ const SHELL = [
   '/CRM/pages/analise/analise.css',
   '/CRM/pages/importar/importar.css',
   '/CRM/pages/config/config.css',
+  '/CRM/pages/config/impressao.css',
   '/CRM/pages/pos-venda/posvenda.css',
   '/CRM/pages/usuarios-permissoes/usuarios-permissoes.css',
   '/CRM/pages/central-alertas/central-alertas.css',
@@ -54,6 +56,8 @@ const SHELL = [
   '/CRM/pages/caixa/caixa.js',
   '/CRM/pages/central-alertas/central-alertas.js',
   '/CRM/pages/central-modulos/central-modulos-page.js',
+  '/CRM/pages/clientes/clientes.js',
+  '/CRM/pages/clientes/clientes-lista.js',
   '/CRM/pages/compras/compras.js',
   '/CRM/pages/config/config.js',
   '/CRM/pages/config/impressao.js',

@@ -1525,21 +1525,21 @@
       "url": "/CRM/pages/clientes/index.html",
       "grupo": "Comercial",
       "categoria": "Sistema Web (CRM)",
-      "descricao": "Configurações de impressão (dados da loja, logo, termos de garantia).",
+      "descricao": "Lista de clientes com busca por nome/telefone; abre a ficha unificada na OS.",
       "oculto": false,
-      "versao": "1.0.26",
+      "versao": "1.1.0",
       "autor": "Cell City",
-      "atualizadoEm": "2026-07-16",
-      "commits": 26,
-      "status": "atencao",
+      "atualizadoEm": "2026-11-17",
+      "commits": 27,
+      "status": "ok",
       "score": 90,
       "rbac": {
-        "protegido": false,
-        "mecanismos": []
+        "protegido": true,
+        "mecanismos": ["podeVisualizar('os')"]
       },
       "colecoesFirestore": {
         "diretas": [],
-        "viaRepositorio": []
+        "viaRepositorio": ["clientes"]
       },
       "dependencias": {
         "shared": [
@@ -1547,22 +1547,33 @@
           "design-system.css",
           "dock.css",
           "dock.js",
-          "theme.js"
+          "theme.js",
+          "phone-utils.js",
+          "permissoes.js",
+          "sanitize.js"
         ],
-        "scripts": [],
-        "repositorios": []
+        "scripts": ["kernel.js"],
+        "repositorios": ["clientes.repository.js"]
       },
       "arquivosPrincipais": [
         {
           "arquivo": "clientes.css",
-          "linhas": 235
+          "linhas": 180
+        },
+        {
+          "arquivo": "clientes.js",
+          "linhas": 90
+        },
+        {
+          "arquivo": "clientes-lista.js",
+          "linhas": 55
         },
         {
           "arquivo": "index.html",
           "linhas": 96
         }
       ],
-      "totalArquivos": 2,
+      "totalArquivos": 4,
       "menu": {
         "sidebarDashboard": true,
         "dock": false,
@@ -1584,7 +1595,7 @@
         },
         {
           "item": "gate de RBAC presente",
-          "ok": false
+          "ok": true
         },
         {
           "item": "usa camada Repository (ou não acessa Firestore direto)",
@@ -1611,16 +1622,7 @@
           "ok": true
         }
       ],
-      "diagnosticos": [
-        {
-          "tipo": "sem-rbac",
-          "detalhe": "nenhum gate de permissão detectado (shared/permissoes.js ou kernel.temPermissao)"
-        },
-        {
-          "tipo": "alerta",
-          "detalhe": "Rótulo histórico 'Clientes' não corresponde ao conteúdo real (tela de Configurações de Impressão). Correção do rótulo/conteúdo é decisão cross-module pendente — ver relatório da Sprint MOD-V2-001."
-        }
-      ]
+      "diagnosticos": []
     },
     {
       "id": "compras",

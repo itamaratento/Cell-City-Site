@@ -1,6 +1,7 @@
 /**
- * Home enxuta do Dashboard — 7 módulos em destaque; demais em "Mais módulos".
- * Ordem fixa pedida pelo dono; preferência de aberto/fechado em config/painel.
+ * Home enxuta do Dashboard — 8 módulos em destaque; demais em "Mais módulos".
+ * Ordem: OS, Caixa, Estoque, Compras / Central de Alertas, Clientes, Pós-venda, Relatórios.
+ * Preferência de aberto/fechado em config/painel.
  */
 
 export const HOME_MODULOS_PRIMARIOS = [
@@ -10,10 +11,11 @@ export const HOME_MODULOS_PRIMARIOS = [
   'compras',
   'central-alertas',
   'clientes',
+  'pos-venda',
   'relatorios',
 ];
 
-/** data-sid da sidebar equivalentes aos 7 (central-alertas pode faltar no HTML antigo). */
+/** data-sid da sidebar equivalentes aos 8 primários. */
 export const SIDEBAR_SIDS_PRIMARIOS = [
   'os',
   'caixa',
@@ -21,6 +23,7 @@ export const SIDEBAR_SIDS_PRIMARIOS = [
   'compras',
   'central-alertas',
   'clientes',
+  'pos-venda',
   'relatorios',
 ];
 
@@ -32,7 +35,7 @@ export function isModuloPrimario(id) {
 }
 
 /**
- * Reordena lista de ids: os 7 primeiro (ordem canônica), depois o restante
+ * Reordena lista de ids: os 8 primeiro (ordem canônica), depois o restante
  * na ordem relativa original.
  * @param {string[]} ids
  * @param {string[]} [primarios]

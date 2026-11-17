@@ -87,19 +87,22 @@ export const dashboardBuscaMixin = {
         });
       } catch (e) { console.warn('[Busca] OS:', e); }
 
-      // ----- Clientes (abre a tela de Clientes do módulo OS) -----
+      // ----- Clientes (lista + ficha unificada #cliente-{digits}) -----
       try {
         const snap = await getDocs(query(collection(db, 'clientes'), ...injectTenantFilter([])));
         snap.forEach(d => {
           const c = { ...d.data() };
           const phone = c.phone || d.id;
+          const digits = String(c.phoneDigits || String(phone).replace(/\D/g, '') || '');
           const nOS = Array.isArray(c.history) ? ` · ${c.history.length} OS` : '';
           idx.clientes.push({
             id: String(phone),
             title: c.name || c.nome || 'Cliente',
             sub: `📞 ${phone}${nOS}`,
             search: `${c.name || c.nome || ''} ${phone}`.toLowerCase(),
-            url: `../../pages/os/index.html#fav-clientes`
+            url: digits.length >= 10
+              ? `../../pages/os/index.html#cliente-${digits}`
+              : `../../pages/clientes/index.html`
           });
         });
       } catch (e) { console.warn('[Busca] Clientes:', e); }

@@ -2753,7 +2753,7 @@ body {
 .modules-section {
   flex: 1;
 }
-/* Grid de módulos — home enxuta: 4 cols → 2 linhas nos 7 primários (~1366px) */
+/* Grid de módulos — home enxuta: 4 cols → 2 linhas nos 8 primários (~1366px) */
 .modules-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
