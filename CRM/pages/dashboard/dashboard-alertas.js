@@ -234,6 +234,11 @@ export const dashboardAlertasMixin = {
   // Compromissos FUTUROS (data > hoje) NÃO destacam o card — evita o card
   // vermelho/piscando por retornos automáticos de OS marcados daqui a N dias.
   // Preferência em Configurações: localStorage `cc_destacar_agenda` (padrão: ligado).
+  //
+  // Contagem do card também ignora (só visual — NÃO apaga/altera Firestore):
+  //  1) qualquer lembrete atrasado há mais de 7 dias;
+  //  2) lembretes automáticos "🔔 Retorno OS: …" cuja OS já está encerrada
+  //     (entregue / finalizada / cancelada-recusada).
   _destaqueAgendaAtivo() {
     try {
       const v = localStorage.getItem('cc_destacar_agenda');
@@ -242,6 +247,80 @@ export const dashboardAlertasMixin = {
     } catch {
       return true;
     }
+  },
+
+  _isLembreteRetornoOS(titulo) {
+    return /Retorno\s+OS\s*:/i.test(String(titulo || ''));
+  },
+
+  _osIdDoRetorno(titulo) {
+    const m = String(titulo || '').match(/Retorno\s+OS\s*:\s*([A-Za-z0-9_-]+)/i);
+    return m ? m[1] : '';
+  },
+
+  _osEncerradaParaAgenda(status) {
+    const s = String(status || '').toLowerCase();
+    // Entregue / Finalizada (concluído) / Cancelada-recusada (terminais da OS).
+    return s === 'entregue'
+      || s === 'concluido' || s === 'pronto'
+      || s === 'orcamento_recusado' || s === 'devolvido_orcamento'
+      || s === 'cancelada' || s === 'cancelado';
+  },
+
+  _diasAtrasoAgenda(dataISO, hojeISO) {
+    if (!dataISO || !hojeISO || dataISO >= hojeISO) return 0;
+    const a = new Date(dataISO + 'T00:00:00').getTime();
+    const b = new Date(hojeISO + 'T00:00:00').getTime();
+    if (isNaN(a) || isNaN(b)) return 0;
+    return Math.floor((b - a) / 86400000);
+  },
+
+  // Cache curto do mapa OS-id → status (mesma janela do refresh do card).
+  // Só leitura — nunca escreve/atualiza documentos.
+  async _mapaStatusOSParaAgenda() {
+    const TTL_MS = 300000;
+    if (this._osStatusCacheMap && (Date.now() - (this._osStatusCacheAt || 0)) < TTL_MS) {
+      return this._osStatusCacheMap;
+    }
+    const map = new Map();
+    try {
+      const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
+      snap.forEach(d => {
+        const o = d.data() || {};
+        const id = o.id || d.id;
+        if (id) map.set(String(id), o.status || '');
+      });
+    } catch (e) {
+      console.warn('[Agenda] falha ao ler status das OS para o card:', e);
+    }
+    this._osStatusCacheMap = map;
+    this._osStatusCacheAt = Date.now();
+    return map;
+  },
+
+  // Filtra pendências do CARD (não muta agenda nem OS).
+  async _filtrarPendentesCardAgenda(eventos) {
+    const hojeISO = new Date().toISOString().slice(0, 10);
+    let candidatos = (eventos || []).filter(e => {
+      if (e.concluido || !e.data) return false;
+      if (e.data > hojeISO) return false;
+      // Qualquer lembrete atrasado há mais de 7 dias sai da contagem do card.
+      if (e.data < hojeISO && this._diasAtrasoAgenda(e.data, hojeISO) > 7) return false;
+      return true;
+    });
+
+    const precisaStatus = candidatos.some(e => this._isLembreteRetornoOS(e.titulo));
+    if (!precisaStatus) return candidatos;
+
+    const statusPorId = await this._mapaStatusOSParaAgenda();
+    return candidatos.filter(e => {
+      if (!this._isLembreteRetornoOS(e.titulo)) return true;
+      const osId = this._osIdDoRetorno(e.titulo);
+      if (!osId) return true;
+      const st = statusPorId.get(osId);
+      if (st == null || st === undefined) return true; // OS sumiu → não esconde por engano
+      return !this._osEncerradaParaAgenda(st);
+    });
   },
 
   atualizarCardAcaoSemana() {
@@ -259,11 +338,7 @@ export const dashboardAlertasMixin = {
 
       const eventos = await this._lerAgenda();
       const hojeISO = new Date().toISOString().slice(0, 10);
-      // Só hoje ou atrasado (não concluído). Futuro não conta.
-      const pendentes = (eventos || []).filter(e => {
-        if (e.concluido || !e.data) return false;
-        return e.data <= hojeISO;
-      });
+      const pendentes = await this._filtrarPendentesCardAgenda(eventos);
       const countHoje = pendentes.filter(e => e.data === hojeISO).length;
       const countAtrasadas = pendentes.filter(e => e.data < hojeISO).length;
       const temDestaque = pendentes.length > 0;
