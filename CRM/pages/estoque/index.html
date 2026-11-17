@@ -77,12 +77,24 @@
                         <input type="number" id="est-inp-min" min="0" value="1" placeholder="1">
                     </div>
                     <div class="est-form-group">
-                        <label>Preço de venda (R$)</label>
+                        <label>Preço Loja (R$)</label>
                         <input type="number" id="est-inp-venda" min="0" step="0.01" placeholder="0,00">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Preço Feira (R$)</label>
+                        <input type="number" id="est-inp-venda-feira" min="0" step="0.01" placeholder="0,00">
                     </div>
                     <div class="est-form-group">
                         <label>Preço de custo (R$)</label>
                         <input type="number" id="est-inp-custo" min="0" step="0.01" placeholder="0,00">
+                    </div>
+                    <div class="est-form-group">
+                        <label>Fornecedor</label>
+                        <input type="text" id="est-inp-fornecedor" placeholder="Ex: YN, Jordão..." maxlength="80">
+                    </div>
+                    <div class="est-form-group est-span2">
+                        <label>Pedido de compra</label>
+                        <input type="text" id="est-inp-pedido" placeholder="Nº ou referência do pedido" maxlength="80">
                     </div>
                 </div>
                 <div class="est-form-btns">
@@ -131,6 +143,18 @@
             <div class="est-form-btns">
                 <button class="est-btn-salvar" id="est-modal-confirmar">Confirmar</button>
                 <button class="est-btn-cancelar" id="est-modal-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIRMAÇÃO (substitui confirm nativo) -->
+    <div class="est-modal-overlay" id="est-confirm-overlay" style="display:none">
+        <div class="est-modal">
+            <div class="est-modal-titulo" id="est-confirm-titulo">Confirmar</div>
+            <div class="est-modal-body" id="est-confirm-body" style="font-size:14px;color:var(--text2);line-height:1.45;"></div>
+            <div class="est-form-btns">
+                <button class="est-btn-salvar" id="est-confirm-ok">Confirmar</button>
+                <button class="est-btn-cancelar" id="est-confirm-cancel">Cancelar</button>
             </div>
         </div>
     </div>

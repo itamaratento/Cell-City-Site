@@ -4,6 +4,15 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml as esc } from '../../shared/sanitize.js';
 import { injectTenantFilter, tData } from '../../shared/tenant-query.js';
+import {
+    LOCAL_LOJA,
+    LOCAL_FEIRA,
+    labelLocal,
+    normalizarLocal,
+    precoSugerido,
+    totaisPorLocal,
+    breakdownLocais,
+} from './loja-feira.js';
 
 // ── Constantes ────────────────────────────────────────────────
 const COL_LANCAMENTOS = 'caixa_lancamentos';
@@ -21,13 +30,55 @@ const CATEGORIAS_PADRAO = [
 // ── Estado ────────────────────────────────────────────────────
 let _empresaId       = null;
 let _periodo         = 'hoje';
+let _localFiltro     = 'todos'; // todos | loja | feira
 let _unsubLanc       = null;
 let _unsubLembretes  = null;
 let _ultimosLanc     = [];
 let _ultimosLembretes = [];
-let _produtoVinculado = null;  // { id, nome, custo, venda, quantidade }
+let _produtoVinculado = null;  // { id, nome, custo, venda, vendaFeira, quantidade }
 let _cacheProdutos   = [];
 let _vendaPendente   = null;   // dados do form aguardando cadastro de produto
+let _confirmResolve  = null;
+
+/** Substitui diálogos nativos do browser (travam automação) por modal na página. */
+function confirmarCaixa(titulo, corpo, txtBtn = 'Confirmar') {
+    return new Promise((resolve) => {
+        _confirmResolve = resolve;
+        document.getElementById('confirm-titulo').textContent = titulo;
+        document.getElementById('confirm-body').textContent = corpo;
+        document.getElementById('confirm-prompt-wrap').style.display = 'none';
+        document.getElementById('confirm-ok').textContent = txtBtn;
+        document.getElementById('confirm-ok').onclick = () => _fecharConfirm(true);
+        document.getElementById('modal-confirm').classList.add('aberto');
+    });
+}
+
+function promptCaixa(titulo, corpo, placeholder = '') {
+    return new Promise((resolve) => {
+        _confirmResolve = (ok) => {
+            if (!ok) return resolve(null);
+            resolve(document.getElementById('confirm-prompt-input').value);
+        };
+        document.getElementById('confirm-titulo').textContent = titulo;
+        document.getElementById('confirm-body').textContent = corpo || '';
+        const wrap = document.getElementById('confirm-prompt-wrap');
+        wrap.style.display = 'block';
+        const inp = document.getElementById('confirm-prompt-input');
+        inp.value = '';
+        inp.placeholder = placeholder;
+        document.getElementById('confirm-ok').textContent = 'OK';
+        document.getElementById('confirm-ok').onclick = () => _fecharConfirm(true);
+        document.getElementById('modal-confirm').classList.add('aberto');
+        setTimeout(() => inp.focus(), 50);
+    });
+}
+
+window._fecharConfirm = function (ok) {
+    document.getElementById('modal-confirm').classList.remove('aberto');
+    const r = _confirmResolve;
+    _confirmResolve = null;
+    if (r) r(ok);
+};
 
 // ── Boot ──────────────────────────────────────────────────────
 async function init() {
@@ -96,7 +147,7 @@ async function carregarCategorias(selectId = 'categoria') {
 }
 
 window.novaCategoria = async function () {
-    const nome = prompt('Nome da nova categoria:');
+    const nome = await promptCaixa('Nova categoria', 'Nome da nova categoria:', 'Ex: Acessórios');
     if (!nome || !nome.trim()) return;
     const nomeFmt = nome.trim();
     try {
@@ -137,13 +188,23 @@ function assinarLancamentos() {
 
     _unsubLanc = onSnapshot(q, snap => {
         _ultimosLanc = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        renderLista(_ultimosLanc);
-        renderTotais(_ultimosLanc);
+        aplicarFiltrosRender();
     }, err => {
         console.error('[CAIXA] Erro listener:', err);
         document.getElementById('lista-lancamentos').innerHTML =
             '<div class="erro">Erro ao carregar lançamentos.</div>';
     });
+}
+
+function listaComFiltroLocal() {
+    if (_localFiltro === 'todos') return _ultimosLanc;
+    return _ultimosLanc.filter(l => normalizarLocal(l.localVenda) === _localFiltro);
+}
+
+function aplicarFiltrosRender() {
+    const lista = listaComFiltroLocal();
+    renderLista(lista);
+    renderTotais(_ultimosLanc, lista);
 }
 
 function calcularLucro(tipo, valor, custo) {
@@ -160,11 +221,15 @@ window.salvarLancamento = async function () {
     const custo     = parseFloat(document.getElementById('custo').value) || 0;
     const data      = document.getElementById('data').value;
     const obs       = document.getElementById('obs').value.trim();
+    const localVenda = normalizarLocal(document.getElementById('local-venda')?.value);
 
     if (!descricao) return showToast('Informe a descrição.');
     if (!categoria) return showToast('Selecione uma categoria.');
     if (!valor || valor <= 0) return showToast('Informe o valor.');
     if (!data) return showToast('Informe a data.');
+    if (tipo !== 'saida' && !document.getElementById('local-venda')?.value) {
+        return showToast('Selecione o local da venda.');
+    }
 
     // Auto-vincular produto se nome exato bater no cache
     if (!_produtoVinculado && tipo !== 'saida') {
@@ -178,9 +243,13 @@ window.salvarLancamento = async function () {
         const nomeLower = descricao.toLowerCase();
         const existe = _cacheProdutos.some(p => (p.nome || '').toLowerCase().includes(nomeLower));
         if (!existe) {
-            const cadastrar = confirm(`Produto "${descricao}" não encontrado no estoque.\nDeseja cadastrar agora?`);
+            const cadastrar = await confirmarCaixa(
+                'Produto não encontrado',
+                `Produto "${descricao}" não encontrado no estoque.\nDeseja cadastrar agora?`,
+                'Cadastrar'
+            );
             if (cadastrar) {
-                _vendaPendente = { tipo, descricao, categoria, valor, custo, data, obs };
+                _vendaPendente = { tipo, descricao, categoria, valor, custo, data, obs, localVenda };
                 abrirModalNovoProduto(descricao, valor, custo);
                 return;
             }
@@ -192,7 +261,7 @@ window.salvarLancamento = async function () {
     btn.textContent = 'Salvando...';
 
     try {
-        await _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs });
+        await _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs, localVenda });
     } catch (e) {
         console.error('[CAIXA] Erro ao salvar:', e);
         showToast('Erro ao salvar. Tente novamente.');
@@ -204,7 +273,8 @@ window.salvarLancamento = async function () {
 
 // ── Excluir ───────────────────────────────────────────────────
 window.excluirLancamento = async function (id) {
-    if (!confirm('Excluir este lançamento?')) return;
+    const ok = await confirmarCaixa('Excluir lançamento', 'Excluir este lançamento?', 'Excluir');
+    if (!ok) return;
     try {
         await deleteDoc(doc(db, COL_LANCAMENTOS, id));
         showToast('Lançamento excluído.');
@@ -224,6 +294,8 @@ window.editarLancamento = function (id) {
     document.getElementById('edit-descricao').value = l.descricao || '';
     document.getElementById('edit-valor').value = l.valor || '';
     document.getElementById('edit-custo').value = l.custo || '';
+    const editLocal = document.getElementById('edit-local-venda');
+    if (editLocal) editLocal.value = normalizarLocal(l.localVenda);
 
     document.querySelectorAll('#modal-edicao .tipo-btn').forEach(b => {
         b.classList.toggle('ativo', b.dataset.tipo === l.tipo);
@@ -261,6 +333,7 @@ window.salvarEdicao = async function () {
     const categoria = document.getElementById('edit-categoria').value;
     const valor     = parseFloat(document.getElementById('edit-valor').value);
     const custo     = parseFloat(document.getElementById('edit-custo').value) || 0;
+    const localVenda = normalizarLocal(document.getElementById('edit-local-venda')?.value);
 
     if (!descricao || !categoria || !valor || valor <= 0) {
         return showToast('Preencha descrição, categoria e valor.');
@@ -268,7 +341,7 @@ window.salvarEdicao = async function () {
 
     try {
         await updateDoc(doc(db, COL_LANCAMENTOS, id), {
-            tipo, descricao, categoria, valor, custo,
+            tipo, descricao, categoria, valor, custo, localVenda,
             lucro: calcularLucro(tipo, valor, custo),
             atualizadoEm: serverTimestamp()
         });
@@ -292,10 +365,29 @@ window.filtrar = function (btn) {
     assinarLancamentos();
 };
 
+window.filtrarLocal = function (btn) {
+    document.querySelectorAll('.filtro-local-btn').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    _localFiltro = btn.dataset.local || 'todos';
+    aplicarFiltrosRender();
+};
+
+window.aoMudarLocalVenda = function () {
+    if (!_produtoVinculado) return;
+    const local = normalizarLocal(document.getElementById('local-venda')?.value);
+    const sugerido = precoSugerido(_produtoVinculado, local);
+    if (sugerido > 0) {
+        document.getElementById('valor').value = sugerido;
+        atualizarLucro();
+    }
+};
+
 window.selecionarTipo = function (btn) {
     document.querySelectorAll('#bloco-padrao-2 .tipo-btn').forEach(b => b.classList.remove('ativo'));
     btn.classList.add('ativo');
     document.getElementById('tipo').value = btn.dataset.tipo;
+    const campoLocal = document.getElementById('campo-local-venda');
+    if (campoLocal) campoLocal.style.display = btn.dataset.tipo === 'saida' ? 'none' : '';
     atualizarLucro();
 };
 
@@ -347,11 +439,12 @@ function cardLancamento(l) {
     // Para entradas/serviços: mostra lucro líquido; para saídas: mostra valor (despesa)
     const valorExibido = l.tipo === 'saida' ? l.valor : lucro;
     const temCusto = l.tipo !== 'saida' && (l.custo || 0) > 0;
+    const localTxt = l.tipo === 'saida' ? '' : ` · ${labelLocal(normalizarLocal(l.localVenda))}`;
     return `
         <div class="lancamento-card tipo-${l.tipo}">
             <div class="lanc-info">
                 <div class="lanc-desc">${esc(l.descricao)}</div>
-                <div class="lanc-meta">${esc(l.categoria)} · ${l.data}</div>
+                <div class="lanc-meta">${esc(l.categoria)} · ${l.data}${localTxt}</div>
                 ${temCusto ? `<div class="lanc-bruto">💵 bruto: ${formatarMoeda(l.valor)}</div>` : ''}
                 ${l.obs ? `<div class="lanc-obs">${esc(l.obs)}</div>` : ''}
             </div>
@@ -373,19 +466,24 @@ function renderLista(lancamentos) {
         : '<div class="vazio">Nenhum lançamento neste período.</div>';
 }
 
-function renderTotais(lancamentos) {
-    const vendas   = lancamentos.filter(l => l.tipo !== 'saida');
-    const despesas = lancamentos.filter(l => l.tipo === 'saida');
+/** `listaFiltrada` = período + local; `listaPeriodo` = só período (para breakdown). */
+function renderTotais(listaPeriodo, listaFiltrada) {
+    const lista = listaFiltrada || listaPeriodo || [];
+    const t = totaisPorLocal(lista, 'todos');
+    document.getElementById('total-faturamento').textContent = formatarMoeda(t.vendido);
+    document.getElementById('total-custos').textContent      = formatarMoeda(t.custo);
+    document.getElementById('total-lucro').textContent       = formatarMoeda(t.lucro);
 
-    const faturamento    = vendas.reduce((s, l) => s + (l.valor || 0), 0);
-    const custoMercadoria = vendas.reduce((s, l) => s + (l.custo || 0), 0);
-    const totalDespesas  = despesas.reduce((s, l) => s + (l.valor || 0), 0);
-    const custos         = custoMercadoria + totalDespesas;
-    const lucro          = faturamento - custos;
-
-    document.getElementById('total-faturamento').textContent = formatarMoeda(faturamento);
-    document.getElementById('total-custos').textContent      = formatarMoeda(custos);
-    document.getElementById('total-lucro').textContent       = formatarMoeda(lucro);
+    const box = document.getElementById('totais-por-local');
+    if (!box) return;
+    if (_localFiltro !== 'todos') {
+        box.innerHTML = `<div>Filtro: <strong>${_localFiltro === LOCAL_FEIRA ? 'Feira da Marreta' : 'Loja Cell City'}</strong></div>`;
+        return;
+    }
+    const bd = breakdownLocais(listaPeriodo || []);
+    box.innerHTML = `
+      <div>🏪 <strong>Loja</strong> — vendido ${formatarMoeda(bd.loja.vendido)} · custo ${formatarMoeda(bd.loja.custo)} · lucro ${formatarMoeda(bd.loja.lucro)}</div>
+      <div>🎪 <strong>Feira</strong> — vendido ${formatarMoeda(bd.feira.vendido)} · custo ${formatarMoeda(bd.feira.custo)} · lucro ${formatarMoeda(bd.feira.lucro)}</div>`;
 }
 
 // ── Lembretes ─────────────────────────────────────────────────
@@ -466,7 +564,12 @@ window.pagarLembrete = async function (id) {
     const lembrete = _ultimosLembretes.find(l => l.id === id);
     if (!lembrete) return;
 
-    if (!confirm(`Marcar "${lembrete.descricao}" como pago e lançar no Caixa?`)) return;
+    const okPagar = await confirmarCaixa(
+        'Pagar lembrete',
+        `Marcar "${lembrete.descricao}" como pago e lançar no Caixa?`,
+        'Pagar'
+    );
+    if (!okPagar) return;
 
     try {
         const hojeStr = hoje();
@@ -486,7 +589,8 @@ window.pagarLembrete = async function (id) {
 };
 
 window.excluirLembrete = async function (id) {
-    if (!confirm('Excluir este lembrete?')) return;
+    const okEx = await confirmarCaixa('Excluir lembrete', 'Excluir este lembrete?', 'Excluir');
+    if (!okEx) return;
     try {
         await deleteDoc(doc(db, COL_LEMBRETES, id));
     } catch (e) {
@@ -592,6 +696,10 @@ function limparForm() {
     document.getElementById('custo').value     = '';
     document.getElementById('obs').value       = '';
     document.getElementById('data').value      = hoje();
+    const localEl = document.getElementById('local-venda');
+    if (localEl) localEl.value = LOCAL_LOJA;
+    const campoLocal = document.getElementById('campo-local-venda');
+    if (campoLocal) campoLocal.style.display = '';
     document.getElementById('lucroAuto').value = '';
     document.getElementById('lucroAuto').classList.remove('negativo');
     document.getElementById('alertaPrejuizo').style.display = 'none';
@@ -629,17 +737,20 @@ function setupAutocomplete() {
 
         if (!matches.length) { drop.style.display = 'none'; return; }
 
+        const local = normalizarLocal(document.getElementById('local-venda')?.value);
         drop.innerHTML = matches.map(p => {
             const zerado = p.quantidade <= 0;
             const baixo  = !zerado && p.quantidade <= (p.quantidadeMinima || 1);
             const cls    = zerado ? 'ac-zerado' : baixo ? 'ac-baixo' : '';
             const qtyTxt = zerado ? 'Estoque zerado' : `Estoque: ${p.quantidade}`;
+            const preco  = precoSugerido(p, local);
             return `<div class="autocomplete-item ${cls}"
                          data-id="${p.id}" data-nome="${esc(p.nome)}"
                          data-custo="${p.custo || 0}" data-venda="${p.venda || 0}"
+                         data-venda-feira="${p.vendaFeira || 0}"
                          data-qty="${p.quantidade || 0}">
                         <span class="ac-nome">${esc(p.nome)}</span>
-                        <span class="ac-info">${qtyTxt} · ${formatarMoeda(p.venda)}</span>
+                        <span class="ac-info">${qtyTxt} · ${formatarMoeda(preco)}</span>
                     </div>`;
         }).join('');
         drop.style.display = 'block';
@@ -652,6 +763,7 @@ function setupAutocomplete() {
                     nome:       item.dataset.nome,
                     custo:      parseFloat(item.dataset.custo) || 0,
                     venda:      parseFloat(item.dataset.venda) || 0,
+                    vendaFeira: parseFloat(item.dataset.vendaFeira) || 0,
                     quantidade: parseInt(item.dataset.qty)    || 0
                 });
                 drop.style.display = 'none';
@@ -669,8 +781,10 @@ function vincularProduto(p) {
     _produtoVinculado = p;
     document.getElementById('descricao').value = p.nome;
     document.getElementById('custo').value     = p.custo > 0 ? p.custo : '';
-    if (!document.getElementById('valor').value && p.venda > 0)
-        document.getElementById('valor').value = p.venda;
+    const local = normalizarLocal(document.getElementById('local-venda')?.value);
+    const sugerido = precoSugerido(p, local);
+    // Sempre aplica o preço do local ao vincular (fluxo Loja × Feira)
+    if (sugerido > 0) document.getElementById('valor').value = sugerido;
     atualizarLucro();
 
     const badge = document.getElementById('produto-badge');
@@ -730,6 +844,8 @@ function abrirModalNovoProduto(nome, valorVenda, custoSugerido) {
     document.getElementById('np-nome').value  = nome || '';
     document.getElementById('np-custo').value = custoSugerido > 0 ? custoSugerido : '';
     document.getElementById('np-venda').value = valorVenda > 0    ? valorVenda    : '';
+    const npFeira = document.getElementById('np-venda-feira');
+    if (npFeira) npFeira.value = '';
     document.getElementById('np-qty').value   = '0';
     document.getElementById('modal-novo-produto').classList.add('aberto');
     setTimeout(() => document.getElementById('np-nome').focus(), 100);
@@ -746,6 +862,7 @@ window.salvarNovoProduto = async function () {
     const qty   = parseInt(document.getElementById('np-qty').value)    || 0;
     const custo = parseFloat(document.getElementById('np-custo').value) || 0;
     const venda = parseFloat(document.getElementById('np-venda').value) || 0;
+    const vendaFeira = parseFloat(document.getElementById('np-venda-feira')?.value) || 0;
 
     if (!nome) return showToast('Informe o nome do produto.');
 
@@ -753,9 +870,9 @@ window.salvarNovoProduto = async function () {
     try {
         await setDoc(doc(db, COL_ESTOQUE, id), tData({
             nome, categoria: cat, quantidade: qty, quantidadeMinima: 1,
-            venda, custo, atualizadoEm: serverTimestamp()
+            venda, vendaFeira, custo, atualizadoEm: serverTimestamp()
         }));
-        const novoProd = { id, nome, custo, venda, quantidade: qty };
+        const novoProd = { id, nome, custo, venda, vendaFeira, quantidade: qty };
         _cacheProdutos.push(novoProd);
         _produtoVinculado = novoProd;
 
@@ -774,10 +891,12 @@ window.salvarNovoProduto = async function () {
 };
 
 // ── Core: salvar lançamento no Firestore + estoque ─────────────
-async function _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs }) {
+async function _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs, localVenda }) {
     const dataISO = new Date(data + 'T12:00:00').toISOString();
+    const local = tipo === 'saida' ? LOCAL_LOJA : normalizarLocal(localVenda);
     await addDoc(collection(db, COL_LANCAMENTOS), {
         tipo, descricao, categoria, valor, custo,
+        localVenda: local,
         lucro: calcularLucro(tipo, valor, custo),
         data, dataISO, ano: new Date(data + 'T12:00:00').getFullYear(),
         obs, empresa_id: _empresaId, criadoEm: serverTimestamp()

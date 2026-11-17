@@ -102,6 +102,14 @@
         <button class="btn-nova-categoria" onclick="novaCategoria()">+ Nova categoria</button>
       </div>
 
+      <div class="campo-grupo" id="campo-local-venda">
+        <label>Local da venda *</label>
+        <select id="local-venda" onchange="aoMudarLocalVenda()">
+          <option value="loja">🏪 Loja Cell City</option>
+          <option value="feira">🎪 Feira da Marreta</option>
+        </select>
+      </div>
+
       <div class="campo-linha">
         <div class="campo-grupo">
           <label>Valor (R$) *</label>
@@ -145,20 +153,26 @@
         <button class="filtro-btn" data-periodo="semana" onclick="filtrar(this)">Semana</button>
         <button class="filtro-btn" data-periodo="mes" onclick="filtrar(this)">Mês</button>
       </div>
+      <div class="filtros-financeiros filtros-local" style="margin-top:8px;">
+        <button class="filtro-local-btn ativo" data-local="todos" onclick="filtrarLocal(this)">Todos locais</button>
+        <button class="filtro-local-btn" data-local="loja" onclick="filtrarLocal(this)">🏪 Loja</button>
+        <button class="filtro-local-btn" data-local="feira" onclick="filtrarLocal(this)">🎪 Feira</button>
+      </div>
       <div class="cards-financeiros">
         <div class="card-financeiro card-entradas">
-          <div class="card-label">💵 Faturamento Bruto</div>
+          <div class="card-label">💵 Vendido</div>
           <div class="card-valor" id="total-faturamento">R$ 0,00</div>
         </div>
         <div class="card-financeiro card-custos">
-          <div class="card-label">📦 Custos</div>
+          <div class="card-label">📦 Custo</div>
           <div class="card-valor" id="total-custos">R$ 0,00</div>
         </div>
         <div class="card-financeiro card-lucro">
-          <div class="card-label">💎 Resultado Líquido</div>
+          <div class="card-label">💎 Lucro</div>
           <div class="card-valor" id="total-lucro">R$ 0,00</div>
         </div>
       </div>
+      <div id="totais-por-local" class="totais-por-local" style="margin-top:12px;font-size:13px;color:var(--text2);line-height:1.6;"></div>
     </section>
 
     <!-- MOVIMENTAÇÕES -->
@@ -241,6 +255,13 @@
         <label>Categoria *</label>
         <select id="edit-categoria"></select>
       </div>
+      <div class="campo-grupo">
+        <label>Local da venda *</label>
+        <select id="edit-local-venda">
+          <option value="loja">🏪 Loja Cell City</option>
+          <option value="feira">🎪 Feira da Marreta</option>
+        </select>
+      </div>
       <div class="campo-linha">
         <div class="campo-grupo">
           <label>Valor (R$) *</label>
@@ -295,11 +316,35 @@
           <input type="number" id="np-custo" placeholder="0,00" step="0.01" min="0">
         </div>
       </div>
-      <div class="campo-grupo">
-        <label>Preço de venda (R$)</label>
-        <input type="number" id="np-venda" placeholder="0,00" step="0.01" min="0">
+      <div class="campo-linha">
+        <div class="campo-grupo">
+          <label>Preço Loja (R$)</label>
+          <input type="number" id="np-venda" placeholder="0,00" step="0.01" min="0">
+        </div>
+        <div class="campo-grupo">
+          <label>Preço Feira (R$)</label>
+          <input type="number" id="np-venda-feira" placeholder="0,00" step="0.01" min="0">
+        </div>
       </div>
       <button class="btn-salvar" onclick="salvarNovoProduto()">✅ Cadastrar e Finalizar Venda</button>
+    </div>
+  </div>
+
+  <!-- MODAL CONFIRMAÇÃO / PROMPT (substitui confirm/prompt nativos) -->
+  <div class="modal-overlay" id="modal-confirm" onclick="if(event.target===this)_fecharConfirm(false)">
+    <div class="modal-painel">
+      <div class="modal-header">
+        <span id="confirm-titulo">Confirmar</span>
+        <button class="modal-fechar" onclick="_fecharConfirm(false)">✕</button>
+      </div>
+      <div id="confirm-body" style="font-size:14px;color:var(--text2);line-height:1.45;margin-bottom:14px;white-space:pre-wrap;"></div>
+      <div id="confirm-prompt-wrap" style="display:none;margin-bottom:14px;">
+        <input type="text" id="confirm-prompt-input" placeholder="" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);">
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-salvar" id="confirm-ok" style="flex:1;">Confirmar</button>
+        <button class="btn-nova-categoria" id="confirm-cancel" style="flex:1;" onclick="_fecharConfirm(false)">Cancelar</button>
+      </div>
     </div>
   </div>
 
