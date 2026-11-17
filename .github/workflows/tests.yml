@@ -127,10 +127,11 @@ jobs:
       - name: Testes de mensagem OS (criação + finalizado)
         run: node --test tests/os/*.test.mjs
 
-      - name: Testes dashboard home enxuta + caixa
+      - name: Testes dashboard home enxuta + caixa + ui-dialog
         run: |
           node --test tests/dashboard/*.test.mjs
           node --test tests/caixa/*.test.mjs
+          node --test tests/shared/ui-dialog.test.mjs
 
       - name: Validação de infraestrutura app-config
         run: npm run validar-infra-app-config

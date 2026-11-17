@@ -1,4 +1,6 @@
 // Painel de Alertas — sino (extraído de dashboard/index.html inline, P2.9 2026-07-16)
+import { uiConfirm, uiPrompt, uiAlert } from '../../shared/ui-dialog.js';
+
 (function () {
   var VISTOS_KEY = 'cc_orc_aprovacoes_vistas';
   var sino, badge, panel, body, footer;
@@ -127,17 +129,23 @@
 
   function marcarTarefaRealizada(it) {
     if (!it) return;
-    if (!confirm('Marcar como contato realizado?\n\nIsso registra a ação no Pós-venda e remove o alerta do sino.')) return;
-    var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!dbx || !FB || !FB.setDoc) { console.warn('[Alertas] Firestore indisponível.'); return; }
-    var key = it.osId + '_' + it.prazo;
-    if (contatosFeitos.has(key)) { recompute(); return; }
-    FB.setDoc(FB.doc(dbx, 'posvenda_contatos', key), (window.ccTenant ? window.ccTenant.tData : Object)({
-      osId: it.osId, clientName: it.clientName || '', phone: it.phone || '', model: it.model || '',
-      prazo: it.prazo, emoji: '✅', resultado: 'Contato realizado (via Painel de Alertas)',
-      dataContato: new Date().toISOString(), createdAt: FB.serverTimestamp()
-    })).then(function () { contatosFeitos.add(key); recompute(); })
-      .catch(function (e) { console.warn('[Alertas] erro:', e && e.message); alert('Não foi possível registrar.'); });
+    uiConfirm({
+      title: 'Contato realizado?',
+      body: 'Marcar como contato realizado?\n\nIsso registra a ação no Pós-venda e remove o alerta do sino.',
+      okText: 'Marcar',
+    }).then(function (ok) {
+      if (!ok) return;
+      var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
+      if (!dbx || !FB || !FB.setDoc) { console.warn('[Alertas] Firestore indisponível.'); return; }
+      var key = it.osId + '_' + it.prazo;
+      if (contatosFeitos.has(key)) { recompute(); return; }
+      FB.setDoc(FB.doc(dbx, 'posvenda_contatos', key), (window.ccTenant ? window.ccTenant.tData : Object)({
+        osId: it.osId, clientName: it.clientName || '', phone: it.phone || '', model: it.model || '',
+        prazo: it.prazo, emoji: '✅', resultado: 'Contato realizado (via Painel de Alertas)',
+        dataContato: new Date().toISOString(), createdAt: FB.serverTimestamp()
+      })).then(function () { contatosFeitos.add(key); recompute(); })
+        .catch(function (e) { console.warn('[Alertas] erro:', e && e.message); uiAlert({ title: 'Erro', body: 'Não foi possível registrar.' }); });
+    });
   }
 
   var AG_TIPO = { celular: '📱 Celular', notebook: '💻 Notebook', impressora: '🖨️ Impressora', outro: '🔧 Outro' };
@@ -166,25 +174,37 @@
 
   function atualizarAg(id, campos) {
     var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!dbx || !FB || !FB.setDoc) { alert('Firestore indisponível.'); return; }
+    if (!dbx || !FB || !FB.setDoc) { uiAlert({ title: 'Erro', body: 'Firestore indisponível.' }); return; }
     FB.setDoc(FB.doc(dbx, 'agendamentos', id), campos, { merge: true })
-      .catch(function (e) { console.warn('[Alertas] erro agendamento:', e && e.message); alert('Não foi possível atualizar.'); });
+      .catch(function (e) { console.warn('[Alertas] erro agendamento:', e && e.message); uiAlert({ title: 'Erro', body: 'Não foi possível atualizar.' }); });
   }
-  function agConfirmar(id) { if (!id) return; if (!confirm('Confirmar este agendamento?')) return; atualizarAg(id, { status: 'confirmado' }); }
+  function agConfirmar(id) {
+    if (!id) return;
+    uiConfirm({ title: 'Confirmar agendamento', body: 'Confirmar este agendamento?', okText: 'Confirmar' })
+      .then(function (ok) { if (ok) atualizarAg(id, { status: 'confirmado' }); });
+  }
   function agReagendar(id) {
     if (!id) return;
-    var data = prompt('Nova data (DD/MM/AAAA):'); if (!data) return;
-    var iso = data, m = data.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) iso = m[3] + '-' + m[2] + '-' + m[1];
-    else if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) { alert('Data inválida.'); return; }
-    var hora = prompt('Novo horário (HH:MM):');
-    if (!hora || !/^\d{1,2}:\d{2}$/.test(hora)) { if (hora !== null) alert('Horário inválido.'); return; }
-    atualizarAg(id, { status: 'reagendado', data: iso, horario: hora, observacaoAdmin: 'Reagendado para ' + fmtDataAg(iso) + ' às ' + hora + '.' });
+    uiPrompt({ title: 'Reagendar', body: 'Nova data (DD/MM/AAAA):', placeholder: 'DD/MM/AAAA' }).then(function (data) {
+      if (!data) return;
+      var iso = data, m = data.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (m) iso = m[3] + '-' + m[2] + '-' + m[1];
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) { uiAlert({ title: 'Data inválida', body: 'Use DD/MM/AAAA.' }); return; }
+      return uiPrompt({ title: 'Horário', body: 'Novo horário (HH:MM):', placeholder: 'HH:MM' }).then(function (hora) {
+        if (!hora || !/^\d{1,2}:\d{2}$/.test(hora)) {
+          if (hora !== null) uiAlert({ title: 'Horário inválido', body: 'Use HH:MM.' });
+          return;
+        }
+        atualizarAg(id, { status: 'reagendado', data: iso, horario: hora, observacaoAdmin: 'Reagendado para ' + fmtDataAg(iso) + ' às ' + hora + '.' });
+      });
+    });
   }
   function agRecusar(id) {
     if (!id) return;
-    var motivo = prompt('Motivo da recusa:'); if (motivo === null) return;
-    atualizarAg(id, { status: 'cancelado', observacaoAdmin: motivo.trim() || 'Horário indisponível' });
+    uiPrompt({ title: 'Recusar', body: 'Motivo da recusa:', placeholder: 'Opcional' }).then(function (motivo) {
+      if (motivo === null) return;
+      atualizarAg(id, { status: 'cancelado', observacaoAdmin: String(motivo).trim() || 'Horário indisponível' });
+    });
   }
 
   function diagKey(s) { return 'diag|' + (s._id || s.id || ''); }
@@ -208,11 +228,15 @@
   }
   function atualizarDiag(id, campos) {
     var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!dbx || !FB || !FB.setDoc) { alert('Firestore indisponível.'); return; }
+    if (!dbx || !FB || !FB.setDoc) { uiAlert({ title: 'Erro', body: 'Firestore indisponível.' }); return; }
     FB.setDoc(FB.doc(dbx, 'solicitacoes_diagnostico', id), campos, { merge: true })
-      .catch(function (e) { console.warn('[Alertas] erro diag:', e && e.message); alert('Não foi possível atualizar.'); });
+      .catch(function (e) { console.warn('[Alertas] erro diag:', e && e.message); uiAlert({ title: 'Erro', body: 'Não foi possível atualizar.' }); });
   }
-  function diagAtender(id) { if (!id) return; if (!confirm('Marcar esta solicitação como atendida?')) return; atualizarDiag(id, { status: 'concluido', respondido: true }); }
+  function diagAtender(id) {
+    if (!id) return;
+    uiConfirm({ title: 'Atender solicitação', body: 'Marcar esta solicitação como atendida?', okText: 'Atendido' })
+      .then(function (ok) { if (ok) atualizarDiag(id, { status: 'concluido', respondido: true }); });
+  }
 
   function preOSItemHTML(p) {
     var id = p.id || p._id;
@@ -305,27 +329,33 @@
     if (!docId && docId !== 0) return;
     var idx = parseInt(notaIdx, 10);
     if (isNaN(idx) || idx < 0) return;
-    if (!confirm('Marcar este lembrete como realizado?\n\nEle some do sininho e fica concluído na Agenda.')) return;
-    var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
-    if (!dbx || !FB || !FB.setDoc || !FB.getDoc) {
-      alert('Firestore indisponível.');
-      return;
-    }
-    var ref = FB.doc(dbx, 'agenda', docId);
-    FB.getDoc(ref).then(function (snap) {
-      if (!snap.exists()) { alert('Lembrete não encontrado na Agenda.'); return; }
-      var dados = snap.data() || {};
-      var notas = Array.isArray(dados.notas) ? dados.notas.map(function (n) { return n ? Object.assign({}, n) : {}; }) : notasDeAgenda(dados);
-      if (!notas[idx]) { alert('Nota não encontrada.'); return; }
-      notas[idx].concluido = true;
-      var payload = { notas: notas };
-      if (window.ccTenant && window.ccTenant.tData) payload = window.ccTenant.tData(payload);
-      return FB.setDoc(ref, payload, { merge: true });
-    }).then(function () {
-      // onSnapshot da agenda atualiza ultimosAgenda/recompute
-    }).catch(function (e) {
-      console.warn('[Alertas] erro concluir agenda:', e && e.message);
-      alert('Não foi possível marcar como realizado.');
+    uiConfirm({
+      title: 'Lembrete realizado?',
+      body: 'Marcar este lembrete como realizado?\n\nEle some do sininho e fica concluído na Agenda.',
+      okText: 'Realizado',
+    }).then(function (ok) {
+      if (!ok) return;
+      var dbx = window.dbFirestore, FB = window.FirebaseFirestore;
+      if (!dbx || !FB || !FB.setDoc || !FB.getDoc) {
+        uiAlert({ title: 'Erro', body: 'Firestore indisponível.' });
+        return;
+      }
+      var ref = FB.doc(dbx, 'agenda', docId);
+      FB.getDoc(ref).then(function (snap) {
+        if (!snap.exists()) { uiAlert({ title: 'Erro', body: 'Lembrete não encontrado na Agenda.' }); return; }
+        var dados = snap.data() || {};
+        var notas = Array.isArray(dados.notas) ? dados.notas.map(function (n) { return n ? Object.assign({}, n) : {}; }) : notasDeAgenda(dados);
+        if (!notas[idx]) { uiAlert({ title: 'Erro', body: 'Nota não encontrada.' }); return; }
+        notas[idx].concluido = true;
+        var payload = { notas: notas };
+        if (window.ccTenant && window.ccTenant.tData) payload = window.ccTenant.tData(payload);
+        return FB.setDoc(ref, payload, { merge: true });
+      }).then(function () {
+        // onSnapshot da agenda atualiza ultimosAgenda/recompute
+      }).catch(function (e) {
+        console.warn('[Alertas] erro concluir agenda:', e && e.message);
+        uiAlert({ title: 'Erro', body: 'Não foi possível marcar como realizado.' });
+      });
     });
   }
 

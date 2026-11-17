@@ -1,4 +1,4 @@
-// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump home clientes/pos-venda)
+// Cell City CRM — Service Worker v2.1 (P2.5, 2026-07-16; bump varredura modais)
 // SHELL regenerado a partir do fechamento transitivo REAL de imports das
 // páginas pré-cacheadas (script em scratchpad da sessão; inclui tenant-*,
 // repositories e os novos utilitários de os.js — corrige DT-12 e o 404 de
@@ -52,6 +52,7 @@ const SHELL = [
   '/CRM/pages/usuarios-permissoes/usuarios-permissoes.css',
   '/CRM/pages/central-alertas/central-alertas.css',
   '/CRM/firebase/client.js',
+  '/CRM/shared/ui-dialog.js',
   '/CRM/pages/analise/analise.js',
   '/CRM/pages/caixa/caixa.js',
   '/CRM/pages/central-alertas/central-alertas.js',
