@@ -13,6 +13,7 @@ import {
     totaisPorLocal,
     breakdownLocais,
 } from './loja-feira.js';
+import { camposDataLancamento } from './caixa-data.js';
 
 // ── Constantes ────────────────────────────────────────────────
 const COL_LANCAMENTOS = 'caixa_lancamentos';
@@ -339,10 +340,22 @@ window.salvarEdicao = async function () {
         return showToast('Preencha descrição, categoria e valor.');
     }
 
+    const existente = _ultimosLanc.find(x => x.id === id);
+    const dataRef = existente?.data || existente?.dia || hoje();
+    let camposData;
+    try {
+        camposData = camposDataLancamento(dataRef);
+    } catch (e) {
+        console.error('[CAIXA] Data inválida na edição:', e);
+        return showToast('Data do lançamento inválida.');
+    }
+
     try {
         await updateDoc(doc(db, COL_LANCAMENTOS, id), {
             tipo, descricao, categoria, valor, custo, localVenda,
             lucro: calcularLucro(tipo, valor, custo),
+            data: camposData.dia,
+            ...camposData,
             atualizadoEm: serverTimestamp()
         });
         fecharEdicao();
@@ -573,11 +586,14 @@ window.pagarLembrete = async function (id) {
 
     try {
         const hojeStr = hoje();
-        const dataISO = new Date(hojeStr + 'T12:00:00').toISOString();
+        const camposData = camposDataLancamento(hojeStr);
         await addDoc(collection(db, COL_LANCAMENTOS), {
             tipo: 'saida', descricao: `${lembrete.fornecedor} — ${lembrete.descricao}`,
             categoria: 'Fornecedores', valor: lembrete.valor, custo: 0,
-            lucro: -lembrete.valor, data: hojeStr, dataISO, ano: new Date().getFullYear(),
+            lucro: -lembrete.valor,
+            localVenda: LOCAL_LOJA,
+            data: camposData.dia,
+            ...camposData,
             obs: lembrete.observacao || '', empresa_id: _empresaId, criadoEm: serverTimestamp()
         });
         await deleteDoc(doc(db, COL_LEMBRETES, id));
@@ -892,13 +908,14 @@ window.salvarNovoProduto = async function () {
 
 // ── Core: salvar lançamento no Firestore + estoque ─────────────
 async function _executarSalvamento({ tipo, descricao, categoria, valor, custo, data, obs, localVenda }) {
-    const dataISO = new Date(data + 'T12:00:00').toISOString();
+    const camposData = camposDataLancamento(data);
     const local = tipo === 'saida' ? LOCAL_LOJA : normalizarLocal(localVenda);
     await addDoc(collection(db, COL_LANCAMENTOS), {
         tipo, descricao, categoria, valor, custo,
         localVenda: local,
         lucro: calcularLucro(tipo, valor, custo),
-        data, dataISO, ano: new Date(data + 'T12:00:00').getFullYear(),
+        data: camposData.dia,
+        ...camposData,
         obs, empresa_id: _empresaId, criadoEm: serverTimestamp()
     });
 
