@@ -1,13 +1,17 @@
 import { initModulo, getNome } from '../../scripts/kernel.js';
-import { db, collection, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp } from "../../scripts/firebase.js";
-import { tData } from "../../shared/tenant-query.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query, where } from "../../scripts/firebase.js";
+import { tData, injectTenantFilter } from "../../shared/tenant-query.js";
 // P2.3.2: núcleo de persistência (objeto DB) migrado para a Camada Repository.
-// getDocs/query/injectTenantFilter saíram dos imports por ficarem sem uso;
-// as primitivas restantes atendem os fluxos ainda não migrados (automações,
-// caixa, lembretes, timeline — pendência registrada da P2.3).
 import { OSRepository } from '../../repositories/os.repository.js';
 import { ClientesRepository } from '../../repositories/clientes.repository.js';
 import { MetadataRepository } from '../../repositories/sistema.repository.js';
+import {
+    findClientePorTelefone,
+    filtrarOSDoCliente,
+    filtrarGarantiasAtivas,
+    filtrarComprasCaixaDoCliente,
+    indiceClienteSemDuplicar,
+} from './cliente-ficha.js';
 import { maskPhone, normalizePhoneDigits, canonicalizePhone } from "../../shared/phone-utils.js";
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar, podeExcluir } from '../../shared/permissoes.js';
 import { escHtml } from "../../shared/sanitize.js";
@@ -506,7 +510,12 @@ const DB = {
     async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await OSRepository.update(osData.id, osData); },
     async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await OSRepository.remove(id); },
     getClients() { return localClients; },
-    async saveClient(clientData) { const idx = localClients.findIndex(c => c.phone === clientData.phone); if (idx >= 0) localClients[idx] = clientData; else localClients.push(clientData); await ClientesRepository.set(clientData.phoneDigits || clientData.phone, clientData); },
+    async saveClient(clientData) {
+        const idx = indiceClienteSemDuplicar(localClients, clientData.phone, clientData.phoneDigits, normalizePhoneDigits);
+        if (idx >= 0) localClients[idx] = { ...localClients[idx], ...clientData };
+        else localClients.push(clientData);
+        await ClientesRepository.set(clientData.phoneDigits || normalizePhoneDigits(clientData.phone) || clientData.phone, clientData);
+    },
     getCounter() { return localCounter; },
     async incCounter() { localCounter++; await MetadataRepository.set('counter', { value: localCounter }); return localCounter; },
     async loadFromFirestore() {
@@ -945,7 +954,7 @@ function copiarMensagemCriacao() {
 }
 
 function enrichClientData(phone, base) {
-    const orders = DB.getOS().filter(o => o.phone === phone || (o.phoneDigits || normalizePhoneDigits(o.phone)) === normalizePhoneDigits(phone));
+    const orders = filtrarOSDoCliente(DB.getOS(), phone, normalizePhoneDigits);
     const totalOs = orders.length;
     const totalGasto = orders.reduce((s, o) => s + (parseFloat(o.valor) || 0), 0);
     const datas = orders.map(o => o.createdAt).filter(Boolean).sort();
@@ -956,9 +965,10 @@ function enrichClientData(phone, base) {
 
 async function updateClientHistory(phone, name, osId, phoneDigits, origem, crmLeadId) {
     phoneDigits = phoneDigits || normalizePhoneDigits(phone);
-    let c = DB.getClients().find(cl => cl.phone === phone || cl.phoneDigits === phoneDigits);
+    let c = findClientePorTelefone(DB.getClients(), phoneDigits || phone, normalizePhoneDigits);
     const crmLeads = c ? (c.crmLeads || []) : (crmLeadId ? [crmLeadId] : []);
     if (c) {
+        if (!Array.isArray(c.history)) c.history = [];
         if (!c.history.includes(osId)) c.history.push(osId);
         c.name = name; c.phone = phone; c.phoneDigits = phoneDigits;
     } else {
@@ -1036,6 +1046,11 @@ function salvarUltimaTela(view, label, sub, hash) {
 }
 // Deep-link para reabrir uma OS específica: #os-<id>
 function getHashOS() { const m = (location.hash || '').match(/^#os-(.+)$/); return m ? decodeURIComponent(m[1]) : ''; }
+// Deep-link ficha do cliente pelo telefone: #cliente-<phoneDigits>
+function getHashCliente() {
+    const m = (location.hash || '').match(/^#cliente-(\d{10,13})$/);
+    return m ? m[1] : '';
+}
 
 // ===== FAVORITOS DAS VISÕES (atalho de abertura direta) =====
 const FAV_KEY = STORAGE_KEYS.OS_FAV;
@@ -1442,6 +1457,12 @@ async function saveOSEdit() {
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
         if (idx >= 0) localOS[idx] = { ...currentOS };
+        // Sync cliente (cria/atualiza sem duplicar telefone)
+        try {
+            await updateClientHistory(pCanon, n, currentOS.id, pDigits);
+        } catch (eCli) {
+            console.warn('[OS] sync cliente na edição:', eCli);
+        }
         showToast("✅ OS Atualizada!"); window.markSaved(); renderDetail();
     } catch (e) { console.error(e); showToast("Erro ao salvar"); }
 }
@@ -3020,46 +3041,69 @@ function renderClients() {
 
 function searchClients() { renderClients(); }
 
+async function carregarComprasCaixaPorOS(osIds) {
+    const ids = [...new Set((osIds || []).map(String).filter(Boolean))];
+    if (!ids.length) return [];
+    const out = [];
+    try {
+        for (let i = 0; i < ids.length; i += 10) {
+            const chunk = ids.slice(i, i + 10);
+            const snap = await getDocs(query(
+                collection(db, 'caixa_lancamentos'),
+                ...injectTenantFilter([where('osId', 'in', chunk)])
+            ));
+            snap.forEach(d => out.push({ id: d.id, ...d.data() }));
+        }
+    } catch (e) {
+        console.warn('[Ficha] compras Caixa indisponíveis:', e);
+    }
+    return filtrarComprasCaixaDoCliente(out, ids);
+}
+
 function showClientDetail(phone) {
     guardNavigation(() => {
-        const client = DB.getClients().find(c => c.phone === phone); 
-        if (!client) return; 
-        currentClientPhone = phone;
-        
-        const orders = DB.getOS(); 
-        const clientOrders = orders.filter(o => o.phone === phone).sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
+        void _renderClientDetail(phone);
+    });
+}
+
+async function _renderClientDetail(phone) {
+        const client = findClientePorTelefone(DB.getClients(), phone, normalizePhoneDigits);
+        if (!client) return showToast('Cliente não encontrado');
+        const phoneKey = client.phone || phone;
+        currentClientPhone = phoneKey;
+        const digits = client.phoneDigits || normalizePhoneDigits(phoneKey);
+
+        const clientOrders = filtrarOSDoCliente(DB.getOS(), phoneKey, normalizePhoneDigits);
+        const garantias = filtrarGarantiasAtivas(clientOrders);
         const c = document.getElementById('client-detail-content');
-        
+        if (c) c.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text2);">Carregando ficha…</div>';
+        showScreen('client-detail');
+
+        const compras = await carregarComprasCaixaPorOS(clientOrders.map(o => o.id));
+
         const totalOS = clientOrders.length;
         const totalSpent = clientOrders.reduce((sum, o) => sum + (parseFloat(o.valor ?? o.totalValue) || 0), 0);
         const lastAttendance = clientOrders.length > 0 ? formatDateShort(clientOrders[0].createdAt) : 'Nunca';
-        const activeWarranties = clientOrders.filter(o => {
-            if (o.status === 'entregue' && o.updatedAt) {
-                const diff = (new Date() - new Date(o.updatedAt)) / (1000 * 60 * 60 * 24);
-                return diff <= 90;
-            }
-            return false;
-        }).length;
-
+        const activeWarranties = garantias.length;
         const devices = [...new Set(clientOrders.map(o => o.model).filter(Boolean))];
-        
+
         let html = `<div class="detail-header" style="position:relative;">
-            ${podeEditar('os') ? `<button onclick="editClientFromDetail('${phone}')" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar Ficha</button>` : ''}
+            ${podeEditar('os') ? `<button onclick="editClientFromDetail('${escHtml(phoneKey)}')" style="position:absolute;top:8px;right:8px;background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">✏️ Editar Ficha</button>` : ''}
             <div class="detail-header-top" style="flex-direction:column; align-items:flex-start; gap:8px;">
-                <div class="detail-client" style="font-size:18px;">${client.name || ''}</div>
+                <div class="detail-client" style="font-size:18px;">${escHtml(client.name || '')}</div>
                 <div class="client-rating-display">${renderStarsHTML(client.rating || 0)}</div>
             </div>
-            <div style="font-size:13px;color:var(--text2);margin-top:8px;">📞 ${client.phone || ''} ${client.phone2 ? `<span style="margin-left:10px;">📱 ${client.phone2}</span>` : ''} ${client.whatsapp && client.whatsapp !== client.phone ? `<span style="margin-left:8px;"><a href="https://wa.me/55${normalizePhoneDigits(client.whatsapp)}" target="_blank" style="color:#25D366;text-decoration:none;" title="WhatsApp">💬 ${client.whatsapp}</a></span>` : ''}</div>
-            ${client.email ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">📧 ${client.email}</div>` : ''}
-            ${client.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🆔 CPF: ${client.cpf}</div>` : ''}
-            ${client.rg ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🪪 RG: ${client.rg}</div>` : ''}
-            ${client.birthDate ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🎂 ${client.birthDate}</div>` : ''}
-            ${client.origem ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">📋 Origem: ${client.origem}</div>` : ''}
+            <div style="font-size:13px;color:var(--text2);margin-top:8px;">📞 ${escHtml(client.phone || '')} ${client.phone2 ? `<span style="margin-left:10px;">📱 ${escHtml(client.phone2)}</span>` : ''} ${client.whatsapp && client.whatsapp !== client.phone ? `<span style="margin-left:8px;"><a href="https://wa.me/55${normalizePhoneDigits(client.whatsapp)}" target="_blank" style="color:#25D366;text-decoration:none;" title="WhatsApp">💬 ${escHtml(client.whatsapp)}</a></span>` : ''}</div>
+            ${digits ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">🔗 Abrir pelo telefone: <code style="font-size:11px;">#cliente-${escHtml(digits)}</code></div>` : ''}
+            ${client.email ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">📧 ${escHtml(client.email)}</div>` : ''}
+            ${client.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🆔 CPF: ${escHtml(client.cpf)}</div>` : ''}
+            ${client.rg ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🪪 RG: ${escHtml(client.rg)}</div>` : ''}
+            ${client.birthDate ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🎂 ${escHtml(client.birthDate)}</div>` : ''}
+            ${client.origem ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">📋 Origem: ${escHtml(client.origem)}</div>` : ''}
         </div>`;
 
         if (client.tags && client.tags.length > 0) {
-            html += `<div class="client-tags-container" style="margin-bottom:16px;">${client.tags.map(t => `<span class="client-tag">🏷️ ${t}</span>`).join('')}</div>`;
+            html += `<div class="client-tags-container" style="margin-bottom:16px;">${client.tags.map(t => `<span class="client-tag">🏷️ ${escHtml(t)}</span>`).join('')}</div>`;
         }
 
         const nivel = totalSpent >= 5000 ? '💎 VIP' : totalSpent >= 2000 ? '🥇 Ouro' : totalSpent >= 500 ? '🥈 Prata' : '🥉 Bronze';
@@ -3074,34 +3118,55 @@ function showClientDetail(phone) {
         </div>`;
 
         if (devices.length > 0) {
-            html += `<div class="form-section"><div class="form-section-title">📱 Aparelhos Vinculados</div><div class="client-devices-list">${devices.map(d => `<span class="device-chip">${d}</span>`).join('')}</div></div>`;
+            html += `<div class="form-section"><div class="form-section-title">📱 Aparelhos Vinculados</div><div class="client-devices-list">${devices.map(d => `<span class="device-chip">${escHtml(d)}</span>`).join('')}</div></div>`;
         }
 
         if (client.google1 || client.appleId || client.google2) {
             html += `<div class="form-section"><div class="form-section-title">🔐 Credenciais</div><div class="credentials-box">`;
-            if (client.google1) html += `<div class="cred-row"><span>Google 1: ${client.google1}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g1', this)">👁️</button></div><div class="cred-pass" id="cred-g1" style="display:none;">${client.google1Pass || '***'}</div>`;
-            if (client.google2) html += `<div class="cred-row"><span>Google 2: ${client.google2}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g2', this)">👁️</button></div><div class="cred-pass" id="cred-g2" style="display:none;">${client.google2Pass || '***'}</div>`;
-            if (client.appleId) html += `<div class="cred-row"><span>Apple ID: ${client.appleId}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-apple', this)">👁️</button></div><div class="cred-pass" id="cred-apple" style="display:none;">${client.appleIdPass || '***'}</div>`;
+            if (client.google1) html += `<div class="cred-row"><span>Google 1: ${escHtml(client.google1)}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g1', this)">👁️</button></div><div class="cred-pass" id="cred-g1" style="display:none;">${escHtml(client.google1Pass || '***')}</div>`;
+            if (client.google2) html += `<div class="cred-row"><span>Google 2: ${escHtml(client.google2)}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-g2', this)">👁️</button></div><div class="cred-pass" id="cred-g2" style="display:none;">${escHtml(client.google2Pass || '***')}</div>`;
+            if (client.appleId) html += `<div class="cred-row"><span>Apple ID: ${escHtml(client.appleId)}</span> <button class="icon-btn" style="width:28px;height:28px;font-size:12px;" onclick="toggleClientPassword('cred-apple', this)">👁️</button></div><div class="cred-pass" id="cred-apple" style="display:none;">${escHtml(client.appleIdPass || '***')}</div>`;
             html += `</div></div>`;
         }
 
         if (client.cep || client.city || client.street) {
-            html += `<div class="form-section"><div class="form-section-title">📍 Endereço</div><div style="font-size:13px;color:var(--text2);">${client.street || ''} ${client.number || ''} ${client.complement || ''}<br>${client.neighborhood || ''} - ${client.city || ''}/${client.state || ''}<br>CEP: ${client.cep || ''}</div></div>`;
+            html += `<div class="form-section"><div class="form-section-title">📍 Endereço</div><div style="font-size:13px;color:var(--text2);">${escHtml(client.street || '')} ${escHtml(client.number || '')} ${escHtml(client.complement || '')}<br>${escHtml(client.neighborhood || '')} - ${escHtml(client.city || '')}/${escHtml(client.state || '')}<br>CEP: ${escHtml(client.cep || '')}</div></div>`;
         }
 
         if (client.freeObservations) {
-            html += `<div class="form-section"><div class="form-section-title">📝 Observações</div><div style="font-size:13px;color:var(--text2);white-space:pre-wrap;">${client.freeObservations}</div></div>`;
+            html += `<div class="form-section"><div class="form-section-title">📝 Observações</div><div style="font-size:13px;color:var(--text2);white-space:pre-wrap;">${escHtml(client.freeObservations)}</div></div>`;
         }
 
-        html += `<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:20px;">Cliente desde: ${client.createdAt ? formatDateShort(client.createdAt) : 'Data não registrada'}</div>`;
+        html += `<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:12px;">Cliente desde: ${client.createdAt ? formatDateShort(client.createdAt) : 'Data não registrada'}</div>`;
 
-        html += `<div class="premium-list" style="margin-top:16px;">${clientOrders.map(os => `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.model||''}</div><div class="os-card-info">${(os.defect||'').substring(0, 50)}${(os.defect||'').length >50?'...':''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)}</span></div></div>`).join('')}</div>`;
+        // OS
+        html += `<div class="form-section" style="margin-top:16px;"><div class="form-section-title">📦 Ordens de Serviço (${totalOS})</div>`;
+        html += totalOS
+            ? `<div class="premium-list">${clientOrders.map(os => `<div class="os-card" onclick="openDetail('${escHtml(os.id)}')"><div class="os-card-header"><span class="os-card-id">${escHtml(os.id)}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${escHtml(os.model||'')}</div><div class="os-card-info">${escHtml((os.defect||'').substring(0, 50))}${(os.defect||'').length >50?'...':''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)}</span></div></div>`).join('')}</div>`
+            : `<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhuma OS vinculada a este telefone.</div>`;
+        html += `</div>`;
+
+        // Garantias
+        html += `<div class="form-section"><div class="form-section-title">🛡️ Garantias ativas (${activeWarranties})</div>`;
+        html += activeWarranties
+            ? `<div class="premium-list">${garantias.map(os => `<div class="os-card" onclick="openDetail('${escHtml(os.id)}')"><div class="os-card-header"><span class="os-card-id">${escHtml(os.id)}</span><span class="os-card-status status-entregue">Entregue</span></div><div class="os-card-name">${escHtml(os.model||'')}</div><div class="os-card-info">Prazo: ${os.prazoGarantia ?? 90} dias · entrega ${formatDateShort(os.updatedAt||os.createdAt)}</div></div>`).join('')}</div>`
+            : `<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhuma garantia ativa.</div>`;
+        html += `</div>`;
+
+        // Compras no Caixa
+        html += `<div class="form-section"><div class="form-section-title">💰 Compras no Caixa (${compras.length})</div>`;
+        html += compras.length
+            ? `<div class="premium-list">${compras.map(l => `<div class="os-card" style="cursor:default;"><div class="os-card-header"><span class="os-card-id">${escHtml(l.data || l.dia || '')}</span><span class="os-card-status">${escHtml(l.localVenda || l.categoria || '')}</span></div><div class="os-card-name">${escHtml(l.descricao || '')}</div><div class="os-card-info">R$ ${Number(l.valor || 0).toFixed(2)}${l.osId ? ` · ${escHtml(l.osId)}` : ''}</div></div>`).join('')}</div>`
+            : `<div style="font-size:13px;color:var(--text3);padding:8px 0;">Nenhuma compra no Caixa ligada às OS deste cliente.</div>`;
+        html += `</div>`;
 
         html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient(${escHtml(JSON.stringify(client.phone||''))},${escHtml(JSON.stringify(client.name||''))})">➕ Nova O.S. para este cliente</button></div>`;
-        
-        c.innerHTML = html; 
-        showScreen('client-detail');
-    });
+
+        if (c) c.innerHTML = html;
+        if (digits) {
+            try { history.replaceState(null, '', `#cliente-${digits}`); } catch (_) {}
+            salvarUltimaTela('client-detail', client.name || 'Cliente', phoneKey, `#cliente-${digits}`);
+        }
 }
 
 function startOSForClient(phone, name) { startOS(DB.getOS().filter(o => o.phone===phone)[0]?.category||'celular'); document.getElementById('f-nome').value=name||''; document.getElementById('f-telefone').value=phone||''; }
@@ -3113,7 +3178,7 @@ function editClientFromDetail(phone) {
         if (area) {
             area.style.display = 'block';
             isClientFormOpen = true;
-            const client = DB.getClients().find(c => c.phone === phone);
+            const client = findClientePorTelefone(DB.getClients(), phone, normalizePhoneDigits);
             renderClientForm(client);
             area.scrollIntoView({ behavior: 'smooth' });
         }
@@ -3626,13 +3691,12 @@ async function init() {
     await _fetchWarrantyConfigFromFirestore();
     // Popula o seletor de modelos de garantia com os configurados no sistema
     _populateWarrantySelect('f-garantia-modelo');
-    // Prioridade: #os-<id> > #fav-<...> > favorito padrão (estrela) > home.
-    // OBS: showScreen('home') recarrega e ZERA localOS de forma síncrona; por isso só é
-    // chamado quando NÃO há destino, evitando a corrida que esvaziava DB.getOS() antes
-    // da checagem do hash (causa-raiz da falha do deep-link).
+    // Prioridade: #os-<id> > #cliente-<digits> > #fav-<...> > favorito padrão > home.
     const hashView = getHashView();
     const hashOS = getHashOS();
+    const hashCli = getHashCliente();
     if (hashOS && DB.getOS().some(o => o.id === hashOS)) openDetail(hashOS);
+    else if (hashCli && findClientePorTelefone(DB.getClients(), hashCli, normalizePhoneDigits)) showClientDetail(hashCli);
     else if (hashView) openFav(hashView);
     else { const fav = getFav(); if (fav) openFav(fav); else showScreen('home'); }
     console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
@@ -3646,5 +3710,7 @@ if (document.readyState === 'loading') { document.addEventListener('DOMContentLo
 window.addEventListener('hashchange', () => {
     const osId = getHashOS();
     if (osId && DB.getOS().some(o => o.id === osId)) { openDetail(osId); return; }
+    const cli = getHashCliente();
+    if (cli && findClientePorTelefone(DB.getClients(), cli, normalizePhoneDigits)) { showClientDetail(cli); return; }
     const v = getHashView(); if (v) openFav(v);
 });
