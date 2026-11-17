@@ -136,6 +136,7 @@ export const STORAGE_KEYS = {
   CRM_MSG: 'cc_crm_msg',
   CRM_PREFILL: 'cc_crm_prefill',
   OPERADOR_NOME: 'cc_operador_nome',
+  OS_MAIS_DETALHES: 'cc_os_mais_detalhes',
   LINK_AVALIACAO: 'cc_link_avaliacao_google',
   // dock / sidebar / favoritos / central
   DOCK_ORDEM: 'cc_dock_ordem',

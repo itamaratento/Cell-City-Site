@@ -24,6 +24,11 @@ import {
     montarMensagemCriacao,
     sugerirCategoriaPorModelo,
 } from './mensagem-criacao.js';
+import {
+    osFaltaSenha,
+    acessoriosTexto,
+    badgeFaltaSenhaHtml,
+} from './entrada-rapida.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -135,6 +140,62 @@ function toggleAccordion(btn) {
     btn.setAttribute('aria-expanded', String(!isOpen));
 }
 window.toggleAccordion = toggleAccordion;
+
+/** "Mais detalhes" na Nova OS — lembra aberto/fechado no localStorage. */
+function toggleMaisDetalhesNovaOS(btn) {
+    toggleAccordion(btn);
+    const section = document.getElementById('nova-os-mais-detalhes');
+    const aberto = section && !section.classList.contains('collapsed');
+    try { localStorage.setItem(STORAGE_KEYS.OS_MAIS_DETALHES, aberto ? '1' : '0'); } catch (_) {}
+    const label = btn?.querySelector('span:first-child');
+    if (label) label.textContent = aberto ? 'Mais detalhes ▾' : 'Mais detalhes ▸';
+}
+window.toggleMaisDetalhesNovaOS = toggleMaisDetalhesNovaOS;
+
+function restaurarMaisDetalhesNovaOS() {
+    const section = document.getElementById('nova-os-mais-detalhes');
+    const btn = document.getElementById('btn-mais-detalhes-os');
+    if (!section || !btn) return;
+    let aberto = false;
+    try { aberto = localStorage.getItem(STORAGE_KEYS.OS_MAIS_DETALHES) === '1'; } catch (_) {}
+    section.classList.toggle('collapsed', !aberto);
+    btn.setAttribute('aria-expanded', String(aberto));
+    const arrow = btn.querySelector('.accordion-arrow');
+    if (arrow) arrow.textContent = aberto ? '▼' : '▶';
+    const label = btn.querySelector('span:first-child');
+    if (label) label.textContent = aberto ? 'Mais detalhes ▾' : 'Mais detalhes ▸';
+}
+
+/** Marca todos os itens do checklist/condições da categoria como OK. */
+function marcarChecklistTudoOk() {
+    document.querySelectorAll('.entry-cond-sel').forEach(sel => { sel.value = 'ok'; });
+    const items = getChecklistTemplate(currentCategory || 'celular');
+    items.forEach((_, i) => {
+        const el = document.getElementById('entry-' + i);
+        if (el) el.checked = true;
+    });
+    showToast('✓ Checklist marcado como Tudo OK');
+}
+window.marcarChecklistTudoOk = marcarChecklistTudoOk;
+
+const ACESSORIOS_IDS = [
+    { id: 'f-ac-chip', label: 'Chip' },
+    { id: 'f-ac-cartao', label: 'Cartão de memória' },
+    { id: 'f-ac-capinha', label: 'Capinha' },
+    { id: 'f-ac-carregador', label: 'Carregador' }
+];
+
+function lerAcessoriosDoForm() {
+    const list = ACESSORIOS_IDS.filter(a => document.getElementById(a.id)?.checked).map(a => a.label);
+    const outro = (document.getElementById('f-ac-outro')?.value || '').trim();
+    if (outro) list.push(outro);
+    return list;
+}
+
+function limparAcessoriosForm() {
+    ACESSORIOS_IDS.forEach(a => { const el = document.getElementById(a.id); if (el) el.checked = false; });
+    const outro = document.getElementById('f-ac-outro'); if (outro) outro.value = '';
+}
 
 // ===== HOME STATS TOGGLE =====
 function toggleHomeStats() {
@@ -683,7 +744,7 @@ function sugerirCategoriaDoModelo(texto) {
 
 function startOS(cat) {
     tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null;
-    ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-imei1','f-imei2','f-defeito','f-valor','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs','f-orc1-desc','f-orc1-valor','f-orc2-desc','f-orc2-valor'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90';
     const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = '';
     const lock = document.getElementById('lock-type'); if (lock) { lock.value = 'Numerica'; toggleLockType(); }
@@ -692,13 +753,16 @@ function startOS(cat) {
     const pprev = document.getElementById('photo-preview'); if (pprev) pprev.innerHTML = '';
     const summary = document.getElementById('pattern-summary'); if (summary) summary.style.display = 'none';
     ['f-aviso-tela','f-aviso-tampa'].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+    limparAcessoriosForm();
     const clienteHint = document.getElementById('f-cliente-hint'); if (clienteHint) clienteHint.style.display = 'none';
     aplicarCategoriaForm(cat || 'celular');
+    restaurarMaisDetalhesNovaOS();
     window.markSaved(); showScreen('form');
     const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100);
 }
 
-async function saveOS() {
+async function saveOS(opts = {}) {
+    const imprimirEntrada = !!(opts && opts.imprimirEntrada);
     const getVal = id => document.getElementById(id)?.value.trim() || '';
     const [nome, telefone, marca, modelo, imei, defeito, tecnico, senha, obs, lockType, cpf, cep, endereco, numero, complemento, bairro, cidade, estado] = ['f-nome','f-telefone','f-marca','f-modelo','f-imei','f-defeito','f-tecnico','f-senha','f-obs','lock-type','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado'].map(getVal);
     const valor = parseFloat((document.getElementById('f-valor')?.value || '').replace(',', '.')) || 0;
@@ -707,6 +771,7 @@ async function saveOS() {
     const avisoTela = !!document.getElementById('f-aviso-tela')?.checked;
     const avisoTampa = !!document.getElementById('f-aviso-tampa')?.checked;
     const entryCondicoes = lerEntryCondicoesDoForm();
+    const acessoriosDeixados = lerAcessoriosDoForm();
     const garantiaDias = parseInt(document.getElementById('f-garantia')?.value, 10) || 90;
     const garantiaId = document.getElementById('f-garantia-modelo')?.value || '';
     const imei1 = (document.getElementById('f-imei1')?.value || '').trim();
@@ -754,7 +819,7 @@ async function saveOS() {
             cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito,
             valor, sinal: sinal || 0, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
             password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls,
-            entryChecklist: entryChecked, entryCondicoes, avisoTela, avisoTampa, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
+            entryChecklist: entryChecked, entryCondicoes, acessoriosDeixados, avisoTela, avisoTampa, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
             garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
             orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
             timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }],
@@ -780,10 +845,17 @@ async function saveOS() {
             portalOSPendente = null;
         }
 
-        showToast(`✅ ${osId} criada com sucesso!`);
+        const faltaSenha = osFaltaSenha(os);
+        showToast(faltaSenha ? `✅ ${osId} criada · ⚠️ FALTA SENHA` : `✅ ${osId} criada com sucesso!`);
         window.markSaved();
         currentOS = os;
-        mostrarPosCriacaoOS(os);
+        if (imprimirEntrada) {
+            renderDetail();
+            showScreen('detail');
+            await printOSEntrada(1);
+        } else {
+            mostrarPosCriacaoOS(os);
+        }
     } catch (e) {
         console.error('❌ Erro ao criar OS:', e);
         showToast(`❌ Erro ao criar OS: ${e.message || e.code || 'verifique o console'}`);
@@ -948,7 +1020,8 @@ function renderList() {
     c.innerHTML = filtered.map(os => {
         const d = os.defect || '';
         const entregaInfo = os.status === 'entregue' ? `<div style="font-size:11px;color:#22c55e;margin-top:4px;font-weight:600;">📅 Entregue em: ${formatDate(os.updatedAt)}</div>` : '';
-        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${escHtml(os.clientName)}</div><div class="os-card-info">${escHtml(os.model)} — ${escHtml(d.substring(0, 45))}${d.length > 45 ? '...' : ''}</div><div style="font-size:11px;color:var(--text3);margin-top:2px;" onclick="event.stopPropagation()">${renderPhonePortalLinks(os, { stopPropagation: true })}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
+        const faltaSenha = osFaltaSenha(os) ? `<div style="margin-top:4px;">${badgeFaltaSenhaHtml()}</div>` : '';
+        return `<div class="os-card" onclick="openDetail('${os.id||''}')"><div class="os-card-header"><span class="os-card-id">${os.id||''}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span></div><div class="os-card-name">${escHtml(os.clientName)}</div><div class="os-card-info">${escHtml(os.model)} — ${escHtml(d.substring(0, 45))}${d.length > 45 ? '...' : ''}</div>${faltaSenha}<div style="font-size:11px;color:var(--text3);margin-top:2px;" onclick="event.stopPropagation()">${renderPhonePortalLinks(os, { stopPropagation: true })}</div>${entregaInfo}<div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)} ${(getCategoryLabel(os.category) || '').replace(/^.+\s/, '')}</span></div></div>`;
     }).join('');
 }
 
@@ -968,7 +1041,7 @@ function renderDetail() {
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}${_renderStatusAcoes(os)}<div class="central-comunicacao-btns"><button onclick="copiarMensagemCriacao()" style="background:var(--surface3);border:1px solid var(--border);padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:var(--text);" title="Copia a mensagem de abertura da OS">📋 Copiar mensagem</button><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Só copia texto — não muda status">📋 Msg Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia texto — não muda status">📋 Msg Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Abrir painel de retornos / copiar mensagens">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia mensagem de pronto — não muda status">📋 Msg Pronto</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}${_renderStatusAcoes(os)}<div class="central-comunicacao-btns"><button onclick="copiarMensagemCriacao()" style="background:var(--surface3);border:1px solid var(--border);padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:var(--text);" title="Copia a mensagem de abertura da OS">📋 Copiar mensagem</button><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Só copia texto — não muda status">📋 Msg Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia texto — não muda status">📋 Msg Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;" title="Abrir painel de retornos / copiar mensagens">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;" title="Só copia mensagem de pronto — não muda status">📋 Msg Pronto</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}${osFaltaSenha(os) ? ` ${badgeFaltaSenhaHtml()}` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">${renderPhonePortalLinks(os)}</div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${acessoriosTexto(os) ? `<div style="font-size:13px;color:var(--text2);margin-top:4px;">🎒 Acessórios: ${escHtml(acessoriosTexto(os))}</div>` : ''}${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -2472,6 +2545,9 @@ function _checklistEntradaResumo(os) {
 }
 
 function _acessoriosDoChecklist(os) {
+    // Preferência: campo explícito da entrada rápida
+    const explicit = acessoriosTexto(os);
+    if (explicit) return explicit;
     const items = getChecklistTemplate(os.category || 'celular');
     const checked = Array.isArray(os.entryChecklist) ? os.entryChecklist.map(Number) : [];
     const re = /sim|sd|chip|cart[aã]o|capa|capinha|carregador|fone|cabo/i;
@@ -2688,6 +2764,7 @@ async function printOSEntrada(vias) {
     const aparelho = _aparelhoLabel(os);
     const dataEntrada = _fmtDataImpressao(os.createdAt);
     const osNum = _osNumeroImpressao(os.id);
+    const acessoriosRecibo = _acessoriosDoChecklist(os);
 
     const bloco = `
 <div class="row"><span class="label">Cliente</span><span>${escHtml(os.clientName || '')}</span></div>
@@ -2696,6 +2773,7 @@ ${os.cpf ? `<div class="row"><span class="label">CPF</span><span>${escHtml(os.cp
 <div class="row"><span class="label">Aparelho</span><span>${escHtml(aparelho)}</span></div>
 ${imei ? `<div class="row"><span class="label">IMEI</span><span>${escHtml(imei)}</span></div>` : ''}
 <div class="row"><span class="label">Defeito</span><span>${escHtml(os.defect || '')}</span></div>
+${acessoriosRecibo ? `<div class="row"><span class="label">Acessórios</span><span>${escHtml(acessoriosRecibo)}</span></div>` : ''}
 ${_blocoValoresEntrada(os)}
 <div class="section">
   <div class="section-title">Checklist</div>
@@ -2903,7 +2981,7 @@ function showClientDetail(phone) {
 
         html += `<div class="premium-list" style="margin-top:16px;">${clientOrders.map(os => `<div class="os-card" onclick="openDetail('${os.id}')"><div class="os-card-header"><span class="os-card-id">${os.id}</span><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status||'')}</span></div><div class="os-card-name">${os.model||''}</div><div class="os-card-info">${(os.defect||'').substring(0, 50)}${(os.defect||'').length >50?'...':''}</div><div class="os-card-footer"><span class="os-card-date">${formatDate(os.createdAt)}</span><span class="os-card-category">${getCategoryIcon(os.category)}</span></div></div>`).join('')}</div>`;
 
-        html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient('${client.phone||''}','${client.name||''}')">➕ Nova O.S. para este cliente</button></div>`;
+        html += `<div style="margin-top:16px;"><button class="btn btn-success premium-btn" onclick="startOSForClient(${escHtml(JSON.stringify(client.phone||''))},${escHtml(JSON.stringify(client.name||''))})">➕ Nova O.S. para este cliente</button></div>`;
         
         c.innerHTML = html; 
         showScreen('client-detail');
