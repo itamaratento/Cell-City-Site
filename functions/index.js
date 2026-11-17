@@ -44,6 +44,7 @@ exports.excluirUsuarioAdmin = adminFns.excluirUsuarioAdmin;
 exports.consultarOSPublica = osFns.consultarOSPublica;
 exports.consultarOSPorTelefonePublica = osFns.consultarOSPorTelefonePublica;
 
+exports.portalAutenticar = portalFns.portalAutenticar;
 exports.portalObterNomeCliente = portalFns.portalObterNomeCliente;
 exports.portalListarMensagens = portalFns.portalListarMensagens;
 exports.portalEnviarMensagem = portalFns.portalEnviarMensagem;

@@ -20,16 +20,22 @@ const { REGIAO } = require('./lib/config');
 const { aplicarRateLimit } = require('./lib/rate-limit');
 const { empresaIdDe, docDaEmpresa } = require('./lib/empresa');
 const { normalizePhoneDigitsServer } = require('./lib/phone');
+const {
+  normalizarCodigoAcesso,
+  algumaOSAceitaCodigo,
+} = require('./lib/portal-access');
 
 // Único ponto que decide quais campos de `os/{osId}` podem sair para
 // o público sem login. NUNCA incluir aqui: password, patternSequence,
-// lockPhoto, endereço, imei1/imei2, technicalObservation, cpf, rg.
+// lockPhoto, endereço, imei1/imei2, technicalObservation, cpf, rg,
+// portalAccessCode, internalObservation, observations (obs. internas
+// da equipe — Portal mostra só `defect`).
 // FASE 4.1 (LGPD): CPF removido da whitelist; consumidores públicos
 // recebem apenas `cpfMascarado` (últimos 2 dígitos).
 const OS_CAMPOS_PUBLICOS = [
   'id', 'clientName', 'phone', 'phoneDigits', 'model', 'category', 'defect', 'status',
   'createdAt', 'updatedAt', 'deliveredAt', 'technician', 'garantiaId', 'prazoGarantia',
-  'valor', 'valorCartao', 'observations', 'timeline',
+  'valor', 'valorCartao', 'timeline',
   'orcamentoResposta', 'orcamentoDataResposta', 'orcamentoHoraResposta',
 ];
 // `phoneDigits` já é derivável de `phone` (ambos públicos, mesmo dado em dois
@@ -87,6 +93,12 @@ exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (reques
   if (digits.length < 10) {
     throw new HttpsError('invalid-argument', 'Informe um telefone válido.');
   }
+  // Segundo fator obrigatório (CPF últimos 4 ou portalAccessCode).
+  // Sem isso, saber só o telefone bastava para listar OS do cliente.
+  const codigo = normalizarCodigoAcesso(request.data && request.data.codigoAcesso);
+  if (codigo.length !== 4) {
+    throw new HttpsError('invalid-argument', 'Informe o código de acesso de 4 dígitos.');
+  }
 
   const empresaId = empresaIdDe(request.data);
   const db = admin.firestore();
@@ -94,10 +106,14 @@ exports.consultarOSPorTelefonePublica = onCall({ region: REGIAO }, async (reques
   // em produção o backfill de empresa_id ainda não rodou e um
   // where('empresa_id'==) esconderia todas as OS legadas.
   const snap = await db.collection('os').where('phoneDigits', '==', digits).limit(50).get();
+  const docsEmpresa = snap.docs.filter((d) => docDaEmpresa(d.data(), empresaId));
+  const dados = docsEmpresa.map((d) => d.data());
+
+  if (!algumaOSAceitaCodigo(dados, codigo)) {
+    throw new HttpsError('permission-denied', 'Telefone ou código de acesso inválidos.');
+  }
 
   return {
-    lista: snap.docs
-      .filter((d) => docDaEmpresa(d.data(), empresaId))
-      .map((d) => projetarCamposPublicosOS(d.data())),
+    lista: docsEmpresa.map((d) => projetarCamposPublicosOS(d.data())),
   };
 });

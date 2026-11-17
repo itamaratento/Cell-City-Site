@@ -58,6 +58,79 @@ function comCode(codeEsperado) {
   return (err) => err.code === codeEsperado;
 }
 
+// ===== Login com segundo fator (telefone + código) =====
+
+test('portalAutenticar: aceita últimos 4 do CPF', async () => {
+  await db.collection('os').doc('OS-0001').set({
+    id: 'OS-0001',
+    phoneDigits: PHONE,
+    clientName: 'Maria Silva',
+    cpf: '123.456.789-00',
+    portalAccessCode: '5555',
+    empresa_id: 'cellcity-master',
+  });
+  const resp = await fns.portalAutenticar.run({
+    data: { phoneDigits: PHONE, codigoAcesso: '8900' },
+  });
+  assert.equal(resp.ok, true);
+  assert.equal(resp.clientName, 'Maria Silva');
+  assert.equal(resp.osCount, 1);
+});
+
+test('portalAutenticar: sem CPF usa portalAccessCode', async () => {
+  await db.collection('os').doc('OS-0002').set({
+    id: 'OS-0002',
+    phoneDigits: PHONE,
+    clientName: 'João',
+    portalAccessCode: '4321',
+    empresa_id: 'cellcity-master',
+  });
+  const resp = await fns.portalAutenticar.run({
+    data: { phoneDigits: PHONE, codigoAcesso: '4321' },
+  });
+  assert.equal(resp.ok, true);
+  assert.equal(resp.osCount, 1);
+});
+
+test('portalAutenticar: código errado nega (mensagem genérica)', async () => {
+  await db.collection('os').doc('OS-0001').set({
+    id: 'OS-0001',
+    phoneDigits: PHONE,
+    portalAccessCode: '1111',
+    empresa_id: 'cellcity-master',
+  });
+  await assert.rejects(
+    () => fns.portalAutenticar.run({ data: { phoneDigits: PHONE, codigoAcesso: '9999' } }),
+    comCode('permission-denied')
+  );
+});
+
+test('consultarOSPorTelefonePublica: exige codigoAcesso válido', async () => {
+  await db.collection('os').doc('OS-0001').set({
+    id: 'OS-0001',
+    phoneDigits: PHONE,
+    defect: 'tela',
+    observations: 'RECADO INTERNO NÃO DEVE SAIR',
+    portalAccessCode: '2468',
+    empresa_id: 'cellcity-master',
+  });
+  await assert.rejects(
+    () => fns.consultarOSPorTelefonePublica.run({ data: { phoneDigits: PHONE } }),
+    comCode('invalid-argument')
+  );
+  await assert.rejects(
+    () => fns.consultarOSPorTelefonePublica.run({ data: { phoneDigits: PHONE, codigoAcesso: '0000' } }),
+    comCode('permission-denied')
+  );
+  const ok = await fns.consultarOSPorTelefonePublica.run({
+    data: { phoneDigits: PHONE, codigoAcesso: '2468' },
+  });
+  assert.equal(ok.lista.length, 1);
+  assert.equal(ok.lista[0].defect, 'tela');
+  assert.equal(ok.lista[0].observations, undefined);
+  assert.equal(ok.lista[0].portalAccessCode, undefined);
+});
+
 // ===== Nome do cliente (login) =====
 // Fix definitivo do HOTFIX P0 (2026-07-06): substitui o getDoc direto de
 // clientes/{phoneDigits} no client (bloqueado por temAcessoLiberado() nas

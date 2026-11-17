@@ -73,6 +73,8 @@ const LIMITES = {
   consulta_os_publica: { ip: 5, telefone: 5 },
   // FASE 4.1: enumeração por osId sequencial — limite ainda mais baixo.
   // PoP forte / publicToken opaco = médio prazo (não quebra links ?id=).
+  // Login do Portal: código de 4 dígitos — limite baixo contra brute-force.
+  portal_auth: { ip: 10, telefone: 8 },
 };
 
 function aplicarRateLimit(request, tipoOperacao) {

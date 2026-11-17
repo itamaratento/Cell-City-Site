@@ -577,6 +577,50 @@ function renderPhotoPreview() { const c = document.getElementById('photo-preview
 function removePhoto(i) { tempPhotos.splice(i, 1); renderPhotoPreview(); }
 function viewPhoto(src) { openModal(`<div class="modal-handle"></div><img src="${src}" style="width:100%;border-radius:8px;">`); }
 
+
+// ===== CÓDIGO DE ACESSO DO PORTAL =====
+// Segundo fator do Portal: 4 últimos do CPF (se houver) ou portalAccessCode.
+function gerarPortalAccessCode() {
+    return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+/** Retorna { tipo: 'cpf'|'pin', codigo } para exibir ao técnico. */
+function portalCodigoExibicao(os) {
+    const cpfDigits = String(os?.cpf || '').replace(/\D/g, '');
+    if (cpfDigits.length >= 4) {
+        return { tipo: 'cpf', codigo: cpfDigits.slice(-4) };
+    }
+    const pin = String(os?.portalAccessCode || '').replace(/\D/g, '').slice(0, 4);
+    return { tipo: 'pin', codigo: pin };
+}
+
+async function ensurePortalAccessCode(os) {
+    if (!os || !os.id) return;
+    const cpfDigits = String(os.cpf || '').replace(/\D/g, '');
+    if (cpfDigits.length >= 4) return;
+    const atual = String(os.portalAccessCode || '').replace(/\D/g, '');
+    if (atual.length === 4) return;
+    const code = gerarPortalAccessCode();
+    os.portalAccessCode = code;
+    try {
+        await updateDoc(doc(db, 'os', os.id), { portalAccessCode: code, updatedAt: new Date().toISOString() });
+        // Mantém cache local alinhado
+        const local = DB.getOS().find(o => o.id === os.id);
+        if (local) local.portalAccessCode = code;
+    } catch (e) {
+        console.warn('[OS] Não foi possível gravar portalAccessCode:', e);
+    }
+}
+
+function portalLinkComParams(os) {
+    const digits = normalizePhoneDigits(os.phone || os.phoneDigits || '');
+    const qs = new URLSearchParams();
+    if (digits) qs.set('tel', digits);
+    if (os.id) qs.set('os', os.id);
+    const q = qs.toString();
+    return URLS.portalCliente(q ? `?${q}` : '');
+}
+
 // ===== CREATE OS =====
 function startOS(cat) { currentCategory = cat; tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null; ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-defeito','f-valor','f-valor-cartao','f-tecnico','f-senha','f-obs'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90'; const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = ''; const lock = document.getElementById('lock-type'); if(lock) { lock.value = 'Numerica'; toggleLockType(); } ['lock-photo','lock-photo-camera'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; }); const prev = document.getElementById('lock-photo-preview'); if(prev) prev.innerHTML = ''; const pprev = document.getElementById('photo-preview'); if(pprev) pprev.innerHTML = ''; const summary = document.getElementById('pattern-summary'); if(summary) summary.style.display = 'none'; renderChecklist('entry-checklist', getChecklistTemplate(cat), 'entry', []); window.markSaved(); showScreen('form'); const nomeField = document.getElementById('f-nome'); if (nomeField) setTimeout(() => nomeField.focus(), 100); }
 
@@ -637,7 +681,10 @@ async function saveOS() {
             orc1Desc: orc1Desc || null, orc1Valor: orc1Valor || 0, orc2Desc: orc2Desc || null, orc2Valor: orc2Valor || 0,
             timeline: [{ date: new Date().toISOString(), text: `O.S. criada — ${getCategoryLabel(currentCategory)}` }],
             createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
-            origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null
+            origem: portalOSPendente ? 'portal' : 'presencial', solicitacaoId: portalOSPendente || null,
+            // Código de 4 dígitos para o Portal quando a OS não tem CPF
+            // (com CPF o cliente usa os 4 últimos). Sempre gravado como backup.
+            portalAccessCode: gerarPortalAccessCode()
         };
         if (lockType === 'Padrao' && window.tempPatternSequence?.length > 0) {
             os.patternSequence = window.tempPatternSequence;
@@ -811,19 +858,31 @@ function renderList() {
 function filterList() { renderList(); }
 
 // ===== DETAIL =====
-function openDetail(osId) { currentOS = DB.getOS().find(o => o.id === osId); if (currentOS) { renderDetail(); showScreen('detail'); salvarUltimaTela('detail', 'OS ' + currentOS.id, getStatusLabel(currentOS.status || ''), '#os-' + currentOS.id); } }
+async function openDetail(osId) {
+    currentOS = DB.getOS().find(o => o.id === osId);
+    if (!currentOS) return;
+    await ensurePortalAccessCode(currentOS);
+    renderDetail();
+    showScreen('detail');
+    salvarUltimaTela('detail', 'OS ' + currentOS.id, getStatusLabel(currentOS.status || ''), '#os-' + currentOS.id);
+}
 
 function renderDetail() {
     const os = currentOS; const c = document.getElementById('detail-content'); if (!os) return;
     hasUnsavedChanges = false;
     const clients = DB.getClients(); const client = clients.find(cl => cl.phone === os.phone);
+    const _portalAuth = portalCodigoExibicao(os);
+    const _portalAuthHtml = _portalAuth.codigo
+        ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🔑 Acesso Portal: <strong style="letter-spacing:2px;color:var(--green-primary);">${escHtml(_portalAuth.codigo)}</strong> <span style="font-size:11px;color:var(--text3);">(${_portalAuth.tipo === 'cpf' ? '4 últimos do CPF — informar ao cliente' : 'código da OS — enviar no WhatsApp'})</span></div>`
+        : `<div style="font-size:12px;color:#f59e0b;margin-top:2px;">⚠️ Sem código de acesso do Portal (adicione CPF ou reabra o detalhe para gerar)</div>`;
+
     let html = `<div id="save-status" style="margin:8px 0 12px; display:flex; justify-content:space-between; align-items:center;"></div>`;
     const garantiaModelo = _getSelectedWarranty(os);
     const garantiaNome = garantiaModelo ? garantiaModelo.nome : '';
     const garantiaHtml = garantiaNome
         ? `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias — ${garantiaNome}`
         : `🛡️ Garantia: ${os.prazoGarantia ?? 90} dias`;
-    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 <a href="#" onclick="abrirPortalCliente('${os.id}','${normalizePhoneDigits(os.phone)}');return false;" style="color:#2196F3;text-decoration:none;font-weight:600;" title="Abrir Portal do Cliente">${escHtml(os.phone)} 🏠</a></div>${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
+    html += `<div class="detail-header" style="position:relative;overflow:hidden;"><div class="detail-header-top"><div class="detail-os-id">${os.id}</div><span class="os-card-status status-${(os.status||'').replace(/ /g, '_')}">${getStatusLabel(os.status)}</span>${_renderQuickStatus(os)}<div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-shrink:0;"><button onclick="${podeCriar('os') ? 'abrirLembreteOS()' : ''}" title="Criar Lembrete para esta OS" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;outline:none;line-height:1;${podeCriar('os') ? '' : 'display:none;'}">🔔</button>${podeEditar('os') ? `<button onclick="toggleOSEdit()" style="background:var(--surface3);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;outline:none;white-space:nowrap;">✏️ Editar O.S.</button>` : ''}</div></div><input id="obs-rapida-field" type="text" value="${(os.obsRapida||'').replace(/"/g,'&quot;')}" placeholder="📝 Observação rápida..." maxlength="100" oninput="saveObsRapida(this.value)" ${podeEditar('os') ? '' : 'readonly'} style="width:100%;padding:7px 10px;margin:8px 0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;" onfocus="this.style.borderColor='var(--green-primary)'" onblur="this.style.borderColor='var(--border)'">${os.crmLeadId ? `<div style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#93c5fd;background:rgba(147,197,253,0.10);border:1px solid rgba(147,197,253,0.20);border-radius:100px;padding:3px 10px;margin:6px 0;font-weight:600;">📊 Origem: CRM Comercial${os.preOsId ? ` · ${os.preOsId}` : ''}</div>` : ''}<div class="central-comunicacao-btns"><button onclick="copyMessageToClipboard()" style="background:var(--green-primary);border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">👤 Cliente</button><button onclick="copySupplierMessage()" style="background:#3b82f6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">🏭 Fornecedor</button><button onclick="toggleRetornoPanel()" id="btn-retorno" style="background:#f59e0b;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#000;">🔔 Retorno</button><button onclick="copiarMensagemFinalizado()" style="background:#8b5cf6;border:none;padding:7px 16px;border-radius:var(--radius-sm);cursor:pointer;font-size:12px;font-weight:700;color:#fff;">✅ Finalizado</button></div>${_renderAcaoBtn(os)}<div class="detail-client">${escHtml(os.clientName)} ${os.password ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#fbbf24;background:rgba(251,191,36,0.1);padding:2px 8px;border-radius:100px;">🔒 ${escHtml(os.password)}</span>` : ''}</div><div style="font-size:13px;color:var(--text2);margin-top:4px;">📞 <a href="#" onclick="abrirPortalCliente('${os.id}','${normalizePhoneDigits(os.phone)}');return false;" style="color:#2196F3;text-decoration:none;font-weight:600;" title="Abrir Portal do Cliente">${escHtml(os.phone)} 🏠</a></div>${_portalAuthHtml}${os.cpf ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">🆔 CPF: ${escHtml(os.cpf)}</div>` : ''}${os.cep || os.endereco || os.bairro || os.cidade || os.estado ? `<div style="font-size:13px;color:var(--text2);margin-top:2px;">📍 ${escHtml([os.endereco, os.numero].filter(Boolean).join(', '))}${os.complemento ? ` - ${escHtml(os.complemento)}` : ''}${os.bairro ? `<br>${escHtml(os.bairro)}` : ''}${os.cidade || os.estado ? `<br>${escHtml([os.cidade, os.estado].filter(Boolean).join(' - '))}` : ''}${os.cep ? `<br>CEP: ${escHtml(os.cep)}` : ''}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">📦 ${getCategoryIcon(os.category)} ${escHtml([os.brand, os.model].filter(Boolean).join(' '))}</div>${os.imei ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI: ${escHtml(os.imei)}</div>` : ''}${os.imei1 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 1: ${escHtml(os.imei1)}</div>` : ''}${os.imei2 ? `<div style="font-size:12px;color:var(--text3);margin-top:4px;">🔢 IMEI 2: ${escHtml(os.imei2)}</div>` : ''}<div style="font-size:13px;color:var(--text2);margin-top:4px;">${escHtml(os.defect)}</div>${(os.valor || os.valorCartao || os.technician) ? `<div style="font-size:13px;color:var(--text2);margin-top:6px;">${os.valor ? `💰 À vista/PIX: R$ ${Number(os.valor).toFixed(2)}` : ''}${os.valor && os.valorCartao ? '<br>' : ''}${os.valorCartao ? `💳 Cartão: R$ ${Number(os.valorCartao).toFixed(2)}` : ''}${(os.valor || os.valorCartao) && os.technician ? '<br>' : ''}${os.technician ? `🛠️ ${escHtml(os.technician)}` : ''}</div>` : ''}<div style="font-size:12px;color:var(--text3);margin-top:4px;">${garantiaHtml}</div></div>`;
     
     html += renderRetornoPanelHTML(os);
     html += `<div style="clear:both;height:24px;"></div>`;
@@ -1159,6 +1218,11 @@ async function saveOSEdit() {
     try {
         const { phone: pCanon, phoneDigits: pDigits } = canonicalizePhone(p);
         const updates = { clientName: n, phone: pCanon, phoneDigits: pDigits, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
+        const cpfDigitsEdit = String(cpf || '').replace(/\D/g, '');
+        if (cpfDigitsEdit.length < 4) {
+            const pinExistente = String(currentOS.portalAccessCode || '').replace(/\D/g, '');
+            updates.portalAccessCode = pinExistente.length === 4 ? pinExistente : gerarPortalAccessCode();
+        }
         await updateDoc(doc(db, "os", currentOS.id), updates);
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
@@ -1262,11 +1326,8 @@ async function deleteOS(id) {
 
 function shareWhatsApp() { if(!currentOS) return; const os=currentOS; const text=`*Cell City - O.S.*\n📋 ${os.id}\n👤 ${os.clientName}\n📱 ${os.model}\n🔧 ${os.defect}\nStatus: ${getStatusLabel(os.status)}\n📅 ${formatDate(os.createdAt)}`; window.open(`https://wa.me/55${normalizePhoneDigits(os.phone)}?text=${encodeURIComponent(text)}`, '_blank'); }
 
-// Abre o Portal do Cliente já autenticado no telefone desta OS, direto na
-// própria OS (?tel=<phoneDigits>&os=<osId>) — evita a equipe pesquisar o
-// cliente manualmente. Ver Portal.js::_boot() para o auto-login. O telefone
-// é o próprio dado já gravado na OS (mesmo campo que a busca do Portal usa
-// para localizar o cliente), não uma nova pesquisa por telefone digitado.
+// Abre o Portal do Cliente com telefone pré-preenchido (?tel=&os=).
+// NÃO autentica sozinho — o Portal pede o código de 4 dígitos.
 function abrirPortalCliente(osId, phoneDigits) {
   if (!phoneDigits || phoneDigits.length < 10) {
     showToast('❌ Telefone da OS inválido — não é possível abrir o Portal do Cliente.');
@@ -1624,8 +1685,13 @@ function copyMessageToClipboard() {
     if (!currentOS) return;
     const os = currentOS;
     const nome = (os.clientName || '').split(' ')[0] || 'Cliente';
+    const codigo = portalCodigoExibicao(os).codigo || '——';
+    const link = portalLinkComParams(os);
     const message = (retornoMensagens.cliente || _msgClientePadrao())
-        .replace(/\{nome\}/g, nome).replace(/\{os\}/g, os.id);
+        .replace(/\{nome\}/g, nome)
+        .replace(/\{os\}/g, os.id)
+        .replace(/\{codigo\}/g, codigo)
+        .replace(/\{link_portal\}/g, link);
 
     _copiarComHistorico(message, 'cliente', '👤 Cliente');
 }
@@ -1635,8 +1701,8 @@ function _msgClientePadrao() {
         'Sua Ordem de Serviço já foi aberta e está disponível para acompanhamento.\n\n' +
         '📋 OS Nº {os}\n\n' +
         'Você pode acompanhar pelo Portal do Cliente:\n' +
-        '🔗 https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html\n\n' +
-        '📱 Use o telefone cadastrado na OS para acessar.\n\n' +
+        '🔗 {link_portal}\n\n' +
+        '📱 Telefone cadastrado + código de acesso: *{codigo}*\n\n' +
         'Cell City Informática';
 }
 
@@ -1741,7 +1807,7 @@ async function loadRetornoMensagens() {
 
 function _retornoMensagensPadrao() {
     return {
-        cliente: 'Olá, {nome}! 👋\n\nSua Ordem de Serviço já foi aberta e está disponível para acompanhamento.\n\n📋 OS Nº {os}\n\n🔗 https://www.cellcityinformatica.com.br/CRM/pages/portal-cliente/index.html\n\n📱 Use o telefone cadastrado na OS para acessar.\n\nCell City Informática',
+        cliente: 'Olá, {nome}! 👋\n\nSua Ordem de Serviço já foi aberta e está disponível para acompanhamento.\n\n📋 OS Nº {os}\n\n🔗 {link_portal}\n\n📱 Telefone cadastrado + código de acesso: *{codigo}*\n\nCell City Informática',
         fornecedor: _msgFornecedorPadrao(),
         finalizado: _msgFinalizadoPadrao(),
         orcamento: 'Olá, {nome}! 👋\n\nO orçamento do seu {aparelho} está pronto para sua avaliação.\n\nQualquer dúvida, estamos à disposição!\nCell City Informática',

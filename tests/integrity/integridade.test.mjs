@@ -179,11 +179,15 @@ test('garantia.html: campos públicos (clientName/phone/cpfMascarado/model/defec
 // tests/rbac/os.test.mjs (lado do CRM, com mutation test provado); o lado
 // do portal.js foi verificado manualmente por rastreamento de código
 // (reaproveita doLogin()/_autenticarComDigits() já testados em produção).
-test('portal.js: auto-login por ?tel= existe e roteia para os-detalhe', () => {
+test('portal.js: link ?tel=&os= pré-preenche login e exige código (sem auto-login só com telefone)', () => {
     const src = readPortal();
-    assert.match(src, /_autenticarComDigits\(digits\)/, 'função de login reutilizável não pode ser removida');
+    assert.match(src, /_autenticarComDigits\(digits,\s*codigo\)/, 'login exige telefone + código de 4 dígitos');
     assert.match(src, /paramsAuto\.get\(['"]tel['"]\)/, '_boot() precisa ler ?tel= da URL (vem de os.js::abrirPortalCliente)');
-    assert.match(src, /#\/os-detalhe\/\$\{osAuto\}/, 'auto-login precisa rotear direto pra OS quando ?os= vier junto');
+    assert.match(src, /_pendingLogin/, 'link da OS deve guardar telefone/os pendentes para pré-preencher o formulário');
+    assert.match(src, /#\/os-detalhe\/\$\{os(?:Auto|Destino)\}/, 'após login válido, ?os= deve rotear para o detalhe da OS');
+    // Não pode mais autenticar só com digits da URL (brecha: qualquer um com o telefone entrava)
+    assert.doesNotMatch(src, /_autenticarComDigits\(digitsAuto\)\s*;/,
+        'não pode autenticar automaticamente só com ?tel= da URL');
 });
 
 test('os.js: abrirPortalCliente aponta para portal-cliente/index.html, nunca wa.me', () => {
@@ -225,9 +229,25 @@ test('portal.js: OS com orçamento recusado nunca conta como garantia (nem pende
     assert.match(src, /_STATUS_SEM_GARANTIA:\s*\[['"]orcamento_recusado['"],\s*['"]devolvido_orcamento['"]\]/,
         '_STATUS_SEM_GARANTIA precisa cobrir os 2 status de recusa (oficial + legado)');
     assert.match(src, /_emGarantia\(os\)\s*{\s*if \(this\._STATUS_SEM_GARANTIA\.includes\(os\.status\)\) return false;/,
-        '_emGarantia precisa negar logo no início pra status recusado, antes do fallback de garantiaId');
+        '_emGarantia precisa negar logo no início pra status recusado');
     assert.match(src, /const pendentes = this\.currentOS\.filter\(o =>\s*\n\s*o\.garantiaId && !this\._getDeliveryDate\(o\) && !this\._STATUS_SEM_GARANTIA\.includes\(o\.status\)/,
         'filtro de "pendentes" (Garantias Vinculadas) também precisa excluir status recusado — mesma causa raiz do bug em _emGarantia');
+});
+
+test('portal.js: garantia ativa só após data de entrega (não conta da criação via garantiaId)', () => {
+    const src = readPortal();
+    assert.match(src, /_emGarantia\(os\)\s*{\s*if \(this\._STATUS_SEM_GARANTIA\.includes\(os\.status\)\) return false;\s*const dd = this\._getDeliveryDate\(os\);\s*if \(!dd\) return false;/,
+        '_emGarantia deve exigir data de entrega; OS só com garantiaId (Recebido) não pode aparecer como em garantia');
+    assert.doesNotMatch(src, /else if \(os\.garantiaId\) \{\s*\/\/ Não entregue mas tem garantia vinculada/,
+        'fallback que contava prazo da criação via garantiaId precisa ter sido removido');
+});
+
+test('portal.js: logout sem confirm() nativo; login exige código de 4 dígitos', () => {
+    const src = readPortal();
+    assert.doesNotMatch(src, /logout\(\)\s*\{\s*if\s*\(\s*!?\s*confirm\(/,
+        'logout não pode mais usar confirm() nativo do navegador');
+    assert.match(src, /login-codigo/, 'formulário de login precisa do campo de código de acesso');
+    assert.match(src, /codigoAcesso/, 'sessão/login precisa tratar codigoAcesso');
 });
 
 test('portal.js: Nota Fiscal em Minhas Garantias só com garantia válida', () => {

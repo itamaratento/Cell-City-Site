@@ -13,54 +13,24 @@ Object.assign(window.Portal, {
   // entrega" — falso positivo achado na homologação de 2026-07-11 (ex.:
   // Samsung J2 Core com orçamento recusado aparecendo em Minhas Garantias).
   _STATUS_SEM_GARANTIA: ['orcamento_recusado', 'devolvido_orcamento'],
+  // Garantia SÓ após entrega: prazo conta a partir da data em que a OS
+  // foi marcada como Entregue. Ter garantiaId na abertura NÃO ativa
+  // contagem nem badge "em garantia" (bug: OS Recebido com 90 dias).
   _emGarantia(os) {
     if (this._STATUS_SEM_GARANTIA.includes(os.status)) return false;
-    // Se tem garantiaId, considera em garantia mesmo sem entrega (prazo conta da criação).
-    // Se foi entregue, o prazo conta da data de entrega (comportamento original).
     const dd = this._getDeliveryDate(os);
+    if (!dd) return false;
     const prazo = os.prazoGarantia || PRAZO_GARANTIA_DIAS;
-
-    let startDate;
-    if (dd) {
-      startDate = dd;
-    } else if (os.garantiaId) {
-      // Não entregue mas tem garantia vinculada — conta da criação da OS
-      if (os.createdAt) {
-        startDate = typeof os.createdAt === 'object' && os.createdAt.toDate
-          ? os.createdAt.toDate()
-          : new Date(os.createdAt);
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
-
-    const limite = new Date(startDate);
+    const limite = new Date(dd);
     limite.setDate(limite.getDate() + prazo);
     return new Date() <= limite;
   },
 
   _diasRestantesGarantia(os) {
     const dd = this._getDeliveryDate(os);
+    if (!dd) return 0;
     const prazo = os.prazoGarantia || PRAZO_GARANTIA_DIAS;
-
-    let startDate;
-    if (dd) {
-      startDate = dd;
-    } else if (os.garantiaId) {
-      if (os.createdAt) {
-        startDate = typeof os.createdAt === 'object' && os.createdAt.toDate
-          ? os.createdAt.toDate()
-          : new Date(os.createdAt);
-      } else {
-        return 0;
-      }
-    } else {
-      return 0;
-    }
-
-    const limite = new Date(startDate);
+    const limite = new Date(dd);
     limite.setDate(limite.getDate() + prazo);
     return Math.ceil((limite - new Date()) / 86400000);
   },

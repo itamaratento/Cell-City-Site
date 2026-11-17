@@ -143,23 +143,24 @@ window.Portal = {
     console.log('[Portal] location.hash:', location.hash);
     false && console.log('[Portal] sessionStorage.portal_session:', sessionStorage.getItem('portal_session')); // PII desabilitado — SEC-CONSOLE-001 (logava telefone da sessão)
 
-    // Tenta restaurar sessão
+    // Restaura sessão — sessões antigas só com telefone (sem codigoAcesso)
+    // são descartadas: o segundo fator passou a ser obrigatório.
     const saved = sessionStorage.getItem('portal_session');
     if (saved) {
       try {
         this.session = JSON.parse(saved);
-        // Sessões salvas antes da padronização de telefone não têm telefoneDigits.
         if (!this.session.telefoneDigits && this.session.telefone) {
           this.session.telefoneDigits = this._phoneDigits(this.session.telefone);
         }
-        false && console.log('[Portal] Sessão restaurada:', JSON.stringify(this.session));
-        false && console.log('[AUDIT:BOOT] telefone da sessão restaurada:', JSON.stringify(this.session?.telefone));
-
-        // Inicia listeners em tempo real para a sessão restaurada
-        false && console.log('[AUDIT:BOOT] Iniciando _listenOS() e _carregarMensagens() para sessão restaurada');
-        this._listenOS();
-        this._carregarMensagens();
-        this._carregarAgendamentos();
+        if (!this.session.codigoAcesso || String(this.session.codigoAcesso).replace(/\D/g, '').length !== 4) {
+          console.log('[Portal] Sessão antiga sem código de acesso — descartada');
+          this.session = null;
+          sessionStorage.removeItem('portal_session');
+        } else {
+          this._listenOS();
+          this._carregarMensagens();
+          this._carregarAgendamentos();
+        }
       } catch {
         console.warn('[Portal] Erro ao fazer parse da sessão');
         this.session = null;
@@ -168,28 +169,25 @@ window.Portal = {
       console.log('[Portal] Nenhuma sessão salva');
     }
 
-    // Auto-login vindo da Ordem de Serviço no CRM — botão "Portal do Cliente"
-    // em CRM/pages/os/os.js::abrirPortalCliente(), que abre esta página com
-    // ?tel=<phoneDigits>&os=<osId>. Evita a equipe pesquisar o cliente
-    // manualmente: o telefone já é dado conhecido (o da própria OS).
-    // Se a sessão restaurada já é do mesmo telefone, não repete a consulta —
-    // só pula direto pra rota da OS (equivalente ao "cliente já logado").
+    // Link da OS no CRM / WhatsApp (?tel=<digits>&os=<osId>): NÃO autentica
+    // sozinho. Só pré-preenche o telefone e pede o código de 4 dígitos.
+    // Se já houver sessão válida do mesmo telefone (com código), vai direto.
     const paramsAuto = new URLSearchParams(location.search);
     const telAuto = paramsAuto.get('tel');
     if (telAuto) {
       const digitsAuto = this._phoneDigits(telAuto);
-      const mesmoCliente = this.session && this.session.telefoneDigits === digitsAuto;
-      if (!mesmoCliente) {
-        false && console.log('[Portal] Auto-login vindo da OS — telefone:', digitsAuto); // PII desabilitado PS-6
-        await this._autenticarComDigits(digitsAuto);
-      }
-      if (this.session) {
-        const osAuto = paramsAuto.get('os');
+      const osAuto = paramsAuto.get('os');
+      this._pendingLogin = { tel: digitsAuto, os: osAuto || null };
+      const mesmoCliente = this.session
+        && this.session.telefoneDigits === digitsAuto
+        && this.session.codigoAcesso;
+      if (mesmoCliente) {
         location.hash = osAuto ? `#/os-detalhe/${osAuto}` : '#/painel';
+      } else {
+        this.session = null;
+        sessionStorage.removeItem('portal_session');
+        location.hash = '#/login';
       }
-      // Remove telefone/os da URL visível — não deixa esses dados na barra
-      // de endereço nem sobrevivendo a um refresh (a sessão já está no
-      // sessionStorage, que é a fonte de verdade a partir daqui).
       history.replaceState(null, '', location.pathname + (location.hash || ''));
     }
 
@@ -341,13 +339,14 @@ window.Portal = {
   },
 
   // ===== LOGOUT =====
+  // Saída direta — sem confirm()/alert() nativos do navegador.
   logout() {
-    if (!confirm('Deseja sair do Portal do Cliente?')) return;
     if (this.unsubscribeOS) this.unsubscribeOS();
     this.session = null;
     this.currentOS = [];
     this.currentMsgs = [];
     this.currentAgendamentos = [];
+    this._pendingLogin = null;
     sessionStorage.removeItem('portal_session');
     location.hash = '#/login';
   },
