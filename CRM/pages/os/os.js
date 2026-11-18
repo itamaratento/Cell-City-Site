@@ -2015,6 +2015,9 @@ function _populateWarrantySelect(selectId, selectedId) {
     });
 }
 
+/** Cache em memória da config de impressão (preenchido no boot da página). */
+let _printConfigMem = null;
+
 /**
  * Carrega config de impressão do Firestore (fonte da verdade entre PCs)
  * e sincroniza no localStorage. Fallback: cache local.
@@ -2045,9 +2048,6 @@ async function _fetchWarrantyConfigFromFirestore() {
     } catch (e) {}
     return null;
 }
-
-/** Cache em memória da config de impressão (preenchido no boot da página). */
-let _printConfigMem = null;
 
 function _lerPrintConfigLocal() {
     try {
