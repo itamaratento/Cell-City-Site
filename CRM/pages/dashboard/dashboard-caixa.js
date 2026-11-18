@@ -104,7 +104,7 @@ export const dashboardCaixaMixin = {
 
       const footer = document.querySelector('.meta-footer');
       if (footer) {
-        const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR')}`;
+        const fmt = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
         const baseLabel = lucroPorAno[anoAtual - 1] > 0
           ? `base ${anoAtual - 1}: ${fmt(Math.round(lucroBase))}`
           : anosHistorico.length > 0
@@ -121,7 +121,7 @@ export const dashboardCaixaMixin = {
     this.state.meta = { current, goal };
     const percent = Math.min((current / goal) * 100, 100);
     const remaining = Math.max(goal - current, 0);
-    const formatBRL = (v) => `R$ ${v.toLocaleString('pt-BR')}`;
+    const formatBRL = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
     const elCurrent = document.getElementById('meta-current');
     const elGoal = document.getElementById('meta-goal');
     const elPercent = document.getElementById('meta-percent');

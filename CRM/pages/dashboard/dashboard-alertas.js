@@ -601,7 +601,7 @@ export const dashboardAlertasMixin = {
       if (meta && meta.goal > 0) {
         const percent = Math.round((meta.current / meta.goal) * 100);
         const falta = Math.max(meta.goal - meta.current, 0);
-        const fmt = (v) => `R$ ${Math.round(v).toLocaleString('pt-BR')}`;
+        const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
         if (percent >= 100) {
           alertas.push({
             icon: '✅', cat: 'crm', cor: null,
