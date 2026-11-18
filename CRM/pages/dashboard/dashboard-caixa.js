@@ -6,18 +6,12 @@ Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sem
 ============================================ */
 import { db, collection, getDocs, query, where } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
-
-/** Segunda-feira e domingo (YYYY-MM-DD) da semana ISO `weekNum` no ano `year`. */
-function _isoWeekRange(year, weekNum) {
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const day = jan4.getUTCDay() || 7;
-  const monday = new Date(jan4);
-  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (weekNum - 1) * 7);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  const fmt = (d) => d.toISOString().slice(0, 10);
-  return { start: fmt(monday), end: fmt(sunday) };
-}
+import {
+  META_ANO_MIN,
+  weekNumISO,
+  isoWeekDataISORange,
+  somarLucroMetaSemanal,
+} from "../caixa/caixa-data.js";
 
 export const dashboardCaixaMixin = {
   // ===== FECHAMENTO AUTOMÁTICO DO CAIXA =====
@@ -58,62 +52,50 @@ export const dashboardCaixaMixin = {
     this._carregarMetaFirestore();
   },
 
+  /**
+   * Lê lançamentos da mesma semana ISO em todos os anos desde META_ANO_MIN,
+   * filtrando por dataISO (campo presente em caixa, OS e Beepstart).
+   * Se o filtro falhar → fallback: leitura completa (comportamento antigo).
+   */
+  async _lerLancamentosMetaSemanal(anoAtual, numSem) {
+    const anos = [];
+    for (let a = META_ANO_MIN; a <= anoAtual; a++) anos.push(a);
+
+    try {
+      const snaps = await Promise.all(anos.map((ano) => {
+        const { startISO, endISO } = isoWeekDataISORange(ano, numSem);
+        return getDocs(query(
+          collection(db, 'caixa_lancamentos'),
+          ...injectTenantFilter([
+            where('dataISO', '>=', startISO),
+            where('dataISO', '<=', endISO),
+          ])
+        ));
+      }));
+      const list = [];
+      snaps.forEach((snap) => snap.forEach((d) => list.push(d.data())));
+      return list;
+    } catch (e) {
+      console.warn('[Dashboard] Meta: filtro dataISO falhou — fallback leitura completa:', e);
+      const snap = await getDocs(query(
+        collection(db, 'caixa_lancamentos'),
+        ...injectTenantFilter([])
+      ));
+      const list = [];
+      snap.forEach((d) => list.push(d.data()));
+      return list;
+    }
+  },
+
   async _carregarMetaFirestore() {
     try {
       const CRESCIMENTO = 1.15;
-
-      // Número da semana ISO (1-53)
-      const _weekNum = (date) => {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-        const jan1 = new Date(d.getFullYear(), 0, 1);
-        return Math.ceil((((d - jan1) / 86400000) + 1) / 7);
-      };
-
-      const now      = new Date();
+      const now = new Date();
       const anoAtual = now.getFullYear();
-      const numSem   = _weekNum(now);
+      const numSem = weekNumISO(now);
 
-      // Em vez de ler 2500+ docs: só a semana ISO atual nos últimos 3 anos.
-      const anos = [anoAtual, anoAtual - 1, anoAtual - 2];
-      const snaps = await Promise.all(anos.map(async (ano) => {
-        const { start, end } = _isoWeekRange(ano, numSem);
-        try {
-          return await getDocs(query(
-            collection(db, 'caixa_lancamentos'),
-            ...injectTenantFilter([
-              where('data', '>=', start),
-              where('data', '<=', end),
-            ])
-          ));
-        } catch (e) {
-          console.warn(`[Dashboard] Meta: falha ao filtrar caixa ${start}…${end}:`, e);
-          return null;
-        }
-      }));
-
-      let lucroAtual = 0;
-      // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }
-      const lucroPorAno = {};
-
-      snaps.forEach((snap) => {
-        if (!snap) return;
-        snap.forEach(d => {
-          const l = d.data();
-          const lucro = Number(l.lucro || 0);
-          // Confirma semana via data (campo filtrado) — evita docs fora do range por fuso.
-          const dia = l.data || (l.dataISO || l.createdAtISO || '').slice(0, 10);
-          if (!dia) return;
-          const dt = new Date(dia + 'T12:00:00');
-          if (isNaN(dt.getTime())) return;
-          const ano = dt.getFullYear();
-          const sem = _weekNum(dt);
-          if (sem !== numSem) return;
-          if (ano === anoAtual) lucroAtual += lucro;
-          else lucroPorAno[ano] = (lucroPorAno[ano] || 0) + lucro;
-        });
-      });
+      const lancamentos = await this._lerLancamentosMetaSemanal(anoAtual, numSem);
+      const { lucroAtual, lucroPorAno } = somarLucroMetaSemanal(lancamentos, anoAtual, numSem);
 
       // Meta base: lucro do ano anterior na mesma semana, ou média dos anos disponíveis
       const anosHistorico = Object.keys(lucroPorAno).map(Number).sort((a, b) => b - a);

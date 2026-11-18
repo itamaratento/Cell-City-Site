@@ -75,6 +75,20 @@
       ]
     },
     {
+      "collectionGroup": "caixa_lancamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "empresa_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dataISO",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "catalogo_produtos",
       "queryScope": "COLLECTION",
       "fields": [
