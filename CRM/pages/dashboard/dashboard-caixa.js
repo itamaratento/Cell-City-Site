@@ -4,8 +4,20 @@ Etapa 7 da refatoração modular: fechamento automático do Caixa e Meta Semanal
 (lê caixa_lancamentos).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs, query } from "../../scripts/firebase.js";
+import { db, collection, getDocs, query, where } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
+
+/** Segunda-feira e domingo (YYYY-MM-DD) da semana ISO `weekNum` no ano `year`. */
+function _isoWeekRange(year, weekNum) {
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const day = jan4.getUTCDay() || 7;
+  const monday = new Date(jan4);
+  monday.setUTCDate(jan4.getUTCDate() - day + 1 + (weekNum - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { start: fmt(monday), end: fmt(sunday) };
+}
 
 export const dashboardCaixaMixin = {
   // ===== FECHAMENTO AUTOMÁTICO DO CAIXA =====
@@ -63,27 +75,44 @@ export const dashboardCaixaMixin = {
       const anoAtual = now.getFullYear();
       const numSem   = _weekNum(now);
 
-      // Lê todos os lançamentos via SDK (autenticado)
-      const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), ...injectTenantFilter([])));
+      // Em vez de ler 2500+ docs: só a semana ISO atual nos últimos 3 anos.
+      const anos = [anoAtual, anoAtual - 1, anoAtual - 2];
+      const snaps = await Promise.all(anos.map(async (ano) => {
+        const { start, end } = _isoWeekRange(ano, numSem);
+        try {
+          return await getDocs(query(
+            collection(db, 'caixa_lancamentos'),
+            ...injectTenantFilter([
+              where('data', '>=', start),
+              where('data', '<=', end),
+            ])
+          ));
+        } catch (e) {
+          console.warn(`[Dashboard] Meta: falha ao filtrar caixa ${start}…${end}:`, e);
+          return null;
+        }
+      }));
 
       let lucroAtual = 0;
       // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }
       const lucroPorAno = {};
 
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        if (!iso) return;
-
-        const lucro = Number(l.lucro || 0);
-        const dt = new Date(iso);
-        const ano = dt.getFullYear();
-        const sem = _weekNum(dt);
-
-        if (ano === anoAtual && sem === numSem) lucroAtual += lucro;
-        if (ano !== anoAtual && sem === numSem) {
-          lucroPorAno[ano] = (lucroPorAno[ano] || 0) + lucro;
-        }
+      snaps.forEach((snap) => {
+        if (!snap) return;
+        snap.forEach(d => {
+          const l = d.data();
+          const lucro = Number(l.lucro || 0);
+          // Confirma semana via data (campo filtrado) — evita docs fora do range por fuso.
+          const dia = l.data || (l.dataISO || l.createdAtISO || '').slice(0, 10);
+          if (!dia) return;
+          const dt = new Date(dia + 'T12:00:00');
+          if (isNaN(dt.getTime())) return;
+          const ano = dt.getFullYear();
+          const sem = _weekNum(dt);
+          if (sem !== numSem) return;
+          if (ano === anoAtual) lucroAtual += lucro;
+          else lucroPorAno[ano] = (lucroPorAno[ano] || 0) + lucro;
+        });
       });
 
       // Meta base: lucro do ano anterior na mesma semana, ou média dos anos disponíveis

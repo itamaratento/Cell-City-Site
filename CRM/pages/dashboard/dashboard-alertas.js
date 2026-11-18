@@ -297,6 +297,31 @@ export const dashboardAlertasMixin = {
     return Math.floor((b - a) / 86400000);
   },
 
+  // Uma leitura compartilhada de 'os' (TTL 5 min) — evita 3 getDocs na abertura.
+  async _carregarOSListCached() {
+    const TTL_MS = 300000;
+    if (this._osListCache && (Date.now() - (this._osListCacheAt || 0)) < TTL_MS) {
+      return this._osListCache;
+    }
+    const list = [];
+    try {
+      const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
+      snap.forEach(d => list.push({ firestoreId: d.id, ...d.data() }));
+    } catch (e) {
+      console.warn('[Dashboard] falha ao ler OS (cache compartilhado):', e);
+    }
+    this._osListCache = list;
+    this._osListCacheAt = Date.now();
+    const map = new Map();
+    list.forEach(o => {
+      const id = o.id || o.firestoreId;
+      if (id) map.set(String(id), o.status || '');
+    });
+    this._osStatusCacheMap = map;
+    this._osStatusCacheAt = this._osListCacheAt;
+    return list;
+  },
+
   // Cache curto do mapa OS-id → status (mesma janela do refresh do card).
   // Só leitura — nunca escreve/atualiza documentos.
   async _mapaStatusOSParaAgenda() {
@@ -304,20 +329,8 @@ export const dashboardAlertasMixin = {
     if (this._osStatusCacheMap && (Date.now() - (this._osStatusCacheAt || 0)) < TTL_MS) {
       return this._osStatusCacheMap;
     }
-    const map = new Map();
-    try {
-      const snap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([])));
-      snap.forEach(d => {
-        const o = d.data() || {};
-        const id = o.id || d.id;
-        if (id) map.set(String(id), o.status || '');
-      });
-    } catch (e) {
-      console.warn('[Agenda] falha ao ler status das OS para o card:', e);
-    }
-    this._osStatusCacheMap = map;
-    this._osStatusCacheAt = Date.now();
-    return map;
+    await this._carregarOSListCached();
+    return this._osStatusCacheMap || new Map();
   },
 
   // Filtra pendências do CARD (não muta agenda nem OS).
@@ -493,14 +506,13 @@ export const dashboardAlertasMixin = {
         });
       }
 
-      const osSnap = await getDocs(query(collection(db, 'os'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
       const contatosSnap = await getDocs(query(collection(db, 'posvenda_contatos'), ...injectTenantFilter([]), limit(LIMITE_LISTA)));
 
       const contatosFeitos = new Set();
       contatosSnap.forEach(d => { const c = d.data(); if (c.ativo === false) return; contatosFeitos.add(`${c.osId}_${c.prazo}`); });
 
-      const osList = [];
-      osSnap.forEach(d => osList.push({ firestoreId: d.id, ...d.data() }));
+      // Reusa a mesma leitura de 'os' (não dispara getDocs de novo).
+      const osList = await this._carregarOSListCached();
 
       // ===== PRIORIDADE 1 — PÓS-VENDA =====
       let pvPendentes = 0;
@@ -705,26 +717,32 @@ export const dashboardAlertasMixin = {
       console.warn('Central de Alertas — erro ao gerar:', e);
     }
 
-    // ===== APARELHOS PRONTOS NÃO RETIRADOS =====
+    // ===== APARELHOS PRONTOS NÃO RETIRADOS + ORÇAMENTOS (filtra a lista já lida) =====
     try {
+      const osShared = await this._carregarOSListCached();
       // DT-22: incluir status legado `pronto` (equivale a concluido)
-      const prontoSnap = await getDocs(
-        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['concluido', 'pronto'])]), limit(LIMITE_LISTA))
-      );
       const prontos = [];
-      prontoSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        let dataConcluido = null;
-        if (Array.isArray(os.timeline)) {
-          const entry = [...os.timeline].reverse().find(t =>
-            typeof t.text === 'string' && (t.text.includes('→ Concluído') || t.text.includes('→ Pronto'))
-          );
-          if (entry?.date) dataConcluido = entry.date;
+      const orcamentos = [];
+      osShared.forEach(raw => {
+        const os = { id: raw.id || raw.firestoreId, ...raw };
+        const st = String(os.status || '');
+        if (st === 'concluido' || st === 'pronto') {
+          let dataConcluido = null;
+          if (Array.isArray(os.timeline)) {
+            const entry = [...os.timeline].reverse().find(t =>
+              typeof t.text === 'string' && (t.text.includes('→ Concluído') || t.text.includes('→ Pronto'))
+            );
+            if (entry?.date) dataConcluido = entry.date;
+          }
+          if (!dataConcluido) dataConcluido = os.updatedAt;
+          if (!dataConcluido) return;
+          const dias = calcDiasDesde(dataConcluido);
+          if (dias > 3) prontos.push({ ...os, _dias: dias });
         }
-        if (!dataConcluido) dataConcluido = os.updatedAt;
-        if (!dataConcluido) return;
-        const dias = calcDiasDesde(dataConcluido);
-        if (dias > 3) prontos.push({ ...os, _dias: dias });
+        if (st === 'orcamento' || st === 'orcamento_enviado') {
+          const dias = calcDiasDesde(os.updatedAt);
+          if (dias > 2) orcamentos.push({ ...os, _dias: dias });
+        }
       });
       if (prontos.length > 0) {
         prontos.sort((a, b) => b._dias - a._dias);
@@ -738,19 +756,6 @@ export const dashboardAlertasMixin = {
           _titulo: 'Aparelhos Prontos — Não Retirados',
         });
       }
-    } catch (e) { console.warn('Central de Alertas — OS prontas:', e); }
-
-    // ===== ORÇAMENTOS SEM RESPOSTA =====
-    try {
-      const orcSnap = await getDocs(
-        query(collection(db, 'os'), ...injectTenantFilter([where('status', 'in', ['orcamento', 'orcamento_enviado'])]), limit(LIMITE_LISTA))
-      );
-      const orcamentos = [];
-      orcSnap.forEach(d => {
-        const os = { id: d.id, ...d.data() };
-        const dias = calcDiasDesde(os.updatedAt);
-        if (dias > 2) orcamentos.push({ ...os, _dias: dias });
-      });
       if (orcamentos.length > 0) {
         orcamentos.sort((a, b) => b._dias - a._dias);
         alertas.push({
@@ -763,7 +768,7 @@ export const dashboardAlertasMixin = {
           _titulo: 'Orçamentos Sem Resposta',
         });
       }
-    } catch (e) { console.warn('Central de Alertas — orçamentos:', e); }
+    } catch (e) { console.warn('Central de Alertas — OS prontas/orçamentos:', e); }
 
     return alertas;
   },

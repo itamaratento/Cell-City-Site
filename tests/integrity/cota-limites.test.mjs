@@ -28,6 +28,7 @@ test('dashboard-alertas: getDocs de os/agenda com limit', () => {
   assert.ok(/collection\(db, 'os'\).*limit\(LIMITE_LISTA\)/.test(c.replace(/\s+/g, ' '))
     || c.includes("collection(db, 'os'), ...injectTenantFilter([]), limit(LIMITE_LISTA)"));
   assert.ok(c.includes("collection(db, 'agenda'), ...injectTenantFilter([]), limit(LIMITE_LISTA)"));
+  assert.ok(c.includes('_carregarOSListCached'), 'OS deve ser lida uma vez e compartilhada');
 });
 
 test('portal admin: portal_eventos com limit(200)', () => {
