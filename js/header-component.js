@@ -129,6 +129,17 @@
       box-shadow: 0 4px 12px rgba(0, 200, 83, 0.3);
     }
 
+    /* ---- Botão: Produtos (Amarelo) ---- */
+    .nav-produtos {
+      background: linear-gradient(135deg, #FFCC00 0%, #E6B800 100%) !important;
+      color: #111 !important;
+    }
+    .nav-produtos:hover {
+      background: linear-gradient(135deg, #E6B800 0%, #CC9900 100%) !important;
+      box-shadow: 0 4px 12px rgba(255, 204, 0, 0.35) !important;
+      color: #111 !important;
+    }
+
     /* ---- Botão: Celulares (Verde) ---- */
     .nav-celular {
       background: linear-gradient(135deg, #00C853 0%, #00A040 100%) !important;
@@ -304,6 +315,7 @@
       </a>
       <nav class="nav" role="navigation" aria-label="Menu principal">
         <div class="nav-row">
+          <a href="/produtos/" class="nav-btn nav-produtos">Produtos</a>
           <a href="/celular/index.html" class="nav-btn nav-celular">Celulares</a>
           <a href="/notebook/index.html" class="nav-btn nav-notebook">Notebooks</a>
           <a href="/impressora/index.html" class="nav-btn nav-impressora">Impressoras</a>
