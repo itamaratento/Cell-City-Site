@@ -2,9 +2,15 @@
  * Helpers da entrada rápida da Nova OS (puros — sem DOM/Firebase).
  */
 
+/** Categorias com bloqueio de tela — impressora e afins não pedem senha. */
+const CATS_COM_BLOQUEIO = new Set(['celular', 'tablet', 'notebook']);
+
 /** Sem senha/padrão registrados (e não marcado "Sem senha"). Não bloqueia criação. */
 export function osFaltaSenha(os) {
   if (!os) return false;
+  const cat = String(os.category || os.categoria || '').toLowerCase().trim();
+  // Sem categoria → trata como aparelho com bloqueio (legado). Impressora/outros → nunca.
+  if (cat && !CATS_COM_BLOQUEIO.has(cat)) return false;
   if (String(os.password || '').trim()) return false;
   if (Array.isArray(os.patternSequence) && os.patternSequence.length > 0) return false;
   const lt = String(os.lockType || '').toLowerCase();

@@ -28,6 +28,14 @@ test('osFaltaSenha: senha, padrão ou Sem senha → false', () => {
   assert.equal(osFaltaSenha({ password: '', lockType: 'sem senha' }), false);
 });
 
+test('osFaltaSenha: impressora e categorias sem bloqueio → false; celular/tablet/notebook → true', () => {
+  assert.equal(osFaltaSenha({ category: 'impressora', password: '', lockType: 'Numerica' }), false);
+  assert.equal(osFaltaSenha({ category: 'outro', password: '', lockType: 'Numerica' }), false);
+  assert.equal(osFaltaSenha({ category: 'celular', password: '', lockType: 'Numerica' }), true);
+  assert.equal(osFaltaSenha({ category: 'tablet', password: '', lockType: 'Numerica' }), true);
+  assert.equal(osFaltaSenha({ category: 'notebook', password: '', lockType: 'Numerica' }), true);
+});
+
 test('acessoriosTexto junta lista e ignora vazios', () => {
   assert.equal(acessoriosTexto({ acessoriosDeixados: ['Chip', 'Capinha'] }), 'Chip, Capinha');
   assert.equal(acessoriosTexto({ acessoriosDeixados: ['Chip', '', null] }), 'Chip');
