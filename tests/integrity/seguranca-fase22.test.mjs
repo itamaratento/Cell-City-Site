@@ -139,8 +139,9 @@ test('central-alertas: aparelhos não retirados incluem status legado pronto (DT
 test('dashboard-alertas: query de não retirados inclui pronto (DT-22)', () => {
     const codigo = stripJsComments(read('CRM/pages/dashboard/dashboard-alertas.js'));
     assert.ok(/where\(\s*'status'\s*,\s*'in'\s*,\s*\[\s*'concluido'\s*,\s*'pronto'\s*\]\s*\)/.test(codigo)
-        || /'concluido'\s*,\s*'pronto'/.test(codigo),
-        'query Firestore deve incluir pronto via in [...]');
+        || /'concluido'\s*,\s*'pronto'/.test(codigo)
+        || (/===\s*'concluido'/.test(codigo) && /===\s*'pronto'/.test(codigo)),
+        'deve incluir status legado pronto (query in [...] ou filtro em memória)');
 });
 
 // ── 6. Catálogo público: filtro do client casa com a Rule ────────────

@@ -4,8 +4,14 @@ Etapa 7 da refatoração modular: fechamento automático do Caixa e Meta Semanal
 (lê caixa_lancamentos).
 Mixin aplicado em Dashboard.prototype (ver dashboard.js) — mesmo `this` de sempre.
 ============================================ */
-import { db, collection, getDocs, query } from "../../scripts/firebase.js";
+import { db, collection, getDocs, query, where } from "../../scripts/firebase.js";
 import { injectTenantFilter } from "../../shared/tenant-query.js";
+import {
+  META_ANO_MIN,
+  weekNumISO,
+  isoWeekDataISORange,
+  somarLucroMetaSemanal,
+} from "../caixa/caixa-data.js";
 
 export const dashboardCaixaMixin = {
   // ===== FECHAMENTO AUTOMÁTICO DO CAIXA =====
@@ -46,45 +52,50 @@ export const dashboardCaixaMixin = {
     this._carregarMetaFirestore();
   },
 
+  /**
+   * Lê lançamentos da mesma semana ISO em todos os anos desde META_ANO_MIN,
+   * filtrando por dataISO (campo presente em caixa, OS e Beepstart).
+   * Se o filtro falhar → fallback: leitura completa (comportamento antigo).
+   */
+  async _lerLancamentosMetaSemanal(anoAtual, numSem) {
+    const anos = [];
+    for (let a = META_ANO_MIN; a <= anoAtual; a++) anos.push(a);
+
+    try {
+      const snaps = await Promise.all(anos.map((ano) => {
+        const { startISO, endISO } = isoWeekDataISORange(ano, numSem);
+        return getDocs(query(
+          collection(db, 'caixa_lancamentos'),
+          ...injectTenantFilter([
+            where('dataISO', '>=', startISO),
+            where('dataISO', '<=', endISO),
+          ])
+        ));
+      }));
+      const list = [];
+      snaps.forEach((snap) => snap.forEach((d) => list.push(d.data())));
+      return list;
+    } catch (e) {
+      console.warn('[Dashboard] Meta: filtro dataISO falhou — fallback leitura completa:', e);
+      const snap = await getDocs(query(
+        collection(db, 'caixa_lancamentos'),
+        ...injectTenantFilter([])
+      ));
+      const list = [];
+      snap.forEach((d) => list.push(d.data()));
+      return list;
+    }
+  },
+
   async _carregarMetaFirestore() {
     try {
       const CRESCIMENTO = 1.15;
-
-      // Número da semana ISO (1-53)
-      const _weekNum = (date) => {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-        const jan1 = new Date(d.getFullYear(), 0, 1);
-        return Math.ceil((((d - jan1) / 86400000) + 1) / 7);
-      };
-
-      const now      = new Date();
+      const now = new Date();
       const anoAtual = now.getFullYear();
-      const numSem   = _weekNum(now);
+      const numSem = weekNumISO(now);
 
-      // Lê todos os lançamentos via SDK (autenticado)
-      const snap = await getDocs(query(collection(db, 'caixa_lancamentos'), ...injectTenantFilter([])));
-
-      let lucroAtual = 0;
-      // Acumula lucro da mesma semana por ano: { 2024: 1200, 2025: 1500 }
-      const lucroPorAno = {};
-
-      snap.forEach(d => {
-        const l = d.data();
-        const iso = l.dataISO || l.createdAtISO || '';
-        if (!iso) return;
-
-        const lucro = Number(l.lucro || 0);
-        const dt = new Date(iso);
-        const ano = dt.getFullYear();
-        const sem = _weekNum(dt);
-
-        if (ano === anoAtual && sem === numSem) lucroAtual += lucro;
-        if (ano !== anoAtual && sem === numSem) {
-          lucroPorAno[ano] = (lucroPorAno[ano] || 0) + lucro;
-        }
-      });
+      const lancamentos = await this._lerLancamentosMetaSemanal(anoAtual, numSem);
+      const { lucroAtual, lucroPorAno } = somarLucroMetaSemanal(lancamentos, anoAtual, numSem);
 
       // Meta base: lucro do ano anterior na mesma semana, ou média dos anos disponíveis
       const anosHistorico = Object.keys(lucroPorAno).map(Number).sort((a, b) => b - a);
@@ -104,7 +115,7 @@ export const dashboardCaixaMixin = {
 
       const footer = document.querySelector('.meta-footer');
       if (footer) {
-        const fmt = v => `R$ ${Number(v).toLocaleString('pt-BR')}`;
+        const fmt = v => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
         const baseLabel = lucroPorAno[anoAtual - 1] > 0
           ? `base ${anoAtual - 1}: ${fmt(Math.round(lucroBase))}`
           : anosHistorico.length > 0
@@ -121,7 +132,7 @@ export const dashboardCaixaMixin = {
     this.state.meta = { current, goal };
     const percent = Math.min((current / goal) * 100, 100);
     const remaining = Math.max(goal - current, 0);
-    const formatBRL = (v) => `R$ ${v.toLocaleString('pt-BR')}`;
+    const formatBRL = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(v) || 0);
     const elCurrent = document.getElementById('meta-current');
     const elGoal = document.getElementById('meta-goal');
     const elPercent = document.getElementById('meta-percent');

@@ -28,6 +28,14 @@ test('osFaltaSenha: senha, padrão ou Sem senha → false', () => {
   assert.equal(osFaltaSenha({ password: '', lockType: 'sem senha' }), false);
 });
 
+test('osFaltaSenha: impressora e categorias sem bloqueio → false; celular/tablet/notebook → true', () => {
+  assert.equal(osFaltaSenha({ category: 'impressora', password: '', lockType: 'Numerica' }), false);
+  assert.equal(osFaltaSenha({ category: 'outro', password: '', lockType: 'Numerica' }), false);
+  assert.equal(osFaltaSenha({ category: 'celular', password: '', lockType: 'Numerica' }), true);
+  assert.equal(osFaltaSenha({ category: 'tablet', password: '', lockType: 'Numerica' }), true);
+  assert.equal(osFaltaSenha({ category: 'notebook', password: '', lockType: 'Numerica' }), true);
+});
+
 test('acessoriosTexto junta lista e ignora vazios', () => {
   assert.equal(acessoriosTexto({ acessoriosDeixados: ['Chip', 'Capinha'] }), 'Chip, Capinha');
   assert.equal(acessoriosTexto({ acessoriosDeixados: ['Chip', '', null] }), 'Chip');
@@ -56,4 +64,11 @@ test('os.js: saveOS grava acessoriosDeixados e dispara impressão', () => {
   assert.match(OS_JS, /printOSEntrada\(1\)/);
   assert.match(OS_JS, /osFaltaSenha/);
   assert.match(OS_JS, /badgeFaltaSenhaHtml/);
+});
+
+test('os.js: impressão usa QR local e cache de config (sem api.qrserver)', () => {
+  assert.match(OS_JS, /qrcode-local\.js/);
+  assert.match(OS_JS, /_getPrintConfigCached/);
+  assert.match(OS_JS, /_prefetchPrintConfig/);
+  assert.equal(/api\.qrserver\.com/.test(OS_JS), false);
 });

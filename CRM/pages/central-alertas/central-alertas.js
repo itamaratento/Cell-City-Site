@@ -75,6 +75,11 @@ function fmtDataHora(d) { return formatDateTime(d, { year: null, vazio: '—' })
 function diasAtras(dias) {
     return new Date(Date.now() - (dias || 0) * 86400000);
 }
+/** Moeda pt-BR com exatamente 2 casas (evita Projeção com 3+ casas). */
+const _fmtBRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatarMoedaAlerta(v) {
+    return _fmtBRL.format(Number(v) || 0);
+}
 
 // ── Ação da Semana — leitura da coleção 'agenda' (mesma regra do Dashboard) ──
 async function lerAgenda() {
@@ -457,8 +462,8 @@ async function gerarAlertas() {
             out.push({
                 icon: '💰', cat: 'critico',
                 title: `FINANCEIRO · ${pagarVencido.length} conta(s) a pagar vencida(s)`,
-                sub: `Total vencido: R$ ${totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                detail: `${pagarVencido.length} conta(s) a pagar vencida(s), somando R$ ${totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Vencimento mais antigo: ${maisAntiga.vencimento} (${escapeHtml(maisAntiga.descricao || '')}).`,
+                sub: `Total vencido: ${formatarMoedaAlerta(totalVencido)}`,
+                detail: `${pagarVencido.length} conta(s) a pagar vencida(s), somando ${formatarMoedaAlerta(totalVencido)}. Vencimento mais antigo: ${maisAntiga.vencimento} (${escapeHtml(maisAntiga.descricao || '')}).`,
                 som: true, pulsar: true, tipo: 'financeiroPagarVencido',
                 quando: new Date(maisAntiga.vencimento + 'T00:00:00'), link: '../financeiro/index.html'
             });
@@ -468,8 +473,8 @@ async function gerarAlertas() {
             out.push({
                 icon: '💰', cat: 'atencao',
                 title: `FINANCEIRO · ${pagarProximo.length} conta(s) a pagar vencendo em breve`,
-                sub: `Total: R$ ${totalProximo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} nos próximos 3 dias`,
-                detail: `${pagarProximo.length} conta(s) a pagar vencem nos próximos 3 dias, somando R$ ${totalProximo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                sub: `Total: ${formatarMoedaAlerta(totalProximo)} nos próximos 3 dias`,
+                detail: `${pagarProximo.length} conta(s) a pagar vencem nos próximos 3 dias, somando ${formatarMoedaAlerta(totalProximo)}.`,
                 quando: now, link: '../financeiro/index.html'
             });
         }
@@ -478,8 +483,8 @@ async function gerarAlertas() {
             out.push({
                 icon: '💰', cat: 'atencao',
                 title: `FINANCEIRO · ${receberVencido.length} conta(s) a receber vencida(s)`,
-                sub: `Total: R$ ${totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                detail: `${receberVencido.length} cliente(s) com conta a receber vencida, somando R$ ${totalReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}. Considere cobrar.`,
+                sub: `Total: ${formatarMoedaAlerta(totalReceber)}`,
+                detail: `${receberVencido.length} cliente(s) com conta a receber vencida, somando ${formatarMoedaAlerta(totalReceber)}. Considere cobrar.`,
                 quando: now, link: '../financeiro/index.html'
             });
         }
@@ -490,8 +495,8 @@ async function gerarAlertas() {
             out.push({
                 icon: '📈', cat: 'crm',
                 title: `FINANCEIRO · ${receberProximo.length} recebimento(s) previsto(s)`,
-                sub: `Total: R$ ${totalReceberProx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} nos próximos 3 dias`,
-                detail: `${receberProximo.length} recebimento(s) previsto(s) nos próximos 3 dias, totalizando R$ ${totalReceberProx.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                sub: `Total: ${formatarMoedaAlerta(totalReceberProx)} nos próximos 3 dias`,
+                detail: `${receberProximo.length} recebimento(s) previsto(s) nos próximos 3 dias, totalizando ${formatarMoedaAlerta(totalReceberProx)}.`,
                 quando: now, link: '../financeiro/index.html'
             });
         }
@@ -507,8 +512,8 @@ async function gerarAlertas() {
             out.push({
                 icon: '📉', cat: 'critico',
                 title: 'FLUXO DE CAIXA PROJETADO NEGATIVO (7 dias)',
-                sub: `Projeção: R$ ${projecao7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                detail: `Considerando contas a pagar/receber com vencimento nos próximos 7 dias e a proporção de despesas fixas do período, o caixa projetado é negativo (R$ ${projecao7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}). A receber: R$ ${aReceber7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · A pagar: R$ ${aPagar7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} · Fixas (proporcional): R$ ${fixas7d.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+                sub: `Projeção: ${formatarMoedaAlerta(projecao7d)}`,
+                detail: `Considerando contas a pagar/receber com vencimento nos próximos 7 dias e a proporção de despesas fixas do período, o caixa projetado é negativo (${formatarMoedaAlerta(projecao7d)}). A receber: ${formatarMoedaAlerta(aReceber7d)} · A pagar: ${formatarMoedaAlerta(aPagar7d)} · Fixas (proporcional): ${formatarMoedaAlerta(fixas7d)}.`,
                 som: true, pulsar: true, tipo: 'financeiroFluxoCaixaNegativo',
                 quando: now, link: '../financeiro/index.html'
             });

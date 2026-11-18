@@ -12,10 +12,15 @@
 </head>
 <body>
 
-  <!-- HEADER -->
+  <!-- HEADER (só o título — meta sai da barra p/ não cobrir Favoritar/usuário) -->
   <header class="cx-header">
     <h1>💰 Caixa</h1>
-    <div class="meta-indicador" id="meta-card" title="Meta semanal">
+  </header>
+
+  <div class="screen">
+
+    <!-- META SEMANAL (abaixo da brand bar, sem disputar espaço com Favoritar) -->
+    <div class="meta-indicador meta-indicador-page" id="meta-card" title="Meta semanal">
       <div class="meta-card-label">Meta semanal</div>
       <div class="meta-indicador-linha">
         <span class="meta-card-valores">
@@ -27,9 +32,6 @@
       </div>
       <span class="meta-card-faltante">Faltam <span id="meta-faltante">R$ 0,00</span></span>
     </div>
-  </header>
-
-  <div class="screen">
 
     <!-- PESQUISA -->
     <section class="secao-pesquisa">
