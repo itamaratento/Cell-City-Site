@@ -83,7 +83,8 @@
       align-items: center;
       justify-content: center;
       pointer-events: none;
-      z-index: 1;
+      /* z-index 0: o título não pode cobrir Favoritar/usuário à direita */
+      z-index: 0;
     }
     /* Em telas estreitas reduz a zona máxima do título para não encostar
        nos botões que tomam mais espaço proporcional. */
