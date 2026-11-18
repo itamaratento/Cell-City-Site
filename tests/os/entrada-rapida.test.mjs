@@ -57,3 +57,10 @@ test('os.js: saveOS grava acessoriosDeixados e dispara impressão', () => {
   assert.match(OS_JS, /osFaltaSenha/);
   assert.match(OS_JS, /badgeFaltaSenhaHtml/);
 });
+
+test('os.js: impressão usa QR local e cache de config (sem api.qrserver)', () => {
+  assert.match(OS_JS, /qrcode-local\.js/);
+  assert.match(OS_JS, /_getPrintConfigCached/);
+  assert.match(OS_JS, /_prefetchPrintConfig/);
+  assert.doesNotMatch(OS_JS, /api\.qrserver\.com/);
+});

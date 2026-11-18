@@ -34,6 +34,7 @@ import {
     acessoriosTexto,
     badgeFaltaSenhaHtml,
 } from './entrada-rapida.js';
+import { qrImgHtml as qrImgHtmlLocal } from './qrcode-local.js';
 import {
     STATUS_AGUARDANDO_RETIRADA,
     OPCOES_SILENCIO,
@@ -909,19 +910,25 @@ async function saveOS(opts = {}) {
         }
 
         await DB.addOS(os);
-        await updateClientHistory(telefoneCanon, nome, osId, phoneDigits);
-        runAutomacoesOS(os);
 
-        if (preOSPendente) {
-            try { await updateDoc(doc(db, 'pre_os', preOSPendente), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() }); }
-            catch (e) { console.warn('⚠️ Pré-OS não marcada como convertida:', e); }
-            preOSPendente = null;
-        }
-        if (portalOSPendente) {
-            try { await updateDoc(doc(db, 'solicitacoes_diagnostico', portalOSPendente), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() }); }
-            catch (e) { console.warn('⚠️ Solicitação portal não marcada como convertida:', e); }
-            portalOSPendente = null;
-        }
+        // Pós-gravação em segundo plano: não atrasa impressão no balcão.
+        const preIdBg = preOSPendente;
+        const portalIdBg = portalOSPendente;
+        preOSPendente = null;
+        portalOSPendente = null;
+        Promise.resolve().then(async () => {
+            try { await updateClientHistory(telefoneCanon, nome, osId, phoneDigits); }
+            catch (e) { console.warn('⚠️ updateClientHistory:', e); }
+            try { runAutomacoesOS(os); } catch (e) { console.warn('⚠️ runAutomacoesOS:', e); }
+            if (preIdBg) {
+                try { await updateDoc(doc(db, 'pre_os', preIdBg), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() }); }
+                catch (e) { console.warn('⚠️ Pré-OS não marcada como convertida:', e); }
+            }
+            if (portalIdBg) {
+                try { await updateDoc(doc(db, 'solicitacoes_diagnostico', portalIdBg), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() }); }
+                catch (e) { console.warn('⚠️ Solicitação portal não marcada como convertida:', e); }
+            }
+        });
 
         const faltaSenha = osFaltaSenha(os);
         showToast(faltaSenha ? `✅ ${osId} criada · ⚠️ FALTA SENHA` : `✅ ${osId} criada com sucesso!`);
@@ -930,7 +937,7 @@ async function saveOS(opts = {}) {
         if (imprimirEntrada) {
             renderDetail();
             showScreen('detail');
-            await printOSEntrada(1);
+            printOSEntrada(1);
         } else {
             mostrarPosCriacaoOS(os);
         }
@@ -2026,6 +2033,7 @@ async function _fetchWarrantyConfigFromFirestore() {
             try {
                 localStorage.setItem(STORAGE_KEYS.CONFIG_IMPRESSAO, JSON.stringify(sync));
             } catch (e) { /* quota / privado */ }
+            _printConfigMem = sync;
             return sync;
         }
     } catch (e) {
@@ -2038,6 +2046,9 @@ async function _fetchWarrantyConfigFromFirestore() {
     return null;
 }
 
+/** Cache em memória da config de impressão (preenchido no boot da página). */
+let _printConfigMem = null;
+
 function _lerPrintConfigLocal() {
     try {
         const c = localStorage.getItem(STORAGE_KEYS.CONFIG_IMPRESSAO);
@@ -2046,9 +2057,28 @@ function _lerPrintConfigLocal() {
     return { logo: '', garantias: [], loja: {} };
 }
 
-async function _ensurePrintConfig() {
+/** Lê cache (memória → localStorage). Não espera Firestore. */
+function _getPrintConfigCached() {
+    if (_printConfigMem) return _printConfigMem;
+    const local = _lerPrintConfigLocal();
+    _printConfigMem = local;
+    return local;
+}
+
+/** Prefetch no boot: Firestore → memória + localStorage. */
+async function _prefetchPrintConfig() {
     const remote = await _fetchWarrantyConfigFromFirestore();
-    return remote || _lerPrintConfigLocal();
+    _printConfigMem = remote || _lerPrintConfigLocal();
+    return _printConfigMem;
+}
+
+async function _ensurePrintConfig() {
+    if (_printConfigMem && (Array.isArray(_printConfigMem.garantias) || _printConfigMem.logo || _printConfigMem.loja)) {
+        // Atualiza em background sem bloquear impressão
+        _fetchWarrantyConfigFromFirestore().then(r => { if (r) _printConfigMem = r; }).catch(() => {});
+        return _printConfigMem;
+    }
+    return _prefetchPrintConfig();
 }
 
 function _defaultGarantiaIds(os, garantias) {
@@ -2072,10 +2102,9 @@ function _portalLinkImpressao(os) {
     return q.length ? `${base}?${q.join('&')}` : base;
 }
 
-/** QR via API leve (só imagem) — sem lib JS. Falha silenciosa se offline. */
+/** QR gerado localmente (data-URL) — sem rede, sem espera de api.qrserver.com. */
 function _qrImgHtml(url) {
-    const src = 'https://api.qrserver.com/v1/create-qr-code/?size=120x120&margin=2&data=' + encodeURIComponent(url);
-    return `<img class="os-print-qr" src="${src}" width="100" height="100" alt="QR Portal" style="width:100px;height:100px;image-rendering:pixelated">`;
+    return qrImgHtmlLocal(url, { size: 100, cell: 3, margin: 2 }) || '';
 }
 
 function _printViaIframe(html) {
@@ -2118,7 +2147,8 @@ function _printViaIframe(html) {
             img.addEventListener('error', tick, { once: true });
         }
     });
-    setTimeout(tryPrint, 2500);
+    // QR é data-URL local; timeout só cobre logo remoto lento (antes: 2,5s do QR externo).
+    setTimeout(tryPrint, 600);
 }
 
 /**
@@ -2925,7 +2955,8 @@ async function printOSEntrada(vias) {
     if (!currentOS) return;
     const nVias = vias === 2 ? 2 : 1;
     showToast('🖨️ Preparando recibo de Entrada…');
-    const cfg = await _ensurePrintConfig();
+    // Usa cache (boot/localStorage) — não espera Firestore na hora de imprimir.
+    const cfg = _getPrintConfigCached();
     const os = currentOS;
     const imei = os.imei || os.imei1 || '';
     const aparelho = _aparelhoLabel(os);
@@ -2991,7 +3022,7 @@ body.entrada-basic,.recibo-entrada{max-width:480px}`;
 async function printOSSaida(modeloId) {
     if (!currentOS) return;
     showToast('🖨️ Preparando garantia…');
-    const cfg = await _ensurePrintConfig();
+    const cfg = _getPrintConfigCached();
     const os = currentOS;
     const garantias = Array.isArray(cfg.garantias) ? cfg.garantias : [];
     let modelo = null;
@@ -3729,9 +3760,8 @@ async function init() {
         logoEl.dataset.logoHandler = 'true';
     }
     await DB.loadFromFirestore(); updateStats(); updateFavStars();
-    // Garante que as configurações de garantia estejam carregadas do Firestore
-    // (fallback caso localStorage não tenha sido populado por clientes.js)
-    await _fetchWarrantyConfigFromFirestore();
+    // Prefetch config de impressão uma vez (memória + localStorage) — impressão não espera Firestore.
+    await _prefetchPrintConfig();
     // Popula o seletor de modelos de garantia com os configurados no sistema
     _populateWarrantySelect('f-garantia-modelo');
     // Prioridade: #os-<id> > #cliente-<digits> > #fav-<...> > favorito padrão > home.
