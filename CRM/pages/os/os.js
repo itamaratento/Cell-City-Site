@@ -819,7 +819,7 @@ function sugerirCategoriaDoModelo(texto) {
 
 function startOS(cat) {
     tempPhotos = []; currentLockPhoto = null; window.tempPatternSequence = null;
-    ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-imei1','f-imei2','f-defeito','f-valor','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs','f-orc1-desc','f-orc1-valor','f-orc2-desc','f-orc2-valor'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['f-nome','f-telefone','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado','f-marca','f-modelo','f-imei','f-imei1','f-imei2','f-defeito','f-valor','f-custo','f-sinal','f-valor-cartao','f-tecnico','f-senha','f-obs','f-orc1-desc','f-orc1-valor','f-orc2-desc','f-orc2-valor'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const gEl = document.getElementById('f-garantia'); if (gEl) gEl.value = '90';
     const gSel = document.getElementById('f-garantia-modelo'); if (gSel) gSel.value = '';
     const lock = document.getElementById('lock-type'); if (lock) { lock.value = 'Numerica'; toggleLockType(); }
@@ -843,6 +843,7 @@ async function saveOS(opts = {}) {
     const getVal = id => document.getElementById(id)?.value.trim() || '';
     const [nome, telefone, marca, modelo, imei, defeito, tecnico, senha, obs, lockType, cpf, cep, endereco, numero, complemento, bairro, cidade, estado] = ['f-nome','f-telefone','f-marca','f-modelo','f-imei','f-defeito','f-tecnico','f-senha','f-obs','lock-type','f-cpf','f-cep','f-endereco','f-numero','f-complemento','f-bairro','f-cidade','f-estado'].map(getVal);
     const valor = parseFloat((document.getElementById('f-valor')?.value || '').replace(',', '.')) || 0;
+    const custo = parseFloat((document.getElementById('f-custo')?.value || '').replace(',', '.')) || 0;
     const sinal = parseFloat((document.getElementById('f-sinal')?.value || '').replace(',', '.')) || 0;
     const valorCartao = parseFloat((document.getElementById('f-valor-cartao')?.value || '').replace(',', '.')) || 0;
     const avisoTela = !!document.getElementById('f-aviso-tela')?.checked;
@@ -894,7 +895,7 @@ async function saveOS(opts = {}) {
             id: osId, category: currentCategory, clientName: nome, phone: telefoneCanon, phoneDigits, cpf: cpf || null, cep: cep || null,
             endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null,
             cidade: cidade || null, estado: estado || null, brand: marca, model: modelo, imei, defect: defeito,
-            valor, sinal: sinal || 0, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
+            valor, custo: custo || 0, sinal: sinal || 0, valorCartao, technician: tecnico, observations: obs, technicalObservation: '', internalObservation: '',
             password: lockType === 'Padrao' ? '' : senha, lockType, lockPhoto: lockPhotoUrl, photos: photoUrls,
             entryChecklist: entryChecked, entryCondicoes, acessoriosDeixados, avisoTela, avisoTampa, exitChecklist: [], status: 'recebido', prazoGarantia: garantiaDias,
             garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null,
@@ -1295,6 +1296,9 @@ async function toggleOSEdit() {
 <label style="font-size:12px;color:var(--text2);">Valor (à vista / PIX) - R$</label>
 <input id="edit-os-valor" type="number" step="0.01" min="0" value="${os.valor||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
+<label style="font-size:12px;color:var(--text2);">Custo (peça/terceiro) R$</label>
+<input id="edit-os-custo" type="number" step="0.01" min="0" value="${os.custo||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
+
 <label style="font-size:12px;color:var(--text2);">Valor (Cartão) - R$</label>
 <input id="edit-os-valor-cartao" type="number" step="0.01" min="0" value="${os.valorCartao||''}" style="padding:10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface2);color:var(--text);" oninput="window.markUnsaved()">
 
@@ -1439,6 +1443,7 @@ async function saveOSEdit() {
     const imei1 = document.getElementById('edit-os-imei1')?.value.trim() || '';
     const imei2 = document.getElementById('edit-os-imei2')?.value.trim() || '';
     const valor = parseFloat((document.getElementById('edit-os-valor')?.value || '').replace(',', '.')) || 0;
+    const custo = parseFloat((document.getElementById('edit-os-custo')?.value || '').replace(',', '.')) || 0;
     const valorCartao = parseFloat((document.getElementById('edit-os-valor-cartao')?.value || '').replace(',', '.')) || 0;
     const prazoGarantia = parseInt(document.getElementById('edit-os-garantia')?.value, 10) || 90;
     const garantiaId = document.getElementById('edit-os-garantia-modelo')?.value || '';
@@ -1459,7 +1464,7 @@ async function saveOSEdit() {
     if (!n || !p || !m) return showToast("⚠️ Preencha todos os campos");
     try {
         const { phone: pCanon, phoneDigits: pDigits } = canonicalizePhone(p);
-        const updates = { clientName: n, phone: pCanon, phoneDigits: pDigits, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
+        const updates = { clientName: n, phone: pCanon, phoneDigits: pDigits, cpf: cpf || null, cep: cep || null, endereco: endereco || null, numero: numero || null, complemento: complemento || null, bairro: bairro || null, cidade: cidade || null, estado: estado || null, brand, model: m, imei, defect, technician: tecnico, valor, custo, valorCartao, prazoGarantia, garantiaId: garantiaId || null, imei1: imei1 || null, imei2: imei2 || null, password, observations, orc1Desc: editOrc1Desc || null, orc1Valor: editOrc1Valor || 0, orc2Desc: editOrc2Desc || null, orc2Valor: editOrc2Valor || 0, updatedAt: new Date().toISOString() };
         await updateDoc(doc(db, "os", currentOS.id), updates);
         Object.assign(currentOS, updates);
         const idx = localOS.findIndex(o => o.id === currentOS.id);
@@ -1624,13 +1629,15 @@ async function markDelivered() {
         });
         if (okPag) {
             try {
+                const valorPago = parseFloat(currentOS.valor) || 0;
+                const custoPago = parseFloat(currentOS.custo) || 0;
                 await setDoc(doc(collection(db, 'caixa_lancamentos')), tData({
                     tipo: 'entrada',
                     descricao: 'OS ' + (currentOS.id || '') + ' - ' + (currentOS.clientName || '') + ' - ' + (currentOS.model || ''),
                     categoria: 'Vendas',
-                    valor: (parseFloat(currentOS.valor) || 0),
-                    custo: 0,
-                    lucro: (parseFloat(currentOS.valor) || 0),
+                    valor: valorPago,
+                    custo: custoPago,
+                    lucro: valorPago - custoPago,
                     data: new Date().toISOString().slice(0, 10),
                     dataISO: new Date().toISOString(),
                     ano: new Date().getFullYear(),
