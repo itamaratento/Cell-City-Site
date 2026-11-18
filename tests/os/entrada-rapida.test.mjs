@@ -70,5 +70,5 @@ test('os.js: impressão usa QR local e cache de config (sem api.qrserver)', () =
   assert.match(OS_JS, /qrcode-local\.js/);
   assert.match(OS_JS, /_getPrintConfigCached/);
   assert.match(OS_JS, /_prefetchPrintConfig/);
-  assert.doesNotMatch(OS_JS, /api\.qrserver\.com/);
+  assert.equal(/api\.qrserver\.com/.test(OS_JS), false);
 });

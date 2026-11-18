@@ -2102,7 +2102,7 @@ function _portalLinkImpressao(os) {
     return q.length ? `${base}?${q.join('&')}` : base;
 }
 
-/** QR gerado localmente (data-URL) — sem rede, sem espera de api.qrserver.com. */
+/** QR gerado localmente (data-URL) — sem rede, sem API externa. */
 function _qrImgHtml(url) {
     return qrImgHtmlLocal(url, { size: 100, cell: 3, margin: 2 }) || '';
 }
