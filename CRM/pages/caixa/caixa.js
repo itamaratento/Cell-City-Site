@@ -13,7 +13,12 @@ import {
     totaisPorLocal,
     breakdownLocais,
 } from './loja-feira.js';
-import { camposDataLancamento } from './caixa-data.js';
+import {
+    camposDataLancamento,
+    normalizarCategoriaCaixa,
+    chaveCategoriaCaixa,
+    dedupeCategoriasCaixa,
+} from './caixa-data.js';
 import {
     buscarProdutosPorNome,
     montarPayloadVendaRapida,
@@ -141,9 +146,11 @@ async function carregarCategorias(selectId = 'categoria') {
             cats = CATEGORIAS_PADRAO.map(c => ({ id: c.nome, ...c }));
         }
 
-        const valorAtual = sel.value;
+        const valorAtual = normalizarCategoriaCaixa(sel.value) || sel.value;
+        // Deduplica DESPESAS/Despesas, VENDAS/Vendas etc. só no select — não regrava o banco.
+        const catsUnicas = dedupeCategoriasCaixa(cats.filter(c => c.status !== 'inativo'));
         sel.innerHTML = '<option value="">Selecione...</option>' +
-            cats.filter(c => c.status !== 'inativo')
+            catsUnicas
                 .map(c => `<option value="${c.nome}">${c.nome}</option>`)
                 .join('');
         if (valorAtual) sel.value = valorAtual;
@@ -158,7 +165,7 @@ async function carregarCategorias(selectId = 'categoria') {
 window.novaCategoria = async function () {
     const nome = await promptCaixa('Nova categoria', 'Nome da nova categoria:', 'Ex: Acessórios');
     if (!nome || !nome.trim()) return;
-    const nomeFmt = nome.trim();
+    const nomeFmt = normalizarCategoriaCaixa(nome.trim()) || nome.trim();
     try {
         await setDoc(doc(db, COL_CATEGORIAS, nomeFmt), {
             nome: nomeFmt, tipo: document.getElementById('tipo').value,
@@ -225,7 +232,7 @@ function calcularLucro(tipo, valor, custo) {
 window.salvarLancamento = async function () {
     const tipo      = document.getElementById('tipo').value;
     const descricao = document.getElementById('descricao').value.trim();
-    const categoria = document.getElementById('categoria').value;
+    const categoria = normalizarCategoriaCaixa(document.getElementById('categoria').value) || document.getElementById('categoria').value;
     const valor     = parseFloat(document.getElementById('valor').value);
     const custo     = parseFloat(document.getElementById('custo').value) || 0;
     const data      = document.getElementById('data').value;
@@ -311,7 +318,8 @@ window.editarLancamento = function (id) {
     });
 
     carregarCategorias('edit-categoria').then(() => {
-        document.getElementById('edit-categoria').value = l.categoria || '';
+        const catCanon = normalizarCategoriaCaixa(l.categoria) || l.categoria || '';
+        document.getElementById('edit-categoria').value = catCanon;
     });
 
     atualizarLucroEdicao();
@@ -339,16 +347,21 @@ window.salvarEdicao = async function () {
     const id        = document.getElementById('edit-id').value;
     const tipo      = document.getElementById('edit-tipo').value;
     const descricao = document.getElementById('edit-descricao').value.trim();
-    const categoria = document.getElementById('edit-categoria').value;
+    const catSel    = document.getElementById('edit-categoria').value;
     const valor     = parseFloat(document.getElementById('edit-valor').value);
     const custo     = parseFloat(document.getElementById('edit-custo').value) || 0;
     const localVenda = normalizarLocal(document.getElementById('edit-local-venda')?.value);
 
-    if (!descricao || !categoria || !valor || valor <= 0) {
+    if (!descricao || !catSel || !valor || valor <= 0) {
         return showToast('Preencha descrição, categoria e valor.');
     }
 
     const existente = _ultimosLanc.find(x => x.id === id);
+    // Não regrava categoria antiga se for só variação maiúsc./plural do mesmo canônico.
+    const catOld = existente?.categoria || '';
+    const categoria = (catOld && chaveCategoriaCaixa(catSel) === chaveCategoriaCaixa(catOld))
+        ? catOld
+        : (normalizarCategoriaCaixa(catSel) || catSel);
     const dataRef = existente?.data || existente?.dia || hoje();
     let camposData;
     try {
@@ -465,7 +478,7 @@ function cardLancamento(l) {
         <div class="lancamento-card tipo-${l.tipo}">
             <div class="lanc-info">
                 <div class="lanc-desc">${esc(l.descricao)}</div>
-                <div class="lanc-meta">${esc(l.categoria)} · ${l.data}${localTxt}</div>
+                <div class="lanc-meta">${esc(normalizarCategoriaCaixa(l.categoria) || l.categoria || '')} · ${l.data}${localTxt}</div>
                 ${temCusto ? `<div class="lanc-bruto">💵 bruto: ${formatarMoeda(l.valor)}</div>` : ''}
                 ${l.obs ? `<div class="lanc-obs">${esc(l.obs)}</div>` : ''}
             </div>

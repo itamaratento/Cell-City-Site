@@ -6,7 +6,13 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { camposDataLancamento, hojeSP } from '../../CRM/pages/caixa/caixa-data.js';
+import {
+  camposDataLancamento,
+  hojeSP,
+  normalizarCategoriaCaixa,
+  chaveCategoriaCaixa,
+  dedupeCategoriasCaixa,
+} from '../../CRM/pages/caixa/caixa-data.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const CAIXA_JS = readFileSync(join(__dirname, '../../CRM/pages/caixa/caixa.js'), 'utf8');
@@ -56,4 +62,32 @@ test('caixa.js grava camposDataLancamento em criar, editar e pagar lembrete', ()
   const helper = readFileSync(join(__dirname, '../../CRM/pages/caixa/caixa-data.js'), 'utf8');
   assert.match(helper, /mesNumero/);
   assert.match(helper, /diaMes/);
+});
+
+test('normalizarCategoriaCaixa: maiúsc./minúsc./singular → canônico', () => {
+  assert.equal(normalizarCategoriaCaixa('DESPESAS'), 'Despesas');
+  assert.equal(normalizarCategoriaCaixa('Despesas'), 'Despesas');
+  assert.equal(normalizarCategoriaCaixa('VENDAS'), 'Vendas');
+  assert.equal(normalizarCategoriaCaixa('SERVIÇO'), 'Serviços');
+  assert.equal(normalizarCategoriaCaixa('Servicos'), 'Serviços');
+  assert.equal(normalizarCategoriaCaixa('FORNECEDOR'), 'Fornecedores');
+  assert.equal(chaveCategoriaCaixa('DESPESAS'), chaveCategoriaCaixa('Despesas'));
+});
+
+test('dedupeCategoriasCaixa: uma opção por canônico', () => {
+  const out = dedupeCategoriasCaixa([
+    { nome: 'DESPESAS', tipo: 'saida' },
+    { nome: 'Despesas', tipo: 'saida' },
+    { nome: 'VENDAS', tipo: 'entrada' },
+    { nome: 'Vendas', tipo: 'entrada' },
+    { nome: 'Acessórios', tipo: 'entrada' },
+  ]);
+  assert.equal(out.length, 3);
+  assert.deepEqual(out.map(c => c.nome).sort(), ['Acessórios', 'Despesas', 'Vendas']);
+});
+
+test('caixa.js usa dedupeCategoriasCaixa no select (sem regravar lançamentos)', () => {
+  assert.match(CAIXA_JS, /dedupeCategoriasCaixa/);
+  assert.match(CAIXA_JS, /normalizarCategoriaCaixa/);
+  assert.equal(/updateDoc\([\s\S]*categoria.*DESPESAS/.test(CAIXA_JS), false);
 });
