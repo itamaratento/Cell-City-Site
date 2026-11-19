@@ -19,7 +19,7 @@ function setup(matriz) {
     perm.__reset();
     fsMock.__seed('compras_pedidos', 'comp_1', { descricao: 'Telas Samsung', fornecedor_ref: 'forn_1', data: '2026-07-01', valor: 1500, status: 'pendente' });
     fsMock.__seed('compras_pedidos', 'comp_2', { descricao: 'Baterias iPhone', data: '2026-07-05', valor: 800, status: 'recebido' });
-    fsMock.__seed('fornecedor_compras', 'forn_1', { descricao: 'Distribuidora Peças' });
+    fsMock.__seed('fornecedores_cadastro', 'forn_1', { nome: 'Distribuidora Peças' });
     perm.__setMatriz(matriz);
     return mountPage(HTML_PATH, '/CRM/pages/compras/index.html');
 }
