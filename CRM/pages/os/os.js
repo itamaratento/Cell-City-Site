@@ -3899,7 +3899,14 @@ async function init() {
         }
     }
     window.__osReady = true;
-    window.dispatchEvent(new Event('os-ready'));
+    // Preferir window.CustomEvent/Event: no jsdom (tests/rbac) o Event global
+    // do Node não passa no EventTarget do realm da window.
+    try {
+        const Ev = window.CustomEvent || window.Event;
+        window.dispatchEvent(new Ev('os-ready'));
+    } catch (e) {
+        console.warn('os-ready event não disparado:', e);
+    }
     console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
     verificarConversaoPreOS();
     verificarConversaoPortalOS();
