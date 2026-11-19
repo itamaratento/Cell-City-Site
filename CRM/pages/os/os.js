@@ -1,5 +1,5 @@
 import { initModulo, getNome } from '../../scripts/kernel.js';
-import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query, where } from "../../scripts/firebase.js";
+import { db, collection, getDocs, getDoc, doc, setDoc, deleteDoc, updateDoc, serverTimestamp, query, where, runTransaction } from "../../scripts/firebase.js";
 import { tData, injectTenantFilter } from "../../shared/tenant-query.js";
 // P2.3.2: núcleo de persistência (objeto DB) migrado para a Camada Repository.
 import { OSRepository } from '../../repositories/os.repository.js';
@@ -44,6 +44,12 @@ import {
     textoSeloSilencio,
 } from './os-parada-silencio.js';
 import { parseEntradaTextoOS, aplicarEntradaTextoNoForm } from './entrada-texto.js';
+import {
+    formatOsId,
+    ERR_OS_JA_EXISTE,
+    reserveNextOsNumber,
+    createOsDocExclusive,
+} from './os-counter.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -508,13 +514,23 @@ function guardNavigation(callback) {
 // (areTenantFiltersEnabled). MetadataRepository é global (sem tenant),
 // igual ao setDoc direto que substituiu. O contador agora lê só
 // metadata/counter (getById) em vez de varrer a coleção inteira (§9).
+//
+// Contador de OS (2026-11): incCounter NÃO incrementa só o cache local.
+// Robô externo (cellcity-robo) e outras abas também incrementam
+// metadata/counter — alocação atômica via runTransaction + checagem
+// de existência de OS-XXXX (os-counter.js). addOS é create-only.
 let localOS = [];
 let localClients = [];
 let localCounter = 0;
 
 const DB = {
     getOS() { return localOS; },
-    async addOS(osData) { localOS.unshift(osData); await OSRepository.set(osData.id, osData); },
+    async addOS(osData) {
+        // Create-only: nunca sobrescreve OS existente (robô/outra aba).
+        // tData injeta empresa_id como OSRepository.set faria.
+        await createOsDocExclusive({ db, runTransaction, doc, osData, injectTenant: tData });
+        localOS.unshift(osData);
+    },
     async updateOS(osData) { const idx = localOS.findIndex(o => o.id === osData.id); if (idx >= 0) localOS[idx] = osData; await OSRepository.update(osData.id, osData); },
     async deleteOS(id) { localOS = localOS.filter(o => o.id !== id); await OSRepository.remove(id); },
     getClients() { return localClients; },
@@ -525,7 +541,11 @@ const DB = {
         await ClientesRepository.set(clientData.phoneDigits || normalizePhoneDigits(clientData.phone) || clientData.phone, clientData);
     },
     getCounter() { return localCounter; },
-    async incCounter() { localCounter++; await MetadataRepository.set('counter', { value: localCounter }); return localCounter; },
+    async incCounter() {
+        const next = await reserveNextOsNumber({ db, runTransaction, doc });
+        localCounter = next;
+        return next;
+    },
     async loadFromFirestore() {
         try {
             localOS = []; localClients = []; localCounter = 0;
@@ -869,7 +889,7 @@ async function saveOS(opts = {}) {
     try {
         const entryChecked = getChecklistTemplate(currentCategory).map((_, i) => document.getElementById(`entry-${i}`)?.checked ? i : -1).filter(i => i !== -1);
         const num = await DB.incCounter();
-        const osId = `OS-${String(num).padStart(4, '0')}`;
+        const osId = formatOsId(num);
 
         if (tempPhotos.length > 0 || currentLockPhoto) showToast('⏳ Enviando fotos...');
         const photoUrls = [];
@@ -909,7 +929,17 @@ async function saveOS(opts = {}) {
             os.patternSequence = window.tempPatternSequence;
         }
 
-        await DB.addOS(os);
+        try {
+            await DB.addOS(os);
+        } catch (e) {
+            // Janela residual entre reserva e create (outra aba/robô):
+            // re-reserva e grava — nunca sobrescreve a OS existente.
+            if (e?.code !== ERR_OS_JA_EXISTE) throw e;
+            const numRetry = await DB.incCounter();
+            os.id = formatOsId(numRetry);
+            await DB.addOS(os);
+        }
+        const osIdFinal = os.id;
 
         // Pós-gravação em segundo plano: não atrasa impressão no balcão.
         const preIdBg = preOSPendente;
@@ -917,21 +947,21 @@ async function saveOS(opts = {}) {
         preOSPendente = null;
         portalOSPendente = null;
         Promise.resolve().then(async () => {
-            try { await updateClientHistory(telefoneCanon, nome, osId, phoneDigits); }
+            try { await updateClientHistory(telefoneCanon, nome, osIdFinal, phoneDigits); }
             catch (e) { console.warn('⚠️ updateClientHistory:', e); }
             try { runAutomacoesOS(os); } catch (e) { console.warn('⚠️ runAutomacoesOS:', e); }
             if (preIdBg) {
-                try { await updateDoc(doc(db, 'pre_os', preIdBg), { status: 'CONVERTIDA', osId, atualizadoEm: new Date().toISOString() }); }
+                try { await updateDoc(doc(db, 'pre_os', preIdBg), { status: 'CONVERTIDA', osId: osIdFinal, atualizadoEm: new Date().toISOString() }); }
                 catch (e) { console.warn('⚠️ Pré-OS não marcada como convertida:', e); }
             }
             if (portalIdBg) {
-                try { await updateDoc(doc(db, 'solicitacoes_diagnostico', portalIdBg), { status: 'convertido', osId, respondido: true, atualizadoEm: new Date().toISOString() }); }
+                try { await updateDoc(doc(db, 'solicitacoes_diagnostico', portalIdBg), { status: 'convertido', osId: osIdFinal, respondido: true, atualizadoEm: new Date().toISOString() }); }
                 catch (e) { console.warn('⚠️ Solicitação portal não marcada como convertida:', e); }
             }
         });
 
         const faltaSenha = osFaltaSenha(os);
-        showToast(faltaSenha ? `✅ ${osId} criada · ⚠️ FALTA SENHA` : `✅ ${osId} criada com sucesso!`);
+        showToast(faltaSenha ? `✅ ${osIdFinal} criada · ⚠️ FALTA SENHA` : `✅ ${osIdFinal} criada com sucesso!`);
         window.markSaved();
         currentOS = os;
         if (imprimirEntrada) {
