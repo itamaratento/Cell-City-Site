@@ -50,6 +50,7 @@ import {
     reserveNextOsNumber,
     createOsDocExclusive,
 } from './os-counter.js';
+import { listLoadingHtml, listErrorHtml } from './os-list-state.js';
 
 // ===== EXPOSIÇÃO GLOBAL =====
 window.handleLockPhoto = handleLockPhoto;
@@ -523,6 +524,49 @@ let localOS = [];
 let localClients = [];
 let localCounter = 0;
 
+// Estado do carregamento inicial/refresh — evita tela preta na 1ª abertura
+// de "Em Andamento": nunca zerar o cache antes do fetch terminar; coalescer
+// loads em voo; expor Promise para showList aguardar sem sleep fixo.
+let osDataStatus = 'idle'; // idle | loading | ready | error
+let osDataPromise = null;
+let osDataError = null;
+let listRenderToken = 0;
+// Gate: showList só busca dados depois de initModulo + RBAC (tenant pronto).
+let _resolveKernelReady;
+const kernelReady = new Promise((r) => { _resolveKernelReady = r; });
+
+/** Carrega OS/clientes/contador. force=true inicia novo fetch (home refresh). */
+function ensureOsData(force = false) {
+    if (!force && osDataStatus === 'ready') return Promise.resolve();
+    if (osDataPromise && osDataStatus === 'loading') return osDataPromise;
+    osDataStatus = 'loading';
+    osDataError = null;
+    const run = (async () => {
+        try {
+            // Promise.all: menor latência no cold start (sem esperas fixas).
+            const [osList, clients, counter] = await Promise.all([
+                OSRepository.list(),
+                ClientesRepository.list(),
+                MetadataRepository.getById('counter'),
+            ]);
+            // Swap atômico: NÃO limpar localOS antes — senão showList/renderList
+            // no meio do await vê lista vazia (tela preta / "Nenhuma O.S.").
+            localOS = (osList || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            localClients = clients || [];
+            localCounter = (counter && counter.value) || 0;
+            osDataStatus = 'ready';
+        } catch (e) {
+            osDataStatus = 'error';
+            osDataError = e;
+            osDataPromise = null;
+            console.error('Erro ao carregar do Firestore:', e);
+            throw e;
+        }
+    })();
+    osDataPromise = run;
+    return run;
+}
+
 const DB = {
     getOS() { return localOS; },
     async addOS(osData) {
@@ -546,14 +590,14 @@ const DB = {
         localCounter = next;
         return next;
     },
-    async loadFromFirestore() {
+    /** @param {{ force?: boolean }} [opts] force=true para refresh (ex.: voltar à home). */
+    async loadFromFirestore(opts = {}) {
         try {
-            localOS = []; localClients = []; localCounter = 0;
-            localOS = (await OSRepository.list()).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            localClients = await ClientesRepository.list();
-            const counter = await MetadataRepository.getById('counter');
-            localCounter = (counter && counter.value) || 0;
-        } catch (e) { console.error("Erro ao carregar do Firestore:", e); }
+            await ensureOsData(!!opts.force);
+        } catch (e) {
+            // Contrato antigo: engole o erro (log já saiu em ensureOsData).
+            // showList usa ensureOsData() direto para tratar retry na UI.
+        }
     }
 };
 
@@ -578,21 +622,37 @@ function removeLockPhoto() { currentLockPhoto = null; ['lock-photo', 'lock-photo
 
 // ===== NAVIGATION =====
 async function showScreen(id) {
-    guardNavigation(async () => {
+    guardNavigation(() => {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
         const target = document.getElementById('screen-' + id);
         if (!target) return console.warn(`Tela ${id} não encontrada`);
         target.classList.add('active');
-        if (id === 'home') { screenHistory = []; window.markSaved(); window.tempPatternSequence = null; await DB.loadFromFirestore(); updateStats(); }
-        else { if (!screenHistory.includes(id)) screenHistory.push(id); }
+        if (id === 'home') {
+            screenHistory = [];
+            window.markSaved();
+            window.tempPatternSequence = null;
+            // Refresh em background SEM await: não bloqueia/nav race com showList.
+            // ensureOsData faz swap atômico (não zera cache no meio do fetch).
+            DB.loadFromFirestore({ force: true }).then(() => updateStats()).catch(() => {});
+        } else if (!screenHistory.includes(id)) {
+            screenHistory.push(id);
+        }
         const osBtn = document.getElementById('btn-os-home'); if (osBtn) osBtn.style.display = id === 'home' ? 'none' : 'block';
-        
+
         // Título central do menu superior.
         const titleEl = document.getElementById('headerTitle');
-        const titles = { home: 'Nova O.S.', pesquisar: 'Pesquisar', 'client-detail': 'Detalhes do Cliente' };
-        if (titleEl) { 
-            titleEl.textContent = titles[id] || ''; 
+        const titles = {
+            home: 'Nova O.S.',
+            pesquisar: 'Pesquisar',
+            'client-detail': 'Detalhes do Cliente',
+            list: currentListFilter === 'finalizados' ? 'Finalizados' : 'Em Andamento',
+            clientes: 'Clientes',
+        };
+        if (titleEl) {
+            titleEl.textContent = titles[id] || '';
             if (id === 'clientes') { renderClients(); salvarUltimaTela('clientes', 'Clientes', '', '#fav-clientes'); }
+            // goBack → list: re-render com cache atual (não deixa #os-list vazio).
+            if (id === 'list' && osDataStatus === 'ready') renderList();
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     });
@@ -1073,10 +1133,34 @@ async function runAutomacoesOS(os) {
 
 
 // ===== LISTS =====
-function showList(filter) {
-    currentListFilter = filter; renderList(); showScreen('list');
-    if (filter === 'andamento') salvarUltimaTela('andamento', 'Em Andamento', '', '#fav-andamento');
-    else if (filter === 'finalizados') salvarUltimaTela('finalizados', 'Finalizados', '', '#fav-finalizados');
+/**
+ * Abre a lista (Em Andamento / Finalizados) de forma race-safe:
+ * 1) mostra a tela + loader imediatamente (nunca tela preta);
+ * 2) aguarda ensureOsData (coalesce, sem sleep fixo);
+ * 3) renderiza; em erro, mensagem + "Tentar de novo".
+ */
+async function showList(filter) {
+    const view = filter === 'finalizados' ? 'finalizados' : 'andamento';
+    currentListFilter = view;
+    const token = ++listRenderToken;
+    showScreen('list');
+    const c = document.getElementById('os-list');
+    // Loader só se ainda não há dados — evita flash ao reabrir com cache pronto.
+    if (c && osDataStatus !== 'ready') c.innerHTML = listLoadingHtml();
+
+    try {
+        await kernelReady; // tenant/RBAC — sem isso o list() pode falhar/vazar no cold start
+        if (token !== listRenderToken || currentListFilter !== view) return;
+        if (c && osDataStatus !== 'ready') c.innerHTML = listLoadingHtml();
+        await ensureOsData();
+        if (token !== listRenderToken || currentListFilter !== view) return;
+        renderList();
+        if (view === 'andamento') salvarUltimaTela('andamento', 'Em Andamento', '', '#fav-andamento');
+        else salvarUltimaTela('finalizados', 'Finalizados', '', '#fav-finalizados');
+    } catch (e) {
+        if (token !== listRenderToken || currentListFilter !== view) return;
+        if (c) c.innerHTML = listErrorHtml(view);
+    }
 }
 
 // ===== CONTINUAR DE ONDE PAREI (registro da última tela — localStorage, sem Firestore) =====
@@ -3742,6 +3826,8 @@ async function init() {
     // RBAC (Fase 2, Sprint 5 — moduloId 'os').
     await carregarPermissoes(ctx);
     if (!podeVisualizar('os')) { window.location.href = URLS.dashboard(); return; }
+    // Libera showList/ensureOsData: empresa_id e permissões já resolvidos.
+    if (_resolveKernelReady) { _resolveKernelReady(); _resolveKernelReady = null; }
     if (!podeCriar('os')) {
         document.querySelectorAll('.category-card').forEach(el => el.style.display = 'none');
     }
@@ -3795,13 +3881,32 @@ async function init() {
     // Popula o seletor de modelos de garantia com os configurados no sistema
     _populateWarrantySelect('f-garantia-modelo');
     // Prioridade: #os-<id> > #cliente-<digits> > #fav-<...> > favorito padrão > home.
+    // NÃO chamar showScreen('home') se a home já está ativa: isso disparava um
+    // segundo loadFromFirestore (antes: zerava localOS) e abria janela de corrida
+    // com o 1º clique em "Em Andamento" / #fav-andamento → tela preta.
     const hashView = getHashView();
     const hashOS = getHashOS();
     const hashCli = getHashCliente();
     if (hashOS && DB.getOS().some(o => o.id === hashOS)) openDetail(hashOS);
     else if (hashCli && findClientePorTelefone(DB.getClients(), hashCli, normalizePhoneDigits)) showClientDetail(hashCli);
     else if (hashView) openFav(hashView);
-    else { const fav = getFav(); if (fav) openFav(fav); else showScreen('home'); }
+    else {
+        const fav = getFav();
+        if (fav) openFav(fav);
+        else {
+            const home = document.getElementById('screen-home');
+            if (home && !home.classList.contains('active')) showScreen('home');
+        }
+    }
+    window.__osReady = true;
+    // Preferir window.CustomEvent/Event: no jsdom (tests/rbac) o Event global
+    // do Node não passa no EventTarget do realm da window.
+    try {
+        const Ev = window.CustomEvent || window.Event;
+        window.dispatchEvent(new Ev('os-ready'));
+    } catch (e) {
+        console.warn('os-ready event não disparado:', e);
+    }
     console.log('✅ Cell City OS inicializado. Conectado ao Firestore.');
     verificarConversaoPreOS();
     verificarConversaoPortalOS();
