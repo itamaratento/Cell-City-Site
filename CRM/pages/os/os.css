@@ -304,6 +304,39 @@ body {
 .empty-state .icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
 .empty-state p { font-size: 13px; }
 
+/* Loader / erro da lista Em Andamento — evita tela preta no 1º clique */
+.os-list-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.os-list-state p { margin: 0; font-size: 14px; font-weight: 600; }
+.os-list-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid var(--border);
+    border-top-color: var(--green-primary);
+    border-radius: 50%;
+    animation: osListSpin 0.7s linear infinite;
+}
+@keyframes osListSpin { to { transform: rotate(360deg); } }
+.os-list-retry {
+    margin-top: 4px;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: var(--green-primary);
+    color: #000;
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+}
+.os-list-retry:active { transform: scale(0.97); }
+.os-list-error p { color: var(--text3); }
+
 /* ============================================
 👥 MÓDULO CLIENTES - CADASTRO COMPLETO
 ============================================ */
