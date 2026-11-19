@@ -66,6 +66,14 @@ test('os.js: saveOS grava acessoriosDeixados e dispara impressão', () => {
   assert.match(OS_JS, /badgeFaltaSenhaHtml/);
 });
 
+test('os.js: contador de OS é atômico (sem localCounter++)', () => {
+  assert.match(OS_JS, /reserveNextOsNumber/);
+  assert.match(OS_JS, /createOsDocExclusive/);
+  assert.match(OS_JS, /runTransaction/);
+  assert.equal(/localCounter\+\+/.test(OS_JS), false);
+  assert.match(OS_JS, /ERR_OS_JA_EXISTE/);
+});
+
 test('os.js: impressão usa QR local e cache de config (sem api.qrserver)', () => {
   assert.match(OS_JS, /qrcode-local\.js/);
   assert.match(OS_JS, /_getPrintConfigCached/);
