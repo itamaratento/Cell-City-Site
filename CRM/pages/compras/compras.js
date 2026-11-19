@@ -33,8 +33,9 @@ async function carregar() {
     dados = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { dados = []; }
 
+  // Cadastro de fornecedores (YN Variedades, Lucy…), NÃO a lista de itens a comprar.
   try {
-    const q = query(collection(db, 'fornecedor_compras'), ...injectTenantFilter([]), limit(200));
+    const q = query(collection(db, 'fornecedores_cadastro'), ...injectTenantFilter([]), limit(200));
     const snap = await getDocs(q);
     fornecedores = snap.docs.map(d => ({ id: d.id, ...d.data() }));
   } catch { fornecedores = []; }
@@ -53,7 +54,7 @@ function render() {
   emptyEl.style.display = 'none';
 
   const nomesFornecedor = {};
-  fornecedores.forEach(f => { nomesFornecedor[f.id] = f.descricao || f.nome || f.id; });
+  fornecedores.forEach(f => { nomesFornecedor[f.id] = f.nome || f.descricao || f.id; });
 
   listaEl.innerHTML = f.map(c => {
     const nomeForn = nomesFornecedor[c.fornecedor_ref] || c.fornecedor_nome || '—';
@@ -100,7 +101,7 @@ function abrirForm(editId) {
   // Popula fornecedores
   const selForn = document.getElementById('cr-fornecedor');
   selForn.innerHTML = '<option value="">Selecionar fornecedor...</option>' +
-    fornecedores.map(f => `<option value="${f.id}" ${f.id === item?.fornecedor_ref ? 'selected' : ''}>${esc(f.descricao || f.nome || f.id)}</option>`).join('');
+    fornecedores.map(f => `<option value="${f.id}" ${f.id === item?.fornecedor_ref ? 'selected' : ''}>${esc(f.nome || f.descricao || f.id)}</option>`).join('');
 }
 
 function fecharForm() {
