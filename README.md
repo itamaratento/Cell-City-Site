@@ -21,3 +21,5 @@ Sistema de gestão operacional (CRM) para assistência técnica de celulares + s
 | [`CHANGELOG.md`](CHANGELOG.md) | Histórico resumido de mudanças |
 | [`plans/LIBERACAO_FINAL_PRODUCAO_20260717.md`](plans/LIBERACAO_FINAL_PRODUCAO_20260717.md) | Fase 2.1 — eliminação dos bloqueadores de promoção |
 | [`plans/CERTIFICACAO_RELEASE_FINAL_20260717.md`](plans/CERTIFICACAO_RELEASE_FINAL_20260717.md) | Fase 2.2 — certificação técnica da release |
+
+Programador DeepSeek conectado em 20/11/2026.
