@@ -135,6 +135,7 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 
 /* ── ALERTA VIVO ── */
 .ag-alerta-vivo { display: flex; align-items: center; gap: 14px; background: linear-gradient(135deg, rgba(239,68,68,0.18), rgba(239,68,68,0.06)); border: 1.5px solid rgba(239,68,68,0.6); border-radius: var(--radius); padding: 14px 16px; animation: agPisca 1.2s ease-in-out infinite; }
+.ag-alerta-vivo[hidden] { display: none; }
 @keyframes agPisca { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.35); border-color: rgba(239,68,68,0.55); } 50% { box-shadow: 0 0 18px 4px rgba(239,68,68,0.30); border-color: rgba(239,68,68,1); } }
 .ag-alerta-icone { font-size: 30px; }
 .ag-alerta-corpo { flex: 1; min-width: 0; }
@@ -178,7 +179,15 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-cel-num { font-size: 12px; font-weight: 800; color: var(--text2); padding-left: 2px; flex-shrink: 0; }
 .ag-cel-hoje { outline: 2px solid var(--green); outline-offset: -2px; }
 .ag-cel-hoje .ag-cel-num { color: var(--green-light); }
-.ag-cel-sel { box-shadow: 0 0 0 2px rgba(0,200,83,0.7); }
+.ag-cel-sel {
+    background: rgba(0,200,83,0.12);
+    border-color: var(--green);
+    box-shadow: 0 0 0 2px rgba(0,200,83,0.75), inset 0 0 12px rgba(0,200,83,0.14);
+}
+.ag-cel-sel .ag-cel-num {
+    color: var(--green-light);
+    font-weight: 900;
+}
 
 /* anotações empilhadas — área clipada (o quadrado nunca cresce) */
 .ag-cel-notas { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; gap: 3px; margin-top: 3px; }
@@ -266,10 +275,21 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 /* ── EDITOR (anotações coloridas) ── */
 .ag-nota-painel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
 .ag-nota-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.ag-nota-titulo-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .ag-nota-titulo { font-size: 15px; font-weight: 800; }
+.ag-tarefas-badge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(0,200,83,0.15);
+    border: 1px solid rgba(0,200,83,0.45);
+    color: var(--green-light);
+}
+.ag-tarefas-badge[hidden] { display: none; }
 .ag-nota-controles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-/* ── BOTÕES DE ATALHO DO CABEÇALHO DO DIA (Novo evento / Copiar evento) ── */
+/* ── BOTÕES DE ATALHO DO CABEÇALHO DO DIA (Nova tarefa / Copiar evento) ── */
 .ag-atalho-btn {
     background: var(--surface2);
     border: 1px solid var(--border-md);
@@ -283,11 +303,120 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
     transition: .15s var(--ease);
     white-space: nowrap;
 }
-.ag-atalho-btn:hover {
+.ag-atalho-btn:hover:not(:disabled) {
     background: rgba(0,200,83,0.14);
     border-color: var(--green);
     color: var(--text);
 }
+.ag-atalho-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ag-atalho-primario {
+    background: rgba(0,200,83,0.14);
+    border-color: rgba(0,200,83,0.45);
+    color: var(--green-light);
+}
+
+/* ── LISTA CRONOLÓGICA DE TAREFAS DO DIA ── */
+.ag-tarefas-lista {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.ag-tarefas-lista[hidden] { display: none; }
+.ag-tarefa-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border-md);
+    border-left: 3.5px solid var(--t-cor, var(--green));
+    border-radius: 10px;
+    padding: 10px 12px;
+    transition: background .15s var(--ease), opacity .15s var(--ease);
+}
+.ag-tarefa-card:hover { background: rgba(255,255,255,0.045); }
+.ag-tarefa-card.concluida { opacity: 0.58; }
+.ag-tarefa-card.concluida .ag-tarefa-tit { text-decoration: line-through; }
+.ag-tarefa-chk {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--green);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.ag-tarefa-corpo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.ag-tarefa-linha1 {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+.ag-tarefa-hora {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 6px;
+    background: rgba(0,200,83,0.16);
+    border: 1px solid rgba(0,200,83,0.4);
+    color: var(--green-light);
+    font-variant-numeric: tabular-nums;
+}
+.ag-tarefa-tit {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.ag-tarefa-desc {
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.ag-tarefa-meta {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text3);
+}
+.ag-tarefa-acoes {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.ag-tarefa-acao {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text2);
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: .12s var(--ease);
+}
+.ag-tarefa-acao:hover:not(:disabled) {
+    border-color: var(--green);
+    color: var(--text);
+    background: rgba(0,200,83,0.14);
+}
+.ag-tarefa-acao.excluir:hover:not(:disabled) {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(239,68,68,0.12);
+}
+.ag-tarefa-acao:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── FORMULÁRIO DE NOVO EVENTO / LINK INTELIGENTE ── */
 .ag-ev-form {
@@ -315,16 +444,27 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
 .ag-ev-pendente-pill {
     font-size: 11px;
     font-weight: 800;
-    padding: 2px 8px;
+    padding: 2px 9px;
     border-radius: 999px;
-    background: rgba(245,158,11,0.16);
-    border: 1px solid rgba(245,158,11,0.45);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border-md);
+    color: var(--text2);
+    transition: .15s var(--ease);
+}
+.ag-ev-pendente-pill.salvando {
+    background: rgba(245,158,11,0.14);
+    border-color: rgba(245,158,11,0.45);
     color: var(--amber);
 }
 .ag-ev-pendente-pill.salvo {
     background: rgba(0,200,83,0.16);
     border-color: rgba(0,200,83,0.45);
     color: var(--green-light);
+}
+.ag-ev-pendente-pill.erro {
+    background: rgba(239,68,68,0.16);
+    border-color: rgba(239,68,68,0.5);
+    color: #fca5a5;
 }
 .ag-ev-aviso {
     font-size: 12px;
@@ -406,12 +546,18 @@ body.ag-den-expandido { --cel-h: 132px; }     /* expandido */
     opacity: 0.5;
     cursor: not-allowed;
 }
-.ag-ev-btn-salvar {
-    background: linear-gradient(135deg, var(--green), var(--green-light));
-    border-color: transparent;
-    color: #00120a;
+.ag-ev-btn-nova {
+    background: rgba(0,200,83,0.15);
+    border-color: rgba(0,200,83,0.5);
+    color: var(--green-light);
 }
-.ag-ev-btn-salvar:hover:not(:disabled) { filter: brightness(1.08); }
+.ag-ev-btn-nova:hover:not(:disabled) {
+    background: rgba(0,200,83,0.26);
+    color: var(--text);
+}
+.ag-nota-status { font-size: 12px; font-weight: 700; color: var(--text3); margin-top: 10px; min-height: 16px; transition: color .15s var(--ease); }
+.ag-nota-status.salvo { color: var(--green-light); }
+.ag-nota-status.erro { color: var(--amber); }
 .ag-ev-btn-copiar {
     background: rgba(0,200,83,0.12);
     border-color: rgba(0,200,83,0.45);

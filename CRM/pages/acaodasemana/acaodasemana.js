@@ -9,15 +9,23 @@ import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar } from '../..
 import { escHtml } from '../../shared/sanitize.js';
 import { formatDateOnly as fmtData } from '../../shared/date-utils.js';
 import {
+  gerarIdTarefa,
   lerLinkInteligente,
   parseDataParam,
   parseHorarioParam,
   parseLembreteParam,
+  criarRegistroTarefa,
+  normalizarRegistroTarefa,
+  ordenarTarefasCronologicamente,
+  deduplicarListaTarefas,
+  interpretarTextoColado,
+  tarefaJaExisteNoDia,
+  adicionarOuAtualizarTarefaNoDia,
   formatarLinhasEvento,
   eventoJaPresenteNasNotas,
   mesclarNotasComEvento,
   montarResumoEvento,
-} from './link-inteligente.js';
+} from './link-inteligente.js?v=20261125-4';
 
 // ── 5 cores estilo lembretes do Windows ────────────────────────────
 const CORES = {
@@ -56,13 +64,41 @@ let viewAno, viewMes;
 let diaSelecionado = isoHoje();
 let editando = false;
 let saveTimer = null;
+let formSaveTimer = null;
+let retryTimer = null;
+let retryTentativas = 0;
 let buscaTermo = '';            // termo atual da busca (minúsculo)
-let rascunhoLinkAtivo = false;  // bloqueia autosave até confirmação manual no formulário de evento
-let areaEditadaNoRascunho = false;
+let usuarioDigitouNoEditor = false;
+let dataVindaDaUrl = '';        // ISO da data recebida na URL (ex.: ?date=2026-12-07)
+let tarefaEditandoId = '';      // ID da tarefa existente aberta para edição
+let sessaoTarefaId = '';        // ID estável da tarefa sendo digitada no formulário (impede duplicar durante digitação)
 let avisosLinkAtual = [];
 let agendaCarregada = false;
 let resolverCargaInicial = null;
 const promessaCargaInicial = new Promise((r) => { resolverCargaInicial = r; });
+const lembretesDispensados = new Set();
+const salvandoEmVoo = {};       // data -> boolean (serializa gravações concorrentes)
+const regravarPendente = {};    // data -> lista mais recente aguardando término do voo atual
+const PENDENCIAS_OFFLINE_KEY = 'ag_autosave_pendente';
+let pendenciasOffline = carregarPendenciasOfflineStorage();
+
+function carregarPendenciasOfflineStorage() {
+  try {
+    const raw = localStorage.getItem(PENDENCIAS_OFFLINE_KEY);
+    return raw ? (JSON.parse(raw) || {}) : {};
+  } catch {
+    return {};
+  }
+}
+function gravarPendenciasOfflineStorage() {
+  try {
+    if (Object.keys(pendenciasOffline).length === 0) {
+      localStorage.removeItem(PENDENCIAS_OFFLINE_KEY);
+    } else {
+      localStorage.setItem(PENDENCIAS_OFFLINE_KEY, JSON.stringify(pendenciasOffline));
+    }
+  } catch { /* storage indisponível */ }
+}
 
 // Cores disponíveis para alternar rapidamente (4, na ordem pedida)
 const CORES_EDITOR = ['verde', 'amarelo', 'azul', 'vermelho'];
@@ -103,11 +139,18 @@ const evHoraEl        = $('ag-ev-hora');
 const evDescEl        = $('ag-ev-descricao');
 const evLembEl        = $('ag-ev-lembrete');
 const evLembInfoEl    = $('ag-ev-lembrete-info');
-const evSalvarBtn     = $('ag-salvar-evento');
+const evNovaOutraBtn  = $('ag-nova-outra-tarefa');
 const evCopiarBtn     = $('ag-copiar-evento');
 const evDescartarBtn  = $('ag-descartar-evento');
 const abrirNovoEvBtn  = $('ag-abrir-novo-evento');
 const copiarDiaBtn    = $('ag-copiar-dia');
+const tarefasListaEl  = $('ag-tarefas-lista');
+const tarefasCountEl  = $('ag-tarefas-count');
+const alertaVivoEl    = $('ag-alerta-vivo');
+const vivoHoraEl      = $('ag-vivo-hora');
+const vivoTituloEl    = $('ag-vivo-titulo');
+const vivoSubEl       = $('ag-vivo-sub');
+const vivoFecharBtn   = $('ag-vivo-fechar');
 
 // ── util ───────────────────────────────────────────────────────────
 function isoHoje() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
@@ -178,13 +221,13 @@ function renderCalendario() {
 
   for (let dia = 1; dia <= diasNoMes; dia++) {
     const iso = `${viewAno}-${pad(viewMes+1)}-${pad(dia)}`;
-    const arr = notas[iso] || [];
+    const arr = ordenarTarefasCronologicamente(notas[iso] || []);
     const cel = document.createElement('div');
     cel.className = 'ag-cel';
     if (iso === hoje) cel.classList.add('ag-cel-hoje');
     if (iso === diaSelecionado) cel.classList.add('ag-cel-sel');
     if (buscaTermo) {
-      const temMatch = arr.some(n => (n.texto || '').toLowerCase().includes(buscaTermo));
+      const temMatch = arr.some(n => `${n.texto || ''} ${n.descricao || ''}`.toLowerCase().includes(buscaTermo));
       cel.classList.add(temMatch ? 'ag-cel-match' : 'ag-cel-dim');
     }
 
@@ -193,9 +236,11 @@ function renderCalendario() {
     const chipsArr = ehRecorrente ? [] : arr;
     const chips = chipsArr.map(n => {
       const c = CORES[corValida(n.cor)];
-      const m = (n.texto || '').match(/^\s*(\d{1,2}:\d{2})\s+([\s\S]*)$/);
-      const inner = m ? `<b>${m[1]}</b> ${escHtml(m[2])}` : escHtml(n.texto);
-      return `<div class="ag-chip" style="--bg:${c.bg};--fg:${c.fg}" title="${escHtml(n.texto)}"><span class="ag-chip-t">${inner}</span></div>`;
+      const horaChip = n.hora || (String(n.texto || '').match(/^\s*\[?(\d{1,2}:\d{2})\]?\s+/)?.[1] || '');
+      const rotuloCurto = n.titulo || String(n.texto || '').replace(/^\s*\[?\d{1,2}:\d{2}\]?\s+/, '');
+      const inner = horaChip ? `<b>${escHtml(horaChip)}</b> ${escHtml(rotuloCurto)}` : escHtml(rotuloCurto);
+      const estiloConcluido = n.concluido ? ';opacity:.55;text-decoration:line-through' : '';
+      return `<div class="ag-chip" style="--bg:${c.bg};--fg:${c.fg}${estiloConcluido}" title="${escHtml(n.texto)}"><span class="ag-chip-t">${inner}</span></div>`;
     }).join('');
 
     const rec = recorrentesNoDia(iso);
@@ -235,31 +280,103 @@ function ajustarQuadrados() {
 }
 
 function selecionarDia(iso) {
-  if (rascunhoLinkAtivo && iso !== diaSelecionado) {
+  flushSave();
+  if (evFormEl && !evFormEl.hidden && iso !== diaSelecionado) {
     fecharFormularioEvento({ restaurarEditor: false });
-  } else {
-    flushSave();
   }
   diaSelecionado = iso;
   editando = false;
+  usuarioDigitouNoEditor = false;
+  if (dataVindaDaUrl) {
+    dataVindaDaUrl = iso;
+    sincronizarDataNaUrl(iso);
+  }
   carregarEditor();
   renderCalendario();
   painelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  if (areaEl && !areaEl.value && !rascunhoLinkAtivo) areaEl.focus();
+  if (areaEl && !areaEl.value && (!evFormEl || evFormEl.hidden)) areaEl.focus();
 }
 
-// ── editor: UMA única área de texto contínua por dia (estilo bloco de notas) ──
+// ── renderização da lista cronológica de tarefas independentes do dia ──
+function renderTarefasLista() {
+  const ordenadas = ordenarTarefasCronologicamente(notas[diaSelecionado] || []);
+  if (tarefasCountEl) {
+    if (ordenadas.length > 0) {
+      tarefasCountEl.textContent = `${ordenadas.length} ${ordenadas.length === 1 ? 'tarefa' : 'tarefas'}`;
+      tarefasCountEl.hidden = false;
+    } else {
+      tarefasCountEl.hidden = true;
+    }
+  }
+  if (!tarefasListaEl) return;
+  if (ordenadas.length === 0) {
+    tarefasListaEl.innerHTML = '';
+    tarefasListaEl.hidden = true;
+    return;
+  }
+
+  const podeAlterar = podeCriar('agenda') && podeEditar('agenda');
+  tarefasListaEl.hidden = false;
+  tarefasListaEl.innerHTML = ordenadas.map((t) => {
+    const corInfo = CORES[corValida(t.cor || corDiaSel)];
+    const horaHtml = t.hora ? `<span class="ag-tarefa-hora">${escHtml(t.hora)}</span>` : '';
+    const descHtml = t.descricao ? `<div class="ag-tarefa-desc">${escHtml(t.descricao)}</div>` : '';
+    let metaTxt = '';
+    if (t.lembrete) {
+      const suf = t.horaAlerta && t.horaAlerta !== t.hora ? ` · alerta às ${t.horaAlerta}` : '';
+      metaTxt = `⏰ Lembrete: ${t.lembrete}${suf}`;
+    } else if (t.alertaAtivo && t.hora) {
+      metaTxt = `🔔 Alerta ativo (${t.hora})`;
+    }
+    const metaHtml = metaTxt ? `<div class="ag-tarefa-meta">${escHtml(metaTxt)}</div>` : '';
+    const attrDis = podeAlterar ? '' : ' disabled';
+
+    return `<div class="ag-tarefa-card${t.concluido ? ' concluida' : ''}" data-task-id="${escHtml(t.id)}" style="--t-cor:${corInfo.hex}">
+      <input type="checkbox" class="ag-tarefa-chk" data-acao="concluir" title="Marcar tarefa como concluída"${t.concluido ? ' checked' : ''}${attrDis}>
+      <div class="ag-tarefa-corpo">
+        <div class="ag-tarefa-linha1">${horaHtml}<span class="ag-tarefa-tit">${escHtml(t.titulo || t.texto)}</span></div>
+        ${descHtml}
+        ${metaHtml}
+      </div>
+      <div class="ag-tarefa-acoes">
+        <button type="button" class="ag-tarefa-acao" data-acao="copiar" title="Copiar esta tarefa">📋</button>
+        <button type="button" class="ag-tarefa-acao" data-acao="editar" title="Editar esta tarefa"${attrDis}>✏️</button>
+        <button type="button" class="ag-tarefa-acao excluir" data-acao="excluir" title="Excluir esta tarefa"${attrDis}>✕</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  tarefasListaEl.querySelectorAll('.ag-tarefa-card').forEach((card) => {
+    const taskId = card.dataset.taskId;
+    card.querySelector('[data-acao="concluir"]')?.addEventListener('change', (e) => {
+      alternarConcluidoTarefa(taskId, e.target.checked);
+    });
+    card.querySelector('[data-acao="copiar"]')?.addEventListener('click', (e) => {
+      copiarTarefaIndividual(taskId, e.currentTarget);
+    });
+    card.querySelector('[data-acao="editar"]')?.addEventListener('click', () => {
+      editarTarefaIndividual(taskId);
+    });
+    card.querySelector('[data-acao="excluir"]')?.addEventListener('click', () => {
+      removerTarefaIndividual(taskId);
+    });
+  });
+}
+
+// ── editor: tarefas independentes + área de texto contínua compatível ──
 function carregarEditor() {
   diaTitulo.textContent = fmtDiaLongo(diaSelecionado);
-  const arr = notas[diaSelecionado] || [];
+  const arr = ordenarTarefasCronologicamente(notas[diaSelecionado] || []);
   areaEl.value = arr.map(n => n.texto).join('\n');
   atualizarContador();
   corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
   pintarArea();
+  renderTarefasLista();
   // Alerta opcional do dia
   const al = alertaPorDia[diaSelecionado] || {};
+  const temAlertaTarefa = arr.some(t => t.alertaAtivo && (t.hora || t.horaAlerta));
   if (alertaHoraEl) alertaHoraEl.value = al.hora || '';
-  if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
+  if (alertaDashEl) alertaDashEl.checked = Boolean(al.dashboard || temAlertaTarefa);
   if (recorrEl) recorrEl.value = recorrenciaPorDia[diaSelecionado] || '';
   aplicarFonteLinhas();   // já chama autoGrow()
   // Restaura a cor do texto salva sem disparar gravação automática ao abrir o dia
@@ -384,8 +501,8 @@ function abrirDiaModal(iso) {
   if (!modalOverlay || !iso) return;
   modalDia = iso;
   modalTit.textContent = fmtDiaLongo(iso);
-  const linhas = (notas[iso] || []).map(n => n.texto);
-  const rec = recorrentesNoDia(iso).filter(t => !linhas.includes(t));
+  const linhas = ordenarTarefasCronologicamente(notas[iso] || []).map(n => n.texto);
+  const rec = recorrentesNoDia(iso).map(r => r.texto).filter(t => !linhas.includes(t));
   let html = linhas.map(t => `<div class="ag-modal-linha">${escHtml(t)}</div>`).join('');
   if (rec.length) html += rec.map(t => `<div class="ag-modal-linha">🔄 ${escHtml(t)}</div>`).join('');
   modalBody.innerHTML = html || '<div class="ag-modal-linha" style="opacity:.6">Sem anotações.</div>';
@@ -462,54 +579,157 @@ function atualizarContador() {
   }
 }
 
-// ── salvamento automático ──────────────────────────────────────────
-// Cada linha não-vazia vira uma anotação no mesmo formato de dados de
-// sempre ({texto, cor}), preservando calendário, resumo e alertas.
+// ── salvamento automático (AUTOSAVE) com deduplicação e retry offline ──
+function atualizarIndicadoresSave(estado, texto) {
+  if (statusEl) {
+    statusEl.textContent = texto;
+    statusEl.classList.toggle('salvo', estado === 'salvo');
+    statusEl.classList.toggle('erro', estado === 'erro');
+  }
+  if (evPendentePillEl && evFormEl && !evFormEl.hidden) {
+    evPendentePillEl.textContent = texto;
+    evPendentePillEl.classList.toggle('salvando', estado === 'salvando');
+    evPendentePillEl.classList.toggle('salvo', estado === 'salvo');
+    evPendentePillEl.classList.toggle('erro', estado === 'erro');
+  }
+}
+
 function lerLinhas() {
-  const notasExistentes = notas[diaSelecionado] || [];
-  return areaEl.value
+  const poolExistentes = [...(notas[diaSelecionado] || [])];
+  const lidas = areaEl.value
     .split(/\r?\n/)
     .map(t => t.trim())
     .filter(Boolean)
     .map(t => {
-      // Preserva concluido da nota existente (se o texto não mudou)
-      const existente = notasExistentes.find(n => n.texto === t);
-      return { texto: t, cor: corDiaSel, concluido: existente ? !!existente.concluido : false };
-    });
-}
-function agendarSave() {
-  if (rascunhoLinkAtivo) {
-    statusEl.textContent = '📝 Confira os dados e clique em "Salvar evento" para gravar';
-    return;
-  }
-  statusEl.textContent = 'Salvando…';
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(salvar, 600);
-}
-function flushSave() {
-  if (rascunhoLinkAtivo) return;
-  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; salvar(); }
+      const idx = poolExistentes.findIndex(n => n.texto === t);
+      if (idx !== -1) {
+        const existente = poolExistentes.splice(idx, 1)[0];
+        return { ...existente, cor: existente.cor || corDiaSel };
+      }
+      return normalizarRegistroTarefa({ texto: t, cor: corDiaSel, concluido: false }, corDiaSel);
+    })
+    .filter(Boolean);
+  return deduplicarListaTarefas(lidas);
 }
 
-// Remove TODOS os documentos que representam esse dia, inclusive órfãos com
-// ID aleatório (formato antigo) cujo campo `data` aponta para o mesmo dia.
+function agendarSave(delayMs = 450) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  atualizarIndicadoresSave('salvando', 'Salvando…');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(salvar, delayMs);
+}
+
+function flushSave() {
+  if (formSaveTimer) {
+    clearTimeout(formSaveTimer);
+    formSaveTimer = null;
+    executarAutosaveFormulario();
+  }
+  if (saveTimer) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    salvar();
+  }
+}
+
 async function apagarDocsDoDia(data) {
   const ids = new Set([data, ...(docIds[data] || [])]);
-  await Promise.all([...ids].map(id => Agenda.remove(id).catch(() => {})));
+  await Promise.all([...ids].map(id => Agenda.remove(id)));
 }
 
-async function salvar() {
+function agendarRetryOffline() {
+  clearTimeout(retryTimer);
+  if (Object.keys(pendenciasOffline).length === 0) {
+    retryTentativas = 0;
+    return;
+  }
+  const atraso = Math.min(12000, 1500 * Math.pow(2, Math.min(3, retryTentativas)));
+  retryTentativas++;
+  retryTimer = setTimeout(() => { processarPendenciasOffline(); }, atraso);
+}
+
+async function processarPendenciasOffline() {
+  const datas = Object.keys(pendenciasOffline);
+  if (datas.length === 0) return;
+  for (const data of datas) {
+    const item = pendenciasOffline[data];
+    if (!item) continue;
+    await persistirTarefasDoDia(data, item.notas, {
+      forcarAlertaDash: item.alertaDashboard,
+      corForcada: item.cor,
+      origemRetry: true,
+    });
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    retryTentativas = 0;
+    processarPendenciasOffline();
+  });
+}
+
+async function persistirTarefasDoDia(data, listaTarefas, {
+  forcarAlertaDash = false,
+  corForcada = '',
+  atualizarTextarea = true,
+  origemRetry = false,
+} = {}) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return false;
   clearTimeout(saveTimer); saveTimer = null;
-  const data = diaSelecionado;
-  const arr = lerLinhas();
+
+  const corUsada = corValida(corForcada || corPorDia[data] || (data === diaSelecionado ? corDiaSel : COR_PADRAO));
+  const arr = deduplicarListaTarefas((listaTarefas || []).filter(Boolean));
+  const alertaHoraManual = data === diaSelecionado ? ((alertaHoraEl && alertaHoraEl.value) || '') : (alertaPorDia[data]?.hora || '');
+  const temAlertaIndividual = arr.some(t => t.alertaAtivo && (t.hora || t.horaAlerta));
+  const alertaDashboard = Boolean(
+    (data === diaSelecionado && alertaDashEl && alertaDashEl.checked)
+    || forcarAlertaDash
+    || temAlertaIndividual
+    || alertaPorDia[data]?.dashboard
+  );
+  const alertaHora = alertaHoraManual;
+  const recorrencia = data === diaSelecionado ? ((recorrEl && recorrEl.value) || '') : (recorrenciaPorDia[data] || '');
+
+  // 1. Atualização otimista imediata na Agenda (sem esperar round-trip de rede)
+  if (arr.length === 0) {
+    delete notas[data];
+  } else {
+    notas[data] = arr;
+    corPorDia[data] = corUsada;
+    alertaPorDia[data] = { hora: alertaHora, dashboard: alertaDashboard };
+  }
+  if (data === diaSelecionado) {
+    renderTarefasLista();
+    if (atualizarTextarea && areaEl && document.activeElement !== areaEl) {
+      areaEl.value = arr.map(n => n.texto).join('\n');
+      atualizarContador();
+      aplicarFonteLinhas();
+    }
+    if (alertaDashEl && arr.length > 0) alertaDashEl.checked = alertaDashboard;
+  }
+  renderCalendario();
+  verificarLembretesVivos();
+
+  // 2. Serialização por dia para impedir gravações concorrentes ou duplicadas
+  if (salvandoEmVoo[data]) {
+    regravarPendente[data] = { arr, forcarAlertaDash: alertaDashboard, corForcada: corUsada, atualizarTextarea };
+    return true;
+  }
+
+  salvandoEmVoo[data] = true;
+  if (!origemRetry) atualizarIndicadoresSave('salvando', 'Salvando…');
+
   try {
-    const alertaHora = (alertaHoraEl && alertaHoraEl.value) || '';
-    const alertaDashboard = !!(alertaDashEl && alertaDashEl.checked);
-    const recorrencia = (recorrEl && recorrEl.value) || '';
+    if (!agendaCarregada && !origemRetry) {
+      await Promise.race([
+        promessaCargaInicial,
+        new Promise((r) => setTimeout(r, 1200)),
+      ]);
+    }
+
     if (arr.length === 0) {
-      // Apaga o doc canônico E quaisquer órfãos/duplicados desse dia.
       await apagarDocsDoDia(data);
-      delete notas[data];
       delete docIds[data];
       delete corPorDia[data];
       delete alertaPorDia[data];
@@ -518,12 +738,10 @@ async function salvar() {
       delete recorrenciaPararEm[data];
       delete textoCorDia[data];
     } else {
-      // Preserva campos de interrupção de recorrência (se existirem)
       const excluir = recorrenciaExcluir[data] || [];
       const pararEm = recorrenciaPararEm[data] || '';
-      // Grava sempre no ID canônico (= a data) e remove órfãos com outro ID.
       await Agenda.set(data, {
-        data, notas: arr, cor: corDiaSel,
+        data, notas: arr, cor: corUsada,
         alertaHora, alertaDashboard, recorrencia,
         recorrenciaExcluir: excluir.length ? excluir : [],
         recorrenciaPararEm: pararEm || '',
@@ -532,15 +750,153 @@ async function salvar() {
       });
       const orfaos = (docIds[data] || []).filter(id => id !== data);
       await Promise.all(orfaos.map(id => Agenda.remove(id).catch(() => {})));
-      notas[data] = arr;
       docIds[data] = [data];
-      corPorDia[data] = corDiaSel;
-      alertaPorDia[data] = { hora: alertaHora, dashboard: alertaDashboard };
       if (recorrencia) recorrenciaPorDia[data] = recorrencia; else delete recorrenciaPorDia[data];
     }
-    statusEl.textContent = '✓ Salvo';
-  } catch (e) { console.error(e); statusEl.textContent = '❌ Erro ao salvar'; }
+
+    // Sucesso: limpa pendência offline deste dia e confirma discretamente "Salvo ✓"
+    if (pendenciasOffline[data]) {
+      delete pendenciasOffline[data];
+      gravarPendenciasOfflineStorage();
+    }
+    if (Object.keys(pendenciasOffline).length === 0) retryTentativas = 0;
+    atualizarIndicadoresSave('salvo', 'Salvo ✓');
+    return true;
+  } catch (e) {
+    console.warn('[Agenda Autosave] Falha de conexão — preservando conteúdo e agendando nova tentativa:', e);
+    // Preserva integralmente o conteúdo na memória + localStorage e agenda retry automático
+    pendenciasOffline[data] = {
+      data,
+      notas: arr,
+      cor: corUsada,
+      alertaHora,
+      alertaDashboard,
+      recorrencia,
+      textoCor: textoCorDia[data] || 'preto',
+    };
+    gravarPendenciasOfflineStorage();
+    atualizarIndicadoresSave('erro', '⚠️ Sem conexão — salvo localmente, tentando reconectar…');
+    agendarRetryOffline();
+    return false;
+  } finally {
+    salvandoEmVoo[data] = false;
+    if (regravarPendente[data]) {
+      const prox = regravarPendente[data];
+      delete regravarPendente[data];
+      persistirTarefasDoDia(data, prox.arr, {
+        forcarAlertaDash: prox.forcarAlertaDash,
+        corForcada: prox.corForcada,
+        atualizarTextarea: prox.atualizarTextarea,
+      });
+    }
+  }
 }
+
+async function salvar() {
+  const data = diaSelecionado;
+  const arr = lerLinhas();
+  await persistirTarefasDoDia(data, arr, { atualizarTextarea: false });
+}
+
+// ── Ações independentes por tarefa (concluir, editar, excluir, copiar) ──
+async function alternarConcluidoTarefa(taskId, concluido) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  const atuais = (notas[diaSelecionado] || []).map(t =>
+    t.id === taskId ? { ...t, concluido: Boolean(concluido) } : t
+  );
+  await persistirTarefasDoDia(diaSelecionado, atuais);
+  toast(concluido ? '✓ Tarefa concluída' : '↩️ Tarefa reaberta');
+}
+
+function editarTarefaIndividual(taskId) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  const alvo = (notas[diaSelecionado] || []).find(t => t.id === taskId);
+  if (!alvo) return;
+  abrirFormularioEvento({
+    editarId: alvo.id,
+    dataIso: diaSelecionado,
+    horario: alvo.hora || '',
+    titulo: alvo.titulo || '',
+    descricao: alvo.descricao || '',
+    lembrete: alvo.lembrete || '',
+  }, { origemLink: false });
+  evTituloEl?.focus();
+}
+
+async function removerTarefaIndividual(taskId) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  const restantes = (notas[diaSelecionado] || []).filter(t => t.id !== taskId);
+  if (tarefaEditandoId === taskId) {
+    fecharFormularioEvento({ restaurarEditor: false, limparUrl: false });
+  }
+  await persistirTarefasDoDia(diaSelecionado, restantes);
+  toast('🗑️ Tarefa removida');
+}
+
+async function copiarTarefaIndividual(taskId, btnAlvo) {
+  const alvo = (notas[diaSelecionado] || []).find(t => t.id === taskId);
+  if (!alvo) return;
+  const resumo = montarResumoEvento({
+    titulo: alvo.titulo,
+    dataIso: diaSelecionado,
+    horario: alvo.hora,
+    descricao: alvo.descricao,
+    lembrete: alvo.lembrete,
+    horaAlerta: alvo.horaAlerta,
+  });
+  const ok = await copiarTextoAreaTransferencia(resumo);
+  if (ok) {
+    if (btnAlvo) {
+      const orig = btnAlvo.textContent;
+      btnAlvo.textContent = '✓';
+      setTimeout(() => { btnAlvo.textContent = orig; }, 1400);
+    }
+    toast('📋 Tarefa copiada!');
+  }
+}
+
+// ── Verificador de lembretes individuais em tempo real na Agenda ────
+function verificarLembretesVivos() {
+  if (!alertaVivoEl) return;
+  const hoje = isoHoje();
+  const tarefasHoje = ordenarTarefasCronologicamente(notas[hoje] || []);
+  const agora = new Date();
+  const minsAgora = agora.getHours() * 60 + agora.getMinutes();
+
+  const disparando = tarefasHoje.find((t) => {
+    if (t.concluido || !t.alertaAtivo) return false;
+    const chaveDisp = `${hoje}::${t.id}`;
+    if (lembretesDispensados.has(chaveDisp)) return false;
+    const hAlvo = parseHorarioParam(t.horaAlerta || t.hora || '');
+    if (!hAlvo.valido) return false;
+    const [hh, mm] = hAlvo.hora.split(':').map(Number);
+    const diff = minsAgora - (hh * 60 + mm);
+    // Dispara a partir do horário do lembrete até 60 minutos após (ou até o horário do evento)
+    return diff >= 0 && diff <= 60;
+  });
+
+  if (!disparando) {
+    alertaVivoEl.hidden = true;
+    alertaVivoEl.dataset.taskKey = '';
+    return;
+  }
+
+  alertaVivoEl.dataset.taskKey = `${hoje}::${disparando.id}`;
+  if (vivoHoraEl) vivoHoraEl.textContent = disparando.hora || disparando.horaAlerta || '--:--';
+  if (vivoTituloEl) vivoTituloEl.textContent = disparando.titulo || disparando.texto;
+  if (vivoSubEl) {
+    const partes = [];
+    if (disparando.lembrete) partes.push(`Lembrete: ${disparando.lembrete}`);
+    if (disparando.descricao) partes.push(disparando.descricao);
+    vivoSubEl.textContent = partes.join(' · ') || 'Compromisso agendado para hoje';
+  }
+  alertaVivoEl.hidden = false;
+}
+vivoFecharBtn?.addEventListener('click', () => {
+  const k = alertaVivoEl?.dataset.taskKey;
+  if (k) lembretesDispensados.add(k);
+  if (alertaVivoEl) alertaVivoEl.hidden = true;
+});
 
 // ── busca inteligente ──────────────────────────────────────────────
 // Procura o termo em cada LINHA de anotação. Destaca os dias com
@@ -641,13 +997,32 @@ function obterSearchAtual() {
   }
 }
 
-function limparQueryStringUrl() {
+function obterHashAtual() {
+  if (typeof window === 'undefined' || !window.location) return '';
+  if (typeof window.location.hash === 'string' && window.location.hash) {
+    return window.location.hash;
+  }
+  try {
+    return new URL(window.location.href, 'http://localhost').hash;
+  } catch {
+    return '';
+  }
+}
+
+// Mantém apenas ?date=AAAA-MM-DD na URL (preserva a data ao recarregar a página
+// e remove parâmetros de rascunho já salvos/descartados para nunca duplicar).
+function sincronizarDataNaUrl(iso) {
   try {
     if (window.history && typeof window.history.replaceState === 'function') {
-      const novaUrl = window.location.pathname + (window.location.hash || '');
+      const sufixo = iso ? `?date=${encodeURIComponent(iso)}` : '';
+      const novaUrl = window.location.pathname + sufixo;
       window.history.replaceState({}, document.title, novaUrl);
     }
   } catch { /* ambiente restrito / testes */ }
+}
+
+function limparQueryStringUrl() {
+  sincronizarDataNaUrl(dataVindaDaUrl || '');
 }
 
 function lerCamposFormularioEvento() {
@@ -661,95 +1036,146 @@ function lerCamposFormularioEvento() {
   const lRes = parseLembreteParam(lembreteRaw, horario);
   const dRes = parseDataParam(dataRaw);
   const dataIso = dRes.valido ? dRes.iso : diaSelecionado;
-  const linhas = formatarLinhasEvento({
-    horario,
-    titulo,
-    descricao,
-    lembrete: lRes.valido ? lRes.texto : lembreteRaw,
-  });
+  const idAtivo = tarefaEditandoId || sessaoTarefaId || gerarIdTarefa();
+  if (!sessaoTarefaId) sessaoTarefaId = idAtivo;
+
+  const tituloValido = titulo.trim().length > 0;
+  const registro = tituloValido
+    ? criarRegistroTarefa({
+        id: idAtivo,
+        horario,
+        titulo,
+        descricao,
+        lembrete: lRes.valido ? lRes.texto : lembreteRaw,
+        cor: corDiaSel,
+      })
+    : null;
 
   return {
+    idAtivo,
     titulo,
+    tituloValido,
     dataIso,
     horario,
     descricao,
     lembrete: lRes.valido ? lRes.texto : lembreteRaw,
     lRes,
     hRes,
-    linhas,
+    registro,
+    linhas: registro && registro.texto ? [registro.texto] : [],
   };
 }
 
-function sincronizarRascunhoNoEditor() {
-  if (!rascunhoLinkAtivo || !evFormEl) return;
-  const estado = lerCamposFormularioEvento();
-
-  if (evLembInfoEl) {
-    if (estado.lRes.valido && estado.lRes.ativarDashboard && estado.lRes.horaAlerta) {
-      evLembInfoEl.textContent = `(alerta às ${estado.lRes.horaAlerta})`;
-    } else if (estado.lRes.texto === 'Sem lembrete') {
-      evLembInfoEl.textContent = '(desativado)';
-    } else {
-      evLembInfoEl.textContent = '';
-    }
-  }
-
-  const notasSalvasNoDia = notas[diaSelecionado] || [];
-  const jaSalvo = agendaCarregada && eventoJaPresenteNasNotas(notasSalvasNoDia, estado.linhas);
-
-  if (evPendentePillEl) {
-    evPendentePillEl.textContent = jaSalvo ? 'Já salvo neste dia' : 'Não salvo';
-    evPendentePillEl.classList.toggle('salvo', jaSalvo);
-  }
-
-  const mensagensAviso = [...avisosLinkAtual];
-  if (jaSalvo) {
-    mensagensAviso.push('Este compromisso já consta salvo neste dia — não será duplicado.');
-  }
-  if (evAvisoEl) {
-    if (mensagensAviso.length > 0) {
-      evAvisoEl.textContent = 'ℹ️ ' + mensagensAviso.join(' ');
-      evAvisoEl.hidden = false;
-    } else {
-      evAvisoEl.textContent = '';
-      evAvisoEl.hidden = true;
-    }
-  }
-
-  if (!areaEditadaNoRascunho && areaEl) {
-    const mescladas = mesclarNotasComEvento(notasSalvasNoDia, estado.linhas);
-    areaEl.value = mescladas.join('\n');
-    atualizarContador();
-    aplicarFonteLinhas();
-  }
-
-  const alExistente = alertaPorDia[diaSelecionado] || {};
-  if (estado.lRes.valido && !estado.lRes.vazio) {
-    if (estado.lRes.ativarDashboard) {
-      if (alertaHoraEl) alertaHoraEl.value = estado.lRes.horaAlerta || estado.horario || alExistente.hora || '';
-      if (alertaDashEl) alertaDashEl.checked = true;
-    } else {
-      if (alertaHoraEl) alertaHoraEl.value = alExistente.hora || '';
-      if (alertaDashEl) alertaDashEl.checked = !!alExistente.dashboard;
-    }
+function atualizarInfoLembreteFormulario(estado) {
+  if (!evLembInfoEl) return;
+  if (estado.lRes.valido && estado.lRes.ativarDashboard && estado.lRes.horaAlerta) {
+    evLembInfoEl.textContent = `(alerta às ${estado.lRes.horaAlerta})`;
+  } else if (estado.lRes.texto === 'Sem lembrete') {
+    evLembInfoEl.textContent = '(desativado)';
   } else if (estado.horario) {
-    if (alertaHoraEl) alertaHoraEl.value = alExistente.hora || estado.horario;
-    if (alertaDashEl) alertaDashEl.checked = !!alExistente.dashboard;
+    evLembInfoEl.textContent = `(alerta às ${estado.horario})`;
+  } else {
+    evLembInfoEl.textContent = '';
+  }
+}
+
+// Aplica a tarefa válida imediatamente na Agenda (memória + UI) e grava com debounce no Firestore
+function agendarAutosaveFormulario({ imediato = false } = {}) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  const estado = lerCamposFormularioEvento();
+  atualizarInfoLembreteFormulario(estado);
+
+  if (!estado.tituloValido || !estado.registro) {
+    clearTimeout(formSaveTimer);
+    formSaveTimer = null;
+    if (evPendentePillEl) {
+      evPendentePillEl.textContent = 'Autosave ativo';
+      evPendentePillEl.classList.remove('salvando', 'salvo', 'erro');
+    }
+    return;
   }
 
-  if (statusEl) {
-    statusEl.textContent = jaSalvo
-      ? '✓ Este evento já consta salvo na agenda deste dia'
-      : '📝 Confira os dados e clique em "Salvar evento" para gravar';
+  const dataAlvo = estado.dataIso || diaSelecionado;
+  const atuais = notas[dataAlvo] || [];
+  const jaTemMesmoId = atuais.some((t) => t.id === estado.idAtivo);
+
+  // Impede duplicar tarefa já existente no mesmo dia ao colar/repetir
+  if (!jaTemMesmoId && tarefaJaExisteNoDia(atuais, estado.registro, estado.idAtivo)) {
+    const existente = atuais.find((t) => tarefaJaExisteNoDia([t], estado.registro));
+    if (existente) {
+      sessaoTarefaId = existente.id;
+      atualizarIndicadoresSave('salvo', 'Salvo ✓');
+      return;
+    }
   }
+
+  // Preserva cor/conclusão caso já exista na lista
+  const anterior = atuais.find((t) => t.id === estado.idAtivo);
+  const regFinal = {
+    ...estado.registro,
+    id: estado.idAtivo,
+    cor: anterior ? anterior.cor : corDiaSel,
+    concluido: anterior ? Boolean(anterior.concluido) : false,
+  };
+
+  // Aparece imediatamente na lista do dia e no calendário
+  const novaLista = adicionarOuAtualizarTarefaNoDia(atuais, regFinal, { editarId: estado.idAtivo });
+  notas[dataAlvo] = novaLista;
+  if (dataAlvo === diaSelecionado) {
+    renderTarefasLista();
+    if (areaEl && document.activeElement !== areaEl) {
+      areaEl.value = novaLista.map((t) => t.texto).join('\n');
+      atualizarContador();
+      aplicarFonteLinhas();
+    }
+  }
+  renderCalendario();
+  atualizarIndicadoresSave('salvando', 'Salvando…');
+
+  clearTimeout(formSaveTimer);
+  formSaveTimer = setTimeout(
+    () => executarAutosaveFormulario(dataAlvo),
+    imediato ? 40 : 380
+  );
+}
+
+async function executarAutosaveFormulario(dataForcada = '') {
+  clearTimeout(formSaveTimer);
+  formSaveTimer = null;
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+
+  const dataAlvo = dataForcada || diaSelecionado;
+  const listaAtual = notas[dataAlvo] || [];
+  if (listaAtual.length === 0) return;
+
+  await persistirTarefasDoDia(dataAlvo, listaAtual, {
+    forcarAlertaDash: listaAtual.some((t) => t.alertaAtivo),
+  });
+  limparQueryStringUrl();
+}
+
+function prepararOutraTarefaNoFormulario() {
+  flushSave();
+  tarefaEditandoId = '';
+  sessaoTarefaId = gerarIdTarefa();
+  if (evHoraEl) evHoraEl.value = '';
+  if (evTituloEl) evTituloEl.value = '';
+  if (evDescEl) evDescEl.value = '';
+  if (evLembEl) evLembEl.value = '';
+  if (evLembInfoEl) evLembInfoEl.textContent = '';
+  if (evOrigemBadgeEl) evOrigemBadgeEl.textContent = '➕ Nova tarefa — salvamento automático';
+  if (evPendentePillEl) {
+    evPendentePillEl.textContent = 'Autosave ativo';
+    evPendentePillEl.classList.remove('salvando', 'salvo', 'erro');
+  }
+  evTituloEl?.focus();
 }
 
 function abrirFormularioEvento(dados = {}, { origemLink = false } = {}) {
   if (!evFormEl) return;
-  clearTimeout(saveTimer);
-  saveTimer = null;
-  rascunhoLinkAtivo = true;
-  areaEditadaNoRascunho = false;
+  flushSave();
+  tarefaEditandoId = dados.editarId || '';
+  sessaoTarefaId = dados.editarId || gerarIdTarefa();
   avisosLinkAtual = Array.isArray(dados.avisos) ? [...dados.avisos] : [];
 
   const alvoIso = dados.dataIso || diaSelecionado || isoHoje();
@@ -766,83 +1192,110 @@ function abrirFormularioEvento(dados = {}, { origemLink = false } = {}) {
   if (evDescEl) evDescEl.value = dados.descricao || '';
   if (evLembEl) evLembEl.value = dados.lembrete || '';
   if (evOrigemBadgeEl) {
-    evOrigemBadgeEl.textContent = origemLink
-      ? '🔗 Evento recebido por Link Inteligente — confira e salve manualmente'
-      : '➕ Novo evento — preencha os campos e salve manualmente';
+    if (tarefaEditandoId) {
+      evOrigemBadgeEl.textContent = '✏️ Editando tarefa — alterações salvas automaticamente';
+    } else if (origemLink && dados.temDadosEvento) {
+      evOrigemBadgeEl.textContent = '🔗 Compromisso recebido por link — salvamento automático';
+    } else {
+      evOrigemBadgeEl.textContent = '➕ Nova tarefa — digite ou cole para salvar automaticamente';
+    }
+  }
+
+  if (evAvisoEl) {
+    if (avisosLinkAtual.length > 0) {
+      evAvisoEl.textContent = 'ℹ️ ' + avisosLinkAtual.join(' ');
+      evAvisoEl.hidden = false;
+    } else {
+      evAvisoEl.textContent = '';
+      evAvisoEl.hidden = true;
+    }
   }
 
   evFormEl.hidden = false;
-
-  // Expande temporariamente o painel de opções quando há horário/lembrete para conferência visual
-  const wrapOpts = $('ag-opts-wrap');
-  const btnOpts = $('ag-colapse-opts');
-  if (origemLink && wrapOpts && wrapOpts.classList.contains('ag-recolhido')) {
-    wrapOpts.classList.remove('ag-recolhido');
-    if (btnOpts) btnOpts.textContent = '▲ Ocultar opções';
-  }
-
   carregarEditor();
-  sincronizarRascunhoNoEditor();
+  atualizarInfoLembreteFormulario(lerCamposFormularioEvento());
+  if (evPendentePillEl) {
+    evPendentePillEl.textContent = 'Autosave ativo';
+    evPendentePillEl.classList.remove('salvando', 'salvo', 'erro');
+  }
   renderCalendario();
 
-  requestAnimationFrame(() => {
-    painelEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  });
+  if (origemLink) {
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { /* jsdom */ }
+  } else {
+    requestAnimationFrame(() => {
+      painelEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
 }
 
 function fecharFormularioEvento({ restaurarEditor = true, limparUrl = false } = {}) {
-  rascunhoLinkAtivo = false;
-  areaEditadaNoRascunho = false;
+  flushSave();
+  tarefaEditandoId = '';
+  sessaoTarefaId = '';
   avisosLinkAtual = [];
   if (evFormEl) evFormEl.hidden = true;
   if (evAvisoEl) { evAvisoEl.hidden = true; evAvisoEl.textContent = ''; }
   if (limparUrl) limparQueryStringUrl();
   if (restaurarEditor) {
     carregarEditor();
-    if (statusEl) statusEl.textContent = '';
   }
 }
 
-async function confirmarSalvarEvento() {
-  if (!(podeCriar('agenda') && podeEditar('agenda'))) {
-    toast('⚠️ Sem permissão para salvar na agenda');
+async function tratarColagemInteligenteNoTitulo(e) {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) return;
+  const colado = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+  if (!colado.trim()) return;
+
+  const interpretado = interpretarTextoColado(colado);
+  if (!interpretado) return;
+
+  // Caso 1: Lista de múltiplas tarefas colada de uma só vez
+  if (interpretado.tipo === 'multiplas') {
+    e.preventDefault();
+    const atuais = notas[diaSelecionado] || [];
+    let combinadas = [...atuais];
+    for (const item of interpretado.tarefas) {
+      const reg = criarRegistroTarefa({
+        horario: item.horario,
+        titulo: item.titulo,
+        cor: corDiaSel,
+      });
+      if (reg.texto && !tarefaJaExisteNoDia(combinadas, reg)) {
+        combinadas = adicionarOuAtualizarTarefaNoDia(combinadas, reg);
+      }
+    }
+    prepararOutraTarefaNoFormulario();
+    await persistirTarefasDoDia(diaSelecionado, combinadas, { forcarAlertaDash: true });
     return;
   }
 
-  const estadoInicial = lerCamposFormularioEvento();
-  const textoAreaAtual = (areaEl?.value || '').trim();
-  if (estadoInicial.linhas.length === 0 && !textoAreaAtual) {
-    toast('⚠️ Informe ao menos o título ou descrição do evento');
-    evTituloEl?.focus();
+  // Caso 2: Bloco estruturado (ex.: Título / Data / Horário / Descrição / Lembrete)
+  if (interpretado.tipo === 'estruturada') {
+    e.preventDefault();
+    if (interpretado.dataIso) {
+      const [y, m] = interpretado.dataIso.split('-').map(Number);
+      if (y && m) {
+        viewAno = y;
+        viewMes = m - 1;
+        diaSelecionado = interpretado.dataIso;
+        if (evDataEl) evDataEl.value = diaSelecionado;
+      }
+    }
+    if (interpretado.horario && evHoraEl) evHoraEl.value = interpretado.horario;
+    if (interpretado.titulo && evTituloEl) evTituloEl.value = interpretado.titulo;
+    if (interpretado.descricao && evDescEl) evDescEl.value = interpretado.descricao;
+    if (interpretado.lembrete && evLembEl) evLembEl.value = interpretado.lembrete;
+    agendarAutosaveFormulario({ imediato: true });
     return;
   }
 
-  if (evSalvarBtn) evSalvarBtn.disabled = true;
-  try {
-    if (!agendaCarregada) {
-      await Promise.race([
-        promessaCargaInicial,
-        new Promise((r) => setTimeout(r, 1800)),
-      ]);
-    }
-    // Re-mescla de forma idempotente com as notas reais do dia antes de gravar
-    if (!areaEditadaNoRascunho) {
-      sincronizarRascunhoNoEditor();
-    }
-
-    rascunhoLinkAtivo = false;
-    areaEditadaNoRascunho = false;
-    avisosLinkAtual = [];
-    if (evFormEl) evFormEl.hidden = true;
-
-    await salvar();
-    limparQueryStringUrl();
-    renderCalendario();
-    toast('✓ Evento salvo na agenda!');
-  } finally {
-    if (evSalvarBtn && podeCriar('agenda') && podeEditar('agenda')) {
-      evSalvarBtn.disabled = false;
-    }
+  // Caso 3: Linha única com horário embutido (ex.: "08:00 — Jogo do Grêmio.")
+  if (interpretado.tipo === 'unica' && interpretado.horario && (!evTituloEl.value || !evHoraEl?.value)) {
+    e.preventDefault();
+    if (evHoraEl && !evHoraEl.value) evHoraEl.value = interpretado.horario;
+    if (evTituloEl) evTituloEl.value = interpretado.titulo;
+    agendarAutosaveFormulario({ imediato: true });
   }
 }
 
@@ -883,13 +1336,15 @@ async function acaoCopiarEvento(botaoAlvo) {
       horario: estado.horario,
       descricao: estado.descricao,
       lembrete: estado.lembrete,
-      horaAlerta: alertaHoraEl?.value || estado.lRes.horaAlerta || '',
+      horaAlerta: estado.lRes.horaAlerta || alertaHoraEl?.value || '',
+      tarefasDia: notas[diaSelecionado] || [],
       textoLivreDia: areaEl?.value || '',
     });
   } else {
     resumo = montarResumoEvento({
       dataIso: diaSelecionado,
       horaAlerta: alertaHoraEl?.value || '',
+      tarefasDia: notas[diaSelecionado] || [],
       textoLivreDia: areaEl?.value || '',
     });
   }
@@ -920,9 +1375,46 @@ function iniciar() {
   viewAno = hoje.getFullYear();
   viewMes = hoje.getMonth();
 
-  const dadosLink = lerLinkInteligente(obterSearchAtual(), isoHoje());
+  // Hidrata imediatamente eventuais tarefas salvas localmente durante falha de conexão anterior (garante F5 offline)
+  for (const [dataPend, objPend] of Object.entries(pendenciasOffline)) {
+    if (objPend && Array.isArray(objPend.notas) && objPend.notas.length > 0) {
+      notas[dataPend] = deduplicarListaTarefas(objPend.notas);
+      corPorDia[dataPend] = corValida(objPend.cor || COR_PADRAO);
+      alertaPorDia[dataPend] = { hora: objPend.alertaHora || '', dashboard: Boolean(objPend.alertaDashboard) };
+    }
+  }
+
+  const dadosLink = lerLinkInteligente(obterSearchAtual(), isoHoje(), obterHashAtual());
+  let autoGravarLinkPendente = false;
+
   if (dadosLink.ativo) {
+    if (dadosLink.dataIso) {
+      const [y, m] = dadosLink.dataIso.split('-').map(Number);
+      if (y && m) {
+        viewAno = y;
+        viewMes = m - 1;
+        diaSelecionado = dadosLink.dataIso;
+      }
+      if (dadosLink.dataValidaNoLink) {
+        dataVindaDaUrl = dadosLink.dataIso;
+      }
+    }
+
+    const wrapConteudo = document.querySelector('.ag-content');
+    const btnColapso = $('ag-colapse-btn');
+    if (wrapConteudo && wrapConteudo.classList.contains('ag-recolhido')) {
+      wrapConteudo.classList.remove('ag-recolhido');
+      if (btnColapso) {
+        btnColapso.textContent = '▲';
+        btnColapso.title = 'Recolher navegação e busca';
+      }
+    }
+
     abrirFormularioEvento(dadosLink, { origemLink: true });
+    if (dadosLink.temDadosEvento && (dadosLink.titulo || dadosLink.descricao)) {
+      autoGravarLinkPendente = true;
+    }
+
     if (dadosLink.avisos.length) {
       toast('⚠️ ' + dadosLink.avisos[0]);
     }
@@ -935,7 +1427,8 @@ function iniciar() {
   }
 
   Agenda.onChange((lista) => {
-      notas = {};
+      const primeiraCarga = !agendaCarregada;
+      const novasNotas = {};
       docIds = {};
       corPorDia = {};
       alertaPorDia = {};
@@ -961,42 +1454,61 @@ function iniciar() {
           textoCorDia[data] = dados.textoCor;
         }
         if (Array.isArray(dados.notas)) {
-          arr = dados.notas.filter(n => n && (n.texto || '').trim())
-                           .map(n => ({ texto: n.texto, cor: corValida(dados.cor || n.cor), concluido: !!n.concluido }));
+          arr = dados.notas
+            .map(n => normalizarRegistroTarefa(n, corDoc))
+            .filter(Boolean);
           if (!dados.cor && dados.notas[0]) corDoc = corValida(dados.notas[0].cor);
         } else if (typeof dados.texto === 'string') {           // formato anterior (1 nota multiline)
-          arr = dados.texto.split(/\r?\n+/).map(t => t.trim()).filter(Boolean).map(t => ({ texto: t, cor: corDoc }));
+          arr = dados.texto.split(/\r?\n+/).map(t => normalizarRegistroTarefa({ texto: t, cor: corDoc }, corDoc)).filter(Boolean);
         } else if (dados.titulo) {                              // formato bem antigo
-          arr = [{ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: corDoc }];
+          arr = [normalizarRegistroTarefa({ texto: `${dados.hora ? dados.hora + ' ' : ''}${dados.titulo}`, cor: corDoc }, corDoc)].filter(Boolean);
         }
-        // Rastreia o ID real (corrige delete de órfãos/duplicados)
         (docIds[data] = docIds[data] || []).push(dados.id);
-        if (arr.length) { notas[data] = arr; corPorDia[data] = corDoc; }
+        if (arr.length) { novasNotas[data] = ordenarTarefasCronologicamente(arr); corPorDia[data] = corDoc; }
       });
+
+      // Preserva conteúdo local caso algum dia ainda esteja aguardando reconexão para sincronizar
+      for (const [dataPend, objPend] of Object.entries(pendenciasOffline)) {
+        if (objPend && Array.isArray(objPend.notas)) {
+          novasNotas[dataPend] = deduplicarListaTarefas([
+            ...(novasNotas[dataPend] || []),
+            ...objPend.notas,
+          ]);
+          corPorDia[dataPend] = corValida(objPend.cor || corPorDia[dataPend] || COR_PADRAO);
+        }
+      }
+      notas = novasNotas;
+
       agendaCarregada = true;
       if (resolverCargaInicial) { resolverCargaInicial(); resolverCargaInicial = null; }
       $('ag-loading')?.remove();
       renderCalendario();
-      if (rascunhoLinkAtivo) {
-        // Preserva o preenchimento do Link Inteligente sem gravar automaticamente
-        // e mescla eventuais notas já existentes no dia sem duplicar.
-        corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
-        pintarArea();
-        const tCor = textoCorDia[diaSelecionado] || 'preto';
-        escolherTextoCor(tCor, true);
-        sincronizarRascunhoNoEditor();
-      } else if (!editando) {
+      verificarLembretesVivos();
+
+      if (autoGravarLinkPendente) {
+        autoGravarLinkPendente = false;
+        if (podeCriar('agenda') && podeEditar('agenda')) {
+          agendarAutosaveFormulario({ imediato: true });
+        }
+      } else if (!editando || (primeiraCarga && !usuarioDigitouNoEditor)) {
         carregarEditor();
+        if (primeiraCarga && dadosLink.ativo && dadosLink.somenteData && evTituloEl && !evTituloEl.hasAttribute('readonly')) {
+          try { evTituloEl.focus({ preventScroll: true }); } catch { evTituloEl.focus(); }
+        }
+      }
+
+      if (Object.keys(pendenciasOffline).length > 0) {
+        processarPendenciasOffline();
       }
     }, { onError: (err) => {
       agendaCarregada = true;
       if (resolverCargaInicial) { resolverCargaInicial(); resolverCargaInicial = null; }
       console.warn('⚠️ Agenda offline', err);
-      statusEl.textContent = '⚠️ Sem conexão';
+      atualizarIndicadoresSave('erro', '⚠️ Sem conexão — alterações serão salvas ao reconectar');
     } });
 
-  // Atualiza o destaque de "hoje" à meia-noite (re-render leve)
-  setInterval(() => renderCalendario(), 60000);
+  // Atualiza o destaque de "hoje" e verifica lembretes individuais a cada 30s
+  setInterval(() => { renderCalendario(); verificarLembretesVivos(); }, 30000);
 }
 
 // trava/destrava re-render do editor conforme o foco.
@@ -1007,22 +1519,41 @@ painelEl.addEventListener('focusout', () => {
   setTimeout(() => { if (!painelEl.contains(document.activeElement)) editando = false; }, 150);
 });
 
-// Área de texto única: salva sozinho (exceto durante rascunho pendente do link), cresce e atualiza contador
+// Área de texto única: salva automaticamente ao digitar ou colar, cresce e atualiza contador
 areaEl.addEventListener('input', () => {
-  if (rascunhoLinkAtivo) areaEditadaNoRascunho = true;
-  agendarSave();
+  usuarioDigitouNoEditor = true;
+  const atuais = lerLinhas();
+  notas[diaSelecionado] = atuais;
+  renderTarefasLista();
+  renderCalendario();
+  agendarSave(420);
   autoGrow();
   atualizarContador();
 });
+areaEl.addEventListener('paste', () => {
+  setTimeout(() => { agendarSave(80); }, 10);
+});
 areaEl.addEventListener('blur', () => { flushSave(); });
 
-// Eventos do formulário de Novo Evento / Link Inteligente
-[evTituloEl, evHoraEl, evDescEl, evLembEl].forEach((el) => {
-  el?.addEventListener('input', () => {
-    areaEditadaNoRascunho = false;
-    sincronizarRascunhoNoEditor();
+// Eventos de AUTOSAVE do formulário de tarefa (sem botão Salvar)
+evTituloEl?.addEventListener('paste', tratarColagemInteligenteNoTitulo);
+[evTituloEl, evDescEl, evLembEl].forEach((el) => {
+  el?.addEventListener('input', () => agendarAutosaveFormulario({ imediato: false }));
+  el?.addEventListener('blur', () => flushSave());
+});
+evHoraEl?.addEventListener('input', () => agendarAutosaveFormulario({ imediato: true }));
+evHoraEl?.addEventListener('change', () => agendarAutosaveFormulario({ imediato: true }));
+[evTituloEl, evLembEl].forEach((el) => {
+  el?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (evTituloEl?.value.trim()) {
+        executarAutosaveFormulario().then(() => prepararOutraTarefaNoFormulario());
+      }
+    }
   });
 });
+
 evDataEl?.addEventListener('change', () => {
   const d = parseDataParam(evDataEl.value);
   if (!d.valido) {
@@ -1030,24 +1561,29 @@ evDataEl?.addEventListener('change', () => {
     evDataEl.value = diaSelecionado;
     return;
   }
+  flushSave();
   diaSelecionado = d.iso;
   viewAno = d.ano;
   viewMes = d.mesIndex;
-  areaEditadaNoRascunho = false;
+  tarefaEditandoId = '';
+  sessaoTarefaId = gerarIdTarefa();
   carregarEditor();
-  sincronizarRascunhoNoEditor();
   renderCalendario();
+  if (evTituloEl && evTituloEl.value.trim()) {
+    agendarAutosaveFormulario({ imediato: true });
+  }
 });
-evSalvarBtn?.addEventListener('click', confirmarSalvarEvento);
+
+evNovaOutraBtn?.addEventListener('click', prepararOutraTarefaNoFormulario);
 evCopiarBtn?.addEventListener('click', () => acaoCopiarEvento(evCopiarBtn));
 copiarDiaBtn?.addEventListener('click', () => acaoCopiarEvento(copiarDiaBtn));
 evDescartarBtn?.addEventListener('click', () => fecharFormularioEvento({ restaurarEditor: true, limparUrl: true }));
 abrirNovoEvBtn?.addEventListener('click', () => {
   if (!(podeCriar('agenda') && podeEditar('agenda'))) {
-    toast('⚠️ Sem permissão para criar eventos na agenda');
+    toast('⚠️ Sem permissão para criar tarefas na agenda');
     return;
   }
-  if (evFormEl && !evFormEl.hidden) {
+  if (evFormEl && !evFormEl.hidden && !tarefaEditandoId) {
     fecharFormularioEvento({ restaurarEditor: true, limparUrl: false });
   } else {
     abrirFormularioEvento({ dataIso: diaSelecionado }, { origemLink: false });
@@ -1148,14 +1684,18 @@ function rolarParaCalendario() {
 }
 // Botão HOJE: volta ao mês atual e seleciona/destaca o dia de hoje.
 function irHoje() {
-  if (rascunhoLinkAtivo) {
+  flushSave();
+  if (evFormEl && !evFormEl.hidden) {
     fecharFormularioEvento({ restaurarEditor: false });
-  } else {
-    flushSave();
+  }
+  if (dataVindaDaUrl) {
+    dataVindaDaUrl = '';
+    sincronizarDataNaUrl('');
   }
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
   diaSelecionado = isoHoje();
   editando = false;
+  usuarioDigitouNoEditor = false;
   carregarEditor();
   renderCalendario();
   rolarParaCalendario();
@@ -1303,7 +1843,7 @@ async function _boot() {
     areaEl?.setAttribute('readonly', 'true');
     $('ag-recorr-esta')?.setAttribute('disabled', 'true');
     $('ag-recorr-futuras')?.setAttribute('disabled', 'true');
-    evSalvarBtn?.setAttribute('disabled', 'true');
+    evNovaOutraBtn?.setAttribute('disabled', 'true');
     abrirNovoEvBtn?.setAttribute('disabled', 'true');
     alertaHoraEl?.setAttribute('disabled', 'true');
     alertaDashEl?.setAttribute('disabled', 'true');
