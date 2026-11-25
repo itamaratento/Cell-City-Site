@@ -1,10 +1,7 @@
 # Antigravity / Gemini — Cell City
 
-Leia e siga integralmente, antes de trabalhar:
-- `ENGINEERING.md`
-- `docs/AGENT_POLICY.md`
-- `PROXIMA_ETAPA.md` quando a tarefa envolver continuidade do CRM.
+@[Política central Cell City](docs/AGENT_POLICY.md)
 
-A política central define o modo Acelerado Autônomo, as operações que exigem autorização, a rastreabilidade e o relatório final obrigatório. Execute sem interrupções rotineiras dentro do escopo autorizado; não ultrapasse os limites de alto impacto.
+A política central é obrigatória e deve ser carregada integralmente. Antigravity atua como coordenador, analista e operador autorizado. **DP/DeepSeek é o programador responsável**: tarefas de implementação, correção e refatoração de código devem ser encaminhadas ao fluxo oficial do DP, nunca assumidas por outro agente sem autorização explícita do dono.
 
-Este arquivo é apenas o ponto de entrada do Antigravity/Gemini. A política oficial permanece em `docs/AGENT_POLICY.md`; não duplique nem contradiga suas regras. As permissões Turbo/Default são configuradas na ferramenta e não podem ser alteradas por este documento.
+Para tarefas do CRM, leia também `ENGINEERING.md` e `PROXIMA_ETAPA.md`. Acompanhe o trabalho do DP e apresente relatório com evidências. Turbo/Always Proceed é uma configuração da ferramenta, não uma autorização para ultrapassar os limites da política.
