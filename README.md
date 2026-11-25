@@ -9,7 +9,8 @@ Sistema de gestão operacional (CRM) para assistência técnica de celulares + s
 
 | Documento | Conteúdo |
 |---|---|
-| [`ENGINEERING.md`](ENGINEERING.md) | Constituição e governança do projeto |\n| [`docs/AGENT_POLICY.md`](docs/AGENT_POLICY.md) | Política central compartilhada de agentes |\n| [`AGENTS.md`](AGENTS.md) / [`GEMINI.md`](GEMINI.md) / [`CLAUDE.md`](CLAUDE.md) | Pontos de entrada para agentes e ferramentas |
+| [`ENGINEERING.md`](ENGINEERING.md) | Constituição e governança do projeto |\n| [`docs/AGENT_POLICY.md`](docs/AGENT_POLICY.md) | Política central compartilhada de agentes |
+| [`scripts/instalar-politica-antigravity.sh`](scripts/instalar-politica-antigravity.sh) | Instala/atualiza a política global do Antigravity sem sobrescrever outras regras |\n| [`AGENTS.md`](AGENTS.md) / [`GEMINI.md`](GEMINI.md) / [`CLAUDE.md`](CLAUDE.md) | Pontos de entrada para agentes e ferramentas |\n| [`.agents/workflows/delegar-programacao-dp.md`](.agents/workflows/delegar-programacao-dp.md) | Fluxo para encaminhar programação ao DP |
 | [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md) | Estado atual do projeto (ler antes de qualquer alteração) |
 | [`CRM/TECHDOC.md`](CRM/TECHDOC.md) | Documentação técnica oficial da arquitetura |
 | [`MASTER_ROADMAP.md`](MASTER_ROADMAP.md) | Planejamento de longo prazo (Fases 1–6) |
