@@ -1,12 +1,9 @@
 # Instruções comuns dos agentes — Cell City
 
-Antes de qualquer missão neste repositório:
-1. Leia `ENGINEERING.md` (constituição e autoridade do projeto).
-2. Leia `docs/AGENT_POLICY.md` (política operacional central: autonomia, limites, rastreabilidade e relatório final).
-3. Para continuidade do CRM, leia `PROXIMA_ETAPA.md` e os documentos do módulo envolvidos.
+@[Política central Cell City](docs/AGENT_POLICY.md)
 
-Execute autonomamente as etapas rotineiras claramente incluídas na missão. Não peça confirmação a cada clique, leitura, análise, teste ou edição de baixo risco dentro do escopo autorizado. Pare e solicite autorização para as ações de alto impacto listadas na política central.
+Esta política central é obrigatória e deve ser carregada integralmente. Ela define a divisão de responsabilidades: Antigravity coordena e opera; DP/DeepSeek é o programador responsável; o dono aprova releases e ações de alto impacto.
 
-Ao concluir, apresente o relatório final obrigatório definido em `docs/AGENT_POLICY.md`.
+Para continuidade do CRM, consulte também `ENGINEERING.md` e `PROXIMA_ETAPA.md` antes de qualquer tarefa de desenvolvimento. Não implemente código no lugar do DP. Encaminhe solicitações de programação ao fluxo oficial do DP e acompanhe branch, PR, testes e relatório.
 
-Este arquivo é somente um ponto de entrada. Em caso de divergência, não crie uma regra paralela: siga `ENGINEERING.md` e `docs/AGENT_POLICY.md`, respeitando as decisões explícitas do dono e os controles técnicos da ferramenta.
+As regras deste arquivo são sempre ativas no workspace. Não crie políticas paralelas.
