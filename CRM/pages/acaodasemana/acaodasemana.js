@@ -8,6 +8,16 @@ import { initModulo } from '../../scripts/kernel.js';
 import { carregarPermissoes, podeVisualizar, podeCriar, podeEditar } from '../../shared/permissoes.js';
 import { escHtml } from '../../shared/sanitize.js';
 import { formatDateOnly as fmtData } from '../../shared/date-utils.js';
+import {
+  lerLinkInteligente,
+  parseDataParam,
+  parseHorarioParam,
+  parseLembreteParam,
+  formatarLinhasEvento,
+  eventoJaPresenteNasNotas,
+  mesclarNotasComEvento,
+  montarResumoEvento,
+} from './link-inteligente.js';
 
 // ── 5 cores estilo lembretes do Windows ────────────────────────────
 const CORES = {
@@ -47,6 +57,12 @@ let diaSelecionado = isoHoje();
 let editando = false;
 let saveTimer = null;
 let buscaTermo = '';            // termo atual da busca (minúsculo)
+let rascunhoLinkAtivo = false;  // bloqueia autosave até confirmação manual no formulário de evento
+let areaEditadaNoRascunho = false;
+let avisosLinkAtual = [];
+let agendaCarregada = false;
+let resolverCargaInicial = null;
+const promessaCargaInicial = new Promise((r) => { resolverCargaInicial = r; });
 
 // Cores disponíveis para alternar rapidamente (4, na ordem pedida)
 const CORES_EDITOR = ['verde', 'amarelo', 'azul', 'vermelho'];
@@ -77,6 +93,21 @@ let modalDia = null;
 const statusEl   = $('ag-nota-status');
 const painelEl   = document.querySelector('.ag-nota-painel');
 const toastEl    = $('ag-toast');
+const evFormEl        = $('ag-evento-form');
+const evOrigemBadgeEl = $('ag-ev-origem-badge');
+const evPendentePillEl = $('ag-ev-pendente-pill');
+const evAvisoEl       = $('ag-ev-aviso');
+const evTituloEl      = $('ag-ev-titulo');
+const evDataEl        = $('ag-ev-data');
+const evHoraEl        = $('ag-ev-hora');
+const evDescEl        = $('ag-ev-descricao');
+const evLembEl        = $('ag-ev-lembrete');
+const evLembInfoEl    = $('ag-ev-lembrete-info');
+const evSalvarBtn     = $('ag-salvar-evento');
+const evCopiarBtn     = $('ag-copiar-evento');
+const evDescartarBtn  = $('ag-descartar-evento');
+const abrirNovoEvBtn  = $('ag-abrir-novo-evento');
+const copiarDiaBtn    = $('ag-copiar-dia');
 
 // ── util ───────────────────────────────────────────────────────────
 function isoHoje() { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
@@ -204,13 +235,17 @@ function ajustarQuadrados() {
 }
 
 function selecionarDia(iso) {
-  flushSave();
+  if (rascunhoLinkAtivo && iso !== diaSelecionado) {
+    fecharFormularioEvento({ restaurarEditor: false });
+  } else {
+    flushSave();
+  }
   diaSelecionado = iso;
   editando = false;
   carregarEditor();
   renderCalendario();
   painelEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  if (areaEl && !areaEl.value) areaEl.focus();
+  if (areaEl && !areaEl.value && !rascunhoLinkAtivo) areaEl.focus();
 }
 
 // ── editor: UMA única área de texto contínua por dia (estilo bloco de notas) ──
@@ -227,9 +262,9 @@ function carregarEditor() {
   if (alertaDashEl) alertaDashEl.checked = !!al.dashboard;
   if (recorrEl) recorrEl.value = recorrenciaPorDia[diaSelecionado] || '';
   aplicarFonteLinhas();   // já chama autoGrow()
-  // Restaura a cor do texto salva (após pintarArea definir bg/fg do dia)
+  // Restaura a cor do texto salva sem disparar gravação automática ao abrir o dia
   const tCor = textoCorDia[diaSelecionado] || 'preto';
-  escolherTextoCor(tCor);
+  escolherTextoCor(tCor, true);
 }
 
 // Popup com a lista de lembretes recorrentes do dia
@@ -381,7 +416,7 @@ function escolherCor(cor) {
 }
 
 // ── SELETOR DE COR DO TEXTO ────────────────────────────────────────
-function escolherTextoCor(cor) {
+function escolherTextoCor(cor, silencioso = false) {
   const hex = TEXT_CORES[cor];
   if (!hex) return;
   textCorSel = cor;
@@ -389,8 +424,10 @@ function escolherTextoCor(cor) {
   document.querySelectorAll('.ag-tcor-btn').forEach(b => {
     b.classList.toggle('ativa', b.dataset.cor === cor);
   });
-  textoCorDia[diaSelecionado] = cor;
-  agendarSave();
+  if (!silencioso) {
+    textoCorDia[diaSelecionado] = cor;
+    agendarSave();
+  }
 }
 
 // Aplica a fonte escolhida (A− / A+) e reajusta a altura
@@ -441,11 +478,18 @@ function lerLinhas() {
     });
 }
 function agendarSave() {
+  if (rascunhoLinkAtivo) {
+    statusEl.textContent = '📝 Confira os dados e clique em "Salvar evento" para gravar';
+    return;
+  }
   statusEl.textContent = 'Salvando…';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(salvar, 600);
 }
-function flushSave() { if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; salvar(); } }
+function flushSave() {
+  if (rascunhoLinkAtivo) return;
+  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; salvar(); }
+}
 
 // Remove TODOS os documentos que representam esse dia, inclusive órfãos com
 // ID aleatório (formato antigo) cujo campo `data` aponta para o mesmo dia.
@@ -584,12 +628,311 @@ function navegar(delta) {
   renderCalendario();
 }
 
+// ── LINK INTELIGENTE & FORMULÁRIO DE NOVO EVENTO ──────────────────
+function obterSearchAtual() {
+  if (typeof window === 'undefined' || !window.location) return '';
+  if (typeof window.location.search === 'string' && window.location.search) {
+    return window.location.search;
+  }
+  try {
+    return new URL(window.location.href, 'http://localhost').search;
+  } catch {
+    return '';
+  }
+}
+
+function limparQueryStringUrl() {
+  try {
+    if (window.history && typeof window.history.replaceState === 'function') {
+      const novaUrl = window.location.pathname + (window.location.hash || '');
+      window.history.replaceState({}, document.title, novaUrl);
+    }
+  } catch { /* ambiente restrito / testes */ }
+}
+
+function lerCamposFormularioEvento() {
+  const titulo = evTituloEl ? evTituloEl.value : '';
+  const dataRaw = evDataEl ? evDataEl.value : diaSelecionado;
+  const horarioRaw = evHoraEl ? evHoraEl.value : '';
+  const descricao = evDescEl ? evDescEl.value : '';
+  const lembreteRaw = evLembEl ? evLembEl.value : '';
+  const hRes = parseHorarioParam(horarioRaw);
+  const horario = hRes.valido ? hRes.hora : '';
+  const lRes = parseLembreteParam(lembreteRaw, horario);
+  const dRes = parseDataParam(dataRaw);
+  const dataIso = dRes.valido ? dRes.iso : diaSelecionado;
+  const linhas = formatarLinhasEvento({
+    horario,
+    titulo,
+    descricao,
+    lembrete: lRes.valido ? lRes.texto : lembreteRaw,
+  });
+
+  return {
+    titulo,
+    dataIso,
+    horario,
+    descricao,
+    lembrete: lRes.valido ? lRes.texto : lembreteRaw,
+    lRes,
+    hRes,
+    linhas,
+  };
+}
+
+function sincronizarRascunhoNoEditor() {
+  if (!rascunhoLinkAtivo || !evFormEl) return;
+  const estado = lerCamposFormularioEvento();
+
+  if (evLembInfoEl) {
+    if (estado.lRes.valido && estado.lRes.ativarDashboard && estado.lRes.horaAlerta) {
+      evLembInfoEl.textContent = `(alerta às ${estado.lRes.horaAlerta})`;
+    } else if (estado.lRes.texto === 'Sem lembrete') {
+      evLembInfoEl.textContent = '(desativado)';
+    } else {
+      evLembInfoEl.textContent = '';
+    }
+  }
+
+  const notasSalvasNoDia = notas[diaSelecionado] || [];
+  const jaSalvo = agendaCarregada && eventoJaPresenteNasNotas(notasSalvasNoDia, estado.linhas);
+
+  if (evPendentePillEl) {
+    evPendentePillEl.textContent = jaSalvo ? 'Já salvo neste dia' : 'Não salvo';
+    evPendentePillEl.classList.toggle('salvo', jaSalvo);
+  }
+
+  const mensagensAviso = [...avisosLinkAtual];
+  if (jaSalvo) {
+    mensagensAviso.push('Este compromisso já consta salvo neste dia — não será duplicado.');
+  }
+  if (evAvisoEl) {
+    if (mensagensAviso.length > 0) {
+      evAvisoEl.textContent = 'ℹ️ ' + mensagensAviso.join(' ');
+      evAvisoEl.hidden = false;
+    } else {
+      evAvisoEl.textContent = '';
+      evAvisoEl.hidden = true;
+    }
+  }
+
+  if (!areaEditadaNoRascunho && areaEl) {
+    const mescladas = mesclarNotasComEvento(notasSalvasNoDia, estado.linhas);
+    areaEl.value = mescladas.join('\n');
+    atualizarContador();
+    aplicarFonteLinhas();
+  }
+
+  const alExistente = alertaPorDia[diaSelecionado] || {};
+  if (estado.lRes.valido && !estado.lRes.vazio) {
+    if (estado.lRes.ativarDashboard) {
+      if (alertaHoraEl) alertaHoraEl.value = estado.lRes.horaAlerta || estado.horario || alExistente.hora || '';
+      if (alertaDashEl) alertaDashEl.checked = true;
+    } else {
+      if (alertaHoraEl) alertaHoraEl.value = alExistente.hora || '';
+      if (alertaDashEl) alertaDashEl.checked = !!alExistente.dashboard;
+    }
+  } else if (estado.horario) {
+    if (alertaHoraEl) alertaHoraEl.value = alExistente.hora || estado.horario;
+    if (alertaDashEl) alertaDashEl.checked = !!alExistente.dashboard;
+  }
+
+  if (statusEl) {
+    statusEl.textContent = jaSalvo
+      ? '✓ Este evento já consta salvo na agenda deste dia'
+      : '📝 Confira os dados e clique em "Salvar evento" para gravar';
+  }
+}
+
+function abrirFormularioEvento(dados = {}, { origemLink = false } = {}) {
+  if (!evFormEl) return;
+  clearTimeout(saveTimer);
+  saveTimer = null;
+  rascunhoLinkAtivo = true;
+  areaEditadaNoRascunho = false;
+  avisosLinkAtual = Array.isArray(dados.avisos) ? [...dados.avisos] : [];
+
+  const alvoIso = dados.dataIso || diaSelecionado || isoHoje();
+  const [y, m] = alvoIso.split('-').map(Number);
+  if (y && m) {
+    viewAno = y;
+    viewMes = m - 1;
+    diaSelecionado = alvoIso;
+  }
+
+  if (evTituloEl) evTituloEl.value = dados.titulo || '';
+  if (evDataEl) evDataEl.value = diaSelecionado;
+  if (evHoraEl) evHoraEl.value = dados.horario || '';
+  if (evDescEl) evDescEl.value = dados.descricao || '';
+  if (evLembEl) evLembEl.value = dados.lembrete || '';
+  if (evOrigemBadgeEl) {
+    evOrigemBadgeEl.textContent = origemLink
+      ? '🔗 Evento recebido por Link Inteligente — confira e salve manualmente'
+      : '➕ Novo evento — preencha os campos e salve manualmente';
+  }
+
+  evFormEl.hidden = false;
+
+  // Expande temporariamente o painel de opções quando há horário/lembrete para conferência visual
+  const wrapOpts = $('ag-opts-wrap');
+  const btnOpts = $('ag-colapse-opts');
+  if (origemLink && wrapOpts && wrapOpts.classList.contains('ag-recolhido')) {
+    wrapOpts.classList.remove('ag-recolhido');
+    if (btnOpts) btnOpts.textContent = '▲ Ocultar opções';
+  }
+
+  carregarEditor();
+  sincronizarRascunhoNoEditor();
+  renderCalendario();
+
+  requestAnimationFrame(() => {
+    painelEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+function fecharFormularioEvento({ restaurarEditor = true, limparUrl = false } = {}) {
+  rascunhoLinkAtivo = false;
+  areaEditadaNoRascunho = false;
+  avisosLinkAtual = [];
+  if (evFormEl) evFormEl.hidden = true;
+  if (evAvisoEl) { evAvisoEl.hidden = true; evAvisoEl.textContent = ''; }
+  if (limparUrl) limparQueryStringUrl();
+  if (restaurarEditor) {
+    carregarEditor();
+    if (statusEl) statusEl.textContent = '';
+  }
+}
+
+async function confirmarSalvarEvento() {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) {
+    toast('⚠️ Sem permissão para salvar na agenda');
+    return;
+  }
+
+  const estadoInicial = lerCamposFormularioEvento();
+  const textoAreaAtual = (areaEl?.value || '').trim();
+  if (estadoInicial.linhas.length === 0 && !textoAreaAtual) {
+    toast('⚠️ Informe ao menos o título ou descrição do evento');
+    evTituloEl?.focus();
+    return;
+  }
+
+  if (evSalvarBtn) evSalvarBtn.disabled = true;
+  try {
+    if (!agendaCarregada) {
+      await Promise.race([
+        promessaCargaInicial,
+        new Promise((r) => setTimeout(r, 1800)),
+      ]);
+    }
+    // Re-mescla de forma idempotente com as notas reais do dia antes de gravar
+    if (!areaEditadaNoRascunho) {
+      sincronizarRascunhoNoEditor();
+    }
+
+    rascunhoLinkAtivo = false;
+    areaEditadaNoRascunho = false;
+    avisosLinkAtual = [];
+    if (evFormEl) evFormEl.hidden = true;
+
+    await salvar();
+    limparQueryStringUrl();
+    renderCalendario();
+    toast('✓ Evento salvo na agenda!');
+  } finally {
+    if (evSalvarBtn && podeCriar('agenda') && podeEditar('agenda')) {
+      evSalvarBtn.disabled = false;
+    }
+  }
+}
+
+async function copiarTextoAreaTransferencia(texto) {
+  if (typeof window !== 'undefined') window.__agUltimoResumoCopiado = texto;
+  const nav = (typeof window !== 'undefined' && window.navigator) || (typeof navigator !== 'undefined' ? navigator : null);
+  if (nav && nav.clipboard && typeof nav.clipboard.writeText === 'function') {
+    try {
+      await nav.clipboard.writeText(texto);
+      return true;
+    } catch { /* fallback abaixo */ }
+  }
+  try {
+    const temp = document.createElement('textarea');
+    temp.value = texto;
+    temp.setAttribute('readonly', 'true');
+    temp.style.position = 'fixed';
+    temp.style.opacity = '0';
+    temp.style.pointerEvents = 'none';
+    document.body.appendChild(temp);
+    temp.focus();
+    temp.select();
+    const ok = typeof document.execCommand === 'function' ? document.execCommand('copy') : true;
+    temp.remove();
+    return ok !== false;
+  } catch {
+    return false;
+  }
+}
+
+async function acaoCopiarEvento(botaoAlvo) {
+  let resumo = '';
+  if (evFormEl && !evFormEl.hidden) {
+    const estado = lerCamposFormularioEvento();
+    resumo = montarResumoEvento({
+      titulo: estado.titulo,
+      dataIso: estado.dataIso,
+      horario: estado.horario,
+      descricao: estado.descricao,
+      lembrete: estado.lembrete,
+      horaAlerta: alertaHoraEl?.value || estado.lRes.horaAlerta || '',
+      textoLivreDia: areaEl?.value || '',
+    });
+  } else {
+    resumo = montarResumoEvento({
+      dataIso: diaSelecionado,
+      horaAlerta: alertaHoraEl?.value || '',
+      textoLivreDia: areaEl?.value || '',
+    });
+  }
+
+  if (!resumo) {
+    toast('⚠️ Nenhum evento ou anotação neste dia para copiar');
+    return;
+  }
+
+  const copiou = await copiarTextoAreaTransferencia(resumo);
+  if (!copiou) {
+    toast('❌ Não foi possível copiar automaticamente');
+    return;
+  }
+
+  if (botaoAlvo) {
+    const original = botaoAlvo.dataset.rotuloOriginal || botaoAlvo.textContent;
+    botaoAlvo.dataset.rotuloOriginal = original;
+    botaoAlvo.textContent = '✓ Evento copiado!';
+    setTimeout(() => { botaoAlvo.textContent = original; }, 1800);
+  }
+  toast('📋 Evento copiado!');
+}
+
 // ── snapshot em tempo real ─────────────────────────────────────────
 function iniciar() {
   const hoje = new Date();
   viewAno = hoje.getFullYear();
   viewMes = hoje.getMonth();
-  carregarEditor();
+
+  const dadosLink = lerLinkInteligente(obterSearchAtual(), isoHoje());
+  if (dadosLink.ativo) {
+    abrirFormularioEvento(dadosLink, { origemLink: true });
+    if (dadosLink.avisos.length) {
+      toast('⚠️ ' + dadosLink.avisos[0]);
+    }
+  } else {
+    carregarEditor();
+    renderCalendario();
+    if (dadosLink.avisos && dadosLink.avisos.length) {
+      toast('⚠️ ' + dadosLink.avisos[0]);
+    }
+  }
 
   Agenda.onChange((lista) => {
       notas = {};
@@ -630,10 +973,27 @@ function iniciar() {
         (docIds[data] = docIds[data] || []).push(dados.id);
         if (arr.length) { notas[data] = arr; corPorDia[data] = corDoc; }
       });
+      agendaCarregada = true;
+      if (resolverCargaInicial) { resolverCargaInicial(); resolverCargaInicial = null; }
       $('ag-loading')?.remove();
       renderCalendario();
-      if (!editando) carregarEditor();
-    }, { onError: (err) => { console.warn('⚠️ Agenda offline', err); statusEl.textContent = '⚠️ Sem conexão'; } });
+      if (rascunhoLinkAtivo) {
+        // Preserva o preenchimento do Link Inteligente sem gravar automaticamente
+        // e mescla eventuais notas já existentes no dia sem duplicar.
+        corDiaSel = corValida(corPorDia[diaSelecionado] || COR_PADRAO);
+        pintarArea();
+        const tCor = textoCorDia[diaSelecionado] || 'preto';
+        escolherTextoCor(tCor, true);
+        sincronizarRascunhoNoEditor();
+      } else if (!editando) {
+        carregarEditor();
+      }
+    }, { onError: (err) => {
+      agendaCarregada = true;
+      if (resolverCargaInicial) { resolverCargaInicial(); resolverCargaInicial = null; }
+      console.warn('⚠️ Agenda offline', err);
+      statusEl.textContent = '⚠️ Sem conexão';
+    } });
 
   // Atualiza o destaque de "hoje" à meia-noite (re-render leve)
   setInterval(() => renderCalendario(), 60000);
@@ -647,9 +1007,53 @@ painelEl.addEventListener('focusout', () => {
   setTimeout(() => { if (!painelEl.contains(document.activeElement)) editando = false; }, 150);
 });
 
-// Área de texto única: salva sozinho, cresce e atualiza contador
-areaEl.addEventListener('input', () => { agendarSave(); autoGrow(); atualizarContador(); });
+// Área de texto única: salva sozinho (exceto durante rascunho pendente do link), cresce e atualiza contador
+areaEl.addEventListener('input', () => {
+  if (rascunhoLinkAtivo) areaEditadaNoRascunho = true;
+  agendarSave();
+  autoGrow();
+  atualizarContador();
+});
 areaEl.addEventListener('blur', () => { flushSave(); });
+
+// Eventos do formulário de Novo Evento / Link Inteligente
+[evTituloEl, evHoraEl, evDescEl, evLembEl].forEach((el) => {
+  el?.addEventListener('input', () => {
+    areaEditadaNoRascunho = false;
+    sincronizarRascunhoNoEditor();
+  });
+});
+evDataEl?.addEventListener('change', () => {
+  const d = parseDataParam(evDataEl.value);
+  if (!d.valido) {
+    toast('⚠️ Data inválida');
+    evDataEl.value = diaSelecionado;
+    return;
+  }
+  diaSelecionado = d.iso;
+  viewAno = d.ano;
+  viewMes = d.mesIndex;
+  areaEditadaNoRascunho = false;
+  carregarEditor();
+  sincronizarRascunhoNoEditor();
+  renderCalendario();
+});
+evSalvarBtn?.addEventListener('click', confirmarSalvarEvento);
+evCopiarBtn?.addEventListener('click', () => acaoCopiarEvento(evCopiarBtn));
+copiarDiaBtn?.addEventListener('click', () => acaoCopiarEvento(copiarDiaBtn));
+evDescartarBtn?.addEventListener('click', () => fecharFormularioEvento({ restaurarEditor: true, limparUrl: true }));
+abrirNovoEvBtn?.addEventListener('click', () => {
+  if (!(podeCriar('agenda') && podeEditar('agenda'))) {
+    toast('⚠️ Sem permissão para criar eventos na agenda');
+    return;
+  }
+  if (evFormEl && !evFormEl.hidden) {
+    fecharFormularioEvento({ restaurarEditor: true, limparUrl: false });
+  } else {
+    abrirFormularioEvento({ dataIso: diaSelecionado }, { origemLink: false });
+    evTituloEl?.focus();
+  }
+});
 
 // Seletor de cores do dia (4 cores)
 document.querySelectorAll('.ag-cor-btn').forEach(b => {
@@ -744,7 +1148,11 @@ function rolarParaCalendario() {
 }
 // Botão HOJE: volta ao mês atual e seleciona/destaca o dia de hoje.
 function irHoje() {
-  flushSave();
+  if (rascunhoLinkAtivo) {
+    fecharFormularioEvento({ restaurarEditor: false });
+  } else {
+    flushSave();
+  }
   const h = new Date(); viewAno = h.getFullYear(); viewMes = h.getMonth();
   diaSelecionado = isoHoje();
   editando = false;
@@ -895,6 +1303,12 @@ async function _boot() {
     areaEl?.setAttribute('readonly', 'true');
     $('ag-recorr-esta')?.setAttribute('disabled', 'true');
     $('ag-recorr-futuras')?.setAttribute('disabled', 'true');
+    evSalvarBtn?.setAttribute('disabled', 'true');
+    abrirNovoEvBtn?.setAttribute('disabled', 'true');
+    alertaHoraEl?.setAttribute('disabled', 'true');
+    alertaDashEl?.setAttribute('disabled', 'true');
+    recorrEl?.setAttribute('disabled', 'true');
+    [evTituloEl, evDataEl, evHoraEl, evDescEl, evLembEl].forEach((el) => el?.setAttribute('readonly', 'true'));
   }
 }
 _boot();

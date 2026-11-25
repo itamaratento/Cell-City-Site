@@ -55,6 +55,8 @@
                 <div class="ag-nota-head">
                     <span class="ag-nota-titulo" id="ag-dia-titulo">Selecione um dia</span>
                     <div class="ag-nota-controles">
+                        <button type="button" class="ag-atalho-btn" id="ag-abrir-novo-evento" title="Abrir formulário de novo evento">＋ Novo evento</button>
+                        <button type="button" class="ag-atalho-btn" id="ag-copiar-dia" title="Copiar resumo do evento/dia">📋 Copiar evento</button>
                         <div class="ag-cores" id="ag-cores">
                             <button type="button" class="ag-cor-btn" data-cor="verde"    title="Verde"    style="--c:#22C55E"></button>
                             <button type="button" class="ag-cor-btn" data-cor="amarelo"  title="Amarelo"  style="--c:#EAB308"></button>
@@ -63,6 +65,57 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- FORMULÁRIO DE NOVO EVENTO / LINK INTELIGENTE (pré-preenchido sem salvar automaticamente) -->
+                <div class="ag-ev-form" id="ag-evento-form" hidden>
+                    <div class="ag-ev-head">
+                        <span class="ag-ev-head-tit" id="ag-ev-origem-badge">🔗 Novo evento — confira os dados e salve manualmente</span>
+                        <span class="ag-ev-pendente-pill" id="ag-ev-pendente-pill">Não salvo</span>
+                    </div>
+                    <div class="ag-ev-aviso" id="ag-ev-aviso" hidden></div>
+
+                    <div class="ag-ev-grid">
+                        <label class="ag-ev-field ag-ev-col-full">
+                            <span>Título</span>
+                            <input type="text" id="ag-ev-titulo" maxlength="200" autocomplete="off" placeholder="Ex.: Lembrar de verificar uma coisa">
+                        </label>
+
+                        <label class="ag-ev-field">
+                            <span>Data</span>
+                            <input type="date" id="ag-ev-data">
+                        </label>
+
+                        <label class="ag-ev-field">
+                            <span>Horário</span>
+                            <input type="time" id="ag-ev-hora" step="60">
+                        </label>
+
+                        <label class="ag-ev-field ag-ev-col-full">
+                            <span>Descrição</span>
+                            <textarea id="ag-ev-descricao" rows="2" maxlength="1000" placeholder="Detalhes ou observações do compromisso..."></textarea>
+                        </label>
+
+                        <label class="ag-ev-field ag-ev-col-full">
+                            <span>Lembrete <small class="ag-ev-lembrete-info" id="ag-ev-lembrete-info"></small></span>
+                            <input type="text" id="ag-ev-lembrete" list="ag-ev-lembrete-opcoes" maxlength="160" autocomplete="off" placeholder="Ex.: 30 minutos antes">
+                            <datalist id="ag-ev-lembrete-opcoes">
+                                <option value="No horário do evento"></option>
+                                <option value="10 minutos antes"></option>
+                                <option value="15 minutos antes"></option>
+                                <option value="30 minutos antes"></option>
+                                <option value="1 hora antes"></option>
+                                <option value="Sem lembrete"></option>
+                            </datalist>
+                        </label>
+                    </div>
+
+                    <div class="ag-ev-acoes">
+                        <button type="button" class="ag-ev-btn ag-ev-btn-salvar" id="ag-salvar-evento">💾 Salvar evento</button>
+                        <button type="button" class="ag-ev-btn ag-ev-btn-copiar" id="ag-copiar-evento">📋 Copiar evento</button>
+                        <button type="button" class="ag-ev-btn ag-ev-btn-cancelar" id="ag-descartar-evento">✕ Descartar</button>
+                    </div>
+                </div>
+
                 <textarea class="ag-nota-area" id="ag-nota-area" spellcheck="true"
                     placeholder=""></textarea>
 
