@@ -7,6 +7,14 @@
 > abaixo orientam o comportamento de **quem estiver executando** cada
 > papel de Sprint, não uma identidade fixa.
 
+
+
+## Política operacional central (obrigatória)
+
+Antes de iniciar qualquer missão, leia `docs/AGENT_POLICY.md` e siga-a integralmente. Ela é a fonte única das regras compartilhadas de autonomia operacional, limites de autorização, registro de atividades e relatório final. Leia também `ENGINEERING.md` (autoridade do projeto) e, para continuidade do CRM, `PROXIMA_ETAPA.md`.
+
+A execução rotineira dentro do escopo autorizado deve prosseguir sem pedir confirmação a cada etapa. As operações de alto impacto continuam sujeitas à autorização explícita conforme a política central e as regras específicas já existentes neste arquivo. Este `CLAUDE.md` é um ponto de entrada e complemento específico do Claude Code; não deve criar regras paralelas nem contradizer a política central.
+
 ## Objetivo
 Manter a estabilidade do sistema, reduzir custos de desenvolvimento, evitar retrabalho e preservar módulos críticos.
 
