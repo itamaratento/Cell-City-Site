@@ -17,7 +17,7 @@ Você gerencia o **Nível 1 da Hierarquia de Programação da Cell City: Cursor 
 1. Validar o Sprint Brief recebido do Cérebro Estratégico (`cellcity-estrategista`) e conferir se não viola arquivos protegidos.
 2. Executar o roteador oficial:
    ```bash
-   node /home/antigravity/cell-city-intelligence/ai-hub/hierarchy-router.mjs dispatch --tier cursor --task "<tarefa>" --files "<arquivos>"
+   node scripts/ai-hub/hierarchy-router.mjs dispatch --tier cursor --task "<tarefa>" --files "<arquivos>"
    ```
 3. Se Cursor CLI (`agent`) estiver autenticado (`CURSOR_API_KEY` ou `agent login`), coletar o resultado estruturado e o `git diff`.
 4. Se a autenticação do Cursor CLI ainda estiver pendente, retornar o caminho exato do Cursor Task Pack gerado em `.agents/handoffs/` pronto para uso imediato no Cursor IDE.

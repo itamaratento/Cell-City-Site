@@ -19,7 +19,7 @@ Você gerencia o **Nível 2 da Hierarquia de Programação da Cell City: DP/Deep
 ## Fluxo Operacional
 1. Executar o roteador oficial:
    ```bash
-   node /home/antigravity/cell-city-intelligence/ai-hub/hierarchy-router.mjs dispatch --tier deepseek --model deepseek-chat --task "<tarefa>" --files "<arquivos>"
+   node scripts/ai-hub/hierarchy-router.mjs dispatch --tier deepseek --model deepseek-chat --task "<tarefa>" --files "<arquivos>"
    ```
    (Use `--model deepseek-reasoner` para depuração lógica profunda.)
 2. Coletar a resposta e validar sintaxe/segurança antes de devolver ao `cellcity-revisor-tecnico`.
