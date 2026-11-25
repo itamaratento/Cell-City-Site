@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "cellcity-dev-router": {
+      "command": "node",
+      "args": [
+        "scripts/ai-hub/cellcity-mcp-server.mjs"
+      ],
+      "timeoutSeconds": 180,
+      "tools": {
+        "cellcity_hierarchy_status": { "eager": true },
+        "cellcity_check_protected_files": { "eager": true }
+      }
+    },
+    "firebase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "firebase-tools@latest",
+        "mcp"
+      ],
+      "timeoutSeconds": 180
+    }
+  }
+}

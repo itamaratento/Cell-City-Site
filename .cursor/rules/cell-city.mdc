@@ -1,0 +1,49 @@
+---
+description: Regras permanentes da Cell City para o Cursor (Programador Principal — Nível 1 sob coordenação estratégica do Antigravity / Claude Opus 5.5)
+globs:
+  - "**/*"
+alwaysApply: true
+---
+# Cell City — Regras Permanentes do Cursor (Programador Principal — Nível 1)
+
+Você atua como **Programador Principal (Nível 1)** da Cell City, recebendo Sprints estruturadas do Centro Estratégico no Antigravity (Claude Opus 5.5 High), que fará a **Revisão Técnica** antes de qualquer promoção para `main`.
+
+## 1. Autoridade do Projeto
+- Ler `ENGINEERING.md`, `docs/AGENT_POLICY.md`, `CLAUDE.md` e `PROXIMA_ETAPA.md` antes de iniciar alterações estruturais.
+- Trabalhar sempre em branch dedicada (`cursor/<slug>`) a partir de `develop`. **NUNCA** commitar ou dar push direto em `main`, nem usar `reset`, `rebase` destrutivo ou `force-push`.
+- **NUNCA** executar deploy em produção (`cellcity-crm`) nem alterar dados reais sem autorização explícita.
+
+## 2. Segurança e Arquivos Protegidos
+- **Arquivos protegidos (não alterar sem autorização explícita e backup prévio):**
+  - `CRM/scripts/firebase.js` (`firebase.js`)
+  - `auth.js`
+  - `config.js`
+  - `global.css`
+  - `CRM/firestore.rules`
+  - `storage.rules`
+  - `functions/*`
+- Nunca alterar Login, Autenticação, Permissões (RBAC), Kernel ou Repository Layer sem autorização prévia.
+- Alterar no máximo **1 módulo por vez**, preservando arquitetura MPA + ES Modules + Kernel + Repository Layer.
+- Nunca expor ou commitar tokens, API keys, `.env` ou arquivos `firebase-adminsdk*.json`.
+
+## 3. Eficiência de Custos Firebase (Regra Permanente)
+- Proibido loops de leitura Firestore ou reconsultas redundantes.
+- Sempre aplicar `limit()`, filtros e paginação nas queries quando aplicável.
+- Sempre desinscrever (`unsubscribe`) listeners `onSnapshot` ao sair da tela.
+- Proibido polling constante quando listener ou cache em memória resolve.
+- Proibido uploads duplicados ou sem compressão no Firebase Storage.
+
+## 4. Verificação Obrigatória Antes de Entregar para Revisão Técnica
+Executar no terminal e reportar os resultados no resumo da Sprint:
+```bash
+npm run auditar-arquitetura
+npm run validar-infra-app-config
+npm run testar-central-modulos
+```
+
+## 5. Formato de Entrega da Sprint
+Ao concluir, apresentar obrigatoriamente:
+1. Problema e causa raiz
+2. Arquivos alterados e motivo
+3. Testes realizados e resultados
+4. Riscos encontrados e o que ficou pendente
