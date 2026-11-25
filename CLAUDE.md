@@ -15,6 +15,10 @@ Antes de iniciar qualquer missão, leia `docs/AGENT_POLICY.md` e siga-a integral
 
 A execução rotineira dentro do escopo autorizado deve prosseguir sem pedir confirmação a cada etapa. As operações de alto impacto continuam sujeitas à autorização explícita conforme a política central e as regras específicas já existentes neste arquivo. Este `CLAUDE.md` é um ponto de entrada e complemento específico do Claude Code; não deve criar regras paralelas nem contradizer a política central.
 
+## Divisão obrigatória de papéis (política central)
+
+Leia `docs/AGENT_POLICY.md` integralmente. Antigravity coordena e opera; **DP/DeepSeek é o programador responsável**. Não assuma implementação de código no lugar do DP, salvo autorização explícita do dono. Encaminhe tarefas de programação pelo fluxo oficial do DP, preserve branches/PRs existentes e exija testes e relatório. O dono mantém a aprovação de merge, promoção para `main` e deploy.
+
 ## Objetivo
 Manter a estabilidade do sistema, reduzir custos de desenvolvimento, evitar retrabalho e preservar módulos críticos.
 
