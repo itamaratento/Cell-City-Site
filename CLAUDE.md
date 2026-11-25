@@ -17,7 +17,7 @@ A execução rotineira dentro do escopo autorizado deve prosseguir sem pedir con
 
 ## Divisão obrigatória de papéis (política central)
 
-Leia `docs/AGENT_POLICY.md` integralmente. Antigravity coordena e opera; **DP/DeepSeek é o programador responsável**. Não assuma implementação de código no lugar do DP, salvo autorização explícita do dono. Encaminhe tarefas de programação pelo fluxo oficial do DP, preserve branches/PRs existentes e exija testes e relatório. O dono mantém a aprovação de merge, promoção para `main` e deploy.
+Leia `docs/AGENT_POLICY.md` integralmente. No **Cell City AI Hub**, **Claude Opus 5.5 (High)** atua como Cérebro Estratégico, Orquestrador e Revisor Técnico (com **Gemini 4 Hydrogen** como Executor Auxiliar), e a programação segue estritamente a hierarquia **1. Cursor → 2. DP/DeepSeek → 3. Gemini/Antigravity → 4. Claude Opus (último recurso)**. Não assuma implementação de código em fluxo normal no lugar dos Níveis 1–3; despache via `scripts/ai-hub/hierarchy-router.mjs` ou MCP `cellcity-dev-router`, preserve branches/PRs existentes e exija testes e relatório. O dono mantém a aprovação de merge em `main`, promoção e deploy.
 
 ## Objetivo
 Manter a estabilidade do sistema, reduzir custos de desenvolvimento, evitar retrabalho e preservar módulos críticos.

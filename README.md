@@ -9,8 +9,14 @@ Sistema de gestão operacional (CRM) para assistência técnica de celulares + s
 
 | Documento | Conteúdo |
 |---|---|
-| [`ENGINEERING.md`](ENGINEERING.md) | Constituição e governança do projeto |\n| [`docs/AGENT_POLICY.md`](docs/AGENT_POLICY.md) | Política central compartilhada de agentes |
-| [`scripts/instalar-politica-antigravity.sh`](scripts/instalar-politica-antigravity.sh) | Instala/atualiza a política global do Antigravity sem sobrescrever outras regras |\n| [`AGENTS.md`](AGENTS.md) / [`GEMINI.md`](GEMINI.md) / [`CLAUDE.md`](CLAUDE.md) | Pontos de entrada para agentes e ferramentas |\n| [`.agents/workflows/delegar-programacao-dp.md`](.agents/workflows/delegar-programacao-dp.md) | Fluxo para encaminhar programação ao DP |
+| [`ENGINEERING.md`](ENGINEERING.md) | Constituição e governança do projeto |
+| [`docs/AGENT_POLICY.md`](docs/AGENT_POLICY.md) | Política central compartilhada de agentes (hierarquia 1→4, autonomia, limites e relatórios) |
+| [`scripts/instalar-politica-antigravity.sh`](scripts/instalar-politica-antigravity.sh) | Instala/atualiza a política global do Antigravity sem sobrescrever outras regras |
+| [`AGENTS.md`](AGENTS.md) / [`GEMINI.md`](GEMINI.md) / [`CLAUDE.md`](CLAUDE.md) | Pontos de entrada conciliados para agentes e ferramentas |
+| [`.cursor/rules/cell-city.mdc`](.cursor/rules/cell-city.mdc) | Regras permanentes do Cursor (Programador Principal — Nível 1) |
+| [`.agents/`](.agents/) | Agentes customizados, regras modulares, workflows e `mcp_config.json` do Antigravity |
+| [`scripts/ai-hub/`](scripts/ai-hub/) | Roteador da hierarquia (`hierarchy-router.mjs`), servidor MCP (`cellcity-dev-router`) e template `.env` |
+| [`.agents/workflows/delegar-programacao-dp.md`](.agents/workflows/delegar-programacao-dp.md) | Fluxo de delegação de programação (Cursor → DP/DeepSeek → Gemini → Claude Opus) |
 | [`PROXIMA_ETAPA.md`](PROXIMA_ETAPA.md) | Estado atual do projeto (ler antes de qualquer alteração) |
 | [`CRM/TECHDOC.md`](CRM/TECHDOC.md) | Documentação técnica oficial da arquitetura |
 | [`MASTER_ROADMAP.md`](MASTER_ROADMAP.md) | Planejamento de longo prazo (Fases 1–6) |

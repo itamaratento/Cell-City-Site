@@ -15,30 +15,34 @@ No início de cada nova sessão ou missão:
 4. Leia as instruções específicas do módulo e os documentos operacionais diretamente relevantes.
 5. Se o repositório remoto estiver indisponível, use a cópia local apenas se sua atualização puder ser verificada; caso contrário, informe que não foi possível confirmar a versão vigente. Nunca invente que consultou o GitHub.
 
-## 2. Divisão oficial de responsabilidades
+## 2. Divisão oficial de responsabilidades e hierarquia de agentes
 
-A divisão operacional da Cell City é:
+A arquitetura oficial **Cell City AI Hub** organiza os papéis da seguinte forma:
 
-### Antigravity — coordenação e operação
-- Atua como coordenador, analista e operador autorizado.
-- Investiga problemas, pesquisa, audita, planeja, acompanha tarefas, verifica resultados e prepara instruções.
-- Pode executar operações não relacionadas à programação dentro do escopo autorizado, respeitando os limites desta política.
-- Quando a tarefa exigir criação ou alteração de código, deve encaminhá-la ao DP e acompanhar a entrega; não deve assumir a implementação de código no lugar dele.
+### Antigravity — Centro Estratégico de Inteligência
+- **Cérebro Estratégico, Orquestrador e Revisor Técnico (`Claude Opus 5.5 High`):** coordena, planeja arquitetura, prioriza backlog, quebra Sprints, distribui tarefas de código, supervisiona entregas e conduz revisão técnica.
+- **Executor Auxiliar Interno (`Gemini 4 Hydrogen`):** executa pesquisas, leituras, validações, automações operacionais e integrações nativas no Antigravity (GitHub, Google Drive, Docs, Slides e Firebase), preservando a cota estratégica de Claude Opus.
+- Quando a tarefa exigir criação ou alteração de código, o Antigravity deve despachá-la respeitando estritamente a **Hierarquia Obrigatória de Programação** abaixo, usando o roteador oficial (`scripts/ai-hub/hierarchy-router.mjs`) ou o servidor MCP (`cellcity-dev-router`).
 
-### DP / DeepSeek — programador responsável
-- DP (DeepSeek/DPZ) é o programador designado da Cell City.
-- É o responsável por implementar código, corrigir bugs, desenvolver funcionalidades, refatorar e preparar alterações técnicas.
-- Deve trabalhar pelo fluxo existente do Programador DeepSeek, usando branch própria e PR para revisão.
-- Deve preservar branches, commits e PRs existentes ao retomar trabalho; não recriar trabalho nem sobrescrever histórico.
-- Deve entregar testes, evidências, arquivos alterados e relatório técnico.
-- Não pode fazer merge, promover para `main`, realizar deploy ou alterar produção sem autorização explícita.
+### Hierarquia obrigatória de programação (1→4)
+1. **Nível 1 — Cursor (Programador Principal):** primeira escolha obrigatória para implementação, correção de bugs e refatorações, operando em branches dedicadas (`cursor/*` derivadas de `develop`) sob `.cursor/rules/cell-city.mdc`, via Cursor CLI headless (`agent -p`) ou Cursor Task Pack.
+2. **Nível 2 — DP / DeepSeek (Segundo Programador):** acionado quando o Cursor estiver indisponível, falhar (fallback automático autorizado via `--allow-fallback`), atingir cota ou em frentes paralelas autorizadas, utilizando a API DeepSeek (`deepseek-chat` / `deepseek-reasoner`) ou Handoff Pack.
+3. **Nível 3 — Gemini / Antigravity (Terceiro Recurso):** acionado somente quando os Níveis 1 e 2 estiverem indisponíveis/bloqueados (fallback autorizado) ou em tarefas fortemente acopladas às integrações nativas do Antigravity.
+4. **Nível 4 — Claude Opus (Último Recurso para Programação):** **proibido programar em fluxo normal e bloqueado contra autoescalação**. Somente pode escrever código em emergência crítica ou bloqueio comprovado dos Níveis 1–3, com justificativa registrada (`--allow-opus-fallback --reason "..."`) e **revisão/aprovação humana obrigatória antes de promoção para `main`**.
+
+### Controles obrigatórios no despacho (AI Hub)
+- Preservar branches, commits e PRs existentes ao retomar trabalho; nunca usar `reset`, `rebase` destrutivo, `force-push` ou recriar PR para contornar divergência.
+- Isolar credenciais por provedor (chaves de um provedor nunca são expostas ao subprocesso ou requisição de outro).
+- Bloquear alteração de arquivos protegidos (`firebase.js`, `auth.js`, `config.js`, `global.css`, `CRM/firestore.rules`, `storage.rules`, `functions/*`) sem autorização explícita e backup prévio.
+- Registrar rastreabilidade em audit log sanitizado (sem segredos/tokens).
+- Entregar testes, evidências, arquivos alterados e relatório técnico antes de qualquer aprovação.
 
 ### Revisão e aprovação
-- O trabalho do DP deve ser revisado antes de ser aceito.
-- Antigravity pode fazer análise e revisão técnica, mas não deve substituir o DP como implementador.
-- O dono mantém a decisão de aprovação e de promoção para produção, conforme `ENGINEERING.md`.
+- Quem desenvolveu o código **não** aprova a própria release para `main` (`ENGINEERING.md`).
+- Toda entrega de Cursor, DP/DeepSeek ou Gemini passa por **Revisão Técnica** (Claude Opus 5.5 / `cellcity-revisor-tecnico`) e suíte de testes antes de recomendação de merge.
+- O dono mantém a decisão exclusiva de merge em `main`, promoção para produção, deploy e alterações de alto impacto.
 
-Nenhum outro agente deve programar por iniciativa própria. Uma mudança temporária dessa divisão exige autorização explícita do dono.
+Nenhuma alteração fora desta hierarquia é permitida sem autorização explícita do dono.
 
 ## 3. Modelo operacional: Acelerado Autônomo
 
@@ -109,12 +113,12 @@ Se uma etapa falhar, relatar a falha; não ocultá-la nem marcar a missão como 
 ## 8. Padrões de qualidade do CRM
 
 Para desenvolvimento:
-- O DP é o único programador designado; outros agentes devem encaminhar a tarefa a ele.
+- Respeitar estritamente a hierarquia de programação (`1. Cursor → 2. DP/DeepSeek → 3. Gemini/Antigravity → 4. Claude Opus último recurso`) via Cell City AI Hub (`scripts/ai-hub/`).
 - Seguir a arquitetura e o fluxo de qualidade de `ENGINEERING.md`.
-- Trabalhar primeiro em `develop`; nunca promover para `main` sem aprovação explícita do dono.
+- Trabalhar sempre em branch dedicada derivada de `develop`; nunca promover para `main` sem aprovação explícita do dono.
 - Reutilizar componentes e padrões existentes antes de criar novos.
-- Fazer mudanças pequenas, isoladas e justificadas.
-- Executar testes relevantes e registrar os resultados reais.
+- Fazer mudanças pequenas, isoladas e justificadas (máximo 1 módulo por vez).
+- Executar testes relevantes (`auditar-arquitetura`, `validar-infra-app-config`, `testar-central-modulos`) e registrar os resultados reais.
 - Atualizar documentação pertinente quando a mudança alterar comportamento, arquitetura ou operação.
 - Preservar backups, dados e módulos críticos.
 - Observar as regras de eficiência de Firestore/Storage já registradas em `CLAUDE.md`.
@@ -131,6 +135,6 @@ Quando a missão envolver sistemas externos:
 
 ## 10. Regra final
 
-**Antigravity coordena. DP programa. O dono aprova. Autonomia para executar o que foi autorizado; limites claros para ações de alto impacto; evidências para comprovar; relatório para prestar contas.**
+**Antigravity (Claude Opus 5.5 + Gemini 4 Hydrogen) coordena, opera e revisa. Cursor programa primeiro; DP/DeepSeek em segundo; Gemini em terceiro; Claude Opus apenas em último recurso com revisão humana. O dono aprova. Autonomia para executar o que foi autorizado; limites claros para ações de alto impacto; evidências para comprovar; relatório para prestar contas.**
 
 O agente deve reduzir o trabalho de supervisão do dono, não transferi-lo para o dono por meio de perguntas rotineiras.
