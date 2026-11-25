@@ -12,7 +12,7 @@
          arquivos inexistentes, geravam 404 no console). Estilo provido por os.css + dock.css. -->
     <link rel="stylesheet" href="../../shared/design-system.css">
     <script src="../../shared/theme.js"></script>
-    <link rel="stylesheet" href="os.css?v=20260612-accordion-obs-v4">
+    <link rel="stylesheet" href="os.css?v=20261119-andamento-loader">
 <link rel="stylesheet" href="../../shared/dock.css?v=20260612-accordion-obs-v3">
 </head>
 <body>
@@ -357,7 +357,7 @@
 
     <script src="../../shared/brand-header.js?v=20260612-accordion-obs-v3"></script>
     <script src="../../shared/obs-expand.js?v=20260612-1"></script>
-<script type="module" src="os.js?v=20260718-msg-finalizado-portal"></script>
+<script type="module" src="os.js?v=20261119-andamento-loader"></script>
 <script type="module" src="../../shared/dock.js?v=20260612-accordion-obs-v3"></script>
 <script>
 function toggleAccordion(header) { var acc = header.closest('.accordion'); if (!acc) return; var collapsed = acc.classList.toggle('collapsed'); header.setAttribute('aria-expanded', String(!collapsed)); var arrow = header.querySelector('.accordion-arrow'); if (arrow) arrow.textContent = collapsed ? '▶' : '▼'; }
@@ -369,25 +369,24 @@ function cpfMask(el) { var v = el.value.replace(/\D/g, '').slice(0, 11); if (v.l
 function cepMask(el) { var v = el.value.replace(/\D/g, '').slice(0, 8); if (v.length > 5) v = v.replace(/^(\d{5})(\d{1,3})$/, '$1-$2'); el.value = v; }
 function buscarCEP(valor) { var cep = valor.replace(/\D/g, ''); if (cep.length !== 8) return; var url = 'https://viacep.com.br/ws/' + cep + '/json/'; var xhr = new XMLHttpRequest(); xhr.open('GET', url, true); xhr.onreadystatechange = function () { if (xhr.readyState === 4) { if (xhr.status === 200) { try { var d = JSON.parse(xhr.responseText); if (d.erro) { showToast && showToast('⚠️ CEP não localizado.'); return; } var fE = document.getElementById('f-endereco'); var fB = document.getElementById('f-bairro'); var fC = document.getElementById('f-cidade'); var fEs = document.getElementById('f-estado'); if (fE) fE.value = d.logradouro || ''; if (fB) fB.value = d.bairro || ''; if (fC) fC.value = d.localidade || ''; if (fEs) fEs.value = d.uf || ''; } catch(e) { showToast && showToast('⚠️ Erro ao processar CEP.'); } } else { showToast && showToast('⚠️ CEP não localizado.'); } } }; xhr.send(); }
 </script>
-<!-- DEEP-LINK DE FAVORITOS (não altera os.js — apenas chama funções globais já existentes) -->
+<!-- DEEP-LINK DE FAVORITOS: espera os-ready (sem polling/sleep fixo).
+     O init do os.js já abre #fav-* após o 1º load; este script só reforça
+     se o hash chegar antes/sem o init ter aplicado, ou em hashchange. -->
 <script>
 (function () {
   function applyFav() {
     var h = location.hash || '';
     if (h.indexOf('fav-') < 0) return false;
-    if (h.indexOf('fav-andamento')   >= 0 && window.showList)   { window.showList('andamento');   return true; }
-    if (h.indexOf('fav-finalizados') >= 0 && window.showList)   { window.showList('finalizados'); return true; }
-    if (h.indexOf('fav-clientes')    >= 0 && window.showScreen) { window.showScreen('clientes');  return true; }
+    if (!window.showList || !window.showScreen) return false;
+    if (h.indexOf('fav-andamento')   >= 0) { window.showList('andamento');   return true; }
+    if (h.indexOf('fav-finalizados') >= 0) { window.showList('finalizados'); return true; }
+    if (h.indexOf('fav-clientes')    >= 0) { window.showScreen('clientes');  return true; }
     return false;
   }
   function boot() {
     if ((location.hash || '').indexOf('fav-') < 0) return;
-    var tries = 0;
-    var t = setInterval(function () {
-      tries++;
-      if (window.showList && window.showScreen) applyFav(); // re-aplica p/ vencer o showScreen('home') assíncrono do init
-      if (tries >= 10) clearInterval(t);
-    }, 300);
+    if (window.__osReady) { applyFav(); return; }
+    window.addEventListener('os-ready', function () { applyFav(); }, { once: true });
   }
   window.addEventListener('load', boot);
   window.addEventListener('hashchange', applyFav);
