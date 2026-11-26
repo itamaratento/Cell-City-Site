@@ -119,3 +119,7 @@ scripts/observability/state/*.json
 !scripts/observability/state/.gitkeep
 scripts/prompt-generator/state/
 
+# Cell City Intelligence Hub (Antigravity / Cursor / DeepSeek)
+.env.ai-hub
+cellcity.env
+.agents/handoffs/

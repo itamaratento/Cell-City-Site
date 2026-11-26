@@ -27,7 +27,7 @@ if ! grep -q '^# Política Central de Agentes — Cell City' "$TMP"; then
 fi
 
 {
-  printf '%s\n' '---' 'trigger: always_on' 'description: "Política global Cell City: Antigravity coordena; DP/DeepSeek programa; autonomia, limites e relatórios."' '---' ''
+  printf '%s\n' '---' 'trigger: always_on' 'description: "Política global Cell City AI Hub: Antigravity (Claude Opus 5.5 + Gemini 4 Hydrogen) coordena/revisa; hierarquia 1. Cursor -> 2. DP/DeepSeek -> 3. Gemini -> 4. Claude Opus; autonomia, limites e relatórios."' '---' ''
   printf '%s\n' '> Fonte oficial: https://github.com/itamaratento/Cell-City-Site/blob/develop/docs/AGENT_POLICY.md'
   printf '%s\n' '> Atualizado por scripts/instalar-politica-antigravity.sh.'
   printf '\n'
