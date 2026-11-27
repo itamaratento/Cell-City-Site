@@ -624,8 +624,9 @@ const STATUS_LEGACY = {
     aguardando_aprovacao:  'Orçamento enviado',
     aprovado:              'Orçamento aprovado'
 };
-// Status que encerram a OS (saem de "em andamento").
-const STATUS_TERMINAIS = ['entregue', 'orcamento_recusado', 'devolvido_orcamento'];
+// Status que encerram a OS (saem de "em andamento" e entram em "finalizados").
+// Alinhado ao fechamento pelo Telegram: `concluido` (e `pronto`/`aguardando_retirada`) já encerram a OS no CRM.
+const STATUS_TERMINAIS = ['concluido', 'pronto', STATUS_AGUARDANDO_RETIRADA, 'entregue', 'orcamento_recusado', 'devolvido_orcamento'];
 // Devolver aparelho (orçamento) — Entregue/Pronto ficam em _renderStatusAcoes
 function _renderAcaoBtn(os) {
     if (!podeEditar('os')) return '';
